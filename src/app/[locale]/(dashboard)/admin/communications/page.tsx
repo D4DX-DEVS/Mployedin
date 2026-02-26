@@ -66,7 +66,7 @@ export default function AdminCommunicationsPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader title="Communications Center" description="Broadcast messages and manage communication templates" />
 
       <div className="flex gap-1 border rounded-lg p-1 w-fit">

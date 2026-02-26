@@ -150,7 +150,7 @@ export default function EmployerRegisterPage() {
               </h2>
               <FormInput label="Company Name *" value={step1.companyName}
                 onChange={(e) => setStep1(p => ({ ...p, companyName: e.target.value }))} />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormSelect label="Industry *" value={step1.industry} options={INDUSTRIES}
                   onChange={(v) => setStep1(p => ({ ...p, industry: v }))} />
                 <FormSelect label="Company Size *" value={step1.size} options={SIZES}
@@ -201,7 +201,7 @@ export default function EmployerRegisterPage() {
           {step === 3 && (
             <>
               <h2 className="text-base font-semibold">Contact Person</h2>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormInput label="Full Name *" value={step3.contactName}
                   onChange={(e) => setStep3(p => ({ ...p, contactName: e.target.value }))} />
                 <FormInput label="Job Title" value={step3.contactTitle}
@@ -211,7 +211,7 @@ export default function EmployerRegisterPage() {
                 onChange={(e) => setStep3(p => ({ ...p, contactEmail: e.target.value }))} />
               <FormInput label="Phone" value={step3.contactPhone}
                 onChange={(e) => setStep3(p => ({ ...p, contactPhone: e.target.value }))} />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormInput label="Password *" type="password" value={step3.password}
                   onChange={(e) => setStep3(p => ({ ...p, password: e.target.value }))} />
                 <FormInput label="Confirm Password *" type="password" value={step3.confirmPassword}

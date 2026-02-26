@@ -16,7 +16,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Employer Dashboard"
         description="Manage your job postings and review candidates"

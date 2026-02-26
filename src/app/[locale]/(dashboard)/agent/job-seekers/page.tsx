@@ -37,7 +37,7 @@ export default function AgentJobSeekersPage() {
     pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-yellow-500" : "bg-red-400";
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader title="Job Seekers" description="Manage and track job seekers in your pipeline" />
 
       <div className="flex gap-3">

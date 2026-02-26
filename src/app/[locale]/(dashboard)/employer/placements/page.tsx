@@ -48,13 +48,13 @@ export default function EmployerPlacementsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Placements"
         description="Track candidates placed through your job listings"
       />
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: "Total Hired", value: stats.total, icon: Users, color: "text-primary" },
           { label: "Currently Active", value: stats.active, icon: Briefcase, color: "text-green-600" },

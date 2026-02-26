@@ -56,7 +56,7 @@ export default function AgentReportsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-6 max-w-3xl mx-auto">
       <PageHeader
         title="AI Reports"
         description="Ask questions about your performance or request custom reports"

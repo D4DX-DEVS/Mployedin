@@ -40,10 +40,10 @@ export default function SuperAgentAgentsPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader title="Agent Performance" description="Monitor agent activity and conversion metrics across your territory" />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {kpis.map((k) => (
           <div key={k.label} className="card-base">
             <p className="text-sm text-muted-foreground">{k.label}</p>

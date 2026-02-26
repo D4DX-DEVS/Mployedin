@@ -77,7 +77,7 @@ export default function AgentJobPosterPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-6 max-w-2xl mx-auto">
       <PageHeader
         title="Post Job on Behalf of Employer"
         description="Create a job posting for one of your employer accounts"

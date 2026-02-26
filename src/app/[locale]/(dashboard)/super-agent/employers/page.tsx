@@ -47,14 +47,14 @@ export default function SuperAgentEmployersPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Employer Relationships"
         description="Track all employer accounts within your territory"
       />
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="card-base flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
             <Building2 className="h-5 w-5 text-primary" />

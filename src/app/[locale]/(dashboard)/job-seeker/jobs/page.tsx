@@ -107,7 +107,7 @@ export default function JobSearchPage() {
   const activeFilters = [category, location, currency].filter(Boolean).length;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Find Jobs"
         description={`${pagination.total.toLocaleString()} active opportunities`}

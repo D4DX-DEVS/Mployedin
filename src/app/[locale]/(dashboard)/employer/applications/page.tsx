@@ -73,7 +73,7 @@ export default function EmployerApplicationsPage() {
   }, {});
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Applications"
         description={`${applications.length} total applicants${jobId ? " for this job" : ""}`}
@@ -132,7 +132,7 @@ function KanbanView({
   onUpdateStatus: (id: string, status: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 min-h-[400px]">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 min-h-[400px]">
       {PIPELINE_STAGES.map((stage) => (
         <div key={stage.value} className={`rounded-xl border-t-4 ${stage.color} bg-muted/20 p-3 space-y-2`}>
           <div className="flex items-center justify-between mb-2">
@@ -219,7 +219,7 @@ function TableView({
   }
 
   return (
-    <div className="rounded-xl border overflow-hidden bg-background">
+    <div className="rounded-xl border overflow-x-auto bg-background">
       <table className="w-full text-sm">
         <thead className="bg-muted/50 text-muted-foreground text-xs uppercase tracking-wide">
           <tr>

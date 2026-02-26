@@ -65,7 +65,7 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className="p-6 space-y-5 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-5 max-w-2xl mx-auto">
       <div className="flex items-center justify-between">
         <PageHeader
           title={`Notifications ${unreadCount > 0 ? `(${unreadCount})` : ""}`}

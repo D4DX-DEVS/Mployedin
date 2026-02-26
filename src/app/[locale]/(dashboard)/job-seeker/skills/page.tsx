@@ -73,7 +73,7 @@ export default function JobSeekerSkillsPage() {
     "bg-blue-50 text-blue-700 border-blue-200";
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="AI Skills Coach"
         description="Get personalised skill suggestions and gap analysis for your target role"

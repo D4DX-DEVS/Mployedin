@@ -58,7 +58,7 @@ export default function AuditLogsPage() {
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Audit Logs"
         description={`${total.toLocaleString()} log entries · read-only`}
@@ -99,7 +99,7 @@ export default function AuditLogsPage() {
           <p className="text-sm text-muted-foreground">No audit log entries found</p>
         </div>
       ) : (
-        <div className="rounded-xl border overflow-hidden bg-background">
+        <div className="rounded-xl border overflow-x-auto bg-background">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
               <tr>

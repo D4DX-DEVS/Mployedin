@@ -66,7 +66,7 @@ export default function JobSeekerProfilePage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="p-4 sm:p-6 space-y-4 animate-pulse">
         <div className="h-8 bg-muted rounded w-48" />
         <div className="h-32 bg-muted rounded-xl" />
         <div className="h-64 bg-muted rounded-xl" />
@@ -82,7 +82,7 @@ export default function JobSeekerProfilePage() {
     "text-destructive";
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4 sm:space-y-6">
       <PageHeader
         title="My Profile"
         description="Manage your professional profile and improve your match score"

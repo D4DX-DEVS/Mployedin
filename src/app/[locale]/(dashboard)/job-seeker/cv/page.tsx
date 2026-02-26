@@ -120,7 +120,7 @@ export default function CVUploadPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
       <PageHeader
         title="Upload Your CV"
         description="Let AI extract your profile data automatically from your CV or resume"

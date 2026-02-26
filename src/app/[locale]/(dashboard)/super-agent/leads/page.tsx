@@ -46,11 +46,11 @@ export default function SuperAgentLeadsPage() {
   }, {} as Record<LeadStatus, number>);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader title="Territory Lead Pipeline" description="All leads across agents in your territory" />
 
       {/* Stage counters */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         {STAGES.map((s) => (
           <button key={s}
             onClick={() => setStatusFilter(statusFilter === s ? "" : s)}

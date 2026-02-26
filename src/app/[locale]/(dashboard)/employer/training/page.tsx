@@ -100,7 +100,7 @@ export default function EmployerTrainingTrackerPage() {
             <h3 className="text-sm font-semibold">Add Training Item</h3>
             <button onClick={() => setShowForm(false)}><X className="h-4 w-4 text-muted-foreground" /></button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground">Course Title *</label>
               <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -112,7 +112,7 @@ export default function EmployerTrainingTrackerPage() {
                 className="input-field w-full mt-1" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground">URL</label>
               <input value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))}

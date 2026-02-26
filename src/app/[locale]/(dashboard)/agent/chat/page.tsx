@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
-import { Send, Users, Hash, Loader2, Circle } from "lucide-react";
+import { Send, Users, Hash, Loader2, Circle, MessageSquare, ChevronLeft } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 
 interface Message {
@@ -39,6 +39,7 @@ export default function AgentChatPage() {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [online] = useState(3);
+  const [showChannels, setShowChannels] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -86,14 +87,14 @@ export default function AgentChatPage() {
       <PageHeader title="Team Channels" description="Internal messaging for agents, super agents and employers" />
 
       <div className="flex h-[calc(100vh-200px)] min-h-96 gap-0 rounded-xl border border-border overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-52 shrink-0 bg-muted/30 border-r border-border flex flex-col">
+        {/* Sidebar – full-screen on mobile, side panel on sm+ */}
+        <aside className={`${showChannels ? "flex" : "hidden"} sm:flex w-full sm:w-52 shrink-0 bg-muted/30 border-r border-border flex-col`}>
           <div className="p-3 border-b border-border">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Channels</p>
           </div>
           <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
             {CHANNELS.map(ch => (
-              <button key={ch.id} onClick={() => setActiveChannel(ch.id)}
+              <button key={ch.id} onClick={() => { setActiveChannel(ch.id); setShowChannels(false); }}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
                   activeChannel === ch.id
                     ? "bg-primary text-primary-foreground"
@@ -111,14 +112,17 @@ export default function AgentChatPage() {
           </div>
         </aside>
 
-        {/* Main */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* Main – hidden on mobile when channels panel shown */}
+        <div className={`${!showChannels ? "flex" : "hidden"} sm:flex flex-1 flex-col min-w-0`}>
           {/* Channel Header */}
           <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+            <button onClick={() => setShowChannels(true)} className="sm:hidden p-1 -ml-1 rounded-md hover:bg-accent">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
             <Hash className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold text-sm">{activeChannel}</span>
-            <span className="text-xs text-muted-foreground">—</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground hidden sm:inline">—</span>
+            <span className="text-xs text-muted-foreground hidden sm:inline">
               {CHANNELS.find(c => c.id === activeChannel)?.description}
             </span>
           </div>

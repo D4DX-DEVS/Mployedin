@@ -78,7 +78,7 @@ export default function AdminPlacementsPage() {
       <PageHeader title="Placement Tracking" description={`${total} placements · Total salary value: ${totalValue.toLocaleString()} AED`} />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Total", value: total, color: "text-foreground" },
           { label: "Pending Visa", value: pendingVisa, color: "text-amber-600" },

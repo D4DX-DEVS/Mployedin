@@ -52,7 +52,7 @@ export default function AgentCommissionsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="My Commissions"
         description="Track earnings from successful placements"
@@ -60,7 +60,7 @@ export default function AgentCommissionsPage() {
 
       {/* Summary cards */}
       {summary && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: "Pending", value: summary.pending, color: "text-amber-600", icon: Clock },
             { label: "Approved", value: summary.approved, color: "text-blue-600", icon: TrendingUp },

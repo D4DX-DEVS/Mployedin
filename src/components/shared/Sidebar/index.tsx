@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { NavGroup } from "@/lib/nav/menuConfig";
-import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Menu, X } from "lucide-react";
 
 interface SidebarProps {
   navGroups: NavGroup[];
   locale: string;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function Sidebar({ navGroups, locale }: SidebarProps) {
+export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
@@ -25,6 +27,21 @@ export function Sidebar({ navGroups, locale }: SidebarProps) {
     : collapsed
     ? ChevronRight
     : ChevronLeft;
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    onMobileClose?.();
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Prevent body scroll when mobile drawer open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
   function toggleGroup(label: string) {
     setOpenGroups((prev) => {
@@ -42,16 +59,10 @@ export function Sidebar({ navGroups, locale }: SidebarProps) {
     return pathname === href || pathname.startsWith(href + "/");
   }
 
-  return (
-    <aside
-      className={cn(
-        "sidebar relative flex flex-col transition-all duration-300 overflow-hidden",
-        collapsed ? "sidebar-collapsed" : "sidebar-expanded"
-      )}
-    >
+  const navContent = (
+    <>
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-white/10">
-        {/* Globe icon placeholder */}
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-blue flex items-center justify-center">
           <span className="text-white text-xs font-bold">M</span>
         </div>
@@ -60,6 +71,14 @@ export function Sidebar({ navGroups, locale }: SidebarProps) {
             mployedin
           </span>
         )}
+        {/* Mobile close button */}
+        <button
+          onClick={() => onMobileClose?.()}
+          className="ml-auto lg:hidden flex h-8 w-8 items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10"
+          aria-label="Close menu"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -166,15 +185,66 @@ export function Sidebar({ navGroups, locale }: SidebarProps) {
           </div>
         ))}
       </nav>
+    </>
+  );
 
-      {/* Collapse toggle button */}
-      <button
-        onClick={() => setCollapsed((c) => !c)}
-        className="absolute -right-3 top-20 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-sidebar-bg text-white/60 hover:text-white"
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+  return (
+    <>
+      {/* Desktop sidebar — hidden on mobile */}
+      <aside
+        className={cn(
+          "sidebar relative hidden lg:flex flex-col transition-all duration-300 overflow-hidden",
+          collapsed ? "sidebar-collapsed" : "sidebar-expanded"
+        )}
       >
-        <CollapseIcon className="w-3 h-3" />
-      </button>
-    </aside>
+        {navContent}
+
+        {/* Desktop collapse toggle */}
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          className="absolute -right-3 top-20 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-sidebar-bg text-white/60 hover:text-white"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <CollapseIcon className="w-3 h-3" />
+        </button>
+      </aside>
+
+      {/* Mobile overlay drawer */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={() => onMobileClose?.()}
+          />
+          {/* Drawer */}
+          <aside
+            className={cn(
+              "sidebar absolute top-0 bottom-0 flex flex-col w-[280px] max-w-[85vw] z-10 animate-in slide-in-from-left duration-300",
+              isRtl && "right-0 left-auto slide-in-from-right"
+            )}
+          >
+            {navContent}
+          </aside>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Hamburger button — exported for use in the top bar */
+export function MobileMenuButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="lg:hidden flex h-9 w-9 items-center justify-center rounded-lg hover:bg-accent transition-colors"
+      aria-label="Open menu"
+    >
+      <Menu className="h-5 w-5" />
+    </button>
   );
 }

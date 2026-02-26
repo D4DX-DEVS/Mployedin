@@ -130,7 +130,7 @@ export default function NewJobPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
       <PageHeader
         title="Post a New Job"
         description="Create a job posting to attract qualified candidates"
@@ -153,7 +153,7 @@ export default function NewJobPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Category</label>
               <Select value={form.category} onValueChange={(v) => setField("category", v)}>
@@ -234,7 +234,7 @@ export default function NewJobPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Min. Experience (years)</label>
               <Input
@@ -257,7 +257,7 @@ export default function NewJobPage() {
         {/* Salary */}
         <div className="card-base space-y-4">
           <h2 className="text-sm font-semibold">Salary Package</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Min. Salary</label>
               <Input
@@ -301,7 +301,7 @@ export default function NewJobPage() {
 
           {showAdvanced && (
             <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Expiry Date</label>
                   <Input

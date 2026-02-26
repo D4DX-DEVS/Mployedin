@@ -99,7 +99,7 @@ export default function AdminUsersPage() {
     setSelected(s => s.length === users.length ? [] : users.map(u => u._id));
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="User Management"
         description={`${total.toLocaleString()} total users`}
@@ -157,7 +157,7 @@ export default function AdminUsersPage() {
 
       {/* Users table */}
       {loading ? (
-        <div className="rounded-xl border overflow-hidden">
+        <div className="rounded-xl border overflow-x-auto">
           <div className="bg-muted/50 px-4 py-3 h-10 animate-pulse" />
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="border-t px-4 py-3 h-14 animate-pulse" />
@@ -169,7 +169,7 @@ export default function AdminUsersPage() {
           <p className="text-sm text-muted-foreground">No users found matching your filters</p>
         </div>
       ) : (
-        <div className="rounded-xl border overflow-hidden bg-background">
+        <div className="rounded-xl border overflow-x-auto bg-background">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
               <tr>

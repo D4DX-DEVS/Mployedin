@@ -196,7 +196,7 @@ export default function JobSeekerOnboardingPage() {
                 value={personal.headline}
                 placeholder="e.g. Civil Engineer with 5 years Gulf experience"
                 onChange={e => setPersonal(p => ({ ...p, headline: e.target.value }))} />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormInput label="Nationality" value={personal.nationality}
                   onChange={e => setPersonal(p => ({ ...p, nationality: e.target.value }))} />
                 <FormSelect label="Years Experience" value={personal.yearsExperience}
@@ -234,7 +234,7 @@ export default function JobSeekerOnboardingPage() {
               <FormMultiSelect label="Target Countries" value={career.targetCountries}
                 options={GCC_COUNTRIES}
                 onChange={v => setCareer(c => ({ ...c, targetCountries: v }))} maxSelections={3} />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormInput label="Minimum Salary" type="number" value={career.salaryMin}
                   onChange={e => setCareer(c => ({ ...c, salaryMin: e.target.value }))} />
                 <FormSelect label="Availability" value={career.availableIn} options={AVAILABLE_IN}

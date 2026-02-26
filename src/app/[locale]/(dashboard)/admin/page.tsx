@@ -50,7 +50,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader title="Admin Dashboard" description="Platform overview and system management" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
