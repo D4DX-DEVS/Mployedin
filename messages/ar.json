@@ -1,0 +1,149 @@
+{
+  "app": {
+    "name": "مبلويدين",
+    "tagline": "منصة التوظيف المدعومة بالذكاء الاصطناعي"
+  },
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "jobs": "الوظائف",
+    "applications": "الطلبات",
+    "interviews": "المقابلات",
+    "placements": "التوظيفات",
+    "employers": "أصحاب العمل",
+    "agents": "الوكلاء",
+    "superAgents": "الوكلاء الكبار",
+    "jobSeekers": "الباحثون عن عمل",
+    "leads": "العملاء المحتملون",
+    "commissions": "العمولات",
+    "territories": "المناطق",
+    "reports": "التقارير",
+    "auditLogs": "سجلات التدقيق",
+    "tasks": "لوحة المهام",
+    "designSystem": "نظام التصميم",
+    "settings": "الإعدادات",
+    "users": "المستخدمون",
+    "profile": "الملف الشخصي",
+    "cvBuilder": "بناء السيرة الذاتية",
+    "courses": "الدورات",
+    "jobSearch": "البحث عن وظيفة"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "register": "تسجيل",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "rememberMe": "تذكرني",
+    "loginWithGoogle": "المتابعة مع Google",
+    "loginWithLinkedIn": "المتابعة مع LinkedIn",
+    "noAccount": "ليس لديك حساب؟",
+    "hasAccount": "لديك حساب بالفعل؟",
+    "signUp": "إنشاء حساب",
+    "signIn": "تسجيل الدخول",
+    "invalidCredentials": "بريد إلكتروني أو كلمة مرور غير صحيحة",
+    "resetPassword": "إعادة تعيين كلمة المرور",
+    "sendResetLink": "إرسال رابط الإعادة"
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "view": "عرض",
+    "create": "إنشاء",
+    "search": "بحث",
+    "filter": "فلتر",
+    "export": "تصدير",
+    "loading": "جاري التحميل...",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "submit": "إرسال",
+    "close": "إغلاق",
+    "yes": "نعم",
+    "no": "لا",
+    "all": "الكل",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "actions": "الإجراءات",
+    "status": "الحالة",
+    "date": "التاريخ",
+    "name": "الاسم",
+    "email": "البريد الإلكتروني",
+    "phone": "الهاتف",
+    "country": "البلد",
+    "noResults": "لا توجد نتائج",
+    "rowsPerPage": "صفوف لكل صفحة",
+    "page": "صفحة",
+    "of": "من",
+    "total": "المجموع"
+  },
+  "table": {
+    "search": "بحث...",
+    "noResults": "لا توجد نتائج.",
+    "filters": "الفلاتر",
+    "columns": "الأعمدة",
+    "exportCsv": "تصدير CSV",
+    "exportExcel": "تصدير Excel",
+    "exportPdf": "تصدير PDF",
+    "selectAll": "تحديد الكل",
+    "deselectAll": "إلغاء تحديد الكل",
+    "pagination": {
+      "previous": "السابق",
+      "next": "التالي",
+      "showing": "عرض {from} إلى {to} من {total}"
+    }
+  },
+  "commandMenu": {
+    "placeholder": "ابحث عن الأوامر والصفحات...",
+    "noResults": "لا توجد نتائج.",
+    "navigation": "التنقل",
+    "actions": "الإجراءات"
+  },
+  "jobs": {
+    "title": "الوظائف",
+    "create": "نشر وظيفة",
+    "edit": "تعديل الوظيفة",
+    "status": {
+      "draft": "مسودة",
+      "pending_approval": "في انتظار الموافقة",
+      "active": "نشطة",
+      "closed": "مغلقة",
+      "expired": "منتهية"
+    }
+  },
+  "applications": {
+    "title": "الطلبات",
+    "status": {
+      "applied": "تقدم",
+      "shortlisted": "قائمة قصيرة",
+      "interview_scheduled": "مقابلة مجدولة",
+      "selected": "تم الاختيار",
+      "rejected": "مرفوض",
+      "withdrawn": "منسحب"
+    }
+  },
+  "profile": {
+    "completeness": "اكتمال الملف الشخصي",
+    "uploadCv": "رفع السيرة الذاتية",
+    "cvParsing": "جاري استخراج بيانات السيرة الذاتية...",
+    "skills": "المهارات",
+    "experience": "الخبرة",
+    "education": "التعليم",
+    "languages": "اللغات"
+  },
+  "ai": {
+    "assistant": "المساعد الذكي",
+    "thinking": "يفكر...",
+    "placeholder": "اسألني أي شيء...",
+    "matchScore": "نسبة التطابق الذكي",
+    "extractingCv": "استخراج بيانات السيرة الذاتية بالذكاء الاصطناعي..."
+  },
+  "errors": {
+    "generic": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    "notFound": "الصفحة غير موجودة",
+    "unauthorized": "ليس لديك صلاحية للوصول إلى هذه الصفحة",
+    "serverError": "خطأ في الخادم. يرجى المحاولة لاحقاً."
+  }
+}

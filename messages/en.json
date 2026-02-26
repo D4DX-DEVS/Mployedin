@@ -1,0 +1,149 @@
+{
+  "app": {
+    "name": "MPLOYEDIN",
+    "tagline": "AI-Powered Recruitment Platform"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "jobs": "Jobs",
+    "applications": "Applications",
+    "interviews": "Interviews",
+    "placements": "Placements",
+    "employers": "Employers",
+    "agents": "Agents",
+    "superAgents": "Super Agents",
+    "jobSeekers": "Job Seekers",
+    "leads": "Leads",
+    "commissions": "Commissions",
+    "territories": "Territories",
+    "reports": "Reports",
+    "auditLogs": "Audit Logs",
+    "tasks": "Task Board",
+    "designSystem": "Design System",
+    "settings": "Settings",
+    "users": "Users",
+    "profile": "Profile",
+    "cvBuilder": "CV Builder",
+    "courses": "Courses",
+    "jobSearch": "Job Search"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "rememberMe": "Remember me",
+    "loginWithGoogle": "Continue with Google",
+    "loginWithLinkedIn": "Continue with LinkedIn",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "signUp": "Sign up",
+    "signIn": "Sign in",
+    "invalidCredentials": "Invalid email or password",
+    "resetPassword": "Reset Password",
+    "sendResetLink": "Send Reset Link"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "loading": "Loading...",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No",
+    "all": "All",
+    "active": "Active",
+    "inactive": "Inactive",
+    "actions": "Actions",
+    "status": "Status",
+    "date": "Date",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "country": "Country",
+    "noResults": "No results found",
+    "rowsPerPage": "Rows per page",
+    "page": "Page",
+    "of": "of",
+    "total": "Total"
+  },
+  "table": {
+    "search": "Search...",
+    "noResults": "No results.",
+    "filters": "Filters",
+    "columns": "Columns",
+    "exportCsv": "Export CSV",
+    "exportExcel": "Export Excel",
+    "exportPdf": "Export PDF",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "showing": "Showing {from} to {to} of {total}"
+    }
+  },
+  "commandMenu": {
+    "placeholder": "Search commands, pages...",
+    "noResults": "No results found.",
+    "navigation": "Navigation",
+    "actions": "Actions"
+  },
+  "jobs": {
+    "title": "Jobs",
+    "create": "Post a Job",
+    "edit": "Edit Job",
+    "status": {
+      "draft": "Draft",
+      "pending_approval": "Pending Approval",
+      "active": "Active",
+      "closed": "Closed",
+      "expired": "Expired"
+    }
+  },
+  "applications": {
+    "title": "Applications",
+    "status": {
+      "applied": "Applied",
+      "shortlisted": "Shortlisted",
+      "interview_scheduled": "Interview Scheduled",
+      "selected": "Selected",
+      "rejected": "Rejected",
+      "withdrawn": "Withdrawn"
+    }
+  },
+  "profile": {
+    "completeness": "Profile Completeness",
+    "uploadCv": "Upload CV",
+    "cvParsing": "Extracting your CV data...",
+    "skills": "Skills",
+    "experience": "Experience",
+    "education": "Education",
+    "languages": "Languages"
+  },
+  "ai": {
+    "assistant": "AI Assistant",
+    "thinking": "Thinking...",
+    "placeholder": "Ask me anything...",
+    "matchScore": "AI Match Score",
+    "extractingCv": "Extracting CV data with AI..."
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "notFound": "Page not found",
+    "unauthorized": "You don't have permission to access this page",
+    "serverError": "Server error. Please try again later."
+  }
+}
