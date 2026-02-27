@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { Send, Clock, Megaphone, FileText, History } from "lucide-react";
 
 const USER_ROLES = ["all", "job_seeker", "employer", "agent", "super_agent", "admin"];
 
@@ -50,8 +51,7 @@ export default function AdminCommunicationsPage() {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
-    // POST to /api/admin/communications (to be built)
-    await new Promise((r) => setTimeout(r, 800)); // Simulate
+    await new Promise((r) => setTimeout(r, 800));
     setSent(true);
     setSending(false);
     setTimeout(() => setSent(false), 3000);
@@ -65,15 +65,22 @@ export default function AdminCommunicationsPage() {
     { id: "5", name: "Platform Maintenance", type: "system", lastUsed: "2023-12-20" },
   ];
 
+  const TABS = [
+    { key: "broadcast" as const, label: "Broadcast", icon: Megaphone },
+    { key: "templates" as const, label: "Templates", icon: FileText },
+    { key: "history" as const, label: "History", icon: History },
+  ];
+
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader title="Communications Center" description="Broadcast messages and manage communication templates" />
 
       <div className="flex gap-1 border rounded-lg p-1 w-fit">
-        {(["broadcast", "templates", "history"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all capitalize ${tab === t ? "bg-primary text-white" : "hover:bg-muted/60"}`}>
-            {t}
+        {TABS.map((t) => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`tab-btn flex items-center gap-1.5 ${tab === t.key ? "active" : ""}`}>
+            <t.icon className="h-3.5 w-3.5" />
+            {t.label}
           </button>
         ))}
       </div>
@@ -83,26 +90,26 @@ export default function AdminCommunicationsPage() {
           <form onSubmit={handleSend} className="card-base space-y-5">
             <h3 className="font-semibold text-sm">Send Broadcast Message</h3>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Title <span className="text-red-500">*</span></label>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Title <span className="text-destructive">*</span></label>
               <input
                 value={form.title}
                 onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
                 required
                 placeholder="Message title…"
-                className="w-full h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="input-field"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Message <span className="text-red-500">*</span></label>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Message <span className="text-destructive">*</span></label>
               <textarea
                 value={form.message}
                 onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))}
                 required
                 rows={4}
                 placeholder="Write your message here…"
-                className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                className="textarea-field"
               />
             </div>
 
@@ -114,11 +121,7 @@ export default function AdminCommunicationsPage() {
                     key={r}
                     type="button"
                     onClick={() => toggleRole(r)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-all capitalize ${
-                      form.targetRoles.includes(r)
-                        ? "bg-primary text-white border-primary"
-                        : "hover:bg-muted/60"
-                    }`}
+                    className={`btn-pill capitalize ${form.targetRoles.includes(r) ? "active" : ""}`}
                   >
                     {r === "all" ? "All Users" : r.replace(/_/g, " ")}
                   </button>
@@ -138,11 +141,7 @@ export default function AdminCommunicationsPage() {
                     key={ch.key}
                     type="button"
                     onClick={() => toggleChannel(ch.key)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                      form.channels.includes(ch.key)
-                        ? "bg-primary text-white border-primary"
-                        : "hover:bg-muted/60"
-                    }`}
+                    className={`btn-pill ${form.channels.includes(ch.key) ? "active" : ""}`}
                   >
                     {ch.label}
                   </button>
@@ -150,24 +149,27 @@ export default function AdminCommunicationsPage() {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium">Schedule (optional)</label>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                Schedule (optional)
+              </label>
               <input
                 type="datetime-local"
                 value={form.scheduledAt}
                 onChange={(e) => setForm((p) => ({ ...p, scheduledAt: e.target.value }))}
-                className="w-full h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="input-field"
               />
               <p className="text-xs text-muted-foreground">Leave empty to send immediately</p>
             </div>
 
             <div className="flex items-center gap-3">
-              <button type="submit" disabled={sending}
-                className="px-5 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
+              <button type="submit" disabled={sending} className="btn-primary flex items-center gap-2">
+                <Send className="h-4 w-4" />
                 {sending ? "Sending…" : form.scheduledAt ? "Schedule" : "Send Now"}
               </button>
               {sent && (
-                <span className="text-sm text-green-600 font-medium">
+                <span className="text-sm text-emerald-600 font-medium">
                   ✓ Message sent successfully
                 </span>
               )}
@@ -181,22 +183,22 @@ export default function AdminCommunicationsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3">Template Name</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Last Used</th>
-                <th className="px-4 py-3">Actions</th>
+                <th className="px-4 py-3 font-medium">Template Name</th>
+                <th className="px-4 py-3 font-medium">Type</th>
+                <th className="px-4 py-3 font-medium">Last Used</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {TEMPLATES.map((t) => (
-                <tr key={t.id} className="border-b hover:bg-muted/20">
+                <tr key={t.id} className="border-b hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-3 font-medium">{t.name}</td>
                   <td className="px-4 py-3 capitalize text-muted-foreground">{t.type}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{t.lastUsed}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button className="text-xs px-2 py-1 rounded border hover:bg-muted/40">Edit</button>
-                      <button className="text-xs px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20">Use</button>
+                      <button className="btn-outline h-7 px-2.5 text-xs">Edit</button>
+                      <button className="btn-primary h-7 px-2.5 text-xs">Use</button>
                     </div>
                   </td>
                 </tr>
@@ -209,6 +211,7 @@ export default function AdminCommunicationsPage() {
       {tab === "history" && (
         <div className="card-base">
           <div className="text-center py-12 text-muted-foreground text-sm">
+            <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p>Broadcast history will appear here</p>
             <p className="text-xs mt-1">Messages sent via the Communications Center are logged here</p>
           </div>

@@ -91,12 +91,12 @@ export default function AgentReportsPage() {
           onChange={(e) => setQuery(e.target.value)}
           rows={3}
           placeholder="e.g. Show me my top 5 leads by deal value with their contact history…"
-          className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+          className="textarea-field w-full"
         />
         <button
           onClick={() => generateReport()}
           disabled={!query.trim() || loading}
-          className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+          className="btn-primary disabled:opacity-50 flex items-center gap-2"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {loading ? "Generating…" : "Generate Report"}
@@ -117,7 +117,7 @@ export default function AgentReportsPage() {
             <p className="text-sm font-semibold text-primary">Report Generated at {result.generatedAt}</p>
             <button
               onClick={downloadReport}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted/40"
+              className="btn-outline flex items-center gap-1.5 px-3 py-1.5 text-xs"
             >
               <Download className="h-3.5 w-3.5" />
               Export

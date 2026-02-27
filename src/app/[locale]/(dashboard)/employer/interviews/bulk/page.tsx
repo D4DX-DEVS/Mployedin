@@ -182,7 +182,7 @@ export default function EmployerBulkInterviewPage() {
               <div>
                 <label className="text-xs text-muted-foreground">Duration (min)</label>
                 <select value={slot.duration} onChange={e => setSlot(s => ({ ...s, duration: parseInt(e.target.value) }))}
-                  className="input-field w-full mt-1">
+                  className="select-field w-full mt-1">
                   <option value={30}>30 min</option>
                   <option value={45}>45 min</option>
                   <option value={60}>1 hour</option>
@@ -193,7 +193,7 @@ export default function EmployerBulkInterviewPage() {
             <div>
               <label className="text-xs text-muted-foreground">Type</label>
               <select value={slot.type} onChange={e => setSlot(s => ({ ...s, type: e.target.value as InterviewSlot["type"] }))}
-                className="input-field w-full mt-1">
+                className="select-field w-full mt-1">
                 <option value="video">Video Call</option>
                 <option value="phone">Phone</option>
                 <option value="in_person">In Person</option>

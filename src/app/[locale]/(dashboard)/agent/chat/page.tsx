@@ -165,7 +165,7 @@ export default function AgentChatPage() {
               value={text}
               onChange={e => setText(e.target.value)}
               placeholder={`Message #${activeChannel}…`}
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              className="input-field flex-1"
             />
             <button type="submit" disabled={!text.trim() || sending}
               className="btn-primary px-3 disabled:opacity-50 shrink-0">

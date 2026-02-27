@@ -82,7 +82,7 @@ export default function AgentEmployersPage() {
           description="Manage employer accounts and post jobs on their behalf"
         />
         <a href="./jobs/new"
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90">
+          className="btn-primary flex items-center gap-2">
           <Plus className="h-4 w-4" /> Post Job
         </a>
       </div>
@@ -93,7 +93,7 @@ export default function AgentEmployersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search employers…"
-          className="w-full sm:w-72 h-10 pl-9 pr-4 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="input-field w-full sm:w-72 pl-9 pr-4"
         />
       </div>
 

@@ -82,13 +82,13 @@ export default function JobSeekerNLSearchPage() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && search()}
               placeholder='e.g. "Senior React developer Dubai salary AED 15k minimum"'
-              className="w-full h-11 pl-9 pr-4 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="input-field w-full h-11 pl-9 pr-4 rounded-xl"
             />
           </div>
           <button
             onClick={() => search()}
             disabled={!query.trim() || loading}
-            className="px-5 h-11 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+            className="btn-primary h-11 rounded-xl disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           </button>
@@ -99,7 +99,7 @@ export default function JobSeekerNLSearchPage() {
             <button
               key={p}
               onClick={() => { setQuery(p); search(p); }}
-              className="px-3 py-1 rounded-full text-xs bg-muted hover:bg-primary/10 hover:text-primary transition-all border"
+              className="btn-pill"
             >
               {p}
             </button>
@@ -151,7 +151,7 @@ export default function JobSeekerNLSearchPage() {
                       <StatusBadge status={job.employmentType.replace("_", " ")} />
                       <a
                         href={`./jobs/${job._id}`}
-                        className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90"
+                        className="btn-primary text-xs px-3 py-1.5"
                       >
                         Apply
                       </a>

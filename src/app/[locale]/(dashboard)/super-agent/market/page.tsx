@@ -102,7 +102,7 @@ export default function MarketIntelligencePage() {
         <div className="flex flex-wrap gap-2">
           {QUICK_QUERIES.map((q, i) => (
             <button key={i} onClick={() => { setQuery(q); runQuery(q); }}
-              className="text-xs px-3 py-1.5 rounded-full border border-border hover:border-primary hover:text-primary transition-all">
+              className="btn-pill">
               {q.length > 50 ? q.slice(0, 50) + "…" : q}
             </button>
           ))}

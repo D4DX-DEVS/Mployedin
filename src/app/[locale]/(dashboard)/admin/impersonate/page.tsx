@@ -86,7 +86,7 @@ export default function AdminUserImpersonatePage() {
               });
               setImpersonateResult(null);
             }}
-            className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700"
+            className="btn-primary h-8 px-3 text-xs bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
           >
             Exit Impersonation
           </button>
@@ -100,7 +100,7 @@ export default function AdminUserImpersonatePage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search users by name or email…"
-            className="w-full h-10 pl-9 pr-4 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="input-field pl-9"
           />
         </div>
 
@@ -113,12 +113,12 @@ export default function AdminUserImpersonatePage() {
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/20">
                 <tr>
-                  <th className="text-left p-3 font-semibold text-muted-foreground">Name</th>
-                  <th className="text-left p-3 font-semibold text-muted-foreground">Email</th>
-                  <th className="text-left p-3 font-semibold text-muted-foreground">Role</th>
-                  <th className="text-left p-3 font-semibold text-muted-foreground">Status</th>
-                  <th className="text-left p-3 font-semibold text-muted-foreground">Joined</th>
-                  <th className="text-right p-3 font-semibold text-muted-foreground">Actions</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Email</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Role</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Joined</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -126,34 +126,23 @@ export default function AdminUserImpersonatePage() {
                   <tr key={user._id} className="border-b hover:bg-muted/10 transition-colors">
                     <td className="p-3 font-medium">{user.name}</td>
                     <td className="p-3 text-muted-foreground">{user.email}</td>
-                    <td className="p-3">
-                      <StatusBadge status={user.role} />
-                    </td>
-                    <td className="p-3">
-                      <StatusBadge status={user.isActive ? "active" : "inactive"} />
-                    </td>
-                    <td className="p-3 text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
+                    <td className="p-3"><StatusBadge status={user.role} /></td>
+                    <td className="p-3"><StatusBadge status={user.isActive ? "active" : "inactive"} /></td>
+                    <td className="p-3 text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-2">
-                        <a
-                          href={`../users/${user._id}`}
-                          className="p-1.5 rounded-lg hover:bg-muted/40"
-                          title="View profile"
-                        >
+                        <a href={`../users/${user._id}`} className="btn-ghost h-8 w-8 p-0" title="View profile">
                           <Eye className="h-4 w-4 text-muted-foreground" />
                         </a>
                         <button
                           onClick={() => impersonate(user._id)}
                           disabled={impersonating === user._id}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-xs font-medium hover:bg-amber-100 disabled:opacity-50"
+                          className="btn-outline h-7 px-2.5 text-xs text-amber-700 border-amber-200 bg-amber-50 hover:bg-amber-100 flex items-center gap-1.5"
                           title="View as this user"
                         >
                           {impersonating === user._id
                             ? <Loader2 className="h-3 w-3 animate-spin" />
-                            : <UserCog className="h-3 w-3" />
-                          }
+                            : <UserCog className="h-3 w-3" />}
                           Impersonate
                         </button>
                       </div>
@@ -162,9 +151,7 @@ export default function AdminUserImpersonatePage() {
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-muted-foreground">
-                      No users found
-                    </td>
+                    <td colSpan={6} className="text-center py-12 text-muted-foreground">No users found</td>
                   </tr>
                 )}
               </tbody>

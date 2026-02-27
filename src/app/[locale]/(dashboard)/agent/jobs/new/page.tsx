@@ -100,7 +100,7 @@ export default function AgentJobPosterPage() {
           <select
             value={selectedEmployer}
             onChange={(e) => setSelectedEmployer(e.target.value)}
-            className="w-full h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="select-field w-full"
           >
             <option value="">Choose an employer…</option>
             {employers.map((em) => (
@@ -127,7 +127,7 @@ export default function AgentJobPosterPage() {
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="e.g. Senior Accountant"
-              className="w-full h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="input-field w-full"
             />
           </div>
           <div>
@@ -136,7 +136,7 @@ export default function AgentJobPosterPage() {
               required
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className="w-full h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="select-field w-full"
             >
               <option value="">Select category</option>
               {["Technology","Finance","Healthcare","Engineering","Sales & Marketing","Operations","Human Resources","Education","Hospitality","Construction","Legal","Other"].map((c) => (
@@ -151,7 +151,7 @@ export default function AgentJobPosterPage() {
               value={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
               placeholder="e.g. Dubai, UAE"
-              className="w-full h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="input-field w-full"
             />
           </div>
           <div>
@@ -159,7 +159,7 @@ export default function AgentJobPosterPage() {
             <select
               value={form.employmentType}
               onChange={(e) => setForm({ ...form, employmentType: e.target.value })}
-              className="w-full h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="select-field w-full"
             >
               <option value="full_time">Full Time</option>
               <option value="part_time">Part Time</option>
@@ -173,7 +173,7 @@ export default function AgentJobPosterPage() {
             <select
               value={form.currency}
               onChange={(e) => setForm({ ...form, currency: e.target.value })}
-              className="w-full h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="select-field w-full"
             >
               {["AED","SAR","KWD","QAR","BHD","OMR","USD"].map((c) => <option key={c}>{c}</option>)}
             </select>
@@ -185,7 +185,7 @@ export default function AgentJobPosterPage() {
               value={form.salaryMin}
               onChange={(e) => setForm({ ...form, salaryMin: e.target.value })}
               placeholder="e.g. 8000"
-              className="w-full h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="input-field w-full"
             />
           </div>
           <div>
@@ -195,7 +195,7 @@ export default function AgentJobPosterPage() {
               value={form.salaryMax}
               onChange={(e) => setForm({ ...form, salaryMax: e.target.value })}
               placeholder="e.g. 12000"
-              className="w-full h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="input-field w-full"
             />
           </div>
         </div>
@@ -208,7 +208,7 @@ export default function AgentJobPosterPage() {
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="Describe the role, responsibilities…"
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+            className="textarea-field w-full"
           />
         </div>
 
@@ -219,19 +219,19 @@ export default function AgentJobPosterPage() {
             value={form.requirements}
             onChange={(e) => setForm({ ...form, requirements: e.target.value })}
             placeholder={"5+ years experience\nBachelor's degree\nMS Excel proficiency"}
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+            className="textarea-field w-full"
           />
         </div>
 
         <div className="flex justify-end gap-3 pt-2">
           <button type="button" onClick={() => router.back()}
-            className="px-4 py-2 rounded-lg border text-sm hover:bg-muted/40">
+            className="btn-outline">
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting || !selectedEmployer}
-            className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             {submitting ? "Posting…" : "Post Job"}
           </button>

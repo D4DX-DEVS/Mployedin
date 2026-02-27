@@ -184,12 +184,12 @@ Employment types: full_time, part_time, contract, internship, freelance`;
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
               placeholder="Describe the role you need…"
               disabled={isStreaming}
-              className="flex-1 h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="input-field flex-1 h-9"
             />
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isStreaming}
-              className="h-9 w-9 rounded-lg bg-primary text-white flex-shrink-0 flex items-center justify-center hover:bg-primary/90 disabled:opacity-50"
+              className="btn-primary h-9 w-9 p-0 flex-shrink-0 flex items-center justify-center disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
             </button>
@@ -240,7 +240,7 @@ Employment types: full_time, part_time, contract, internship, freelance`;
           <div className="card-base">
             <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Or use manual form</p>
             <a href="../jobs/new"
-              className="block w-full text-center px-3 py-2 rounded-lg border text-xs font-medium hover:bg-muted/40 transition-all">
+              className="btn-outline block w-full text-center text-xs">
               → Manual Job Form
             </a>
           </div>

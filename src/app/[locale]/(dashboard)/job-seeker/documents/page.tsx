@@ -140,7 +140,7 @@ export default function JobSeekerDocumentsPage() {
         <button
           onClick={extractCV}
           disabled={extracting}
-          className="w-full py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="btn-primary w-full py-2.5 disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {extracting ? "Extracting with AI…" : "Extract Profile with AI"}

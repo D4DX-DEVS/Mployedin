@@ -51,7 +51,7 @@ export default function NewLeadPage() {
         value={form[name as keyof typeof form]}
         onChange={(e) => set(name, e.target.value)}
         required={required}
-        className="w-full h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        className="input-field w-full h-9"
       />
     </div>
   );
@@ -72,7 +72,7 @@ export default function NewLeadPage() {
             <select
               value={form.industry}
               onChange={(e) => set("industry", e.target.value)}
-              className="w-full h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="select-field w-full h-9"
             >
               <option value="">Select industry…</option>
               {["Construction", "IT", "Healthcare", "Hospitality", "Retail", "Manufacturing", "Finance", "Education", "Oil & Gas", "Other"].map((i) => (
@@ -85,7 +85,7 @@ export default function NewLeadPage() {
             <select
               value={form.source}
               onChange={(e) => set("source", e.target.value)}
-              className="w-full h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="select-field w-full h-9"
             >
               <option value="">Select source…</option>
               {["Referral", "Cold Call", "LinkedIn", "Website", "Event", "Other"].map((s) => (
@@ -102,17 +102,17 @@ export default function NewLeadPage() {
             value={form.notes}
             onChange={(e) => set("notes", e.target.value)}
             rows={3}
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+            className="textarea-field w-full"
           />
         </div>
 
         <div className="flex gap-3 pt-2">
           <button type="submit" disabled={saving}
-            className="px-5 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
+            className="btn-primary disabled:opacity-50">
             {saving ? "Saving…" : "Create Lead"}
           </button>
           <Link href=".."
-            className="px-5 py-2 rounded-lg border text-sm font-medium hover:bg-muted/40">
+            className="btn-outline">
             Cancel
           </Link>
         </div>

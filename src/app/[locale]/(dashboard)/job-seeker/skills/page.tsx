@@ -139,7 +139,7 @@ export default function JobSeekerSkillsPage() {
               value={targetRole}
               onChange={(e) => setTargetRole(e.target.value)}
               placeholder="e.g. Senior DevOps Engineer"
-              className="w-full h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="input-field w-full"
             />
           </div>
 
@@ -160,7 +160,7 @@ export default function JobSeekerSkillsPage() {
                 onChange={(e) => setNewSkill(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addSkill()}
                 placeholder="Add a skill…"
-                className="flex-1 h-8 rounded-lg border px-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="input-field flex-1 h-8 text-xs"
               />
               <button onClick={addSkill}
                 className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20">
@@ -172,7 +172,7 @@ export default function JobSeekerSkillsPage() {
           <button
             onClick={analyzeGap}
             disabled={!targetRole.trim() || loadingGap}
-            className="w-full py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="btn-primary w-full disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loadingGap ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {loadingGap ? "Analysing…" : "Analyse Gap"}

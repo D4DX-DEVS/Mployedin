@@ -104,7 +104,7 @@ export default function EmployerCandidatesPage() {
         <select
           value={selectedJob}
           onChange={(e) => setSelectedJob(e.target.value)}
-          className="flex-1 h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="select-field flex-1"
         >
           <option value="">Select a job to match against…</option>
           {jobs.map((j) => <option key={j._id} value={j._id}>{j.title}</option>)}
@@ -115,13 +115,13 @@ export default function EmployerCandidatesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter candidates…"
-            className="w-full h-10 pl-9 pr-4 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="input-field w-full pl-9 pr-4"
           />
         </div>
         <button
           onClick={runAIMatch}
           disabled={!selectedJob || matching || candidates.length === 0}
-          className="px-4 h-10 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+          className="btn-primary h-10 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
         >
           {matching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {matching ? "Matching…" : "Run AI Match"}
@@ -173,7 +173,7 @@ export default function EmployerCandidatesPage() {
                 </div>
               )}
 
-              <button className="w-full py-1.5 rounded-lg border text-xs font-medium hover:bg-muted/40 flex items-center justify-center gap-1.5">
+              <button className="btn-outline w-full py-1.5 text-xs flex items-center justify-center gap-1.5">
                 <Star className="h-3.5 w-3.5 text-amber-500" /> Shortlist
               </button>
             </div>

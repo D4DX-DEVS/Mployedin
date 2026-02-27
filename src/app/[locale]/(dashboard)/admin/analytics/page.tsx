@@ -87,12 +87,12 @@ export default function AdminAnalyticsPage() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && generate(query)}
             placeholder="Ask anything about your platform data…"
-            className="flex-1 h-10 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="input-field flex-1"
           />
           <button
             onClick={() => generate(query)}
             disabled={!query.trim() || loading}
-            className="px-4 h-10 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+            className="btn-primary"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />}
           </button>
@@ -103,10 +103,7 @@ export default function AdminAnalyticsPage() {
         <div className="card-base space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-primary">Analytics Report</p>
-            <button
-              onClick={download}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs hover:bg-muted/40"
-            >
+            <button onClick={download} className="btn-outline h-8 px-3 text-xs flex items-center gap-1.5">
               <Download className="h-3.5 w-3.5" /> Export
             </button>
           </div>
