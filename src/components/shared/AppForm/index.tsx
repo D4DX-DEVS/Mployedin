@@ -167,7 +167,7 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
         <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </div>
       {open && (
-        <div className="absolute z-50 w-full top-full mt-1 bg-background border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+        <div className="absolute z-[99] w-full top-full mt-1 bg-background border rounded-lg shadow-lg max-h-48 overflow-y-auto">
           {options.map((o) => (
             <div
               key={o.value}

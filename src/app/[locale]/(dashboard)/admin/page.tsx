@@ -6,6 +6,7 @@ import connectDB from "@/lib/db/mongoose";
 import User from "@/models/User";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
+import { Users, Briefcase, FileText, AlertCircle, ArrowRight } from "lucide-react";
 
 async function getAdminStats() {
   await connectDB();
@@ -34,10 +35,10 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   const stats = await getAdminStats();
 
   const kpis = [
-    { label: "Total Users", value: stats.totalUsers, sub: `+${stats.newUsersThisMonth} this month`, color: "text-primary" },
-    { label: "Active Jobs", value: stats.activeJobs, sub: `${stats.pendingApprovals} pending approval`, color: "text-green-600" },
-    { label: "Total Applications", value: stats.totalApplications, sub: `+${stats.applicationsThisMonth} this month`, color: "text-purple-600" },
-    { label: "Pending Approvals", value: stats.pendingApprovals, sub: "Requires review", color: stats.pendingApprovals > 0 ? "text-orange-600" : "text-muted-foreground" },
+    { label: "Total Users", value: stats.totalUsers, sub: `+${stats.newUsersThisMonth} this month`, color: "text-brand-blue", icon: Users },
+    { label: "Active Jobs", value: stats.activeJobs, sub: `${stats.pendingApprovals} pending approval`, color: "text-emerald-600", icon: Briefcase },
+    { label: "Total Applications", value: stats.totalApplications, sub: `+${stats.applicationsThisMonth} this month`, color: "text-purple-600", icon: FileText },
+    { label: "Pending Approvals", value: stats.pendingApprovals, sub: "Requires review", color: stats.pendingApprovals > 0 ? "text-orange-500" : "text-muted-foreground", icon: AlertCircle },
   ];
 
   const actions = [
@@ -50,49 +51,64 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto">
       <PageHeader title="Admin Dashboard" description="Platform overview and system management" />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((k) => (
-          <div key={k.label} className="card-base">
-            <p className="text-sm text-muted-foreground">{k.label}</p>
-            <p className={`mt-1 text-3xl font-bold ${k.color}`}>{k.value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{k.sub}</p>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+        {kpis.map((Kpi, idx) => (
+          <div key={idx} className="card-base p-5 flex flex-col gap-4 group hover:border-border/80 relative overflow-hidden isolate">
+            {/* Subtle glow effect on hover */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+            <div className="flex items-center justify-between relative z-10">
+              <p className="text-sm font-medium text-muted-foreground">{Kpi.label}</p>
+              <div className={`p-2.5 rounded-xl bg-background shadow-sm border border-border/40 ${Kpi.color}`}>
+                <Kpi.icon className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="relative z-10">
+              <p className={`text-3xl font-bold ${Kpi.color} tracking-tight`}>{Kpi.value}</p>
+              <p className="text-xs text-muted-foreground font-medium mt-1">{Kpi.sub}</p>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Users by role */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="card-base">
-          <h2 className="text-sm font-semibold mb-3">Users by Role</h2>
-          <div className="space-y-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* Users by role */}
+        <div className="card-base p-6 lg:p-8 flex flex-col h-full">
+          <h2 className="text-lg font-bold tracking-tight mb-6">Users by Role</h2>
+          <div className="space-y-5 flex-1">
             {stats.usersByRole.map((r: { _id: string; count: number }) => (
-              <div key={r._id} className="flex items-center justify-between">
-                <span className="text-sm capitalize">{r._id ?? "unknown"}</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-32 bg-muted rounded-full overflow-hidden">
+              <div key={r._id} className="flex items-center justify-between group">
+                <span className="text-sm font-medium capitalize text-foreground/80 group-hover:text-foreground transition-colors">{r._id ?? "unknown"}</span>
+                <div className="flex items-center gap-3">
+                  <div className="h-2 w-32 sm:w-48 bg-muted rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary rounded-full"
+                      className="h-full bg-brand-gradient rounded-full transition-all duration-1000 ease-out"
                       style={{ width: `${Math.min(100, (r.count / stats.totalUsers) * 100)}%` }}
                     />
                   </div>
-                  <span className="text-sm font-semibold w-8 text-right">{r.count}</span>
+                  <span className="text-sm font-bold w-8 text-right text-foreground">{r.count}</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="card-base">
-          <h2 className="text-sm font-semibold mb-3">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-2">
+        {/* Quick Actions */}
+        <div className="card-base p-6 lg:p-8 flex flex-col h-full">
+          <h2 className="text-lg font-bold tracking-tight mb-6">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {actions.map((a) => (
               <Link key={a.href} href={a.href}
-                className="block p-3 rounded-xl border hover:border-primary/40 hover:bg-primary/5 transition-all">
-                <p className="text-sm font-medium">{a.label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{a.desc}</p>
+                className="group flex flex-col justify-center p-4 rounded-xl border border-border/60 bg-background hover:border-brand-blue/30 hover:shadow-soft hover:bg-brand-blue/5 transition-all relative overflow-hidden">
+                <div className="flex justify-between items-start mb-1">
+                  <p className="text-sm font-semibold text-foreground group-hover:text-brand-blue transition-colors">{a.label}</p>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-brand-blue group-hover:translate-x-0.5 transition-all" />
+                </div>
+                <p className="text-xs text-muted-foreground font-medium">{a.desc}</p>
               </Link>
             ))}
           </div>

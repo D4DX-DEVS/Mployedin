@@ -146,7 +146,7 @@ export default function AgentChatPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="text-sm font-semibold">{msg.senderName}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${ROLE_COLORS[msg.senderRole] ?? "bg-gray-100 text-gray-600"}`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${ROLE_COLORS[msg.senderRole] ?? "bg-muted/50 text-muted-foreground"}`}>
                         {msg.senderRole?.replace("_", " ")}
                       </span>
                       <span className="text-xs text-muted-foreground">{formatTime(msg.createdAt)}</span>

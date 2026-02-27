@@ -1,9 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Filter, Eye, CheckCircle, XCircle, Loader2, CalendarCheck } from "lucide-react";
+import { Search, Filter, Eye, CheckCircle, XCircle, Loader2, Pencil, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePermissions } from "@/hooks/usePermissions";
+import { usePagination } from "@/hooks/usePagination";
+import { CrudModal, CrudField } from "@/components/shared/CrudModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Inbox } from "lucide-react";
 
 interface Interview {
   _id: string;
@@ -19,13 +29,13 @@ interface Interview {
 }
 
 export default function AdminInterviewOversightPage() {
+  const { can } = usePermissions();
   const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [total, setTotal] = useState(0);
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [page, setPage] = useState(1);
-  const limit = 20;
+  const [editItem, setEditItem] = useState<Interview | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,12 +48,12 @@ export default function AdminInterviewOversightPage() {
       if (res.ok) {
         const data = await res.json();
         setInterviews(data.interviews ?? []);
-        setTotal(data.total ?? 0);
+        updateTotal(data.total ?? 0);
       }
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter]);
+  }, [page, search, statusFilter, limit]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -56,6 +66,35 @@ export default function AdminInterviewOversightPage() {
     load();
   };
 
+  const handleEdit = async (values: Record<string, string>) => {
+    const res = await fetch(`/api/interviews/${editItem!._id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+    setEditItem(null);
+    load();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Cancel this interview?")) return;
+    await fetch(`/api/interviews/${id}`, { method: "DELETE" });
+    load();
+  };
+
+  const EDIT_FIELDS: CrudField[] = [
+    { name: "type", label: "Type", type: "select", options: [
+      { value: "video", label: "Video" }, { value: "offline", label: "Offline" }, { value: "hybrid", label: "Hybrid" }
+    ]},
+    { name: "scheduledAt", label: "Scheduled At", type: "date" },
+    { name: "duration", label: "Duration (min)", type: "select", options: [
+      { value: "15", label: "15 min" }, { value: "30", label: "30 min" }, { value: "45", label: "45 min" }, { value: "60", label: "60 min" }
+    ]},
+    { name: "location", label: "Location", type: "text" },
+    { name: "meetLink", label: "Meet Link", type: "text" },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -67,12 +106,12 @@ export default function AdminInterviewOversightPage() {
       <div className="card-base flex flex-wrap gap-3 items-center">
         <div className="flex items-center gap-2 flex-1 min-w-48">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-          <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          <input value={search} onChange={(e) => { setSearch(e.target.value); resetPage(); }}
             placeholder="Search candidate or company…" className="input-field flex-1" />
         </div>
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); resetPage(); }}
             className="input-field">
             <option value="">All Statuses</option>
             <option value="scheduled">Scheduled</option>
@@ -84,84 +123,96 @@ export default function AdminInterviewOversightPage() {
       </div>
 
       {/* Table */}
-      <div className="card-base overflow-x-auto">
-        {loading ? (
-          <div className="flex items-center justify-center py-12 gap-3 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading interviews…</span>
-          </div>
-        ) : interviews.length === 0 ? (
-          <p className="text-center py-12 text-sm text-muted-foreground">No interviews found.</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">Candidate</th>
-                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">Role</th>
-                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">Company</th>
-                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">Agent</th>
-                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">Date</th>
-                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">Status</th>
-                <th className="text-left pb-2 text-xs font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {interviews.map((iv) => (
-                <tr key={iv._id} className="hover:bg-muted/30 transition-colors">
-                  <td className="py-3 pr-4">
-                    <p className="font-medium">{iv.jobSeeker?.name ?? "—"}</p>
-                    <p className="text-xs text-muted-foreground">{iv.jobSeeker?.email}</p>
-                  </td>
-                  <td className="py-3 pr-4 text-muted-foreground">{iv.job?.title ?? "—"}</td>
-                  <td className="py-3 pr-4">{iv.employer?.companyName ?? "—"}</td>
-                  <td className="py-3 pr-4 text-muted-foreground">{iv.agent?.name ?? "—"}</td>
-                  <td className="py-3 pr-4 text-muted-foreground whitespace-nowrap">
-                    {new Date(iv.scheduledAt).toLocaleDateString("en-AE", { day: "2-digit", month: "short", year: "numeric" })}
-                  </td>
-                  <td className="py-3 pr-4">
-                    <StatusBadge status={iv.status} />
-                  </td>
-                  <td className="py-3 flex items-center gap-1">
+      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead>Candidate</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Company</TableHead>
+              <TableHead>Agent</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <TableCell key={j}>
+                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : interviews.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="h-32 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Inbox className="h-8 w-8 opacity-40" />
+                    <span className="text-sm">No interviews found</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : interviews.map((iv) => (
+              <TableRow key={iv._id}>
+                <TableCell>
+                  <p className="font-medium">{iv.jobSeeker?.name ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground">{iv.jobSeeker?.email}</p>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{iv.job?.title ?? "—"}</TableCell>
+                <TableCell>{iv.employer?.companyName ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{iv.agent?.name ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground whitespace-nowrap">
+                  {new Date(iv.scheduledAt).toLocaleDateString("en-AE", { day: "2-digit", month: "short", year: "numeric" })}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={iv.status} />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
                     {iv.meetLink && (
                       <a href={iv.meetLink} target="_blank" rel="noreferrer"
                         className="p-1.5 rounded hover:bg-primary/10 text-primary" title="Join meeting">
                         <Eye className="h-3.5 w-3.5" />
                       </a>
                     )}
-                    {iv.status === "scheduled" && (
+                    {iv.status === "scheduled" && can("interviews", "update") && (
                       <>
-                        <button onClick={() => updateStatus(iv._id, "completed")}
-                          className="p-1.5 rounded hover:bg-emerald-100 text-emerald-600" title="Mark completed">
-                          <CheckCircle className="h-3.5 w-3.5" />
-                        </button>
-                        <button onClick={() => updateStatus(iv._id, "cancelled")}
-                          className="p-1.5 rounded hover:bg-red-100 text-red-600" title="Cancel">
-                          <XCircle className="h-3.5 w-3.5" />
-                        </button>
+                        <Button variant="ghost" size="xs" onClick={() => updateStatus(iv._id, "completed")} title="Mark completed">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                        </Button>
+                        <Button variant="ghost" size="xs" onClick={() => updateStatus(iv._id, "cancelled")} title="Cancel">
+                          <XCircle className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
                       </>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                    {can("interviews", "update") && (
+                      <Button variant="ghost" size="xs" onClick={() => setEditItem(iv)} title="Edit">
+                        <Pencil className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                    )}
+                    {can("interviews", "delete") && iv.status === "scheduled" && (
+                      <Button variant="ghost" size="xs" onClick={() => handleDelete(iv._id)} title="Delete">
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
 
         {/* Pagination */}
-        {total > limit && (
-          <div className="flex items-center justify-between pt-4 border-t mt-4">
-            <p className="text-xs text-muted-foreground">
-              Page {page} of {Math.ceil(total / limit)} ({total} total)
-            </p>
-            <div className="flex gap-2">
-              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                className="btn-outline text-xs disabled:opacity-40">Previous</button>
-              <button disabled={page >= Math.ceil(total / limit)} onClick={() => setPage(p => p + 1)}
-                className="btn-outline text-xs disabled:opacity-40">Next</button>
-            </div>
-          </div>
-        )}
+        <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} className="pt-4 border-t mt-4" />
       </div>
+
+      <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title="Edit Interview" fields={EDIT_FIELDS}
+        initialValues={editItem ? { type: editItem.type, scheduledAt: editItem.scheduledAt?.slice(0, 10) ?? "", duration: "30", location: editItem.location ?? "", meetLink: editItem.meetLink ?? "" } : undefined}
+        onSubmit={handleEdit} />
     </div>
   );
 }

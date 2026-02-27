@@ -14,9 +14,8 @@ describe("RBAC Permission Matrix", () => {
       expect(canAccess("admin", "audit_logs", "read")).toBe(true);
     });
 
-    it("should have access to territories", () => {
-      expect(canAccess("admin", "territories", "read")).toBe(true);
-      expect(canAccess("admin", "territories", "create")).toBe(true);
+    it("should have access to reports", () => {
+      expect(canAccess("admin", "reports", "read")).toBe(true);
     });
   });
 
@@ -47,8 +46,8 @@ describe("RBAC Permission Matrix", () => {
       expect(canAccess("employer", "applications", "read")).toBe(true);
     });
 
-    it("should NOT be able to manage territories", () => {
-      expect(canAccess("employer", "territories", "create")).toBe(false);
+    it("should NOT be able to manage reports", () => {
+      expect(canAccess("employer", "reports", "read")).toBe(false);
     });
   });
 
@@ -70,8 +69,8 @@ describe("RBAC Permission Matrix", () => {
       expect(canAccess("super_agent", "commissions", "approve")).toBe(true);
     });
 
-    it("should be able to read territories", () => {
-      expect(canAccess("super_agent", "territories", "read")).toBe(true);
+    it("should be able to read agents", () => {
+      expect(canAccess("super_agent", "agents", "read")).toBe(true);
     });
 
     it("should NOT be able to impersonate users", () => {

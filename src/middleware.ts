@@ -1,9 +1,9 @@
-import { auth } from "@/lib/auth/config";
+import { auth } from "@/lib/auth/edge-config";
 import createIntlMiddleware from "next-intl/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getDashboardPath } from "@/lib/permissions/matrix";
-import type { UserRole } from "@/models/User";
+import type { UserRole } from "@/types/user";
 
 const locales = ["en", "ar"] as const;
 const defaultLocale = "en";
@@ -14,12 +14,27 @@ const intlMiddleware = createIntlMiddleware({
   localePrefix: "always",
 });
 
+/** Auth-specific routes — logged-in users are redirected away from these */
+const AUTH_ROUTES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+];
+
 /** Public routes that don't require auth */
 const PUBLIC_ROUTES = [
   "/login",
   "/register",
   "/forgot-password",
   "/api/auth",
+  "/api/contact",
+  "/api/public",
+  "/about",
+  "/contact",
+  "/blog",
+  "/faq",
+  "/privacy",
+  "/cookies",
 ];
 
 /** Role → allowed dashboard path prefixes */
@@ -34,6 +49,8 @@ const ROLE_ROUTES: Record<string, string[]> = {
 /** Check if path is a public route (locale-stripped) */
 function isPublicRoute(pathname: string): boolean {
   const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
+  // Root path "/" is public (landing page)
+  if (stripped === "/") return true;
   return PUBLIC_ROUTES.some((r) => stripped.startsWith(r));
 }
 
@@ -66,26 +83,31 @@ export default auth(async function middleware(req: NextRequest) {
   const isPublic = isPublicRoute(pathname);
 
   if (!session?.user && !isPublic) {
-    const locale = pathname.split("/")[1] ?? defaultLocale;
+    const locale = pathname.split("/")[1] || defaultLocale;
     const loginUrl = new URL(`/${locale}/login`, req.url);
     loginUrl.searchParams.set("callbackUrl", req.url);
     return NextResponse.redirect(loginUrl);
   }
 
+  // Redirect authenticated users away from auth pages only (not all public pages)
   if (session?.user && isPublic) {
-    const role = session.user.role;
-    const locale = session.user.locale ?? defaultLocale;
-    return NextResponse.redirect(
-      new URL(getDashboardPath(role, locale), req.url)
-    );
+    const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
+    const isAuthRoute = AUTH_ROUTES.some((r) => stripped.startsWith(r));
+    if (isAuthRoute) {
+      const role = session.user.role;
+      const urlLocale = pathname.split("/")[1] || defaultLocale;
+      return NextResponse.redirect(
+        new URL(getDashboardPath(role, urlLocale), req.url)
+      );
+    }
   }
 
   // Enforce role-based dashboard route access
   if (session?.user && !isRoleAllowed(session.user.role, pathname)) {
     const role = session.user.role;
-    const locale = session.user.locale ?? defaultLocale;
+    const urlLocale = pathname.split("/")[1] || defaultLocale;
     return NextResponse.redirect(
-      new URL(getDashboardPath(role, locale), req.url)
+      new URL(getDashboardPath(role, urlLocale), req.url)
     );
   }
 

@@ -1,39 +1,21 @@
-import type { UserRole } from "@/models/User";
-
-/** Resources in the system */
-export type Resource =
-  | "jobs"
-  | "applications"
-  | "interviews"
-  | "placements"
-  | "leads"
-  | "commissions"
-  | "employers"
-  | "agents"
-  | "job_seekers"
-  | "super_agents"
-  | "users"
-  | "territories"
-  | "notifications"
-  | "reports"
-  | "audit_logs"
-  | "ai_cv"
-  | "ai_match"
-  | "ai_assistant"
-  | "tasks"
-  | "design_system";
-
-/** Actions on resources */
-export type Action =
-  | "create"
-  | "read"
-  | "update"
-  | "delete"
-  | "approve"
-  | "export"
-  | "impersonate";
+import type { UserRole, PermissionMode, CustomPermissions, Resource, Action } from "@/types/user";
+export type { Resource, Action };
 
 type PermissionMap = Record<Resource, Action[]>;
+
+/** All available resources — useful for building the permission editor UI */
+export const ALL_RESOURCES: Resource[] = [
+  "jobs", "applications", "interviews", "placements", "leads",
+  "commissions", "employers", "agents", "job_seekers", "super_agents",
+  "users", "notifications", "reports", "audit_logs",
+  "ai_cv", "ai_match", "ai_assistant", "tasks", "design_system",
+  "job_attributes", "location_data", "cms", "contact_submissions",
+];
+
+/** All available actions */
+export const ALL_ACTIONS: Action[] = [
+  "create", "read", "update", "delete", "approve", "export", "impersonate",
+];
 
 const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
   admin: {
@@ -48,7 +30,6 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     job_seekers: ["create", "read", "update", "delete"],
     super_agents: ["create", "read", "update", "delete"],
     users: ["create", "read", "update", "delete", "impersonate"],
-    territories: ["create", "read", "update", "delete"],
     notifications: ["create", "read", "update", "delete"],
     reports: ["read", "export"],
     audit_logs: ["read", "export"],
@@ -57,6 +38,10 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     ai_assistant: ["read"],
     tasks: ["read", "update"],
     design_system: ["read"],
+    job_attributes: ["create", "read", "update", "delete"],
+    location_data: ["create", "read", "update", "delete"],
+    cms: ["create", "read", "update", "delete"],
+    contact_submissions: ["read", "update", "delete"],
   },
   super_agent: {
     jobs: ["read", "export"],
@@ -68,7 +53,6 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     employers: ["read"],
     agents: ["create", "read", "update"],
     job_seekers: ["read"],
-    territories: ["read"],
     notifications: ["read"],
     reports: ["read", "export"],
     ai_assistant: ["read"],
@@ -105,11 +89,24 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
   },
 };
 
+/**
+ * Check if a user can access a resource/action.
+ * Supports both role-based (default) and custom per-user permissions.
+ */
 export function canAccess(
   role: UserRole,
   resource: Resource,
-  action: Action
+  action: Action,
+  opts?: { permissionMode?: PermissionMode; customPermissions?: CustomPermissions }
 ): boolean {
+  // If the user has custom permissions, use those instead of role defaults
+  if (opts?.permissionMode === "custom" && opts.customPermissions) {
+    const actions = opts.customPermissions[resource];
+    if (!actions) return false;
+    return actions.includes(action);
+  }
+
+  // Default: role-based permission check
   const perms = PERMISSIONS[role];
   if (!perms) return false;
   const actions = perms[resource];
@@ -117,8 +114,19 @@ export function canAccess(
   return actions.includes(action);
 }
 
+/** Get the default permission map for a role */
 export function getPermissions(role: UserRole): Partial<PermissionMap> {
   return PERMISSIONS[role] ?? {};
+}
+
+/** Get a deep copy of default permissions for a role (for pre-filling permission editor) */
+export function getDefaultPermissionsForRole(role: UserRole): CustomPermissions {
+  const perms = PERMISSIONS[role] ?? {};
+  const copy: CustomPermissions = {};
+  for (const [key, actions] of Object.entries(perms)) {
+    copy[key as Resource] = [...(actions as Action[])];
+  }
+  return copy;
 }
 
 /** Dashboard redirect based on role */

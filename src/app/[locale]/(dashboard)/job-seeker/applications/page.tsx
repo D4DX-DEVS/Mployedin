@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 interface ApplicationJob {
   _id: string;
@@ -39,8 +41,7 @@ export default function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const pagination = usePagination();
 
   useEffect(() => {
     document.title = "My Applications · MPLOYEDIN";
@@ -49,19 +50,19 @@ export default function ApplicationsPage() {
   useEffect(() => {
     fetchApplications();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, page]);
+  }, [activeTab, pagination.page, pagination.limit]);
 
   async function fetchApplications() {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: "20" });
+      const params = pagination.paginationParams();
       if (activeTab !== "all") params.set("status", activeTab);
 
       const res = await fetch(`/api/applications?${params}`);
       if (res.ok) {
         const data = await res.json();
         setApplications(data.applications);
-        setTotal(data.pagination.total);
+        pagination.updateTotal(data.pagination?.total ?? 0);
       }
     } finally {
       setLoading(false);
@@ -70,14 +71,14 @@ export default function ApplicationsPage() {
 
   function handleTabChange(val: string) {
     setActiveTab(val);
-    setPage(1);
+    pagination.resetPage();
   }
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="My Applications"
-        description={`${total} total applications`}
+        description={`${pagination.total} total applications`}
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -119,18 +120,14 @@ export default function ApplicationsPage() {
         ))}
       </Tabs>
 
-      {/* Pagination */}
-      {Math.ceil(total / 20) > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">Page {page}</span>
-          <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 20)} onClick={() => setPage(page + 1)}>
-            Next
-          </Button>
-        </div>
-      )}
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        limit={pagination.limit}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }

@@ -1,7 +1,10 @@
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
-import { getNavGroups, getAllNavItems } from "@/lib/nav/menuConfig";
+import { getNavGroups } from "@/lib/nav/menuConfig";
 import { DashboardShell } from "@/components/shared/DashboardShell";
+import { SessionWrapper } from "@/components/shared/SessionWrapper";
+import connectDB from "@/lib/db/mongoose";
+import User from "@/models/User";
 import type { UserRole } from "@/models/User";
 
 export default async function DashboardLayout({
@@ -18,19 +21,28 @@ export default async function DashboardLayout({
   }
 
   const role = (session.user as { role: UserRole }).role;
-  const locale = (session.user as { locale: string }).locale ?? paramLocale;
+  // Always use the URL locale so LanguageSwitcher changes take effect immediately
+  const locale = paramLocale;
 
   const navGroups = getNavGroups(role, locale);
-  const allItems = getAllNavItems(role, locale);
+
+  // Fetch lastLogin from DB
+  await connectDB();
+  const dbUser = await User.findById(session.user.id).select("lastLogin").lean();
+  const lastLogin = dbUser?.lastLogin ? (dbUser.lastLogin as Date).toISOString() : undefined;
 
   return (
-    <DashboardShell
-      navGroups={navGroups}
-      allItems={allItems}
-      locale={locale}
-      userName={session.user.name ?? undefined}
-    >
-      {children}
-    </DashboardShell>
+    <SessionWrapper>
+      <DashboardShell
+        navGroups={navGroups}
+        locale={locale}
+        userName={session.user.name ?? undefined}
+        userEmail={session.user.email ?? undefined}
+        userRole={role}
+        lastLogin={lastLogin}
+      >
+        {children}
+      </DashboardShell>
+    </SessionWrapper>
   );
 }

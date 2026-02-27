@@ -17,6 +17,7 @@ export const authConfig: NextAuthConfig = {
   providers: [
     Credentials({
       async authorize(credentials) {
+        try {
         const parsed = credentialsSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
@@ -24,7 +25,8 @@ export const authConfig: NextAuthConfig = {
         const user = await User.findOne({
           email: parsed.data.email.toLowerCase(),
           isActive: true,
-        });
+        }).select("+passwordHash");
+
         if (!user || !user.passwordHash) {
           // Log failed login — user not found or inactive
           logActivity({
@@ -67,6 +69,10 @@ export const authConfig: NextAuthConfig = {
           role: user.role,
           locale: user.locale,
         };
+        } catch (err) {
+          console.error("[auth] authorize error:", err);
+          return null;
+        }
       },
     }),
     Google({
@@ -89,6 +95,8 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id;
         token.role = ((user as unknown) as { role: UserRole }).role ?? "job_seeker";
         token.locale = ((user as unknown) as { locale: string }).locale ?? "en";
+        token.permissionMode = ((user as unknown) as { permissionMode?: string }).permissionMode ?? "role_default";
+        token.customPermissions = ((user as unknown) as { customPermissions?: Record<string, string[]> }).customPermissions ?? undefined;
       }
       // OAuth sign-in: create/find user in DB
       if (account && account.provider !== "credentials") {
@@ -108,6 +116,8 @@ export const authConfig: NextAuthConfig = {
         token.id = dbUser._id.toString();
         token.role = dbUser.role;
         token.locale = dbUser.locale;
+        token.permissionMode = dbUser.permissionMode ?? "role_default";
+        token.customPermissions = dbUser.customPermissions ?? undefined;
 
         // Log OAuth login / registration
         logActivity({
@@ -125,6 +135,8 @@ export const authConfig: NextAuthConfig = {
         session.user.id = token.id as string;
         (session.user as unknown as { role: UserRole }).role = token.role as UserRole;
         (session.user as unknown as { locale: string }).locale = token.locale as string;
+        (session.user as unknown as { permissionMode: string }).permissionMode = (token.permissionMode as string) ?? "role_default";
+        (session.user as unknown as { customPermissions?: Record<string, string[]> }).customPermissions = token.customPermissions as Record<string, string[]> | undefined;
       }
       return session;
     },

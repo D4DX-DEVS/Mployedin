@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 interface AuditLogEntry {
   _id: string;
@@ -30,30 +32,28 @@ const RESOURCE_COLOR: Record<string, string> = {
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [resource, setResource] = useState("");
+  const [resource, setResource] = useState("all");
   const [action, setAction] = useState("");
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const LIMIT = 50;
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   useEffect(() => { document.title = "Audit Logs · MPLOYEDIN"; }, []);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
-      if (resource) params.set("resource", resource);
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (resource && resource !== "all") params.set("resource", resource);
       if (action) params.set("action", action);
       const res = await fetch(`/api/admin/audit-logs?${params}`);
       if (res.ok) {
         const data = await res.json();
         setLogs(data.logs);
-        setTotal(data.pagination.total);
+        updateTotal(data.pagination.total);
       }
     } finally {
       setLoading(false);
     }
-  }, [resource, action, page]);
+  }, [resource, action, page, limit]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
@@ -66,10 +66,10 @@ export default function AuditLogsPage() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
-        <Select value={resource} onValueChange={(v) => { setResource(v); setPage(1); }}>
+        <Select value={resource} onValueChange={(v) => { setResource(v); resetPage(); }}>
           <SelectTrigger className="w-44"><SelectValue placeholder="All resources" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All resources</SelectItem>
+            <SelectItem value="all">All resources</SelectItem>
             {["users", "jobs", "applications", "interviews", "placements", "settings"].map((r) => (
               <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
             ))}
@@ -80,7 +80,7 @@ export default function AuditLogsPage() {
           <Input
             placeholder="Filter by action…"
             value={action}
-            onChange={(e) => { setAction(e.target.value); setPage(1); }}
+            onChange={(e) => { setAction(e.target.value); resetPage(); }}
             className="ps-10 w-56"
           />
         </div>
@@ -149,17 +149,7 @@ export default function AuditLogsPage() {
       )}
 
       {/* Pagination */}
-      {Math.ceil(total / LIMIT) > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">Page {page} of {Math.ceil(total / LIMIT)}</span>
-          <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / LIMIT)} onClick={() => setPage(page + 1)}>
-            Next
-          </Button>
-        </div>
-      )}
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
     </div>
   );
 }

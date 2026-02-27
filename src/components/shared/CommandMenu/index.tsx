@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -10,15 +11,16 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "cmdk";
-import type { NavItem } from "@/lib/nav/menuConfig";
+} from "@/components/ui/command";
+import type { NavGroup } from "@/lib/nav/menuConfig";
+import { getIcon } from "@/lib/nav/iconRegistry";
 
 interface CommandMenuProps {
-  navItems: NavItem[];
+  navGroups: NavGroup[];
   locale: string;
 }
 
-export function CommandMenu({ navItems, locale }: CommandMenuProps) {
+export function CommandMenu({ navGroups, locale }: CommandMenuProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -40,30 +42,84 @@ export function CommandMenu({ navItems, locale }: CommandMenuProps) {
     setOpen(false);
   }
 
+  const isAr = locale === "ar";
+
+  // Flatten: top-level items without children → standalone group,
+  // items with children → one group per parent
+  const standaloneItems = navGroups.flatMap((g) =>
+    g.items.filter((item) => !item.children)
+  );
+  const groupedItems = navGroups.flatMap((g) =>
+    g.items.filter((item) => item.children && item.children.length > 0)
+  );
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search pages and commands..." />
+      <CommandInput placeholder={isAr ? "ابحث عن الصفحات والأوامر..." : "Search pages and commands..."} />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Navigation">
-          {navItems.map((item) => (
-            <CommandItem
-              key={item.href}
-              value={`${item.title} ${item.titleAr}`}
-              onSelect={() => handleSelect(item.href)}
-            >
-              <item.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-              <span>{locale === "ar" ? item.titleAr : item.title}</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
+        <CommandEmpty>{isAr ? "لم يتم العثور على نتائج." : "No results found."}</CommandEmpty>
+
+        {/* Standalone items (Dashboard, Notifications, Settings, etc.) */}
+        {standaloneItems.length > 0 && (
+          <CommandGroup heading={isAr ? "عام" : "General"}>
+            {standaloneItems.map((item) => {
+              const Icon = getIcon(item.icon);
+              return (
+                <CommandItem
+                  key={item.href}
+                  value={`${item.title} ${item.titleAr} ${item.description ?? ""}`}
+                  onSelect={() => handleSelect(item.href)}
+                >
+                  <Icon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span>{isAr ? item.titleAr : item.title}</span>
+                    {(isAr ? item.descriptionAr : item.description) && (
+                      <span className="text-xs text-muted-foreground">
+                        {isAr ? item.descriptionAr : item.description}
+                      </span>
+                    )}
+                  </div>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
+
+        {/* Grouped items — each parent gets its own section */}
+        {groupedItems.map((parent) => (
+          <CommandGroup
+            key={parent.href}
+            heading={isAr ? parent.titleAr : parent.title}
+          >
+            {parent.children!.map((child) => {
+              const Icon = getIcon(child.icon);
+              return (
+                <CommandItem
+                  key={child.href}
+                  value={`${parent.title} ${child.title} ${child.titleAr} ${child.description ?? ""}`}
+                  onSelect={() => handleSelect(child.href)}
+                >
+                  <Icon className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span>{isAr ? child.titleAr : child.title}</span>
+                    {(isAr ? child.descriptionAr : child.description) && (
+                      <span className="text-xs text-muted-foreground">
+                        {isAr ? child.descriptionAr : child.description}
+                      </span>
+                    )}
+                  </div>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        ))}
       </CommandList>
     </CommandDialog>
   );
 }
 
 /** Trigger button shown in header */
-export function CommandMenuTrigger() {
+export function CommandMenuTrigger({ locale }: { locale?: string }) {
   return (
     <button
       onClick={() => {
@@ -74,10 +130,13 @@ export function CommandMenuTrigger() {
         });
         document.dispatchEvent(event);
       }}
-      className="hidden md:flex items-center gap-2 text-sm text-muted-foreground bg-muted hover:bg-muted/80 px-3 py-1.5 rounded-lg transition-colors"
+      className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 hover:bg-muted border border-transparent hover:border-border px-3 py-1.5 rounded-md transition-all w-full max-w-sm"
     >
-      <span>Search...</span>
-      <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium">
+      <Search className="h-4 w-4 shrink-0" />
+      <span className="flex-1 text-left truncate">
+        {locale === "ar" ? "بحث..." : "Search..."}
+      </span>
+      <kbd className="hidden sm:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium shrink-0">
         <span className="text-xs">⌘</span>K
       </kbd>
     </button>

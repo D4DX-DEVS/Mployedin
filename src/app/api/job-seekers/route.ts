@@ -7,7 +7,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   await connectDB();
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "20");
+  const limit = parseInt(searchParams.get("limit") ?? "10");
   const search = searchParams.get("search");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

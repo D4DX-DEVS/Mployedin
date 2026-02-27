@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 import { useTranslations } from "next-intl";
 
 interface Job {
@@ -23,8 +25,6 @@ interface Job {
   expiresAt?: string;
 }
 
-interface Pagination { page: number; limit: number; total: number; pages: number; }
-
 const JOB_CATEGORIES = [
   "Technology", "Healthcare", "Finance", "Construction", "Hospitality",
   "Education", "Manufacturing", "Logistics", "Oil & Gas", "Retail", "Other"
@@ -38,15 +38,15 @@ export default function JobSearchPage() {
   const { locale } = useParams<{ locale: string }>();
 
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, pages: 0 });
+  const pgn = usePagination();
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
 
   // Filters
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState("all");
   const [location, setLocation] = useState("");
-  const [currency, setCurrency] = useState("");
+  const [currency, setCurrency] = useState("all");
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -55,8 +55,13 @@ export default function JobSearchPage() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchJobs(1), 400);
+    const timer = setTimeout(() => fetchJobs(), 400);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, category, location, currency, pgn.page, pgn.limit]);
+
+  useEffect(() => {
+    pgn.resetPage();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, category, location, currency]);
 
@@ -73,25 +78,25 @@ export default function JobSearchPage() {
     } catch {/* silent */}
   }
 
-  const fetchJobs = useCallback(async (page: number) => {
+  const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: "20" });
+      const params = pgn.paginationParams();
       if (search) params.set("search", search);
-      if (category) params.set("category", category);
+      if (category && category !== "all") params.set("category", category);
       if (location) params.set("location", location);
-      if (currency) params.set("currency", currency);
+      if (currency && currency !== "all") params.set("currency", currency);
 
       const res = await fetch(`/api/jobs?${params}`);
       if (res.ok) {
         const data = await res.json();
         setJobs(data.jobs);
-        setPagination(data.pagination);
+        pgn.updateTotal(data.pagination?.total ?? 0);
       }
     } finally {
       setLoading(false);
     }
-  }, [search, category, location, currency]);
+  }, [search, category, location, currency, pgn.page, pgn.limit]);
 
   async function applyToJob(jobId: string) {
     const res = await fetch("/api/applications", {
@@ -104,13 +109,13 @@ export default function JobSearchPage() {
     }
   }
 
-  const activeFilters = [category, location, currency].filter(Boolean).length;
+  const activeFilters = [category, location, currency].filter(v => v && v !== "all").length;
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Find Jobs"
-        description={`${pagination.total.toLocaleString()} active opportunities`}
+        description={`${pgn.total.toLocaleString()} active opportunities`}
       />
 
       {/* Search bar */}
@@ -151,7 +156,7 @@ export default function JobSearchPage() {
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger><SelectValue placeholder="All categories" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All categories</SelectItem>
+                <SelectItem value="all">All categories</SelectItem>
                 {JOB_CATEGORIES.map((c) => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
@@ -171,7 +176,7 @@ export default function JobSearchPage() {
             <Select value={currency} onValueChange={setCurrency}>
               <SelectTrigger><SelectValue placeholder="Any currency" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any currency</SelectItem>
+                <SelectItem value="all">Any currency</SelectItem>
                 {CURRENCIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -279,27 +284,14 @@ export default function JobSearchPage() {
       )}
 
       {/* Pagination */}
-      {pagination.pages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline" size="sm"
-            disabled={pagination.page <= 1}
-            onClick={() => fetchJobs(pagination.page - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {pagination.page} of {pagination.pages}
-          </span>
-          <Button
-            variant="outline" size="sm"
-            disabled={pagination.page >= pagination.pages}
-            onClick={() => fetchJobs(pagination.page + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      <PaginationControls
+        page={pgn.page}
+        totalPages={pgn.totalPages}
+        total={pgn.total}
+        limit={pgn.limit}
+        onPageChange={pgn.setPage}
+        onLimitChange={pgn.setLimit}
+      />
     </div>
   );
 }

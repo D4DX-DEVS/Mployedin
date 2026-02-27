@@ -21,7 +21,8 @@ export interface IAgent extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   superAgentId?: mongoose.Types.ObjectId;
-  assignedTerritoryId?: mongoose.Types.ObjectId;
+  assignedCityIds: mongoose.Types.ObjectId[];
+  assignedStateIds: mongoose.Types.ObjectId[];
   assignedEmployerIds: mongoose.Types.ObjectId[];
   assignedJobSeekerIds: mongoose.Types.ObjectId[];
   performance: IAgentPerformance;
@@ -46,7 +47,8 @@ const AgentSchema = new Schema<IAgent>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     superAgentId: { type: Schema.Types.ObjectId, ref: "SuperAgent" },
-    assignedTerritoryId: { type: Schema.Types.ObjectId, ref: "Territory" },
+    assignedCityIds: [{ type: Schema.Types.ObjectId, ref: "City" }],
+    assignedStateIds: [{ type: Schema.Types.ObjectId, ref: "State" }],
     assignedEmployerIds: [{ type: Schema.Types.ObjectId, ref: "Employer" }],
     assignedJobSeekerIds: [{ type: Schema.Types.ObjectId, ref: "JobSeeker" }],
     performance: {
@@ -65,7 +67,8 @@ const AgentSchema = new Schema<IAgent>(
 
 AgentSchema.index({ userId: 1 }, { unique: true });
 AgentSchema.index({ superAgentId: 1 });
-AgentSchema.index({ assignedTerritoryId: 1 });
+AgentSchema.index({ assignedCityIds: 1 });
+AgentSchema.index({ assignedStateIds: 1 });
 
 export const Agent =
   mongoose.models.Agent || mongoose.model<IAgent>("Agent", AgentSchema);

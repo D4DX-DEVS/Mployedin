@@ -1,9 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Building2, Users, DollarSign, Search, Inbox } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Building2, Users, DollarSign, Search, Loader2 } from "lucide-react";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 interface Employer {
   _id: string;
@@ -22,19 +28,23 @@ export default function SuperAgentEmployersPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   const loadEmployers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/employers?search=${encodeURIComponent(search)}&limit=50`);
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (search) params.set("search", search);
+      const res = await fetch(`/api/employers?${params}`);
       if (res.ok) {
         const data = await res.json();
         setEmployers(data.employers ?? []);
+        updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? data.employers?.length ?? 0);
       }
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, page, limit]);
 
   useEffect(() => {
     const t = setTimeout(loadEmployers, 300);
@@ -47,10 +57,10 @@ export default function SuperAgentEmployersPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="p-4 sm:p-6 space-y-5">
       <PageHeader
         title="Employer Relationships"
-        description="Track all employer accounts within your territory"
+        description="Track all employer accounts within your region"
       />
 
       {/* KPI row */}
@@ -85,54 +95,58 @@ export default function SuperAgentEmployersPage() {
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search employers…"
-          className="w-full sm:w-72 h-10 pl-9 pr-4 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-        />
+      <div className="relative w-64">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+        <Input placeholder="Search employers…" value={search} onChange={(e) => { setSearch(e.target.value); resetPage(); }} className="pl-9 h-9" />
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      ) : (
-        <div className="card-base overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/20">
-              <tr>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Company</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Contact</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Industry</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Location</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Agent</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employers.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-muted-foreground">No employers found</td>
-                </tr>
-              ) : employers.map((em) => (
-                <tr key={em._id} className="border-b hover:bg-muted/10 transition-colors">
-                  <td className="p-3 font-medium">{em.companyName ?? em.name}</td>
-                  <td className="p-3 text-muted-foreground text-xs">{em.email}</td>
-                  <td className="p-3 text-muted-foreground">{em.industry ?? "—"}</td>
-                  <td className="p-3 text-muted-foreground">{em.location ?? "—"}</td>
-                  <td className="p-3 text-muted-foreground">{em.assignedAgent?.name ?? "Unassigned"}</td>
-                  <td className="p-3">
-                    <StatusBadge status={em.isActive ? "active" : "inactive"} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead>Company</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Industry</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Agent</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 6 }).map((_, j) => (
+                    <TableCell key={j}><div className="h-4 w-3/4 rounded bg-muted animate-pulse" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : employers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-12 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <Inbox className="h-8 w-8 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">No employers found</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : employers.map((em) => (
+              <TableRow key={em._id}>
+                <TableCell className="font-medium">{em.companyName ?? em.name}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">{em.email}</TableCell>
+                <TableCell className="text-muted-foreground">{em.industry ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{em.location ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{em.assignedAgent?.name ?? "Unassigned"}</TableCell>
+                <TableCell>
+                  <StatusBadge status={em.isActive ? "active" : "inactive"} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
     </div>
   );
 }

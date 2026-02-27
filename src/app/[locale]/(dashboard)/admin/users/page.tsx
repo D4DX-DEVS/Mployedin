@@ -1,13 +1,25 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, UserCheck, UserX, Shield, ChevronDown } from "lucide-react";
+import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PermissionEditor } from "@/components/shared/PermissionEditor";
+import { usePagination } from "@/hooks/usePagination";
+import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 interface User {
   _id: string;
@@ -16,6 +28,8 @@ interface User {
   role: string;
   isActive: boolean;
   locale: string;
+  permissionMode?: PermissionMode;
+  customPermissions?: CustomPermissions;
   createdAt: string;
   lastLoginAt?: string;
 }
@@ -34,35 +48,47 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [activeFilter, setActiveFilter] = useState("");
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [selected, setSelected] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
-  const LIMIT = 25;
+
+  // Create user modal state
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", role: "agent" as string });
+  const [createPermMode, setCreatePermMode] = useState<PermissionMode>("role_default");
+  const [createPerms, setCreatePerms] = useState<CustomPermissions>({});
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState("");
+
+  // Permissions editor modal state
+  const [permUser, setPermUser] = useState<User | null>(null);
+  const [editPermMode, setEditPermMode] = useState<PermissionMode>("role_default");
+  const [editPerms, setEditPerms] = useState<CustomPermissions>({});
+  const [permSaving, setPermSaving] = useState(false);
 
   useEffect(() => { document.title = "User Management · MPLOYEDIN"; }, []);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search) params.set("search", search);
-      if (roleFilter) params.set("role", roleFilter);
-      if (activeFilter) params.set("isActive", activeFilter);
+      if (roleFilter && roleFilter !== "all") params.set("role", roleFilter);
+      if (activeFilter && activeFilter !== "all") params.set("isActive", activeFilter);
 
       const res = await fetch(`/api/admin/users?${params}`);
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users);
-        setTotal(data.pagination.total);
+        updateTotal(data.pagination.total);
       }
     } finally {
       setLoading(false);
     }
-  }, [search, roleFilter, activeFilter, page]);
+  }, [search, roleFilter, activeFilter, page, limit]);
 
   useEffect(() => {
     const timer = setTimeout(fetchUsers, 300);
@@ -93,46 +119,118 @@ export default function AdminUsersPage() {
     } finally { setBulkLoading(false); }
   }
 
+  // ── Create User ──────────────────────────────
+  async function handleCreateUser() {
+    setCreateError("");
+    if (!createForm.name || !createForm.email || !createForm.password || !createForm.role) {
+      setCreateError("All fields are required");
+      return;
+    }
+    setCreateLoading(true);
+    try {
+      const payload: Record<string, unknown> = {
+        ...createForm,
+        permissionMode: createPermMode,
+      };
+      if (createPermMode === "custom") {
+        payload.customPermissions = createPerms;
+      }
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const e = await res.json();
+        setCreateError(e.error ?? "Failed to create user");
+        return;
+      }
+      setShowCreate(false);
+      setCreateForm({ name: "", email: "", password: "", role: "agent" });
+      setCreatePermMode("role_default");
+      setCreatePerms({});
+      fetchUsers();
+    } catch {
+      setCreateError("Network error");
+    } finally {
+      setCreateLoading(false);
+    }
+  }
+
+  // ── Save Permissions ──────────────────────────
+  async function handleSavePermissions() {
+    if (!permUser) return;
+    setPermSaving(true);
+    try {
+      await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: permUser._id,
+          permissionMode: editPermMode,
+          customPermissions: editPermMode === "custom" ? editPerms : undefined,
+        }),
+      });
+      setPermUser(null);
+      fetchUsers();
+    } finally {
+      setPermSaving(false);
+    }
+  }
+
+  function openPermissions(user: User) {
+    setPermUser(user);
+    setEditPermMode(user.permissionMode ?? "role_default");
+    setEditPerms(user.customPermissions ?? {});
+  }
+
   const toggleSelect = (id: string) =>
     setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
   const toggleAll = () =>
     setSelected(s => s.length === users.length ? [] : users.map(u => u._id));
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <PageHeader
-        title="User Management"
-        description={`${total.toLocaleString()} total users`}
-      />
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
+      <div className="flex items-center justify-between">
+        <PageHeader
+          title="User Management"
+          description={`${total.toLocaleString()} total users`}
+        />
+        <Button onClick={() => setShowCreate(true)} size="sm">
+          <Plus className="h-4 w-4" /> Create User
+        </Button>
+      </div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative w-72">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or email…"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="ps-10"
-          />
+      <div className="card-base p-4 lg:p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        <div className="flex gap-3 flex-wrap flex-1 w-full m:w-auto">
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or email…"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+              className="ps-10 shadow-none border-border/80 bg-background/50 focus:bg-background transition-colors"
+            />
+          </div>
+          <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); resetPage(); }}>
+            <SelectTrigger className="w-[140px] shadow-none border-border/80 bg-background/50"><SelectValue placeholder="All roles" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All roles</SelectItem>
+              {ROLES.map((r) => (
+                <SelectItem key={r} value={r} className="capitalize">{r.replace("_", " ")}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={activeFilter} onValueChange={(v) => { setActiveFilter(v); resetPage(); }}>
+            <SelectTrigger className="w-[130px] shadow-none border-border/80 bg-background/50"><SelectValue placeholder="All status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All status</SelectItem>
+              <SelectItem value="true">Active</SelectItem>
+              <SelectItem value="false">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="All roles" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All roles</SelectItem>
-            {ROLES.map((r) => (
-              <SelectItem key={r} value={r} className="capitalize">{r.replace("_", " ")}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={activeFilter} onValueChange={(v) => { setActiveFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="All status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All status</SelectItem>
-            <SelectItem value="true">Active</SelectItem>
-            <SelectItem value="false">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Bulk Actions Bar */}
@@ -157,46 +255,46 @@ export default function AdminUsersPage() {
 
       {/* Users table */}
       {loading ? (
-        <div className="rounded-xl border overflow-x-auto">
-          <div className="bg-muted/50 px-4 py-3 h-10 animate-pulse" />
+        <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+          <div className="bg-muted/30 px-4 py-3 h-10 animate-pulse" />
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="border-t px-4 py-3 h-14 animate-pulse" />
           ))}
         </div>
       ) : users.length === 0 ? (
-        <div className="card-base text-center py-16">
-          <Search className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+        <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03] text-center py-16">
+          <Inbox className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">No users found matching your filters</p>
         </div>
       ) : (
-        <div className="rounded-xl border overflow-x-auto bg-background">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
-              <tr>
-                <th className="text-start px-4 py-3">
+        <div className="card-base overflow-hidden rounded-xl bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead>
                   <input type="checkbox" checked={selected.length === users.length && users.length > 0}
                     onChange={toggleAll} className="accent-primary" />
-                </th>
-                <th className="text-start px-4 py-3">User</th>
-                <th className="text-start px-4 py-3">Role</th>
-                <th className="text-start px-4 py-3">Status</th>
-                <th className="text-start px-4 py-3">Locale</th>
-                <th className="text-start px-4 py-3">Joined</th>
-                <th className="text-start px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+                </TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Locale</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {users.map((user) => {
                 const initials = (user.name || "U").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
                 const joined = new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
                 return (
-                  <tr key={user._id} className={`hover:bg-muted/20 transition-colors ${selected.includes(user._id) ? "bg-primary/5" : ""}`}>
-                    <td className="px-4 py-3">
+                  <TableRow key={user._id} className={selected.includes(user._id) ? "bg-primary/5" : ""}>
+                    <TableCell>
                       <input type="checkbox" checked={selected.includes(user._id)}
                         onChange={() => toggleSelect(user._id)} className="accent-primary" />
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
                           <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
@@ -208,36 +306,50 @@ export default function AdminUsersPage() {
                           <p className="text-xs text-muted-foreground">{user.email}</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Select
-                        value={user.role}
-                        onValueChange={(v) => updateUser(user._id, { role: v })}
-                      >
-                        <SelectTrigger className="h-7 w-36 text-xs">
-                          <Badge className={`${ROLE_COLORS[user.role] ?? ""} border text-xs`}>
-                            {user.role.replace("_", " ")}
-                          </Badge>
-                          <ChevronDown className="w-3 h-3 ms-auto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ROLES.map((r) => (
-                            <SelectItem key={r} value={r} className="capitalize text-xs">
-                              {r.replace("_", " ")}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <Select
+                          value={user.role}
+                          onValueChange={(v) => updateUser(user._id, { role: v })}
+                        >
+                          <SelectTrigger className="h-7 w-36 text-xs">
+                            <Badge className={`${ROLE_COLORS[user.role] ?? ""} border text-xs`}>
+                              {user.role.replace("_", " ")}
+                            </Badge>
+                            <ChevronDown className="w-3 h-3 ms-auto" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ROLES.map((r) => (
+                              <SelectItem key={r} value={r} className="capitalize text-xs">
+                                {r.replace("_", " ")}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {user.permissionMode === "custom" && (
+                          <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600">Custom</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <Badge className={user.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}>
                         {user.isActive ? "Active" : "Inactive"}
                       </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs uppercase">{user.locale}</td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{joined}</td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs uppercase">{user.locale}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs">{joined}</TableCell>
+                    <TableCell>
                       <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          title="Manage permissions"
+                          onClick={() => openPermissions(user)}
+                        >
+                          <Shield className="w-3.5 h-3.5 text-primary" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -252,29 +364,138 @@ export default function AdminUsersPage() {
                           )}
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
       {/* Pagination */}
-      {Math.ceil(total / LIMIT) > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {Math.ceil(total / LIMIT)} · {total} users
-          </span>
-          <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / LIMIT)} onClick={() => setPage(page + 1)}>
-            Next
-          </Button>
-        </div>
-      )}
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+
+      {/* ── Create User Modal ──────────────────────────────── */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+            <DialogDescription>Create a user with optional custom permissions</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {createError && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {createError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="create-name">Full Name <span className="text-destructive">*</span></Label>
+                <Input
+                  id="create-name"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="John Doe"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-email">Email <span className="text-destructive">*</span></Label>
+                <Input
+                  id="create-email"
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="john@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-password">Password <span className="text-destructive">*</span></Label>
+                <Input
+                  id="create-password"
+                  type="text"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="Min 8 characters"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-role">Role <span className="text-destructive">*</span></Label>
+                <Select value={createForm.role} onValueChange={(v) => setCreateForm((f) => ({ ...f, role: v }))}>
+                  <SelectTrigger id="create-role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLES.map((r) => (
+                      <SelectItem key={r} value={r} className="capitalize">
+                        {r.replace("_", " ")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Permission editor */}
+            <PermissionEditor
+              baseRole={createForm.role as UserRole}
+              permissionMode={createPermMode}
+              customPermissions={createPerms}
+              onChange={(mode, perms) => {
+                setCreatePermMode(mode);
+                setCreatePerms(perms);
+              }}
+            />
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={() => setShowCreate(false)} disabled={createLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateUser} disabled={createLoading}>
+              {createLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {createLoading ? "Creating…" : "Create User"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Permissions Editor Modal ──────────────────────── */}
+      <Dialog open={!!permUser} onOpenChange={(open) => { if (!open) setPermUser(null); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Permissions</DialogTitle>
+            <DialogDescription>
+              {permUser?.name} ({permUser?.email}) — Role: {permUser?.role?.replace("_", " ")}
+            </DialogDescription>
+          </DialogHeader>
+
+          {permUser && (
+            <PermissionEditor
+              baseRole={permUser.role as UserRole}
+              permissionMode={editPermMode}
+              customPermissions={editPerms}
+              onChange={(mode, perms) => {
+                setEditPermMode(mode);
+                setEditPerms(perms);
+              }}
+            />
+          )}
+
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={() => setPermUser(null)} disabled={permSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePermissions} disabled={permSaving}>
+              {permSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {permSaving ? "Saving…" : "Save Permissions"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

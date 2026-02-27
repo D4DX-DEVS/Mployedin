@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { canAccess } from "@/lib/permissions/matrix";
-import type { UserRole } from "@/models/User";
+import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 
 type Resource = Parameters<typeof canAccess>[1];
 type Action = Parameters<typeof canAccess>[2];
@@ -10,6 +10,8 @@ interface AuthContext {
   userId: string;
   role: UserRole;
   locale: string;
+  permissionMode: PermissionMode;
+  customPermissions?: CustomPermissions;
 }
 
 type RouteHandler = (
@@ -47,9 +49,14 @@ export function withAuth(
     const role = (session.user as unknown as { role: UserRole }).role;
     const locale = (session.user as unknown as { locale: string }).locale ?? "en";
     const userId = session.user.id ?? "";
+    const permissionMode = ((session.user as unknown as { permissionMode?: PermissionMode }).permissionMode) ?? "role_default";
+    const customPermissions = (session.user as unknown as { customPermissions?: CustomPermissions }).customPermissions;
 
     if (guard) {
-      const allowed = canAccess(role, guard.resource, guard.action);
+      const allowed = canAccess(role, guard.resource, guard.action, {
+        permissionMode,
+        customPermissions,
+      });
       if (!allowed) {
         return NextResponse.json(
           { error: "Forbidden — insufficient permissions" },
@@ -58,7 +65,7 @@ export function withAuth(
       }
     }
 
-    return handler(req, { userId, role, locale }, resolvedParams);
+    return handler(req, { userId, role, locale, permissionMode, customPermissions }, resolvedParams);
   };
 }
 
@@ -78,6 +85,8 @@ export async function requireRole(
     id?: string;
     role: UserRole;
     locale: string;
+    permissionMode?: PermissionMode;
+    customPermissions?: CustomPermissions;
   };
 
   if (!roles.includes(user.role)) {
@@ -91,5 +100,7 @@ export async function requireRole(
     userId: user.id ?? "",
     role: user.role,
     locale: user.locale ?? "en",
+    permissionMode: user.permissionMode ?? "role_default",
+    customPermissions: user.customPermissions,
   };
 }

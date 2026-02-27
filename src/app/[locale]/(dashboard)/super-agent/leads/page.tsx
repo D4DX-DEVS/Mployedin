@@ -1,8 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Search, Inbox } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 type LeadStatus = "new" | "contacted" | "interested" | "negotiating" | "converted" | "lost";
 
@@ -24,19 +31,21 @@ export default function SuperAgentLeadsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ limit: "100" });
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (statusFilter) params.set("status", statusFilter);
     if (search) params.set("search", search);
     const res = await fetch(`/api/super-agent/leads?${params}`);
     if (res.ok) {
       const data = await res.json();
       setLeads(data.items ?? []);
+      updateTotal(data.total ?? data.items?.length ?? 0);
     }
     setLoading(false);
-  }, [statusFilter, search]);
+  }, [statusFilter, search, page, limit]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -46,14 +55,14 @@ export default function SuperAgentLeadsPage() {
   }, {} as Record<LeadStatus, number>);
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <PageHeader title="Territory Lead Pipeline" description="All leads across agents in your territory" />
+    <div className="p-4 sm:p-6 space-y-5">
+      <PageHeader title="Lead Pipeline" description="All leads across agents in your team" />
 
       {/* Stage counters */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         {STAGES.map((s) => (
           <button key={s}
-            onClick={() => setStatusFilter(statusFilter === s ? "" : s)}
+            onClick={() => { setStatusFilter(statusFilter === s ? "" : s); resetPage(); }}
             className={`card-base text-center cursor-pointer transition-all ${statusFilter === s ? "ring-2 ring-primary" : ""}`}
           >
             <p className="text-xs text-muted-foreground capitalize">{s}</p>
@@ -63,53 +72,63 @@ export default function SuperAgentLeadsPage() {
       </div>
 
       <div className="flex gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search company, contact…"
-          className="h-9 rounded-lg border px-3 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/40"
-        />
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+          <Input placeholder="Search company, contact…" value={search} onChange={(e) => { setSearch(e.target.value); resetPage(); }} className="pl-9 h-9" />
+        </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">Loading…</div>
-      ) : (
-        <div className="card-base overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3">Company</th>
-                <th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3">Country</th>
-                <th className="px-4 py-3">Industry</th>
-                <th className="px-4 py-3">Stage</th>
-                <th className="px-4 py-3">Agent</th>
-                <th className="px-4 py-3">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead) => (
-                <tr key={lead._id} className="border-b hover:bg-muted/20">
-                  <td className="px-4 py-3 font-medium">{lead.companyName}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{lead.contactPerson}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{lead.country ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{lead.industry ?? "—"}</td>
-                  <td className="px-4 py-3"><StatusBadge status={lead.status} /></td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {lead.agentId?.userId?.name ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {new Date(lead.createdAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-              {leads.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">No leads found</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead>Company</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Country</TableHead>
+              <TableHead>Industry</TableHead>
+              <TableHead>Stage</TableHead>
+              <TableHead>Agent</TableHead>
+              <TableHead>Date</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <TableCell key={j}><div className="h-4 w-3/4 rounded bg-muted animate-pulse" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : leads.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="py-12 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <Inbox className="h-8 w-8 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">No leads found</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : leads.map((lead) => (
+              <TableRow key={lead._id}>
+                <TableCell className="font-medium">{lead.companyName}</TableCell>
+                <TableCell className="text-muted-foreground">{lead.contactPerson}</TableCell>
+                <TableCell className="text-muted-foreground">{lead.country ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{lead.industry ?? "—"}</TableCell>
+                <TableCell><StatusBadge status={lead.status} /></TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {lead.agentId?.userId?.name ?? "—"}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {new Date(lead.createdAt).toLocaleDateString()}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
     </div>
   );
 }

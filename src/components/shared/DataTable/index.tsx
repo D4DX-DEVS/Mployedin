@@ -27,12 +27,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Download,
   SlidersHorizontal,
+  Search,
+  FileSpreadsheet,
+  FileText,
+  FileDown,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +72,8 @@ export interface DataTableProps<TData, TValue> {
   /** Render extra toolbar items */
   toolbarLeft?: React.ReactNode;
   toolbarRight?: React.ReactNode;
+  /** Row click handler */
+  onRowClick?: (row: TData) => void;
   isLoading?: boolean;
   className?: string;
   searchPlaceholder?: string;
@@ -68,7 +86,7 @@ export function DataTable<TData, TValue>({
   data,
   pageCount = 1,
   pageIndex = 0,
-  pageSize = 25,
+  pageSize = 10,
   totalCount = 0,
   onPageChange,
   onPageSizeChange,
@@ -80,9 +98,10 @@ export function DataTable<TData, TValue>({
   onExportPdf,
   toolbarLeft,
   toolbarRight,
+  onRowClick,
   isLoading,
   className,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "Search\u2026",
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -135,21 +154,25 @@ export function DataTable<TData, TValue>({
 
   const from = pageIndex * pageSize + 1;
   const to = Math.min((pageIndex + 1) * pageSize, totalCount);
+  const hasExport = onExportCsv || onExportExcel || onExportPdf;
 
   return (
     <div className={cn("space-y-4", className)}>
       {/* Toolbar */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           {toolbarLeft}
-          <Input
-            placeholder={searchPlaceholder}
-            value={searchValue}
-            onChange={handleSearch}
-            className="h-8 w-[200px] lg:w-[280px]"
-          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+            <Input
+              placeholder={searchPlaceholder}
+              value={searchValue}
+              onChange={handleSearch}
+              className="h-9 w-[200px] lg:w-[280px] pl-9"
+            />
+          </div>
           {onFiltersChange && (
-            <Button variant="outline" size="sm" className="h-8 gap-1">
+            <Button variant="outline" size="sm" className="h-9 gap-1.5">
               <SlidersHorizontal className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Filters</span>
             </Button>
@@ -157,78 +180,91 @@ export function DataTable<TData, TValue>({
         </div>
         <div className="flex items-center gap-2">
           {toolbarRight}
-          {(onExportCsv || onExportExcel || onExportPdf) && (
-            <div className="flex items-center gap-1">
-              {onExportCsv && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1"
-                  onClick={onExportCsv}
-                >
+          {hasExport && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1.5">
                   <Download className="h-3.5 w-3.5" />
-                  CSV
+                  <span className="hidden sm:inline">Export</span>
                 </Button>
-              )}
-              {onExportExcel && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1"
-                  onClick={onExportExcel}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Excel
-                </Button>
-              )}
-              {onExportPdf && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1"
-                  onClick={onExportPdf}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  PDF
-                </Button>
-              )}
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuLabel>Export data</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {onExportCsv && (
+                  <DropdownMenuItem onClick={onExportCsv}>
+                    <FileDown className="h-4 w-4" />
+                    CSV
+                  </DropdownMenuItem>
+                )}
+                {onExportExcel && (
+                  <DropdownMenuItem onClick={onExportExcel}>
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Excel
+                  </DropdownMenuItem>
+                )}
+                {onExportPdf && (
+                  <DropdownMenuItem onClick={onExportPdf}>
+                    <FileText className="h-4 w-4" />
+                    PDF
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-border overflow-x-auto">
+      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
                 key={headerGroup.id}
-                className="bg-muted/40 hover:bg-muted/40"
+                className="bg-muted/30 hover:bg-muted/30 border-border/50"
               >
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort();
+                  const sorted = header.column.getIsSorted();
+                  return (
+                    <TableHead
+                      key={header.id}
+                      className={cn(canSort && "cursor-pointer select-none")}
+                      onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                        {canSort && (
+                          <span className="text-muted-foreground/40">
+                            {sorted === "asc" ? (
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            ) : sorted === "desc" ? (
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ArrowUpDown className="h-3 w-3" />
+                            )}
+                          </span>
                         )}
-                  </TableHead>
-                ))}
+                      </div>
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              Array.from({ length: pageSize }).map((_, i) => (
-                <TableRow key={i}>
+              Array.from({ length: pageSize > 5 ? 5 : pageSize }).map((_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
                   {columns.map((_, j) => (
                     <TableCell key={j}>
-                      <div className="h-4 bg-muted animate-pulse rounded" />
+                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
                     </TableCell>
                   ))}
                 </TableRow>
@@ -238,10 +274,11 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="hover:bg-muted/30 transition-colors"
+                  className={cn(onRowClick && "cursor-pointer")}
+                  onClick={() => onRowClick?.(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="text-sm">
+                    <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -251,12 +288,15 @@ export function DataTable<TData, TValue>({
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
+                  className="h-32 text-center"
                 >
-                  No results found.
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Inbox className="h-8 w-8 opacity-40" />
+                    <span className="text-sm">No results found.</span>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -265,7 +305,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Pagination */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm text-muted-foreground">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-[13px] text-muted-foreground">
         <div className="flex items-center gap-2">
           <span>Rows per page</span>
           <Select
@@ -286,9 +326,9 @@ export function DataTable<TData, TValue>({
         </div>
 
         <div className="flex items-center gap-2">
-          <span>
+          <span className="tabular-nums">
             {totalCount > 0
-              ? `Showing ${from}–${to} of ${totalCount}`
+              ? `Showing ${from}\u2013${to} of ${totalCount}`
               : "No records"}
           </span>
           <div className="flex items-center gap-1">
@@ -310,7 +350,7 @@ export function DataTable<TData, TValue>({
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="px-2">
+            <span className="px-2 tabular-nums">
               {pageIndex + 1} / {pageCount}
             </span>
             <Button

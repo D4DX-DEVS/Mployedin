@@ -2,12 +2,15 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Plus, Edit2, Eye, BarChart2, Clock, CheckCircle, XCircle, FileText } from "lucide-react";
+import { Plus, Edit2, Eye, BarChart2, Clock, CheckCircle, XCircle, FileText, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface Job {
   _id: string;
@@ -32,31 +35,41 @@ const STATUS_COLORS: Record<string, string> = {
 export default function EmployerJobsPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const pagination = usePagination();
+  const { can } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [total, setTotal] = useState(0);
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ myJobs: "true", limit: "50" });
-      if (statusFilter) params.set("status", statusFilter);
+      const params = pagination.paginationParams();
+      params.set("myJobs", "true");
+      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
       if (search) params.set("search", search);
       const res = await fetch(`/api/jobs?${params}`);
       if (res.ok) {
         const data = await res.json();
         setJobs(data.jobs);
-        setTotal(data.pagination.total);
+        pagination.updateTotal(data.pagination?.total ?? 0);
       }
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, search]);
+  }, [statusFilter, search, pagination.page, pagination.limit]);
 
   useEffect(() => {
     document.title = "My Jobs · MPLOYEDIN";
+  }, []);
+
+  useEffect(() => {
+    pagination.resetPage();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, search]);
+
+  useEffect(() => {
     const timer = setTimeout(fetchJobs, 300);
     return () => clearTimeout(timer);
   }, [fetchJobs]);
@@ -74,11 +87,13 @@ export default function EmployerJobsPage() {
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="My Job Postings"
-        description={`${total} total jobs`}
+        description={`${pagination.total} total jobs`}
         actions={
-          <Button size="sm" onClick={() => router.push(`/${locale}/employer/jobs/new`)}>
-            <Plus className="w-4 h-4 me-2" /> Post a Job
-          </Button>
+          can("jobs", "create") ? (
+            <Button size="sm" onClick={() => router.push(`/${locale}/employer/jobs/new`)}>
+              <Plus className="w-4 h-4 me-2" /> Post a Job
+            </Button>
+          ) : null
         }
       />
 
@@ -93,7 +108,7 @@ export default function EmployerJobsPage() {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-44"><SelectValue placeholder="All statuses" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All statuses</SelectItem>
+            <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
             <SelectItem value="closed">Closed</SelectItem>
@@ -155,18 +170,26 @@ export default function EmployerJobsPage() {
                       onClick={() => router.push(`/${locale}/employer/applications?jobId=${job._id}`)}>
                       <BarChart2 className="w-4 h-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" title="Edit"
-                      onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/edit`)}>
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    {job.status === "draft" && (
+                    {can("jobs", "update") && (
+                      <Button size="sm" variant="ghost" title="Edit"
+                        onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/edit`)}>
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {can("jobs", "update") && job.status === "draft" && (
                       <Button size="sm" variant="outline" onClick={() => updateStatus(job._id, "active")}>
                         <CheckCircle className="w-4 h-4 me-1.5 text-emerald-600" /> Activate
                       </Button>
                     )}
-                    {job.status === "active" && (
+                    {can("jobs", "update") && job.status === "active" && (
                       <Button size="sm" variant="outline" onClick={() => updateStatus(job._id, "closed")}>
                         <XCircle className="w-4 h-4 me-1.5 text-destructive" /> Close
+                      </Button>
+                    )}
+                    {can("jobs", "delete") && job.status === "draft" && (
+                      <Button size="sm" variant="ghost" title="Delete" className="text-destructive"
+                        onClick={async () => { if (confirm("Delete this draft?")) { await fetch(`/api/jobs/${job._id}`, { method: "DELETE" }); fetchJobs(); } }}>
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     )}
                   </div>
@@ -176,6 +199,15 @@ export default function EmployerJobsPage() {
           })}
         </div>
       )}
+
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        limit={pagination.limit}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }

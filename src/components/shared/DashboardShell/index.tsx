@@ -6,22 +6,27 @@ import { CommandMenu, CommandMenuTrigger } from "@/components/shared/CommandMenu
 import { ConversationalAI } from "@/components/shared/ConversationalAI";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
-import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
+import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
+import type { NavGroup } from "@/lib/nav/menuConfig";
 
 interface DashboardShellProps {
   children: React.ReactNode;
   navGroups: NavGroup[];
-  allItems: NavItem[];
   locale: string;
   userName?: string;
+  userEmail?: string;
+  userRole?: string;
+  lastLogin?: string;
 }
 
 export function DashboardShell({
   children,
   navGroups,
-  allItems,
   locale,
   userName,
+  userEmail,
+  userRole,
+  lastLogin,
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -38,28 +43,32 @@ export function DashboardShell({
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         {/* Topbar */}
-        <header className="flex h-14 items-center gap-3 border-b border-border bg-background px-3 sm:px-4 lg:px-6">
+        <header className="flex h-16 items-center gap-4 border-b border-border/40 bg-background px-4 sm:px-6 lg:px-8 z-30 sticky top-0 transition-all">
           <MobileMenuButton onClick={() => setMobileOpen(true)} />
           <div className="flex-1 min-w-0">
-            <CommandMenuTrigger />
+            <CommandMenuTrigger locale={locale} />
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
             <LanguageSwitcher />
             <NotificationBell locale={locale} />
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold shrink-0">
-              {userName?.charAt(0).toUpperCase() ?? "U"}
-            </div>
+            <UserProfileDropdown
+              userName={userName ?? "User"}
+              userEmail={userEmail ?? ""}
+              userRole={userRole ?? "job_seeker"}
+              lastLogin={lastLogin}
+              locale={locale}
+            />
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-background isolate">
           {children}
         </main>
       </div>
 
       {/* Cmd+K menu */}
-      <CommandMenu navItems={allItems} locale={locale} />
+      <CommandMenu navGroups={navGroups} locale={locale} />
 
       {/* Floating AI assistant */}
       <ConversationalAI context="general_assist" />

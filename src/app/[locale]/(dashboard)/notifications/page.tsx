@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Bell, CheckCheck, Loader2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Notification {
   _id: string;
@@ -57,7 +58,7 @@ export default function NotificationsPage() {
       application_received: "bg-blue-50 text-blue-600",
       interview_scheduled: "bg-purple-50 text-purple-600",
       status_update: "bg-green-50 text-green-600",
-      system: "bg-gray-50 text-gray-600",
+      system: "bg-muted/30 text-muted-foreground",
     };
     return colors[type] ?? "bg-muted text-muted-foreground";
   };
@@ -72,19 +73,19 @@ export default function NotificationsPage() {
           description="Stay up to date with your applications, interviews and alerts"
         />
         {unreadCount > 0 && (
-          <button onClick={markAllRead}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-primary hover:bg-primary/10 font-medium">
+          <Button variant="ghost" size="sm" onClick={markAllRead}
+            className="flex items-center gap-1.5 text-xs text-primary hover:bg-primary/10 font-medium">
             <CheckCheck className="h-3.5 w-3.5" /> Mark all read
-          </button>
+          </Button>
         )}
       </div>
 
       <div className="flex gap-2">
         {(["all", "unread"] as const).map((t) => (
-          <button key={t} onClick={() => setFilter(t)}
+          <Button key={t} variant="ghost" size="sm" onClick={() => setFilter(t)}
             className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
-              filter === t ? "bg-primary text-white" : "bg-muted/40 hover:bg-muted/60"
-            }`}>{t}</button>
+              filter === t ? "bg-primary text-white hover:bg-primary/90" : "bg-muted/40 hover:bg-muted/60"
+            }`}>{t}</Button>
         ))}
       </div>
 

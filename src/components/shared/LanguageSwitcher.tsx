@@ -14,10 +14,24 @@ export function LanguageSwitcher() {
   const router = useRouter();
 
   const switchLocale = (newLocale: string) => {
+    if (newLocale === locale) return;
     // Replace the locale segment in the current path
     const segments = pathname.split("/");
     segments[1] = newLocale;
-    router.push(segments.join("/"));
+    const newPath = segments.join("/");
+
+    // Persist locale preference to user profile (fire-and-forget)
+    fetch("/api/users/locale", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locale: newLocale }),
+    }).catch(() => {/* ignore – preference will still work via URL */});
+
+    // Set a cookie so middleware/server components can pick up the preference
+    document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000;SameSite=Lax`;
+
+    router.push(newPath);
+    router.refresh();
   };
 
   return (

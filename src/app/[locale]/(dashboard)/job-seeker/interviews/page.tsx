@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Video, MapPin, Calendar, Clock, ExternalLink, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 interface Interview {
   _id: string;
@@ -25,23 +27,29 @@ interface Interview {
 export default function InterviewsPage() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
+  const pagination = usePagination();
 
   useEffect(() => {
     document.title = "Interviews · MPLOYEDIN";
-    fetchInterviews();
   }, []);
 
-  async function fetchInterviews() {
+  const fetchInterviews = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/interviews");
+      const params = pagination.paginationParams();
+      const res = await fetch(`/api/interviews?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setInterviews(data.interviews ?? []);
+        const items = data.interviews ?? data.items ?? [];
+        setInterviews(items);
+        pagination.updateTotal(data.total ?? items.length);
       }
     } finally {
       setLoading(false);
     }
-  }
+  }, [pagination.page, pagination.limit]);
+
+  useEffect(() => { fetchInterviews(); }, [fetchInterviews]);
 
   const now = new Date();
   const upcoming = interviews.filter((i) => new Date(i.scheduledAt) >= now && i.status !== "cancelled");
@@ -84,6 +92,15 @@ export default function InterviewsPage() {
           )}
         </>
       )}
+
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        limit={pagination.limit}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }

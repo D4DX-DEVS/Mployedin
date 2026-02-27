@@ -92,7 +92,8 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "var(--font-geist-sans)", "system-ui", "sans-serif"],
+        arabic: ["var(--font-arabic)", "Noto Sans Arabic", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
       },
       width: {
@@ -145,11 +146,11 @@ const config: Config = {
         shimmer: "200px 100%",
       },
       boxShadow: {
-        card: "0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.05)",
-        "card-hover":
-          "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.06)",
-        sidebar: "2px 0 8px rgb(0 0 0 / 0.12)",
-        "ai-glow": "0 0 20px hsl(var(--brand-blue) / 0.15)",
+        card: "0 2px 10px rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.02)",
+        "card-hover": "0 12px 24px -4px rgb(0 0 0 / 0.08), 0 4px 8px -2px rgb(0 0 0 / 0.04)",
+        sidebar: "4px 0 24px rgb(0 0 0 / 0.04)",
+        "ai-glow": "0 0 30px hsl(var(--brand-blue) / 0.2)",
+        soft: "0 4px 20px -2px rgb(0 0 0 / 0.05)",
       },
     },
   },

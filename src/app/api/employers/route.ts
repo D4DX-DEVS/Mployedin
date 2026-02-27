@@ -4,6 +4,9 @@ import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
 
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import bcrypt from "bcryptjs";
+
 interface AuthCtx { userId: string; role: string; locale: string; }
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
@@ -11,7 +14,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search") ?? "";
   const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "50");
+  const limit = parseInt(searchParams.get("limit") ?? "10");
   const skip = (page - 1) * limit;
 
   const query: Record<string, unknown> = { role: "employer", isActive: true };
@@ -45,4 +48,41 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   });
 }
 
+async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  await connectDB();
+  const body = await req.json();
+  const { name, email, password, companyName, industry, location, phone } = body;
+
+  if (!name || !email || !password) {
+    return NextResponse.json({ error: "name, email, and password are required" }, { status: 400 });
+  }
+
+  const existing = await User.findOne({ email });
+  if (existing) return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const user = await User.create({
+    name,
+    email,
+    passwordHash,
+    role: "employer",
+    companyName,
+    industry,
+    location,
+    phone,
+    isActive: true,
+  });
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "employer.create",
+    resource: "employers",
+    resourceId: String(user._id),
+    req,
+  });
+
+  return NextResponse.json({ employer: user }, { status: 201 });
+}
+
 export const GET = withAuth(handler, { resource: "employers", action: "read" });
+export const POST = withAuth(postHandler, { resource: "employers", action: "create" });

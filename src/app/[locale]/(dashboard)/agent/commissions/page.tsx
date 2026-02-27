@@ -3,7 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { DollarSign, TrendingUp, Clock, Loader2 } from "lucide-react";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
+import { usePermissions } from "@/hooks/usePermissions";
+import { Button } from "@/components/ui/button";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { DollarSign, TrendingUp, Clock, Loader2, Inbox } from "lucide-react";
 
 interface Commission {
   _id: string;
@@ -24,6 +31,8 @@ interface Summary {
 }
 
 export default function AgentCommissionsPage() {
+  const { can } = usePermissions();
+  const pagination = usePagination();
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,18 +41,23 @@ export default function AgentCommissionsPage() {
   const loadCommissions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/commissions?status=${filter}`);
+      const params = pagination.paginationParams();
+      if (filter !== "all") params.set("status", filter);
+      const res = await fetch(`/api/commissions?${params}`);
       if (res.ok) {
         const data = await res.json();
         setCommissions(data.commissions ?? []);
         setSummary(data.summary ?? null);
+        pagination.updateTotal(data.total ?? data.commissions?.length ?? 0);
       }
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, pagination.page, pagination.limit]);
 
   useEffect(() => { loadCommissions(); }, [loadCommissions]);
+
+  useEffect(() => { pagination.resetPage(); }, [filter]);
 
   const statusColor = (status: string) => {
     if (status === "paid") return "text-green-600";
@@ -52,7 +66,7 @@ export default function AgentCommissionsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="p-4 sm:p-6 space-y-5">
       <PageHeader
         title="My Commissions"
         description="Track earnings from successful placements"
@@ -84,56 +98,73 @@ export default function AgentCommissionsPage() {
       {/* Filter */}
       <div className="flex gap-2">
         {["all", "pending", "approved", "paid"].map((s) => (
-          <button key={s} onClick={() => setFilter(s)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
-              filter === s ? "bg-primary text-white" : "bg-muted/40 hover:bg-muted/60"
-            }`}>{s}</button>
+          <Button key={s} onClick={() => setFilter(s)} size="sm"
+            variant={filter === s ? "default" : "ghost"}
+            className="capitalize">{s}</Button>
         ))}
       </div>
 
-      <div className="card-base overflow-x-auto">
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : commissions.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            No commissions yet. Complete placements to earn commissions!
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/20">
-              <tr>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Placement</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Type</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Amount</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Status</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {commissions.map((c) => (
-                <tr key={c._id} className="border-b hover:bg-muted/10 transition-colors">
-                  <td className="p-3">
-                    <p className="font-medium">{c.placementId?.jobTitle ?? "Placement"}</p>
-                    {c.placementId?.candidateName && (
-                      <p className="text-xs text-muted-foreground">{c.placementId.candidateName}</p>
-                    )}
-                  </td>
-                  <td className="p-3 capitalize text-muted-foreground">{c.type?.replace("_", " ")}</td>
-                  <td className={`p-3 font-bold ${statusColor(c.status)}`}>
-                    {c.currency} {c.amount.toLocaleString()}
-                  </td>
-                  <td className="p-3"><StatusBadge status={c.status} /></td>
-                  <td className="p-3 text-muted-foreground text-xs">
-                    {new Date(c.paidAt ?? c.createdAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead>Placement</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Date</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <TableCell key={j}>
+                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : commissions.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="h-32 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Inbox className="h-8 w-8 opacity-40" />
+                    <span className="text-sm">No commissions yet</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : commissions.map((c) => (
+              <TableRow key={c._id}>
+                <TableCell>
+                  <p className="font-medium">{c.placementId?.jobTitle ?? "Placement"}</p>
+                  {c.placementId?.candidateName && (
+                    <p className="text-xs text-muted-foreground">{c.placementId.candidateName}</p>
+                  )}
+                </TableCell>
+                <TableCell className="capitalize text-muted-foreground">{c.type?.replace("_", " ")}</TableCell>
+                <TableCell className={`font-bold ${statusColor(c.status)}`}>
+                  {c.currency} {c.amount.toLocaleString()}
+                </TableCell>
+                <TableCell><StatusBadge status={c.status} /></TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  {new Date(c.paidAt ?? c.createdAt).toLocaleDateString()}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
+
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        limit={pagination.limit}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }

@@ -1,12 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
-
-export type UserRole =
-  | "admin"
-  | "super_agent"
-  | "agent"
-  | "employer"
-  | "job_seeker";
+import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
+export type { UserRole, PermissionMode, CustomPermissions }; // re-export for backwards compatibility
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
@@ -14,6 +9,8 @@ export interface IUser extends Document {
   email: string;
   passwordHash?: string;
   role: UserRole;
+  permissionMode: PermissionMode;
+  customPermissions?: CustomPermissions;
   locale: "en" | "ar";
   isActive: boolean;
   isEmailVerified: boolean;
@@ -43,6 +40,15 @@ const UserSchema = new Schema<IUser>(
       type: String,
       enum: ["admin", "super_agent", "agent", "employer", "job_seeker"],
       required: true,
+    },
+    permissionMode: {
+      type: String,
+      enum: ["role_default", "custom"],
+      default: "role_default",
+    },
+    customPermissions: {
+      type: Schema.Types.Mixed,
+      default: undefined,
     },
     locale: { type: String, enum: ["en", "ar"], default: "en" },
     isActive: { type: Boolean, default: true },

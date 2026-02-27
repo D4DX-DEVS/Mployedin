@@ -179,7 +179,7 @@ export function ConversationalAI({
         <button
           onClick={() => setOpen(true)}
           className={cn(
-            "fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg",
+            "fixed bottom-6 right-6 z-[100] flex h-14 w-14 items-center justify-center rounded-full shadow-lg",
             "bg-primary text-white hover:bg-primary/90 transition-all duration-200 hover:scale-105",
             className
           )}
@@ -190,9 +190,16 @@ export function ConversationalAI({
       )}
 
       {open && (
+        <>
+        {/* Backdrop — click outside to close */}
+        <div
+          className="fixed inset-0 z-[99]"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
         <div
           className={cn(
-            "fixed bottom-6 right-6 z-50 flex flex-col rounded-xl shadow-2xl border border-border bg-background",
+            "fixed bottom-6 right-6 z-[100] flex flex-col rounded-xl shadow-2xl border border-border bg-background",
             "transition-all duration-300",
             minimized ? "h-14 w-80" : "h-[520px] w-[380px]"
           )}
@@ -229,8 +236,8 @@ export function ConversationalAI({
             <button onClick={() => setMinimized((m) => !m)} className="text-white/70 hover:text-white">
               {minimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
             </button>
-            <button onClick={() => setOpen(false)} className="text-white/70 hover:text-white">
-              <X className="h-4 w-4" />
+            <button onClick={() => setOpen(false)} className="text-white hover:bg-white/20 rounded-full p-1 transition-colors" title="Close">
+              <X className="h-5 w-5" />
             </button>
           </div>
 
@@ -333,6 +340,7 @@ export function ConversationalAI({
             </>
           )}
         </div>
+        </>
       )}
     </>
   );

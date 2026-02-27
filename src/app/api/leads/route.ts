@@ -9,13 +9,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "20");
+  const limit = parseInt(searchParams.get("limit") ?? "10");
   const status = searchParams.get("status");
   const search = searchParams.get("search");
 
   const filter: Record<string, unknown> = {};
 
-  // Agents see only their leads; super-agents see territory leads (handled by territory)
+  // Agents see only their leads
   if (ctx.role === "agent") {
     filter.assignedAgentId = ctx.userId;
   }
@@ -47,7 +47,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await req.json();
   const allowed = pick(body as Record<string, unknown>, [
     "companyName", "contactName", "email", "phone",
-    "industry", "notes", "source", "territory",
+    "industry", "notes", "source",
   ]);
   const lead = await Lead.create({
     ...allowed,

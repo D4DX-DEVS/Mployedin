@@ -11,7 +11,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const { searchParams } = new URL(req.url);
   const visaStatus = searchParams.get("status");
   const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "20");
+  const limit = parseInt(searchParams.get("limit") ?? "10");
   const skip = (page - 1) * limit;
 
   const query: Record<string, unknown> = {};
@@ -59,4 +59,42 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   });
 }
 
+async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  await connectDB();
+  const body = await req.json();
+  const { applicationId, jobId, jobSeekerId, employerId, startDate, salary, currency, visaStatus, notes } = body;
+
+  if (!applicationId || !jobId || !jobSeekerId || !employerId) {
+    return NextResponse.json({ error: "applicationId, jobId, jobSeekerId, and employerId are required" }, { status: 400 });
+  }
+
+  const { logActivity, actorFromCtx } = await import("@/lib/audit/log");
+  const placement = await Placement.create({
+    applicationId,
+    jobId,
+    jobSeekerId,
+    employerId,
+    agentId: body.agentId,
+    superAgentId: body.superAgentId,
+    placedAt: new Date(),
+    startDate: startDate ? new Date(startDate) : undefined,
+    salary,
+    currency: currency ?? "AED",
+    visaStatus: visaStatus ?? "pending",
+    commissionPaid: false,
+    notes,
+  });
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "placement.create",
+    resource: "placements",
+    resourceId: String(placement._id),
+    req,
+  });
+
+  return NextResponse.json({ placement }, { status: 201 });
+}
+
 export const GET = withAuth(handler, { resource: "placements", action: "read" });
+export const POST = withAuth(postHandler, { resource: "placements", action: "create" });

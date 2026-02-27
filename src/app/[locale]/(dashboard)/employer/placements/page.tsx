@@ -1,9 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Users, Briefcase, TrendingUp, Inbox } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Users, Briefcase, TrendingUp, Loader2 } from "lucide-react";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface Placement {
   _id: string;
@@ -18,37 +25,46 @@ interface Placement {
 }
 
 export default function EmployerPlacementsPage() {
+  const pagination = usePagination();
+  const { can } = usePermissions();
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [stats, setStats] = useState({ total: 0, active: 0, thisMonth: 0 });
 
   const loadPlacements = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/placements?status=${filter}`);
+      const params = pagination.paginationParams();
+      if (filter !== "all") params.set("status", filter);
+      const res = await fetch(`/api/placements?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setPlacements(data.placements ?? []);
+        const items = data.placements ?? data.items ?? [];
+        setPlacements(items);
+        pagination.updateTotal(data.total ?? items.length);
+        // Compute stats from current page (best effort)
+        const now = new Date();
+        setStats({
+          total: data.total ?? items.length,
+          active: items.filter((p: Placement) => p.status === "active").length,
+          thisMonth: items.filter((p: Placement) => {
+            const d = new Date(p.createdAt);
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+          }).length,
+        });
       }
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, pagination.page, pagination.limit]);
 
   useEffect(() => { loadPlacements(); }, [loadPlacements]);
 
-  const stats = {
-    total: placements.length,
-    active: placements.filter((p) => p.status === "active").length,
-    thisMonth: placements.filter((p) => {
-      const d = new Date(p.createdAt);
-      const now = new Date();
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).length,
-  };
+  useEffect(() => { pagination.resetPage(); }, [filter]);
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="p-4 sm:p-6 space-y-5">
       <PageHeader
         title="Placements"
         description="Track candidates placed through your job listings"
@@ -74,54 +90,70 @@ export default function EmployerPlacementsPage() {
 
       <div className="flex gap-2">
         {["all", "active", "completed", "terminated"].map((s) => (
-          <button key={s} onClick={() => setFilter(s)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
-              filter === s ? "bg-primary text-white" : "bg-muted/40 hover:bg-muted/60"
-            }`}>{s}</button>
+          <Button key={s} onClick={() => setFilter(s)}
+            variant={filter === s ? "default" : "outline"}
+            size="sm"
+            className="capitalize">{s}</Button>
         ))}
       </div>
 
-      <div className="card-base overflow-x-auto">
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : placements.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            No placements yet
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="border-b bg-muted/20">
-              <tr>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Candidate</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Position</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Start Date</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Salary</th>
-                <th className="text-left p-3 font-semibold text-muted-foreground">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {placements.map((p) => (
-                <tr key={p._id} className="border-b hover:bg-muted/10">
-                  <td className="p-3">
-                    <p className="font-medium">{p.candidateName ?? "Candidate"}</p>
-                    <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>
-                  </td>
-                  <td className="p-3 text-muted-foreground">{p.jobTitle ?? "—"}</td>
-                  <td className="p-3 text-muted-foreground">
-                    {p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="p-3">
-                    {p.salary ? `${p.salary.currency} ${p.salary.amount.toLocaleString()}` : "—"}
-                  </td>
-                  <td className="p-3"><StatusBadge status={p.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead>Candidate</TableHead>
+              <TableHead>Position</TableHead>
+              <TableHead>Start Date</TableHead>
+              <TableHead>Salary</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <TableCell key={j}><div className="h-4 w-3/4 rounded bg-muted animate-pulse" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : placements.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="py-12 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <Inbox className="h-8 w-8 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">No placements yet</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : placements.map((p) => (
+              <TableRow key={p._id}>
+                <TableCell>
+                  <p className="font-medium">{p.candidateName ?? "Candidate"}</p>
+                  <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{p.jobTitle ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}
+                </TableCell>
+                <TableCell>
+                  {p.salary ? `${p.salary.currency} ${p.salary.amount.toLocaleString()}` : "—"}
+                </TableCell>
+                <TableCell><StatusBadge status={p.status} /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
+
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        limit={pagination.limit}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }

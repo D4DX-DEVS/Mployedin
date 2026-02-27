@@ -13,54 +13,58 @@ const statusVariants: Record<
   },
   selected: { label: "Selected", className: "status-selected" },
   rejected: { label: "Rejected", className: "status-rejected" },
-  withdrawn: { label: "Withdrawn", className: "bg-gray-100 text-gray-600" },
+  withdrawn: { label: "Withdrawn", className: "status-withdrawn" },
 
   // Job statuses
-  draft: { label: "Draft", className: "bg-gray-100 text-gray-600" },
+  draft: { label: "Draft", className: "status-draft" },
   pending_approval: {
     label: "Pending",
-    className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    className: "status-pending",
   },
   active: {
     label: "Active",
-    className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    className: "status-active",
   },
   closed: {
     label: "Closed",
-    className: "bg-gray-100 text-gray-600",
+    className: "status-closed",
   },
   expired: {
     label: "Expired",
-    className: "bg-red-100 text-red-600",
+    className: "status-expired",
+  },
+  inactive: {
+    label: "Inactive",
+    className: "status-draft",
   },
 
   // User / verification
-  basic: { label: "Basic", className: "bg-gray-100 text-gray-600" },
+  basic: { label: "Basic", className: "status-draft" },
   company: {
     label: "Company",
-    className: "bg-blue-100 text-blue-700",
+    className: "status-applied",
   },
   premium: {
     label: "Premium",
-    className: "bg-purple-100 text-purple-700",
+    className: "status-premium",
   },
 
   // Lead statuses
   new: {
     label: "New",
-    className: "bg-blue-100 text-blue-700",
+    className: "status-new",
   },
   contacted: {
     label: "Contacted",
-    className: "bg-amber-100 text-amber-700",
+    className: "status-shortlisted",
   },
   interested: {
     label: "Interested",
-    className: "bg-green-100 text-green-700",
+    className: "status-active",
   },
   negotiating: {
     label: "Negotiating",
-    className: "bg-purple-100 text-purple-700",
+    className: "status-premium",
   },
   converted: {
     label: "Converted",
@@ -71,11 +75,11 @@ const statusVariants: Record<
   // Commission statuses
   pending: {
     label: "Pending",
-    className: "bg-amber-100 text-amber-700",
+    className: "status-pending",
   },
   approved: {
     label: "Approved",
-    className: "bg-blue-100 text-blue-700",
+    className: "status-applied",
   },
   paid: { label: "Paid", className: "status-selected" },
   disputed: { label: "Disputed", className: "status-rejected" },
@@ -98,18 +102,19 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const variant = statusVariants[status] ?? {
     label: status,
-    className: "bg-gray-100 text-gray-600",
+    className: "status-draft",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full font-medium",
-        size === "sm" ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm",
+        "inline-flex items-center gap-1.5 rounded-full font-medium",
+        size === "sm" ? "px-2.5 py-0.5 text-[11px]" : "px-3 py-1 text-xs",
         variant.className,
         className
       )}
     >
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
       {variant.label}
     </span>
   );

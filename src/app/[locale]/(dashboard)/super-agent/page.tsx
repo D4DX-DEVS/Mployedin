@@ -8,7 +8,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
   const { locale } = await params;
   if (!session?.user) redirect(`/${locale}/login`);
 
-  const kpis = ["Territory Coverage", "Active Agents", "Total Placements", "Commissions Earned"];
+  const kpis = ["Region Coverage", "Active Agents", "Total Placements", "Commissions Earned"];
   const actions = [
     { label: "Agent Performance", href: `/${locale}/super-agent/agents` },
     { label: "Lead Pipeline", href: `/${locale}/super-agent/leads` },
@@ -18,7 +18,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <PageHeader title="Super Agent Dashboard" description="Territory overview and team performance" />
+      <PageHeader title="Super Agent Dashboard" description="Region overview and team performance" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((label) => (
           <div key={label} className="card-base">

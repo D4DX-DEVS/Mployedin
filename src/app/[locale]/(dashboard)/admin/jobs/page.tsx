@@ -3,6 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Search, Inbox } from "lucide-react";
 
 interface Job {
   _id: string;
@@ -22,12 +30,11 @@ export default function AdminJobsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [approvalStatus, setApprovalStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: "20" });
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
     if (status) params.set("status", status);
     if (approvalStatus) params.set("approvalStatus", approvalStatus);
@@ -35,10 +42,10 @@ export default function AdminJobsPage() {
     if (res.ok) {
       const data = await res.json();
       setJobs(data.items ?? []);
-      setTotalPages(data.totalPages ?? 1);
+      updateTotal(data.total ?? data.totalCount ?? ((data.totalPages ?? 1) * limit));
     }
     setLoading(false);
-  }, [search, status, approvalStatus, page]);
+  }, [search, status, approvalStatus, page, limit]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -52,20 +59,18 @@ export default function AdminJobsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="p-4 sm:p-6 space-y-5">
       <PageHeader title="Jobs Management" description="Manage all platform jobs, approvals, and status control" />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <input
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          placeholder="Search jobs…"
-          className="h-9 rounded-lg border px-3 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-primary/40"
-        />
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+          <Input placeholder="Search jobs…" value={search} onChange={(e) => { setSearch(e.target.value); resetPage(); }} className="pl-9 h-9" />
+        </div>
         <select
           value={status}
-          onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+          onChange={(e) => { setStatus(e.target.value); resetPage(); }}
           className="h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           <option value="">All statuses</option>
@@ -75,7 +80,7 @@ export default function AdminJobsPage() {
         </select>
         <select
           value={approvalStatus}
-          onChange={(e) => { setApprovalStatus(e.target.value); setPage(1); }}
+          onChange={(e) => { setApprovalStatus(e.target.value); resetPage(); }}
           className="h-9 rounded-lg border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           <option value="">All approval statuses</option>
@@ -86,86 +91,89 @@ export default function AdminJobsPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">Loading…</div>
+        <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+          <div className="bg-muted/30 px-4 py-3 h-10 animate-pulse" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="border-t px-4 py-3 h-14 animate-pulse" />
+          ))}
+        </div>
       ) : (
         <>
-          <div className="card-base overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs text-muted-foreground">
-                  <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3">Employer</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Location</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Approval</th>
-                  <th className="px-4 py-3 text-right">Apps</th>
-                  <th className="px-4 py-3">Posted</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead>Title</TableHead>
+                  <TableHead>Employer</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Approval</TableHead>
+                  <TableHead className="text-right">Apps</TableHead>
+                  <TableHead>Posted</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {jobs.map((job) => (
-                  <tr key={job._id} className="border-b hover:bg-muted/20">
-                    <td className="px-4 py-3 font-medium max-w-[200px] truncate">{job.title}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                  <TableRow key={job._id}>
+                    <TableCell className="font-medium max-w-[200px] truncate">{job.title}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
                       {job.employerId?.companyName ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{job.category ?? "—"}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{job.location ?? "—"}</td>
-                    <td className="px-4 py-3"><StatusBadge status={job.status} /></td>
-                    <td className="px-4 py-3"><StatusBadge status={job.approvalStatus} /></td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{job.applicantsCount ?? 0}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{job.category ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{job.location ?? "—"}</TableCell>
+                    <TableCell><StatusBadge status={job.status} /></TableCell>
+                    <TableCell><StatusBadge status={job.approvalStatus} /></TableCell>
+                    <TableCell className="text-right text-muted-foreground">{job.applicantsCount ?? 0}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
                       {new Date(job.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <div className="flex gap-1 flex-wrap">
                         {job.approvalStatus === "pending" && (
                           <>
-                            <button
+                            <Button
+                              variant="ghost"
+                              size="xs"
                               onClick={() => updateJob(job._id, { approvalStatus: "approved", status: "active" })}
-                              className="text-xs px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200 hover:bg-green-100">
+                              className="text-green-700 hover:bg-green-50">
                               Approve
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="xs"
                               onClick={() => updateJob(job._id, { approvalStatus: "rejected" })}
-                              className="text-xs px-2 py-1 rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">
+                              className="text-red-700 hover:bg-red-50">
                               Reject
-                            </button>
+                            </Button>
                           </>
                         )}
                         {job.status === "active" && (
-                          <button
-                            onClick={() => updateJob(job._id, { status: "closed" })}
-                            className="text-xs px-2 py-1 rounded bg-gray-50 text-gray-700 border hover:bg-gray-100">
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => updateJob(job._id, { status: "closed" })}>
                             Close
-                          </button>
+                          </Button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
                 {jobs.length === 0 && (
-                  <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">No jobs found</td></tr>
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      <Inbox className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                      No jobs found
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <button disabled={page === 1} onClick={() => setPage(page - 1)}
-                className="px-3 py-1.5 rounded border text-sm disabled:opacity-40 hover:bg-muted/40">
-                Previous
-              </button>
-              <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
-              <button disabled={page === totalPages} onClick={() => setPage(page + 1)}
-                className="px-3 py-1.5 rounded border text-sm disabled:opacity-40 hover:bg-muted/40">
-                Next
-              </button>
-            </div>
-          )}
+          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
         </>
       )}
     </div>

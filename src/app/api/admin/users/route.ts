@@ -3,9 +3,13 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import type { UserRole } from "@/models/User";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
 import AuditLog from "@/models/AuditLog";
 import mongoose from "mongoose";
 import { escapeRegex, isValidRole } from "@/lib/security/sanitize";
+
+import bcrypt from "bcryptjs";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -16,7 +20,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-  const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "25"));
+  const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
   const role = searchParams.get("role") ?? "";
   const search = searchParams.get("search") ?? "";
   const isActive = searchParams.get("isActive") ?? "";
@@ -100,13 +104,25 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   // ── Single-user mode (original)
-  const { userId, role, isActive } = body;
+  const { userId, role, isActive, name, email, permissionMode, customPermissions } = body;
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
 
   const updateData: Record<string, unknown> = {};
   if (role) updateData.role = role;
   if (isActive !== undefined) updateData.isActive = isActive;
+  if (name) updateData.name = name;
+  if (email) updateData.email = email;
+
+  // Permission updates
+  if (permissionMode !== undefined) {
+    updateData.permissionMode = permissionMode;
+    if (permissionMode === "custom" && customPermissions) {
+      updateData.customPermissions = customPermissions;
+    } else if (permissionMode === "role_default") {
+      updateData.customPermissions = undefined;
+    }
+  }
 
   const updated = await User.findByIdAndUpdate(
     userId,
@@ -129,5 +145,131 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({ user: updated });
 }
 
+// POST /api/admin/users — create a new user (admin only)
+async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  await connectDB();
+  const body = await req.json();
+  const {
+    name, email, password, role, locale,
+    // Permission fields
+    permissionMode, customPermissions,
+    // Agent/SuperAgent profile fields
+    superAgentId, commissionRate, overrideRate,
+    assignedCityIds, assignedStateIds, agentIds,
+  } = body;
+
+  if (!name || !email || !password || !role) {
+    return NextResponse.json({ error: "name, email, password, and role are required" }, { status: 400 });
+  }
+
+  if (!isValidRole(role)) {
+    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+  }
+
+  const existing = await User.findOne({ email });
+  if (existing) {
+    return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  // Build user document
+  const userData: Record<string, unknown> = {
+    name,
+    email,
+    passwordHash,
+    role,
+    locale: locale ?? "en",
+    isActive: true,
+  };
+
+  // Custom permissions
+  if (permissionMode === "custom" && customPermissions) {
+    userData.permissionMode = "custom";
+    userData.customPermissions = customPermissions;
+  }
+
+  const user = await User.create(userData);
+
+  // Create profile document for agent/super_agent roles
+  try {
+    if (role === "agent") {
+      await Agent.create({
+        userId: user._id,
+        superAgentId: superAgentId || undefined,
+        commissionRate: commissionRate ?? 0,
+        assignedCityIds: assignedCityIds ?? [],
+        assignedStateIds: assignedStateIds ?? [],
+      });
+
+      // If a superAgentId is specified, add this agent to the super agent's agentIds
+      if (superAgentId) {
+        await SuperAgent.findByIdAndUpdate(superAgentId, {
+          $addToSet: { agentIds: (await Agent.findOne({ userId: user._id }))._id },
+        });
+      }
+    }
+
+    if (role === "super_agent") {
+      await SuperAgent.create({
+        userId: user._id,
+        overrideRate: overrideRate ?? 0,
+        assignedCityIds: assignedCityIds ?? [],
+        assignedStateIds: assignedStateIds ?? [],
+        agentIds: agentIds ?? [],
+      });
+    }
+  } catch (profileErr) {
+    // If profile creation fails, clean up the user document
+    console.error("[admin/users] Profile creation failed:", profileErr);
+    await User.findByIdAndDelete(user._id);
+    return NextResponse.json(
+      { error: "Failed to create user profile" },
+      { status: 500 }
+    );
+  }
+
+  await AuditLog.create({
+    actorId: ctx.userId,
+    action: "user.create",
+    resource: "users",
+    resourceId: user._id,
+    ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+  });
+
+  return NextResponse.json({ user: { ...user.toObject(), passwordHash: undefined } }, { status: 201 });
+}
+
+// DELETE /api/admin/users — deactivate users
+async function deleteHandler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  await connectDB();
+  const body = await req.json();
+  const { userId } = body;
+
+  if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
+
+  const user = await User.findById(userId);
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  user.isActive = false;
+  await user.save();
+
+  await AuditLog.create({
+    actorId: ctx.userId,
+    action: "user.deactivate",
+    resource: "users",
+    resourceId: userId,
+    ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+  });
+
+  return NextResponse.json({ message: "User deactivated" });
+}
+
 export const GET = withAuth(getHandler);
 export const PATCH = withAuth(patchHandler);
+export const POST = withAuth(postHandler);
+export const DELETE = withAuth(deleteHandler);

@@ -7,7 +7,7 @@ async function GET(req: NextRequest, ctx: { userId: string; role: string }) {
   await connectDB();
   const { searchParams } = new URL(req.url);
   const channel = searchParams.get("channel") || "general";
-  const limit = parseInt(searchParams.get("limit") || "50");
+  const limit = parseInt(searchParams.get("limit") || "10");
 
   const messages = await (Message as unknown as {
     find: (q: object) => { sort: (s: object) => { limit: (n: number) => { lean: () => Promise<unknown[]> } } }

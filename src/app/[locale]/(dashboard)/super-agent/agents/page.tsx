@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Search, Inbox } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 
 interface AgentRow {
   _id: string;
@@ -17,18 +24,20 @@ export default function SuperAgentAgentsPage() {
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ limit: "50" });
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
     const res = await fetch(`/api/super-agent/agents?${params}`);
     if (res.ok) {
       const data = await res.json();
       setAgents(data.items ?? []);
+      updateTotal(data.total ?? data.items?.length ?? 0);
     }
     setLoading(false);
-  }, [search]);
+  }, [search, page, limit]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
 
@@ -40,8 +49,8 @@ export default function SuperAgentAgentsPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <PageHeader title="Agent Performance" description="Monitor agent activity and conversion metrics across your territory" />
+    <div className="p-4 sm:p-6 space-y-5">
+      <PageHeader title="Agent Performance" description="Monitor agent activity and conversion metrics across your team" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {kpis.map((k) => (
@@ -53,60 +62,70 @@ export default function SuperAgentAgentsPage() {
       </div>
 
       <div className="flex gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search agents…"
-          className="h-9 rounded-lg border px-3 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/40"
-        />
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+          <Input placeholder="Search agents…" value={search} onChange={(e) => { setSearch(e.target.value); resetPage(); }} className="pl-9 h-9" />
+        </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">Loading…</div>
-      ) : (
-        <div className="card-base overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3">Agent</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3 text-right">Leads</th>
-                <th className="px-4 py-3 text-right">Conversions</th>
-                <th className="px-4 py-3 text-right">Placements</th>
-                <th className="px-4 py-3 text-right">Conv. Rate</th>
-                <th className="px-4 py-3">Progress</th>
-              </tr>
-            </thead>
-            <tbody>
-              {agents.map((a) => (
-                <tr key={a._id} className="border-b hover:bg-muted/20">
-                  <td className="px-4 py-3 font-medium">{a.name}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{a.email}</td>
-                  <td className="px-4 py-3 text-right">{a.leadsCount ?? 0}</td>
-                  <td className="px-4 py-3 text-right text-green-600 font-medium">{a.conversions ?? 0}</td>
-                  <td className="px-4 py-3 text-right text-primary font-medium">{a.placements ?? 0}</td>
-                  <td className="px-4 py-3 text-right">
-                    {a.leadsCount > 0
-                      ? `${Math.round((a.conversions / a.leadsCount) * 100)}%`
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="h-2 w-32 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full"
-                        style={{ width: `${Math.min(100, a.leadsCount > 0 ? (a.conversions / a.leadsCount) * 100 : 0)}%` }}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {agents.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">No agents found</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead>Agent</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead className="text-right">Leads</TableHead>
+              <TableHead className="text-right">Conversions</TableHead>
+              <TableHead className="text-right">Placements</TableHead>
+              <TableHead className="text-right">Conv. Rate</TableHead>
+              <TableHead>Progress</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <TableCell key={j}><div className="h-4 w-3/4 rounded bg-muted animate-pulse" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : agents.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="py-12 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <Inbox className="h-8 w-8 text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground">No agents found</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : agents.map((a) => (
+              <TableRow key={a._id}>
+                <TableCell className="font-medium">{a.name}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{a.email}</TableCell>
+                <TableCell className="text-right">{a.leadsCount ?? 0}</TableCell>
+                <TableCell className="text-right text-green-600 font-medium">{a.conversions ?? 0}</TableCell>
+                <TableCell className="text-right text-primary font-medium">{a.placements ?? 0}</TableCell>
+                <TableCell className="text-right">
+                  {a.leadsCount > 0
+                    ? `${Math.round((a.conversions / a.leadsCount) * 100)}%`
+                    : "—"}
+                </TableCell>
+                <TableCell>
+                  <div className="h-2 w-32 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full"
+                      style={{ width: `${Math.min(100, a.leadsCount > 0 ? (a.conversions / a.leadsCount) * 100 : 0)}%` }}
+                    />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
     </div>
   );
 }

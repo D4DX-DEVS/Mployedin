@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -13,82 +13,101 @@
    ═══════════════════════════════════════════════ */
 :root {
   /* ── BRAND PALETTE ── */
-  --brand-blue:          211 89% 42%;   /* #0D6FD8 — primary */
-  --brand-blue-hover:    211 89% 36%;   /* darker on hover */
-  --brand-blue-light:    211 89% 55%;   /* accent/highlights */
-  --brand-blue-pale:     211 89% 96%;   /* bg tints, chips */
-  --brand-blue-dark:     217 76% 19%;   /* #0C2A5E — sidebar */
-  --brand-cyan:          199 89% 48%;   /* #0BBCD4 — globe accent */
-  --brand-white:         0   0%  100%;
-  --brand-text:          222 47% 11%;   /* #0F172A */
-  --brand-muted:         215 16% 47%;   /* #64748B */
+  --brand-blue: 211 89% 42%;
+  /* #0D6FD8 — primary */
+  --brand-blue-hover: 211 89% 36%;
+  /* darker on hover */
+  --brand-blue-light: 211 89% 55%;
+  /* accent/highlights */
+  --brand-blue-pale: 211 89% 96%;
+  /* bg tints, chips */
+  --brand-blue-dark: 217 76% 19%;
+  /* #0C2A5E — sidebar */
+  --brand-cyan: 199 89% 48%;
+  /* #0BBCD4 — globe accent */
+  --brand-white: 0 0% 100%;
+  --brand-text: 222 47% 11%;
+  /* #0F172A */
+  --brand-muted: 215 16% 47%;
+  /* #64748B */
 
   /* ── SEMANTIC TOKENS (shadcn/ui reads these) ── */
-  --background:          0   0%  100%;
-  --foreground:          222 47% 11%;
-  --card:                0   0%  100%;
-  --card-foreground:     222 47% 11%;
-  --popover:             0   0%  100%;
-  --popover-foreground:  222 47% 11%;
-  --primary:             211 89% 42%;
-  --primary-foreground:  0   0%  100%;
-  --secondary:           211 89% 96%;
-  --secondary-foreground:211 89% 42%;
-  --muted:               210 40% 96%;
-  --muted-foreground:    215 16% 47%;
-  --accent:              199 89% 48%;
-  --accent-foreground:   0   0%  100%;
-  --destructive:         0   72% 51%;
-  --destructive-foreground: 0 0% 100%;
-  --border:              214 32% 91%;
-  --input:               214 32% 91%;
-  --ring:                211 89% 42%;
-  --radius:              0.625rem;
+  --background: 210 40% 98%;
+  /* Soft gray-white #f8fafc */
+  --foreground: 224 71% 4%;
+  /* Off-black #020817 */
+  --card: 0 0% 100%;
+  --card-foreground: 224 71% 4%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 71% 4%;
+  --primary: 211 89% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 224 71% 4%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 224 71% 4%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 211 89% 42%;
+  --radius: 1rem;
+  /* Rounder corners for modern feel */
 
   /* ── SIDEBAR ── */
-  --sidebar-bg:          217 76% 19%;   /* deep navy */
-  --sidebar-fg:          210 40% 96%;
-  --sidebar-active-bg:   211 89% 42%;
-  --sidebar-active-fg:   0   0%  100%;
-  --sidebar-hover-bg:    217 60% 26%;
-  --sidebar-border:      217 60% 25%;
-  --sidebar-icon:        211 40% 70%;
-  --sidebar-width:       260px;
-  --sidebar-collapsed:   68px;
+  --sidebar-bg: 0 0% 100%;
+  /* White */
+  --sidebar-fg: 224 71% 4%;
+  /* Dark text */
+  --sidebar-active-bg: 214 32% 91%;
+  /* Soft gray-blue */
+  --sidebar-active-fg: 211 89% 42%;
+  /* Brand blue */
+  --sidebar-hover-bg: 210 40% 98%;
+  --sidebar-border: 214 32% 91%;
+  --sidebar-icon: 215 16% 47%;
+  --sidebar-width: 280px;
+  /* Slightly wider */
+  --sidebar-collapsed: 72px;
 
   /* ── APPLICATION STATUS COLORS ── */
-  --status-applied:      211 89% 42%;
-  --status-applied-bg:   211 89% 96%;
-  --status-shortlisted:  38  92% 50%;
+  --status-applied: 211 89% 42%;
+  --status-applied-bg: 211 89% 96%;
+  --status-shortlisted: 38 92% 50%;
   --status-shortlisted-bg: 38 100% 94%;
-  --status-interview:    271 81% 56%;
+  --status-interview: 271 81% 56%;
   --status-interview-bg: 271 100% 96%;
-  --status-selected:     142 71% 45%;
-  --status-selected-bg:  142 76% 94%;
-  --status-rejected:     0   72% 51%;
-  --status-rejected-bg:  0   100% 96%;
-  --status-pending:      215 16% 47%;
-  --status-pending-bg:   210 40% 96%;
+  --status-selected: 142 71% 45%;
+  --status-selected-bg: 142 76% 94%;
+  --status-rejected: 0 72% 51%;
+  --status-rejected-bg: 0 100% 96%;
+  --status-pending: 215 16% 47%;
+  --status-pending-bg: 210 40% 96%;
 
   /* ── AI FEATURE TOKENS ── */
-  --ai-gradient-from:    211 89% 42%;
-  --ai-gradient-to:      199 89% 48%;
-  --ai-bubble-bg:        211 89% 96%;
-  --ai-bubble-fg:        211 89% 20%;
-  --ai-sparkle:          211 89% 55%;
-  --ai-thinking:         215 16% 80%;
+  --ai-gradient-from: 211 89% 42%;
+  --ai-gradient-to: 199 89% 48%;
+  --ai-bubble-bg: 211 89% 96%;
+  --ai-bubble-fg: 211 89% 20%;
+  --ai-sparkle: 211 89% 55%;
+  --ai-thinking: 215 16% 80%;
 
   /* ── SURFACE VARIANTS ── */
-  --surface-1:           0   0%  100%;   /* cards */
-  --surface-2:           210 40% 98%;    /* page bg */
-  --surface-3:           211 89% 96%;    /* tinted */
-  --surface-elevated:    0   0%  100%;
+  --surface-1: 0 0% 100%;
+  /* cards */
+  --surface-2: 210 40% 98%;
+  /* page bg */
+  --surface-3: 211 89% 96%;
+  /* tinted */
+  --surface-elevated: 0 0% 100%;
 
   /* ── VERIFICATION BADGE COLORS ── */
-  --badge-basic:         215 16% 47%;
-  --badge-company:       211 89% 42%;
-  --badge-premium:       45  93% 47%;
-  --badge-skilled:       142 71% 45%;
+  --badge-basic: 215 16% 47%;
+  --badge-company: 211 89% 42%;
+  --badge-premium: 45 93% 47%;
+  --badge-skilled: 142 71% 45%;
 }
 
 /* ── BASE STYLES ── */
@@ -103,18 +122,34 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── PORTAL Z-INDEX FIX ── */
+/* Radix popper wrappers use position:fixed which creates a stacking context at z-auto.
+   Force a high z-index on the wrapper so dropdowns/selects/popovers appear above all page content. */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+/* Dialog portals need to be above page content but below popper overlays */
+[data-radix-portal] > [role="dialog"],
+[data-radix-portal] > [data-state] {
+  z-index: 9998 !important;
+}
+
 /* ── SCROLLBAR STYLING ── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: hsl(var(--surface-2));
 }
+
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--brand-blue) / 0.5);
 }
@@ -123,15 +158,24 @@ body {
 .sidebar-scroll::-webkit-scrollbar {
   width: 3px;
 }
+
 .sidebar-scroll::-webkit-scrollbar-thumb {
   background: hsl(var(--sidebar-border));
 }
 
 /* ── AI STREAMING ANIMATION ── */
 @keyframes cursor-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
 }
+
 .ai-cursor::after {
   content: '▋';
   animation: cursor-blink 1s infinite;
@@ -141,27 +185,48 @@ body {
 
 /* ── AI THINKING DOTS ── */
 @keyframes thinking-dot {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-  40% { transform: scale(1); opacity: 1; }
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
-.thinking-dot:nth-child(1) { animation: thinking-dot 1.4s infinite 0s; }
-.thinking-dot:nth-child(2) { animation: thinking-dot 1.4s infinite 0.2s; }
-.thinking-dot:nth-child(3) { animation: thinking-dot 1.4s infinite 0.4s; }
+
+.thinking-dot:nth-child(1) {
+  animation: thinking-dot 1.4s infinite 0s;
+}
+
+.thinking-dot:nth-child(2) {
+  animation: thinking-dot 1.4s infinite 0.2s;
+}
+
+.thinking-dot:nth-child(3) {
+  animation: thinking-dot 1.4s infinite 0.4s;
+}
 
 /* ── GRADIENT BACKGROUNDS ── */
 .ai-gradient {
   background: linear-gradient(135deg, hsl(var(--ai-gradient-from)), hsl(var(--ai-gradient-to)));
 }
+
 .brand-gradient {
   background: linear-gradient(135deg, hsl(var(--brand-blue-dark)), hsl(var(--brand-blue)));
 }
 
 /* ── GLASSMORPHISM ── */
 .glass {
-  background: hsl(var(--glass-bg, 0 0% 100% / 0.8));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: hsl(var(--card) / 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
 }
 
 /* ── SIDEBAR ACTIVE ITEM GLOW ── */
@@ -173,9 +238,17 @@ body {
 .page-transition {
   animation: fadeIn 0.15s ease-out;
 }
+
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ── MATCH SCORE RING ── */
@@ -190,12 +263,15 @@ body {
   border-right: 1px solid hsl(var(--sidebar-border));
   flex-shrink: 0;
 }
+
 .sidebar-expanded {
   width: var(--sidebar-width);
 }
+
 .sidebar-collapsed {
   width: var(--sidebar-collapsed);
 }
+
 .sidebar-item {
   display: flex;
   align-items: center;
@@ -210,19 +286,23 @@ body {
   text-decoration: none;
   width: 100%;
 }
+
 .sidebar-item:hover {
   background-color: hsl(var(--sidebar-hover-bg));
   color: hsl(var(--sidebar-fg));
 }
+
 .sidebar-item-active {
   background-color: hsl(var(--sidebar-active-bg));
   color: hsl(var(--sidebar-active-fg));
 }
+
 .sidebar-icon {
   width: 1.125rem;
   height: 1.125rem;
   flex-shrink: 0;
 }
+
 .sidebar-label {
   flex: 1;
   min-width: 0;
@@ -234,8 +314,17 @@ body {
 /* ── CARD BASE ── */
 .card-base {
   background-color: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px -2px rgb(0 0 0 / 0.05);
+  /* Premium soft shadow */
+  transition: all 0.2s ease-in-out;
+  isolation: isolate; /* Contain internal z-indices so they don't leak to portals */
+}
+
+.card-base:hover {
+  box-shadow: 0 12px 24px -4px rgb(0 0 0 / 0.08);
+  /* Elevated upon hover */
 }
 
 /* ── STATUS BADGE CLASSES ── */
@@ -243,21 +332,85 @@ body {
   background-color: hsl(var(--status-applied-bg));
   color: hsl(var(--status-applied));
 }
+
 .status-shortlisted {
   background-color: hsl(var(--status-shortlisted-bg));
   color: hsl(var(--status-shortlisted));
 }
+
 .status-interview {
   background-color: hsl(var(--status-interview-bg));
   color: hsl(var(--status-interview));
 }
+
 .status-selected {
   background-color: hsl(var(--status-selected-bg));
   color: hsl(var(--status-selected));
 }
+
 .status-rejected {
   background-color: hsl(var(--status-rejected-bg));
   color: hsl(var(--status-rejected));
+}
+
+.status-pending {
+  background-color: hsl(var(--status-pending-bg));
+  color: hsl(var(--status-pending));
+}
+
+.status-withdrawn {
+  background-color: hsl(210 40% 96%);
+  color: hsl(215 16% 47%);
+}
+
+.status-draft {
+  background-color: hsl(210 40% 96%);
+  color: hsl(215 16% 47%);
+}
+
+.status-active {
+  background-color: hsl(var(--status-selected-bg));
+  color: hsl(var(--status-selected));
+}
+
+.status-closed {
+  background-color: hsl(210 40% 96%);
+  color: hsl(215 16% 47%);
+}
+
+.status-expired {
+  background-color: hsl(var(--status-rejected-bg));
+  color: hsl(var(--status-rejected));
+}
+
+.status-new {
+  background-color: hsl(var(--status-applied-bg));
+  color: hsl(var(--status-applied));
+}
+
+.status-premium {
+  background-color: hsl(271 100% 96%);
+  color: hsl(271 81% 56%);
+}
+
+/* ── SHIMMER ANIMATION (DataTable loading) ── */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── TEXT SELECTION ── */
+::selection {
+  background: hsl(var(--brand-blue) / 0.12);
 }
 
 /* ── RTL SUPPORT ── */
@@ -267,10 +420,12 @@ body {
   border-right: none;
   border-left: 1px solid hsl(var(--sidebar-border));
 }
+
 [dir="rtl"] .main-content-rtl {
   margin-right: var(--sidebar-width);
   margin-left: 0;
 }
+
 [dir="rtl"] .main-content-collapsed-rtl {
   margin-right: var(--sidebar-collapsed);
   margin-left: 0;

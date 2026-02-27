@@ -4,12 +4,14 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["mongoose", "pdf-parse", "mammoth"],
+  serverExternalPackages: ["mongoose", "bcryptjs", "pdf-parse", "mammoth"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "media.licdn.com" },
+      // DigitalOcean Spaces CDN
+      { protocol: "https", hostname: "*.digitaloceanspaces.com" },
     ],
   },
   async headers() {

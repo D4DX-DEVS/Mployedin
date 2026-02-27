@@ -1,9 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Briefcase, Search, Filter, Loader2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Search, Filter, Loader2, CheckCircle2, Clock, AlertCircle, Pencil, Trash2, Inbox } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePermissions } from "@/hooks/usePermissions";
+import { usePagination } from "@/hooks/usePagination";
+import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 
 interface Placement {
   _id: string;
@@ -29,15 +38,15 @@ const VISA_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function AdminPlacementsPage() {
+  const { can } = usePermissions();
   const [placements, setPlacements] = useState<Placement[]>([]);
-  const [total, setTotal] = useState(0);
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [totalValue, setTotalValue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [visaFilter, setVisaFilter] = useState("");
   const [commissionFilter, setCommissionFilter] = useState("");
-  const [page, setPage] = useState(1);
-  const limit = 20;
+  const [editItem, setEditItem] = useState<Placement | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,13 +60,13 @@ export default function AdminPlacementsPage() {
       if (res.ok) {
         const data = await res.json();
         setPlacements(data.placements ?? []);
-        setTotal(data.total ?? 0);
+        updateTotal(data.total ?? 0);
         setTotalValue(data.totalSalaryValue ?? 0);
       }
     } finally {
       setLoading(false);
     }
-  }, [page, search, visaFilter, commissionFilter]);
+  }, [page, search, visaFilter, commissionFilter, limit]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -70,11 +79,40 @@ export default function AdminPlacementsPage() {
     load();
   };
 
+  const handleEdit = async (values: Record<string, string>) => {
+    const res = await fetch(`/api/placements/${editItem!._id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...values, salary: values.salary ? Number(values.salary) : undefined }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+    setEditItem(null);
+    load();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this placement?")) return;
+    await fetch(`/api/placements/${id}`, { method: "DELETE" });
+    load();
+  };
+
+  const EDIT_FIELDS: CrudField[] = [
+    { name: "salary", label: "Salary", type: "number" },
+    { name: "currency", label: "Currency", type: "select", options: [
+      { value: "AED", label: "AED" }, { value: "USD", label: "USD" }, { value: "EUR", label: "EUR" }, { value: "SAR", label: "SAR" }
+    ]},
+    { name: "visaStatus", label: "Visa Status", type: "select", options: [
+      { value: "not_required", label: "Not Required" }, { value: "pending", label: "Pending" },
+      { value: "approved", label: "Approved" }, { value: "rejected", label: "Rejected" }, { value: "stamped", label: "Stamped" }
+    ]},
+    { name: "notes", label: "Notes", type: "textarea" },
+  ];
+
   const pendingVisa = placements.filter(p => p.visaStatus === "pending").length;
   const unpaidCommissions = placements.filter(p => !p.commissionPaid).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader title="Placement Tracking" description={`${total} placements · Total salary value: ${totalValue.toLocaleString()} AED`} />
 
       {/* Summary Cards */}
@@ -94,14 +132,13 @@ export default function AdminPlacementsPage() {
 
       {/* Filters */}
       <div className="card-base flex flex-wrap gap-3 items-center">
-        <div className="flex items-center gap-2 flex-1 min-w-48">
-          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search candidate or company…" className="input-field flex-1" />
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+          <Input placeholder="Search candidate or company…" value={search} onChange={(e) => { setSearch(e.target.value); resetPage(); }} className="pl-9 h-9" />
         </div>
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
-          <select value={visaFilter} onChange={e => { setVisaFilter(e.target.value); setPage(1); }} className="input-field">
+          <select value={visaFilter} onChange={e => { setVisaFilter(e.target.value); resetPage(); }} className="input-field">
             <option value="">All Visa Status</option>
             <option value="not_required">Not Required</option>
             <option value="pending">Pending</option>
@@ -109,7 +146,7 @@ export default function AdminPlacementsPage() {
             <option value="rejected">Rejected</option>
             <option value="stamped">Stamped</option>
           </select>
-          <select value={commissionFilter} onChange={e => { setCommissionFilter(e.target.value); setPage(1); }} className="input-field">
+          <select value={commissionFilter} onChange={e => { setCommissionFilter(e.target.value); resetPage(); }} className="input-field">
             <option value="">All Commission</option>
             <option value="true">Paid</option>
             <option value="false">Unpaid</option>
@@ -118,69 +155,79 @@ export default function AdminPlacementsPage() {
       </div>
 
       {/* Table */}
-      <div className="card-base overflow-x-auto">
+      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
         {loading ? (
-          <div className="flex items-center justify-center py-12 gap-3 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
+          <>
+            <div className="bg-muted/30 px-4 py-3 h-10 animate-pulse" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="border-t px-4 py-3 h-14 animate-pulse" />
+            ))}
+          </>
         ) : placements.length === 0 ? (
-          <p className="text-center py-12 text-sm text-muted-foreground">No placements found.</p>
+          <div className="text-center py-12 text-sm text-muted-foreground">
+            <Inbox className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+            No placements found.
+          </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
                 {["Candidate", "Role", "Company", "Agent", "Salary", "Visa", "Commission", "Date", ""].map((h, i) => (
-                  <th key={i} className="text-left pb-2 pr-3 text-xs font-medium text-muted-foreground">{h}</th>
+                  <TableHead key={i}>{h}</TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {placements.map((p) => (
-                <tr key={p._id} className="hover:bg-muted/30 transition-colors">
-                  <td className="py-3 pr-3">
+                <TableRow key={p._id}>
+                  <TableCell>
                     <p className="font-medium">{p.jobSeeker?.name ?? "—"}</p>
                     <p className="text-xs text-muted-foreground">{p.jobSeeker?.email}</p>
-                  </td>
-                  <td className="py-3 pr-3 text-muted-foreground">{p.job?.title ?? "—"}</td>
-                  <td className="py-3 pr-3">{p.employer?.companyName ?? "—"}</td>
-                  <td className="py-3 pr-3 text-muted-foreground">{p.agent?.name ?? "—"}</td>
-                  <td className="py-3 pr-3 font-medium">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{p.job?.title ?? "—"}</TableCell>
+                  <TableCell>{p.employer?.companyName ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{p.agent?.name ?? "—"}</TableCell>
+                  <TableCell className="font-medium">
                     {p.salary?.toLocaleString()} <span className="text-xs text-muted-foreground">{p.currency}</span>
-                  </td>
-                  <td className="py-3 pr-3">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-1.5">
                       {VISA_ICONS[p.visaStatus]}
                       <span className="text-xs capitalize">{p.visaStatus?.replace("_", " ")}</span>
                     </div>
-                  </td>
-                  <td className="py-3 pr-3">
+                  </TableCell>
+                  <TableCell>
                     <StatusBadge status={p.commissionPaid ? "paid" : "pending"} />
-                  </td>
-                  <td className="py-3 pr-3 text-xs text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
                     {new Date(p.startDate).toLocaleDateString("en-AE")}
-                  </td>
-                  <td className="py-3">
-                    {!p.commissionPaid && (
-                      <button onClick={() => markCommission(p._id, true)}
-                        className="text-xs px-2 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors">
-                        Mark Paid
-                      </button>
-                    )}
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      {!p.commissionPaid && can("placements", "update") && (
+                        <Button variant="ghost" size="xs" onClick={() => markCommission(p._id, true)}
+                          className="text-emerald-700 hover:bg-emerald-50">
+                          Mark Paid
+                        </Button>
+                      )}
+                      {can("placements", "update") && (
+                        <Button variant="ghost" size="xs" onClick={() => setEditItem(p)} className="text-blue-600 hover:bg-blue-50" title="Edit">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {can("placements", "delete") && (
+                        <Button variant="ghost" size="xs" onClick={() => handleDelete(p._id)} className="text-red-600 hover:bg-red-50" title="Delete">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
-        {total > limit && (
-          <div className="flex items-center justify-between pt-4 border-t mt-4">
-            <p className="text-xs text-muted-foreground">Page {page} of {Math.ceil(total / limit)}</p>
-            <div className="flex gap-2">
-              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="btn-outline text-xs disabled:opacity-40">Previous</button>
-              <button disabled={page >= Math.ceil(total / limit)} onClick={() => setPage(p => p + 1)} className="btn-outline text-xs disabled:opacity-40">Next</button>
-            </div>
-          </div>
-        )}
+        <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} className="pt-4 border-t mt-4" />
       </div>
     </div>
   );

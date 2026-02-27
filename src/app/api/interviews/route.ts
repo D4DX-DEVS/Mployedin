@@ -29,7 +29,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     if (!agent) return NextResponse.json({ interviews: [] });
     query.employerId = { $in: agent.assignedEmployerIds };
   } else if (ctx.role === "super_agent") {
-    // Super agents see interviews for employers in their territory
+    // Super agents see interviews for employers assigned to their agents
     const { Agent } = await import("@/models/Agent");
     const agents = await Agent.find({ supervisorId: ctx.userId }).select("assignedEmployerIds").lean();
     const allEmployerIds = agents.flatMap((a) => a.assignedEmployerIds ?? []);
@@ -64,4 +64,37 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({ interviews: enriched });
 }
 
+async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  await connectDB();
+  const body = await req.json();
+  const { applicationId, type, scheduledAt, duration, location, meetLink, instructions } = body;
+
+  if (!applicationId || !scheduledAt || !type) {
+    return NextResponse.json({ error: "applicationId, type, and scheduledAt are required" }, { status: 400 });
+  }
+
+  const app = await Application.findById(applicationId).lean();
+  if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404 });
+
+  const interview = await Interview.create({
+    applicationId,
+    jobId: app.jobId,
+    jobSeekerId: app.jobSeekerId,
+    employerId: (app as unknown as { jobId?: { employerId?: string } }).jobId?.employerId ?? body.employerId,
+    agentId: body.agentId,
+    type,
+    scheduledAt: new Date(scheduledAt),
+    duration: duration ?? 30,
+    location,
+    meetLink,
+    instructions,
+    status: "scheduled",
+    reminderSent: false,
+    rescheduleCount: 0,
+  });
+
+  return NextResponse.json({ interview }, { status: 201 });
+}
+
 export const GET = withAuth(handler, { resource: "interviews", action: "read" });
+export const POST = withAuth(postHandler, { resource: "interviews", action: "create" });

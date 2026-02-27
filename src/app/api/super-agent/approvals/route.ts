@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Job from "@/models/Job";
-import Territory from "@/models/Territory";
+import SuperAgent from "@/models/SuperAgent";
+import Agent from "@/models/Agent";
 
 interface AuthCtx {
   userId: string;
@@ -13,9 +14,13 @@ interface AuthCtx {
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
-  // Find the territory managed by this super-agent
-  const territory = await Territory.findOne({ superAgentId: ctx.userId });
-  const territoryFilter = territory ? { territory: territory._id } : {};
+  // Find the super agent's managed agents to scope job approvals
+  const saProfile = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
+  const agentDocIds = saProfile?.agentIds ?? [];
+  const agentDocs = agentDocIds.length > 0
+    ? await Agent.find({ _id: { $in: agentDocIds } }).select("assignedEmployerIds").lean()
+    : [];
+  const employerIds = agentDocs.flatMap((a) => a.assignedEmployerIds ?? []);
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status") ?? "pending";
@@ -23,10 +28,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const limit = parseInt(searchParams.get("limit") ?? "20");
   const skip = (page - 1) * limit;
 
-  const query = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const query: Record<string, any> = {
     approvalStatus: status,
-    ...territoryFilter,
   };
+  if (employerIds.length > 0) {
+    query.employerId = { $in: employerIds };
+  }
 
   const [jobs, total] = await Promise.all([
     Job.find(query)

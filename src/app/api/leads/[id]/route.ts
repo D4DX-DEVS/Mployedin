@@ -50,3 +50,22 @@ export const PATCH = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
 
   return NextResponse.json(lead);
 }, { resource: "leads", action: "update" });
+
+export const DELETE = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
+  await connectDB();
+  const id = req.nextUrl.pathname.split("/").at(-1);
+  const { error } = await verifyLeadAccess(id!, ctx);
+  if (error) return error;
+
+  await Lead.findByIdAndDelete(id);
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "lead.delete",
+    resource: "leads",
+    resourceId: id,
+    req,
+  });
+
+  return NextResponse.json({ message: "Lead deleted" });
+}, { resource: "leads", action: "delete" });

@@ -11,7 +11,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "20");
+  const limit = parseInt(searchParams.get("limit") ?? "10");
   const skip = (page - 1) * limit;
 
   // Build query based on role
@@ -63,4 +63,29 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   });
 }
 
+async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  await connectDB();
+  const body = await req.json();
+  const { type, amount, currency, rate, agentId, superAgentId, placementId, notes } = body;
+
+  if (!type || !amount) {
+    return NextResponse.json({ error: "type and amount are required" }, { status: 400 });
+  }
+
+  const commission = await Commission.create({
+    type,
+    amount,
+    currency: currency ?? "AED",
+    rate,
+    agentId,
+    superAgentId,
+    placementId,
+    notes,
+    status: "pending",
+  });
+
+  return NextResponse.json({ commission }, { status: 201 });
+}
+
 export const GET = withAuth(handler, { resource: "commissions", action: "read" });
+export const POST = withAuth(postHandler, { resource: "commissions", action: "create" });

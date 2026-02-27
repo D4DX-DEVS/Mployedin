@@ -46,7 +46,6 @@ export async function ensureIndexes() {
     // ── SuperAgents ───────────────────────────────────────────────────────────
     await db.collection("superagents").createIndexes([
       { key: { userId: 1 }, unique: true, name: "superagents_userId_unique" },
-      { key: { territoryId: 1 }, name: "superagents_territoryId" },
     ]);
 
     // ── Jobs ──────────────────────────────────────────────────────────────────
@@ -132,10 +131,52 @@ export async function ensureIndexes() {
       { key: { createdAt: -1 }, name: "threads_createdAt_desc" },
     ]);
 
-    // ── Territories ───────────────────────────────────────────────────────────
-    await db.collection("territories").createIndexes([
-      { key: { superAgentId: 1 }, name: "territories_superAgentId" },
-      { key: { countries: 1 }, name: "territories_countries" },
+
+
+    // ── Job Attribute Master Data ─────────────────────────────────────────────
+    const attributeCollections = [
+      "salaryperiods",
+      "ownershiptypes",
+      "maritalstatuses",
+      "resulttypes",
+      "majorsubjects",
+      "degreetypes",
+      "degreelevels",
+      "jobshifts",
+      "jobtypes",
+      "jobskills",
+      "jobexperiences",
+      "industries",
+      "genders",
+      "functionalareas",
+      "careerlevels",
+      "languagelevels",
+    ];
+
+    for (const col of attributeCollections) {
+      await db.collection(col).createIndexes([
+        { key: { slug: 1 }, unique: true, name: `${col}_slug_unique` },
+        { key: { isActive: 1, sortOrder: 1 }, name: `${col}_active_sort` },
+      ]);
+    }
+
+    // ── Location Master Data ──────────────────────────────────────────────────
+    await db.collection("countries").createIndexes([
+      { key: { code: 1 }, unique: true, name: "countries_code_unique" },
+      { key: { isActive: 1, sortOrder: 1 }, name: "countries_active_sort" },
+      { key: { name: 1 }, name: "countries_name" },
+    ]);
+
+    await db.collection("states").createIndexes([
+      { key: { countryId: 1 }, name: "states_countryId" },
+      { key: { slug: 1 }, unique: true, name: "states_slug_unique" },
+      { key: { isActive: 1, sortOrder: 1 }, name: "states_active_sort" },
+    ]);
+
+    await db.collection("cities").createIndexes([
+      { key: { stateId: 1 }, name: "cities_stateId" },
+      { key: { slug: 1 }, unique: true, name: "cities_slug_unique" },
+      { key: { isActive: 1, sortOrder: 1 }, name: "cities_active_sort" },
     ]);
 
     console.log("[DB] Indexes ensured ✅");
