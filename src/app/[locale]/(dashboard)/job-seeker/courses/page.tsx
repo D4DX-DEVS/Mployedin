@@ -76,7 +76,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function JobSeekerCoursesPage() {
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="page-container">
       <PageHeader
         title="Courses & Training"
         description="Boost your skills with curated courses to improve your employability"

@@ -62,7 +62,7 @@ export default function AdminApplicationsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader title="Applications" description="View and manage all job applications across the platform" />
 
       <div className="flex flex-wrap gap-3">

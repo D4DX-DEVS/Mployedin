@@ -56,7 +56,7 @@ export default function InterviewsPage() {
   const past = interviews.filter((i) => new Date(i.scheduledAt) < now || i.status === "cancelled");
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="page-container">
       <PageHeader
         title="Interviews"
         description={`${upcoming.length} upcoming · ${past.length} completed`}

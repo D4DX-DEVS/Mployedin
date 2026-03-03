@@ -56,7 +56,7 @@ export default function SuperAgentApprovalsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader
         title="Regional Job Approvals"
         description="Review and approve job postings within your region before they go live"

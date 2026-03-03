@@ -101,7 +101,7 @@ export default function EmployerBulkInterviewPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHeader
         title="Bulk Interview Scheduling"
         description="Select multiple candidates and schedule interviews simultaneously"

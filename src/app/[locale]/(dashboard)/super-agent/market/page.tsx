@@ -74,7 +74,7 @@ export default function MarketIntelligencePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHeader
         title="AI Market Intelligence"
         description="Real-time Gulf recruitment market insights powered by AI"

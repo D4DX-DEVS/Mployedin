@@ -57,7 +57,7 @@ export default function NewLeadPage() {
   );
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-2xl">
+    <div className="page-container">
       <PageHeader title="New Lead" description="Add a new employer lead to your pipeline" />
 
       <form onSubmit={handleSubmit} className="card-base space-y-5">

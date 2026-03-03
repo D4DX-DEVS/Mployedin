@@ -20,12 +20,12 @@ export function PageHeader({
         className
       )}
     >
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+      <div className="space-y-1.5">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           {title}
         </h1>
         {description && (
-          <p className="text-sm text-muted-foreground/80">{description}</p>
+          <p className="text-[15px] font-medium text-muted-foreground/80">{description}</p>
         )}
       </div>
       {actions && (

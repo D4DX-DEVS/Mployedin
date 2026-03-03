@@ -25,7 +25,7 @@ export default function AdminReportsPage() {
   }, []);
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="page-container">
       <PageHeader title="Reports & Analytics" description="Platform-wide performance metrics and trends" />
 
       {loading ? (

@@ -83,7 +83,7 @@ export default function AgentChatPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="page-container">
       <PageHeader title="Team Channels" description="Internal messaging for agents, super agents and employers" />
 
       <div className="flex h-[calc(100vh-200px)] min-h-96 gap-0 rounded-xl border border-border overflow-hidden">

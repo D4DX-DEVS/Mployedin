@@ -96,7 +96,7 @@ export default function AdminInterviewOversightPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHeader
         title="Interview Oversight"
         description={`${total} interviews across the platform`}

@@ -49,7 +49,7 @@ export default function SuperAgentAgentsPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader title="Agent Performance" description="Monitor agent activity and conversion metrics across your team" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

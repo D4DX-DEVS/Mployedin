@@ -55,7 +55,7 @@ export default function SuperAgentLeadsPage() {
   }, {} as Record<LeadStatus, number>);
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader title="Lead Pipeline" description="All leads across agents in your team" />
 
       {/* Stage counters */}

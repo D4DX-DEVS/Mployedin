@@ -93,7 +93,7 @@ export default function EmployerCandidatesPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="page-container">
       <PageHeader
         title="AI Candidate Matching"
         description="Find the best-fit candidates for your open positions using AI"

@@ -84,7 +84,7 @@ export default function EmployerApplicationsPage() {
   }, {});
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader
         title="Applications"
         description={`${pagination.total} total applicants${jobId ? " for this job" : ""}`}

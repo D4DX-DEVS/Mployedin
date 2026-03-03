@@ -30,7 +30,7 @@ export default function SuperAgentReportsPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="page-container">
       <PageHeader title="Reports" description="Your team's performance overview and key metrics" />
 
       {loading ? (

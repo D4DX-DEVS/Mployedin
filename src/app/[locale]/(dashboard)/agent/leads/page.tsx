@@ -113,7 +113,7 @@ export default function AgentLeadsPage() {
   const byStage = (stage: LeadStatus) => leads.filter((l) => l.status === stage);
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader
         title="Lead Pipeline"
         description="Track and manage employer leads through the sales funnel"

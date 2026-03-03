@@ -59,7 +59,7 @@ export default function EmployerInterviewsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <div className="flex items-start justify-between">
         <PageHeader title="Interviews" description="Manage and track candidate interviews" />
         {can("interviews", "create") && (

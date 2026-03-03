@@ -64,7 +64,7 @@ export default function EmployerPlacementsPage() {
   useEffect(() => { pagination.resetPage(); }, [filter]);
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader
         title="Placements"
         description="Track candidates placed through your job listings"

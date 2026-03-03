@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import type { NavGroup } from "@/lib/nav/menuConfig";
+import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
-import { ChevronLeft, ChevronRight, ChevronDown, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SidebarProps {
   navGroups: NavGroup[];
@@ -17,236 +18,185 @@ interface SidebarProps {
 
 export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
-
   const isRtl = locale === "ar";
-  const CollapseIcon = isRtl
-    ? collapsed
-      ? ChevronLeft
-      : ChevronRight
-    : collapsed
-      ? ChevronRight
-      : ChevronLeft;
 
-  // Close mobile drawer on route change
-  useEffect(() => {
-    onMobileClose?.();
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Flatten all top-level items from groups (usually just 1 group, but just in case)
+  const allMainItems = navGroups.flatMap(g => g.items);
 
-  // Auto-expand accordion group that contains the active page
+  // Find the active main item based on pathname to set initial state
+  const getInitialActiveItem = () => {
+    for (const item of allMainItems) {
+      if (pathname === item.href || pathname.startsWith(item.href + "/")) return item.title;
+      if (item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + "/"))) return item.title;
+    }
+    return allMainItems[0]?.title || "";
+  };
+
+  const [activeMainTitle, setActiveMainTitle] = useState<string>(getInitialActiveItem());
+
+  // Update active item if route changes (e.g. from command menu)
   useEffect(() => {
-    const activeKeys = new Set<string>();
-    for (const group of navGroups) {
-      for (const item of group.items) {
-        if (item.children?.some((child) => pathname === child.href || pathname.startsWith(child.href + "/"))) {
-          activeKeys.add(item.title);
-        }
-      }
-    }
-    if (activeKeys.size > 0) {
-      setOpenGroups((prev) => {
-        const next = new Set(prev);
-        activeKeys.forEach((k) => next.add(k));
-        return next;
-      });
-    }
+    const current = getInitialActiveItem();
+    if (current) setActiveMainTitle(current);
+    // eslint-disable-next-deps
   }, [pathname, navGroups]);
 
-  // Prevent body scroll when mobile drawer open
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (mobileOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
 
-  function toggleGroup(label: string) {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) {
-        next.delete(label);
-      } else {
-        next.add(label);
-      }
-      return next;
-    });
-  }
+  const activeMainItem = allMainItems.find(i => i.title === activeMainTitle);
+  const hasSubmenu = activeMainItem?.children && activeMainItem.children.length > 0;
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + "/");
   }
 
-  const navContent = (
-    <>
+  // --- Primary Icon Sidebar ---
+  const primarySidebar = (
+    <div className="w-[80px] h-full flex flex-col bg-brand-blue-dark border-r border-[#ffffff1a] z-20 shrink-0">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border">
-        <div className="flex-shrink-0 w-8 h-8 rounded-full brand-gradient flex items-center justify-center shadow-soft">
-          <span className="text-white text-xs font-bold">M</span>
+      <div className="h-16 flex items-center justify-center border-b border-[#ffffff1a] shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg font-bold text-xl ring-1 ring-white/20">
+          M
         </div>
-        {!collapsed && (
-          <span className="text-sidebar-fg font-bold text-lg tracking-tight">
-            mployedin
-          </span>
-        )}
-        {/* Mobile close button */}
-        <button
-          onClick={() => onMobileClose?.()}
-          className="ml-auto lg:hidden flex h-8 w-8 items-center justify-center rounded-lg text-sidebar-fg/60 hover:text-sidebar-fg hover:bg-sidebar-hover-bg"
-          aria-label="Close menu"
-        >
-          <X className="w-5 h-5" />
-        </button>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2 sidebar-scroll">
-        {navGroups.map((group, gi) => (
-          <div key={gi} className="mb-2">
-            {group.items.map((item) => {
-              const hasChildren = item.children && item.children.length > 0;
-              const groupKey = item.title;
-              const open = openGroups.has(groupKey);
-              const childActive = hasChildren && item.children!.some((c) => isActive(c.href));
-              const active = isActive(item.href) || childActive;
+      {/* Icon Nav */}
+      <nav className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-4 items-center sidebar-scroll">
+        <TooltipProvider>
+          {allMainItems.map(item => {
+            const Icon = getIcon(item.icon);
+            const isSelected = activeMainTitle === item.title;
+            const childActive = item.children?.some(c => isActive(c.href));
+            const isReallyActive = isActive(item.href) || childActive;
 
-              return (
-                <div key={item.title + item.href}>
-                  {hasChildren ? (
+            return (
+              <Tooltip key={item.title} delayDuration={0}>
+                <TooltipTrigger asChild>
+                  {item.children && item.children.length > 0 ? (
                     <button
-                      onClick={() => toggleGroup(groupKey)}
+                      onClick={() => setActiveMainTitle(item.title)}
                       className={cn(
-                        "sidebar-item w-full text-left mb-0.5",
-                        childActive && "sidebar-item-active",
-                        collapsed && "justify-center"
+                        "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group relative",
+                        isSelected
+                          ? "bg-white text-primary shadow-lg shadow-black/20"
+                          : "text-white/60 hover:bg-white/10 hover:text-white"
                       )}
                     >
-                      {(() => { const Icon = getIcon(item.icon); return <Icon className={cn("sidebar-icon", childActive ? "text-sidebar-active-fg" : "text-sidebar-icon")} />; })()}
-                      {!collapsed && (
-                        <>
-                          <span className="sidebar-label font-medium">
-                            {locale === "ar" ? item.titleAr : item.title}
-                          </span>
-                          <ChevronDown
-                            className={cn(
-                              "w-4 h-4 ml-auto transition-transform duration-200",
-                              open && "rotate-180"
-                            )}
-                          />
-                        </>
+                      <Icon className="w-[22px] h-[22px] shrink-0" />
+                      {isSelected && (
+                        <div className={cn("absolute w-1.5 h-6 bg-white rounded-full", isRtl ? "-left-1.5" : "-right-1.5")} />
                       )}
                     </button>
                   ) : (
                     <Link
                       href={item.href}
+                      onClick={() => {
+                        setActiveMainTitle(item.title);
+                        onMobileClose?.();
+                      }}
                       className={cn(
-                        "sidebar-item mb-0.5",
-                        active && "sidebar-item-active",
-                        collapsed && "justify-center"
+                        "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group relative",
+                        isSelected
+                          ? "bg-white text-primary shadow-lg shadow-black/20"
+                          : "text-white/60 hover:bg-white/10 hover:text-white"
                       )}
                     >
-                      {(() => { const Icon = getIcon(item.icon); return <Icon className={cn("sidebar-icon", active ? "text-sidebar-active-fg" : "text-sidebar-icon")} />; })()}
-                      {!collapsed && (
-                        <span className="sidebar-label font-medium">
-                          {locale === "ar" ? item.titleAr : item.title}
-                        </span>
-                      )}
-                      {!collapsed && item.badge && (
-                        <span className="ml-auto text-[10px] font-bold tracking-wide uppercase bg-primary/10 text-primary rounded-full px-2 py-0.5">
-                          {item.badge}
-                        </span>
+                      <Icon className="w-[22px] h-[22px] shrink-0" />
+                      {isSelected && (
+                        <div className={cn("absolute w-1.5 h-6 bg-white rounded-full", isRtl ? "-left-1.5" : "-right-1.5")} />
                       )}
                     </Link>
                   )}
-
-                  {/* Accordion sub-items with icons */}
-                  {hasChildren && !collapsed && (
-                    <div
-                      className={cn(
-                        "overflow-hidden transition-all duration-200 ease-in-out",
-                        open ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
-                      )}
-                    >
-                      <div className="ml-[1.15rem] mt-0.5 mb-1 border-l-2 border-sidebar-border pl-3 space-y-0.5">
-                        {item.children!.map((child) => {
-                          const ChildIcon = getIcon(child.icon);
-                          const childIsActive = isActive(child.href);
-                          return (
-                            <Link
-                              key={child.href}
-                              href={child.href}
-                              className={cn(
-                                "sidebar-item text-sm py-1.5 px-3 rounded-md transition-colors",
-                                childIsActive
-                                  ? "text-sidebar-active-fg font-medium bg-sidebar-active-bg/50"
-                                  : "text-sidebar-fg/70 hover:text-sidebar-fg hover:bg-sidebar-hover-bg"
-                              )}
-                            >
-                              <ChildIcon className={cn(
-                                "w-4 h-4 flex-shrink-0",
-                                childIsActive ? "text-sidebar-active-fg" : "text-sidebar-icon"
-                              )} />
-                              <span className="sidebar-label">
-                                {locale === "ar" ? child.titleAr : child.title}
-                              </span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
+                </TooltipTrigger>
+                <TooltipContent side={isRtl ? "left" : "right"} sideOffset={14} className="font-semibold px-3 py-1.5 rounded-lg shadow-xl border-white/10 bg-[#0F172A] text-white">
+                  {locale === "ar" ? item.titleAr : item.title}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </TooltipProvider>
       </nav>
-    </>
+    </div>
+  );
+
+  // --- Secondary Submenu Sidebar ---
+  const secondarySidebar = (
+    <div className={cn(
+      "h-full overflow-hidden transition-[width] duration-300 ease-in-out bg-surface-2 border-r border-sidebar-border z-10 flex flex-col shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
+      hasSubmenu ? "w-[240px]" : "w-0 border-r-0"
+    )}>
+      {activeMainItem && hasSubmenu && (
+        <div className="flex flex-col h-full min-w-[240px]">
+          <div className="h-16 flex items-center px-6 border-b border-sidebar-border/50 shrink-0 bg-background/50 backdrop-blur-sm">
+            <h2 className="font-bold text-[15px] tracking-tight text-sidebar-fg">
+              {locale === "ar" ? activeMainItem.titleAr : activeMainItem.title}
+            </h2>
+            {/* Mobile Close Button in Submenu Header */}
+            <button
+              onClick={() => onMobileClose?.()}
+              className="lg:hidden ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <nav className="flex-1 overflow-y-auto py-5 px-3 sidebar-scroll">
+            <div className="space-y-1">
+              {activeMainItem.children!.map(child => {
+                const ChildIcon = getIcon(child.icon);
+                const isChildActive = isActive(child.href);
+                return (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    onClick={() => onMobileClose?.()}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative overflow-hidden",
+                      isChildActive
+                        ? "bg-white text-primary font-bold shadow-sm ring-1 ring-border/50"
+                        : "text-sidebar-fg/70 hover:bg-white hover:text-sidebar-fg font-medium hover:shadow-sm hover:ring-1 hover:ring-border/50"
+                    )}
+                  >
+                    {isChildActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full" />
+                    )}
+                    <ChildIcon className={cn(
+                      "w-[18px] h-[18px] shrink-0 transition-colors",
+                      isChildActive ? "text-primary" : "text-muted-foreground group-hover:text-brand-blue"
+                    )} />
+                    <span className="truncate">{locale === "ar" ? child.titleAr : child.title}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        </div>
+      )}
+    </div>
   );
 
   return (
     <>
-      {/* Desktop sidebar — hidden on mobile */}
-      <aside
-        className={cn(
-          "sidebar relative hidden lg:flex flex-col transition-all duration-300 overflow-hidden",
-          collapsed ? "sidebar-collapsed" : "sidebar-expanded"
-        )}
-      >
-        {navContent}
-
-        {/* Desktop collapse toggle */}
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          className="absolute -right-3 top-20 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-fg/50 hover:text-sidebar-fg shadow-sm transition-colors"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <CollapseIcon className="w-3 h-3" />
-        </button>
+      {/* --- Desktop Layout --- */}
+      <aside className="hidden lg:flex h-full transition-all duration-300 relative z-40 bg-background">
+        {primarySidebar}
+        {secondarySidebar}
       </aside>
 
-      {/* Mobile overlay drawer */}
+      {/* --- Mobile Layout Overlay --- */}
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-50 lg:hidden"
-          role="dialog"
-          aria-modal="true"
-        >
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => onMobileClose?.()}
-          />
-          {/* Drawer */}
-          <aside
-            className={cn(
-              "sidebar absolute top-0 bottom-0 flex flex-col w-[280px] max-w-[85vw] z-10 animate-in slide-in-from-left duration-300",
-              isRtl && "right-0 left-auto slide-in-from-right"
-            )}
-          >
-            {navContent}
+        <div className="fixed inset-0 z-50 lg:hidden flex" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => onMobileClose?.()} />
+
+          <aside className={cn(
+            "relative flex h-full max-w-[85vw] animate-in slide-in-from-left duration-300 ease-out shadow-2xl bg-background",
+            isRtl && "right-0 left-auto slide-in-from-right"
+          )}>
+            {primarySidebar}
+            {secondarySidebar}
           </aside>
         </div>
       )}
@@ -254,15 +204,14 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose }
   );
 }
 
-/** Hamburger button — exported for use in the top bar */
 export function MobileMenuButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="lg:hidden flex h-9 w-9 items-center justify-center rounded-lg hover:bg-accent transition-colors"
+      className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-border/50 bg-background hover:bg-muted shadow-sm transition-colors"
       aria-label="Open menu"
     >
-      <Menu className="h-5 w-5" />
+      <Menu className="h-5 w-5 text-foreground" />
     </button>
   );
 }

@@ -8,7 +8,7 @@ export default async function JobSeekerDashboard({ params }: { params: Promise<{
   const session = await auth();
   if (!session?.user) redirect(`/${locale}/login`);
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHeader
         title={`Welcome back, ${session.user.name?.split(" ")[0] ?? "there"}!`}
         description="Your career journey at a glance"

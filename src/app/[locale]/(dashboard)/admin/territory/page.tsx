@@ -64,7 +64,7 @@ export default function AdminTerritoryPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader
         title="Territory Management"
         description="Manage geographic territories and super-agent assignments"
