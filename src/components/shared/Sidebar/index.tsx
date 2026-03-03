@@ -23,11 +23,23 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose }
   // Flatten all top-level items from groups (usually just 1 group, but just in case)
   const allMainItems = navGroups.flatMap(g => g.items);
 
-  // Find the active main item based on pathname to set initial state
+  // Find the active main item based on exact matches first, then prefixes
   const getInitialActiveItem = () => {
+    // 1. Exact match for a child item
     for (const item of allMainItems) {
-      if (pathname === item.href || pathname.startsWith(item.href + "/")) return item.title;
-      if (item.children?.some(c => pathname === c.href || pathname.startsWith(c.href + "/"))) return item.title;
+      if (item.children?.some(c => pathname === c.href)) return item.title;
+    }
+    // 2. Exact match for a main item
+    for (const item of allMainItems) {
+      if (pathname === item.href) return item.title;
+    }
+    // 3. Prefix match for a child (e.g. /admin/jobs/new matches /admin/jobs)
+    for (const item of allMainItems) {
+      if (item.children?.some(c => pathname.startsWith(c.href + "/"))) return item.title;
+    }
+    // 4. Prefix match for a main item
+    for (const item of allMainItems) {
+      if (pathname.startsWith(item.href + "/")) return item.title;
     }
     return allMainItems[0]?.title || "";
   };
@@ -56,10 +68,10 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose }
 
   // --- Primary Icon Sidebar ---
   const primarySidebar = (
-    <div className="w-[80px] h-full flex flex-col bg-brand-blue-dark border-r border-[#ffffff1a] z-20 shrink-0">
+    <div className="w-[80px] h-full flex flex-col bg-slate-900 border-r border-slate-800 z-20 shrink-0">
       {/* Logo */}
-      <div className="h-16 flex items-center justify-center border-b border-[#ffffff1a] shrink-0">
-        <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg font-bold text-xl ring-1 ring-white/20">
+      <div className="h-16 flex items-center justify-center border-b border-slate-800 shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg font-bold text-xl ring-1 ring-white/20">
           M
         </div>
       </div>
@@ -112,7 +124,7 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose }
                     </Link>
                   )}
                 </TooltipTrigger>
-                <TooltipContent side={isRtl ? "left" : "right"} sideOffset={14} className="font-semibold px-3 py-1.5 rounded-lg shadow-xl border-white/10 bg-[#0F172A] text-white">
+                <TooltipContent side={isRtl ? "left" : "right"} sideOffset={14} className="font-semibold px-3 py-1.5 rounded-lg shadow-xl border-slate-800 bg-slate-900 text-white">
                   {locale === "ar" ? item.titleAr : item.title}
                 </TooltipContent>
               </Tooltip>
