@@ -146,7 +146,7 @@ Employment types: full_time, part_time, contract, internship, freelance`;
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-3xl mx-auto">
+    <div className="page-container">
       <PageHeader
         title="AI Job Creator"
         description="Describe the role you need in natural language — AI will build the job posting for you"

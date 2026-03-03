@@ -53,7 +53,7 @@ export default function SuperAgentCommissionsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader title="Commission Management" description="Review and approve agent commission payouts" />
 
       <div className="flex gap-3">

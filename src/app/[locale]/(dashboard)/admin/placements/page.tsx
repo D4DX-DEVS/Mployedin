@@ -112,7 +112,7 @@ export default function AdminPlacementsPage() {
   const unpaidCommissions = placements.filter(p => !p.commissionPaid).length;
 
   return (
-    <div className="space-y-5">
+    <div className="page-container">
       <PageHeader title="Placement Tracking" description={`${total} placements · Total salary value: ${totalValue.toLocaleString()} AED`} />
 
       {/* Summary Cards */}

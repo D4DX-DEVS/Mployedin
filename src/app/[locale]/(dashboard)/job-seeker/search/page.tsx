@@ -66,7 +66,7 @@ export default function JobSeekerNLSearchPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="page-container">
       <PageHeader
         title="AI Job Search"
         description='Search jobs in plain English — "I want a senior DevOps role in Dubai with remote option"'

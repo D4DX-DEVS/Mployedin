@@ -216,7 +216,7 @@ export default function AdminAgentsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <div className="flex items-center justify-between">
         <PageHeader title="Agents" description="Manage recruitment agents and their assigned regions" />
         {can("agents", "create") && (

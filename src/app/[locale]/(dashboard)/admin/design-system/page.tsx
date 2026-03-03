@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function DesignSystemPage() {
   return (
-    <div className="space-y-10 max-w-4xl">
+    <div className="page-container">
       <PageHeader
         title="Design System"
         description="MPLOYEDIN component library and design tokens showcase"

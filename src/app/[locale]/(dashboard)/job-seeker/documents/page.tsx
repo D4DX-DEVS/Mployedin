@@ -89,7 +89,7 @@ export default function JobSeekerDocumentsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-2xl mx-auto">
+    <div className="page-container">
       <PageHeader
         title="CV & Documents"
         description="Upload your CV and let AI extract your profile information automatically"

@@ -44,7 +44,7 @@ export default function AgentPlacementsPage() {
   useEffect(() => { fetchPlacements(); }, [fetchPlacements]);
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader title="Placements" description="Track all successful placements you've made" />
 
       <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">

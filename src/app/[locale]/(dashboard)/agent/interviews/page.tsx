@@ -76,7 +76,7 @@ export default function AgentInterviewsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader title="Interviews" description="Manage interviews scheduled for your candidates" />
 
       <div className="flex gap-3">

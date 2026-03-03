@@ -147,7 +147,7 @@ export default function JobAttributePage({ category, title, titleAr, description
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       {/* Header */}
       <div className="flex items-center justify-between">
         <PageHeader
@@ -303,12 +303,12 @@ export default function JobAttributePage({ category, title, titleAr, description
         initialValues={
           editItem
             ? {
-                name: editItem.name ?? "",
-                nameAr: editItem.nameAr ?? "",
-                slug: editItem.slug ?? "",
-                sortOrder: String(editItem.sortOrder ?? 0),
-                isActive: String(editItem.isActive ?? true),
-              }
+              name: editItem.name ?? "",
+              nameAr: editItem.nameAr ?? "",
+              slug: editItem.slug ?? "",
+              sortOrder: String(editItem.sortOrder ?? 0),
+              isActive: String(editItem.isActive ?? true),
+            }
             : undefined
         }
         onSubmit={handleEdit}

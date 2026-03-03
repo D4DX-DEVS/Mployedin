@@ -66,7 +66,7 @@ export default function JobSeekerProfilePage() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 space-y-4 animate-pulse">
+      <div className="page-container">
         <div className="h-8 bg-muted rounded w-48" />
         <div className="h-32 bg-muted rounded-xl" />
         <div className="h-64 bg-muted rounded-xl" />

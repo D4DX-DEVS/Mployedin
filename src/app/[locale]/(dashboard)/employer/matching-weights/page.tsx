@@ -77,7 +77,7 @@ export default function EmployerMatchingWeightsPage() {
   const isTotalValid = total === 100;
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHeader
         title="AI Matching Weights"
         description="Customise how candidates are scored and ranked for your roles"

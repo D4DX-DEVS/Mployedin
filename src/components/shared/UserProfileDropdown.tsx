@@ -136,11 +136,11 @@ export function UserProfileDropdown({
 
   const initials = userName
     ? userName
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
     : "U";
 
   return (
@@ -154,7 +154,7 @@ export function UserProfileDropdown({
 
         <DropdownMenuContent
           align="end"
-          className="w-72"
+          className="w-72 bg-background z-50 shadow-xl border border-border/60 rounded-xl overflow-hidden p-1"
           sideOffset={8}
         >
           {/* User info header */}
@@ -202,22 +202,22 @@ export function UserProfileDropdown({
 
           {/* Reset Password */}
           <DropdownMenuItem
-            className="cursor-pointer gap-2"
+            className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
             onSelect={() => setResetOpen(true)}
           >
             <KeyRound className="h-4 w-4" />
-            {isAr ? "تغيير كلمة المرور" : "Change Password"}
+            <span className="font-medium text-sm">{isAr ? "تغيير كلمة المرور" : "Change Password"}</span>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
 
           {/* Logout */}
           <DropdownMenuItem
-            className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+            className="cursor-pointer gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 rounded-md transition-colors"
             onSelect={handleLogout}
           >
             <LogOut className="h-4 w-4" />
-            {isAr ? "تسجيل الخروج" : "Logout"}
+            <span className="font-medium text-sm">{isAr ? "تسجيل الخروج" : "Logout"}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -326,8 +326,8 @@ export function UserProfileDropdown({
                   ? "جاري التغيير..."
                   : "Changing..."
                 : isAr
-                ? "تغيير كلمة المرور"
-                : "Change Password"}
+                  ? "تغيير كلمة المرور"
+                  : "Change Password"}
             </Button>
           </DialogFooter>
         </DialogContent>

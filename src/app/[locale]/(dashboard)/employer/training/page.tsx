@@ -82,7 +82,7 @@ export default function EmployerTrainingTrackerPage() {
   const inProgress = items.filter(i => i.status === "in_progress").length;
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHeader
         title="Training Tracker"
         description={`${completed}/${items.length} courses completed · ${inProgress} in progress`}

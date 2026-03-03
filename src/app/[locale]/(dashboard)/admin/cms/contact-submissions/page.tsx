@@ -88,7 +88,7 @@ export default function ContactSubmissionsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Contact Inbox</h1>
         <p className="text-muted-foreground text-sm mt-1">View messages from the public contact form</p>

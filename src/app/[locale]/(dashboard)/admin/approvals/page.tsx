@@ -63,7 +63,7 @@ export default function AdminApprovalsPage() {
   const rejected = jobs.filter((j) => j["poster.approvalStatus"] === "rejected");
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="page-container">
       <PageHeader
         title="Approvals Queue"
         description="Review and approve job postings before they go live"

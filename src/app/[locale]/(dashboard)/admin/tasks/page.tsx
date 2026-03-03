@@ -74,7 +74,7 @@ export default function TaskBoardPage() {
   const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHeader
         title="Task Board"
         description="MPLOYEDIN development progress tracker"

@@ -75,7 +75,7 @@ export default function AdminJobSeekersPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-container">
       <PageHeader title="Job Seekers" description="Browse and manage all candidate profiles" />
 
       <div className="relative w-64">

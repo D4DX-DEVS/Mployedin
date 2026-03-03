@@ -18,7 +18,7 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-2xl">
+    <div className="page-container">
       <PageHeader title="Settings" description="Configure platform-wide settings and preferences" />
 
       <div className="bg-card rounded-xl shadow-sm border divide-y">
