@@ -33,7 +33,18 @@ export default function LoginPage() {
     if (result?.error) {
       setError("Invalid email or password. Please try again.");
     } else {
-      router.push(`/${locale}/admin`);
+      // Get session to determine role-based redirect
+      const sessionRes = await fetch("/api/auth/session");
+      const session = await sessionRes.json();
+      const role = (session?.user?.role as string) ?? "job_seeker";
+      const dashMap: Record<string, string> = {
+        admin: "admin",
+        employer: "employer",
+        job_seeker: "job-seeker",
+        agent: "agent",
+        super_agent: "super-agent",
+      };
+      router.push(`/${locale}/${dashMap[role] ?? "job-seeker"}`);
     }
   }
 
@@ -126,7 +137,7 @@ export default function LoginPage() {
         <Button
           variant="outline"
           className="h-11 bg-transparent hover:bg-muted/50 border-border font-medium transition-colors"
-          onClick={() => signIn("google", { callbackUrl: `/${locale}/admin` })}
+          onClick={() => signIn("google", { callbackUrl: `/${locale}/login` })}
         >
           <svg className="w-5 h-5 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -139,7 +150,7 @@ export default function LoginPage() {
         <Button
           variant="outline"
           className="h-11 bg-transparent hover:bg-muted/50 border-border font-medium transition-colors"
-          onClick={() => signIn("linkedin", { callbackUrl: `/${locale}/admin` })}
+          onClick={() => signIn("linkedin", { callbackUrl: `/${locale}/login` })}
         >
           <svg className="w-5 h-5 mr-0.5 fill-[#0A66C2]" viewBox="0 0 24 24">
             <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
@@ -154,7 +165,14 @@ export default function LoginPage() {
           href={`/${locale}/register`}
           className="text-primary hover:text-primary/80 font-semibold transition-colors"
         >
-          Sign up
+          Create account
+        </Link>
+        {" · "}
+        <Link
+          href={`/${locale}/employer-register`}
+          className="text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
+        >
+          Post jobs as employer
         </Link>
       </p>
     </div>

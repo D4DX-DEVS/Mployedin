@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Sparkles, Plus, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Plus, X, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +28,20 @@ interface FormData {
   expiresAt: string;
 }
 
+interface JobTemplateData {
+  _id: string;
+  name: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  requirements?: FormData["requirements"];
+  salary?: FormData["salary"];
+  location?: { country?: string; city?: string; isRemote?: boolean };
+  tags?: string[];
+  vacancies?: number;
+  applicationMode?: "auto" | "manual";
+}
+
 export default function NewJobPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
@@ -48,6 +62,92 @@ export default function NewJobPage() {
   const [error, setError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [templates, setTemplates] = useState<JobTemplateData[]>([]);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [showSaveTemplateInput, setShowSaveTemplateInput] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  // Load templates when modal opens
+  useEffect(() => {
+    if (showTemplateModal && templates.length === 0) {
+      loadTemplates();
+    }
+  }, [showTemplateModal, templates.length]);
+
+  async function loadTemplates() {
+    setLoadingTemplates(true);
+    try {
+      const res = await fetch("/api/employers/job-templates");
+      if (res.ok) {
+        const data = await res.json();
+        setTemplates(data.templates);
+      }
+    } catch (e) {
+      console.error("Failed to load templates", e);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  }
+
+  function applyTemplate(template: JobTemplateData) {
+    const newForm: FormData = {
+      title: template.title || form.title,
+      description: template.description || form.description,
+      category: template.category || form.category,
+      location: (template.location?.city && template.location?.country)
+        ? `${template.location.city}, ${template.location.country}`
+        : form.location,
+      requirements: template.requirements || form.requirements,
+      salary: template.salary || form.salary,
+      applicationMode: template.applicationMode || form.applicationMode,
+      expiresAt: form.expiresAt,
+    };
+    setForm(newForm);
+    setShowTemplateModal(false);
+  }
+
+  async function saveAsTemplate() {
+    if (!templateName.trim()) {
+      setError("Template name is required");
+      return;
+    }
+
+    setSavingTemplate(true);
+    setError("");
+    try {
+      const res = await fetch("/api/employers/job-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: templateName,
+          title: form.title,
+          description: form.description,
+          category: form.category,
+          requirements: form.requirements,
+          salary: form.salary,
+          location: form.location ? { city: form.location.split(",")[0]?.trim(), country: form.location.split(",")[1]?.trim() } : undefined,
+          applicationMode: form.applicationMode,
+        }),
+      });
+
+      if (res.ok) {
+        setTemplateName("");
+        setShowSaveTemplateInput(false);
+        // Reload templates
+        setTemplates([]);
+      } else {
+        const err = await res.json();
+        setError(err.error ?? "Failed to save template");
+      }
+    } catch (e) {
+      setError("Failed to save template. Please try again.");
+      console.error(e);
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
 
   function setField<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -136,9 +236,58 @@ export default function NewJobPage() {
         description="Create a job posting to attract qualified candidates"
       />
 
+      {/* Load Template Button */}
+      <div className="mb-5 flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setShowTemplateModal(true)}
+          className="flex gap-2"
+        >
+          <Copy className="w-4 h-4" />
+          Load Template
+        </Button>
+      </div>
+
+      {/* Template Modal */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
+            <h2 className="text-lg font-semibold">Select a Template</h2>
+            {loadingTemplates ? (
+              <p className="text-sm text-muted-foreground py-4">Loading templates...</p>
+            ) : templates.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">No templates saved yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {templates.map((template) => (
+                  <button
+                    key={template._id}
+                    type="button"
+                    onClick={() => applyTemplate(template)}
+                    className="w-full text-left p-3 rounded-lg border border-border hover:bg-accent transition-colors"
+                  >
+                    <p className="font-medium text-sm">{template.name}</p>
+                    {template.title && <p className="text-xs text-muted-foreground">{template.title}</p>}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowTemplateModal(false)}
+              className="w-full"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Basic info */}
-        <div className="card-base space-y-4">
+        <div className="card-base p-5 space-y-4">
           <h2 className="text-sm font-semibold">Basic Information</h2>
 
           <div>
@@ -175,7 +324,7 @@ export default function NewJobPage() {
         </div>
 
         {/* Description */}
-        <div className="card-base space-y-3">
+        <div className="card-base p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">
               Job Description <span className="text-destructive">*</span>
@@ -203,7 +352,7 @@ export default function NewJobPage() {
         </div>
 
         {/* Requirements */}
-        <div className="card-base space-y-4">
+        <div className="card-base p-5 space-y-4">
           <h2 className="text-sm font-semibold">Requirements</h2>
 
           <div>
@@ -255,7 +404,7 @@ export default function NewJobPage() {
         </div>
 
         {/* Salary */}
-        <div className="card-base space-y-4">
+        <div className="card-base p-5 space-y-4">
           <h2 className="text-sm font-semibold">Salary Package</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
@@ -289,7 +438,7 @@ export default function NewJobPage() {
         </div>
 
         {/* Advanced (collapsible) */}
-        <div className="card-base space-y-4">
+        <div className="card-base p-5 space-y-4">
           <button
             type="button"
             className="flex items-center justify-between w-full text-sm font-semibold"
@@ -333,6 +482,49 @@ export default function NewJobPage() {
 
         {error && (
           <p className="text-sm text-destructive p-3 bg-destructive/10 rounded-lg">{error}</p>
+        )}
+
+        {/* Save as Template Section */}
+        {!showSaveTemplateInput ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSaveTemplateInput(true)}
+          >
+            Save as Template
+          </Button>
+        ) : (
+          <div className="card-base p-5 space-y-3">
+            <label className="text-xs font-medium text-muted-foreground">Template Name</label>
+            <Input
+              placeholder="e.g. Senior Dev Template"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={saveAsTemplate}
+                disabled={savingTemplate || !templateName.trim()}
+              >
+                {savingTemplate ? "Saving…" : "Save Template"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setShowSaveTemplateInput(false);
+                  setTemplateName("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
         )}
 
         <div className="flex gap-3">

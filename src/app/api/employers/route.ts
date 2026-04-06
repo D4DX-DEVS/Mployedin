@@ -3,8 +3,10 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
-
+import { validateBody } from "@/lib/validators";
+import { employerAdminCreateSchema } from "@/lib/validators/employers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import bcrypt from "bcryptjs";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
@@ -49,13 +51,17 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 }
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
-  await connectDB();
-  const body = await req.json();
-  const { name, email, password, companyName, industry, location, phone } = body;
-
-  if (!name || !email || !password) {
-    return NextResponse.json({ error: "name, email, and password are required" }, { status: 400 });
+  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.employers);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
   }
+
+  await connectDB();
+  const body = await validateBody(req, employerAdminCreateSchema);
+  const { name, email, password, companyName, industry, location, phone } = body;
 
   const existing = await User.findOne({ email });
   if (existing) return NextResponse.json({ error: "Email already in use" }, { status: 409 });

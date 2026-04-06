@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { Bot, X, Send, Minimize2, Maximize2, History, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,10 +39,16 @@ export function ConversationalAI({
   const [threadId, setThreadId] = useState<string | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const loadHistory = useCallback(async () => {
@@ -173,7 +180,9 @@ export function ConversationalAI({
     }
   }
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       {!open && (
         <button
@@ -278,7 +287,7 @@ export function ConversationalAI({
           {!minimized && !showHistory && (
             <>
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
                 {messages.length === 0 && (
                   <div className="text-center text-muted-foreground text-sm mt-8">
                     <Bot className="h-8 w-8 mx-auto mb-2 text-primary/50" />
@@ -342,6 +351,7 @@ export function ConversationalAI({
         </div>
         </>
       )}
-    </>
+    </>,
+    document.body
   );
 }

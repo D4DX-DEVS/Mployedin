@@ -45,7 +45,11 @@ export function NotificationBell({ locale }: NotificationBellProps) {
 
   async function markAllRead() {
     try {
-      await fetch("/api/notifications/mark-all-read", { method: "PATCH" });
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAllRead: true }),
+      });
       setUnreadCount(0);
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {

@@ -5,8 +5,19 @@ export type ApplicationStatus =
   | "shortlisted"
   | "interview_scheduled"
   | "selected"
+  | "offer"
+  | "hired"
   | "rejected"
   | "withdrawn";
+
+export interface INote {
+  _id: mongoose.Types.ObjectId;
+  authorId: mongoose.Types.ObjectId;
+  authorName: string;
+  content: string;
+  mentions: mongoose.Types.ObjectId[];
+  createdAt: Date;
+}
 
 export interface IAIMatchBreakdown {
   skills: number;
@@ -31,6 +42,9 @@ export interface IApplication extends Document {
   rejectionReason?: string;
   employerNotes?: string;
   agentNotes?: string;
+  withdrawalReason?: string;
+  withdrawalNote?: string;
+  notes: INote[];
   appliedAt: Date;
   statusHistory: {
     status: ApplicationStatus;
@@ -55,6 +69,8 @@ const ApplicationSchema = new Schema<IApplication>(
         "shortlisted",
         "interview_scheduled",
         "selected",
+        "offer",
+        "hired",
         "rejected",
         "withdrawn",
       ],
@@ -81,6 +97,28 @@ const ApplicationSchema = new Schema<IApplication>(
     rejectionReason: String,
     employerNotes: String,
     agentNotes: String,
+    withdrawalReason: {
+      type: String,
+      enum: [
+        "accepted_elsewhere",
+        "salary_too_low",
+        "bad_experience",
+        "too_slow_process",
+        "changed_mind",
+        "personal_reasons",
+        "other",
+      ],
+    },
+    withdrawalNote: { type: String, maxlength: 500 },
+    notes: [
+      {
+        authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        authorName: { type: String, required: true },
+        content: { type: String, required: true, maxlength: 2000 },
+        mentions: [{ type: Schema.Types.ObjectId, ref: "User" }],
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
     appliedAt: { type: Date, default: Date.now },
     statusHistory: [
       {

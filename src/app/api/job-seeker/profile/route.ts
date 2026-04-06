@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { jobSeekerProfileUpdateSchema } from "@/lib/validators/job-seekers";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -27,7 +29,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, jobSeekerProfileUpdateSchema);
 
   // Strip protected fields
   const { userId: _u, _id: _i, createdAt: _c, updatedAt: _up, ...safeUpdate } = body;

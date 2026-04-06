@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import mongoose, { Model, Document } from "mongoose";
+import { validateBody } from "@/lib/validators";
+import { trainingUpdateSchema } from "@/lib/validators/misc";
 
 interface ITrainingItem extends Document {
   employerUserId: string;
@@ -22,7 +24,7 @@ async function PATCH(
   const id = params?.id;
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-  const body = await req.json();
+  const body = await validateBody(req, trainingUpdateSchema);
 
   const TrainingItem = getTrainingModel();
   const item = await TrainingItem.findOneAndUpdate(

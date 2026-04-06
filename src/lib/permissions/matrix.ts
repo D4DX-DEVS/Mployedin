@@ -9,7 +9,7 @@ export const ALL_RESOURCES: Resource[] = [
   "commissions", "employers", "agents", "job_seekers", "super_agents",
   "users", "notifications", "reports", "audit_logs",
   "ai_cv", "ai_match", "ai_assistant", "tasks", "design_system",
-  "job_attributes", "location_data", "cms", "contact_submissions",
+  "job_attributes", "location_data", "cms", "contact_submissions", "offers",
 ];
 
 /** All available actions */
@@ -42,6 +42,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     location_data: ["create", "read", "update", "delete"],
     cms: ["create", "read", "update", "delete"],
     contact_submissions: ["read", "update", "delete"],
+    offers: ["create", "read", "update", "delete"],
   },
   super_agent: {
     jobs: ["read", "export"],
@@ -75,8 +76,10 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     applications: ["read", "update"],
     interviews: ["create", "read", "update"],
     placements: ["read"],
+    employers: ["read", "update"],
     notifications: ["read"],
     ai_assistant: ["read"],
+    offers: ["create", "read", "update", "delete"],
   },
   job_seeker: {
     jobs: ["read"],
@@ -86,6 +89,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     ai_cv: ["read"],
     ai_match: ["read"],
     ai_assistant: ["read"],
+    offers: ["read"],
   },
 };
 

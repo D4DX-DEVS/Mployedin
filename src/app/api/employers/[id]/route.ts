@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { validateBody } from "@/lib/validators";
+import { employerAdminUpdateSchema } from "@/lib/validators/employers";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -19,10 +21,20 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const user = await User.findById(params?.id);
   if (!user) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
 
-  const body = await req.json();
-  const allowed = ["name", "email", "companyName", "industry", "location", "phone", "isActive"];
+  // IDOR: agents can only update employers assigned to them
+  if (ctx.role === "agent") {
+    const { Agent } = await import("@/models/Agent");
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
+    if (!agent?.assignedEmployerIds?.map(String).includes(params!.id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (ctx.role === "employer" && ctx.userId !== params?.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const body = await validateBody(req, employerAdminUpdateSchema);
   const update: Record<string, unknown> = {};
-  for (const k of allowed) if (body[k] !== undefined) update[k] = body[k];
+  for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
 
   Object.assign(user, update);
   await user.save();

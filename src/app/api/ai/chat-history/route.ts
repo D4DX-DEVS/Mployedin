@@ -3,6 +3,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import ConversationThread from "@/models/ConversationThread";
 import type { ConversationContext } from "@/models/ConversationThread";
+import { validateBody } from "@/lib/validators";
+import { chatHistoryCreateSchema } from "@/lib/validators/misc";
 
 /**
  * GET /api/ai/chat-history
@@ -34,8 +36,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
-  const body = await req.json();
-  const { threadId, context, messages, title } = body as {
+  const { threadId, context, messages, title } = await validateBody(req, chatHistoryCreateSchema) as {
     threadId?: string;
     context: ConversationContext;
     messages: { role: "user" | "assistant"; content: string }[];

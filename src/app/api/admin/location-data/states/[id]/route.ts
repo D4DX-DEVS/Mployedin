@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 import State from "@/models/State";
+import { validateBody } from "@/lib/validators";
+import { stateUpdateSchema } from "@/lib/validators/location-data";
 
 interface AuthCtx {
   userId: string;
@@ -38,7 +40,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const item = await State.findById(id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json();
+  const body = await validateBody(req, stateUpdateSchema) as Record<string, unknown>;
   const allowed = ["name", "nameAr", "countryId", "slug", "sortOrder", "isActive"];
 
   const update: Record<string, unknown> = {};

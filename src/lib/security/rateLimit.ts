@@ -37,6 +37,10 @@ const DEFAULTS: Record<string, RateLimitConfig> = {
   ai: { limit: 20, windowSec: 60 },
   auth: { limit: 10, windowSec: 60 },
   upload: { limit: 5, windowSec: 60 },
+  bulk: { limit: 5, windowSec: 60 },
+  leads: { limit: 20, windowSec: 60 },
+  applications: { limit: 10, windowSec: 60 },
+  employers: { limit: 3, windowSec: 60 },
 };
 
 /**
@@ -102,3 +106,28 @@ export function withRateLimit(
 }
 
 export { DEFAULTS as RATE_LIMIT_CONFIGS };
+
+/**
+ * Check rate limit using both IP and user ID (dual-key).
+ * Both must pass for the request to be allowed.
+ */
+export function checkRateLimitDual(
+  req: NextRequest,
+  userId: string | undefined,
+  config: RateLimitConfig = DEFAULTS.api
+): { allowed: boolean; remaining: number; resetAt: number } {
+  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+
+  // IP-based check
+  const ipResult = checkRateLimit(ip, config);
+  if (!ipResult.allowed) return ipResult;
+
+  // User-based check (if authenticated)
+  if (userId) {
+    const userResult = checkRateLimit(`user:${userId}`, config);
+    if (!userResult.allowed) return userResult;
+    return userResult;
+  }
+
+  return ipResult;
+}

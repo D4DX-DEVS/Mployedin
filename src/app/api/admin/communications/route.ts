@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
 import { logActivity } from "@/lib/audit/log";
+import { validateBody } from "@/lib/validators";
+import { communicationSchema } from "@/lib/validators/admin";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -11,7 +13,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   if (req.method === "POST") {
-    const { targetRole, targetAll, message, title, channel } = await req.json();
+    const { targetRole, targetAll, message, title, channel } = await validateBody(req, communicationSchema);
 
     if (!message || !title) {
       return NextResponse.json({ error: "title and message required" }, { status: 400 });

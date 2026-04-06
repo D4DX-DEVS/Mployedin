@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { canAccess } from "@/lib/permissions/matrix";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
+import type { CompanyRole } from "@/models/CompanyUser";
 
 type Resource = Parameters<typeof canAccess>[1];
 type Action = Parameters<typeof canAccess>[2];
@@ -12,6 +13,8 @@ interface AuthContext {
   locale: string;
   permissionMode: PermissionMode;
   customPermissions?: CustomPermissions;
+  companyUserRole?: CompanyRole;
+  companyId?: string;
 }
 
 type RouteHandler = (
@@ -51,6 +54,8 @@ export function withAuth(
     const userId = session.user.id ?? "";
     const permissionMode = ((session.user as unknown as { permissionMode?: PermissionMode }).permissionMode) ?? "role_default";
     const customPermissions = (session.user as unknown as { customPermissions?: CustomPermissions }).customPermissions;
+    const companyUserRole = (session.user as unknown as { companyUserRole?: CompanyRole }).companyUserRole;
+    const companyId = (session.user as unknown as { companyId?: string }).companyId;
 
     if (guard) {
       const allowed = canAccess(role, guard.resource, guard.action, {
@@ -63,9 +68,27 @@ export function withAuth(
           { status: 403 }
         );
       }
+
+      // Enforce team-level restrictions for employer users
+      if (role === "employer" && companyUserRole) {
+        // Viewers cannot perform write operations
+        const writeActions: Action[] = ["create", "update", "delete", "approve"];
+        if (companyUserRole === "viewer" && writeActions.includes(guard.action)) {
+          return NextResponse.json(
+            { error: "Forbidden — viewer role is read-only" },
+            { status: 403 }
+          );
+        }
+      }
     }
 
-    return handler(req, { userId, role, locale, permissionMode, customPermissions }, resolvedParams);
+    try {
+      return await handler(req, { userId, role, locale, permissionMode, customPermissions, companyUserRole, companyId }, resolvedParams);
+    } catch (err) {
+      // validateBody() throws a NextResponse on validation failure — surface it directly
+      if (err instanceof NextResponse) return err;
+      throw err;
+    }
   };
 }
 
@@ -87,6 +110,8 @@ export async function requireRole(
     locale: string;
     permissionMode?: PermissionMode;
     customPermissions?: CustomPermissions;
+    companyUserRole?: CompanyRole;
+    companyId?: string;
   };
 
   if (!roles.includes(user.role)) {
@@ -102,5 +127,7 @@ export async function requireRole(
     locale: user.locale ?? "en",
     permissionMode: user.permissionMode ?? "role_default",
     customPermissions: user.customPermissions,
+    companyUserRole: user.companyUserRole,
+    companyId: user.companyId,
   };
 }

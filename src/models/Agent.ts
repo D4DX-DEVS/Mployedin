@@ -65,10 +65,7 @@ const AgentSchema = new Schema<IAgent>(
   { timestamps: true }
 );
 
-AgentSchema.index({ userId: 1 }, { unique: true });
-AgentSchema.index({ superAgentId: 1 });
-AgentSchema.index({ assignedCityIds: 1 });
-AgentSchema.index({ assignedStateIds: 1 });
+// Schema-level indexes removed — managed centrally in lib/db/indexes.ts
 
 export const Agent =
   mongoose.models.Agent || mongoose.model<IAgent>("Agent", AgentSchema);

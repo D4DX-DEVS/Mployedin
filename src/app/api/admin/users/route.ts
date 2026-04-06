@@ -8,6 +8,8 @@ import SuperAgent from "@/models/SuperAgent";
 import AuditLog from "@/models/AuditLog";
 import mongoose from "mongoose";
 import { escapeRegex, isValidRole } from "@/lib/security/sanitize";
+import { validateBody } from "@/lib/validators";
+import { adminUserCreateSchema, adminUserPatchSchema, adminUserDeleteSchema } from "@/lib/validators/admin";
 
 import bcrypt from "bcryptjs";
 
@@ -58,7 +60,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, adminUserPatchSchema) as Record<string, unknown>;
 
   // ── Bulk mode: { ids: string[], action: "setRole"|"activate"|"deactivate"|"delete", role? }
   if (Array.isArray(body.ids)) {
@@ -150,7 +152,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, adminUserCreateSchema);
   const {
     name, email, password, role, locale,
     // Permission fields
@@ -247,7 +249,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, adminUserDeleteSchema);
   const { userId } = body;
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });

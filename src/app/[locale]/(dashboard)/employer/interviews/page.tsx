@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Inbox } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -60,27 +61,29 @@ export default function EmployerInterviewsPage() {
 
   return (
     <div className="page-container">
-      <div className="flex items-start justify-between">
-        <PageHeader title="Interviews" description="Manage and track candidate interviews" />
-        {can("interviews", "create") && (
-          <Button size="sm" asChild>
-            <Link href={`/${locale}/employer/interviews/bulk`}>+ Bulk Schedule</Link>
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Interviews"
+        description="Manage and track candidate interviews"
+        actions={
+          can("interviews", "create") ? (
+            <Button size="sm" asChild>
+              <Link href={`/${locale}/employer/interviews/bulk`}>+ Bulk Schedule</Link>
+            </Button>
+          ) : null
+        }
+      />
 
       <div className="flex gap-3">
-        <select
-          value={status}
-          onChange={(e) => { setStatus(e.target.value); }}
-          className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-        >
-          <option value="">All Statuses</option>
-          <option value="scheduled">Scheduled</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="no-show">No Show</option>
-        </select>
+        <Select value={status || "all"} onValueChange={(v) => setStatus(v === "all" ? "" : v)}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="scheduled">Scheduled</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="no-show">No Show</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">

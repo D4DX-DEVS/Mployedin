@@ -46,9 +46,20 @@ const WEIGHT_DESCRIPTIONS: Record<keyof MatchingWeights, string> = {
 
 export default function EmployerMatchingWeightsPage() {
   const [weights, setWeights] = useState<MatchingWeights>(DEFAULT_WEIGHTS);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [total, setTotal] = useState(100);
+
+  useEffect(() => {
+    fetch("/api/employers/matching-weights")
+      .then(r => r.json())
+      .then(d => {
+        if (d.weights) setWeights(d.weights);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     setTotal(Object.values(weights).reduce((a, b) => a + b, 0));
@@ -76,6 +87,12 @@ export default function EmployerMatchingWeightsPage() {
 
   const isTotalValid = total === 100;
 
+  if (loading) return (
+    <div className="page-container">
+      <Loader2 className="h-5 w-5 animate-spin" />
+    </div>
+  );
+
   return (
     <div className="page-container">
       <PageHeader
@@ -85,7 +102,7 @@ export default function EmployerMatchingWeightsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sliders */}
-        <div className="lg:col-span-2 card-base space-y-5">
+        <div className="lg:col-span-2 card-base p-5 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <Sliders className="h-4 w-4 text-primary" /> Weight Configuration
@@ -135,7 +152,7 @@ export default function EmployerMatchingWeightsPage() {
         </div>
 
         {/* Visualization */}
-        <div className="card-base space-y-4">
+        <div className="card-base p-5 space-y-4">
           <h3 className="text-sm font-semibold">Weight Distribution</h3>
           <div className="space-y-3">
             {(Object.keys(weights) as Array<keyof MatchingWeights>).map((key) => (

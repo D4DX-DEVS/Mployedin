@@ -198,7 +198,7 @@ Employment types: full_time, part_time, contract, internship, freelance`;
 
         {/* Extracted job preview */}
         <div className="space-y-3">
-          <div className={`card-base space-y-3 transition-all ${extractedJob ? "border-green-300 bg-green-50/30" : ""}`}>
+          <div className={`card-base p-5 space-y-3 transition-all ${extractedJob ? "border-green-300 bg-green-50/30" : ""}`}>
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">Job Preview</h3>

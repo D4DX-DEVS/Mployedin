@@ -14,10 +14,13 @@ export type NotificationType =
   | "application_status_update"
   | "interview_scheduled"
   | "interview_reminder"
+  | "interview_update"
+  | "offer_update"
   | "job_posted"
   | "job_approved"
   | "job_rejected"
   | "lead_converted"
+  | "mention"
   | "system";
 
 interface NotifyPayload {
@@ -39,9 +42,10 @@ export async function notify(payload: NotifyPayload): Promise<void> {
     userId: payload.userId,
     type: payload.type,
     title: payload.title,
-    message: payload.message,
-    link: payload.link,
-    metadata: payload.metadata,
+    body: payload.message,
+    actionUrl: payload.link,
+    meta: payload.metadata,
+    channels: ["in_app"],
     isRead: false,
   });
 
@@ -128,5 +132,22 @@ export async function notifyInterviewScheduled(
     sendEmail: true,
     sendWhatsApp: true,
     metadata: { jobTitle, scheduledAt, location, interviewId },
+  });
+}
+
+export async function notifyMention(
+  mentionedUserId: string,
+  authorName: string,
+  applicationId: string,
+  candidateName: string
+): Promise<void> {
+  await notify({
+    userId: mentionedUserId,
+    type: "mention",
+    title: "You were mentioned in a note",
+    message: `${authorName} mentioned you in a note on ${candidateName}'s application.`,
+    link: `/en/employer/applications?highlight=${applicationId}`,
+    sendEmail: false,
+    metadata: { applicationId, authorName },
   });
 }

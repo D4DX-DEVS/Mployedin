@@ -17,12 +17,15 @@ export interface IUser extends Document {
   emailVerificationToken?: string;
   passwordResetToken?: string;
   passwordResetExpiry?: Date;
+  failedLoginAttempts: number;
+  lockUntil?: Date;
   avatar?: string;
   phone?: string;
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
+  isLocked(): boolean;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -56,6 +59,8 @@ const UserSchema = new Schema<IUser>(
     emailVerificationToken: { type: String, select: false },
     passwordResetToken: { type: String, select: false },
     passwordResetExpiry: { type: Date, select: false },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date },
     avatar: { type: String },
     phone: { type: String },
     lastLogin: { type: Date },
@@ -63,10 +68,12 @@ const UserSchema = new Schema<IUser>(
   {
     timestamps: true,
     toJSON: {
-      transform(_, ret) {
+      transform(_, ret: Record<string, unknown>) {
         delete ret.passwordHash;
         delete ret.emailVerificationToken;
         delete ret.passwordResetToken;
+        delete ret.failedLoginAttempts;
+        delete ret.lockUntil;
         return ret;
       },
     },
@@ -74,7 +81,7 @@ const UserSchema = new Schema<IUser>(
 );
 
 // Indexes
-UserSchema.index({ email: 1 }, { unique: true });
+// Note: email index is created automatically by 'unique: true' in the schema field definition
 UserSchema.index({ role: 1 });
 UserSchema.index({ isActive: 1 });
 UserSchema.index({ createdAt: -1 });
@@ -85,6 +92,11 @@ UserSchema.methods.comparePassword = async function (
 ): Promise<boolean> {
   if (!this.passwordHash) return false;
   return bcrypt.compare(candidatePassword, this.passwordHash);
+};
+
+// Account lockout check
+UserSchema.methods.isLocked = function (): boolean {
+  return !!(this.lockUntil && this.lockUntil > new Date());
 };
 
 export const User =

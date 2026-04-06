@@ -9,10 +9,10 @@ interface Notification {
   _id: string;
   type: string;
   title: string;
-  message: string;
+  body: string;
   isRead: boolean;
   createdAt: string;
-  link?: string;
+  actionUrl?: string;
 }
 
 export default function NotificationsPage() {
@@ -103,7 +103,7 @@ export default function NotificationsPage() {
           {notifications.map((n) => (
             <div
               key={n._id}
-              onClick={() => { if (!n.isRead) markRead(n._id); if (n.link) window.location.href = n.link; }}
+              onClick={() => { if (!n.isRead) markRead(n._id); if (n.actionUrl) window.location.href = n.actionUrl; }}
               className={`flex gap-3 p-4 rounded-xl border cursor-pointer transition-all hover:shadow-sm ${
                 n.isRead ? "opacity-70 bg-background" : "bg-primary/5 border-primary/20"
               }`}
@@ -113,7 +113,7 @@ export default function NotificationsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">{n.title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {new Date(n.createdAt).toLocaleDateString("en-AE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                 </p>

@@ -6,12 +6,18 @@ import { z } from "zod";
 import connectDB from "@/lib/db/mongoose";
 import { User } from "@/models/User";
 import type { UserRole } from "@/models/User";
+import { CompanyUser } from "@/models/CompanyUser";
+import { Employer } from "@/models/Employer";
 import { logActivity } from "@/lib/audit/log";
+import type { CompanyRole } from "@/models/CompanyUser";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(8),
 });
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 export const authConfig: NextAuthConfig = {
   providers: [
@@ -24,11 +30,9 @@ export const authConfig: NextAuthConfig = {
         await connectDB();
         const user = await User.findOne({
           email: parsed.data.email.toLowerCase(),
-          isActive: true,
-        }).select("+passwordHash");
+        }).select("+passwordHash +failedLoginAttempts +lockUntil");
 
         if (!user || !user.passwordHash) {
-          // Log failed login — user not found or inactive
           logActivity({
             action: "login.failed",
             resource: "auth",
@@ -37,22 +41,61 @@ export const authConfig: NextAuthConfig = {
           return null;
         }
 
-        const valid = await user.comparePassword(parsed.data.password);
-        if (!valid) {
-          // Log failed login attempt
+        // Check if account is locked
+        if (user.isLocked()) {
           logActivity({
             actorId: user._id.toString(),
             actorRole: user.role,
             action: "login.failed",
             resource: "auth",
-            meta: { email: parsed.data.email, reason: "invalid_password" },
+            meta: { email: parsed.data.email, reason: "account_locked" },
           });
           return null;
         }
 
-        await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+        // Check if account is active
+        if (!user.isActive) {
+          logActivity({
+            actorId: user._id.toString(),
+            actorRole: user.role,
+            action: "login.failed",
+            resource: "auth",
+            meta: { email: parsed.data.email, reason: "account_inactive" },
+          });
+          return null;
+        }
 
-        // Log successful login
+        const valid = await user.comparePassword(parsed.data.password);
+        if (!valid) {
+          // Increment failed attempts
+          const attempts = (user.failedLoginAttempts || 0) + 1;
+          const update: Record<string, unknown> = { failedLoginAttempts: attempts };
+          if (attempts >= MAX_FAILED_ATTEMPTS) {
+            update.lockUntil = new Date(Date.now() + LOCK_DURATION_MS);
+          }
+          await User.findByIdAndUpdate(user._id, update);
+
+          logActivity({
+            actorId: user._id.toString(),
+            actorRole: user.role,
+            action: "login.failed",
+            resource: "auth",
+            meta: {
+              email: parsed.data.email,
+              reason: attempts >= MAX_FAILED_ATTEMPTS ? "account_locked" : "invalid_password",
+              failedAttempts: attempts,
+            },
+          });
+          return null;
+        }
+
+        // Reset failed attempts on successful login
+        await User.findByIdAndUpdate(user._id, {
+          lastLogin: new Date(),
+          failedLoginAttempts: 0,
+          lockUntil: null,
+        });
+
         logActivity({
           actorId: user._id.toString(),
           actorRole: user.role,
@@ -68,6 +111,7 @@ export const authConfig: NextAuthConfig = {
           image: user.avatar,
           role: user.role,
           locale: user.locale,
+          isEmailVerified: user.isEmailVerified ?? false,
         };
         } catch (err) {
           console.error("[auth] authorize error:", err);
@@ -84,7 +128,7 @@ export const authConfig: NextAuthConfig = {
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
     }),
   ],
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 60 * 60 }, // 1 hour
   pages: {
     signIn: "/en/login",
     error: "/en/login",
@@ -95,6 +139,7 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id;
         token.role = ((user as unknown) as { role: UserRole }).role ?? "job_seeker";
         token.locale = ((user as unknown) as { locale: string }).locale ?? "en";
+        token.isEmailVerified = ((user as unknown) as { isEmailVerified?: boolean }).isEmailVerified ?? false;
         token.permissionMode = ((user as unknown) as { permissionMode?: string }).permissionMode ?? "role_default";
         token.customPermissions = ((user as unknown) as { customPermissions?: Record<string, string[]> }).customPermissions ?? undefined;
       }
@@ -128,6 +173,27 @@ export const authConfig: NextAuthConfig = {
           meta: { email: dbUser.email, provider: account.provider },
         });
       }
+
+      // Resolve companyUserRole for employers
+      const resolvedRole = (token.role as string) ?? "";
+      if (resolvedRole === "employer" && token.id) {
+        try {
+          await connectDB();
+          const emp = await Employer.findOne({ userId: token.id as string }).select("_id").lean();
+          if (emp) {
+            const member = await CompanyUser.findOne({
+              companyId: emp._id,
+              userId: token.id as string,
+              status: "active",
+            }).select("companyRole").lean();
+            token.companyUserRole = member?.companyRole ?? "owner";
+            token.companyId = String(emp._id);
+          }
+        } catch {
+          // Non-critical — default to no company role
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -137,6 +203,12 @@ export const authConfig: NextAuthConfig = {
         (session.user as unknown as { locale: string }).locale = token.locale as string;
         (session.user as unknown as { permissionMode: string }).permissionMode = (token.permissionMode as string) ?? "role_default";
         (session.user as unknown as { customPermissions?: Record<string, string[]> }).customPermissions = token.customPermissions as Record<string, string[]> | undefined;
+        if (token.companyUserRole) {
+          (session.user as unknown as { companyUserRole: CompanyRole }).companyUserRole = token.companyUserRole as CompanyRole;
+        }
+        if (token.companyId) {
+          (session.user as unknown as { companyId: string }).companyId = token.companyId as string;
+        }
       }
       return session;
     },

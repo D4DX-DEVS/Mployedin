@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(xargs grep:*)",
+      "Bash(node -e \"require\\(''''recharts''''\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(node -e \"require\\(''''@dnd-kit/core''''\\)\")",
+      "Bash(find C:/Users/moham/OneDrive/Desktop/Mbloyedin/mployedin/src/app -path *job-seeker* -name *.tsx)"
+    ]
+  }
+}

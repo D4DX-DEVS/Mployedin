@@ -4,14 +4,18 @@ export { Employer } from "./Employer";
 export { Agent } from "./Agent";
 export { SuperAgent } from "./SuperAgent";
 export { Job } from "./Job";
+export { JobTemplate } from "./JobTemplate";
 export { Application } from "./Application";
 export { Interview } from "./Interview";
 export { Placement } from "./Placement";
+export { default as Offer } from "./Offer";
+export { CompanyUser } from "./CompanyUser";
 export { Notification } from "./Notification";
 export { Lead } from "./Lead";
 export { Commission } from "./Commission";
 export { AuditLog } from "./AuditLog";
 export { ConversationThread } from "./ConversationThread";
+export { CandidateNPS } from "./CandidateNPS";
 
 // ── Job Attribute Master Data ─────────────────────────────────────────────────
 export { SalaryPeriod } from "./SalaryPeriod";

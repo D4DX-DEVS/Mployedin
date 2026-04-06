@@ -36,6 +36,7 @@ const RESOURCE_LABELS: Record<Resource, string> = {
   location_data: "Location Data",
   cms: "CMS",
   contact_submissions: "Contact Submissions",
+  offers: "Offers",
 };
 
 /** Human-readable labels for actions */
@@ -53,7 +54,7 @@ const ACTION_LABELS: Record<Action, string> = {
 const RESOURCE_GROUPS: { label: string; resources: Resource[] }[] = [
   {
     label: "Core Business",
-    resources: ["jobs", "applications", "interviews", "placements", "leads", "commissions"],
+    resources: ["jobs", "applications", "interviews", "placements", "leads", "commissions", "offers"],
   },
   {
     label: "People",

@@ -24,10 +24,21 @@ export function getGeminiModel(model: GeminiModel = GEMINI_MODELS.flash) {
 /** Generate a single text response */
 export async function generateText(
   prompt: string,
-  model: GeminiModel = GEMINI_MODELS.flash
+  model: GeminiModel = GEMINI_MODELS.flash,
+  maxOutputTokens?: number
 ): Promise<string> {
   const m = getGeminiModel(model);
-  const result = await m.generateContent(prompt);
+  const start = Date.now();
+  const result = await m.generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    ...(maxOutputTokens ? { generationConfig: { maxOutputTokens } } : {}),
+  });
+  const usage = result.response.usageMetadata;
+  if (usage) {
+    console.log(
+      `[AI Usage] model=${model} prompt_tokens=${usage.promptTokenCount} completion_tokens=${usage.candidatesTokenCount} total=${usage.totalTokenCount} latency=${Date.now() - start}ms`
+    );
+  }
   return result.response.text();
 }
 
@@ -52,10 +63,21 @@ export function startChat(
 /** Generate with multimodal content (text + image/PDF) */
 export async function generateMultimodal(
   parts: Part[],
-  model: GeminiModel = GEMINI_MODELS.flash
+  model: GeminiModel = GEMINI_MODELS.flash,
+  maxOutputTokens?: number
 ): Promise<string> {
   const m = getGeminiModel(model);
-  const result = await m.generateContent({ contents: [{ role: "user", parts }] });
+  const start = Date.now();
+  const result = await m.generateContent({
+    contents: [{ role: "user", parts }],
+    ...(maxOutputTokens ? { generationConfig: { maxOutputTokens } } : {}),
+  });
+  const usage = result.response.usageMetadata;
+  if (usage) {
+    console.log(
+      `[AI Usage] model=${model} prompt_tokens=${usage.promptTokenCount} completion_tokens=${usage.candidatesTokenCount} total=${usage.totalTokenCount} latency=${Date.now() - start}ms`
+    );
+  }
   return result.response.text();
 }
 

@@ -39,6 +39,7 @@ export async function connectDB(): Promise<typeof mongoose> {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
+      autoIndex: false, // We manage indexes in ensureIndexes()
     };
 
     cached.promise = mongoose

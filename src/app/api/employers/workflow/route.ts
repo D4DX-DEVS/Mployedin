@@ -2,40 +2,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
+import { validateBody } from "@/lib/validators";
+import { workflowUpdateSchema } from "@/lib/validators/misc";
+import type { UserRole } from "@/types/user";
 
-interface WorkflowStage {
-  id: string;
-  label: string;
-  enabled: boolean;
-  autoProgress: boolean;
-  order: number;
-}
+interface AuthCtx { userId: string; role: UserRole; }
 
-interface WorkflowSettings {
-  aiAutoScreen: boolean;
-  notifyOnStageChange: boolean;
-  autoRejectBelow: number;
-}
-
-async function GET(_req: NextRequest, ctx: { userId: string }) {
+async function getHandler(_req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "employer" && ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
-  const employer = await (Employer as unknown as {
-    findOne: (q: object) => { select: (s: string) => { lean: () => Promise<{ workflow?: { stages: WorkflowStage[]; settings: WorkflowSettings } } | null> } }
-  }).findOne({ userId: ctx.userId }).select("workflow").lean();
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("workflow").lean();
+  const stages = employer?.workflow?.stages;
 
   return NextResponse.json({
-    stages: employer?.workflow?.stages ?? [],
+    stages: Array.isArray(stages) && stages.length > 0 ? stages : null,
     settings: employer?.workflow?.settings ?? { aiAutoScreen: true, notifyOnStageChange: true, autoRejectBelow: 40 },
   });
 }
 
-async function PATCH(req: NextRequest, ctx: { userId: string }) {
+async function patchHandler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "employer" && ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
-  const { stages, settings } = await req.json();
+  const { stages, settings } = await validateBody(req, workflowUpdateSchema);
 
-  await (Employer as unknown as {
-    findOneAndUpdate: (q: object, update: object, opts: object) => Promise<unknown>
-  }).findOneAndUpdate(
+  await Employer.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: { workflow: { stages, settings } } },
     { upsert: true }
@@ -44,6 +38,5 @@ async function PATCH(req: NextRequest, ctx: { userId: string }) {
   return NextResponse.json({ success: true });
 }
 
-export const GET_handler = withAuth(GET, { resource: "employers", action: "read" });
-export const PATCH_handler = withAuth(PATCH, { resource: "employers", action: "update" });
-export { GET_handler as GET, PATCH_handler as PATCH };
+export const GET = withAuth(getHandler);
+export const PATCH = withAuth(patchHandler);

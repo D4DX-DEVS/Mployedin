@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import Testimonial from "@/models/Testimonial";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { testimonialUpdateSchema } from "@/lib/validators/cms";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -19,7 +21,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const item = await Testimonial.findById(params?.id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json();
+  const body = await validateBody(req, testimonialUpdateSchema) as Record<string, unknown>;
   const allowed = ["name", "nameAr", "designation", "designationAr", "company", "companyAr", "quote", "quoteAr", "avatar", "rating", "sortOrder", "isActive"];
   const update: Record<string, unknown> = {};
   for (const k of allowed) {

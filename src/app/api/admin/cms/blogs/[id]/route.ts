@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import BlogPost from "@/models/BlogPost";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { blogUpdateSchema } from "@/lib/validators/cms";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -23,7 +25,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const item = await BlogPost.findById(params?.id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json();
+  const body = await validateBody(req, blogUpdateSchema) as Record<string, unknown>;
   const allowed = ["title", "titleAr", "slug", "excerpt", "excerptAr", "body", "bodyAr", "coverImage", "author", "tags", "status", "isActive"];
   const update: Record<string, unknown> = {};
   for (const k of allowed) {

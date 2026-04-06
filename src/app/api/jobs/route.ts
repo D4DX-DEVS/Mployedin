@@ -6,6 +6,8 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { Employer } from "@/models/Employer";
 import type { UserRole } from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { validateBody } from "@/lib/validators";
+import { jobCreateSchema } from "@/lib/validators/jobs";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -61,8 +63,9 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const body = await validateBody(req, jobCreateSchema);
+
   await connectDB();
-  const body = await req.json();
 
   const { title, description, category, location, requirements, salary, expiresAt, applicationMode } = body;
 
@@ -79,10 +82,17 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     employerId = String(emp._id);
   } else if (ctx.role === "agent") {
     const { Agent } = await import("@/models/Agent");
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
     if (!agent) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
     agentId = String(agent._id);
     employerId = body.employerId;
+    // Verify agent is assigned to this employer
+    if (employerId && !agent.assignedEmployerIds?.map(String).includes(employerId)) {
+      return NextResponse.json(
+        { error: "Forbidden — you are not assigned to this employer" },
+        { status: 403 }
+      );
+    }
   } else if (ctx.role === "admin") {
     employerId = body.employerId;
   }

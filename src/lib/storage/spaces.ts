@@ -22,6 +22,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import path from "path";
+import { validateUploadedFile, ALLOWED_FILE_TYPES } from "@/lib/security/file-validation";
 
 // ─── Client singleton ────────────────────────────────────────────────────────
 
@@ -39,11 +40,19 @@ function getClient(): S3Client {
 }
 
 function getBucket(): string {
-  return process.env.SPACES_BUCKET_NAME ?? process.env.BUCKET_NAME ?? "people-erp";
+  return process.env.SPACES_BUCKET_NAME ?? process.env.DO_SPACES_BUCKET ?? "d4dx-storage";
+}
+
+/** Optional root folder prefix inside the bucket (e.g. "Mployedin") */
+function getPrefix(): string {
+  return process.env.DO_SPACES_FOLDER ?? "";
 }
 
 /** Public CDN base URL for the bucket */
 function cdnBase(): string {
+  if (process.env.DO_SPACES_CDN_ENDPOINT) {
+    return process.env.DO_SPACES_CDN_ENDPOINT;
+  }
   const endpoint = process.env.SPACES_ENDPOINT ?? "blr1.digitaloceanspaces.com";
   const bucket = getBucket();
   return `https://${bucket}.${endpoint}`;
@@ -86,16 +95,30 @@ export async function uploadBuffer(
     contentType?: string;
     /** Set to true to make the object private (default: public-read) */
     private?: boolean;
+    /** File validation category — if set, validates magic bytes and size */
+    validateAs?: keyof typeof ALLOWED_FILE_TYPES;
   } = {}
 ): Promise<UploadResult> {
   const client = getClient();
   const bucket = getBucket();
 
   const ext = options.fileName ? path.extname(options.fileName) : "";
-  const key = `${options.folder ?? "other"}/${randomUUID()}${ext}`;
+  const prefix = getPrefix();
+  const folder = options.folder ?? "other";
+  const key = prefix ? `${prefix}/${folder}/${randomUUID()}${ext}` : `${folder}/${randomUUID()}${ext}`;
 
   const body = buffer instanceof Blob ? Buffer.from(await buffer.arrayBuffer()) : buffer;
   const size = body.byteLength;
+
+  // File security validation (magic bytes + size + MIME whitelist)
+  if (options.validateAs) {
+    const arrayBuf = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
+    const file = new File([new Uint8Array(arrayBuf)], options.fileName ?? "upload", { type: options.contentType ?? "application/octet-stream" });
+    const validationError = validateUploadedFile(file, options.validateAs, arrayBuf);
+    if (validationError) {
+      throw new Error(validationError);
+    }
+  }
 
   const params: PutObjectCommandInput = {
     Bucket: bucket,
@@ -136,7 +159,9 @@ export async function uploadLarge(
   const bucket = getBucket();
 
   const ext = options.fileName ? path.extname(options.fileName) : "";
-  const key = `${options.folder ?? "other"}/${randomUUID()}${ext}`;
+  const prefix = getPrefix();
+  const folder = options.folder ?? "other";
+  const key = prefix ? `${prefix}/${folder}/${randomUUID()}${ext}` : `${folder}/${randomUUID()}${ext}`;
 
   const upload = new Upload({
     client,
@@ -173,6 +198,21 @@ export async function uploadFile(
   options: { folder?: UploadFolder; private?: boolean } = {}
 ): Promise<UploadResult> {
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Map folder to file validation category
+  const categoryMap: Record<string, keyof typeof ALLOWED_FILE_TYPES> = {
+    cvs: "cv",
+    documents: "cv",
+    avatars: "image",
+    media: "image",
+  };
+  const category = categoryMap[options.folder ?? ""] ?? "cv";
+  const arrayBuf = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+  const validationError = validateUploadedFile(file, category, arrayBuf);
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
   return uploadBuffer(buffer, {
     folder: options.folder,
     fileName: file.name,

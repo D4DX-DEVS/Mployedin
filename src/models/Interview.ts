@@ -8,6 +8,7 @@ export type InterviewStatus =
   | "cancelled"
   | "rescheduled";
 export type InterviewDuration = 15 | 30 | 45 | 60;
+export type CandidateResponse = "pending" | "confirmed" | "declined" | "reschedule_requested";
 
 export interface IInterview extends Document {
   _id: mongoose.Types.ObjectId;
@@ -29,6 +30,9 @@ export interface IInterview extends Document {
   feedbackBy?: mongoose.Types.ObjectId;
   outcome?: "passed" | "failed" | "hold" | "no_show";
   rescheduleCount: number;
+  candidateResponse: CandidateResponse;
+  candidateResponseAt?: Date;
+  candidateRescheduleNote?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -82,6 +86,13 @@ const InterviewSchema = new Schema<IInterview>(
       enum: ["passed", "failed", "hold", "no_show"],
     },
     rescheduleCount: { type: Number, default: 0 },
+    candidateResponse: {
+      type: String,
+      enum: ["pending", "confirmed", "declined", "reschedule_requested"],
+      default: "pending",
+    },
+    candidateResponseAt: Date,
+    candidateRescheduleNote: { type: String, maxlength: 500 },
   },
   { timestamps: true }
 );

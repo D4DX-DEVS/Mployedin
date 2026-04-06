@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import Message from "@/models/Message";
+import { validateBody } from "@/lib/validators";
+import { messageCreateSchema } from "@/lib/validators/messages";
 
 async function GET(req: NextRequest, ctx: { userId: string; role: string }) {
   await connectDB();
@@ -21,12 +23,8 @@ async function GET(req: NextRequest, ctx: { userId: string; role: string }) {
 
 async function POST(req: NextRequest, ctx: { userId: string; role: string; locale?: string }) {
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, messageCreateSchema);
   const { channel = "general", content } = body;
-
-  if (!content?.trim()) {
-    return NextResponse.json({ error: "Content required" }, { status: 400 });
-  }
 
   const msg = await (Message as unknown as {
     create: (data: object) => Promise<{ _id: unknown; channel: string; content: string; senderId: string; senderRole: string; createdAt: Date }>

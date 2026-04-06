@@ -3,6 +3,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { validateBody } from "@/lib/validators";
+import { leadUpdateSchema } from "@/lib/validators/leads";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -31,10 +33,9 @@ export const PATCH = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   const { error } = await verifyLeadAccess(id!, ctx);
   if (error) return error;
 
-  const body = await req.json();
-  const allowed = ["companyName", "contactName", "email", "phone", "status", "notes", "nextFollowUp"];
+  const body = await validateBody(req, leadUpdateSchema);
   const update: Record<string, unknown> = {};
-  for (const k of allowed) if (body[k] !== undefined) update[k] = body[k];
+  for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
 
   const lead = await Lead.findByIdAndUpdate(id, { $set: update }, { new: true });
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });

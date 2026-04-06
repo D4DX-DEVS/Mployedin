@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from "next/server";
+import { connectDB } from "@/lib/db/mongoose";
+import User from "@/models/User";
+import JobSeeker from "@/models/JobSeeker";
+import bcrypt from "bcryptjs";
+import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { logActivity } from "@/lib/audit/log";
+
+export const runtime = "nodejs";
+
+export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const { allowed } = checkRateLimit(`auth-register:${ip}`, RATE_LIMIT_CONFIGS.auth);
+  if (!allowed) {
+    return NextResponse.json({ message: "Too many requests. Please try again later." }, { status: 429 });
+  }
+
+  try {
+    await connectDB();
+
+    const body = await req.json();
+    const { name, email, password } = body as { name?: string; email?: string; password?: string };
+
+    if (!name?.trim() || !email?.trim() || !password) {
+      return NextResponse.json({ message: "Name, email, and password are required." }, { status: 400 });
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json({ message: "Password must be at least 8 characters." }, { status: 400 });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing) {
+      return NextResponse.json({ message: "An account with this email already exists." }, { status: 409 });
+    }
+
+    const hashed = await bcrypt.hash(password, 12);
+
+    const user = await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      passwordHash: hashed,
+      role: "job_seeker",
+      isActive: true,
+    });
+
+    // Create empty JobSeeker profile — filled in during onboarding
+    await JobSeeker.create({
+      userId: user._id,
+      skills: [],
+      experience: [],
+      education: [],
+      languages: [],
+      certifications: [],
+      preferredCountries: [],
+      preferredRoles: [],
+    });
+
+    await logActivity({
+      actorId: user._id.toString(),
+      actorRole: "job_seeker",
+      action: "register.job_seeker",
+      resource: "auth",
+      resourceId: user._id.toString(),
+      meta: { email: normalizedEmail },
+      req,
+    });
+
+    return NextResponse.json({ success: true, message: "Account created successfully." }, { status: 201 });
+  } catch (err) {
+    console.error("job-seeker-register error:", err);
+    return NextResponse.json({ message: "Server error." }, { status: 500 });
+  }
+}

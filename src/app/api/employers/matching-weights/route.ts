@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
+import { validateBody } from "@/lib/validators";
+import { matchingWeightsSchema } from "@/lib/validators/misc";
 
 interface MatchingWeights {
   skills: number;
@@ -25,16 +27,14 @@ const DEFAULT_WEIGHTS: MatchingWeights = {
 
 async function GET(_req: NextRequest, ctx: { userId: string }) {
   await connectDB();
-  const employer = await (Employer as unknown as {
-    findOne: (q: object) => { select: (s: string) => { lean: () => Promise<{ matchingWeights?: MatchingWeights } | null> } }
-  }).findOne({ userId: ctx.userId }).select("matchingWeights").lean();
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("matchingWeights").lean();
 
   return NextResponse.json({ weights: employer?.matchingWeights ?? DEFAULT_WEIGHTS });
 }
 
 async function PATCH(req: NextRequest, ctx: { userId: string }) {
   await connectDB();
-  const { weights } = await req.json();
+  const { weights } = await validateBody(req, matchingWeightsSchema);
 
   // Validate total = 100
   const total = Object.values(weights as Record<string, number>).reduce((a, b) => a + b, 0);
@@ -42,9 +42,7 @@ async function PATCH(req: NextRequest, ctx: { userId: string }) {
     return NextResponse.json({ error: `Weights must total 100 (got ${total})` }, { status: 400 });
   }
 
-  await (Employer as unknown as {
-    findOneAndUpdate: (q: object, update: object, opts: object) => Promise<unknown>
-  }).findOneAndUpdate(
+  await Employer.findOneAndUpdate(
     { userId: ctx.userId },
     { $set: { matchingWeights: weights } },
     { upsert: true }

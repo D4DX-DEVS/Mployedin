@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_Arabic } from "next/font/google";
+import { headers } from "next/headers";
 import "@/app/globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -10,14 +11,23 @@ export const metadata: Metadata = {
   description: "AI-Powered International Recruitment Platform",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Read the nonce that middleware placed on the request headers.
+  // Next.js App Router automatically attaches this nonce to the inline
+  // scripts it generates (hydration, RSC payload, etc.), satisfying the
+  // nonce-based Content-Security-Policy set by the middleware.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html suppressHydrationWarning>
-      <body className={`${inter.variable} ${notoArabic.variable} font-sans antialiased`}>
+      <body
+        className={`${inter.variable} ${notoArabic.variable} font-sans antialiased`}
+        {...(nonce ? { "data-nonce": nonce } : {})}
+      >
         {children}
       </body>
     </html>

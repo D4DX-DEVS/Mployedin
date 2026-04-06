@@ -5,6 +5,8 @@ import { escapeRegex } from "@/lib/security/sanitize";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import FAQ from "@/models/FAQ";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { faqCreateSchema } from "@/lib/validators/cms";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -46,7 +48,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, faqCreateSchema);
 
   const { question, questionAr, answer, answerAr, category, sortOrder, isActive } = body;
   if (!question || !answer) {

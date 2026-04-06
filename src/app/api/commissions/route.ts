@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Commission from "@/models/Commission";
+import { validateBody } from "@/lib/validators";
+import { commissionCreateSchema } from "@/lib/validators/commissions";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -65,12 +67,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, commissionCreateSchema);
   const { type, amount, currency, rate, agentId, superAgentId, placementId, notes } = body;
-
-  if (!type || !amount) {
-    return NextResponse.json({ error: "type and amount are required" }, { status: 400 });
-  }
 
   const commission = await Commission.create({
     type,

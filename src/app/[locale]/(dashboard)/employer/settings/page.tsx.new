@@ -1,0 +1,856 @@
+"use client";
+
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useParams } from "next/navigation";
+import {
+  Save, Building2, Globe, Phone, Mail, Shield, FileText,
+  Briefcase, Bell, AlertTriangle, Linkedin, Twitter, Facebook, Instagram,
+  MapPin, Calendar, Users, Eye, Link2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { LogoUpload } from "@/components/features/employer/LogoUpload";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const INDUSTRIES = [
+  "Technology", "Healthcare", "Finance", "Construction", "Hospitality",
+  "Education", "Manufacturing", "Logistics", "Oil & Gas", "Retail",
+  "Real Estate", "Consulting", "Telecommunications", "Media", "Other",
+];
+
+const COMPANY_SIZES = [
+  "1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001+",
+];
+
+const WORK_TYPES = [
+  { value: "remote", label: "Remote" },
+  { value: "onsite", label: "On-site" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "flexible", label: "Flexible" },
+];
+
+const VERIFICATION_BADGES: Record<string, { label: string; color: string; icon: string }> = {
+  basic: { label: "Basic", color: "bg-muted text-muted-foreground", icon: "shield" },
+  company: { label: "Verified", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: "check" },
+  premium: { label: "Premium", color: "bg-primary/10 text-primary border-primary/20", icon: "star" },
+};
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface CompanyData {
+  _id: string;
+  companyName: string;
+  companyEmail: string;
+  phone: string;
+  designation?: string;
+  address?: string;
+  website?: string;
+  industry?: string;
+  companySize?: string;
+  logo?: string;
+  coverImage?: string;
+  description?: string;
+  foundedYear?: number;
+  socialLinks?: {
+    linkedin?: string;
+    twitter?: string;
+    facebook?: string;
+    instagram?: string;
+  };
+  hiringPreferences?: {
+    defaultVisibility?: string;
+    preferredLocations?: string[];
+    workType?: string;
+  };
+  notificationPrefs?: {
+    emailNewApplicant?: boolean;
+    emailInterviewScheduled?: boolean;
+    emailOfferResponse?: boolean;
+    emailWeeklyDigest?: boolean;
+    inAppAll?: boolean;
+  };
+  verificationLevel: string;
+  verificationDocs: string[];
+  paymentStatus: string;
+  subscriptionType?: string;
+  createdAt: string;
+}
+
+interface FormData {
+  // Profile
+  companyName: string;
+  description: string;
+  industry: string;
+  companySize: string;
+  foundedYear: string;
+  designation: string;
+  address: string;
+  // Contact & Social
+  companyEmail: string;
+  phone: string;
+  website: string;
+  linkedin: string;
+  twitter: string;
+  facebook: string;
+  instagram: string;
+  // Hiring Prefs
+  defaultVisibility: string;
+  workType: string;
+  preferredLocations: string;
+  // Notification Prefs
+  emailNewApplicant: boolean;
+  emailInterviewScheduled: boolean;
+  emailOfferResponse: boolean;
+  emailWeeklyDigest: boolean;
+  inAppAll: boolean;
+}
+
+function buildInitialForm(emp?: CompanyData | null): FormData {
+  return {
+    companyName: emp?.companyName ?? "",
+    description: emp?.description ?? "",
+    industry: emp?.industry ?? "",
+    companySize: emp?.companySize ?? "",
+    foundedYear: emp?.foundedYear ? String(emp.foundedYear) : "",
+    designation: emp?.designation ?? "",
+    address: emp?.address ?? "",
+    companyEmail: emp?.companyEmail ?? "",
+    phone: emp?.phone ?? "",
+    website: emp?.website ?? "",
+    linkedin: emp?.socialLinks?.linkedin ?? "",
+    twitter: emp?.socialLinks?.twitter ?? "",
+    facebook: emp?.socialLinks?.facebook ?? "",
+    instagram: emp?.socialLinks?.instagram ?? "",
+    defaultVisibility: emp?.hiringPreferences?.defaultVisibility ?? "public",
+    workType: emp?.hiringPreferences?.workType ?? "",
+    preferredLocations: emp?.hiringPreferences?.preferredLocations?.join(", ") ?? "",
+    emailNewApplicant: emp?.notificationPrefs?.emailNewApplicant ?? true,
+    emailInterviewScheduled: emp?.notificationPrefs?.emailInterviewScheduled ?? true,
+    emailOfferResponse: emp?.notificationPrefs?.emailOfferResponse ?? true,
+    emailWeeklyDigest: emp?.notificationPrefs?.emailWeeklyDigest ?? true,
+    inAppAll: emp?.notificationPrefs?.inAppAll ?? true,
+  };
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function CompanySettingsPage() {
+  const { locale } = useParams<{ locale: string }>();
+  const [company, setCompany] = useState<CompanyData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [form, setForm] = useState<FormData>(buildInitialForm());
+  const initialFormRef = useRef<FormData>(buildInitialForm());
+  const [hasChanges, setHasChanges] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
+
+  // ─── Data Fetching ────────────────────────────────────────────────────────
+
+  const fetchCompany = useCallback(async () => {
+    try {
+      const res = await fetch("/api/employers/me");
+      if (res.ok) {
+        const data = await res.json();
+        const emp = data.employer as CompanyData;
+        setCompany(emp);
+        const initial = buildInitialForm(emp);
+        setForm(initial);
+        initialFormRef.current = initial;
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.title = "Company Settings · MPLOYEDIN";
+    fetchCompany();
+  }, [fetchCompany]);
+
+  // ─── Change Detection ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const changed = JSON.stringify(form) !== JSON.stringify(initialFormRef.current);
+    setHasChanges(changed);
+  }, [form]);
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  function setField<K extends keyof FormData>(key: K, value: FormData[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  // ─── Submit ───────────────────────────────────────────────────────────────
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.companyName || !form.companyEmail || !form.phone) {
+      setError("Company name, email, and phone are required.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    const payload: Record<string, unknown> = {
+      companyName: form.companyName,
+      companyEmail: form.companyEmail,
+      phone: form.phone,
+      designation: form.designation,
+      address: form.address,
+      website: form.website,
+      industry: form.industry,
+      companySize: form.companySize,
+      description: form.description,
+      foundedYear: form.foundedYear ? Number(form.foundedYear) : undefined,
+      socialLinks: {
+        linkedin: form.linkedin || undefined,
+        twitter: form.twitter || undefined,
+        facebook: form.facebook || undefined,
+        instagram: form.instagram || undefined,
+      },
+      hiringPreferences: {
+        defaultVisibility: form.defaultVisibility,
+        workType: form.workType || undefined,
+        preferredLocations: form.preferredLocations
+          ? form.preferredLocations.split(",").map((s) => s.trim()).filter(Boolean)
+          : [],
+      },
+      notificationPrefs: {
+        emailNewApplicant: form.emailNewApplicant,
+        emailInterviewScheduled: form.emailInterviewScheduled,
+        emailOfferResponse: form.emailOfferResponse,
+        emailWeeklyDigest: form.emailWeeklyDigest,
+        inAppAll: form.inAppAll,
+      },
+    };
+
+    try {
+      const res = await fetch("/api/employers/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const emp = data.employer as CompanyData;
+        setCompany(emp);
+        const newInitial = buildInitialForm(emp);
+        initialFormRef.current = newInitial;
+        setForm(newInitial);
+        setSuccess("Settings saved successfully.");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const err = await res.json();
+        setError(err.error ?? "Failed to update settings.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ─── Loading ──────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="page-container space-y-6">
+        <div className="h-8 w-56 bg-muted animate-pulse rounded" />
+        <div className="h-10 w-full max-w-lg bg-muted/50 animate-pulse rounded-xl" />
+        <div className="card-base h-80 animate-pulse" />
+      </div>
+    );
+  }
+
+  const vBadge = VERIFICATION_BADGES[company?.verificationLevel ?? "basic"];
+  const memberSince = company?.createdAt
+    ? new Date(company.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    : "";
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+
+  return (
+    <div className="page-container">
+      <PageHeader
+        title="Company Settings"
+        description="Manage your company profile, preferences, and notifications"
+      />
+
+      {/* ── Verification Status Card ───────────────────────────────────── */}
+      <div className="card-base mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            {/* Logo */}
+            {company?.logo ? (
+              <img
+                src={company.logo}
+                alt={company.companyName}
+                className="w-12 h-12 rounded-lg object-cover border border-border/40"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-primary" />
+              </div>
+            )}
+            <div>
+              <h3 className="font-semibold">{company?.companyName}</h3>
+              <p className="text-xs text-muted-foreground">
+                Member since {memberSince}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Badge className={vBadge.color}>
+              <Shield className="w-3 h-3 me-1" />
+              {vBadge.label}
+            </Badge>
+            {company?.subscriptionType && (
+              <Badge variant="outline" className="capitalize">
+                {company.subscriptionType} Plan
+              </Badge>
+            )}
+            {company?.verificationDocs && company.verificationDocs.length > 0 && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <FileText className="w-3 h-3" />
+                {company.verificationDocs.length} doc(s)
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tabs ───────────────────────────────────────────────────────── */}
+      <form onSubmit={handleSubmit}>
+        <Tabs defaultValue="profile" className="space-y-5">
+          <TabsList className="w-full sm:w-auto grid grid-cols-2 sm:inline-flex sm:grid-cols-none gap-1">
+            <TabsTrigger value="profile" className="gap-1.5">
+              <Building2 className="w-3.5 h-3.5" />
+              Profile
+            </TabsTrigger>
+            <TabsTrigger value="contact" className="gap-1.5">
+              <Link2 className="w-3.5 h-3.5" />
+              Contact & Social
+            </TabsTrigger>
+            <TabsTrigger value="hiring" className="gap-1.5">
+              <Briefcase className="w-3.5 h-3.5" />
+              Hiring Prefs
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-1.5">
+              <Bell className="w-3.5 h-3.5" />
+              Notifications
+            </TabsTrigger>
+            <TabsTrigger value="account" className="gap-1.5">
+              <Shield className="w-3.5 h-3.5" />
+              Account
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ── Profile Tab ──────────────────────────────────────────── */}
+          <TabsContent value="profile" className="space-y-5">
+            {/* Logo upload */}
+            <div className="card-base p-5">
+              <LogoUpload
+                currentLogo={company?.logo}
+                companyName={form.companyName}
+                onUploadComplete={(url) => {
+                  setCompany((prev) => prev ? { ...prev, logo: url } : prev);
+                }}
+                onRemove={() => {
+                  setCompany((prev) => prev ? { ...prev, logo: undefined } : prev);
+                }}
+              />
+            </div>
+
+            {/* Company information */}
+            <div className="card-base p-5 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Building2 className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-semibold">Company Information</h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    Company Name <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    value={form.companyName}
+                    onChange={(e) => setField("companyName", e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    Industry
+                  </label>
+                  <Select value={form.industry} onValueChange={(v) => setField("industry", v)}>
+                    <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
+                    <SelectContent>
+                      {INDUSTRIES.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    Company Size
+                  </label>
+                  <Select value={form.companySize} onValueChange={(v) => setField("companySize", v)}>
+                    <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
+                    <SelectContent>
+                      {COMPANY_SIZES.map((s) => <SelectItem key={s} value={s}>{s} employees</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    Founded Year
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 2015"
+                    min={1800}
+                    max={new Date().getFullYear()}
+                    value={form.foundedYear}
+                    onChange={(e) => setField("foundedYear", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    Designation / Title
+                  </label>
+                  <Input
+                    placeholder="e.g. HR Manager"
+                    value={form.designation}
+                    onChange={(e) => setField("designation", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  <MapPin className="w-3 h-3 inline me-1" />
+                  Address
+                </label>
+                <Input
+                  placeholder="Company address"
+                  value={form.address}
+                  onChange={(e) => setField("address", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  About the Company
+                </label>
+                <Textarea
+                  placeholder="Tell candidates about your company culture, mission, and what makes you a great place to work..."
+                  value={form.description}
+                  onChange={(e) => setField("description", e.target.value)}
+                  maxLength={2000}
+                  className="min-h-[120px]"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1 text-end">
+                  {form.description.length}/2000
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ── Contact & Social Tab ─────────────────────────────────── */}
+          <TabsContent value="contact" className="space-y-5">
+            <div className="card-base p-5 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Mail className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-semibold">Contact Details</h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    <Mail className="w-3 h-3 inline me-1" />
+                    Company Email <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    type="email"
+                    value={form.companyEmail}
+                    onChange={(e) => setField("companyEmail", e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    <Phone className="w-3 h-3 inline me-1" />
+                    Phone <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setField("phone", e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  <Globe className="w-3 h-3 inline me-1" />
+                  Website
+                </label>
+                <Input
+                  type="url"
+                  placeholder="https://yourcompany.com"
+                  value={form.website}
+                  onChange={(e) => setField("website", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="card-base p-5 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Link2 className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-semibold">Social Media Links</h2>
+              </div>
+              <p className="text-xs text-muted-foreground -mt-2">
+                These will appear on your public company profile.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    <Linkedin className="w-3 h-3 inline me-1 text-[#0077B5]" />
+                    LinkedIn
+                  </label>
+                  <Input
+                    type="url"
+                    placeholder="https://linkedin.com/company/..."
+                    value={form.linkedin}
+                    onChange={(e) => setField("linkedin", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    <Twitter className="w-3 h-3 inline me-1 text-[#1DA1F2]" />
+                    Twitter / X
+                  </label>
+                  <Input
+                    type="url"
+                    placeholder="https://twitter.com/..."
+                    value={form.twitter}
+                    onChange={(e) => setField("twitter", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    <Facebook className="w-3 h-3 inline me-1 text-[#1877F2]" />
+                    Facebook
+                  </label>
+                  <Input
+                    type="url"
+                    placeholder="https://facebook.com/..."
+                    value={form.facebook}
+                    onChange={(e) => setField("facebook", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    <Instagram className="w-3 h-3 inline me-1 text-[#E4405F]" />
+                    Instagram
+                  </label>
+                  <Input
+                    type="url"
+                    placeholder="https://instagram.com/..."
+                    value={form.instagram}
+                    onChange={(e) => setField("instagram", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ── Hiring Preferences Tab ───────────────────────────────── */}
+          <TabsContent value="hiring" className="space-y-5">
+            <div className="card-base p-5 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Briefcase className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-semibold">Hiring Preferences</h2>
+              </div>
+              <p className="text-xs text-muted-foreground -mt-2">
+                Default settings for new job postings. You can override these per job.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    <Eye className="w-3 h-3 inline me-1" />
+                    Default Job Visibility
+                  </label>
+                  <Select
+                    value={form.defaultVisibility}
+                    onValueChange={(v) => setField("defaultVisibility", v)}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">Public — Visible on job board</SelectItem>
+                      <SelectItem value="private">Private — Invite only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    <Users className="w-3 h-3 inline me-1" />
+                    Preferred Work Type
+                  </label>
+                  <Select
+                    value={form.workType}
+                    onValueChange={(v) => setField("workType", v)}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select work type" /></SelectTrigger>
+                    <SelectContent>
+                      {WORK_TYPES.map((w) => (
+                        <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  <MapPin className="w-3 h-3 inline me-1" />
+                  Preferred Locations
+                </label>
+                <Input
+                  placeholder="e.g. Dubai, Riyadh, Cairo (comma-separated)"
+                  value={form.preferredLocations}
+                  onChange={(e) => setField("preferredLocations", e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Comma-separated list of cities or regions where you typically hire.
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ── Notifications Tab ────────────────────────────────────── */}
+          <TabsContent value="notifications" className="space-y-5">
+            <div className="card-base p-5 space-y-1">
+              <div className="flex items-center gap-2 mb-3">
+                <Bell className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-semibold">Email Notifications</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Choose which events trigger email notifications.
+              </p>
+
+              <NotificationRow
+                label="New Applicant"
+                description="When a candidate applies to one of your jobs"
+                checked={form.emailNewApplicant}
+                onChange={(v) => setField("emailNewApplicant", v)}
+              />
+              <NotificationRow
+                label="Interview Scheduled"
+                description="When an interview is confirmed or rescheduled"
+                checked={form.emailInterviewScheduled}
+                onChange={(v) => setField("emailInterviewScheduled", v)}
+              />
+              <NotificationRow
+                label="Offer Response"
+                description="When a candidate accepts, rejects, or negotiates an offer"
+                checked={form.emailOfferResponse}
+                onChange={(v) => setField("emailOfferResponse", v)}
+              />
+              <NotificationRow
+                label="Weekly Digest"
+                description="Summary of pipeline activity and pending actions"
+                checked={form.emailWeeklyDigest}
+                onChange={(v) => setField("emailWeeklyDigest", v)}
+              />
+
+              <Separator className="my-4" />
+
+              <div className="flex items-center gap-2 mb-3">
+                <Bell className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-semibold">In-App Notifications</h2>
+              </div>
+
+              <NotificationRow
+                label="All In-App Notifications"
+                description="Show notifications in the bell icon menu"
+                checked={form.inAppAll}
+                onChange={(v) => setField("inAppAll", v)}
+              />
+            </div>
+          </TabsContent>
+
+          {/* ── Account Tab ──────────────────────────────────────────── */}
+          <TabsContent value="account" className="space-y-5">
+            {/* Verification details */}
+            <div className="card-base p-5 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Shield className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-semibold">Verification & Trust</h2>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                <Badge className={`${vBadge.color} text-xs`}>
+                  <Shield className="w-3 h-3 me-1" />
+                  {vBadge.label}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  {company?.verificationLevel === "basic"
+                    ? "Upload company documents to get verified and build trust with candidates."
+                    : "Your company is verified. Candidates see a trust badge on your job postings."}
+                </span>
+              </div>
+
+              {company?.verificationDocs && company.verificationDocs.length > 0 && (
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <FileText className="w-3 h-3" />
+                  {company.verificationDocs.length} document(s) uploaded
+                </div>
+              )}
+
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                Member since {memberSince}
+              </div>
+
+              {company?.subscriptionType && (
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Briefcase className="w-3 h-3" />
+                  Current plan: <span className="font-medium capitalize">{company.subscriptionType}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Danger Zone */}
+            <div className="border border-destructive/30 rounded-lg p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-destructive" />
+                <h2 className="text-sm font-semibold text-destructive">Danger Zone</h2>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Deactivating your account will hide your company profile and unpublish all active job postings.
+                This action can be reversed by contacting support.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                disabled={deactivating}
+                onClick={() => {
+                  if (confirm("Are you sure you want to deactivate your account? All active jobs will be unpublished.")) {
+                    setDeactivating(true);
+                    fetch("/api/employers/me", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ workflowMode: "manual" }), // placeholder — real deactivation needs dedicated endpoint
+                    }).finally(() => setDeactivating(false));
+                  }
+                }}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 me-1.5" />
+                {deactivating ? "Processing…" : "Deactivate Account"}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* ── Sticky Save Bar ──────────────────────────────────────────── */}
+        <div
+          className={`
+            fixed bottom-0 left-0 right-0 z-50 transition-all duration-300
+            ${hasChanges ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"}
+          `}
+        >
+          <div className="bg-background/95 backdrop-blur-sm border-t border-border/60 shadow-[0_-4px_20px_-2px_rgb(0_0_0/0.08)]">
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span className="text-muted-foreground">You have unsaved changes</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setForm(initialFormRef.current);
+                    setError("");
+                    setSuccess("");
+                  }}
+                >
+                  Discard
+                </Button>
+                <Button type="submit" size="sm" disabled={saving} className="px-6">
+                  <Save className="w-4 h-4 me-2" />
+                  {saving ? "Saving…" : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Success / Error Messages ─────────────────────────────────── */}
+        {error && (
+          <p className="text-sm text-destructive p-3 bg-destructive/10 rounded-lg mt-4">{error}</p>
+        )}
+        {success && (
+          <p className="text-sm text-emerald-700 p-3 bg-emerald-50 rounded-lg border border-emerald-200 mt-4">{success}</p>
+        )}
+
+        {/* Static save button (always visible, not just sticky bar) */}
+        {!hasChanges && (
+          <div className="mt-5">
+            <Button type="submit" disabled={saving || !hasChanges} className="px-8">
+              <Save className="w-4 h-4 me-2" />
+              Save Changes
+            </Button>
+          </div>
+        )}
+      </form>
+    </div>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function NotificationRow({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between py-3 gap-4">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}

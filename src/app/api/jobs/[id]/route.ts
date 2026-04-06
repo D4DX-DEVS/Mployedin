@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { validateBody } from "@/lib/validators";
+import { jobUpdateSchema } from "@/lib/validators/jobs";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -25,13 +27,21 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const job = await Job.findById(params?.id);
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
-  const body = await req.json();
+  const body = await validateBody(req, jobUpdateSchema);
 
   // Ownership check
   if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id domainVerified").lean();
     if (!emp || String(job.employerId) !== String(emp._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    // Domain gate: only verified employers can publish (set status to 'active')
+    const bodyRecord2 = body as Record<string, unknown>;
+    if (bodyRecord2.status === "active" && !emp.domainVerified) {
+      return NextResponse.json(
+        { error: "Domain not verified. Please verify your company domain before publishing jobs." },
+        { status: 403 }
+      );
     }
   } else if (!["agent", "super_agent", "admin"].includes(ctx.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -40,17 +50,18 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // Admin can approve, everyone can update their own
   const allowedFields = [
     "title", "description", "category", "location", "requirements",
-    "salary", "status", "expiresAt", "applicationMode",
+    "salary", "status", "expiresAt", "applicationMode", "tags", "vacancies",
   ];
   const adminFields = ["poster.approvalStatus", "featuredUntil"];
 
+  const bodyRecord = body as Record<string, unknown>;
   const updateData: Record<string, unknown> = {};
   for (const f of allowedFields) {
-    if (f in body) updateData[f] = body[f];
+    if (f in bodyRecord) updateData[f] = bodyRecord[f];
   }
   if (ctx.role === "admin") {
     for (const f of adminFields) {
-      if (f in body) updateData[f] = body[f];
+      if (f in bodyRecord) updateData[f] = bodyRecord[f];
     }
   }
 

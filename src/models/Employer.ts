@@ -1,7 +1,29 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
 
 export type VerificationLevel = "basic" | "company" | "premium";
 export type WorkflowMode = "auto" | "manual";
+
+export interface IEmployerSocialLinks {
+  linkedin?: string;
+  twitter?: string;
+  facebook?: string;
+  instagram?: string;
+}
+
+export interface IHiringPreferences {
+  defaultVisibility?: "public" | "private";
+  preferredLocations?: string[];
+  workType?: "remote" | "onsite" | "hybrid" | "flexible";
+}
+
+export interface INotificationPrefs {
+  emailNewApplicant?: boolean;
+  emailInterviewScheduled?: boolean;
+  emailOfferResponse?: boolean;
+  emailWeeklyDigest?: boolean;
+  inAppAll?: boolean;
+}
 
 export interface IEmployer extends Document {
   _id: mongoose.Types.ObjectId;
@@ -18,13 +40,28 @@ export interface IEmployer extends Document {
   website?: string;
   industry?: string;
   companySize?: string;
+  // Profile
+  logo?: string;
+  coverImage?: string;
+  description?: string;
+  foundedYear?: number;
+  socialLinks?: IEmployerSocialLinks;
+  // Preferences
+  hiringPreferences?: IHiringPreferences;
+  notificationPrefs?: INotificationPrefs;
   // Verification
   verificationLevel: VerificationLevel;
   verificationDocs: string[];
   verifiedAt?: Date;
   verifiedBy?: mongoose.Types.ObjectId;
+  domainVerified: boolean;
+  domainVerifiedAt?: Date;
+  domainVerificationToken?: string;
+  domainVerificationSentAt?: Date;
   // Settings
   workflowMode: WorkflowMode;
+  workflow?: Record<string, unknown>;
+  matchingWeights?: Record<string, number>;
   // Related
   jobIds: mongoose.Types.ObjectId[];
   // Payment
@@ -48,6 +85,30 @@ const EmployerSchema = new Schema<IEmployer>(
     website: String,
     industry: String,
     companySize: String,
+    // Profile
+    logo: String,
+    coverImage: String,
+    description: { type: String, maxlength: 2000 },
+    foundedYear: Number,
+    socialLinks: {
+      linkedin: String,
+      twitter: String,
+      facebook: String,
+      instagram: String,
+    },
+    // Preferences
+    hiringPreferences: {
+      defaultVisibility: { type: String, enum: ["public", "private"], default: "public" },
+      preferredLocations: [String],
+      workType: { type: String, enum: ["remote", "onsite", "hybrid", "flexible"] },
+    },
+    notificationPrefs: {
+      emailNewApplicant: { type: Boolean, default: true },
+      emailInterviewScheduled: { type: Boolean, default: true },
+      emailOfferResponse: { type: Boolean, default: true },
+      emailWeeklyDigest: { type: Boolean, default: true },
+      inAppAll: { type: Boolean, default: true },
+    },
     verificationLevel: {
       type: String,
       enum: ["basic", "company", "premium"],
@@ -56,7 +117,13 @@ const EmployerSchema = new Schema<IEmployer>(
     verificationDocs: [String],
     verifiedAt: Date,
     verifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    domainVerified: { type: Boolean, default: false },
+    domainVerifiedAt: Date,
+    domainVerificationToken: { type: String, select: false },
+    domainVerificationSentAt: Date,
     workflowMode: { type: String, enum: ["auto", "manual"], default: "manual" },
+    workflow: { type: Schema.Types.Mixed },
+    matchingWeights: { type: Schema.Types.Mixed },
     jobIds: [{ type: Schema.Types.ObjectId, ref: "Job" }],
     paymentStatus: {
       type: String,
@@ -68,10 +135,35 @@ const EmployerSchema = new Schema<IEmployer>(
   { timestamps: true }
 );
 
-EmployerSchema.index({ userId: 1 }, { unique: true });
-EmployerSchema.index({ agentId: 1 });
-EmployerSchema.index({ verificationLevel: 1 });
-EmployerSchema.index({ paymentStatus: 1 });
+// Schema-level indexes removed — managed centrally in lib/db/indexes.ts
+
+// Encrypt sensitive PII fields before saving
+const EMPLOYER_PII_FIELDS = ["registrationNo", "taxId"] as const;
+
+EmployerSchema.pre("save", function () {
+  for (const field of EMPLOYER_PII_FIELDS) {
+    const value = this[field];
+    if (value && typeof value === "string") {
+      this[field] = encryptIfPlain(value);
+    }
+  }
+});
+
+// Decrypt PII fields after reading from DB
+function decryptEmployerPII(doc: IEmployer | null) {
+  if (!doc) return doc;
+  for (const field of EMPLOYER_PII_FIELDS) {
+    const value = doc[field];
+    if (value && typeof value === "string") {
+      try { doc[field] = decrypt(value); } catch { /* already plain or corrupted */ }
+    }
+  }
+  return doc;
+}
+
+EmployerSchema.post("findOne", function (doc) { decryptEmployerPII(doc); });
+EmployerSchema.post("findOneAndUpdate", function (doc) { decryptEmployerPII(doc); });
+EmployerSchema.post("save", function (doc) { decryptEmployerPII(doc); });
 
 export const Employer =
   mongoose.models.Employer ||

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar, MobileMenuButton } from "@/components/shared/Sidebar";
 import { CommandMenu, CommandMenuTrigger } from "@/components/shared/CommandMenu";
 import { ConversationalAI } from "@/components/shared/ConversationalAI";
@@ -17,6 +17,7 @@ interface DashboardShellProps {
   userEmail?: string;
   userRole?: string;
   lastLogin?: string;
+  companyLogo?: string;
 }
 
 export function DashboardShell({
@@ -27,8 +28,12 @@ export function DashboardShell({
   userEmail,
   userRole,
   lastLogin,
+  companyLogo,
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Defer Radix-based components to avoid SSR/client ID mismatch hydration errors
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -38,6 +43,7 @@ export function DashboardShell({
         locale={locale}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
+        companyLogo={companyLogo}
       />
 
       {/* Main content area */}
@@ -49,15 +55,20 @@ export function DashboardShell({
             <CommandMenuTrigger locale={locale} />
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <LanguageSwitcher />
-            <NotificationBell locale={locale} />
-            <UserProfileDropdown
-              userName={userName ?? "User"}
-              userEmail={userEmail ?? ""}
-              userRole={userRole ?? "job_seeker"}
-              lastLogin={lastLogin}
-              locale={locale}
-            />
+            {mounted && (
+              <>
+                <LanguageSwitcher />
+                <NotificationBell locale={locale} />
+                <UserProfileDropdown
+                  userName={userName ?? "User"}
+                  userEmail={userEmail ?? ""}
+                  userRole={userRole ?? "job_seeker"}
+                  lastLogin={lastLogin}
+                  locale={locale}
+                  companyLogo={companyLogo}
+                />
+              </>
+            )}
           </div>
         </header>
 

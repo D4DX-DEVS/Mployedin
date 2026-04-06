@@ -2,10 +2,17 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export type NotificationType =
   | "application_update"
+  | "application_received"
+  | "application_status_update"
   | "interview_scheduled"
   | "interview_reminder"
+  | "interview_update"
+  | "offer_update"
   | "placement"
   | "job_posted"
+  | "job_approved"
+  | "job_rejected"
+  | "lead_converted"
   | "profile_update"
   | "message"
   | "system"
@@ -38,10 +45,17 @@ const NotificationSchema = new Schema<INotification>(
       type: String,
       enum: [
         "application_update",
+        "application_received",
+        "application_status_update",
         "interview_scheduled",
         "interview_reminder",
+        "interview_update",
+        "offer_update",
         "placement",
         "job_posted",
+        "job_approved",
+        "job_rejected",
+        "lead_converted",
         "profile_update",
         "message",
         "system",

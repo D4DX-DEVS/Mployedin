@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
 
 export interface IWorkExperience {
   jobTitle: string;
@@ -33,6 +34,12 @@ export interface IJobSeeker extends Document {
   dateOfBirth?: Date;
   gender?: string;
   currentLocation?: string;
+  // Sensitive PII (encrypted at rest)
+  nationalId?: string;
+  visaNumber?: string;
+  passportNumber?: string;
+  bankAccountNumber?: string;
+  iban?: string;
   // CV
   cv: {
     originalUrl?: string;
@@ -102,6 +109,11 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     dateOfBirth: Date,
     gender: String,
     currentLocation: String,
+    nationalId: { type: String, select: false },
+    visaNumber: { type: String, select: false },
+    passportNumber: { type: String, select: false },
+    bankAccountNumber: { type: String, select: false },
+    iban: { type: String, select: false },
     cv: {
       originalUrl: String,
       parsedAt: Date,
@@ -136,11 +148,34 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
   { timestamps: true }
 );
 
-JobSeekerSchema.index({ userId: 1 }, { unique: true });
-JobSeekerSchema.index({ agentId: 1 });
-JobSeekerSchema.index({ skills: 1 });
-JobSeekerSchema.index({ availabilityStatus: 1 });
-JobSeekerSchema.index({ badges: 1 });
+// Schema-level indexes removed — managed centrally in lib/db/indexes.ts
+
+// Encrypt sensitive PII fields before saving
+const JOBSEEKER_PII_FIELDS = ["nationalId", "visaNumber", "passportNumber", "bankAccountNumber", "iban"] as const;
+
+JobSeekerSchema.pre("save", function () {
+  for (const field of JOBSEEKER_PII_FIELDS) {
+    const value = this[field];
+    if (value && typeof value === "string") {
+      this[field] = encryptIfPlain(value);
+    }
+  }
+});
+
+function decryptJobSeekerPII(doc: IJobSeeker | null) {
+  if (!doc) return doc;
+  for (const field of JOBSEEKER_PII_FIELDS) {
+    const value = doc[field];
+    if (value && typeof value === "string") {
+      try { doc[field] = decrypt(value); } catch { /* already plain or corrupted */ }
+    }
+  }
+  return doc;
+}
+
+JobSeekerSchema.post("findOne", function (doc) { decryptJobSeekerPII(doc); });
+JobSeekerSchema.post("findOneAndUpdate", function (doc) { decryptJobSeekerPII(doc); });
+JobSeekerSchema.post("save", function (doc) { decryptJobSeekerPII(doc); });
 
 export const JobSeeker =
   mongoose.models.JobSeeker ||

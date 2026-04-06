@@ -10,8 +10,9 @@ interface TrainingItem {
   title: string;
   provider: string;
   url?: string;
+  targetRole?: string;
   status: "not_started" | "in_progress" | "completed";
-  targetDate?: string;
+  dueDate?: string;
   notes?: string;
   completedAt?: string;
 }
@@ -29,7 +30,7 @@ export default function EmployerTrainingTrackerPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<Omit<TrainingItem, "_id">>({
-    title: "",  provider: "", url: "", status: "not_started", targetDate: "", notes: "",
+    title: "",  provider: "", url: "", targetRole: "", status: "not_started", dueDate: "", notes: "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -52,12 +53,17 @@ export default function EmployerTrainingTrackerPage() {
     if (!form.title || !form.provider) return;
     setSaving(true);
     try {
+      const { url: _url, dueDate, ...rest } = form;
+      const payload = {
+        ...rest,
+        ...(dueDate ? { dueDate: new Date(dueDate).toISOString() } : {}),
+      };
       await fetch("/api/employers/training", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
-      setForm({ title: "", provider: "", url: "", status: "not_started", targetDate: "", notes: "" });
+      setForm({ title: "", provider: "", url: "", targetRole: "", status: "not_started", dueDate: "", notes: "" });
       setShowForm(false);
       load();
     } finally {
@@ -95,7 +101,7 @@ export default function EmployerTrainingTrackerPage() {
 
       {/* Add Form */}
       {showForm && (
-        <div className="card-base space-y-3">
+        <div className="card-base p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">Add Training Item</h3>
             <button onClick={() => setShowForm(false)}><X className="h-4 w-4 text-muted-foreground" /></button>
@@ -119,8 +125,13 @@ export default function EmployerTrainingTrackerPage() {
                 placeholder="https://…" className="input-field w-full mt-1" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Target Date</label>
-              <input type="date" value={form.targetDate} onChange={e => setForm(f => ({ ...f, targetDate: e.target.value }))}
+              <label className="text-xs text-muted-foreground">Target Role</label>
+              <input value={form.targetRole} onChange={e => setForm(f => ({ ...f, targetRole: e.target.value }))}
+                placeholder="e.g. HR Manager" className="input-field w-full mt-1" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Due Date</label>
+              <input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
                 className="input-field w-full mt-1" />
             </div>
           </div>
@@ -151,7 +162,7 @@ export default function EmployerTrainingTrackerPage() {
             </div>
           )}
           {items.map((item, i) => (
-            <div key={item._id ?? i} className="card-base flex items-start gap-3">
+            <div key={item._id ?? i} className="card-base p-4 flex items-start gap-3">
               <div className="pt-0.5">
                 {item.status === "completed"
                   ? <CheckCircle className="h-5 w-5 text-emerald-500" />
@@ -195,7 +206,7 @@ export default function EmployerTrainingTrackerPage() {
         </div>
 
         {/* Suggestions */}
-        <div className="card-base space-y-3">
+        <div className="card-base p-5 space-y-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <GraduationCap className="h-4 w-4 text-primary" /> Recommended Training
           </h3>
@@ -208,7 +219,7 @@ export default function EmployerTrainingTrackerPage() {
                 </div>
                 <button
                   onClick={() => {
-                    setForm({ title: s.title, provider: s.provider, url: s.url, status: "not_started", targetDate: "", notes: "" });
+                    setForm({ title: s.title, provider: s.provider, url: s.url, targetRole: "", status: "not_started", dueDate: "", notes: "" });
                     setShowForm(true);
                   }}
                   className="text-xs px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 shrink-0">

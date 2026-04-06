@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { getCategory } from "@/lib/job-attributes/categoryResolver";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { jobAttributeUpdateSchema } from "@/lib/validators/location-data";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -40,7 +42,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const item = await Model.findById(id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json();
+  const body = await validateBody(req, jobAttributeUpdateSchema) as Record<string, unknown>;
   const allowed = ["name", "nameAr", "slug", "sortOrder", "isActive"];
   const update: Record<string, unknown> = {};
   for (const k of allowed) {

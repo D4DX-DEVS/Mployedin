@@ -2,32 +2,67 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
+import User from "@/models/User";
 
 export const GET = withAuth(async (req: NextRequest) => {
   await connectDB();
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "10");
-  const search = searchParams.get("search");
+  const limit = Math.min(parseInt(searchParams.get("limit") ?? "10"), 50);
+  const search = searchParams.get("search")?.trim();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filter: any = {};
   if (search) {
-    filter.$or = [
-      { "userId.name": { $regex: search, $options: "i" } },
-      { skills: { $regex: search, $options: "i" } },
+    // Use aggregation pipeline so we can search across the joined User name
+    const matchStage: Record<string, unknown> = {};
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const pipeline = [
+      // Join with users collection to get name/email
+      { $lookup: { from: User.collection.name, localField: "userId", foreignField: "_id", as: "userId" } },
+      { $unwind: { path: "$userId", preserveNullAndEmptyArrays: true } },
+      // Filter by user name OR skills
+      {
+        $match: {
+          $or: [
+            { "userId.name": { $regex: escapedSearch, $options: "i" } },
+            { skills: { $regex: escapedSearch, $options: "i" } },
+          ],
+        },
+      },
+      // Project only the fields the frontend needs
+      {
+        $project: {
+          "userId.name": 1, "userId.email": 1,
+          skills: 1, currentLocation: 1, experience: 1,
+          profileCompleteness: 1, availabilityStatus: 1, badges: 1,
+          createdAt: 1,
+        },
+      },
+      { $sort: { createdAt: -1 as const } },
+      {
+        $facet: {
+          items: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+          count: [{ $count: "total" }],
+        },
+      },
     ];
+
+    const [result] = await JobSeeker.aggregate(pipeline);
+    const items = result?.items ?? [];
+    const total = result?.count?.[0]?.total ?? 0;
+    return NextResponse.json({ items, total, page, totalPages: Math.ceil(total / limit) });
   }
 
+  // No search — simple find + populate
   const [items, total] = await Promise.all([
-    JobSeeker.find(filter)
+    JobSeeker.find()
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),
-    JobSeeker.countDocuments(filter),
+    JobSeeker.countDocuments(),
   ]);
 
   return NextResponse.json({ items, total, page, totalPages: Math.ceil(total / limit) });
-}, { resource: "users", action: "read" });
+}, { resource: "job_seekers", action: "read" });

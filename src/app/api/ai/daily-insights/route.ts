@@ -5,6 +5,8 @@ import Application from "@/models/Application";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import { routeGenerate } from "@/lib/ai/router";
+import { redactPII } from "@/lib/ai/sanitize";
+import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 
 /**
  * GET /api/ai/daily-insights
@@ -13,6 +15,14 @@ import { routeGenerate } from "@/lib/ai/router";
  * based on their role and recent platform activity.
  */
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
+  const rl = checkRateLimitDual(_req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
   await connectDB();
 
   const today = new Date();
@@ -65,7 +75,7 @@ Return ONLY a JSON array (no markdown):
   const text = await routeGenerate(prompt, "chat");
   let insights;
   try {
-    const cleaned = text.replace(/```json\n?|```\n?/g, "").trim();
+    const cleaned = redactPII(text).replace(/```json\n?|```\n?/g, "").trim();
     insights = JSON.parse(cleaned);
   } catch {
     insights = [{ type: "tip", title: "Get Started", message: text.slice(0, 200), action: "Check your dashboard" }];

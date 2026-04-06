@@ -2,10 +2,40 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Placement from "@/models/Placement";
+import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { placementUpdateSchema } from "@/lib/validators/placements";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
+
+/**
+ * Verify the caller owns the placement.
+ * Admins bypass. Employers must own via their employer profile.
+ * Agents must own via their agent profile.
+ */
+async function verifyOwnership(
+  placement: { employerId?: unknown; agentId?: unknown },
+  ctx: AuthCtx
+): Promise<NextResponse | null> {
+  if (ctx.role === "admin") return null; // admins can access all
+
+  if (ctx.role === "employer") {
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!emp || String(placement.employerId) !== String(emp._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (ctx.role === "agent") {
+    const { Agent } = await import("@/models/Agent");
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!agent || String(placement.agentId) !== String(agent._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  return null;
+}
 
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
   await connectDB();
@@ -18,16 +48,16 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  const body = await validateBody(req, placementUpdateSchema);
+
   await connectDB();
   const placement = await Placement.findById(params?.id);
   if (!placement) return NextResponse.json({ error: "Placement not found" }, { status: 404 });
 
-  const body = await req.json();
-  const allowed = ["startDate", "salary", "currency", "visaStatus", "commissionPaid", "commissionAmount", "notes"];
-  const update: Record<string, unknown> = {};
-  for (const k of allowed) if (body[k] !== undefined) update[k] = body[k];
+  const forbidden = await verifyOwnership(placement, ctx);
+  if (forbidden) return forbidden;
 
-  Object.assign(placement, update);
+  Object.assign(placement, body);
   await placement.save();
 
   await logActivity({
@@ -35,7 +65,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     action: "placement.update",
     resource: "placements",
     resourceId: params?.id,
-    changes: { after: update },
+    changes: { after: body },
     req,
   });
 
@@ -46,6 +76,9 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   await connectDB();
   const placement = await Placement.findById(params?.id);
   if (!placement) return NextResponse.json({ error: "Placement not found" }, { status: 404 });
+
+  const forbidden = await verifyOwnership(placement, ctx);
+  if (forbidden) return forbidden;
 
   await Placement.findByIdAndDelete(params?.id);
 

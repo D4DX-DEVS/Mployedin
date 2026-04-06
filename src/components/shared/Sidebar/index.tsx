@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -14,9 +15,10 @@ interface SidebarProps {
   locale: string;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  companyLogo?: string;
 }
 
-export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose }: SidebarProps) {
+export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, companyLogo }: SidebarProps) {
   const pathname = usePathname();
   const isRtl = locale === "ar";
 
@@ -71,9 +73,23 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose }
     <div className="w-[80px] h-full flex flex-col bg-slate-900 border-r border-slate-800 z-20 shrink-0">
       {/* Logo */}
       <div className="h-16 flex items-center justify-center border-b border-slate-800 shrink-0">
-        <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg font-bold text-xl ring-1 ring-white/20">
-          M
-        </div>
+        {companyLogo ? (
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg ring-1 ring-white/20 bg-white shrink-0">
+            <Image
+              src={companyLogo}
+              alt="Company logo"
+              width={40}
+              height={40}
+              className="w-full h-full object-contain"
+              unoptimized
+              priority
+            />
+          </div>
+        ) : (
+          <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg font-bold text-xl ring-1 ring-white/20">
+            M
+          </div>
+        )}
       </div>
 
       {/* Icon Nav */}
@@ -99,9 +115,6 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose }
                       )}
                     >
                       <Icon className="w-[22px] h-[22px] shrink-0" />
-                      {isSelected && (
-                        <div className={cn("absolute w-1.5 h-6 bg-white rounded-full", isRtl ? "-left-1.5" : "-right-1.5")} />
-                      )}
                     </button>
                   ) : (
                     <Link
@@ -118,9 +131,6 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose }
                       )}
                     >
                       <Icon className="w-[22px] h-[22px] shrink-0" />
-                      {isSelected && (
-                        <div className={cn("absolute w-1.5 h-6 bg-white rounded-full", isRtl ? "-left-1.5" : "-right-1.5")} />
-                      )}
                     </Link>
                   )}
                 </TooltipTrigger>

@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Interview from "@/models/Interview";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { validateBody } from "@/lib/validators";
+import { interviewUpdateSchema } from "@/lib/validators/interviews";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -21,10 +23,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const interview = await Interview.findById(params?.id);
   if (!interview) return NextResponse.json({ error: "Interview not found" }, { status: 404 });
 
-  const body = await req.json();
-  const allowed = ["scheduledAt", "type", "duration", "location", "meetLink", "instructions", "status", "feedback", "outcome"];
+  const body = await validateBody(req, interviewUpdateSchema);
   const update: Record<string, unknown> = {};
-  for (const k of allowed) if (body[k] !== undefined) update[k] = body[k];
+  for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
 
   if (body.status === "rescheduled") {
     update.rescheduleCount = (interview.rescheduleCount ?? 0) + 1;

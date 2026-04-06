@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth/config";
 import connectDB from "@/lib/db/mongoose";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
+import { validateBody } from "@/lib/validators";
+import { changePasswordSchema } from "@/lib/validators/misc";
 
 /**
  * POST /api/users/change-password
@@ -15,21 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { currentPassword, newPassword } = await req.json();
-
-  if (!currentPassword || !newPassword) {
-    return NextResponse.json(
-      { error: "Current password and new password are required" },
-      { status: 400 }
-    );
-  }
-
-  if (newPassword.length < 8) {
-    return NextResponse.json(
-      { error: "New password must be at least 8 characters" },
-      { status: 400 }
-    );
-  }
+  const { currentPassword, newPassword } = await validateBody(req, changePasswordSchema);
 
   await connectDB();
 

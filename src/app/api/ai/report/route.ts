@@ -5,6 +5,10 @@ import User from "@/models/User";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
 import { routeGenerate } from "@/lib/ai/router";
+import { sanitizeAIInput, redactPII } from "@/lib/ai/sanitize";
+import { validateBody } from "@/lib/validators";
+import { aiReportSchema } from "@/lib/validators/ai";
+import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 
 /**
  * POST /api/ai/report
@@ -14,9 +18,17 @@ import { routeGenerate } from "@/lib/ai/router";
  * and the user's query. Agents, super-agents and admins can use this.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
   await connectDB();
-  const { query } = await req.json();
-  if (!query) return NextResponse.json({ error: "query required" }, { status: 400 });
+  const { query } = await validateBody(req, aiReportSchema);
+  const safeQuery = sanitizeAIInput(String(query), 500);
 
   // Gather live stats for context
   const now = new Date();
@@ -38,7 +50,7 @@ LIVE PLATFORM DATA:
 - Current user role: ${ctx.role}
 - Report requested by: ${ctx.userId}
 
-USER QUERY: "${query}"
+USER QUERY: "${safeQuery}"
 
 Generate a professional, structured analytics report based on the data above and your knowledge of Gulf region recruitment trends. Include:
 1. Direct answer to the query
@@ -48,10 +60,10 @@ Generate a professional, structured analytics report based on the data above and
 
 Format with clear sections using markdown. Be concise but comprehensive.`;
 
-  const report = await routeGenerate(systemContext, "report");
+  const report = redactPII(await routeGenerate(systemContext, "report"));
 
   return NextResponse.json({
-    query,
+    query: safeQuery,
     report,
     generatedAt: new Date().toISOString(),
     dataAsOf: new Date().toISOString(),

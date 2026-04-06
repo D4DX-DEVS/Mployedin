@@ -6,6 +6,8 @@ import type { UserRole } from "@/models/User";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { validateUploadedFile } from "@/lib/security/file-validation";
+import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -43,28 +45,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 10 MB." },
-        { status: 400 }
-      );
-    }
-
-    const allowedTypes = [
-      "application/pdf",
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Only PDF and image files are accepted" },
-        { status: 400 }
-      );
+    // Validate file: size, MIME whitelist, and magic bytes
+    const bytes = await file.arrayBuffer();
+    const validationError = validateUploadedFile(file, "cv", bytes);
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
     // Convert file to base64 for Gemini Vision
-    const bytes = await file.arrayBuffer();
     const base64 = Buffer.from(bytes).toString("base64");
     const mimeType = file.type as "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
 
@@ -96,10 +84,13 @@ Rules:
 - Normalize skill names (e.g., "JS" → "JavaScript")
 - Return ONLY valid JSON, no markdown code blocks`;
 
-    const result = await model.generateContent([
-      prompt,
-      { inlineData: { data: base64, mimeType } },
-    ]);
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [
+        { text: prompt },
+        { inlineData: { data: base64, mimeType } },
+      ] }],
+      generationConfig: { maxOutputTokens: AI_TOKEN_LIMITS.cv_extract },
+    });
 
     const text = result.response.text().trim();
 

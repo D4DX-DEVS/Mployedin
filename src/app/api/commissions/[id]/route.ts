@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Commission from "@/models/Commission";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { validateBody } from "@/lib/validators";
+import { commissionUpdateSchema } from "@/lib/validators/commissions";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -22,10 +24,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const commission = await Commission.findById(params?.id);
   if (!commission) return NextResponse.json({ error: "Commission not found" }, { status: 404 });
 
-  const body = await req.json();
-  const allowed = ["type", "amount", "currency", "rate", "status", "notes", "paymentRef"];
+  // IDOR: non-admins can only modify their own commissions
+  if (ctx.role === "agent" && String(commission.agentId) !== ctx.userId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (ctx.role === "super_agent" && String(commission.superAgentId) !== ctx.userId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const body = await validateBody(req, commissionUpdateSchema);
   const update: Record<string, unknown> = {};
-  for (const k of allowed) if (body[k] !== undefined) update[k] = body[k];
+  for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
 
   // Auto-track approval
   if (body.status === "approved" && commission.status !== "approved") {
@@ -55,6 +64,11 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   await connectDB();
   const commission = await Commission.findById(params?.id);
   if (!commission) return NextResponse.json({ error: "Commission not found" }, { status: 404 });
+
+  // IDOR: only admins can delete commissions
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   await Commission.findByIdAndDelete(params?.id);
 

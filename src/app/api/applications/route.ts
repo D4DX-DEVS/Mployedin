@@ -5,6 +5,10 @@ import Application from "@/models/Application";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
+import { Employer } from "@/models/Employer";
+import { validateBody } from "@/lib/validators";
+import { applicationCreateSchema } from "@/lib/validators/applications";
+import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -58,17 +62,21 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
 // POST /api/applications — apply for a job
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.applications);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Only job seekers can apply" }, { status: 403 });
   }
 
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, applicationCreateSchema);
   const { jobId, coverLetter } = body;
-
-  if (!jobId) {
-    return NextResponse.json({ error: "jobId is required" }, { status: 400 });
-  }
 
   const job = await Job.findById(jobId).lean();
   if (!job || job.status !== "active") {
@@ -85,14 +93,31 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
   }
 
+  // Check employer's autoRejectBelow threshold for newly scored applications
+  // (score would be set by a separate scoring step; we set initial status here)
+  const empRecord = await Employer.findOne({ userId: job.employerId as unknown as string })
+    .select("workflow")
+    .lean() as { workflow?: { settings?: { autoRejectBelow?: number } } } | null;
+  const autoRejectBelow = empRecord?.workflow?.settings?.autoRejectBelow;
+
   const application = await Application.create({
     jobSeekerId: seeker._id,
     jobId,
+    employerId: job.employerId,
     coverLetter,
     status: "applied",
     appliedAt: new Date(),
     statusHistory: [{ status: "applied", changedAt: new Date(), note: "Application submitted" }],
   });
+
+  // If employer has auto-reject threshold and score already known, apply it immediately
+  // (In practice score is set post-creation; this guard handles edge cases)
+  if (autoRejectBelow !== undefined && application.aiMatchScore !== undefined && application.aiMatchScore < autoRejectBelow) {
+    application.status = "rejected";
+    application.rejectionReason = `AI match score (${application.aiMatchScore}) below employer threshold`;
+    application.statusHistory.push({ status: "rejected", changedAt: new Date(), note: "Auto-rejected by pipeline rule" });
+    await application.save();
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

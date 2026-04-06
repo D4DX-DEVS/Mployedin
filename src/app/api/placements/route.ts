@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Placement from "@/models/Placement";
+import { validateBody } from "@/lib/validators";
+import { placementCreateSchema } from "@/lib/validators/placements";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -61,12 +63,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, placementCreateSchema);
   const { applicationId, jobId, jobSeekerId, employerId, startDate, salary, currency, visaStatus, notes } = body;
-
-  if (!applicationId || !jobId || !jobSeekerId || !employerId) {
-    return NextResponse.json({ error: "applicationId, jobId, jobSeekerId, and employerId are required" }, { status: 400 });
-  }
 
   const { logActivity, actorFromCtx } = await import("@/lib/audit/log");
   const placement = await Placement.create({

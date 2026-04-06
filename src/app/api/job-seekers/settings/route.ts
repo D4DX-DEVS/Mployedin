@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
+import { validateBody } from "@/lib/validators";
+import { jobSeekerSettingsSchema } from "@/lib/validators/job-seekers";
 
 interface JobSeekerSettings {
   autoApply: boolean;
@@ -34,7 +36,7 @@ async function GET(_req: NextRequest, ctx: { userId: string }) {
 
 async function PATCH(req: NextRequest, ctx: { userId: string }) {
   await connectDB();
-  const { settings } = await req.json();
+  const { settings } = await validateBody(req, jobSeekerSettingsSchema);
 
   await (JobSeeker as unknown as {
     findOneAndUpdate: (q: object, update: object, opts: object) => Promise<unknown>

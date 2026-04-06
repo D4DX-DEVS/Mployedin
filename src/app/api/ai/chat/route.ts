@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 
@@ -30,11 +31,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { messages, context } = await req.json();
+    const body = await req.json();
+    const messages = sanitizeChatMessages(body.messages ?? [], 50, 4000);
+    const context = body.context ? sanitizeAIInput(String(body.context), 2000) : undefined;
 
-    const systemPrompt = getSystemPrompt(context);
+    if (!messages.length) {
+      return NextResponse.json({ error: "messages array required" }, { status: 400 });
+    }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const systemPrompt = getSystemPrompt(context ?? "");
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: { maxOutputTokens: AI_TOKEN_LIMITS.chat },
+    });
 
     // Build conversation history
     const history = messages.slice(0, -1).map(

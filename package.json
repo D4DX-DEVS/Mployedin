@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start"
   },
@@ -40,8 +40,8 @@
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.575.0",
     "mammoth": "^1.11.0",
-    "mongoose": "^9.2.2",
-    "next": "16.1.6",
+    "mongoose": "^9.4.1",
+    "next": "^16.2.2",
     "next-auth": "^5.0.0-beta.30",
     "next-intl": "^4.8.3",
     "nodemailer": "^7.0.7",

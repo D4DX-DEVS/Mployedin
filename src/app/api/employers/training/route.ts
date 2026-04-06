@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { validateBody } from "@/lib/validators";
+import { trainingCreateSchema } from "@/lib/validators/misc";
 
 // Inline lightweight model (not worth a separate models/ file)
 interface ITrainingItem extends Document {
@@ -45,15 +47,11 @@ async function GET(_req: NextRequest, ctx: { userId: string }) {
 
 async function POST(req: NextRequest, ctx: { userId: string }) {
   await connectDB();
-  const body = await req.json();
-
-  if (!body.title?.trim()) {
-    return NextResponse.json({ error: "Title required" }, { status: 400 });
-  }
+  const body = await validateBody(req, trainingCreateSchema);
 
   const item = await TrainingItem.create({
     employerUserId: ctx.userId,
-    title: body.title.trim(),
+    title: body.title,
     provider: body.provider ?? "",
     targetRole: body.targetRole ?? "",
     status: body.status ?? "not_started",

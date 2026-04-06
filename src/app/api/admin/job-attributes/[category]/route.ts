@@ -5,6 +5,8 @@ import { getCategory } from "@/lib/job-attributes/categoryResolver";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { jobAttributeCreateSchema } from "@/lib/validators/location-data";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -77,7 +79,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
   await connectDB();
   const Model = await meta.model();
-  const body = await req.json();
+  const body = await validateBody(req, jobAttributeCreateSchema);
 
   const { name, nameAr, slug: customSlug, sortOrder, isActive } = body;
   if (!name) {

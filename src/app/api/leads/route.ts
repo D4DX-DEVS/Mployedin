@@ -4,6 +4,9 @@ import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
 import AuditLog from "@/models/AuditLog";
 import { escapeRegex, pick } from "@/lib/security/sanitize";
+import { validateBody } from "@/lib/validators";
+import { leadCreateSchema } from "@/lib/validators/leads";
+import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
@@ -43,14 +46,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 });
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.leads);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
   await connectDB();
-  const body = await req.json();
-  const allowed = pick(body as Record<string, unknown>, [
-    "companyName", "contactName", "email", "phone",
-    "industry", "notes", "source",
-  ]);
+  const body = await validateBody(req, leadCreateSchema);
   const lead = await Lead.create({
-    ...allowed,
+    ...body,
     assignedAgentId: ctx.userId,
     status: "new",
   });

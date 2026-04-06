@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import StaticPage from "@/models/StaticPage";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { staticPageUpdateSchema } from "@/lib/validators/cms";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -23,7 +25,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const item = await StaticPage.findById(params?.id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json();
+  const body = await validateBody(req, staticPageUpdateSchema) as Record<string, unknown>;
   const allowed = ["title", "titleAr", "slug", "body", "bodyAr", "isActive"];
   const update: Record<string, unknown> = {};
   for (const k of allowed) {

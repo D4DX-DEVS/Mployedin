@@ -5,6 +5,8 @@ import { escapeRegex } from "@/lib/security/sanitize";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import Banner from "@/models/Banner";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { bannerCreateSchema } from "@/lib/validators/cms";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -43,7 +45,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, bannerCreateSchema);
 
   const { title, titleAr, subtitle, subtitleAr, image, imageMobile, linkUrl, linkText, linkTextAr, sortOrder, isActive } = body;
   if (!image) {

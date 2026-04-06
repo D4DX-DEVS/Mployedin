@@ -124,4 +124,25 @@ export const EmailTemplates = {
       </div>
     `,
   }),
+
+  verifyEmail: (userName: string, verifyUrl: string) => ({
+    subject: "Verify Your Email – MPLOYEDIN",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+        </div>
+        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p>Dear <strong>${userName}</strong>,</p>
+          <p>Thank you for registering on MPLOYEDIN. Please verify your email address by clicking the button below:</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${verifyUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Verify Email</a>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">If the button doesn't work, copy and paste this link:<br><a href="${verifyUrl}">${verifyUrl}</a></p>
+          <p style="color: #6b7280; font-size: 14px;">This link expires in 24 hours.</p>
+          <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
+        </div>
+      </div>
+    `,
+  }),
 };

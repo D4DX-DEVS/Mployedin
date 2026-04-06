@@ -5,6 +5,10 @@ import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import { routeGenerate } from "@/lib/ai/router";
 import { parseAIJson } from "@/lib/ai/gemini";
+import { sanitizeAIInput, redactPII } from "@/lib/ai/sanitize";
+import { validateBody } from "@/lib/validators";
+import { aiSkillsGapSchema } from "@/lib/validators/ai";
+import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 
 /**
  * POST /api/ai/skills-gap
@@ -13,13 +17,22 @@ import { parseAIJson } from "@/lib/ai/gemini";
  * Analyses the gap between the user's current skills and a target role/job.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
   await connectDB();
-  const { targetRole, targetJobId } = await req.json();
+  const { targetRole, targetJobId } = await validateBody(req, aiSkillsGapSchema);
+  const safeTargetRole = targetRole ? sanitizeAIInput(String(targetRole), 200) : undefined;
 
   const seeker = await JobSeeker.findOne({ userId: ctx.userId }).lean();
   if (!seeker) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-  let targetDesc = targetRole ?? "general Gulf job market";
+  let targetDesc = safeTargetRole ?? "general Gulf job market";
   if (targetJobId) {
     const job = await Job.findById(targetJobId).lean();
     if (job) {
@@ -46,7 +59,7 @@ Analyse the skill gap. Return ONLY a JSON object (no markdown):
 }`;
 
   const text = await routeGenerate(prompt, "skills_gap");
-  const analysis = parseAIJson(text);
+  const analysis = parseAIJson(redactPII(text));
 
   return NextResponse.json({ analysis, generatedAt: new Date().toISOString() });
 });

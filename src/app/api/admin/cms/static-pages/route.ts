@@ -5,6 +5,8 @@ import { escapeRegex } from "@/lib/security/sanitize";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import StaticPage from "@/models/StaticPage";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { staticPageCreateSchema } from "@/lib/validators/cms";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -48,7 +50,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, staticPageCreateSchema);
 
   const { title, titleAr, slug: customSlug, body: pageBody, bodyAr, isActive } = body;
   if (!title || !pageBody) {

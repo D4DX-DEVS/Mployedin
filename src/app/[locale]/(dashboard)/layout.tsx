@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import { getNavGroups } from "@/lib/nav/menuConfig";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
+import { CsrfProvider } from "@/components/shared/CsrfProvider";
 import connectDB from "@/lib/db/mongoose";
 import User from "@/models/User";
+import { Employer } from "@/models/Employer";
 import type { UserRole } from "@/models/User";
 
 export default async function DashboardLayout({
@@ -26,23 +28,32 @@ export default async function DashboardLayout({
 
   const navGroups = getNavGroups(role, locale);
 
-  // Fetch lastLogin from DB
+  // Fetch lastLogin from DB (and employer logo for employer role)
   await connectDB();
-  const dbUser = await User.findById(session.user.id).select("lastLogin").lean();
+  const [dbUser, dbEmployer] = await Promise.all([
+    User.findById(session.user.id).select("lastLogin").lean(),
+    role === "employer"
+      ? Employer.findOne({ userId: session.user.id }).select("logo").lean()
+      : Promise.resolve(null),
+  ]);
   const lastLogin = dbUser?.lastLogin ? (dbUser.lastLogin as Date).toISOString() : undefined;
+  const companyLogo = (dbEmployer as { logo?: string } | null)?.logo ?? undefined;
 
   return (
     <SessionWrapper>
-      <DashboardShell
-        navGroups={navGroups}
-        locale={locale}
-        userName={session.user.name ?? undefined}
-        userEmail={session.user.email ?? undefined}
-        userRole={role}
-        lastLogin={lastLogin}
-      >
-        {children}
-      </DashboardShell>
+      <CsrfProvider>
+        <DashboardShell
+          navGroups={navGroups}
+          locale={locale}
+          userName={session.user.name ?? undefined}
+          userEmail={session.user.email ?? undefined}
+          userRole={role}
+          lastLogin={lastLogin}
+          companyLogo={companyLogo}
+        >
+          {children}
+        </DashboardShell>
+      </CsrfProvider>
     </SessionWrapper>
   );
 }

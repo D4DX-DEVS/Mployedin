@@ -4,11 +4,9 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Interview from "@/models/Interview";
 import { notifyInterviewScheduled } from "@/lib/notifications/trigger";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-
-interface BulkCandidate {
-  jobSeekerId: string;
-  applicationId?: string;
-}
+import { validateBody } from "@/lib/validators";
+import { interviewBulkSchema } from "@/lib/validators/interviews";
+import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 
 /**
  * POST /api/interviews/bulk
@@ -16,9 +14,18 @@ interface BulkCandidate {
  * Body: { candidates, scheduledAt, duration, type, location?, meetLink?, jobId? }
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.bulk);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
+  const body = await validateBody(req, interviewBulkSchema);
+
   await connectDB();
 
-  const body = await req.json();
   const {
     candidates,
     scheduledAt,
@@ -27,19 +34,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     location,
     meetLink,
     jobId,
-  } = body as {
-    candidates: BulkCandidate[];
-    scheduledAt: string;
-    duration?: number;
-    type?: string;
-    location?: string;
-    meetLink?: string;
-    jobId?: string;
-  };
-
-  if (!candidates?.length || !scheduledAt) {
-    return NextResponse.json({ message: "candidates and scheduledAt required." }, { status: 400 });
-  }
+  } = body;
 
   const created: string[] = [];
   const failed: string[] = [];

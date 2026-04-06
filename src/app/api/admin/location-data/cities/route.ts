@@ -5,6 +5,8 @@ import { escapeRegex } from "@/lib/security/sanitize";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 import City from "@/models/City";
+import { validateBody } from "@/lib/validators";
+import { cityCreateSchema } from "@/lib/validators/location-data";
 
 interface AuthCtx {
   userId: string;
@@ -72,7 +74,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 /* ── POST /api/admin/location-data/cities ────────────────────────────── */
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, cityCreateSchema);
 
   const { name, nameAr, stateId, slug: customSlug, sortOrder, isActive } = body;
 

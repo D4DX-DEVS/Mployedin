@@ -8,11 +8,10 @@ const TAG_LENGTH = 16; // 128 bits auth tag
 function getEncryptionKey(): Buffer {
   const keyHex = process.env.ENCRYPTION_KEY;
   if (!keyHex) {
-    // Derive a key from a fallback secret in non-production
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("ENCRYPTION_KEY environment variable is required in production");
-    }
-    return crypto.scryptSync("dev-fallback-secret-mployedin", "salt", KEY_LENGTH);
+    throw new Error(
+      "ENCRYPTION_KEY environment variable is required. " +
+      "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    );
   }
   const key = Buffer.from(keyHex, "hex");
   if (key.length !== KEY_LENGTH) {

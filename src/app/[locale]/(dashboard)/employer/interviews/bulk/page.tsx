@@ -109,7 +109,7 @@ export default function EmployerBulkInterviewPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Candidates Selection */}
-        <div className="lg:col-span-2 card-base space-y-4">
+        <div className="lg:col-span-2 card-base p-5 space-y-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 flex-1">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -162,7 +162,7 @@ export default function EmployerBulkInterviewPage() {
         </div>
 
         {/* Slot Configuration */}
-        <div className="card-base space-y-4">
+        <div className="card-base p-5 space-y-4">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" /> Interview Details
           </h3>

@@ -1,20 +1,32 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
+import { useRef, useState } from "react";
 
 const LOCALES = [
-  { code: "en", label: "EN", flag: "🇬🇧", dir: "ltr" },
-  { code: "ar", label: "AR", flag: "🇦🇪", dir: "rtl" },
+  { code: "en", label: "EN", flag: "/flags/gb.svg", dir: "ltr" },
+  { code: "ar", label: "AR", flag: "/flags/ae.svg", dir: "rtl" },
 ] as const;
 
 export function LanguageSwitcher() {
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
+  const [pendingLocale, setPendingLocale] = useState<string | null>(null);
+  const switching = useRef(false);
+
+  const displayLocale = pendingLocale ?? locale;
+  const activeIndex = LOCALES.findIndex((l) => l.code === displayLocale);
 
   const switchLocale = (newLocale: string) => {
-    if (newLocale === locale) return;
+    if (newLocale === locale || switching.current) return;
+    switching.current = true;
+
+    // Animate the pill first
+    setPendingLocale(newLocale);
+
     // Replace the locale segment in the current path
     const segments = pathname.split("/");
     segments[1] = newLocale;
@@ -30,25 +42,38 @@ export function LanguageSwitcher() {
     // Set a cookie so middleware/server components can pick up the preference
     document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000;SameSite=Lax`;
 
-    router.push(newPath);
-    router.refresh();
+    // Wait for the slide animation to finish, then navigate
+    setTimeout(() => {
+      router.push(newPath);
+      router.refresh();
+    }, 320);
   };
 
   return (
-    <div className="flex p-0.5 bg-muted/40 hover:bg-muted/60 rounded-lg border border-border/40 transition-colors items-center h-9">
+    <div dir="ltr" className="relative flex p-[3px] rounded-full border border-blue-100 items-center h-9 w-[152px]" style={{ backgroundColor: "#ffffff" }}>
+      {/* Sliding toggle indicator */}
+      <div
+        className="absolute top-[3px] bottom-[3px] w-[calc(50%-3px)] rounded-full shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        style={{
+          backgroundColor: "#dbeafe",
+          transform: activeIndex === 0 ? "translateX(0)" : "translateX(100%)",
+          left: "3px",
+        }}
+      />
       {LOCALES.map((l) => {
-        const isActive = locale === l.code;
+        const isActive = displayLocale === l.code;
         return (
           <button
             key={l.code}
             onClick={() => switchLocale(l.code)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-semibold transition-all duration-200 ${isActive
-                ? "bg-background text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10"
-                : "text-muted-foreground hover:text-foreground"
-              }`}
+            className={`relative z-10 flex items-center justify-center gap-1.5 w-1/2 py-1 rounded-full text-[13px] font-medium cursor-pointer select-none transition-colors duration-200 ${
+              isActive
+                ? "text-blue-700"
+                : "text-gray-400 hover:text-gray-600"
+            }`}
             aria-label={`Switch to ${l.code === "en" ? "English" : "Arabic"}`}
           >
-            <span className="text-base leading-none">{l.flag}</span>
+            <Image src={l.flag} alt="" width={16} height={12} className="rounded-[2px]" style={{ width: "16px", height: "12px" }} unoptimized />
             <span className="tracking-wide hidden sm:inline-block">{l.label}</span>
           </button>
         );

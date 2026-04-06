@@ -15,7 +15,18 @@ const MONGODB_URI =
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 function slugify(str) {
-  return str.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return str
+    .toLowerCase()
+    .trim()
+    // Replace common programming symbols before stripping
+    .replace(/\+\+/g, "-plus-plus")
+    .replace(/\+/g, "-plus")
+    .replace(/#/g, "-sharp")
+    .replace(/\./g, "-")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function buildDocs(items) {

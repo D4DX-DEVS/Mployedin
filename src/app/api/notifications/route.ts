@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Notification from "@/models/Notification";
+import { validateBody } from "@/lib/validators";
+import { notificationUpdateSchema } from "@/lib/validators/misc";
 
 /**
  * GET /api/notifications
@@ -12,7 +14,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "10");
-  const unreadOnly = searchParams.get("unread") === "true";
+  const unreadOnly = searchParams.get("unread") === "true" || searchParams.get("unreadOnly") === "true";
 
   const filter: Record<string, unknown> = { userId: ctx.userId };
   if (unreadOnly) filter.isRead = false;
@@ -27,7 +29,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     Notification.countDocuments({ userId: ctx.userId, isRead: false }),
   ]);
 
-  return NextResponse.json({ items, total, page, totalPages: Math.ceil(total / limit), unreadCount });
+  return NextResponse.json({ notifications: items, total, page, totalPages: Math.ceil(total / limit), unreadCount });
 });
 
 /**
@@ -37,7 +39,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
  */
 export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, notificationUpdateSchema);
 
   if (body.markAllRead) {
     await Notification.updateMany({ userId: ctx.userId, isRead: false }, { isRead: true });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Image from "next/image";
 import { signOut } from "next-auth/react";
 import {
   LogOut,
@@ -45,6 +46,7 @@ interface UserProfileDropdownProps {
   userRole: string;
   lastLogin?: string;
   locale: string;
+  companyLogo?: string;
 }
 
 export function UserProfileDropdown({
@@ -53,6 +55,7 @@ export function UserProfileDropdown({
   userRole,
   lastLogin,
   locale,
+  companyLogo,
 }: UserProfileDropdownProps) {
   const [resetOpen, setResetOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -147,8 +150,12 @@ export function UserProfileDropdown({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex h-9 w-9 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 shadow-soft ring-2 ring-background cursor-pointer hover:ring-primary/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            {initials}
+          <button className="flex h-9 w-9 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 shadow-soft ring-2 ring-background cursor-pointer hover:ring-primary/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden">
+            {companyLogo ? (
+              <Image src={companyLogo} alt="Company logo" width={36} height={36} className="w-full h-full object-contain" unoptimized />
+            ) : (
+              initials
+            )}
           </button>
         </DropdownMenuTrigger>
 
@@ -160,8 +167,12 @@ export function UserProfileDropdown({
           {/* User info header */}
           <DropdownMenuLabel className="font-normal">
             <div className="flex items-start gap-3 py-1">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0">
-                {initials}
+              <div className="flex h-10 w-10 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 overflow-hidden">
+                {companyLogo ? (
+                  <Image src={companyLogo} alt="Company logo" width={40} height={40} className="w-full h-full object-contain" unoptimized />
+                ) : (
+                  initials
+                )}
               </div>
               <div className="flex flex-col gap-0.5 min-w-0">
                 <p className="text-sm font-semibold leading-none truncate">

@@ -5,6 +5,8 @@ import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { jobSeekerAdminUpdateSchema } from "@/lib/validators/job-seekers";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -20,17 +22,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const seeker = await JobSeeker.findById(params?.id);
   if (!seeker) return NextResponse.json({ error: "Job seeker not found" }, { status: 404 });
 
-  const body = await req.json();
+  const body = await validateBody(req, jobSeekerAdminUpdateSchema) as Record<string, unknown>;
   const allowed = ["nationality", "currentLocation", "summary", "skills", "experience", "education", "languages"];
   const update: Record<string, unknown> = {};
   for (const k of allowed) if (body[k] !== undefined) update[k] = body[k];
 
   // Allow updating the linked User's name/email
   if (body.name || body.email) {
-    await User.findByIdAndUpdate(seeker.userId, {
-      ...(body.name && { name: body.name }),
-      ...(body.email && { email: body.email }),
-    });
+    const userUpdate: Record<string, unknown> = {};
+    if (body.name) userUpdate.name = body.name;
+    if (body.email) userUpdate.email = body.email;
+    await User.findByIdAndUpdate(seeker.userId, userUpdate);
   }
 
   Object.assign(seeker, update);

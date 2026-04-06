@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import ContactSubmission from "@/models/ContactSubmission";
+import { validateBody } from "@/lib/validators";
+import { contactSchema } from "@/lib/validators/misc";
 
 /**
  * Public contact form submission — NO AUTH required.
@@ -9,26 +11,9 @@ import ContactSubmission from "@/models/ContactSubmission";
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
-    const body = await req.json();
+    const body = await validateBody(req, contactSchema);
 
     const { name, email, phone, subject, message, captchaToken } = body;
-
-    // Basic validation
-    if (!name || !email || !message) {
-      return NextResponse.json(
-        { error: "Name, email, and message are required" },
-        { status: 400 }
-      );
-    }
-
-    // Simple email format check
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: "Invalid email format" },
-        { status: 400 }
-      );
-    }
 
     // Optional reCAPTCHA v3 verification
     const captchaSecret = process.env.RECAPTCHA_SECRET_KEY;

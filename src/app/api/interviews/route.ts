@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Interview from "@/models/Interview";
 import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
+import { validateBody } from "@/lib/validators";
+import { interviewCreateSchema } from "@/lib/validators/interviews";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -66,12 +68,8 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, interviewCreateSchema);
   const { applicationId, type, scheduledAt, duration, location, meetLink, instructions } = body;
-
-  if (!applicationId || !scheduledAt || !type) {
-    return NextResponse.json({ error: "applicationId, type, and scheduledAt are required" }, { status: 400 });
-  }
 
   const app = await Application.findById(applicationId).lean();
   if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404 });

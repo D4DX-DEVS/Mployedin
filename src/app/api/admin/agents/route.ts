@@ -8,6 +8,8 @@ import AuditLog from "@/models/AuditLog";
 import type { UserRole } from "@/types/user";
 import { escapeRegex } from "@/lib/security/sanitize";
 import bcrypt from "bcryptjs";
+import { validateBody } from "@/lib/validators";
+import { agentCreateSchema, agentUpdateSchema } from "@/lib/validators/admin";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -101,7 +103,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
 
-  const body = await req.json();
+  const body = await validateBody(req, agentCreateSchema);
   const { name, email, password, superAgentId, commissionRate, assignedCityIds, assignedStateIds } = body;
 
   if (!name || !email || !password) {
@@ -161,7 +163,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
 
-  const body = await req.json();
+  const body = await validateBody(req, agentUpdateSchema);
   const { userId, name, email, isActive, superAgentId, commissionRate, assignedCityIds, assignedStateIds } = body;
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });

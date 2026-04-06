@@ -3,6 +3,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import AuditLog from "@/models/AuditLog";
+import { validateBody } from "@/lib/validators";
+import { impersonateSchema } from "@/lib/validators/admin";
 
 /**
  * POST /api/admin/impersonate
@@ -15,7 +17,7 @@ import AuditLog from "@/models/AuditLog";
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, impersonateSchema);
 
   if (body.exit) {
     await AuditLog.create({

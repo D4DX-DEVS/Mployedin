@@ -4,6 +4,7 @@
  */
 
 import { generateText, generateStream, GEMINI_MODELS } from "@/lib/ai/gemini";
+import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import type { GenerateContentStreamResult } from "@google/generative-ai";
 
 export type AITask =
@@ -35,14 +36,15 @@ export async function routeGenerate(
 ): Promise<string> {
   const modelKey = TASK_MODEL_MAP[task];
   const model = GEMINI_MODELS[modelKey];
+  const maxOutputTokens = AI_TOKEN_LIMITS[task];
 
   try {
-    return await generateText(prompt, model);
+    return await generateText(prompt, model, maxOutputTokens);
   } catch (err: unknown) {
     // Fallback to flash on error
     if (model !== GEMINI_MODELS.flash) {
       console.warn(`[AI Router] ${model} failed, falling back to flash:`, err);
-      return await generateText(prompt, GEMINI_MODELS.flash);
+      return await generateText(prompt, GEMINI_MODELS.flash, maxOutputTokens);
     }
     throw err;
   }

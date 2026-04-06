@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Plus, Edit2, Eye, BarChart2, Clock, CheckCircle, XCircle, FileText, Trash2 } from "lucide-react";
+import { Plus, Edit2, Eye, BarChart2, Clock, CheckCircle, XCircle, FileText, Trash2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -166,6 +166,10 @@ export default function EmployerJobsPage() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button size="sm" variant="ghost" title="View job"
+                      onClick={() => router.push(`/${locale}/employer/jobs/${job._id}`)}>
+                      <Eye className="w-4 h-4" />
+                    </Button>
                     <Button size="sm" variant="ghost" title="View applications"
                       onClick={() => router.push(`/${locale}/employer/applications?jobId=${job._id}`)}>
                       <BarChart2 className="w-4 h-4" />
@@ -174,6 +178,15 @@ export default function EmployerJobsPage() {
                       <Button size="sm" variant="ghost" title="Edit"
                         onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/edit`)}>
                         <Edit2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {can("jobs", "create") && (
+                      <Button size="sm" variant="ghost" title="Clone"
+                        onClick={async () => {
+                          const res = await fetch(`/api/jobs/${job._id}/clone`, { method: "POST" });
+                          if (res.ok) fetchJobs();
+                        }}>
+                        <Copy className="w-4 h-4" />
                       </Button>
                     )}
                     {can("jobs", "update") && job.status === "draft" && (

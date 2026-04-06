@@ -76,7 +76,7 @@ export default function EmployerPlacementsPage() {
           { label: "Currently Active", value: stats.active, icon: Briefcase, color: "text-green-600" },
           { label: "This Month", value: stats.thisMonth, icon: TrendingUp, color: "text-amber-600" },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="card-base flex items-center gap-3">
+          <div key={label} className="card-base p-5 flex items-center gap-3">
             <div className={`w-9 h-9 rounded-lg bg-muted flex items-center justify-center ${color}`}>
               <Icon className="h-5 w-5" />
             </div>
