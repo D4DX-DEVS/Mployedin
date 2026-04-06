@@ -30,9 +30,10 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
         ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
         : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
-      "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https://*.pusher.com wss://*.pusher.com",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "media-src 'self' data:",
+      "connect-src 'self' https://*.pusher.com wss://*.pusher.com https://generativelanguage.googleapis.com https://api.anthropic.com",
       "frame-ancestors 'none'",
     ].join("; "),
     ...SHARED_HEADERS,
@@ -42,7 +43,7 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
 /** Static headers for API routes (no inline scripts, no nonce needed). */
 export const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.pusher.com wss://*.pusher.com; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' https://*.pusher.com wss://*.pusher.com https://generativelanguage.googleapis.com https://api.anthropic.com; frame-ancestors 'none'",
   ...SHARED_HEADERS,
 };
 

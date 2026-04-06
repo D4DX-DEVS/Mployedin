@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Search, MapPin, DollarSign, Briefcase, Filter, X, Clock, Building2 } from "lucide-react";
+import { Search, MapPin, DollarSign, Briefcase, Filter, X, Clock, Building2, Bookmark, BookmarkCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -48,10 +48,12 @@ export default function JobSearchPage() {
   const [location, setLocation] = useState("");
   const [currency, setCurrency] = useState("all");
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
+  const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     document.title = "Find Jobs · MPLOYEDIN";
     fetchApplied();
+    fetchSavedJobs();
   }, []);
 
   useEffect(() => {
@@ -76,6 +78,50 @@ export default function JobSearchPage() {
         setAppliedJobs(ids);
       }
     } catch {/* silent */}
+  }
+
+  async function fetchSavedJobs() {
+    try {
+      const res = await fetch("/api/saved-jobs?limit=200");
+      if (res.ok) {
+        const data = await res.json();
+        const ids = new Set<string>(data.items.map((s: { jobId: { _id: string } | string; _id: string }) =>
+          typeof s.jobId === "object" ? s.jobId._id : s.jobId
+        ));
+        setSavedJobs(ids);
+      }
+    } catch {/* silent */}
+  }
+
+  async function toggleSaveJob(jobId: string) {
+    if (savedJobs.has(jobId)) {
+      // Find the saved job entry to delete
+      try {
+        const res = await fetch("/api/saved-jobs?limit=200");
+        if (res.ok) {
+          const data = await res.json();
+          const entry = data.items.find((s: { jobId: { _id: string } | string }) => {
+            const id = typeof s.jobId === "object" ? s.jobId._id : s.jobId;
+            return id === jobId;
+          });
+          if (entry) {
+            await fetch(`/api/saved-jobs/${entry._id}`, { method: "DELETE" });
+            setSavedJobs((prev) => { const next = new Set(prev); next.delete(jobId); return next; });
+          }
+        }
+      } catch {/* silent */}
+    } else {
+      try {
+        const res = await fetch("/api/saved-jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId }),
+        });
+        if (res.ok) {
+          setSavedJobs((prev) => new Set([...prev, jobId]));
+        }
+      } catch {/* silent */}
+    }
   }
 
   const fetchJobs = useCallback(async () => {
@@ -267,7 +313,20 @@ export default function JobSearchPage() {
                     )}
                   </div>
 
-                  <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <div className="shrink-0 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0"
+                      onClick={() => toggleSaveJob(job._id)}
+                      title={savedJobs.has(job._id) ? "Unsave job" : "Save job"}
+                    >
+                      {savedJobs.has(job._id) ? (
+                        <BookmarkCheck className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Bookmark className="h-4 w-4" />
+                      )}
+                    </Button>
                     {isApplied ? (
                       <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Applied ✓</Badge>
                     ) : (

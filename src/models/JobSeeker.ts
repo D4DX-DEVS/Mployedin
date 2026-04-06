@@ -57,6 +57,7 @@ export interface IJobSeeker extends Document {
   preferredCountries: string[];
   preferredRoles: string[];
   preferredSalary?: { min: number; max: number; currency: string };
+  preferredJobType: "remote" | "hybrid" | "onsite" | "any";
   // Status
   availabilityStatus: "immediately" | "within_month" | "within_3_months" | "not_available";
   noticePeriod?: number; // in days
@@ -131,6 +132,11 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       min: Number,
       max: Number,
       currency: { type: String, default: "USD" },
+    },
+    preferredJobType: {
+      type: String,
+      enum: ["remote", "hybrid", "onsite", "any"],
+      default: "any",
     },
     availabilityStatus: {
       type: String,

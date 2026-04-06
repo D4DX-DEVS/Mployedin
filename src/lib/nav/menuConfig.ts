@@ -861,6 +861,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تعديل ملفك الشخصي",
               },
               {
+                title: "Job Preferences",
+                titleAr: "تفضيلات الوظيفة",
+                href: p("/job-seeker/preferences"),
+                icon: "Target",
+                description: "Set your job matching preferences",
+                descriptionAr: "تعيين تفضيلات مطابقة الوظائف",
+              },
+              {
                 title: "Job Search",
                 titleAr: "البحث عن وظيفة",
                 href: p("/job-seeker/jobs"),

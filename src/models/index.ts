@@ -48,3 +48,7 @@ export { Banner } from "./Banner";
 export { Video } from "./Video";
 export { StaticPage } from "./StaticPage";
 export { ContactSubmission } from "./ContactSubmission";
+
+// ── Job Seeker Dashboard ──────────────────────────────────────────────────────
+export { SavedJob } from "./SavedJob";
+export { ProfileView } from "./ProfileView";

@@ -22,6 +22,16 @@ export const jobSeekerProfileUpdateSchema = z
     avatar: z.string().url().max(2048).optional(),
     phone: z.string().max(20).trim().optional(),
     dateOfBirth: z.string().max(30).optional(),
+    preferredJobType: z.enum(["remote", "hybrid", "onsite", "any"]).optional(),
+    preferredRoles: z.array(z.string().max(100).trim()).max(20).optional(),
+    preferredCountries: z.array(z.string().max(100).trim()).max(20).optional(),
+    preferredSalary: z.object({
+      min: z.number().min(0),
+      max: z.number().min(0),
+      currency: z.string().max(5),
+    }).optional(),
+    availabilityStatus: z.enum(["immediately", "within_month", "within_3_months", "not_available"]).optional(),
+    noticePeriod: z.number().int().min(0).max(365).optional(),
     maritalStatusId: commonSchemas.objectId.optional(),
     genderId: commonSchemas.objectId.optional(),
     expectedSalary: z.number().min(0).optional(),
@@ -37,6 +47,7 @@ export const jobSeekerProfileUpdateSchema = z
 /** PATCH /api/job-seekers/settings */
 export const jobSeekerSettingsSchema = z.object({
   settings: z.object({
+    // A — Auto Apply
     autoApply: z.boolean().optional(),
     autoApplyFilters: z
       .object({
@@ -45,9 +56,33 @@ export const jobSeekerSettingsSchema = z.object({
         onlyVerifiedEmployers: z.boolean().optional(),
       })
       .optional(),
+    applySpeed: z.enum(["safe", "balanced", "aggressive"]).optional(),
+    preferredJobTypes: z.array(z.string().max(50)).max(10).optional(),
+    preferredLocations: z.array(z.string().max(100)).max(10).optional(),
+    salaryMin: z.number().min(0).optional(),
+    salaryMax: z.number().min(0).optional(),
+    salaryCurrency: z.string().max(5).optional(),
+    // B — Interview
     instantBooking: z.boolean().optional(),
+    calendarConnected: z.boolean().optional(),
+    timeBuffer: z.number().int().min(0).max(120).optional(),
+    weeklyAvailability: z.array(z.string().max(10)).max(7).optional(),
+    // C — Profile
     showSalary: z.boolean().optional(),
     openToRelocation: z.boolean().optional(),
+    // D — Resume & AI
+    defaultResumeId: z.string().max(200).optional(),
+    autoGenerateCoverLetter: z.boolean().optional(),
+    coverLetterTone: z.enum(["professional", "friendly", "bold"]).optional(),
+    autoAnswerScreening: z.boolean().optional(),
+    // E — Notifications
+    notifications: z
+      .object({
+        jobMatchAlerts: z.boolean().optional(),
+        applicationSubmitted: z.boolean().optional(),
+        interviewNotifications: z.boolean().optional(),
+      })
+      .optional(),
   }),
 });
 

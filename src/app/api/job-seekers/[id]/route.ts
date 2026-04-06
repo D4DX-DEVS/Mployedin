@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
+import ProfileView from "@/models/ProfileView";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
@@ -14,6 +15,27 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
   await connectDB();
   const seeker = await JobSeeker.findById(params?.id).populate("userId", "name email").lean();
   if (!seeker) return NextResponse.json({ error: "Job seeker not found" }, { status: 404 });
+
+  // Track profile view when employer/agent views a job seeker (deduplicate per 24h)
+  const viewerRoles = ["employer", "agent", "super_agent"] as const;
+  if (viewerRoles.includes(_ctx.role as typeof viewerRoles[number]) && _ctx.userId !== String(seeker.userId)) {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentView = await ProfileView.findOne({
+      jobSeekerId: seeker.userId,
+      viewerId: _ctx.userId,
+      viewedAt: { $gte: oneDayAgo },
+    }).lean();
+
+    if (!recentView) {
+      ProfileView.create({
+        jobSeekerId: seeker.userId,
+        viewerId: _ctx.userId,
+        viewerRole: _ctx.role,
+        source: "direct",
+      }).catch(() => { /* fire-and-forget */ });
+    }
+  }
+
   return NextResponse.json({ jobSeeker: seeker });
 }
 

@@ -21,6 +21,7 @@ const AUTH_ROUTES = [
   "/login",
   "/register",
   "/forgot-password",
+  "/reset-password",
 ];
 
 /** Public routes that don't require auth */
@@ -28,6 +29,7 @@ const PUBLIC_ROUTES = [
   "/login",
   "/register",
   "/forgot-password",
+  "/reset-password",
   "/verify-email",
   "/api/auth",
   "/api/contact",
