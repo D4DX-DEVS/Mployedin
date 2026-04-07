@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
-import AuditLog from "@/models/AuditLog";
 import { escapeRegex, pick } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
 import { leadCreateSchema } from "@/lib/validators/leads";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
@@ -62,13 +62,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     status: "new",
   });
 
-  await AuditLog.create({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
-    action: "create",
-    resource: "lead",
-    resourceId: lead._id,
-    ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "lead.create",
+    resource: "leads",
+    resourceId: String(lead._id),
+    req,
   });
 
   return NextResponse.json(lead, { status: 201 });

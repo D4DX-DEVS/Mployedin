@@ -5,6 +5,7 @@ import User from "@/models/User";
 import bcrypt from "bcryptjs";
 import { validateBody } from "@/lib/validators";
 import { changePasswordSchema } from "@/lib/validators/misc";
+import { logActivity } from "@/lib/audit/log";
 
 /**
  * POST /api/users/change-password
@@ -46,6 +47,15 @@ export async function POST(req: NextRequest) {
   // Hash new password and save
   user.passwordHash = await bcrypt.hash(newPassword, 12);
   await user.save();
+
+  logActivity({
+    actorId: session.user.id,
+    actorRole: (session.user as { role?: string }).role ?? "unknown",
+    action: "user.change_password",
+    resource: "users",
+    resourceId: session.user.id,
+    req,
+  });
 
   return NextResponse.json({ success: true });
 }

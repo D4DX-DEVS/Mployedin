@@ -12,6 +12,7 @@ export interface IAuditLog extends Document {
     after?: Record<string, unknown>;
   };
   ipAddress?: string;
+  country?: string;
   userAgent?: string;
   meta?: Record<string, unknown>;
   createdAt: Date;
@@ -29,6 +30,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
       after: Schema.Types.Mixed,
     },
     ipAddress: String,
+    country: String,
     userAgent: String,
     meta: Schema.Types.Mixed,
   },
@@ -38,6 +40,7 @@ const AuditLogSchema = new Schema<IAuditLog>(
 AuditLogSchema.index({ actorId: 1 });
 AuditLogSchema.index({ action: 1 });
 AuditLogSchema.index({ resource: 1, resourceId: 1 });
+AuditLogSchema.index({ country: 1 });
 AuditLogSchema.index({ createdAt: -1 });
 
 export const AuditLog =

@@ -6,6 +6,7 @@ import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
 import { validateBody } from "@/lib/validators";
 import { interviewCreateSchema } from "@/lib/validators/interviews";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -89,6 +90,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     status: "scheduled",
     reminderSent: false,
     rescheduleCount: 0,
+  });
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "interview.create",
+    resource: "interviews",
+    resourceId: String(interview._id),
+    meta: { applicationId, type, scheduledAt },
+    req,
   });
 
   return NextResponse.json({ interview }, { status: 201 });

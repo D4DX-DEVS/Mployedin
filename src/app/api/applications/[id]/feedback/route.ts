@@ -5,6 +5,7 @@ import Application from "@/models/Application";
 import { CandidateNPS } from "@/models/CandidateNPS";
 import { validateBody } from "@/lib/validators";
 import { npsCreateSchema } from "@/lib/validators/applications";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -54,6 +55,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     rating: body.rating,
     comment: body.comment,
     processStage: application.status,
+  });
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "application.feedback",
+    resource: "applications",
+    resourceId: params?.id,
+    meta: { rating: body.rating },
+    req,
   });
 
   return NextResponse.json({ feedback: nps }, { status: 201 });

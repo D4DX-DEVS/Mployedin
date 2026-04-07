@@ -4,6 +4,7 @@ import connectDB from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import { validateBody } from "@/lib/validators";
 import { jobSeekerSettingsSchema } from "@/lib/validators/job-seekers";
+import { logActivity } from "@/lib/audit/log";
 
 interface JobSeekerSettings {
   autoApply: boolean;
@@ -53,6 +54,15 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
     { $set: { settings } },
     { upsert: true }
   );
+
+  await logActivity({
+    actorId: ctx.userId,
+    actorRole: ctx.role,
+    action: "job_seeker.update_settings",
+    resource: "job_seekers",
+    resourceId: ctx.userId,
+    req,
+  });
 
   return NextResponse.json({ success: true });
 }

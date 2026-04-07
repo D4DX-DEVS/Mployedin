@@ -18,6 +18,8 @@ interface AuditLogEntry {
   resourceId?: string;
   changes?: { before?: unknown; after?: unknown };
   ipAddress: string;
+  country?: string;
+  userAgent?: string;
   createdAt: string;
 }
 
@@ -34,6 +36,7 @@ export default function AuditLogsPage() {
   const [loading, setLoading] = useState(true);
   const [resource, setResource] = useState("all");
   const [action, setAction] = useState("");
+  const [country, setCountry] = useState("");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   useEffect(() => { document.title = "Audit Logs · MPLOYEDIN"; }, []);
@@ -44,6 +47,7 @@ export default function AuditLogsPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (resource && resource !== "all") params.set("resource", resource);
       if (action) params.set("action", action);
+      if (country) params.set("country", country);
       const res = await fetch(`/api/admin/audit-logs?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -53,7 +57,7 @@ export default function AuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [resource, action, page, limit]);
+  }, [resource, action, country, page, limit]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
@@ -70,7 +74,7 @@ export default function AuditLogsPage() {
           <SelectTrigger className="w-44"><SelectValue placeholder="All resources" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All resources</SelectItem>
-            {["users", "jobs", "applications", "interviews", "placements", "settings"].map((r) => (
+            {["users", "jobs", "applications", "interviews", "placements", "offers", "commissions", "employers", "job_seekers", "agents", "super_agents", "leads", "saved_jobs", "messages", "conversation_threads", "settings"].map((r) => (
               <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
             ))}
           </SelectContent>
@@ -82,6 +86,16 @@ export default function AuditLogsPage() {
             value={action}
             onChange={(e) => { setAction(e.target.value); resetPage(); }}
             className="ps-10 w-56"
+          />
+        </div>
+        <div className="relative">
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Country code (e.g. AE)"
+            value={country}
+            onChange={(e) => { setCountry(e.target.value.toUpperCase()); resetPage(); }}
+            className="ps-10 w-44 uppercase"
+            maxLength={2}
           />
         </div>
       </div>
@@ -108,6 +122,7 @@ export default function AuditLogsPage() {
                 <th className="text-start px-4 py-3">Action</th>
                 <th className="text-start px-4 py-3">Resource</th>
                 <th className="text-start px-4 py-3">IP Address</th>
+                <th className="text-start px-4 py-3">Country</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -140,6 +155,21 @@ export default function AuditLogsPage() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{log.ipAddress}</td>
+                    <td className="px-4 py-3">
+                      {log.country ? (
+                        <span className="inline-flex items-center gap-1">
+                          <img
+                            src={`/flags/${log.country.toLowerCase()}.svg`}
+                            alt={log.country}
+                            className="w-4 h-3 object-cover rounded-sm"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                          <span className="text-foreground">{log.country}</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}

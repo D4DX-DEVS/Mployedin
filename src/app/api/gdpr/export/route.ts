@@ -6,13 +6,13 @@ import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import Notification from "@/models/Notification";
-import AuditLog from "@/models/AuditLog";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /**
  * GET /api/gdpr/export
  * Returns all data associated with the current user (GDPR data export).
  */
-export const GET = withAuth(async (_req: NextRequest, ctx) => {
+export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
 
   const [user, seekerProfile, applications, interviews, notifications] = await Promise.all([
@@ -22,6 +22,8 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     Interview.find({ jobSeekerId: ctx.userId }).lean(),
     Notification.find({ userId: ctx.userId }).lean(),
   ]);
+
+  await logActivity({ ...actorFromCtx(ctx), action: "gdpr.export", resource: "users", resourceId: ctx.userId, req });
 
   return NextResponse.json({
     exportedAt: new Date().toISOString(),
@@ -37,7 +39,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
  * DELETE /api/gdpr/export
  * Right to erasure — anonymizes the user's account and deletes personal data.
  */
-export const DELETE = withAuth(async (_req: NextRequest, ctx) => {
+export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
 
   const anonymizedEmail = `deleted_${ctx.userId}@anonymized.mployedin.com`;
@@ -70,15 +72,14 @@ export const DELETE = withAuth(async (_req: NextRequest, ctx) => {
     Notification.deleteMany({ userId: ctx.userId }),
   ]);
 
-  // Create audit log for the deletion
-  await AuditLog.create({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
-    action: "delete",
+  // Log the erasure
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "gdpr.erasure",
     resource: "users",
     resourceId: ctx.userId,
-    metadata: { reason: "GDPR right to erasure" },
-    ipAddress: "self-requested",
+    meta: { reason: "GDPR right to erasure" },
+    req,
   });
 
   return NextResponse.json({ success: true, message: "Account data has been anonymized per GDPR request." });

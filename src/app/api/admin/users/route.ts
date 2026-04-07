@@ -5,7 +5,7 @@ import User from "@/models/User";
 import type { UserRole } from "@/models/User";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
-import AuditLog from "@/models/AuditLog";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import mongoose from "mongoose";
 import { escapeRegex, isValidRole } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
@@ -94,12 +94,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
         return NextResponse.json({ error: "Unknown action." }, { status: 400 });
     }
 
-    await AuditLog.create({
-      actorId: ctx.userId,
-      action: `bulk.${action}`,
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: `user.bulk_${action}`,
       resource: "users",
-      changes: { before: {}, after: { ids, action, role } },
-      ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+      meta: { ids, action, role },
+      req,
     });
 
     return NextResponse.json({ success: true, affected });
@@ -134,14 +134,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   if (!updated) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  // Log the action
-  await AuditLog.create({
-    actorId: ctx.userId,
+  await logActivity({
+    ...actorFromCtx(ctx),
     action: "user.update",
     resource: "users",
-    resourceId: userId,
-    changes: { before: {}, after: updateData },
-    ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+    resourceId: String(userId),
+    changes: { after: updateData },
+    req,
   });
 
   return NextResponse.json({ user: updated });
@@ -233,12 +232,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     );
   }
 
-  await AuditLog.create({
-    actorId: ctx.userId,
+  await logActivity({
+    ...actorFromCtx(ctx),
     action: "user.create",
     resource: "users",
-    resourceId: user._id,
-    ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+    resourceId: String(user._id),
+    meta: { role },
+    req,
   });
 
   return NextResponse.json({ user: { ...user.toObject(), passwordHash: undefined } }, { status: 201 });
@@ -260,12 +260,12 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx) {
   user.isActive = false;
   await user.save();
 
-  await AuditLog.create({
-    actorId: ctx.userId,
+  await logActivity({
+    ...actorFromCtx(ctx),
     action: "user.deactivate",
     resource: "users",
-    resourceId: userId,
-    ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+    resourceId: String(userId),
+    req,
   });
 
   return NextResponse.json({ message: "User deactivated" });

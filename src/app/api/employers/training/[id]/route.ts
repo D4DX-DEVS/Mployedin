@@ -4,6 +4,7 @@ import connectDB from "@/lib/db/mongoose";
 import mongoose, { Model, Document } from "mongoose";
 import { validateBody } from "@/lib/validators";
 import { trainingUpdateSchema } from "@/lib/validators/misc";
+import { logActivity } from "@/lib/audit/log";
 
 interface ITrainingItem extends Document {
   employerUserId: string;
@@ -35,11 +36,21 @@ async function PATCH(
 
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  await logActivity({
+    actorId: ctx.userId,
+    actorRole: "employer",
+    action: "training.update",
+    resource: "employers",
+    resourceId: id,
+    meta: { status: body.status },
+    req,
+  });
+
   return NextResponse.json({ item });
 }
 
 async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { userId: string },
   params?: Record<string, string>
 ) {
@@ -49,6 +60,15 @@ async function DELETE(
 
   const TrainingItem = getTrainingModel();
   await TrainingItem.findOneAndDelete({ _id: id, employerUserId: ctx.userId });
+
+  await logActivity({
+    actorId: ctx.userId,
+    actorRole: "employer",
+    action: "training.delete",
+    resource: "employers",
+    resourceId: id,
+    req,
+  });
 
   return NextResponse.json({ success: true });
 }

@@ -4,7 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
-import AuditLog from "@/models/AuditLog";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
 import { escapeRegex } from "@/lib/security/sanitize";
 import bcrypt from "bcryptjs";
@@ -145,12 +145,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Failed to create agent profile" }, { status: 500 });
   }
 
-  await AuditLog.create({
-    actorId: ctx.userId,
+  await logActivity({
+    ...actorFromCtx(ctx),
     action: "agent.create",
     resource: "agents",
-    resourceId: user._id,
-    ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+    resourceId: String(user._id),
+    req,
   });
 
   return NextResponse.json({ success: true, userId: user._id }, { status: 201 });
@@ -193,13 +193,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     );
   }
 
-  await AuditLog.create({
-    actorId: ctx.userId,
+  await logActivity({
+    ...actorFromCtx(ctx),
     action: "agent.update",
     resource: "agents",
-    resourceId: userId,
+    resourceId: String(userId),
     changes: { after: { ...userUpdate, ...profileUpdate } },
-    ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+    req,
   });
 
   return NextResponse.json({ success: true });
