@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -16,12 +16,14 @@ import {
   XCircle,
   Info,
   MapPin,
-  Gauge,
   Sparkles,
   BrainCircuit,
   Camera,
   Trash2,
-  User,
+  ShieldCheck,
+  FileText,
+  Settings2,
+  Save,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -42,7 +44,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -125,7 +127,7 @@ const DEFAULTS: SettingsForm = {
   },
 };
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ToastState {
   show: boolean;
@@ -133,42 +135,7 @@ interface ToastState {
   message: string;
 }
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
-
-function Section({
-  icon,
-  title,
-  description,
-  children,
-  highlight,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-xl border bg-card p-6 shadow-sm transition-colors ${
-        highlight ? "border-primary/40 bg-primary/[0.02]" : "border-border"
-      }`}
-    >
-      <div className="mb-5 flex items-start gap-3">
-        <div className={`mt-0.5 rounded-lg p-2 ${highlight ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-          {icon}
-        </div>
-        <div>
-          <p className="font-semibold text-sm leading-tight">{title}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      <div className="space-y-4">{children}</div>
-    </div>
-  );
-}
-
-// ─── Row ─────────────────────────────────────────────────────────────────────
+// ─── Setting Row ──────────────────────────────────────────────────────────────
 
 function SettingRow({
   label,
@@ -182,14 +149,14 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex items-center justify-between gap-6 py-3">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm font-medium">{label}</span>
+          <span className="text-sm font-medium text-foreground">{label}</span>
           {tooltip && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help shrink-0" />
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs text-xs">
                 {tooltip}
@@ -206,16 +173,39 @@ function SettingRow({
   );
 }
 
-// ─── Expandable sub-section ───────────────────────────────────────────────────
+// ─── Card Block ───────────────────────────────────────────────────────────────
 
-function Expanded({ open, children }: { open: boolean; children: React.ReactNode }) {
-  if (!open) return null;
+function SettingCard({
+  icon,
+  title,
+  description,
+  accent,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  accent?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="pt-4 space-y-4 border-t border-dashed">{children}</div>
+    <div className={`rounded-2xl border bg-card shadow-sm overflow-hidden ${accent ? "border-primary/30" : "border-border/60"}`}>
+      <div className={`px-5 pt-5 pb-4 flex items-start gap-3 ${accent ? "bg-primary/[0.03]" : ""}`}>
+        <div className={`rounded-xl p-2.5 shrink-0 ${accent ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+          {icon}
+        </div>
+        <div>
+          <p className="font-semibold text-sm text-foreground">{title}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <Separator />
+      <div className="px-5 py-2 divide-y divide-border/50">{children}</div>
+    </div>
   );
 }
 
-// ─── Tag input ────────────────────────────────────────────────────────────────
+// ─── Tag Input ────────────────────────────────────────────────────────────────
 
 function TagInput({
   values,
@@ -227,7 +217,6 @@ function TagInput({
   placeholder?: string;
 }) {
   const [input, setInput] = useState("");
-
   const add = () => {
     const trimmed = input.trim();
     if (trimmed && !values.includes(trimmed) && values.length < 10) {
@@ -235,11 +224,9 @@ function TagInput({
       setInput("");
     }
   };
-
   const remove = (tag: string) => onChange(values.filter((v) => v !== tag));
-
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 py-1">
       <div className="flex gap-2">
         <Input
           value={input}
@@ -248,7 +235,7 @@ function TagInput({
           placeholder={placeholder ?? "Type and press Enter"}
           className="h-8 text-sm"
         />
-        <Button type="button" variant="outline" size="sm" onClick={add} className="h-8 px-3">
+        <Button type="button" variant="outline" size="sm" onClick={add} className="h-8 px-3 shrink-0">
           Add
         </Button>
       </div>
@@ -284,6 +271,7 @@ export default function JobSeekerSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, type: "success", message: "" });
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [activeTab, setActiveTab] = useState("auto-apply");
 
   // ── Avatar state ────────────────────────────────────────────────────────────
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -393,7 +381,10 @@ export default function JobSeekerSettingsPage() {
     try {
       const res = await fetch("/api/job-seekers/settings", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": getCsrfToken(),
+        },
         body: JSON.stringify({ settings: data }),
       });
       if (!res.ok) throw new Error("Failed to save");
@@ -409,26 +400,44 @@ export default function JobSeekerSettingsPage() {
   // ── Skeleton ────────────────────────────────────────────────────────────────
   if (initialLoading) {
     return (
-      <div className="px-6 py-6 md:px-8 md:py-8">
-        <div className="space-y-5 max-w-3xl">
-        <div className="h-14 rounded-xl bg-muted animate-pulse" />
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
-            <div className="flex gap-3">
-              <div className="h-9 w-9 rounded-lg bg-muted animate-pulse" />
-              <div className="flex-1 space-y-2">
-                <div className="h-3 w-32 rounded bg-muted animate-pulse" />
-                <div className="h-3 w-56 rounded bg-muted animate-pulse" />
+      <div className="w-full max-w-4xl mx-auto px-6 py-8 space-y-6">
+        {/* Header skeleton */}
+        <div className="rounded-2xl border bg-card p-6 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 rounded-full bg-muted animate-pulse shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-36 rounded bg-muted animate-pulse" />
+              <div className="h-3 w-52 rounded bg-muted animate-pulse" />
+            </div>
+            <div className="h-9 w-28 rounded-xl bg-muted animate-pulse" />
+          </div>
+        </div>
+        {/* Tabs skeleton */}
+        <div className="h-10 w-full rounded-xl bg-muted animate-pulse" />
+        {/* Cards skeleton */}
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+            <div className="p-5 flex gap-3">
+              <div className="h-10 w-10 rounded-xl bg-muted animate-pulse shrink-0" />
+              <div className="flex-1 space-y-2 pt-1">
+                <div className="h-3.5 w-28 rounded bg-muted animate-pulse" />
+                <div className="h-3 w-52 rounded bg-muted animate-pulse" />
               </div>
             </div>
-            <div className="h-px bg-muted" />
-            <div className="flex justify-between">
-              <div className="h-3 w-40 rounded bg-muted animate-pulse" />
-              <div className="h-5 w-10 rounded-full bg-muted animate-pulse" />
+            <div className="h-px bg-border" />
+            <div className="px-5 py-4 space-y-4">
+              {[1, 2].map((j) => (
+                <div key={j} className="flex justify-between items-center">
+                  <div className="space-y-1.5">
+                    <div className="h-3.5 w-32 rounded bg-muted animate-pulse" />
+                    <div className="h-3 w-48 rounded bg-muted/60 animate-pulse" />
+                  </div>
+                  <div className="h-5 w-10 rounded-full bg-muted animate-pulse" />
+                </div>
+              ))}
             </div>
           </div>
         ))}
-        </div>
       </div>
     );
   }
@@ -438,32 +447,33 @@ export default function JobSeekerSettingsPage() {
 
   return (
     <TooltipProvider>
-      <div className="px-6 py-6 md:px-8 md:py-8">
-      <form id="settings-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5 max-w-3xl">
+      <form
+        id="settings-form"
+        onSubmit={handleSubmit(onSubmit)}
+        className="w-full max-w-4xl mx-auto px-6 py-8 space-y-6"
+      >
+        {/* ── Profile Header Card ────────────────────────────────────────── */}
+        <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+          {/* gradient stripe */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-primary/70 via-primary to-primary/50" />
 
-        <PageHeader
-          title="Application Settings"
-          description="Your AI-powered control panel — configure how MPLOYEDIN works for you"
-        />
-
-        {/* ── Profile Picture Card ─────────────────────────────────────────── */}
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-5">
-            {/* Avatar with upload overlay */}
+          <div className="px-6 py-5 flex items-center gap-5">
+            {/* Avatar */}
             <div className="relative shrink-0">
-              <Avatar className="h-20 w-20 ring-2 ring-border">
+              <Avatar className="h-16 w-16 ring-2 ring-border ring-offset-2 ring-offset-card">
                 <AvatarImage src={avatarUrl ?? undefined} />
-                <AvatarFallback className="text-lg font-semibold bg-primary/10 text-primary">
-                  {avatarUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : userInitials}
+                <AvatarFallback className="text-base font-bold bg-primary/10 text-primary">
+                  {avatarUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : userInitials}
                 </AvatarFallback>
               </Avatar>
               <button
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={avatarUploading}
-                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
+                aria-label="Change photo"
               >
-                <Camera className="h-5 w-5 text-white" />
+                <Camera className="h-4 w-4 text-white" />
               </button>
               <input
                 ref={avatarInputRef}
@@ -474,23 +484,27 @@ export default function JobSeekerSettingsPage() {
               />
             </div>
 
-            {/* Info + buttons */}
+            {/* Name + email */}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm truncate">{userName || "Your Name"}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{session?.user?.email ?? ""}</p>
-              <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <p className="font-bold text-base text-foreground truncate leading-tight">
+                {userName || "Your Name"}
+              </p>
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                {session?.user?.email ?? ""}
+              </p>
+              <div className="mt-2.5 flex items-center gap-2 flex-wrap">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs gap-1.5"
+                  className="h-7 text-xs gap-1.5 rounded-lg"
                   onClick={() => avatarInputRef.current?.click()}
                   disabled={avatarUploading}
                 >
                   {avatarUploading ? (
-                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Uploading…</>
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" />Uploading…</>
                   ) : (
-                    <><Camera className="h-3.5 w-3.5" /> {avatarUrl ? "Change Photo" : "Upload Photo"}</>
+                    <><Camera className="h-3.5 w-3.5" />{avatarUrl ? "Change Photo" : "Upload Photo"}</>
                   )}
                 </Button>
                 {avatarUrl && (
@@ -498,648 +512,682 @@ export default function JobSeekerSettingsPage() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-8 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="h-7 text-xs gap-1.5 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={handleAvatarRemove}
                     disabled={avatarUploading}
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> Remove
+                    <Trash2 className="h-3 w-3" />Remove
                   </Button>
                 )}
               </div>
               {avatarError && (
-                <p className="mt-1.5 text-xs text-destructive">{avatarError}</p>
+                <p className="mt-1 text-xs text-destructive">{avatarError}</p>
               )}
             </div>
 
-            <div className="hidden sm:flex flex-col items-end gap-1 text-xs text-muted-foreground shrink-0">
-              <p>Max 2MB</p>
-              <p>JPEG, PNG, WebP</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── AI Status Banner ─────────────────────────────────────────────── */}
-        <div
-          className={`overflow-hidden transition-all duration-300 ${
-            values.autoApply ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
-          }`}
-        >
-          <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
-              </span>
-              <span className="text-sm font-medium text-primary">AI is actively applying to jobs on your behalf</span>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">{MOCK_STATS.applied}</span> applied this week
-              <span className="text-border">·</span>
-              <span className="font-semibold text-foreground">{MOCK_STATS.interviews}</span> interviews booked
-            </div>
-          </div>
-        </div>
-
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* A — Auto Apply Mode                                               */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <Section
-          icon={<Zap className="h-4 w-4" />}
-          title="Auto Apply Mode"
-          description="AI finds matching jobs and applies on your behalf — fully automated."
-          highlight={values.autoApply}
-        >
-          <SettingRow
-            label="Auto Apply Mode"
-            description={
-              values.autoApply
-                ? "AI is applying to matching jobs automatically."
-                : "Manual mode — you review and approve every application before sending."
-            }
-            tooltip="When enabled, AI automatically submits applications that meet your match threshold."
-          >
-            <Controller
-              control={control}
-              name="autoApply"
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
+            {/* Right: save area */}
+            <div className="hidden sm:flex flex-col items-end gap-2 shrink-0">
+              {isDirty ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => reset()}
+                    disabled={saving}
+                    className="h-9 rounded-xl"
+                  >
+                    Discard
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={saving}
+                    className="h-9 min-w-[110px] rounded-xl gap-2"
+                  >
+                    {saving ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" />Saving…</>
+                    ) : (
+                      <><Save className="h-3.5 w-3.5" />Save Settings</>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">JPEG, PNG or WebP · max 2 MB</p>
               )}
-            />
-          </SettingRow>
+            </div>
+          </div>
 
-          {!values.autoApply && (
-            <div className="flex items-center gap-2.5 rounded-lg bg-muted/60 px-3.5 py-2.5 text-sm text-muted-foreground">
-              <Hand className="h-4 w-4 shrink-0" />
-              Manual mode — you review and approve every application before sending.
+          {/* AI active banner */}
+          {values.autoApply && (
+            <div className="mx-5 mb-5 flex items-center justify-between rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 gap-3 flex-wrap">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-70" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                </span>
+                <span className="text-xs font-medium text-primary">AI is actively applying to jobs on your behalf</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span><span className="font-semibold text-foreground">{MOCK_STATS.applied}</span> applied this week</span>
+                <span className="text-border">·</span>
+                <span><span className="font-semibold text-foreground">{MOCK_STATS.interviews}</span> interviews booked</span>
+              </div>
             </div>
           )}
+        </div>
 
-          <Expanded open={values.autoApply}>
-            {/* Match Score */}
-            <SettingRow
-              label="Match Score Threshold"
-              description={`AI only applies when match score ≥ ${values.autoApplyFilters.minScore}%`}
-              tooltip="Higher threshold = fewer but more targeted applications."
-            >
-              <div className="flex items-center gap-3">
-                <Controller
-                  control={control}
-                  name="autoApplyFilters.minScore"
-                  render={({ field }) => (
-                    <input
-                      type="range"
-                      min={50}
-                      max={95}
-                      step={5}
-                      value={field.value}
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      className="w-28 accent-primary"
-                    />
-                  )}
-                />
-                <span className="w-10 rounded-md bg-primary/10 px-2 py-0.5 text-center text-xs font-semibold text-primary">
-                  {values.autoApplyFilters.minScore}%
-                </span>
-              </div>
-            </SettingRow>
-
-            {/* Apply Speed */}
-            <SettingRow
-              label="AI Apply Speed"
-              description="Controls how aggressively AI selects jobs within your threshold."
-              tooltip="Aggressive mode applies to more jobs but may include weaker fits."
-            >
-              <Controller
-                control={control}
-                name="applySpeed"
-                render={({ field }) => (
-                  <div className="flex gap-1.5">
-                    {SPEED_OPTIONS.map((opt) => (
-                      <Tooltip key={opt.value}>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => field.onChange(opt.value)}
-                            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                              field.value === opt.value
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">{opt.desc}</TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </div>
-                )}
-              />
-            </SettingRow>
-
-            {/* Preferred Job Types */}
-            <div>
-              <p className="mb-2 text-sm font-medium">Preferred Job Types</p>
-              <Controller
-                control={control}
-                name="preferredJobTypes"
-                render={({ field }) => (
-                  <div className="flex flex-wrap gap-2">
-                    {JOB_TYPE_OPTIONS.map((type) => {
-                      const active = field.value.includes(type);
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() =>
-                            field.onChange(
-                              active ? field.value.filter((v) => v !== type) : [...field.value, type]
-                            )
-                          }
-                          className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                            active
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                          }`}
-                        >
-                          {type}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              />
-            </div>
-
-            {/* Preferred Locations */}
-            <div>
-              <div className="mb-2 flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                <p className="text-sm font-medium">Preferred Locations</p>
-              </div>
-              <Controller
-                control={control}
-                name="preferredLocations"
-                render={({ field }) => (
-                  <TagInput
-                    values={field.value}
-                    onChange={field.onChange}
-                    placeholder="e.g. Dubai, London, Remote…"
-                  />
-                )}
-              />
-            </div>
-
-            {/* Salary Range */}
-            <div>
-              <div className="mb-2 flex items-center gap-1.5">
-                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                <p className="text-sm font-medium">Salary Range</p>
-              </div>
-              <div className="flex gap-2">
-                <Controller
-                  control={control}
-                  name="salaryMin"
-                  render={({ field }) => (
-                    <Input
-                      type="number"
-                      placeholder="Min"
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                      className="h-8 text-sm"
-                    />
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="salaryMax"
-                  render={({ field }) => (
-                    <Input
-                      type="number"
-                      placeholder="Max"
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                      className="h-8 text-sm"
-                    />
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="salaryCurrency"
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="h-8 w-24 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CURRENCIES.map((c) => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Only Verified Employers */}
-            <SettingRow
-              label="Only verified employers"
-              description="Skip jobs from unverified companies."
-              tooltip="Verified employers have confirmed their company domain."
-            >
-              <Controller
-                control={control}
-                name="autoApplyFilters.onlyVerifiedEmployers"
-                render={({ field }) => (
-                  <Switch checked={field.value} onCheckedChange={field.onChange} />
-                )}
-              />
-            </SettingRow>
-          </Expanded>
-        </Section>
-
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* B — Interview Settings                                            */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <Section
-          icon={<CalendarDays className="h-4 w-4" />}
-          title="Interview Settings"
-          description="Control how employers can schedule interviews with you."
-        >
-          <SettingRow
-            label="Instant Interview Booking"
-            description="Allow employers to book interviews directly into your available time slots."
-          >
-            <Controller
-              control={control}
-              name="instantBooking"
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              )}
-            />
-          </SettingRow>
-
-          <Expanded open={values.instantBooking}>
-            {/* Google Calendar */}
-            <SettingRow label="Google Calendar" description="Sync availability and receive calendar invites.">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Button type="button" variant="outline" size="sm" disabled className="h-8 text-xs">
-                      Connect Calendar
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  Calendar integration coming soon
-                </TooltipContent>
-              </Tooltip>
-            </SettingRow>
-
-            {/* Weekly Availability */}
-            <div>
-              <p className="mb-2 text-sm font-medium">Weekly Availability</p>
-              <Controller
-                control={control}
-                name="weeklyAvailability"
-                render={({ field }) => (
-                  <div className="flex gap-1.5">
-                    {DAYS.map((day) => {
-                      const active = field.value.includes(day);
-                      return (
-                        <button
-                          key={day}
-                          type="button"
-                          onClick={() =>
-                            field.onChange(
-                              active
-                                ? field.value.filter((d) => d !== day)
-                                : [...field.value, day]
-                            )
-                          }
-                          className={`h-9 w-10 rounded-lg border text-xs font-medium transition-colors ${
-                            active
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border text-muted-foreground hover:border-primary/40"
-                          }`}
-                        >
-                          {day}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              />
-            </div>
-
-            {/* Buffer */}
-            <SettingRow
-              label="Buffer Between Interviews"
-              description="Minimum break time between back-to-back interviews."
-              tooltip="Prevents employers from double-booking you too tightly."
-            >
-              <Controller
-                control={control}
-                name="timeBuffer"
-                render={({ field }) => (
-                  <Select value={String(field.value)} onValueChange={(v) => field.onChange(Number(v))}>
-                    <SelectTrigger className="h-8 w-32 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[0, 15, 30, 60].map((m) => (
-                        <SelectItem key={m} value={String(m)}>
-                          {m === 0 ? "No buffer" : `${m} min`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </SettingRow>
-          </Expanded>
-        </Section>
-
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* C — Profile Preferences                                           */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <Section
-          icon={<Gauge className="h-4 w-4" />}
-          title="Profile Preferences"
-          description="Control what employers see on your public profile."
-        >
-          <SettingRow
-            label="Show Salary Expectations"
-            description="Display your salary range on your profile and applications."
-          >
-            <Controller
-              control={control}
-              name="showSalary"
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              )}
-            />
-          </SettingRow>
-
-          <Expanded open={values.showSalary}>
-            <div className="flex gap-2">
-              <Controller
-                control={control}
-                name="salaryMin"
-                render={({ field }) => (
-                  <Input
-                    type="number"
-                    placeholder="Min salary"
-                    value={field.value ?? ""}
-                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                    className="h-8 text-sm"
-                  />
-                )}
-              />
-              <Controller
-                control={control}
-                name="salaryMax"
-                render={({ field }) => (
-                  <Input
-                    type="number"
-                    placeholder="Max salary"
-                    value={field.value ?? ""}
-                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                    className="h-8 text-sm"
-                  />
-                )}
-              />
-              <Controller
-                control={control}
-                name="salaryCurrency"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="h-8 w-24 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CURRENCIES.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          </Expanded>
-
-          <Separator />
-
-          <SettingRow
-            label="Open to Relocation"
-            description="Signal to employers you're willing to relocate within the GCC."
-          >
-            <Controller
-              control={control}
-              name="openToRelocation"
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              )}
-            />
-          </SettingRow>
-
-          <Expanded open={values.openToRelocation}>
-            <div>
-              <p className="mb-2 text-sm font-medium">Preferred Relocation Cities</p>
-              <Controller
-                control={control}
-                name="preferredLocations"
-                render={({ field }) => (
-                  <TagInput
-                    values={field.value}
-                    onChange={field.onChange}
-                    placeholder="e.g. Dubai, Riyadh, Doha…"
-                  />
-                )}
-              />
-            </div>
-          </Expanded>
-        </Section>
-
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* D — Resume & AI Behavior                                          */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <Section
-          icon={<BrainCircuit className="h-4 w-4" />}
-          title="Resume & AI Behavior"
-          description="Configure how AI writes on your behalf."
-        >
-          {/* Default Resume */}
-          <SettingRow
-            label="Default Resume"
-            description="Used for all AI-generated applications."
-            tooltip="Upload additional resumes from the Documents page."
-          >
-            <Controller
-              control={control}
-              name="defaultResumeId"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="h-8 w-44 text-sm">
-                    <SelectValue placeholder="Select resume" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MOCK_RESUMES.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </SettingRow>
-
-          <Separator />
-
-          <SettingRow
-            label="Auto-generate Cover Letters"
-            description="AI writes a tailored cover letter for every application."
-          >
-            <Controller
-              control={control}
-              name="autoGenerateCoverLetter"
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              )}
-            />
-          </SettingRow>
-
-          <Expanded open={values.autoGenerateCoverLetter}>
-            <div>
-              <div className="mb-2 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-                <p className="text-sm font-medium">Cover Letter Tone</p>
-              </div>
-              <Controller
-                control={control}
-                name="coverLetterTone"
-                render={({ field }) => (
-                  <div className="flex gap-2">
-                    {(["professional", "friendly", "bold"] as const).map((tone) => (
-                      <button
-                        key={tone}
-                        type="button"
-                        onClick={() => field.onChange(tone)}
-                        className={`rounded-lg border px-4 py-2 text-xs font-medium capitalize transition-colors ${
-                          field.value === tone
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                        }`}
-                      >
-                        {tone}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              />
-            </div>
-          </Expanded>
-
-          <Separator />
-
-          <SettingRow
-            label="Auto-answer Screening Questions"
-            description="AI fills in pre-screening questionnaires based on your profile."
-            tooltip="AI uses your profile and resume to answer common screening questions. You can review answers before submitting in Manual mode."
-          >
-            <Controller
-              control={control}
-              name="autoAnswerScreening"
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              )}
-            />
-          </SettingRow>
-        </Section>
-
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* E — Notifications                                                  */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <Section
-          icon={<Bell className="h-4 w-4" />}
-          title="Notifications"
-          description="Choose which activity triggers a notification."
-        >
-          <SettingRow label="Job Match Alerts" description="Notify me when new jobs match my profile.">
-            <Controller
-              control={control}
-              name="notifications.jobMatchAlerts"
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              )}
-            />
-          </SettingRow>
-
-          <Separator />
-
-          <SettingRow label="Application Submitted" description="Confirm each time an application is sent.">
-            <Controller
-              control={control}
-              name="notifications.applicationSubmitted"
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              )}
-            />
-          </SettingRow>
-
-          <Separator />
-
-          <SettingRow label="Interview Notifications" description="Reminders and updates about scheduled interviews.">
-            <Controller
-              control={control}
-              name="notifications.interviewNotifications"
-              render={({ field }) => (
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              )}
-            />
-          </SettingRow>
-        </Section>
-
-        {/* ── Save bar ── */}
+        {/* ── Mobile save bar ─────────────────────────────────────────────── */}
         {isDirty && (
-          <div className="rounded-xl border bg-card px-5 py-4 shadow-sm flex items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">You have unsaved changes</p>
-            <div className="flex gap-2 shrink-0">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => reset()}
-                disabled={saving}
-              >
-                Cancel
+          <div className="sm:hidden rounded-2xl border bg-card px-5 py-4 shadow-sm flex items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground font-medium">Unsaved changes</p>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => reset()} disabled={saving} className="h-8 rounded-xl">
+                Discard
               </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={saving}
-                className="min-w-[100px]"
-              >
-                {saving ? (
-                  <span className="flex items-center gap-1.5">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Saving…
-                  </span>
-                ) : (
-                  "Save Settings"
-                )}
+              <Button type="submit" size="sm" disabled={saving} className="h-8 min-w-[100px] rounded-xl gap-1.5">
+                {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Saving…</> : <><Save className="h-3.5 w-3.5" />Save</>}
               </Button>
             </div>
           </div>
         )}
 
-      </form>
-      </div>
+        {/* ── Tabs ────────────────────────────────────────────────────────── */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full h-auto p-1 rounded-2xl flex flex-wrap gap-1 bg-muted/40 border border-border/40">
+            <TabsTrigger value="auto-apply" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Zap className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Auto Apply</span>
+              <span className="sm:hidden">Apply</span>
+            </TabsTrigger>
+            <TabsTrigger value="interviews" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Interviews</span>
+              <span className="sm:hidden">Schedule</span>
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Profile Visibility</span>
+              <span className="sm:hidden">Visibility</span>
+            </TabsTrigger>
+            <TabsTrigger value="resume-ai" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <BrainCircuit className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Resume & AI</span>
+              <span className="sm:hidden">AI</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Bell className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Notifications</span>
+              <span className="sm:hidden">Alerts</span>
+            </TabsTrigger>
+          </TabsList>
 
-      {/* ── Toast ────────────────────────────────────────────────────────── */}
+          {/* ════════════════════ AUTO APPLY TAB ════════════════════ */}
+          <TabsContent value="auto-apply" className="mt-5 space-y-5 focus-visible:outline-none">
+            <SettingCard
+              icon={<Zap className="h-4 w-4" />}
+              title="Auto Apply Mode"
+              description="AI finds matching jobs and applies on your behalf — fully automated."
+              accent={values.autoApply}
+            >
+              <SettingRow
+                label="Enable Auto Apply"
+                description={values.autoApply
+                  ? "AI is submitting applications automatically."
+                  : "Manual mode — you review every application before it's sent."}
+                tooltip="When enabled, AI submits applications that meet your match threshold without any action from you."
+              >
+                <Controller
+                  control={control}
+                  name="autoApply"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
+              </SettingRow>
+            </SettingCard>
+
+            {!values.autoApply && (
+              <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/30 px-4 py-3.5">
+                <Hand className="h-4 w-4 text-muted-foreground shrink-0" />
+                <p className="text-sm text-muted-foreground">Manual mode is active — you control every application before it's submitted.</p>
+              </div>
+            )}
+
+            {values.autoApply && (
+              <>
+                <SettingCard
+                  icon={<Settings2 className="h-4 w-4" />}
+                  title="Auto Apply Filters"
+                  description="Narrow down which jobs the AI targets on your behalf."
+                  accent
+                >
+                  {/* Match Score */}
+                  <SettingRow
+                    label="Match Score Threshold"
+                    description={`AI only applies when match score ≥ ${values.autoApplyFilters.minScore}%`}
+                    tooltip="Higher threshold = fewer, more targeted applications."
+                  >
+                    <div className="flex items-center gap-3">
+                      <Controller
+                        control={control}
+                        name="autoApplyFilters.minScore"
+                        render={({ field }) => (
+                          <input
+                            type="range"
+                            min={50}
+                            max={95}
+                            step={5}
+                            value={field.value}
+                            onChange={(e) => field.onChange(parseInt(e.target.value))}
+                            className="w-28 accent-primary"
+                          />
+                        )}
+                      />
+                      <span className="w-11 rounded-lg bg-primary/10 px-2 py-1 text-center text-xs font-bold text-primary">
+                        {values.autoApplyFilters.minScore}%
+                      </span>
+                    </div>
+                  </SettingRow>
+
+                  {/* Apply Speed */}
+                  <SettingRow
+                    label="AI Apply Speed"
+                    description="How aggressively the AI selects jobs within your threshold."
+                    tooltip="Aggressive mode applies to more jobs but may include weaker fits."
+                  >
+                    <Controller
+                      control={control}
+                      name="applySpeed"
+                      render={({ field }) => (
+                        <div className="flex gap-1.5">
+                          {SPEED_OPTIONS.map((opt) => (
+                            <Tooltip key={opt.value}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => field.onChange(opt.value)}
+                                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                                    field.value === opt.value
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">{opt.desc}</TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </div>
+                      )}
+                    />
+                  </SettingRow>
+
+                  {/* Only Verified Employers */}
+                  <SettingRow
+                    label="Only verified employers"
+                    description="Skip jobs from unverified companies."
+                    tooltip="Verified employers have confirmed their company domain."
+                  >
+                    <Controller
+                      control={control}
+                      name="autoApplyFilters.onlyVerifiedEmployers"
+                      render={({ field }) => (
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      )}
+                    />
+                  </SettingRow>
+                </SettingCard>
+
+                <SettingCard
+                  icon={<FileText className="h-4 w-4" />}
+                  title="Job Type & Location Targets"
+                  description="Set which jobs you want the AI to pursue."
+                >
+                  {/* Preferred Job Types */}
+                  <div className="py-3">
+                    <p className="text-sm font-medium text-foreground mb-2.5">Preferred Job Types</p>
+                    <Controller
+                      control={control}
+                      name="preferredJobTypes"
+                      render={({ field }) => (
+                        <div className="flex flex-wrap gap-2">
+                          {JOB_TYPE_OPTIONS.map((type) => {
+                            const active = field.value.includes(type);
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => field.onChange(
+                                  active ? field.value.filter((v) => v !== type) : [...field.value, type]
+                                )}
+                                className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                                  active
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                                }`}
+                              >
+                                {type}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    />
+                  </div>
+
+                  {/* Preferred Locations */}
+                  <div className="py-3 border-t border-border/50">
+                    <div className="flex items-center gap-1.5 mb-2.5">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                      <p className="text-sm font-medium text-foreground">Preferred Locations</p>
+                    </div>
+                    <Controller
+                      control={control}
+                      name="preferredLocations"
+                      render={({ field }) => (
+                        <TagInput values={field.value} onChange={field.onChange} placeholder="e.g. Dubai, London, Remote…" />
+                      )}
+                    />
+                  </div>
+
+                  {/* Salary Range */}
+                  <div className="py-3 border-t border-border/50">
+                    <div className="flex items-center gap-1.5 mb-2.5">
+                      <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                      <p className="text-sm font-medium text-foreground">Target Salary Range</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Controller
+                        control={control}
+                        name="salaryMin"
+                        render={({ field }) => (
+                          <Input type="number" placeholder="Min" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} className="h-9 text-sm" />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="salaryMax"
+                        render={({ field }) => (
+                          <Input type="number" placeholder="Max" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} className="h-9 text-sm" />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="salaryCurrency"
+                        render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger className="h-9 w-24 text-sm shrink-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CURRENCIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </SettingCard>
+              </>
+            )}
+          </TabsContent>
+
+          {/* ════════════════════ INTERVIEWS TAB ════════════════════ */}
+          <TabsContent value="interviews" className="mt-5 space-y-5 focus-visible:outline-none">
+            <SettingCard
+              icon={<CalendarDays className="h-4 w-4" />}
+              title="Interview Scheduling"
+              description="Control how and when employers can book interviews with you."
+            >
+              <SettingRow
+                label="Instant Interview Booking"
+                description="Allow employers to book directly into your available time slots."
+              >
+                <Controller
+                  control={control}
+                  name="instantBooking"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
+              </SettingRow>
+            </SettingCard>
+
+            {values.instantBooking && (
+              <SettingCard
+                icon={<Settings2 className="h-4 w-4" />}
+                title="Availability Settings"
+                description="Set your calendar availability and connection preferences."
+              >
+                {/* Calendar connect */}
+                <SettingRow label="Google Calendar" description="Sync availability and receive calendar invites.">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Button type="button" variant="outline" size="sm" disabled className="h-8 text-xs rounded-lg">
+                          Connect Calendar
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      Calendar integration coming soon
+                    </TooltipContent>
+                  </Tooltip>
+                </SettingRow>
+
+                {/* Weekly Availability */}
+                <div className="py-3 border-t border-border/50">
+                  <p className="text-sm font-medium text-foreground mb-3">Available Days</p>
+                  <Controller
+                    control={control}
+                    name="weeklyAvailability"
+                    render={({ field }) => (
+                      <div className="flex gap-2 flex-wrap">
+                        {DAYS.map((day) => {
+                          const active = field.value.includes(day);
+                          return (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => field.onChange(
+                                active ? field.value.filter((d) => d !== day) : [...field.value, day]
+                              )}
+                              className={`h-10 w-12 rounded-xl border text-xs font-semibold transition-colors ${
+                                active
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  />
+                </div>
+
+                {/* Buffer */}
+                <SettingRow
+                  label="Buffer Between Interviews"
+                  description="Minimum break time between consecutive interviews."
+                  tooltip="Prevents employers from scheduling back-to-back interviews."
+                >
+                  <Controller
+                    control={control}
+                    name="timeBuffer"
+                    render={({ field }) => (
+                      <Select value={String(field.value)} onValueChange={(v) => field.onChange(Number(v))}>
+                        <SelectTrigger className="h-8 w-32 text-sm rounded-lg">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[0, 15, 30, 60].map((m) => (
+                            <SelectItem key={m} value={String(m)}>
+                              {m === 0 ? "No buffer" : `${m} min`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </SettingRow>
+              </SettingCard>
+            )}
+          </TabsContent>
+
+          {/* ════════════════════ PROFILE VISIBILITY TAB ════════════════════ */}
+          <TabsContent value="profile" className="mt-5 space-y-5 focus-visible:outline-none">
+            <SettingCard
+              icon={<ShieldCheck className="h-4 w-4" />}
+              title="Profile Visibility"
+              description="Control what employers see on your public profile."
+            >
+              <SettingRow
+                label="Show Salary Expectations"
+                description="Display your salary range on your profile and applications."
+              >
+                <Controller
+                  control={control}
+                  name="showSalary"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
+              </SettingRow>
+
+              <SettingRow
+                label="Open to Relocation"
+                description="Signal to employers you're willing to relocate within the GCC."
+              >
+                <Controller
+                  control={control}
+                  name="openToRelocation"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
+              </SettingRow>
+            </SettingCard>
+
+            {(values.showSalary || values.openToRelocation) && (
+              <SettingCard
+                icon={<DollarSign className="h-4 w-4" />}
+                title="Visibility Details"
+                description="Fine-tune the information shown on your public profile."
+              >
+                {values.showSalary && (
+                  <div className="py-3">
+                    <p className="text-sm font-medium text-foreground mb-2.5">Displayed Salary Range</p>
+                    <div className="flex gap-2">
+                      <Controller
+                        control={control}
+                        name="salaryMin"
+                        render={({ field }) => (
+                          <Input type="number" placeholder="Min salary" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} className="h-9 text-sm" />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="salaryMax"
+                        render={({ field }) => (
+                          <Input type="number" placeholder="Max salary" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} className="h-9 text-sm" />
+                        )}
+                      />
+                      <Controller
+                        control={control}
+                        name="salaryCurrency"
+                        render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger className="h-9 w-24 text-sm shrink-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CURRENCIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {values.showSalary && values.openToRelocation && (
+                  <div className="border-t border-border/50" />
+                )}
+
+                {values.openToRelocation && (
+                  <div className="py-3">
+                    <div className="flex items-center gap-1.5 mb-2.5">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                      <p className="text-sm font-medium text-foreground">Preferred Relocation Cities</p>
+                    </div>
+                    <Controller
+                      control={control}
+                      name="preferredLocations"
+                      render={({ field }) => (
+                        <TagInput values={field.value} onChange={field.onChange} placeholder="e.g. Dubai, Riyadh, Doha…" />
+                      )}
+                    />
+                  </div>
+                )}
+              </SettingCard>
+            )}
+          </TabsContent>
+
+          {/* ════════════════════ RESUME & AI TAB ════════════════════ */}
+          <TabsContent value="resume-ai" className="mt-5 space-y-5 focus-visible:outline-none">
+            <SettingCard
+              icon={<BrainCircuit className="h-4 w-4" />}
+              title="Resume & AI Behavior"
+              description="Configure how AI writes and applies on your behalf."
+            >
+              <SettingRow
+                label="Default Resume"
+                description="Used for all AI-generated applications."
+                tooltip="Upload additional resumes from the Documents page."
+              >
+                <Controller
+                  control={control}
+                  name="defaultResumeId"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="h-8 w-48 text-sm rounded-lg">
+                        <SelectValue placeholder="Select resume" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MOCK_RESUMES.map((r) => <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </SettingRow>
+
+              <SettingRow
+                label="Auto-generate Cover Letters"
+                description="AI writes a tailored cover letter for every application."
+              >
+                <Controller
+                  control={control}
+                  name="autoGenerateCoverLetter"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
+              </SettingRow>
+
+              <SettingRow
+                label="Auto-answer Screening Questions"
+                description="AI fills in pre-screening questionnaires from your profile."
+                tooltip="AI uses your profile and resume to answer common screening questions. Review answers before submitting in Manual mode."
+              >
+                <Controller
+                  control={control}
+                  name="autoAnswerScreening"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
+              </SettingRow>
+            </SettingCard>
+
+            {values.autoGenerateCoverLetter && (
+              <SettingCard
+                icon={<Sparkles className="h-4 w-4" />}
+                title="Cover Letter Tone"
+                description="Choose the writing style AI uses for your cover letters."
+              >
+                <div className="py-3">
+                  <Controller
+                    control={control}
+                    name="coverLetterTone"
+                    render={({ field }) => (
+                      <div className="flex gap-3 flex-wrap">
+                        {(["professional", "friendly", "bold"] as const).map((tone) => (
+                          <button
+                            key={tone}
+                            type="button"
+                            onClick={() => field.onChange(tone)}
+                            className={`flex-1 min-w-[100px] rounded-xl border py-3 px-4 text-sm font-medium capitalize transition-colors ${
+                              field.value === tone
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                            }`}
+                          >
+                            {tone === "professional" && "Professional"}
+                            {tone === "friendly" && "Friendly"}
+                            {tone === "bold" && "Bold"}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  />
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {values.coverLetterTone === "professional" && "Clear, structured, and business-appropriate."}
+                    {values.coverLetterTone === "friendly" && "Warm, approachable, and conversational."}
+                    {values.coverLetterTone === "bold" && "Confident, direct, and memorable."}
+                  </p>
+                </div>
+              </SettingCard>
+            )}
+          </TabsContent>
+
+          {/* ════════════════════ NOTIFICATIONS TAB ════════════════════ */}
+          <TabsContent value="notifications" className="mt-5 space-y-5 focus-visible:outline-none">
+            <SettingCard
+              icon={<Bell className="h-4 w-4" />}
+              title="Notification Preferences"
+              description="Choose which activity triggers a notification."
+            >
+              <SettingRow
+                label="Job Match Alerts"
+                description="Get notified when new jobs match your profile."
+              >
+                <Controller
+                  control={control}
+                  name="notifications.jobMatchAlerts"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
+              </SettingRow>
+
+              <SettingRow
+                label="Application Submitted"
+                description="Confirmation each time an application is sent."
+              >
+                <Controller
+                  control={control}
+                  name="notifications.applicationSubmitted"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
+              </SettingRow>
+
+              <SettingRow
+                label="Interview Notifications"
+                description="Reminders and updates about scheduled interviews."
+              >
+                <Controller
+                  control={control}
+                  name="notifications.interviewNotifications"
+                  render={({ field }) => (
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  )}
+                />
+              </SettingRow>
+            </SettingCard>
+          </TabsContent>
+        </Tabs>
+      </form>
+
+      {/* ── Toast ─────────────────────────────────────────────────────────── */}
       <div
-        className={`fixed bottom-24 right-6 z-50 pointer-events-none transition-all duration-300 ${
-          toast.show ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+        className={`fixed bottom-6 right-6 z-50 pointer-events-none transition-all duration-300 ${
+          toast.show ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
         }`}
       >
         <div
@@ -1157,7 +1205,6 @@ export default function JobSeekerSettingsPage() {
           {toast.message}
         </div>
       </div>
-
     </TooltipProvider>
   );
 }

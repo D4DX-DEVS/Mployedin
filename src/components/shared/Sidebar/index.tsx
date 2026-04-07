@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
 import { Menu, X } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 interface SidebarProps {
   navGroups: NavGroup[];
@@ -20,7 +21,15 @@ interface SidebarProps {
 
 export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, companyLogo }: SidebarProps) {
   const pathname = usePathname();
+  const { data: session, status } = useSession();
   const isRtl = locale === "ar";
+  const userImage = session?.user?.image;
+  const displayImage = companyLogo ?? userImage;
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setImageLoadFailed(false);
+  }, [displayImage]);
 
   // Flatten all top-level items from groups (usually just 1 group, but just in case)
   const allMainItems = navGroups.flatMap(g => g.items);
@@ -70,77 +79,74 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, 
 
   // --- Primary Icon Sidebar ---
   const primarySidebar = (
-    <div className="w-[80px] h-full flex flex-col bg-slate-900 border-r border-slate-800 z-20 shrink-0">
+    <div className="w-[200px] h-full flex flex-col bg-slate-900 border-r border-slate-800 z-20 shrink-0">
       {/* Logo */}
-      <div className="h-16 flex items-center justify-center border-b border-slate-800 shrink-0">
-        {companyLogo ? (
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg ring-1 ring-white/20 bg-white shrink-0">
+      <div className="h-16 flex items-center gap-3 px-4 border-b border-slate-800 shrink-0">
+        {displayImage && !imageLoadFailed ? (
+          <div className="w-9 h-9 rounded-xl overflow-hidden shadow-lg ring-1 ring-white/20 bg-white shrink-0">
             <Image
-              src={companyLogo}
-              alt="Company logo"
-              width={40}
-              height={40}
-              className="w-full h-full object-contain"
+              src={displayImage}
+              alt={companyLogo ? "Company logo" : "Profile image"}
+              width={36}
+              height={36}
+              className={cn("w-full h-full", companyLogo ? "object-contain" : "object-cover")}
+              onError={() => setImageLoadFailed(true)}
               unoptimized
               priority
             />
           </div>
+        ) : !companyLogo && status === "loading" ? (
+          <div className="w-9 h-9 rounded-xl bg-slate-700/70 animate-pulse ring-1 ring-white/20 shrink-0" />
         ) : (
-          <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg font-bold text-xl ring-1 ring-white/20">
+          <div className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg font-bold text-lg ring-1 ring-white/20 shrink-0">
             M
           </div>
         )}
+        <span className="text-white font-bold text-sm tracking-wide truncate">Mployedin</span>
       </div>
 
-      {/* Icon Nav */}
-      <nav className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-4 items-center sidebar-scroll">
-        <TooltipProvider>
-          {allMainItems.map(item => {
-            const Icon = getIcon(item.icon);
-            const isSelected = activeMainTitle === item.title;
-            const childActive = item.children?.some(c => isActive(c.href));
-            const isReallyActive = isActive(item.href) || childActive;
+      {/* Icon + Label Nav */}
+      <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1 sidebar-scroll">
+        {allMainItems.map(item => {
+          const Icon = getIcon(item.icon);
+          const isSelected = activeMainTitle === item.title;
 
-            return (
-              <Tooltip key={item.title} delayDuration={0}>
-                <TooltipTrigger asChild>
-                  {item.children && item.children.length > 0 ? (
-                    <button
-                      onClick={() => setActiveMainTitle(item.title)}
-                      className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group relative",
-                        isSelected
-                          ? "bg-white text-primary shadow-lg shadow-black/20"
-                          : "text-white/60 hover:bg-white/10 hover:text-white"
-                      )}
-                    >
-                      <Icon className="w-[22px] h-[22px] shrink-0" />
-                    </button>
-                  ) : (
-                    <Link
-                      href={item.href}
-                      onClick={() => {
-                        setActiveMainTitle(item.title);
-                        onMobileClose?.();
-                      }}
-                      className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group relative",
-                        isSelected
-                          ? "bg-white text-primary shadow-lg shadow-black/20"
-                          : "text-white/60 hover:bg-white/10 hover:text-white"
-                      )}
-                    >
-                      <Icon className="w-[22px] h-[22px] shrink-0" />
-                    </Link>
-                  )}
-                </TooltipTrigger>
-                <TooltipContent side={isRtl ? "left" : "right"} sideOffset={14} className="font-semibold px-3 py-1.5 rounded-lg shadow-xl border-slate-800 bg-slate-900 text-white">
-                  {locale === "ar" ? item.titleAr : item.title}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </TooltipProvider>
+          const itemContent = (
+            <>
+              <Icon className="w-[18px] h-[18px] shrink-0" />
+              <span className="truncate text-[13px] font-medium">{locale === "ar" ? item.titleAr : item.title}</span>
+            </>
+          );
+
+          const itemClass = cn(
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+            isSelected
+              ? "bg-white text-primary shadow-md"
+              : "text-white/60 hover:bg-white/10 hover:text-white"
+          );
+
+          return item.children && item.children.length > 0 ? (
+            <button
+              key={item.title}
+              onClick={() => setActiveMainTitle(item.title)}
+              className={itemClass}
+            >
+              {itemContent}
+            </button>
+          ) : (
+            <Link
+              key={item.title}
+              href={item.href}
+              onClick={() => {
+                setActiveMainTitle(item.title);
+                onMobileClose?.();
+              }}
+              className={itemClass}
+            >
+              {itemContent}
+            </Link>
+          );
+        })}
       </nav>
     </div>
   );

@@ -40,6 +40,7 @@ export const aiSkillsGapSchema = z.object({
   jobSeekerId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
   targetRole: z.string().max(200).optional(),
   targetJobId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
+  currentSkills: z.array(z.string().trim().min(1).max(100)).max(50).optional(),
 });
 
 export const aiJobDescriptionSchema = z.object({

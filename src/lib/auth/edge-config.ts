@@ -22,6 +22,7 @@ const edgeAuthConfig: NextAuthConfig = {
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.picture = user.image ?? token.picture;
         token.role = ((user as unknown) as { role: UserRole }).role ?? "job_seeker";
         token.locale = ((user as unknown) as { locale: string }).locale ?? "en";
         token.isEmailVerified = ((user as unknown) as { isEmailVerified?: boolean }).isEmailVerified ?? false;
@@ -30,6 +31,7 @@ const edgeAuthConfig: NextAuthConfig = {
     },
     session({ session, token }) {
       if (session.user) {
+        session.user.image = (token.picture as string | null | undefined) ?? session.user.image;
         session.user.id = token.id as string;
         ((session.user as unknown) as { role: UserRole }).role = token.role as UserRole;
         ((session.user as unknown) as { locale: string }).locale = token.locale as string;

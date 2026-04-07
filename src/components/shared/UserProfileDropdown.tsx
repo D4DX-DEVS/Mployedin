@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   LogOut,
   KeyRound,
@@ -66,6 +66,9 @@ export function UserProfileDropdown({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  const { data: session } = useSession();
+  const userImage = session?.user?.image;
 
   const isAr = locale === "ar";
   const roleBadge = ROLE_LABELS[userRole] ?? { en: userRole, ar: userRole };
@@ -153,6 +156,8 @@ export function UserProfileDropdown({
           <button className="flex h-9 w-9 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 shadow-soft ring-2 ring-background cursor-pointer hover:ring-primary/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden">
             {companyLogo ? (
               <Image src={companyLogo} alt="Company logo" width={36} height={36} className="w-full h-full object-contain" unoptimized />
+            ) : userImage ? (
+              <Image src={userImage} alt={userName} width={36} height={36} className="w-full h-full object-cover" unoptimized />
             ) : (
               initials
             )}
@@ -170,6 +175,8 @@ export function UserProfileDropdown({
               <div className="flex h-10 w-10 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 overflow-hidden">
                 {companyLogo ? (
                   <Image src={companyLogo} alt="Company logo" width={40} height={40} className="w-full h-full object-contain" unoptimized />
+                ) : userImage ? (
+                  <Image src={userImage} alt={userName} width={40} height={40} className="w-full h-full object-cover" unoptimized />
                 ) : (
                   initials
                 )}

@@ -767,7 +767,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             title: "Tools",
             titleAr: "الأدوات",
             href: p("/employer/workflow"),
-            icon: "Settings",
+            icon: "Wrench",
             description: "Hiring tools & automation",
             descriptionAr: "أدوات التوظيف والأتمتة",
             children: [
@@ -859,6 +859,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "UserCircle",
                 description: "Edit your profile",
                 descriptionAr: "تعديل ملفك الشخصي",
+              },
+              {
+                title: "Personal Details",
+                titleAr: "البيانات الشخصية",
+                href: p("/job-seeker/profile/personal-details"),
+                icon: "UserCircle",
+                description: "Gender, DOB, address & languages",
+                descriptionAr: "الجنس، تاريخ الميلاد، العنوان واللغات",
               },
               {
                 title: "Job Preferences",

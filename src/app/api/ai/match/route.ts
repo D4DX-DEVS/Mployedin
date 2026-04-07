@@ -40,7 +40,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
   if (!seeker) return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });
 
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const prompt = `You are a recruitment AI. Analyse the match between a job seeker and a job posting.
 

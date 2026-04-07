@@ -25,16 +25,34 @@ export async function GET(req: NextRequest) {
     .select("_id title employerId")
     .lean();
 
-  if (!expiredJobs.length) {
+  // Jobs auto-closed by max applicant limit
+  const fullJobs = await Job.find({
+    status: "active",
+    maxApplicants: { $exists: true, $gt: 0 },
+    $expr: { $gte: [{ $size: "$applicantIds" }, "$maxApplicants"] },
+  })
+    .select("_id title employerId")
+    .lean();
+
+  // Merge, dedup by id
+  const allIds = new Set<string>();
+  const allJobs = [...expiredJobs, ...fullJobs].filter((j) => {
+    const id = String(j._id);
+    if (allIds.has(id)) return false;
+    allIds.add(id);
+    return true;
+  });
+
+  if (!allJobs.length) {
     return NextResponse.json({ success: true, closed: 0, timestamp: now.toISOString() });
   }
 
-  const jobIds = expiredJobs.map((j) => j._id);
+  const jobIds = allJobs.map((j) => j._id);
   await Job.updateMany({ _id: { $in: jobIds } }, { $set: { status: "closed" } });
 
   // Notify each employer
   const errors: string[] = [];
-  for (const job of expiredJobs) {
+  for (const job of allJobs) {
     try {
       const employer = await Employer.findById(job.employerId).select("userId").lean();
       if (!employer) continue;
@@ -55,7 +73,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    closed: expiredJobs.length,
+    closed: allJobs.length,
     errors: errors.length ? errors : undefined,
     timestamp: now.toISOString(),
   });

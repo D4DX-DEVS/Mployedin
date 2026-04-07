@@ -9,9 +9,10 @@ const apiKey = process.env.GEMINI_API_KEY ?? "";
 const genAI = new GoogleGenerativeAI(apiKey);
 
 export const GEMINI_MODELS = {
-  flash: "gemini-1.5-flash",
-  pro: "gemini-1.5-pro",
-  flash2: "gemini-2.0-flash-exp",
+  flash: "gemini-2.5-flash",
+  pro: "gemini-2.5-pro",
+  flash2: "gemini-2.5-flash",
+  flashLite: "gemini-2.5-flash-lite",
 } as const;
 
 type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];

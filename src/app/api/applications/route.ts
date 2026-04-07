@@ -105,6 +105,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     jobId,
     employerId: job.employerId,
     coverLetter,
+    source: body.easyApply ? 'easy_apply' : 'full_form',
     status: "applied",
     appliedAt: new Date(),
     statusHistory: [{ status: "applied", changedAt: new Date(), note: "Application submitted" }],

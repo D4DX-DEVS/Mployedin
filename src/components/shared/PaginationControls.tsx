@@ -69,7 +69,7 @@ export function PaginationControls({
 
       {/* Center: showing X-Y of Z */}
       <span className="text-muted-foreground whitespace-nowrap">
-        Showing {from}\u2013{to} of {total.toLocaleString()}
+        Showing {from}–{to} of {total.toLocaleString()}
       </span>
 
       {/* Right: navigation buttons */}

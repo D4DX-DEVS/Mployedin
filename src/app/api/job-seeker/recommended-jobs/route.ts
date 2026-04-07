@@ -11,12 +11,15 @@ import Application from "@/models/Application";
  * Returns up to 5 recommended active jobs scored by local matching
  * (skills overlap, location match, salary range, job type).
  */
-export const GET = withAuth(async (_req: NextRequest, ctx) => {
+export const GET = withAuth(async (req: NextRequest, ctx) => {
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   await connectDB();
+
+  const limitParam = Number(req.nextUrl.searchParams.get("limit") ?? "5");
+  const itemLimit = Number.isFinite(limitParam) ? Math.max(1, Math.min(30, Math.round(limitParam))) : 5;
 
   const seeker = await JobSeeker.findOne({ userId: ctx.userId })
     .select("skills preferredCountries preferredRoles preferredSalary preferredJobType")
@@ -110,9 +113,10 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     return { ...job, matchScore: Math.min(100, Math.round(score)) };
   });
 
-  // Sort by score descending, take top 5
+  // Sort by score descending, then return limited items + total count.
   scored.sort((a, b) => b.matchScore - a.matchScore);
-  const items = scored.slice(0, 5);
+  const totalMatches = scored.length;
+  const items = scored.slice(0, itemLimit);
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ items, totalMatches });
 });

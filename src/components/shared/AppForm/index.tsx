@@ -4,8 +4,8 @@
  */
 "use client";
 
-import { useState, useRef } from "react";
-import { ChevronDown, X, Upload, Phone } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { ChevronDown, X, Upload, Phone, Search } from "lucide-react";
 
 // ──────────────────────────────────────────────────────────
 // FormInput
@@ -81,31 +81,124 @@ interface FormSelectProps {
   disabled?: boolean;
 }
 
-export function FormSelect({ label, error, hint, placeholder, options, value, onChange, required, disabled }: FormSelectProps) {
+export function FormSelect({ label, error, hint, placeholder, options, value, onChange, required, disabled, searchable }: FormSelectProps & { searchable?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = useMemo(() => {
+    if (!search) return options;
+    const q = search.toLowerCase();
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, search]);
+
+  const selectedLabel = options.find((o) => o.value === value)?.label;
+
+  useEffect(() => {
+    if (!searchable) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [searchable]);
+
+  useEffect(() => {
+    if (open && searchable && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [open, searchable]);
+
+  // Non-searchable: plain <select>
+  if (!searchable) {
+    return (
+      <div className="space-y-1">
+        {label && (
+          <label className="block text-xs font-medium text-muted-foreground">
+            {label} {required && <span className="text-destructive">*</span>}
+          </label>
+        )}
+        <div className="relative">
+          <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            required={required}
+            disabled={disabled}
+            className={`w-full h-10 rounded-lg border px-3 pr-8 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 bg-background ${
+              error ? "border-destructive" : ""
+            }`}
+          >
+            {placeholder && <option value="">{placeholder}</option>}
+            {options.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
+      </div>
+    );
+  }
+
+  // Searchable: custom dropdown
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 relative" ref={containerRef}>
       {label && (
         <label className="block text-xs font-medium text-muted-foreground">
           {label} {required && <span className="text-destructive">*</span>}
         </label>
       )}
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          required={required}
-          disabled={disabled}
-          className={`w-full h-10 rounded-lg border px-3 pr-8 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 bg-background ${
-            error ? "border-destructive" : ""
-          }`}
-        >
-          {placeholder && <option value="">{placeholder}</option>}
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <div
+        onClick={() => { if (!disabled) setOpen(!open); }}
+        className={`w-full h-10 rounded-lg border px-3 text-sm flex items-center cursor-pointer bg-background ${
+          error ? "border-destructive" : ""
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+      >
+        <span className={selectedLabel ? "" : "text-muted-foreground"}>
+          {selectedLabel ?? placeholder ?? "Select…"}
+        </span>
+        <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </div>
+      {open && (
+        <div className="absolute z-[99] w-full top-full mt-1 bg-background border rounded-lg shadow-lg overflow-hidden">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search…"
+                className="w-full h-8 pl-8 pr-3 text-sm rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+              />
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">No results</div>
+            ) : (
+              filtered.map((o) => (
+                <div
+                  key={o.value}
+                  onClick={() => { onChange(o.value); setOpen(false); setSearch(""); }}
+                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-muted/40 flex items-center justify-between ${
+                    value === o.value ? "bg-primary/5 text-primary font-medium" : ""
+                  }`}
+                >
+                  {o.label}
+                  {value === o.value && <span className="text-primary text-xs">✓</span>}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
       {error && <p className="text-xs text-destructive">{error}</p>}
       {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
@@ -127,8 +220,11 @@ interface FormMultiSelectProps {
   maxSelections?: number;
 }
 
-export function FormMultiSelect({ label, error, hint, placeholder, options, value, onChange, required, maxSelections }: FormMultiSelectProps) {
+export function FormMultiSelect({ label, error, hint, placeholder, options, value, onChange, required, maxSelections, searchable, groupLabel, popularOptions }: FormMultiSelectProps & { searchable?: boolean; groupLabel?: string; popularOptions?: FormSelectOption[] }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const toggle = (v: string) => {
     if (value.includes(v)) {
@@ -138,13 +234,49 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
     }
   };
 
+  const filtered = useMemo(() => {
+    if (!search) return options;
+    const q = search.toLowerCase();
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, search]);
+
+  const filteredPopular = useMemo(() => {
+    if (!popularOptions || search) return [];
+    return popularOptions;
+  }, [popularOptions, search]);
+
   const selectedLabels = options.filter((o) => value.includes(o.value));
+  // Also check popularOptions for labels not in main options
+  const allOptionsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    options.forEach((o) => map.set(o.value, o.label));
+    popularOptions?.forEach((o) => map.set(o.value, o.label));
+    return map;
+  }, [options, popularOptions]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  useEffect(() => {
+    if (open && searchable && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [open, searchable]);
 
   return (
-    <div className="space-y-1 relative">
+    <div className="space-y-1 relative" ref={containerRef}>
       {label && (
         <label className="block text-xs font-medium text-muted-foreground">
           {label} {required && <span className="text-destructive">*</span>}
+          {maxSelections && <span className="text-muted-foreground/60 font-normal"> (max {maxSelections})</span>}
         </label>
       )}
       <div
@@ -153,33 +285,72 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
           error ? "border-destructive" : ""
         }`}
       >
-        {selectedLabels.length === 0 ? (
+        {selectedLabels.length === 0 && value.length === 0 ? (
           <span className="text-muted-foreground">{placeholder ?? "Select options…"}</span>
         ) : (
-          selectedLabels.map((o) => (
-            <span key={o.value}
-              onClick={(e) => { e.stopPropagation(); toggle(o.value); }}
+          value.map((v) => (
+            <span key={v}
+              onClick={(e) => { e.stopPropagation(); toggle(v); }}
               className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-              {o.label} <X className="h-3 w-3" />
+              {allOptionsMap.get(v) ?? v} <X className="h-3 w-3" />
             </span>
           ))
         )}
-        <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </div>
       {open && (
-        <div className="absolute z-[99] w-full top-full mt-1 bg-background border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-          {options.map((o) => (
-            <div
-              key={o.value}
-              onClick={() => toggle(o.value)}
-              className={`px-3 py-2 text-sm cursor-pointer hover:bg-muted/40 flex items-center justify-between ${
-                value.includes(o.value) ? "bg-primary/5 text-primary font-medium" : ""
-              }`}
-            >
-              {o.label}
-              {value.includes(o.value) && <span className="text-primary text-xs">✓</span>}
+        <div className="absolute z-[99] w-full top-full mt-1 bg-background border rounded-lg shadow-lg overflow-hidden">
+          {searchable && (
+            <div className="p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search…"
+                  className="w-full h-8 pl-8 pr-3 text-sm rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+                />
+              </div>
             </div>
-          ))}
+          )}
+          <div className="max-h-48 overflow-y-auto">
+            {filteredPopular.length > 0 && (
+              <>
+                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">Popular</div>
+                {filteredPopular.map((o) => (
+                  <div
+                    key={`pop-${o.value}`}
+                    onClick={() => toggle(o.value)}
+                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-muted/40 flex items-center justify-between ${
+                      value.includes(o.value) ? "bg-primary/5 text-primary font-medium" : ""
+                    }`}
+                  >
+                    {o.label}
+                    {value.includes(o.value) && <span className="text-primary text-xs">✓</span>}
+                  </div>
+                ))}
+                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">{groupLabel ?? "All"}</div>
+              </>
+            )}
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">No results</div>
+            ) : (
+              filtered.map((o) => (
+                <div
+                  key={o.value}
+                  onClick={() => toggle(o.value)}
+                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-muted/40 flex items-center justify-between ${
+                    value.includes(o.value) ? "bg-primary/5 text-primary font-medium" : ""
+                  }`}
+                >
+                  {o.label}
+                  {value.includes(o.value) && <span className="text-primary text-xs">✓</span>}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
       {error && <p className="text-xs text-destructive">{error}</p>}

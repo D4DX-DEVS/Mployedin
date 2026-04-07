@@ -13,6 +13,24 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
+/** Retry a Gemini call on transient 503 overload errors */
+async function callWithRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isTransient = msg.includes("503") || msg.includes("Service Unavailable") || msg.includes("overloaded");
+      if (isTransient && attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 1000 * attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
@@ -56,7 +74,10 @@ export async function POST(req: NextRequest) {
     const base64 = Buffer.from(bytes).toString("base64");
     const mimeType = file.type as "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const models = [
+      genAI.getGenerativeModel({ model: "gemini-2.5-flash" }),
+      genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" }),
+    ];
 
     const prompt = `You are an expert CV/Resume parser. Analyze this CV/resume document and extract all relevant information.
 Return a JSON object with EXACTLY this structure (no extra fields, no markdown):
@@ -84,19 +105,35 @@ Rules:
 - Normalize skill names (e.g., "JS" → "JavaScript")
 - Return ONLY valid JSON, no markdown code blocks`;
 
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [
+    const generateArgs = {
+      contents: [{ role: "user" as const, parts: [
         { text: prompt },
         { inlineData: { data: base64, mimeType } },
       ] }],
-      generationConfig: { maxOutputTokens: AI_TOKEN_LIMITS.cv_extract },
-    });
+      generationConfig: {
+        maxOutputTokens: AI_TOKEN_LIMITS.cv_extract,
+        responseMimeType: "application/json",
+      },
+    };
+
+    let result;
+    try {
+      result = await callWithRetry(() => models[0].generateContent(generateArgs));
+    } catch (primaryErr: unknown) {
+      const msg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
+      if (msg.includes("503") || msg.includes("Service Unavailable") || msg.includes("overloaded")) {
+        console.warn("[CV Extract] Primary model overloaded, falling back to flash-lite");
+        result = await callWithRetry(() => models[1].generateContent(generateArgs));
+      } else {
+        throw primaryErr;
+      }
+    }
 
     const text = result.response.text().trim();
 
-    // Parse JSON — strip markdown code fences if present
-    const jsonStr = text.startsWith("```")
-      ? text.replace(/```json?\n?/g, "").replace(/```$/g, "").trim()
+    // Strip markdown code fences if model ignores responseMimeType
+    const jsonStr = text.startsWith("`")
+      ? text.replace(/```json?\n?/g, "").replace(/```\s*$/g, "").trim()
       : text;
 
     const extracted = JSON.parse(jsonStr);

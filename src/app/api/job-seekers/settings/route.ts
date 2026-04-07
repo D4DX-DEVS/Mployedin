@@ -17,7 +17,11 @@ interface JobSeekerSettings {
   openToRelocation: boolean;
 }
 
-async function GET(_req: NextRequest, ctx: { userId: string }) {
+async function GET(_req: NextRequest, ctx: { userId: string; role: string }) {
+  if (ctx.role !== "job_seeker") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await connectDB();
   const js = await (JobSeeker as unknown as {
     findOne: (q: object) => { select: (s: string) => { lean: () => Promise<{ settings?: JobSeekerSettings } | null> } }
@@ -34,7 +38,11 @@ async function GET(_req: NextRequest, ctx: { userId: string }) {
   return NextResponse.json({ settings: js?.settings ?? defaults });
 }
 
-async function PATCH(req: NextRequest, ctx: { userId: string }) {
+async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
+  if (ctx.role !== "job_seeker") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await connectDB();
   const { settings } = await validateBody(req, jobSeekerSettingsSchema);
 
@@ -49,6 +57,6 @@ async function PATCH(req: NextRequest, ctx: { userId: string }) {
   return NextResponse.json({ success: true });
 }
 
-export const GET_handler = withAuth(GET, { resource: "job_seekers", action: "read" });
-export const PATCH_handler = withAuth(PATCH, { resource: "job_seekers", action: "update" });
+export const GET_handler = withAuth(GET);
+export const PATCH_handler = withAuth(PATCH);
 export { GET_handler as GET, PATCH_handler as PATCH };

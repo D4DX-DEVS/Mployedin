@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { MapPin, Briefcase, Clock, Users, Globe } from "lucide-react";
 import Link from "next/link";
-import ApplyButton from "@/components/features/public/ApplyButton";
+import EasyApply from "@/components/features/public/EasyApply";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -41,6 +41,13 @@ function timeAgo(date: Date): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
+function closesInDays(expiresAt?: Date | null): number | null {
+  if (!expiresAt) return null;
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  const days = Math.ceil(diff / 86400000);
+  return days > 0 ? days : null;
+}
+
 function salaryLabel(salary: { min?: number; max?: number; currency?: string; isNegotiable?: boolean } | null) {
   if (!salary) return null;
   if (salary.isNegotiable) return "Negotiable";
@@ -63,7 +70,8 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const employer = job.employerId as any;
-  const salary = salaryLabel(job.salary as Parameters<typeof salaryLabel>[0]);
+  const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0]) : null;
+  const daysLeft = closesInDays(job.expiresAt as Date | null);
 
   // JSON-LD structured data for Google Jobs
   const jsonLd = {
@@ -159,6 +167,15 @@ export default async function JobDetailPage({ params }: PageProps) {
                     <Clock className="h-4 w-4" />
                     Posted {timeAgo(job.createdAt)}
                   </span>
+                  {daysLeft !== null && daysLeft <= 14 && (
+                    <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                      daysLeft <= 7
+                        ? "bg-orange-500/10 text-orange-600"
+                        : "bg-yellow-500/10 text-yellow-600"
+                    }`}>
+                      Closes in {daysLeft} day{daysLeft === 1 ? "" : "s"}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -238,7 +255,7 @@ export default async function JobDetailPage({ params }: PageProps) {
                   <p className="text-xs text-muted-foreground">{employer?.companyName}</p>
                 </div>
 
-                <ApplyButton jobId={String(job._id)} locale={locale} />
+                <EasyApply jobId={String(job._id)} jobTitle={job.title} locale={locale} />
 
                 <p className="text-xs text-muted-foreground text-center mt-3">
                   Your profile is auto-attached to the application.

@@ -17,11 +17,15 @@ export interface IJobRequirements {
   nationality?: string[];
 }
 
+export type SalaryPeriod = "monthly" | "yearly" | "lpa";
+export type JobVisibility = "public" | "private" | "invite_only";
+
 export interface IJobSalary {
   min: number;
   max: number;
   currency: string;
   isNegotiable?: boolean;
+  period?: SalaryPeriod;
 }
 
 export interface IJobLocation {
@@ -53,8 +57,12 @@ export interface IJob extends Document {
   approvedBy?: mongoose.Types.ObjectId;
   approvedAt?: Date;
   expiresAt?: Date;
+  maxApplicants?: number;
+  showSalary?: boolean;
   views: number;
   tags: string[];
+  visibility: JobVisibility;
+  category?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -78,6 +86,7 @@ const JobSchema = new Schema<IJob>(
       max: Number,
       currency: { type: String, default: "AED" },
       isNegotiable: { type: Boolean, default: false },
+      period: { type: String, enum: ["monthly", "yearly", "lpa"], default: "monthly" },
     },
     location: {
       country: { type: String, required: true },
@@ -104,8 +113,12 @@ const JobSchema = new Schema<IJob>(
     approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
     approvedAt: Date,
     expiresAt: Date,
+    maxApplicants: { type: Number, min: 1 },
+    showSalary: { type: Boolean, default: true },
     views: { type: Number, default: 0 },
     tags: [String],
+    visibility: { type: String, enum: ["public", "private", "invite_only"], default: "public" },
+    category: String,
   },
   { timestamps: true }
 );

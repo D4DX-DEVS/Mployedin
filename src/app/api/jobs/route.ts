@@ -22,6 +22,7 @@ async function getHandler(req: NextRequest) {
   const category = searchParams.get("category") ?? "";
   const location = searchParams.get("location") ?? "";
   const currency = searchParams.get("currency") ?? "";
+  const remote = searchParams.get("remote") === "true";
   const myJobs = searchParams.get("myJobs") === "true"; // for employer view
   const employerId = searchParams.get("employerId") ?? "";
 
@@ -35,7 +36,17 @@ async function getHandler(req: NextRequest) {
 
   if (search) query.$text = { $search: search };
   if (category) query.category = category;
-  if (location) query.location = new RegExp(escapeRegex(location), "i");
+  if (location) {
+    const locationPattern = new RegExp(escapeRegex(location), "i");
+    const locationCondition = {
+      $or: [
+        { "location.country": locationPattern },
+        { "location.city": locationPattern },
+      ],
+    };
+    query.$and = [...(query.$and ?? []), locationCondition];
+  }
+  if (remote) query["location.isRemote"] = true;
   if (currency) query["salary.currency"] = currency;
   if (employerId) query.employerId = employerId;
 
@@ -67,11 +78,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
 
-  const { title, description, category, location, requirements, salary, expiresAt, applicationMode } = body;
-
-  if (!title || !description) {
-    return NextResponse.json({ error: "title and description are required" }, { status: 400 });
-  }
+  const { title, description, category, location, requirements, salary, expiresAt, applicationMode, vacancies, tags, visibility, status } = body;
 
   let employerId: string | undefined;
   let agentId: string | undefined;
@@ -86,7 +93,6 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     if (!agent) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
     agentId = String(agent._id);
     employerId = body.employerId;
-    // Verify agent is assigned to this employer
     if (employerId && !agent.assignedEmployerIds?.map(String).includes(employerId)) {
       return NextResponse.json(
         { error: "Forbidden — you are not assigned to this employer" },
@@ -97,18 +103,23 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     employerId = body.employerId;
   }
 
+  const resolvedStatus = status ?? (ctx.role === "admin" ? "active" : "draft");
+
   const job = await Job.create({
     title,
     description,
     category,
-    location,
+    location: location ?? { country: "", city: "", isRemote: false },
     requirements: requirements ?? { skills: [], experienceMin: 0, experienceMax: 99 },
-    salary: salary ?? { min: 0, max: 0, currency: "USD" },
+    salary: salary ?? { min: 0, max: 0, currency: "USD", period: "monthly" },
     employerId,
     agentId,
     applicationMode: applicationMode ?? "manual",
-    status: ctx.role === "admin" ? "active" : "draft",
+    status: resolvedStatus,
     expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+    vacancies: vacancies ?? 1,
+    tags: tags ?? [],
+    visibility: visibility ?? "public",
     "poster.approvalStatus": ctx.role === "admin" ? "approved" : "pending",
   });
 

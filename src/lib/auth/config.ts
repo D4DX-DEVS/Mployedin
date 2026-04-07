@@ -1,6 +1,5 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
 import LinkedIn from "next-auth/providers/linkedin";
 import { z } from "zod";
 import connectDB from "@/lib/db/mongoose";
@@ -9,6 +8,7 @@ import type { UserRole } from "@/models/User";
 import { CompanyUser } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import { logActivity } from "@/lib/audit/log";
+import { getFirebaseAdminAuth } from "@/lib/firebase/admin";
 import type { CompanyRole } from "@/models/CompanyUser";
 
 const credentialsSchema = z.object({
@@ -119,9 +119,78 @@ export const authConfig: NextAuthConfig = {
         }
       },
     }),
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    // ── Firebase Google Sign-In ──────────────────────────────────────────────
+    // Client obtains a Firebase ID token via signInWithPopup, then passes it here.
+    Credentials({
+      id: "firebase",
+      name: "Firebase",
+      credentials: { idToken: { type: "text" } },
+      async authorize(credentials) {
+        try {
+          const idToken = (credentials as { idToken?: string })?.idToken;
+          if (!idToken) return null;
+
+          const adminAuth = getFirebaseAdminAuth();
+          const decoded = await adminAuth.verifyIdToken(idToken);
+
+          const email = decoded.email?.toLowerCase();
+          if (!email) return null;
+          const isEmailVerified = decoded.email_verified ?? false;
+
+          await connectDB();
+          let dbUser = await User.findOne({ email });
+          const isNewUser = !dbUser;
+          const providerName = decoded.name ?? email.split("@")[0];
+          const providerAvatar = decoded.picture ?? null;
+
+          if (!dbUser) {
+            dbUser = await User.create({
+              email,
+              name: providerName,
+              avatar: providerAvatar,
+              role: "job_seeker",
+              isEmailVerified,
+              isActive: true,
+              locale: "en",
+            });
+          } else {
+            const update: Record<string, unknown> = {};
+
+            // Keep local profile aligned with trusted Firebase profile data.
+            if (!dbUser.name && providerName) {
+              update.name = providerName;
+            }
+            if (!dbUser.avatar && providerAvatar) {
+              update.avatar = providerAvatar;
+            }
+
+            if (Object.keys(update).length > 0) {
+              dbUser = await User.findByIdAndUpdate(dbUser._id, update, { new: true }) ?? dbUser;
+            }
+          }
+
+          logActivity({
+            actorId: dbUser._id.toString(),
+            actorRole: dbUser.role,
+            action: isNewUser ? "register.oauth" : "login.success",
+            resource: "auth",
+            meta: { email, provider: "firebase-google" },
+          });
+
+          return {
+            id: dbUser._id.toString(),
+            email: dbUser.email,
+            name: dbUser.name,
+            image: dbUser.avatar ?? providerAvatar,
+            role: dbUser.role,
+            locale: dbUser.locale,
+            isEmailVerified,
+          };
+        } catch (err) {
+          console.error("[auth] firebase authorize error:", err);
+          return null;
+        }
+      },
     }),
     LinkedIn({
       clientId: process.env.LINKEDIN_CLIENT_ID!,
@@ -137,6 +206,7 @@ export const authConfig: NextAuthConfig = {
     async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id;
+        token.picture = user.image ?? token.picture;
         token.role = ((user as unknown) as { role: UserRole }).role ?? "job_seeker";
         token.locale = ((user as unknown) as { locale: string }).locale ?? "en";
         token.isEmailVerified = ((user as unknown) as { isEmailVerified?: boolean }).isEmailVerified ?? false;
@@ -198,6 +268,7 @@ export const authConfig: NextAuthConfig = {
     },
     async session({ session, token }) {
       if (session.user) {
+        session.user.image = (token.picture as string | null | undefined) ?? session.user.image;
         session.user.id = token.id as string;
         (session.user as unknown as { role: UserRole }).role = token.role as UserRole;
         (session.user as unknown as { locale: string }).locale = token.locale as string;

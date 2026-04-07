@@ -44,6 +44,13 @@ function timeAgo(date: Date): string {
   return `${Math.floor(days / 30)} month${Math.floor(days / 30) > 1 ? "s" : ""} ago`;
 }
 
+function closesInDays(expiresAt?: Date | null): number | null {
+  if (!expiresAt) return null;
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  const days = Math.ceil(diff / 86400000);
+  return days > 0 ? days : null;
+}
+
 export default async function JobsPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
   const sp = await searchParams;
@@ -169,7 +176,8 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
             {jobs.map((job) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const employer = job.employerId as any;
-              const salary = salaryLabel(job.salary as Parameters<typeof salaryLabel>[0]);
+              const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0]) : null;
+              const daysLeft = closesInDays(job.expiresAt as Date | null);
 
               return (
                 <Link
@@ -185,6 +193,15 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                         </h2>
                         {employer?.domainVerified && (
                           <span className="shrink-0 text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ Verified</span>
+                        )}
+                        {daysLeft !== null && daysLeft <= 14 && (
+                          <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                            daysLeft <= 7
+                              ? "bg-orange-500/10 text-orange-600"
+                              : "bg-yellow-500/10 text-yellow-600"
+                          }`}>
+                            Closes in {daysLeft}d
+                          </span>
                         )}
                       </div>
 

@@ -28,7 +28,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const seeker = await JobSeeker.findOne({ userId: ctx.userId }).lean();
   if (!seeker) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const prompt = `You are a career development AI specialized in Gulf region (UAE, Saudi Arabia, Qatar, Kuwait, Bahrain, Oman) job markets.
 

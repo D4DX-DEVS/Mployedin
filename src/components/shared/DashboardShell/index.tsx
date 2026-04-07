@@ -47,7 +47,7 @@ export function DashboardShell({
       />
 
       {/* Main content area */}
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden min-w-0">
         {/* Topbar */}
         <header className="flex h-16 items-center gap-4 border-b border-border/40 bg-background px-4 sm:px-6 lg:px-8 z-30 sticky top-0 transition-all">
           <MobileMenuButton onClick={() => setMobileOpen(true)} />
@@ -73,7 +73,7 @@ export function DashboardShell({
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-background isolate">
+        <main className="flex-1 min-h-0 h-0 overflow-y-auto bg-background isolate">
           {children}
         </main>
       </div>

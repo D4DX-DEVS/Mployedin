@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { User, Calendar, Inbox, CheckSquare, Square, X, ChevronDown, GripVertical, Award, DollarSign, Filter, Clock } from "lucide-react";
+import { User, Calendar, Inbox, CheckSquare, Square, X, ChevronDown, GripVertical, Award, DollarSign, Filter, Clock, History, BarChart3, GitCompare, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -25,6 +25,32 @@ interface Applicant {
   appliedAt: string;
   coverLetter?: string;
   matchBreakdown?: { skills: number; experience: number; overall: number };
+}
+
+interface TimelineEntry {
+  id: string;
+  action: string;
+  actorName: string;
+  actorRole: string;
+  changes?: { before?: Record<string, unknown>; after?: Record<string, unknown> };
+  createdAt: string;
+}
+
+interface CompareCandidate {
+  applicationId: string;
+  status: string;
+  appliedAt: string;
+  aiMatchScore: number | null;
+  matchBreakdown: { skills: number; experience: number; education: number; availability: number; overall: number } | null;
+  candidate: {
+    name: string;
+    profilePicture: string | null;
+    skills: string[];
+    yearsOfExperience: number;
+    preferredSalary: { min: number; max: number; currency: string } | null;
+    profileCompleteness: number;
+  };
+  job: { title: string; salaryRange: { min: number; max: number; currency: string } | null };
 }
 
 const PIPELINE_STAGES = [
@@ -56,6 +82,11 @@ export default function EmployerApplicationsPage() {
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
   const [daysFilter, setDaysFilter] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [timelinePanel, setTimelinePanel] = useState<{ appId: string; candidateLabel: string } | null>(null);
+  const [timelineData, setTimelineData] = useState<TimelineEntry[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [compareModal, setCompareModal] = useState(false);
 
   useEffect(() => {
     document.title = "Applications · MPLOYEDIN";
@@ -179,6 +210,33 @@ export default function EmployerApplicationsPage() {
     } catch (err) {
       console.error("Failed to create offer:", err);
     }
+  }
+
+  async function openTimeline(appId: string) {
+    const label = `#${appId.slice(-4)}`;
+    setTimelinePanel({ appId, candidateLabel: label });
+    setTimelineLoading(true);
+    try {
+      const res = await fetch(`/api/applications/${appId}/timeline`);
+      if (res.ok) {
+        const data = await res.json();
+        setTimelineData(data.timeline ?? []);
+      } else {
+        setTimelineData([]);
+      }
+    } catch {
+      setTimelineData([]);
+    } finally {
+      setTimelineLoading(false);
+    }
+  }
+
+  function toggleCompare(appId: string) {
+    setCompareIds((prev) => {
+      if (prev.includes(appId)) return prev.filter((id) => id !== appId);
+      if (prev.length >= 3) return prev; // max 3
+      return [...prev, appId];
+    });
   }
 
   // Filter applications by score range and days-in-stage
@@ -359,6 +417,22 @@ export default function EmployerApplicationsPage() {
         </div>
       )}
 
+      {/* Compare bar */}
+      {compareIds.length > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-cyan-500/5 border border-cyan-500/20 rounded-xl">
+          <GitCompare className="w-4 h-4 text-cyan-600" />
+          <span className="text-sm font-medium text-cyan-700">{compareIds.length} selected to compare</span>
+          <Button size="sm" variant="outline" className="h-8 text-xs border-cyan-500/30 text-cyan-700 hover:bg-cyan-50"
+            disabled={compareIds.length < 2}
+            onClick={() => setCompareModal(true)}>
+            Compare Now
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 ml-auto" onClick={() => setCompareIds([])}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -372,6 +446,9 @@ export default function EmployerApplicationsPage() {
             onUpdateStatus={canUpdate ? updateApplicationStatus : undefined}
             dragModal={dragModal}
             setDragModal={setDragModal}
+            onTimeline={openTimeline}
+            onCompare={toggleCompare}
+            compareIds={compareIds}
           />
           {dragModal && (
             <DragModal
@@ -413,6 +490,9 @@ export default function EmployerApplicationsPage() {
           onUpdateStatus={canUpdate ? updateApplicationStatus : undefined}
           onScorecard={canUpdate ? setScorecardModal : undefined}
           onOffer={canUpdate ? (app: Applicant) => setOfferModal({ appId: app._id }) : undefined}
+          onTimeline={openTimeline}
+          onCompare={toggleCompare}
+          compareIds={compareIds}
         />
       )}
 
@@ -454,6 +534,25 @@ export default function EmployerApplicationsPage() {
         />
       )}
 
+      {/* Activity Timeline Panel */}
+      {timelinePanel && (
+        <ActivityTimelinePanel
+          appId={timelinePanel.appId}
+          candidateLabel={timelinePanel.candidateLabel}
+          entries={timelineData}
+          loading={timelineLoading}
+          onClose={() => setTimelinePanel(null)}
+        />
+      )}
+
+      {/* Candidate Comparison Modal */}
+      {compareModal && compareIds.length >= 2 && (
+        <CandidateCompareModal
+          applicationIds={compareIds}
+          onClose={() => setCompareModal(false)}
+        />
+      )}
+
       <PaginationControls
         page={pagination.page}
         totalPages={pagination.totalPages}
@@ -467,12 +566,15 @@ export default function EmployerApplicationsPage() {
 }
 
 function KanbanView({
-  grouped, onUpdateStatus, dragModal, setDragModal
+  grouped, onUpdateStatus, dragModal, setDragModal, onTimeline, onCompare, compareIds
 }: {
   grouped: Record<string, Applicant[]>;
   onUpdateStatus?: (id: string, status: string, reason?: string) => void;
   dragModal: any;
   setDragModal: (modal: any) => void;
+  onTimeline?: (appId: string) => void;
+  onCompare?: (appId: string) => void;
+  compareIds?: string[];
 }) {
   const dragRef = useRef<{ id: string; fromStatus: string } | null>(null);
   const [highlightedColumn, setHighlightedColumn] = useState<string | null>(null);
@@ -544,6 +646,9 @@ function KanbanView({
               app={app}
               onUpdateStatus={onUpdateStatus}
               onDragStart={handleDragStart}
+              onTimeline={onTimeline}
+              onCompare={onCompare}
+              isComparing={compareIds?.includes(app._id)}
             />
           ))}
           {!grouped[stage.value]?.length && (
@@ -556,15 +661,22 @@ function KanbanView({
 }
 
 function KanbanCard({
-  app, onUpdateStatus, onDragStart
+  app, onUpdateStatus, onDragStart, onTimeline, onCompare, isComparing
 }: {
   app: Applicant;
   onUpdateStatus?: (id: string, status: string, reason?: string) => void;
   onDragStart?: (appId: string, fromStatus: string) => void;
+  onTimeline?: (appId: string) => void;
+  onCompare?: (appId: string) => void;
+  isComparing?: boolean;
 }) {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [hovered, setHovered] = useState(false);
+
+  const daysInStage = Math.floor((Date.now() - new Date(app.appliedAt).getTime()) / 86400000);
+  const daysColor = daysInStage >= 7 ? "text-red-500" : daysInStage >= 3 ? "text-amber-500" : "text-emerald-500";
 
   return (
     <div
@@ -574,9 +686,11 @@ function KanbanCard({
         onDragStart?.(app._id, app.status);
       }}
       onDragEnd={() => setIsDragging(false)}
-      className={`bg-background rounded-lg border p-3 text-xs shadow-sm transition-opacity ${
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className={`bg-background rounded-lg border p-3 text-xs shadow-sm transition-all relative ${
         isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"
-      }`}
+      } ${isComparing ? "ring-2 ring-cyan-500/50" : ""}`}
     >
       <div className="flex items-center gap-1.5 mb-1.5">
         <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
@@ -589,57 +703,107 @@ function KanbanCard({
         )}
       </div>
       <p className="text-muted-foreground truncate">{app.jobId?.title}</p>
-      {onUpdateStatus && (
-        <>
-          <div className="flex gap-1 mt-2">
-            {app.status !== "selected" && app.status !== "shortlisted" && (
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] hover:bg-amber-100 text-amber-700"
-                onClick={() => onUpdateStatus(app._id, "shortlisted")}>
-                Shortlist
-              </Button>
-            )}
-            {app.status === "shortlisted" && (
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] hover:bg-purple-100 text-purple-600"
-                onClick={() => onUpdateStatus(app._id, "interview_scheduled")}>
-                <Calendar className="w-3 h-3 mr-1" /> Interview
-              </Button>
-            )}
-            {!["rejected", "selected"].includes(app.status) && (
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] hover:bg-red-100 text-red-600 ml-auto"
-                onClick={() => setRejectOpen(true)}>
-                Reject
-              </Button>
-            )}
+
+      {/* Days in stage indicator */}
+      <div className="flex items-center gap-1 mt-1">
+        <Clock className={`w-3 h-3 ${daysColor}`} />
+        <span className={`text-[10px] ${daysColor}`}>{daysInStage}d in stage</span>
+      </div>
+
+      {/* AI Score Breakdown (shown on hover) */}
+      {hovered && app.matchBreakdown && (
+        <div className="mt-2 p-2 bg-muted/40 rounded-md space-y-1">
+          <div className="flex items-center gap-1 mb-1">
+            <BarChart3 className="w-3 h-3 text-primary" />
+            <span className="text-[10px] font-semibold">AI Breakdown</span>
           </div>
-          {rejectOpen && (
-            <div className="mt-2 space-y-1">
-              <input
-                className="w-full h-7 px-2 text-[10px] border border-border rounded bg-background focus:outline-none"
-                placeholder="Reason (required)"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                maxLength={500}
-              />
-              <div className="flex gap-1">
-                <Button size="sm" variant="destructive" className="h-6 text-[10px] flex-1"
-                  disabled={!reason.trim()}
-                  onClick={() => { onUpdateStatus(app._id, "rejected", reason); setRejectOpen(false); }}>
-                  Confirm
-                </Button>
-                <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setRejectOpen(false)}>
-                  Cancel
-                </Button>
+          {[
+            { label: "Skills", value: app.matchBreakdown.skills },
+            { label: "Experience", value: app.matchBreakdown.experience },
+            { label: "Overall", value: app.matchBreakdown.overall },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground w-14">{item.label}</span>
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-red-400"}`}
+                  style={{ width: `${item.value}%` }}
+                />
               </div>
+              <span className="text-[10px] font-medium w-7 text-right">{item.value}%</span>
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* Action buttons row */}
+      <div className="flex items-center gap-1 mt-2">
+        {onTimeline && (
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Activity Timeline"
+            onClick={(e) => { e.stopPropagation(); onTimeline(app._id); }}>
+            <History className="w-3 h-3" />
+          </Button>
+        )}
+        {onCompare && (
+          <Button variant="ghost" size="sm"
+            className={`h-6 w-6 p-0 ${isComparing ? "text-cyan-600 bg-cyan-50" : ""}`}
+            title="Compare"
+            onClick={(e) => { e.stopPropagation(); onCompare(app._id); }}>
+            <GitCompare className="w-3 h-3" />
+          </Button>
+        )}
+        <div className="flex gap-1 ml-auto">
+          {onUpdateStatus && (
+            <>
+              {app.status !== "selected" && app.status !== "shortlisted" && (
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] hover:bg-amber-100 text-amber-700"
+                  onClick={() => onUpdateStatus(app._id, "shortlisted")}>
+                  Shortlist
+                </Button>
+              )}
+              {app.status === "shortlisted" && (
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] hover:bg-purple-100 text-purple-600"
+                  onClick={() => onUpdateStatus(app._id, "interview_scheduled")}>
+                  <Calendar className="w-3 h-3 mr-1" /> Interview
+                </Button>
+              )}
+              {!["rejected", "selected"].includes(app.status) && (
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] hover:bg-red-100 text-red-600"
+                  onClick={() => setRejectOpen(true)}>
+                  Reject
+                </Button>
+              )}
+            </>
           )}
-        </>
+        </div>
+      </div>
+      {rejectOpen && onUpdateStatus && (
+        <div className="mt-2 space-y-1">
+          <input
+            className="w-full h-7 px-2 text-[10px] border border-border rounded bg-background focus:outline-none"
+            placeholder="Reason (required)"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={500}
+          />
+          <div className="flex gap-1">
+            <Button size="sm" variant="destructive" className="h-6 text-[10px] flex-1"
+              disabled={!reason.trim()}
+              onClick={() => { onUpdateStatus(app._id, "rejected", reason); setRejectOpen(false); }}>
+              Confirm
+            </Button>
+            <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setRejectOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
 function TableView({
-  applications, selected, onToggle, onToggleAll, onUpdateStatus, onScorecard, onOffer
+  applications, selected, onToggle, onToggleAll, onUpdateStatus, onScorecard, onOffer, onTimeline, onCompare, compareIds
 }: {
   applications: Applicant[];
   selected: string[];
@@ -648,6 +812,9 @@ function TableView({
   onUpdateStatus?: (id: string, status: string, reason?: string) => void;
   onScorecard?: (data: { applicationId: string; interviewId: string }) => void;
   onOffer?: (app: Applicant) => void;
+  onTimeline?: (appId: string) => void;
+  onCompare?: (appId: string) => void;
+  compareIds?: string[];
 }) {
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [reason, setReason] = useState("");
@@ -734,9 +901,35 @@ function TableView({
                 </TableCell>
                 <TableCell>
                   {app.aiMatchScore != null ? (
-                    <span className={`font-semibold ${app.aiMatchScore >= 70 ? "text-emerald-600" : app.aiMatchScore >= 50 ? "text-amber-600" : "text-muted-foreground"}`}>
-                      {app.aiMatchScore}%
-                    </span>
+                    <div className="group relative inline-block">
+                      <span className={`font-semibold cursor-help ${app.aiMatchScore >= 70 ? "text-emerald-600" : app.aiMatchScore >= 50 ? "text-amber-600" : "text-muted-foreground"}`}>
+                        {app.aiMatchScore}%
+                      </span>
+                      {app.matchBreakdown && (
+                        <div className="absolute left-0 top-full mt-1 z-30 hidden group-hover:block w-48 p-2.5 bg-popover border border-border rounded-lg shadow-lg">
+                          <div className="flex items-center gap-1 mb-1.5">
+                            <BarChart3 className="w-3 h-3 text-primary" />
+                            <span className="text-[10px] font-semibold">AI Breakdown</span>
+                          </div>
+                          {[
+                            { label: "Skills", value: app.matchBreakdown.skills },
+                            { label: "Experience", value: app.matchBreakdown.experience },
+                            { label: "Overall", value: app.matchBreakdown.overall },
+                          ].map((item) => (
+                            <div key={item.label} className="flex items-center gap-1.5 mb-0.5">
+                              <span className="text-[10px] text-muted-foreground w-14">{item.label}</span>
+                              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-red-400"}`}
+                                  style={{ width: `${item.value}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] font-medium w-7 text-right">{item.value}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ) : "—"}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-xs">
@@ -757,40 +950,55 @@ function TableView({
                   </TableCell>
                 )}
                 <TableCell>
-                  {onUpdateStatus && (
-                    <div className="flex gap-1">
-                      {app.status === "applied" && (
-                        <Button size="sm" variant="ghost" className="h-7 text-xs"
-                          onClick={() => onUpdateStatus(app._id, "shortlisted")}>
-                          Shortlist
-                        </Button>
-                      )}
-                      {app.status === "shortlisted" && (
-                        <Button size="sm" variant="ghost" className="h-7 text-xs"
-                          onClick={() => onUpdateStatus(app._id, "interview_scheduled")}>
-                          <Calendar className="w-3 h-3 me-1" /> Interview
-                        </Button>
-                      )}
-                      {app.status === "interview_scheduled" && (
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-emerald-600"
-                          onClick={() => onUpdateStatus(app._id, "selected")}>
-                          Select
-                        </Button>
-                      )}
-                      {app.status === "selected" && onOffer && (
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-cyan-600"
-                          onClick={() => onOffer(app)}>
-                          <DollarSign className="w-3 h-3 me-1" /> Send Offer
-                        </Button>
-                      )}
-                      {!["rejected", "selected", "offer"].includes(app.status) && (
-                        <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive"
-                          onClick={() => { setRejectTarget(app._id); setReason(""); }}>
-                          Reject
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex gap-1 items-center">
+                    {onTimeline && (
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Activity Timeline"
+                        onClick={() => onTimeline(app._id)}>
+                        <History className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    {onCompare && (
+                      <Button variant="ghost" size="sm"
+                        className={`h-7 w-7 p-0 ${compareIds?.includes(app._id) ? "text-cyan-600 bg-cyan-50" : ""}`}
+                        title="Compare" onClick={() => onCompare(app._id)}>
+                        <GitCompare className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    {onUpdateStatus && (
+                      <>
+                        {app.status === "applied" && (
+                          <Button size="sm" variant="ghost" className="h-7 text-xs"
+                            onClick={() => onUpdateStatus(app._id, "shortlisted")}>
+                            Shortlist
+                          </Button>
+                        )}
+                        {app.status === "shortlisted" && (
+                          <Button size="sm" variant="ghost" className="h-7 text-xs"
+                            onClick={() => onUpdateStatus(app._id, "interview_scheduled")}>
+                            <Calendar className="w-3 h-3 me-1" /> Interview
+                          </Button>
+                        )}
+                        {app.status === "interview_scheduled" && (
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-emerald-600"
+                            onClick={() => onUpdateStatus(app._id, "selected")}>
+                            Select
+                          </Button>
+                        )}
+                        {app.status === "selected" && onOffer && (
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-cyan-600"
+                            onClick={() => onOffer(app)}>
+                            <DollarSign className="w-3 h-3 me-1" /> Send Offer
+                          </Button>
+                        )}
+                        {!["rejected", "selected", "offer"].includes(app.status) && (
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive"
+                            onClick={() => { setRejectTarget(app._id); setReason(""); }}>
+                            Reject
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             );
@@ -1161,6 +1369,280 @@ function OfferCreateModal({
             <DollarSign className="w-3.5 h-3.5 me-1" />
             {submitting ? "Sending..." : "Send Offer"}
           </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActivityTimelinePanel({
+  appId,
+  candidateLabel,
+  entries,
+  loading,
+  onClose,
+}: {
+  appId: string;
+  candidateLabel: string;
+  entries: TimelineEntry[];
+  loading: boolean;
+  onClose: () => void;
+}) {
+  const actionLabels: Record<string, { label: string; color: string }> = {
+    "application.created": { label: "Applied", color: "bg-blue-500" },
+    "application.status_changed": { label: "Status Changed", color: "bg-amber-500" },
+    "application.shortlisted": { label: "Shortlisted", color: "bg-amber-500" },
+    "application.interview_scheduled": { label: "Interview Scheduled", color: "bg-purple-500" },
+    "application.offer_sent": { label: "Offer Sent", color: "bg-cyan-500" },
+    "application.selected": { label: "Selected", color: "bg-emerald-500" },
+    "application.rejected": { label: "Rejected", color: "bg-red-500" },
+    "application.withdrawn": { label: "Withdrawn", color: "bg-gray-500" },
+  };
+
+  function getActionInfo(action: string) {
+    return actionLabels[action] ?? { label: action.replace(/\./g, " ").replace(/^./, (c) => c.toUpperCase()), color: "bg-muted-foreground" };
+  }
+
+  return (
+    <div className="fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-background border-l border-border shadow-xl flex flex-col">
+      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold">Activity Timeline</h2>
+          <p className="text-xs text-muted-foreground">Candidate {candidateLabel}</p>
+        </div>
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        {loading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex gap-3">
+                <div className="w-2 h-2 rounded-full bg-muted animate-pulse mt-1.5" />
+                <div className="flex-1 space-y-1">
+                  <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+                  <div className="h-2 w-32 bg-muted animate-pulse rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="text-center py-12">
+            <History className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No activity recorded yet</p>
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
+            <div className="space-y-4">
+              {entries.map((entry) => {
+                const info = getActionInfo(entry.action);
+                return (
+                  <div key={entry.id} className="flex gap-3 relative">
+                    <div className={`w-2.5 h-2.5 rounded-full ${info.color} mt-1.5 flex-shrink-0 z-10 ring-2 ring-background`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold">{info.label}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(entry.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        by {entry.actorName || "System"} ({entry.actorRole})
+                      </p>
+                      {entry.changes?.after && (
+                        <div className="mt-1 p-1.5 bg-muted/30 rounded text-[10px] space-y-0.5">
+                          {Object.entries(entry.changes.after).map(([key, val]) => (
+                            <div key={key} className="flex gap-1">
+                              <span className="text-muted-foreground">{key}:</span>
+                              <span className="font-medium">{String(val)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CandidateCompareModal({
+  applicationIds,
+  onClose,
+}: {
+  applicationIds: string[];
+  onClose: () => void;
+}) {
+  const [candidates, setCandidates] = useState<CompareCandidate[]>([]);
+  const [commonSkills, setCommonSkills] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchComparison() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/applications/compare?ids=${applicationIds.join(",")}`);
+        if (res.ok) {
+          const data = await res.json();
+          setCandidates(data.candidates ?? []);
+          setCommonSkills(data.commonSkills ?? []);
+        } else {
+          setError("Failed to load comparison data");
+        }
+      } catch {
+        setError("Failed to load comparison data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchComparison();
+  }, [applicationIds]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
+      <div className="bg-background rounded-lg border border-border shadow-lg max-w-4xl w-full mx-4">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Compare Candidates</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">{applicationIds.length} candidates selected</p>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+        <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {applicationIds.map((id) => (
+                <div key={id} className="h-48 bg-muted animate-pulse rounded-lg" />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Candidate cards grid */}
+              <div className={`grid gap-4 ${candidates.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+                {candidates.map((c) => (
+                  <div key={c.applicationId} className="border border-border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">{c.candidate.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{c.job.title}</p>
+                      </div>
+                    </div>
+
+                    {/* AI Score */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">AI Match</span>
+                      <span className={`text-sm font-bold ${(c.aiMatchScore ?? 0) >= 70 ? "text-emerald-600" : "text-amber-600"}`}>
+                        {c.aiMatchScore != null ? `${c.aiMatchScore}%` : "N/A"}
+                      </span>
+                    </div>
+
+                    {/* Breakdown bars */}
+                    {c.matchBreakdown && (
+                      <div className="space-y-1">
+                        {[
+                          { label: "Skills", value: c.matchBreakdown.skills },
+                          { label: "Experience", value: c.matchBreakdown.experience },
+                          { label: "Education", value: c.matchBreakdown.education },
+                          { label: "Availability", value: c.matchBreakdown.availability },
+                        ].map((item) => (
+                          <div key={item.label} className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-muted-foreground w-16">{item.label}</span>
+                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-red-400"}`}
+                                style={{ width: `${item.value}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-medium w-7 text-right">{item.value}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-muted-foreground">Experience</span>
+                        <p className="font-medium">{c.candidate.yearsOfExperience} years</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Profile</span>
+                        <p className="font-medium">{c.candidate.profileCompleteness}%</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Status</span>
+                        <p className="font-medium capitalize">{c.status.replace(/_/g, " ")}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Applied</span>
+                        <p className="font-medium">{new Date(c.appliedAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+
+                    {/* Skills */}
+                    <div>
+                      <span className="text-[10px] text-muted-foreground">Skills</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {c.candidate.skills.slice(0, 8).map((skill) => (
+                          <Badge key={skill} variant={commonSkills.includes(skill) ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
+                            {skill}
+                          </Badge>
+                        ))}
+                        {c.candidate.skills.length > 8 && (
+                          <span className="text-[10px] text-muted-foreground">+{c.candidate.skills.length - 8}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Salary */}
+                    {c.candidate.preferredSalary && (
+                      <div className="text-[11px]">
+                        <span className="text-muted-foreground">Expected Salary</span>
+                        <p className="font-medium">
+                          {c.candidate.preferredSalary.currency} {c.candidate.preferredSalary.min.toLocaleString()} - {c.candidate.preferredSalary.max.toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Common skills */}
+              {commonSkills.length > 0 && (
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <span className="text-xs font-medium">Common Skills ({commonSkills.length})</span>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {commonSkills.map((skill) => (
+                      <Badge key={skill} variant="default" className="text-[10px] px-1.5 py-0">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="px-6 py-3 border-t border-border flex justify-end">
+          <Button variant="ghost" onClick={onClose} className="h-9">Close</Button>
         </div>
       </div>
     </div>

@@ -33,7 +33,13 @@ export interface IJobSeeker extends Document {
   nationality?: string;
   dateOfBirth?: Date;
   gender?: string;
+  genderId?: mongoose.Types.ObjectId;
+  maritalStatusId?: mongoose.Types.ObjectId;
   currentLocation?: string;
+  permanentAddress?: string;
+  hometown?: string;
+  pincode?: string;
+  workPermitCountries: mongoose.Types.ObjectId[];
   // Sensitive PII (encrypted at rest)
   nationalId?: string;
   visaNumber?: string;
@@ -70,6 +76,14 @@ export interface IJobSeeker extends Document {
   // TalIndia
   enrolledCourses: string[];
   completedCourses: string[];
+  skillsCoachProgress?: {
+    lastTargetRole?: string;
+    lastOverallScore?: number;
+    previousOverallScore?: number;
+    skillsAdded?: number;
+    analysesCount?: number;
+    lastAnalysisAt?: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -109,7 +123,13 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     nationality: String,
     dateOfBirth: Date,
     gender: String,
+    genderId: { type: Schema.Types.ObjectId, ref: "Gender" },
+    maritalStatusId: { type: Schema.Types.ObjectId, ref: "MaritalStatus" },
     currentLocation: String,
+    permanentAddress: String,
+    hometown: String,
+    pincode: String,
+    workPermitCountries: [{ type: Schema.Types.ObjectId, ref: "Country" }],
     nationalId: { type: String, select: false },
     visaNumber: { type: String, select: false },
     passportNumber: { type: String, select: false },
@@ -150,6 +170,14 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     applicationIds: [{ type: Schema.Types.ObjectId, ref: "Application" }],
     enrolledCourses: [String],
     completedCourses: [String],
+    skillsCoachProgress: {
+      lastTargetRole: String,
+      lastOverallScore: { type: Number, min: 0, max: 100 },
+      previousOverallScore: { type: Number, min: 0, max: 100 },
+      skillsAdded: { type: Number, default: 0, min: 0 },
+      analysesCount: { type: Number, default: 0, min: 0 },
+      lastAnalysisAt: Date,
+    },
   },
   { timestamps: true }
 );

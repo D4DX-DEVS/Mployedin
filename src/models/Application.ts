@@ -44,6 +44,7 @@ export interface IApplication extends Document {
   agentNotes?: string;
   withdrawalReason?: string;
   withdrawalNote?: string;
+  source?: 'easy_apply' | 'full_form' | 'direct';
   notes: INote[];
   appliedAt: Date;
   statusHistory: {
@@ -110,6 +111,11 @@ const ApplicationSchema = new Schema<IApplication>(
       ],
     },
     withdrawalNote: { type: String, maxlength: 500 },
+    source: {
+      type: String,
+      enum: ['easy_apply', 'full_form', 'direct'],
+      default: 'full_form',
+    },
     notes: [
       {
         authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
