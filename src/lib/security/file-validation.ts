@@ -9,9 +9,23 @@ interface FileSignature {
   magic: number[]; // Expected bytes at offset 0
 }
 
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+function hasDocxStructure(buffer: ArrayBuffer): boolean {
+  // Entry names are stored as plain text in ZIP headers; this quickly rejects non-DOCX ZIP files.
+  const bytes = new Uint8Array(buffer);
+  const sample = bytes.slice(0, Math.min(bytes.byteLength, 2 * 1024 * 1024));
+  const text = new TextDecoder("latin1").decode(sample);
+  return (
+    text.includes("[Content_Types].xml") &&
+    text.includes("word/document.xml") &&
+    text.includes("_rels/.rels")
+  );
+}
+
 const FILE_SIGNATURES: FileSignature[] = [
   { mime: "application/pdf", ext: "pdf", magic: [0x25, 0x50, 0x44, 0x46] }, // %PDF
-  { mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ext: "docx", magic: [0x50, 0x4b, 0x03, 0x04] }, // PK (ZIP)
+  { mime: DOCX_MIME, ext: "docx", magic: [0x50, 0x4b, 0x03, 0x04] }, // PK (ZIP)
   { mime: "image/jpeg", ext: "jpg", magic: [0xff, 0xd8, 0xff] },
   { mime: "image/png", ext: "png", magic: [0x89, 0x50, 0x4e, 0x47] },
   { mime: "image/webp", ext: "webp", magic: [0x52, 0x49, 0x46, 0x46] }, // RIFF
@@ -20,9 +34,9 @@ const FILE_SIGNATURES: FileSignature[] = [
 
 /** Allowed upload types by category */
 export const ALLOWED_FILE_TYPES = {
-  document: ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  document: ["application/pdf", DOCX_MIME],
   image: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-  cv: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+  cv: ["application/pdf", DOCX_MIME, "image/jpeg", "image/png", "image/webp"],
 } as const;
 
 /** Max file sizes by category */
@@ -73,6 +87,10 @@ export function validateUploadedFile(
     return `File type "${file.type}" is not allowed. Accepted: ${allowedMimes.join(", ")}`;
   }
 
+  if (file.type === DOCX_MIME && !hasDocxStructure(buffer)) {
+    return "Invalid DOCX structure. Please upload a valid .docx file.";
+  }
+
   // Magic bytes check
   const detectedMime = validateMagicBytes(buffer);
   if (!detectedMime) {
@@ -80,10 +98,7 @@ export function validateUploadedFile(
   }
 
   // Verify claimed MIME matches detected MIME
-  // Allow DOCX (PK zip signature) to match
-  if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-    if (detectedMime !== file.type) return null; // PK signature is shared by DOCX/ZIP
-  } else if (detectedMime !== file.type) {
+  if (detectedMime !== file.type) {
     return `File content mismatch: claimed "${file.type}" but detected "${detectedMime}".`;
   }
 

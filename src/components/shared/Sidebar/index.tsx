@@ -137,6 +137,7 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, 
             <Link
               key={item.title}
               href={item.href}
+              prefetch={false}
               onClick={() => {
                 setActiveMainTitle(item.title);
                 onMobileClose?.();
@@ -180,6 +181,7 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, 
                   <Link
                     key={child.href}
                     href={child.href}
+                    prefetch={false}
                     onClick={() => onMobileClose?.()}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative overflow-hidden",

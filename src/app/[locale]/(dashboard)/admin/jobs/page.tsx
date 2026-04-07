@@ -122,7 +122,7 @@ export default function AdminJobsPage() {
                       {job.employerId?.companyName ?? "—"}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{job.category ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{job.location ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{typeof job.location === "object" && job.location ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", ") || "—") : (job.location ?? "—")}</TableCell>
                     <TableCell><StatusBadge status={job.status} /></TableCell>
                     <TableCell><StatusBadge status={job.approvalStatus} /></TableCell>
                     <TableCell className="text-right text-muted-foreground">{job.applicantsCount ?? 0}</TableCell>

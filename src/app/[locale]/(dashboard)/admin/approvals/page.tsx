@@ -146,7 +146,7 @@ function JobApprovalCard({
             )}
             {job.location && (
               <span className="flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> {job.location}
+                <MapPin className="w-3 h-3" /> {typeof job.location === "object" ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", ")) : job.location}
               </span>
             )}
             {job.salary?.min > 0 && (

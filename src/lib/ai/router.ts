@@ -5,7 +5,6 @@
 
 import { generateText, generateStream, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
-import type { GenerateContentStreamResult } from "@google/generative-ai";
 
 export type AITask =
   | "chat"
@@ -56,7 +55,7 @@ export async function routeGenerate(
 export async function routeStream(
   prompt: string,
   task: AITask = "chat"
-): Promise<GenerateContentStreamResult> {
+): Promise<AsyncIterable<string>> {
   const modelKey = TASK_MODEL_MAP[task];
   const model = GEMINI_MODELS[modelKey];
 

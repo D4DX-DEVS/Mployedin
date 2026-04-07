@@ -4,21 +4,55 @@ import { useState, useRef, useCallback } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Upload, FileText, CheckCircle, Loader2, Sparkles, X } from "lucide-react";
 
+interface ExtractedSkill {
+  name: string;
+  level: string;
+  yearsOfExperience: number;
+}
+
+interface ExtractedExperience {
+  jobTitle: string;
+  company: string;
+  location: string;
+  from: string;
+  to: string;
+  current: boolean;
+  description: string;
+}
+
+interface ExtractedEducation {
+  degree: string;
+  field: string;
+  institution: string;
+  country: string;
+  from: string;
+  to: string;
+  grade: string;
+}
+
+interface ExtractedLanguage {
+  language: string;
+  level: string;
+}
+
 interface ExtractedData {
-  name?: string;
+  fullName?: string;
   email?: string;
   phone?: string;
-  location?: string;
-  skills?: string[];
-  experience?: { company: string; role: string; duration: string }[];
-  education?: { institution: string; degree: string; year: string }[];
-  languages?: string[];
-  summary?: string;
+  nationality?: string;
+  currentLocation?: string;
+  headline?: string;
+  skills?: ExtractedSkill[];
+  experience?: ExtractedExperience[];
+  education?: ExtractedEducation[];
+  languages?: ExtractedLanguage[];
+  certifications?: string[];
+  linkedin?: string;
+  portfolio?: string;
 }
 
 export default function JobSeekerDocumentsPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
   const [saving, setSaving] = useState(false);
@@ -26,20 +60,32 @@ export default function JobSeekerDocumentsPage() {
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const ALLOWED_TYPES = [
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ];
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const dropped = e.dataTransfer.files[0];
-    if (dropped && (dropped.type === "application/pdf" || dropped.type.includes("word"))) {
+    if (dropped && ALLOWED_TYPES.includes(dropped.type)) {
       setFile(dropped);
       setError("");
     } else {
-      setError("Only PDF and Word documents are supported");
+      setError("Supported formats: PDF, DOCX, JPG, PNG, WEBP");
     }
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (selected) {
+      if (!ALLOWED_TYPES.includes(selected.type)) {
+        setError("Supported formats: PDF, DOCX, JPG, PNG, WEBP");
+        return;
+      }
       setFile(selected);
       setError("");
     }
@@ -51,12 +97,15 @@ export default function JobSeekerDocumentsPage() {
     setError("");
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("cv", file);
       const res = await fetch("/api/ai/cv-extract", {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error ?? "Extraction failed");
+      }
       const data = await res.json();
       setExtracted(data.extracted ?? data);
     } catch (e) {
@@ -70,15 +119,36 @@ export default function JobSeekerDocumentsPage() {
     if (!extracted) return;
     setSaving(true);
     try {
+      const skillNames = extracted.skills?.map((s) => s.name).filter(Boolean) ?? [];
       const res = await fetch("/api/job-seeker/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          skills: extracted.skills,
-          languages: extracted.languages,
-          experience: extracted.experience,
-          education: extracted.education,
-          bio: extracted.summary,
+          summary: extracted.headline,
+          skills: skillNames,
+          languages: extracted.languages?.map((l) => ({
+            language: l.language,
+            proficiency: l.level === "native" ? "native"
+              : l.level === "fluent" ? "professional"
+              : l.level === "intermediate" ? "conversational"
+              : "basic",
+          })),
+          experience: extracted.experience?.map((e) => ({
+            jobTitle: e.jobTitle,
+            company: e.company,
+            country: e.location,
+            startDate: e.from,
+            endDate: e.to !== "present" ? e.to : undefined,
+            isCurrent: e.current || e.to === "present",
+            description: e.description,
+          })),
+          education: extracted.education?.map((e) => ({
+            degree: e.degree,
+            institution: e.institution,
+            field: e.field,
+            graduationDate: e.to,
+            grade: e.grade,
+          })),
         }),
       });
       if (res.ok) setSaved(true);
@@ -105,7 +175,7 @@ export default function JobSeekerDocumentsPage() {
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.doc,.docx"
+          accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
           onChange={handleFileChange}
           className="hidden"
         />
@@ -127,7 +197,7 @@ export default function JobSeekerDocumentsPage() {
           <>
             <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm font-medium">Drag & drop your CV here</p>
-            <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX up to 10MB</p>
+            <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, JPG, PNG, WEBP up to 10MB</p>
           </>
         )}
       </div>
@@ -155,16 +225,17 @@ export default function JobSeekerDocumentsPage() {
             <h3 className="font-semibold">Extracted Profile</h3>
           </div>
 
-          {extracted.name && <p className="text-sm"><strong>Name:</strong> {extracted.name}</p>}
+          {extracted.fullName && <p className="text-sm"><strong>Name:</strong> {extracted.fullName}</p>}
           {extracted.email && <p className="text-sm"><strong>Email:</strong> {extracted.email}</p>}
-          {extracted.location && <p className="text-sm"><strong>Location:</strong> {extracted.location}</p>}
+          {extracted.currentLocation && <p className="text-sm"><strong>Location:</strong> {extracted.currentLocation}</p>}
+          {extracted.headline && <p className="text-sm"><strong>Headline:</strong> {extracted.headline}</p>}
 
           {extracted.skills && extracted.skills.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Skills</p>
               <div className="flex flex-wrap gap-1.5">
-                {extracted.skills.map((s) => (
-                  <span key={s} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">{s}</span>
+                {extracted.skills.map((s, i) => (
+                  <span key={`${s.name}-${i}`} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">{s.name}</span>
                 ))}
               </div>
             </div>
@@ -176,8 +247,8 @@ export default function JobSeekerDocumentsPage() {
               <div className="space-y-1.5">
                 {extracted.experience.map((exp, i) => (
                   <div key={i} className="text-sm border-l-2 border-primary/30 pl-3">
-                    <p className="font-medium">{exp.role} — {exp.company}</p>
-                    <p className="text-xs text-muted-foreground">{exp.duration}</p>
+                    <p className="font-medium">{exp.jobTitle} — {exp.company}</p>
+                    <p className="text-xs text-muted-foreground">{exp.from} – {exp.current ? "Present" : exp.to}</p>
                   </div>
                 ))}
               </div>
@@ -190,9 +261,22 @@ export default function JobSeekerDocumentsPage() {
               <div className="space-y-1.5">
                 {extracted.education.map((ed, i) => (
                   <div key={i} className="text-sm border-l-2 border-blue-200 pl-3">
-                    <p className="font-medium">{ed.degree}</p>
-                    <p className="text-xs text-muted-foreground">{ed.institution} · {ed.year}</p>
+                    <p className="font-medium">{ed.degree}{ed.field ? ` in ${ed.field}` : ""}</p>
+                    <p className="text-xs text-muted-foreground">{ed.institution} · {ed.country}</p>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {extracted.languages && extracted.languages.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Languages</p>
+              <div className="flex flex-wrap gap-1.5">
+                {extracted.languages.map((l, i) => (
+                  <span key={i} className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium capitalize">
+                    {l.language} · {l.level}
+                  </span>
                 ))}
               </div>
             </div>

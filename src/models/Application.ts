@@ -44,7 +44,8 @@ export interface IApplication extends Document {
   agentNotes?: string;
   withdrawalReason?: string;
   withdrawalNote?: string;
-  source?: 'easy_apply' | 'full_form' | 'direct';
+  source?: 'easy_apply' | 'full_form' | 'direct' | 'auto_apply';
+  autoApplied: boolean;
   notes: INote[];
   appliedAt: Date;
   statusHistory: {
@@ -113,9 +114,10 @@ const ApplicationSchema = new Schema<IApplication>(
     withdrawalNote: { type: String, maxlength: 500 },
     source: {
       type: String,
-      enum: ['easy_apply', 'full_form', 'direct'],
+      enum: ['easy_apply', 'full_form', 'direct', 'auto_apply'],
       default: 'full_form',
     },
+    autoApplied: { type: Boolean, default: false },
     notes: [
       {
         authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },

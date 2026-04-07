@@ -4,6 +4,18 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  // Stabilise file-watching on OneDrive / cloud-synced folders
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        poll: 1000,           // fall back to polling (1 s)
+        aggregateTimeout: 300, // batch changes within 300 ms
+        ignored: /node_modules|\.next|\.git/,
+      };
+    }
+    return config;
+  },
   serverExternalPackages: ["mongoose", "bcryptjs", "pdf-parse", "mammoth"],
   images: {
     remotePatterns: [

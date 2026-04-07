@@ -1,25 +1,62 @@
 /**
- * Centralized Gemini AI client library
+ * Centralized Gemini AI client library — routed via OpenRouter
  * All Gemini API interactions go through this module.
  */
 
-import { GoogleGenerativeAI, GenerateContentStreamResult, Part } from "@google/generative-ai";
+const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 
-const apiKey = process.env.GEMINI_API_KEY ?? "";
-const genAI = new GoogleGenerativeAI(apiKey);
+function getApiKey(): string {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) throw new Error("OPENROUTER_API_KEY environment variable is not set");
+  return key;
+}
 
 export const GEMINI_MODELS = {
-  flash: "gemini-2.5-flash",
-  pro: "gemini-2.5-pro",
-  flash2: "gemini-2.5-flash",
-  flashLite: "gemini-2.5-flash-lite",
+  flash: "google/gemini-3.1-flash-lite-preview",
+  pro: "google/gemini-2.5-pro",
+  flashLite: "google/gemini-2.5-flash",
 } as const;
 
 type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
 
-/** Get a Gemini model instance */
-export function getGeminiModel(model: GeminiModel = GEMINI_MODELS.flash) {
-  return genAI.getGenerativeModel({ model });
+interface OpenRouterMessage {
+  role: "system" | "user" | "assistant";
+  content: string | OpenRouterContentPart[];
+}
+
+interface OpenRouterContentPart {
+  type: "text" | "image_url";
+  text?: string;
+  image_url?: { url: string };
+}
+
+interface OpenRouterUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+async function openRouterFetch(
+  model: GeminiModel,
+  messages: OpenRouterMessage[],
+  maxTokens?: number,
+  stream = false
+): Promise<Response> {
+  return fetch(`${OPENROUTER_BASE}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getApiKey()}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com",
+      "X-Title": "Mployedin",
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      ...(maxTokens ? { max_tokens: maxTokens } : {}),
+      stream,
+    }),
+  });
 }
 
 /** Generate a single text response */
@@ -28,58 +65,99 @@ export async function generateText(
   model: GeminiModel = GEMINI_MODELS.flash,
   maxOutputTokens?: number
 ): Promise<string> {
-  const m = getGeminiModel(model);
   const start = Date.now();
-  const result = await m.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    ...(maxOutputTokens ? { generationConfig: { maxOutputTokens } } : {}),
-  });
-  const usage = result.response.usageMetadata;
+  const res = await openRouterFetch(model, [{ role: "user", content: prompt }], maxOutputTokens);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenRouter error ${res.status}: ${err}`);
+  }
+  const data = await res.json() as {
+    choices: { message: { content: string } }[];
+    usage?: OpenRouterUsage;
+  };
+  const usage = data.usage;
   if (usage) {
     console.log(
-      `[AI Usage] model=${model} prompt_tokens=${usage.promptTokenCount} completion_tokens=${usage.candidatesTokenCount} total=${usage.totalTokenCount} latency=${Date.now() - start}ms`
+      `[AI Usage] model=${model} prompt_tokens=${usage.prompt_tokens} completion_tokens=${usage.completion_tokens} total=${usage.total_tokens} latency=${Date.now() - start}ms`
     );
   }
-  return result.response.text();
+  return data.choices[0].message.content;
 }
 
-/** Generate a streaming response */
+/** Generate a streaming response — returns an async iterable of text chunks */
 export async function generateStream(
   prompt: string,
   model: GeminiModel = GEMINI_MODELS.flash
-): Promise<GenerateContentStreamResult> {
-  const m = getGeminiModel(model);
-  return m.generateContentStream(prompt);
-}
-
-/** Start a chat session */
-export function startChat(
-  history: { role: "user" | "model"; parts: { text: string }[] }[] = [],
-  model: GeminiModel = GEMINI_MODELS.flash
-) {
-  const m = getGeminiModel(model);
-  return m.startChat({ history });
+): Promise<AsyncIterable<string>> {
+  const res = await openRouterFetch(model, [{ role: "user", content: prompt }], undefined, true);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenRouter stream error ${res.status}: ${err}`);
+  }
+  return sseToAsyncIterable(res);
 }
 
 /** Generate with multimodal content (text + image/PDF) */
 export async function generateMultimodal(
-  parts: Part[],
+  parts: { text?: string; inlineData?: { mimeType: string; data: string } }[],
   model: GeminiModel = GEMINI_MODELS.flash,
   maxOutputTokens?: number
 ): Promise<string> {
-  const m = getGeminiModel(model);
   const start = Date.now();
-  const result = await m.generateContent({
-    contents: [{ role: "user", parts }],
-    ...(maxOutputTokens ? { generationConfig: { maxOutputTokens } } : {}),
+  const content: OpenRouterContentPart[] = parts.map((p) => {
+    if (p.inlineData) {
+      return {
+        type: "image_url",
+        image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` },
+      };
+    }
+    return { type: "text", text: p.text ?? "" };
   });
-  const usage = result.response.usageMetadata;
+  const res = await openRouterFetch(model, [{ role: "user", content }], maxOutputTokens);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenRouter error ${res.status}: ${err}`);
+  }
+  const data = await res.json() as {
+    choices: { message: { content: string } }[];
+    usage?: OpenRouterUsage;
+  };
+  const usage = data.usage;
   if (usage) {
     console.log(
-      `[AI Usage] model=${model} prompt_tokens=${usage.promptTokenCount} completion_tokens=${usage.candidatesTokenCount} total=${usage.totalTokenCount} latency=${Date.now() - start}ms`
+      `[AI Usage] model=${model} prompt_tokens=${usage.prompt_tokens} completion_tokens=${usage.completion_tokens} total=${usage.total_tokens} latency=${Date.now() - start}ms`
     );
   }
-  return result.response.text();
+  return data.choices[0].message.content;
+}
+
+/** Parse SSE stream from OpenRouter into an async iterable of text chunks */
+async function* sseToAsyncIterable(res: Response): AsyncIterable<string> {
+  const reader = res.body?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const raw = line.slice(6).trim();
+      if (raw === "[DONE]") return;
+      try {
+        const chunk = JSON.parse(raw) as {
+          choices: { delta: { content?: string } }[];
+        };
+        const text = chunk.choices[0]?.delta?.content;
+        if (text) yield text;
+      } catch {
+        // malformed chunk — skip
+      }
+    }
+  }
 }
 
 /** Parse JSON from AI response (strips markdown code blocks) */

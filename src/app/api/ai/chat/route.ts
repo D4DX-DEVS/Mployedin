@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
+import { GEMINI_MODELS } from "@/lib/ai/gemini";
+import { getAssistantSystemPrompt, type AssistantTab } from "@/lib/ai/assistantPrompts";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
+const CHAT_MODEL = GEMINI_MODELS.flash;
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,35 +43,73 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = getSystemPrompt(context ?? "");
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { maxOutputTokens: AI_TOKEN_LIMITS.chat },
-      systemInstruction: systemPrompt,
+    // Build OpenAI-compatible messages array
+    const openRouterMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
+      { role: "system", content: systemPrompt },
+      ...messages.map((m: { role: string; content: string }) => ({
+        role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+        content: m.content,
+      })),
+    ];
+
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      console.error("[AI Chat] OPENROUTER_API_KEY not set");
+      return NextResponse.json({ error: "AI service not configured" }, { status: 503 });
+    }
+
+    const upstream = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com",
+        "X-Title": "Mployedin",
+      },
+      body: JSON.stringify({
+        model: CHAT_MODEL,
+        messages: openRouterMessages,
+        max_tokens: AI_TOKEN_LIMITS.chat,
+        stream: true,
+      }),
     });
 
-    // Build conversation history
-    const history = messages.slice(0, -1).map(
-      (m: { role: string; content: string }) => ({
-        role: m.role === "user" ? "user" : "model",
-        parts: [{ text: m.content }],
-      })
-    );
-
-    const chat = model.startChat({ history });
-
-    const lastMessage = messages[messages.length - 1];
-
-    // Stream the response
-    const result = await chat.sendMessageStream(lastMessage.content);
+    if (!upstream.ok) {
+      const err = await upstream.text();
+      console.error("[AI Chat] OpenRouter error:", upstream.status, err);
+      return NextResponse.json({ error: "AI service error" }, { status: 502 });
+    }
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          controller.enqueue(encoder.encode(text));
+        const reader = upstream.body?.getReader();
+        if (!reader) { controller.close(); return; }
+        const decoder = new TextDecoder();
+        let buffer = "";
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+            for (const line of lines) {
+              if (!line.startsWith("data: ")) continue;
+              const raw = line.slice(6).trim();
+              if (raw === "[DONE]") { controller.close(); return; }
+              try {
+                const chunk = JSON.parse(raw) as {
+                  choices: { delta: { content?: string } }[];
+                };
+                const text = chunk.choices[0]?.delta?.content;
+                if (text) controller.enqueue(encoder.encode(text));
+              } catch { /* skip malformed chunk */ }
+            }
+          }
+        } finally {
+          controller.close();
         }
-        controller.close();
       },
     });
 
@@ -92,6 +132,12 @@ export async function POST(req: NextRequest) {
 function getSystemPrompt(context: string): string {
   const base =
     "You are an AI assistant for MPLOYEDIN, an AI-powered international recruitment platform for the Gulf region. Be helpful, professional, and concise.";
+
+  // Recruitment assistant tab contexts
+  const assistantContexts: AssistantTab[] = ["job_creator", "interview_ai", "screening_ai"];
+  if (assistantContexts.includes(context as AssistantTab)) {
+    return getAssistantSystemPrompt(context as AssistantTab);
+  }
 
   const contextPrompts: Record<string, string> = {
     cv_extraction:

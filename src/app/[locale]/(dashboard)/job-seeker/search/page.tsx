@@ -135,7 +135,7 @@ export default function JobSeekerNLSearchPage() {
                         )}
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{job.location}</span>
+                        <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{typeof job.location === "object" && job.location ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", ")) : job.location}</span>
                         <span className="flex items-center gap-1"><Briefcase className="h-3.5 w-3.5" />{job.category}</span>
                         <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />
                           {new Date(job.createdAt).toLocaleDateString()}

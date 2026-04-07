@@ -806,6 +806,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             ],
           },
           {
+            title: "Messages",
+            titleAr: "الرسائل",
+            href: p("/employer/messages"),
+            icon: "MessageSquare",
+            description: "Direct messages with candidates",
+            descriptionAr: "الرسائل المباشرة مع المرشحين",
+          },
+          {
             title: "Notifications",
             titleAr: "الإشعارات",
             href: p("/notifications"),
@@ -913,8 +921,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 titleAr: "بناء السيرة الذاتية",
                 href: p("/job-seeker/cv"),
                 icon: "FileText",
-                description: "Create & download your CV",
-                descriptionAr: "إنشاء وتحميل سيرتك الذاتية",
+                description: "Build & download your professional CV",
+                descriptionAr: "بناء وتحميل سيرتك الذاتية المهنية",
               },
               {
                 title: "Skills",
@@ -941,6 +949,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "التعلم والشهادات",
               },
             ],
+          },
+          {
+            title: "Messages",
+            titleAr: "الرسائل",
+            href: p("/job-seeker/messages"),
+            icon: "MessageSquare",
+            description: "Messages from employers",
+            descriptionAr: "الرسائل من أصحاب العمل",
           },
           {
             title: "Settings",

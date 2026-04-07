@@ -71,68 +71,70 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg flex flex-col max-h-[calc(100dvh-4rem)] p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-0 shrink-0">
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {error}
-            </div>
-          )}
-
-          <div className="grid gap-4">
-            {fields.map((field) => (
-              <div key={field.name} className="space-y-2">
-                <Label htmlFor={field.name}>
-                  {field.label}
-                  {field.required && <span className="text-destructive ml-0.5">*</span>}
-                </Label>
-
-                {field.type === "select" ? (
-                  <Select
-                    value={values[field.name] ?? ""}
-                    onValueChange={(v) => setValues((prev) => ({ ...prev, [field.name]: v }))}
-                  >
-                    <SelectTrigger id={field.name}>
-                      <SelectValue placeholder={field.placeholder || "Select\u2026"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {field.options?.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : field.type === "textarea" ? (
-                  <Textarea
-                    id={field.name}
-                    value={values[field.name] ?? ""}
-                    onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
-                    required={field.required}
-                    placeholder={field.placeholder}
-                    rows={3}
-                  />
-                ) : (
-                  <Input
-                    id={field.name}
-                    type={field.type}
-                    value={values[field.name] ?? ""}
-                    onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
-                    required={field.required}
-                    placeholder={field.placeholder}
-                  />
-                )}
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
               </div>
-            ))}
+            )}
+
+            <div className="grid gap-4">
+              {fields.map((field) => (
+                <div key={field.name} className="space-y-2">
+                  <Label htmlFor={field.name}>
+                    {field.label}
+                    {field.required && <span className="text-destructive ml-0.5">*</span>}
+                  </Label>
+
+                  {field.type === "select" ? (
+                    <Select
+                      value={values[field.name] ?? ""}
+                      onValueChange={(v) => setValues((prev) => ({ ...prev, [field.name]: v }))}
+                    >
+                      <SelectTrigger id={field.name}>
+                        <SelectValue placeholder={field.placeholder || "Select\u2026"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {field.options?.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : field.type === "textarea" ? (
+                    <Textarea
+                      id={field.name}
+                      value={values[field.name] ?? ""}
+                      onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
+                      required={field.required}
+                      placeholder={field.placeholder}
+                      rows={3}
+                    />
+                  ) : (
+                    <Input
+                      id={field.name}
+                      type={field.type}
+                      value={values[field.name] ?? ""}
+                      onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
+                      required={field.required}
+                      placeholder={field.placeholder}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="px-6 py-4 border-t border-border/50 shrink-0">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancel
             </Button>

@@ -131,7 +131,7 @@ export default function SuperAgentApprovalsPage() {
                   <TableCell className="text-muted-foreground">
                     {job.postedByAgent?.name ?? "Employer"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{job.location}</TableCell>
+                  <TableCell className="text-muted-foreground">{typeof job.location === "object" && job.location ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", ") || "—") : (job.location ?? "—")}</TableCell>
                   <TableCell>
                     <StatusBadge status={job.approvalStatus} />
                   </TableCell>

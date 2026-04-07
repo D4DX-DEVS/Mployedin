@@ -81,8 +81,8 @@ export function DashboardShell({
       {/* Cmd+K menu */}
       <CommandMenu navGroups={navGroups} locale={locale} />
 
-      {/* Floating AI assistant */}
-      <ConversationalAI context="general_assist" />
+      {/* Floating AI assistant — hidden for employer role (they use RecruitmentAssistant instead) */}
+      {userRole !== "employer" && <ConversationalAI context="general_assist" />}
     </div>
   );
 }

@@ -514,5 +514,91 @@
     "savedSuccess": "تم الحفظ بنجاح",
     "saveError": "فشل الحفظ — حاول مرة أخرى",
     "fillAndSave": "املأ بياناتك واضغط حفظ"
+  },
+  "setupGuide": {
+    "title": "دليل إنشاء الوظيفة",
+    "subtitle": "أكمل هذه الخطوات للبدء",
+    "progress": "{done} / {total} مكتمل",
+    "dismiss": "عدم الإظهار مجدداً",
+    "steps": {
+      "companyProfile": "إكمال ملف الشركة",
+      "companyProfileDesc": "أضف اسم الشركة والصناعة والبريد الإلكتروني",
+      "verifyDomain": "التحقق من النطاق",
+      "verifyDomainDesc": "تحقق من نطاق شركتك لفتح النشر",
+      "createJob": "إنشاء أول وظيفة",
+      "createJobDesc": "انشر وظيفة لبدء استقبال الطلبات",
+      "addRequirements": "إضافة المتطلبات والمهارات",
+      "addRequirementsDesc": "حدد المهارات والخبرات المطلوبة للدور",
+      "setSalary": "تحديد نطاق الراتب",
+      "setSalaryDesc": "حدد التعويض لجذب المرشحين المناسبين",
+      "publishJob": "المراجعة والنشر",
+      "publishJobDesc": "اجعل وظيفتك مباشرة لبدء استقبال الطلبات"
+    }
+  },
+  "recruitmentAI": {
+    "title": "مساعد التوظيف الذكي",
+    "subtitle": "مساعدك الذكي في التوظيف",
+    "disclaimer": "قد يرتكب الذكاء الاصطناعي أخطاء. تحقق من المعلومات المهمة.",
+    "inputPlaceholder": "اسأل مساعد التوظيف...",
+    "voiceStart": "بدء التسجيل",
+    "voiceStop": "إيقاف التسجيل",
+    "voiceProcessing": "جارٍ معالجة الصوت...",
+    "voiceError": "فشل التعرف على الصوت. حاول مرة أخرى.",
+    "micPermissionDenied": "تم رفض الوصول إلى الميكروفون. يرجى السماح بالوصول من إعدادات المتصفح.",
+    "newConversation": "محادثة جديدة",
+    "history": "السجل",
+    "noHistory": "لا توجد محادثات بعد",
+    "tabs": {
+      "jobCreator": "منشئ الوظائف",
+      "interview": "مساعد المقابلات",
+      "screening": "فحص المرشحين"
+    },
+    "jobCreator": {
+      "welcome": "ما الوظيفة التي تريد إنشاءها اليوم؟",
+      "welcomeSub": "صف الدور بلغة طبيعية أو استخدم الصوت — سأبني إعلان الوظيفة الكامل لك.",
+      "actions": {
+        "postNew": "نشر وظيفة جديدة",
+        "postNewDesc": "صف دوراً جديداً بالصوت أو النص",
+        "editExisting": "تعديل وظيفة موجودة",
+        "editExistingDesc": "تحديث إعلان وظيفة موجود",
+        "cloneJob": "استنساخ وظيفة",
+        "cloneJobDesc": "نسخ وتعديل إعلان سابق",
+        "bulkCreate": "إنشاء متعدد",
+        "bulkCreateDesc": "إنشاء وظائف متعددة دفعة واحدة"
+      },
+      "preview": "معاينة الوظيفة",
+      "previewEmpty": "استمر في الحديث — بمجرد تقديم التفاصيل الكافية، ستظهر معاينة الوظيفة هنا.",
+      "createDraft": "إنشاء مسودة الوظيفة",
+      "creating": "جارٍ الإنشاء...",
+      "draftCreated": "تم إنشاء المسودة! جارٍ التوجيه لصفحة التعديل..."
+    },
+    "interview": {
+      "welcome": "كيف يمكنني مساعدتك في المقابلات؟",
+      "welcomeSub": "أنشئ أسئلة، وملخصات المرشحين، أو جدول مقابلات لأي دور.",
+      "actions": {
+        "generateQuestions": "توليد أسئلة",
+        "generateQuestionsDesc": "أسئلة مقابلة بالذكاء الاصطناعي حسب الدور",
+        "scheduleInterview": "جدولة مقابلة",
+        "scheduleInterviewDesc": "تخطيط جلسات مقابلة مع المرشحين",
+        "prepBrief": "ملخص المرشح",
+        "prepBriefDesc": "تلخيص ملف المرشح للمحاورين",
+        "reviewFeedback": "مراجعة التقييم",
+        "reviewFeedbackDesc": "تحليل بطاقات تقييم المحاورين"
+      }
+    },
+    "screening": {
+      "welcome": "ماذا تريد فحصه أو تحليله؟",
+      "welcomeSub": "رتّب المتقدمين وحدد الفجوات المهارية أو أنشئ قوائم مختصرة.",
+      "actions": {
+        "screenApplicants": "فحص المتقدمين",
+        "screenApplicantsDesc": "ترتيب المرشحين حسب درجة الملاءمة",
+        "compareCandidates": "مقارنة المرشحين",
+        "compareCandidatesDesc": "مقارنة المرشحين جنباً إلى جنب",
+        "skillsGap": "تقرير الفجوات المهارية",
+        "skillsGapDesc": "تحديد الفجوات المهارية في مجموعة المتقدمين",
+        "shortlist": "القائمة المختصرة",
+        "shortlistDesc": "إنشاء قائمة مختصرة مرتبة بالذكاء الاصطناعي"
+      }
+    }
   }
 }

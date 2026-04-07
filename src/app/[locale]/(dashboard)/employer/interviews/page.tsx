@@ -8,21 +8,34 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Inbox } from "lucide-react";
+import { Inbox, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
+import { AIInterviewQuestionsPanel } from "@/components/features/employer/AIInterviewQuestionsPanel";
 
 interface Interview {
   _id: string;
-  jobSeekerId?: { fullName?: string; email?: string };
-  jobId?: { title?: string };
+  jobSeekerId?: {
+    fullName?: string;
+    email?: string;
+    skills?: string[];
+    experience?: { jobTitle: string; company: string; isCurrent: boolean; startDate?: string }[];
+  };
+  jobId?: { title?: string; requirements?: { skills?: string[]; experienceMin?: number } };
   scheduledAt: string;
   type?: string;
   status: string;
   notes?: string;
+}
+
+interface AIQuestionsTarget {
+  jobTitle: string;
+  candidateName: string;
+  skills: string[];
+  experienceYears: number;
 }
 
 export default function EmployerInterviewsPage() {
@@ -32,6 +45,29 @@ export default function EmployerInterviewsPage() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
+  const [aiTarget, setAiTarget] = useState<AIQuestionsTarget | null>(null);
+
+  function openAIQuestions(iv: Interview) {
+    const skills = [
+      ...(iv.jobId?.requirements?.skills ?? []),
+      ...(iv.jobSeekerId?.skills ?? []),
+    ].filter((s, i, a) => a.indexOf(s) === i).slice(0, 15);
+
+    const expYears = iv.jobSeekerId?.experience?.length
+      ? iv.jobSeekerId.experience.reduce((acc, e) => {
+          if (!e.startDate) return acc;
+          const years = (Date.now() - new Date(e.startDate).getTime()) / (1000 * 60 * 60 * 24 * 365);
+          return acc + Math.min(years, 30);
+        }, 0)
+      : (iv.jobId?.requirements?.experienceMin ?? 3);
+
+    setAiTarget({
+      jobTitle: iv.jobId?.title ?? "Unknown Role",
+      candidateName: iv.jobSeekerId?.fullName ?? "Candidate",
+      skills,
+      experienceYears: Math.round(expYears),
+    });
+  }
 
   const fetchInterviews = useCallback(async () => {
     setLoading(true);
@@ -61,6 +97,15 @@ export default function EmployerInterviewsPage() {
 
   return (
     <div className="page-container">
+      {aiTarget && (
+        <AIInterviewQuestionsPanel
+          jobTitle={aiTarget.jobTitle}
+          candidateName={aiTarget.candidateName}
+          skills={aiTarget.skills}
+          experienceYears={aiTarget.experienceYears}
+          onClose={() => setAiTarget(null)}
+        />
+      )}
       <PageHeader
         title="Interviews"
         description="Manage and track candidate interviews"
@@ -95,6 +140,7 @@ export default function EmployerInterviewsPage() {
               <TableHead>Type</TableHead>
               <TableHead>Scheduled</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>AI</TableHead>
               {can("interviews", "update") && (
                 <TableHead>Actions</TableHead>
               )}
@@ -128,6 +174,15 @@ export default function EmployerInterviewsPage() {
                 <TableCell className="text-muted-foreground capitalize">{iv.type ?? "in-person"}</TableCell>
                 <TableCell className="text-muted-foreground">{new Date(iv.scheduledAt).toLocaleString()}</TableCell>
                 <TableCell><StatusBadge status={iv.status} /></TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost" size="sm" className="h-7 text-xs gap-1 text-primary"
+                    onClick={() => openAIQuestions(iv)}
+                    title="Generate AI interview questions"
+                  >
+                    <Sparkles className="h-3 w-3" /> Questions
+                  </Button>
+                </TableCell>
                 {can("interviews", "update") && (
                   <TableCell>
                     <div className="flex gap-1">

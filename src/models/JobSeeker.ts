@@ -68,6 +68,8 @@ export interface IJobSeeker extends Document {
   availabilityStatus: "immediately" | "within_month" | "within_3_months" | "not_available";
   noticePeriod?: number; // in days
   applicationMode: "auto" | "manual";
+  autoApplyCount: number;
+  autoApplyResetAt?: Date;
   profileCompleteness: number; // 0-100
   // Badges
   badges: ("premium" | "skilled" | string)[];
@@ -165,6 +167,8 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     },
     noticePeriod: Number,
     applicationMode: { type: String, enum: ["auto", "manual"], default: "manual" },
+    autoApplyCount: { type: Number, default: 0, min: 0 },
+    autoApplyResetAt: Date,
     profileCompleteness: { type: Number, default: 0, min: 0, max: 100 },
     badges: [String],
     applicationIds: [{ type: Schema.Types.ObjectId, ref: "Application" }],

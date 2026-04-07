@@ -8,6 +8,8 @@ import connectDB from "@/lib/db/mongoose";
 import User from "@/models/User";
 import { Employer } from "@/models/Employer";
 import type { UserRole } from "@/models/User";
+import { DashboardProviders } from "@/components/shared/DashboardProviders";
+import { RecruitmentAssistant } from "@/components/features/employer/RecruitmentAssistant";
 
 export default async function DashboardLayout({
   children,
@@ -42,17 +44,21 @@ export default async function DashboardLayout({
   return (
     <SessionWrapper>
       <CsrfProvider>
-        <DashboardShell
-          navGroups={navGroups}
-          locale={locale}
-          userName={session.user.name ?? undefined}
-          userEmail={session.user.email ?? undefined}
-          userRole={role}
-          lastLogin={lastLogin}
-          companyLogo={companyLogo}
-        >
-          {children}
-        </DashboardShell>
+        <DashboardProviders>
+          <DashboardShell
+            navGroups={navGroups}
+            locale={locale}
+            userName={session.user.name ?? undefined}
+            userEmail={session.user.email ?? undefined}
+            userRole={role}
+            lastLogin={lastLogin}
+            companyLogo={companyLogo}
+          >
+            {children}
+          </DashboardShell>
+          {/* Recruitment AI assistant — employer-only floating panel */}
+          {role === "employer" && <RecruitmentAssistant />}
+        </DashboardProviders>
       </CsrfProvider>
     </SessionWrapper>
   );

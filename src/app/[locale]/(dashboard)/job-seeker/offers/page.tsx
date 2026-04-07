@@ -147,7 +147,7 @@ export default function OffersPage() {
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg">{offer.jobId.title}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {offer.jobId.location}
+                    {typeof offer.jobId.location === "object" && offer.jobId.location ? (offer.jobId.location.isRemote ? "Remote" : [offer.jobId.location.city, offer.jobId.location.country].filter(Boolean).join(", ") || "—") : (offer.jobId.location ?? "—")}
                   </p>
                 </div>
                 <Badge variant={getStatusBadgeVariant(offer.status)}>

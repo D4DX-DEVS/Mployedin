@@ -146,10 +146,10 @@ body {
   z-index: 9999 !important;
 }
 
-/* Dialog portals need to be above page content but below popper overlays */
+/* Dialog portals must be above the sticky header and all page content */
 [data-radix-portal] > [role="dialog"],
 [data-radix-portal] > [data-state] {
-  z-index: 9998 !important;
+  z-index: 10000 !important;
 }
 
 /* ── SCROLLBAR STYLING ── */
@@ -329,19 +329,20 @@ body {
 }
 
 /* ── CARD BASE ── */
-.card-base {
-  background-color: hsl(var(--card));
-  border: 1px solid hsl(var(--border) / 0.6);
-  border-radius: var(--radius);
-  box-shadow: 0 4px 20px -2px rgb(0 0 0 / 0.05);
-  /* Premium soft shadow */
-  transition: all 0.2s ease-in-out;
-  isolation: isolate; /* Contain internal z-indices so they don't leak to portals */
-}
+@layer components {
+  .card-base {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.6);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 4px 20px -2px rgb(0 0 0 / 0.05);
+    transition: all 0.2s ease-in-out;
+    isolation: isolate;
+  }
 
-.card-base:hover {
-  box-shadow: 0 12px 24px -4px rgb(0 0 0 / 0.08);
-  /* Elevated upon hover */
+  .card-base:hover {
+    box-shadow: 0 12px 24px -4px rgb(0 0 0 / 0.08);
+  }
 }
 
 /* ── STATUS BADGE CLASSES ── */
@@ -645,4 +646,9 @@ body {
   .page-container {
     padding: 2.5rem; /* lg:p-10 */
   }
+}
+/* Voice recording waveform animation */
+@keyframes voiceBar {
+  from { transform: scaleY(0.3); opacity: 0.6; }
+  to { transform: scaleY(1); opacity: 1; }
 }

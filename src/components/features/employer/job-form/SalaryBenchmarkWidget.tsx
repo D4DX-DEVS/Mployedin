@@ -1,0 +1,271 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { TrendingUp, Loader2, AlertTriangle, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface BenchmarkResult {
+  p25: number;
+  median: number;
+  p75: number;
+  currency: string;
+  period: string;
+  competitiveness: "below" | "competitive" | "above";
+  insight: string;
+}
+
+interface Props {
+  role: string;
+  location: string;
+  currency: string;
+  period: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  /** Called when user clicks "Adjust to market rate" */
+  onAdjust?: (min: number, max: number) => void;
+}
+
+function fmt(n: number, currency: string): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency || "USD",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+export function SalaryBenchmarkWidget({
+  role,
+  location,
+  currency,
+  period,
+  salaryMin = 0,
+  salaryMax = 0,
+  onAdjust,
+}: Props) {
+  const [data, setData] = useState<BenchmarkResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Track last fetched params to avoid redundant calls
+  const lastFetchRef = useRef({ role: "", location: "", currency: "", period: "" });
+
+  async function fetchBenchmark() {
+    if (!role.trim()) return;
+    const params = { role, location, currency, period };
+    // Check if anything changed
+    const last = lastFetchRef.current;
+    if (
+      last.role === role &&
+      last.location === location &&
+      last.currency === currency &&
+      last.period === period
+    ) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const qs = new URLSearchParams({ role, location, seniority: "mid", currency, period });
+      const res = await fetch(`/api/ai/salary-benchmark?${qs}`);
+      if (!res.ok) throw new Error("Failed to fetch benchmark");
+      const json = await res.json();
+      setData(json as BenchmarkResult);
+      lastFetchRef.current = params;
+    } catch {
+      setError("Could not load market data.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Auto-fetch whenever role or currency changes (debounced via button)
+  // Expose manual trigger only — auto-fetch on mount if role is set
+  useEffect(() => {
+    if (role.trim()) fetchBenchmark();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!role.trim()) return null;
+
+  const competitivenessConfig = {
+    below: {
+      color: "text-red-600 dark:text-red-400",
+      bg: "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800",
+      bar: "bg-red-400",
+      label: "Below Market",
+      icon: "↓",
+    },
+    competitive: {
+      color: "text-emerald-600 dark:text-emerald-400",
+      bg: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800",
+      bar: "bg-emerald-400",
+      label: "Competitive",
+      icon: "✓",
+    },
+    above: {
+      color: "text-blue-600 dark:text-blue-400",
+      bg: "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800",
+      bar: "bg-blue-400",
+      label: "Above Market",
+      icon: "↑",
+    },
+  };
+
+  const cfg = data ? competitivenessConfig[data.competitiveness] : null;
+
+  // Compute where the employer's range sits on the p25-p75 bar
+  function getBarPosition(value: number, min: number, max: number): number {
+    if (max === min) return 50;
+    return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+  }
+
+  const employerMid = salaryMin > 0 || salaryMax > 0 ? (salaryMin + salaryMax) / 2 : null;
+  const markerPct =
+    data && employerMid !== null
+      ? getBarPosition(employerMid, data.p25, data.p75)
+      : null;
+
+  return (
+    <div className={`rounded-xl border text-xs overflow-hidden transition-colors ${cfg?.bg ?? "bg-muted/30 border-border"}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-3.5 py-2.5">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="font-medium text-foreground/80">Market Salary Benchmark</span>
+          {data && cfg && (
+            <span className={`font-semibold ${cfg.color}`}>
+              {cfg.icon} {cfg.label}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {!data && !loading && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-[11px] gap-1 text-primary"
+              onClick={fetchBenchmark}
+            >
+              <Sparkles className="w-3 h-3" />
+              Check Market
+            </Button>
+          )}
+          {data && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-[11px] gap-1 text-muted-foreground"
+              onClick={fetchBenchmark}
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "↻"}
+              Refresh
+            </Button>
+          )}
+          {data && (
+            <button
+              type="button"
+              onClick={() => setCollapsed((c) => !c)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {collapsed
+                ? <ChevronDown className="w-3.5 h-3.5" />
+                : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="px-3.5 pb-3 flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Checking market rates for &ldquo;{role}&rdquo;...
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && !loading && (
+        <div className="px-3.5 pb-3 flex items-center gap-1.5 text-destructive">
+          <AlertTriangle className="w-3.5 h-3.5" />
+          {error}
+        </div>
+      )}
+
+      {/* Data */}
+      {data && !collapsed && !loading && (
+        <div className="px-3.5 pb-3 space-y-3">
+          {/* Percentile bar */}
+          <div className="relative">
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>P25 {fmt(data.p25, data.currency)}</span>
+              <span className="font-medium text-foreground">Median {fmt(data.median, data.currency)}</span>
+              <span>P75 {fmt(data.p75, data.currency)}</span>
+            </div>
+            <div className="h-2 rounded-full bg-muted relative overflow-visible">
+              {/* Filled bar from p25 to p75 */}
+              <div className={`absolute inset-y-0 left-0 right-0 rounded-full ${cfg?.bar ?? "bg-muted-foreground"} opacity-30`} />
+              {/* Median marker */}
+              <div
+                className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 bg-foreground/40 rounded-full"
+                style={{ left: "50%" }}
+              />
+              {/* Employer range marker */}
+              {markerPct !== null && (
+                <div
+                  className={`absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-background shadow-sm ${cfg?.bar ?? "bg-primary"}`}
+                  style={{ left: `${markerPct}%`, transform: "translate(-50%, -50%)" }}
+                  title={`Your midpoint: ${fmt(employerMid!, data.currency)}`}
+                />
+              )}
+            </div>
+            {markerPct !== null && (
+              <p className="text-[10px] text-muted-foreground mt-1.5">
+                Your midpoint{" "}
+                <span className={`font-semibold ${cfg?.color ?? ""}`}>
+                  {fmt(employerMid!, data.currency)}
+                </span>{" "}
+                {data.competitiveness === "below" && "is below market — consider raising to attract more applicants"}
+                {data.competitiveness === "competitive" && "is within the competitive range"}
+                {data.competitiveness === "above" && "is above market — excellent for attracting top talent"}
+              </p>
+            )}
+          </div>
+
+          {/* Insight */}
+          <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-current/10 pt-2">
+            {data.insight}
+          </p>
+
+          {/* Adjust button */}
+          {onAdjust && data.competitiveness !== "competitive" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-6 text-[11px] px-2.5"
+              onClick={() => {
+                // Suggest a range: p25 to median for "below", median to p75 for "above"
+                const suggestedMin = data.competitiveness === "below" ? data.p25 : data.median;
+                const suggestedMax = data.competitiveness === "below" ? data.median : data.p75;
+                onAdjust(suggestedMin, suggestedMax);
+              }}
+            >
+              Adjust to market rate → {fmt(
+                data.competitiveness === "below" ? data.p25 : data.median,
+                data.currency
+              )} – {fmt(
+                data.competitiveness === "below" ? data.median : data.p75,
+                data.currency
+              )}
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

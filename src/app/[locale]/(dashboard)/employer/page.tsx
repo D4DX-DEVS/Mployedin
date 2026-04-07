@@ -10,6 +10,7 @@ import { Interview } from "@/models/Interview";
 import { Placement } from "@/models/Placement";
 import { Briefcase, FileText, Calendar, UserCheck, Users, Plus } from "lucide-react";
 import { CompanyUser } from "@/models/CompanyUser";
+import { SetupGuide } from "@/components/features/employer/SetupGuide";
 
 export default async function EmployerDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -98,6 +99,9 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
           </Link>
         ))}
       </div>
+
+      {/* Job Creation Setup Guide — only shown to employers who haven't completed all steps */}
+      <SetupGuide />
     </div>
   );
 }

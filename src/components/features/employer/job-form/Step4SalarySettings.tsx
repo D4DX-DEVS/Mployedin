@@ -23,6 +23,7 @@ import {
   type CurrencyCode,
 } from "./jobFormSchema";
 import { requiresSalaryDisclosure } from "@/lib/job-attributes/salary-jurisdictions";
+import { SalaryBenchmarkWidget } from "./SalaryBenchmarkWidget";
 
 export function Step4SalarySettings() {
   const {
@@ -43,6 +44,7 @@ export function Step4SalarySettings() {
   const locationCity = watch("location.city") ?? "";
   const locationStr = [locationCity, locationCountry].filter(Boolean).join(", ");
   const salaryRequired = requiresSalaryDisclosure(locationStr);
+  const jobTitle = watch("title") ?? "";
 
   const presets = SALARY_PRESETS[currency] ?? [];
 
@@ -205,6 +207,20 @@ export function Step4SalarySettings() {
             </div>
           </div>
         )}
+
+        {/* Salary Benchmark Widget */}
+        <SalaryBenchmarkWidget
+          role={jobTitle}
+          location={locationStr}
+          currency={currency}
+          period={period}
+          salaryMin={salaryMin}
+          salaryMax={salaryMax}
+          onAdjust={(min, max) => {
+            setValue("salary.min", min, { shouldValidate: true });
+            setValue("salary.max", max, { shouldValidate: true });
+          }}
+        />
 
         {/* Negotiable toggle */}
         <div className="flex items-center gap-3 p-3 rounded-lg border border-border">

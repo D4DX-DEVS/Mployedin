@@ -3,13 +3,11 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { AI_TOKEN_LIMITS, redactPII } from "@/lib/ai/sanitize";
 import { validateBody } from "@/lib/validators";
 import { aiMatchSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 
 /**
  * POST /api/ai/match
@@ -39,8 +37,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
   if (!seeker) return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });
-
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const prompt = `You are a recruitment AI. Analyse the match between a job seeker and a job posting.
 
@@ -72,11 +68,9 @@ Return a JSON object ONLY (no markdown) with this exact structure:
   "summary": "<2 sentence match summary>"
 }`;
 
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: AI_TOKEN_LIMITS.match },
-  });
-  const text = redactPII(result.response.text()).replace(/```json\n?|```/g, "").trim();
+  const text = redactPII(
+    await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.match)
+  ).replace(/```json\n?|```/g, "").trim();
 
   let matchData;
   try {

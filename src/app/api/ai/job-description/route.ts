@@ -3,10 +3,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
 import { sanitizeAIInput, AI_TOKEN_LIMITS, redactPII } from "@/lib/ai/sanitize";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { z } from "zod";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 
 const jobDescriptionSchema = z.object({
   title: z.string().min(3).max(200).trim(),
@@ -43,8 +41,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const location = sanitizeAIInput(body.location ?? "Remote / Global", 200);
   const skills = (body.skills ?? []).map((s) => sanitizeAIInput(s, 100)).slice(0, 20);
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
   const prompt = `You are an expert technical recruiter writing a compelling, professional job description for a ${category} company.
 
 Job Title: ${title}
@@ -61,12 +57,9 @@ Write a production-ready job description with exactly these 3 sections. Return O
 
 Tone: Professional, engaging, inclusive. Avoid jargon overload. Focus on impact and growth.`;
 
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: AI_TOKEN_LIMITS.job_description },
-  });
-
-  const raw = redactPII(result.response.text()).replace(/```json\n?|```/g, "").trim();
+  const raw = redactPII(
+    await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.job_description)
+  ).replace(/```json\n?|```/g, "").trim();
 
   let sections: Omit<GeneratedDescription, "full">;
   try {

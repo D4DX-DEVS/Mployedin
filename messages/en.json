@@ -544,5 +544,91 @@
     "savedSuccess": "Saved successfully",
     "saveError": "Failed to save — please try again",
     "fillAndSave": "Fill in your details and click Save"
+  },
+  "setupGuide": {
+    "title": "Job Creation Setup Guide",
+    "subtitle": "Complete these steps to get started",
+    "progress": "{done} / {total} completed",
+    "dismiss": "Do not show again",
+    "steps": {
+      "companyProfile": "Complete Company Profile",
+      "companyProfileDesc": "Add company name, industry and contact email",
+      "verifyDomain": "Verify Your Domain",
+      "verifyDomainDesc": "Verify your company domain to unlock publishing",
+      "createJob": "Create Your First Job",
+      "createJobDesc": "Post a job to start receiving applications",
+      "addRequirements": "Add Requirements & Skills",
+      "addRequirementsDesc": "Define skills and experience needed for the role",
+      "setSalary": "Set Salary Range",
+      "setSalaryDesc": "Specify compensation to attract the right candidates",
+      "publishJob": "Review & Publish",
+      "publishJobDesc": "Make your job live to start receiving applications"
+    }
+  },
+  "recruitmentAI": {
+    "title": "Recruitment AI",
+    "subtitle": "Your AI-powered hiring assistant",
+    "disclaimer": "AI CAN MAKE MISTAKES. CHECK IMPORTANT INFO.",
+    "inputPlaceholder": "Ask your recruitment assistant...",
+    "voiceStart": "Start recording",
+    "voiceStop": "Stop recording",
+    "voiceProcessing": "Processing audio...",
+    "voiceError": "Voice recognition failed. Please try again.",
+    "micPermissionDenied": "Microphone access denied. Please allow microphone access in browser settings.",
+    "newConversation": "New conversation",
+    "history": "History",
+    "noHistory": "No conversations yet",
+    "tabs": {
+      "jobCreator": "Job Creator AI",
+      "interview": "Interview AI",
+      "screening": "Screening AI"
+    },
+    "jobCreator": {
+      "welcome": "What job do you want to create today?",
+      "welcomeSub": "Describe the role in natural language or use voice — I'll build the full job posting for you.",
+      "actions": {
+        "postNew": "Post a New Job",
+        "postNewDesc": "Describe a new role via voice or text",
+        "editExisting": "Edit Existing Job",
+        "editExistingDesc": "Update an existing job posting",
+        "cloneJob": "Clone a Job",
+        "cloneJobDesc": "Duplicate and modify a previous posting",
+        "bulkCreate": "Bulk Create",
+        "bulkCreateDesc": "Create multiple jobs at once"
+      },
+      "preview": "Job Preview",
+      "previewEmpty": "Keep chatting — once you've provided enough details, the job preview will appear here.",
+      "createDraft": "Create Job Draft",
+      "creating": "Creating...",
+      "draftCreated": "Draft created! Redirecting to edit page..."
+    },
+    "interview": {
+      "welcome": "How can I help with your interviews?",
+      "welcomeSub": "Generate questions, prep briefs, or schedule interviews for any role.",
+      "actions": {
+        "generateQuestions": "Generate Questions",
+        "generateQuestionsDesc": "AI-powered interview questions by role",
+        "scheduleInterview": "Schedule Interview",
+        "scheduleInterviewDesc": "Plan interview sessions with candidates",
+        "prepBrief": "Prep Candidate Brief",
+        "prepBriefDesc": "Summarize candidate profile for interviewers",
+        "reviewFeedback": "Review Feedback",
+        "reviewFeedbackDesc": "Analyze interviewer scorecards"
+      }
+    },
+    "screening": {
+      "welcome": "What would you like to screen or analyze?",
+      "welcomeSub": "Rank applicants, identify skill gaps, or generate shortlists using AI.",
+      "actions": {
+        "screenApplicants": "Screen Applicants",
+        "screenApplicantsDesc": "Rank candidates by job fit score",
+        "compareCandidates": "Compare Candidates",
+        "compareCandidatesDesc": "Side-by-side candidate comparison",
+        "skillsGap": "Skills Gap Report",
+        "skillsGapDesc": "Find skill gaps in your applicant pool",
+        "shortlist": "Shortlist Top 10",
+        "shortlistDesc": "Generate AI-ranked shortlist for a job"
+      }
+    }
   }
 }

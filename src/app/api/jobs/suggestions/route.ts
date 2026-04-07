@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { sanitizeAIInput, AI_TOKEN_LIMITS, redactPII } from "@/lib/ai/sanitize";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 
 interface SuggestionsResponse {
   titles: string[];
@@ -46,8 +44,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const q = sanitizeAIInput(rawQ, 200);
   const category = sanitizeAIInput(rawCategory, 100);
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
   const prompt = `You are a recruitment intelligence AI with deep knowledge of global job markets (Middle East/Gulf, India, US, EU).
 
 Given this job title: "${q}" in category: "${category || "General"}"
@@ -74,12 +70,9 @@ Rules:
 - experience: realistic for mid-level hire
 - No extra text, only valid JSON`;
 
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: AI_TOKEN_LIMITS.skills_suggest },
-  });
-
-  const raw = redactPII(result.response.text()).replace(/```json\n?|```/g, "").trim();
+  const raw = redactPII(
+    await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.skills_suggest)
+  ).replace(/```json\n?|```/g, "").trim();
 
   let suggestions: SuggestionsResponse;
   try {

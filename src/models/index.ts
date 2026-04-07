@@ -16,6 +16,8 @@ export { Commission } from "./Commission";
 export { AuditLog } from "./AuditLog";
 export { ConversationThread } from "./ConversationThread";
 export { CandidateNPS } from "./CandidateNPS";
+export { ActivityEvent } from "./ActivityEvent";
+export type { IActivityEvent, ActivityEventType } from "./ActivityEvent";
 
 // ── Job Attribute Master Data ─────────────────────────────────────────────────
 export { SalaryPeriod } from "./SalaryPeriod";

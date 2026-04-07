@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 
@@ -12,11 +13,12 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Sparkles, Loader2, Star, Users, MapPin, Briefcase } from "lucide-react";
+import { Search, Sparkles, Loader2, Star, Users, MapPin, Briefcase, Eye, MessageSquare } from "lucide-react";
+import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 
 interface Candidate {
   _id: string;
-  userId?: { name: string; email: string };
+  userId?: { _id: string; name: string; email: string };
   currentLocation?: string;
   experience?: { jobTitle: string; company: string; isCurrent: boolean }[];
   skills?: string[];
@@ -32,11 +34,14 @@ interface Candidate {
   matchSummary?: string;
   strengths?: string[];
   gaps?: string[];
+  cv?: { originalUrl?: string };
 }
 
 interface Job { _id: string; title: string; }
 
 export default function EmployerCandidatesPage() {
+  const router = useRouter();
+  const { locale } = useParams<{ locale: string }>();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -45,6 +50,7 @@ export default function EmployerCandidatesPage() {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"table" | "cards">("table");
   const pagination = usePagination();
+  const [viewingCv, setViewingCv] = useState<{ url: string; name: string } | null>(null);
 
   const loadJobs = useCallback(async () => {
     const res = await fetch("/api/jobs?limit=50&status=published");
@@ -77,6 +83,20 @@ export default function EmployerCandidatesPage() {
   }, [loadCandidates]);
 
   useEffect(() => { pagination.resetPage(); }, [search]);
+
+  const startDM = async (recipientUserId: string) => {
+    try {
+      const res = await fetch("/api/dm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientId: recipientUserId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        router.push(`/${locale}/employer/messages?conv=${data.conversation._id}`);
+      }
+    } catch { /* ignore */ }
+  };
 
   const runAIMatch = async () => {
     if (!selectedJob || candidates.length === 0) return;
@@ -139,6 +159,13 @@ export default function EmployerCandidatesPage() {
 
   return (
     <div className="page-container">
+      {viewingCv && (
+        <ResumeViewerModal
+          url={viewingCv.url}
+          candidateName={viewingCv.name}
+          onClose={() => setViewingCv(null)}
+        />
+      )}
       <PageHeader
         title="AI Candidate Matching"
         description={`${pagination.total} candidates in database`}
@@ -336,14 +363,33 @@ export default function EmployerCandidatesPage() {
                 </div>
               )}
 
-              {/* Availability */}
-              <div className="flex items-center justify-between pt-1">
+              {/* Availability + Actions */}
+              <div className="flex items-center justify-between pt-1 gap-2">
                 <Badge variant={c.availabilityStatus === "immediately" ? "default" : c.availabilityStatus === "not_available" ? "destructive" : "secondary"} className="text-xs">
                   {availabilityLabel(c.availabilityStatus)}
                 </Badge>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-                  <Star className="h-3 w-3 text-amber-500" /> Shortlist
-                </Button>
+                <div className="flex items-center gap-1">
+                  {c.cv?.originalUrl && (
+                    <Button
+                      variant="ghost" size="sm" className="h-7 text-xs gap-1"
+                      onClick={() => setViewingCv({ url: c.cv!.originalUrl!, name: c.userId?.name ?? "Candidate" })}
+                    >
+                      <Eye className="h-3 w-3" /> CV
+                    </Button>
+                  )}
+                  {c.userId?._id && (
+                    <Button
+                      variant="ghost" size="sm" className="h-7 text-xs gap-1 text-primary"
+                      onClick={() => startDM(c.userId!._id)}
+                      title="Send message"
+                    >
+                      <MessageSquare className="h-3 w-3" /> Message
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                    <Star className="h-3 w-3 text-amber-500" /> Shortlist
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
