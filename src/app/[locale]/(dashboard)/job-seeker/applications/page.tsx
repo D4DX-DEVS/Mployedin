@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 interface ApplicationJob {
   _id: string;
   title: string;
-  location: string;
+  location: string | { isRemote?: boolean; city?: string; country?: string };
   salary?: { min: number; max: number; currency: string };
   employerId?: string;
 }

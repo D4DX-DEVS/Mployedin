@@ -19,7 +19,7 @@ interface Job {
   status: string;
   approvalStatus: string;
   category?: string;
-  location?: string;
+  location?: string | { isRemote?: boolean; city?: string; country?: string };
   applicantsCount?: number;
   createdAt: string;
 }

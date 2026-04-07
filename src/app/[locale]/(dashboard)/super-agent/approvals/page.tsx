@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 interface JobApproval {
   _id: string;
   title: string;
-  location: string;
+  location: string | { isRemote?: boolean; city?: string; country?: string };
   category: string;
   approvalStatus: string;
   createdAt: string;

@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 interface OfferJob {
   _id: string;
   title: string;
-  location: string;
+  location: string | { isRemote?: boolean; city?: string; country?: string };
 }
 
 interface Offer {

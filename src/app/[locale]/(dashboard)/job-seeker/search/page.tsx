@@ -8,7 +8,7 @@ import { Search, Sparkles, MapPin, Clock, Briefcase, Loader2 } from "lucide-reac
 interface Job {
   _id: string;
   title: string;
-  location: string;
+  location: string | { isRemote?: boolean; city?: string; country?: string };
   category: string;
   employmentType: string;
   salary?: { min: number; max: number; currency: string };

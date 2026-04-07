@@ -15,7 +15,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 interface Job {
   _id: string;
   title: string;
-  location: string;
+  location: string | { isRemote?: boolean; city?: string; country?: string };
   category: string;
   status: "draft" | "active" | "closed" | "expired";
   salary: { min: number; max: number; currency: string };
