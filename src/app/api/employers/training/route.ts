@@ -4,6 +4,7 @@ import connectDB from "@/lib/db/mongoose";
 import mongoose, { Schema, Document, Model } from "mongoose";
 import { validateBody } from "@/lib/validators";
 import { trainingCreateSchema } from "@/lib/validators/misc";
+import { logActivity } from "@/lib/audit/log";
 
 // Inline lightweight model (not worth a separate models/ file)
 interface ITrainingItem extends Document {
@@ -57,6 +58,16 @@ async function POST(req: NextRequest, ctx: { userId: string }) {
     status: body.status ?? "not_started",
     dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
     notes: body.notes ?? "",
+  });
+
+  await logActivity({
+    actorId: ctx.userId,
+    actorRole: "employer",
+    action: "training.create",
+    resource: "employers",
+    resourceId: String(item._id),
+    meta: { title: body.title, targetRole: body.targetRole },
+    req,
   });
 
   return NextResponse.json({ item }, { status: 201 });

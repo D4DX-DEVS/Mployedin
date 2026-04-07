@@ -19,12 +19,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const resource = searchParams.get("resource") ?? "";
   const action = searchParams.get("action") ?? "";
   const actorId = searchParams.get("actorId") ?? "";
+  const country = searchParams.get("country") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
   if (resource) query.resource = resource;
   if (action) query.action = new RegExp(escapeRegex(action), "i");
   if (actorId) query.actorId = actorId;
+  if (country) query.country = country.toUpperCase();
 
   const [logs, total] = await Promise.all([
     AuditLog.find(query)

@@ -4,6 +4,7 @@ import connectDB from "@/lib/db/mongoose";
 import Message from "@/models/Message";
 import { validateBody } from "@/lib/validators";
 import { messageCreateSchema } from "@/lib/validators/messages";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 async function GET(req: NextRequest, ctx: { userId: string; role: string }) {
   await connectDB();
@@ -35,6 +36,15 @@ async function POST(req: NextRequest, ctx: { userId: string; role: string; local
     senderRole: ctx.role,
     senderName: body.senderName || "Unknown",
     createdAt: new Date(),
+  });
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "message.create",
+    resource: "messages",
+    resourceId: String(msg._id),
+    meta: { channel },
+    req,
   });
 
   return NextResponse.json({ message: msg }, { status: 201 });

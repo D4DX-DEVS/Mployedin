@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Commission from "@/models/Commission";
 import { validateBody } from "@/lib/validators";
 import { commissionCreateSchema } from "@/lib/validators/commissions";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -80,6 +81,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     placementId,
     notes,
     status: "pending",
+  });
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "commission.create",
+    resource: "commissions",
+    resourceId: String(commission._id),
+    meta: { type, amount, currency: currency ?? "AED", placementId },
+    req,
   });
 
   return NextResponse.json({ commission }, { status: 201 });

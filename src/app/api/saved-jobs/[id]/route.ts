@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import SavedJob from "@/models/SavedJob";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /**
  * DELETE /api/saved-jobs/[id] — unsave a job
  */
-export const DELETE = withAuth(async (_req: NextRequest, ctx, params) => {
+export const DELETE = withAuth(async (req: NextRequest, ctx, params) => {
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -21,6 +22,14 @@ export const DELETE = withAuth(async (_req: NextRequest, ctx, params) => {
   if (!deleted) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "saved_job.delete",
+    resource: "saved_jobs",
+    resourceId: params?.id,
+    req,
+  });
 
   return NextResponse.json({ success: true });
 });

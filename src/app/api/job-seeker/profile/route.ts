@@ -5,6 +5,7 @@ import JobSeeker from "@/models/JobSeeker";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { jobSeekerProfileUpdateSchema } from "@/lib/validators/job-seekers";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -40,6 +41,14 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     { $set: safeUpdate },
     { upsert: true, new: true, runValidators: true }
   );
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "job_seeker.update_profile",
+    resource: "job_seekers",
+    resourceId: ctx.userId,
+    req,
+  });
 
   return NextResponse.json(profile);
 }

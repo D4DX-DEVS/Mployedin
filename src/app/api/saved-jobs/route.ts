@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import SavedJob from "@/models/SavedJob";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 const saveJobSchema = z.object({
   jobId: z.string().min(1),
@@ -67,6 +68,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     jobSeekerId: ctx.userId,
     jobId: body.jobId,
     notes: body.notes,
+  });
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "saved_job.create",
+    resource: "saved_jobs",
+    resourceId: String(saved._id),
+    meta: { jobId: body.jobId },
+    req,
   });
 
   return NextResponse.json(saved, { status: 201 });

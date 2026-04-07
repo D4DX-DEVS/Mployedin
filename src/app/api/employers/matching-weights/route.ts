@@ -4,6 +4,7 @@ import connectDB from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { matchingWeightsSchema } from "@/lib/validators/misc";
+import { logActivity } from "@/lib/audit/log";
 
 interface MatchingWeights {
   skills: number;
@@ -47,6 +48,16 @@ async function PATCH(req: NextRequest, ctx: { userId: string }) {
     { $set: { matchingWeights: weights } },
     { upsert: true }
   );
+
+  await logActivity({
+    actorId: ctx.userId,
+    actorRole: "employer",
+    action: "employer.update_matching_weights",
+    resource: "employers",
+    resourceId: ctx.userId,
+    meta: { weights },
+    req,
+  });
 
   return NextResponse.json({ success: true });
 }

@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
-import AuditLog from "@/models/AuditLog";
 import { validateBody } from "@/lib/validators";
 import { impersonateSchema } from "@/lib/validators/admin";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /**
  * POST /api/admin/impersonate
@@ -20,14 +20,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await validateBody(req, impersonateSchema);
 
   if (body.exit) {
-    await AuditLog.create({
-      actorId: ctx.userId,
-      actorRole: ctx.role,
-      action: "update",
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "impersonation.exit",
       resource: "users",
       resourceId: ctx.userId,
-      metadata: { action: "impersonation_exit" },
-      ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+      req,
     });
     return NextResponse.json({ success: true, message: "Impersonation ended" });
   }
@@ -39,14 +37,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
   if (!target.isActive) return NextResponse.json({ error: "Cannot impersonate inactive user" }, { status: 400 });
 
-  await AuditLog.create({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
-    action: "impersonate",
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "impersonation.start",
     resource: "users",
     resourceId: userId,
-    metadata: { targetEmail: target.email, targetRole: target.role },
-    ipAddress: req.headers.get("x-forwarded-for") ?? "unknown",
+    meta: { targetEmail: target.email, targetRole: target.role },
+    req,
   });
 
   return NextResponse.json({

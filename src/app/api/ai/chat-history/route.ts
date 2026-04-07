@@ -5,6 +5,7 @@ import ConversationThread from "@/models/ConversationThread";
 import type { ConversationContext } from "@/models/ConversationThread";
 import { validateBody } from "@/lib/validators";
 import { chatHistoryCreateSchema } from "@/lib/validators/misc";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /**
  * GET /api/ai/chat-history
@@ -54,6 +55,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       { new: true }
     );
     if (!thread) return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+    await logActivity({ ...actorFromCtx(ctx), action: "ai.chat_append", resource: "conversation_threads", resourceId: threadId, req });
     return NextResponse.json({ threadId: thread._id });
   }
 
@@ -64,6 +66,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     title: title ?? "New conversation",
     messages: messages.map((m) => ({ ...m, timestamp: new Date() })),
   });
+
+  await logActivity({ ...actorFromCtx(ctx), action: "ai.chat_create", resource: "conversation_threads", resourceId: String(thread._id), meta: { context }, req });
 
   return NextResponse.json({ threadId: thread._id }, { status: 201 });
 });
@@ -81,6 +85,8 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     { _id: threadId, userId: ctx.userId },
     { isActive: false }
   );
+
+  await logActivity({ ...actorFromCtx(ctx), action: "ai.chat_delete", resource: "conversation_threads", resourceId: threadId, req });
 
   return NextResponse.json({ success: true });
 });
