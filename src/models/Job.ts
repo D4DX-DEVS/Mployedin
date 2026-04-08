@@ -60,6 +60,7 @@ export interface IJob extends Document {
   maxApplicants?: number;
   showSalary?: boolean;
   views: number;
+  uniqueViews: number;
   tags: string[];
   visibility: JobVisibility;
   category?: string;
@@ -116,6 +117,7 @@ const JobSchema = new Schema<IJob>(
     maxApplicants: { type: Number, min: 1 },
     showSalary: { type: Boolean, default: true },
     views: { type: Number, default: 0 },
+    uniqueViews: { type: Number, default: 0 },
     tags: [String],
     visibility: { type: String, enum: ["public", "private", "invite_only"], default: "public" },
     category: String,

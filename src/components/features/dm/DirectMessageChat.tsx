@@ -62,7 +62,14 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
       const res = await fetch(`/api/dm/${conversation._id}/messages`);
       if (res.ok) {
         const data = await res.json();
-        setMessages(data.messages ?? []);
+        const fetched: DMMessage[] = data.messages ?? [];
+        // Merge with any optimistic messages already in state to avoid losing them
+        setMessages((prev) => {
+          const optimistic = prev.filter((m) => m._id.startsWith("opt-"));
+          const fetchedIds = new Set(fetched.map((m) => m._id));
+          const kept = optimistic.filter((m) => !fetchedIds.has(m._id));
+          return [...fetched, ...kept];
+        });
         // Mark as read
         fetch(`/api/dm/${conversation._id}/read`, { method: "PATCH" }).catch(() => {});
       } else {

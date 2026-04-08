@@ -27,6 +27,15 @@ export interface IAIMatchBreakdown {
   overall: number;
 }
 
+export interface IBehaviorSignals {
+  responseTime?: number;
+  coverLetterCustomized?: boolean;
+  profileCompleteness: number;
+  applicationCompleteness: number;
+  companyProfileViewed?: boolean;
+  lastActiveAt?: Date;
+}
+
 export interface IApplication extends Document {
   _id: mongoose.Types.ObjectId;
   jobSeekerId: mongoose.Types.ObjectId;
@@ -38,6 +47,8 @@ export interface IApplication extends Document {
   aiMatchScore?: number;
   matchBreakdown?: IAIMatchBreakdown;
   matchNotes?: string;
+  behaviorSignals?: IBehaviorSignals;
+  behaviorScore?: number;
   interviewIds: mongoose.Types.ObjectId[];
   rejectionReason?: string;
   employerNotes?: string;
@@ -95,6 +106,16 @@ const ApplicationSchema = new Schema<IApplication>(
       overall: Number,
     },
     matchNotes: String,
+    behaviorSignals: {
+      responseTime: Number,
+      coverLetterCustomized: Boolean,
+      profileCompleteness: { type: Number, default: 0 },
+      applicationCompleteness: { type: Number, default: 0 },
+      companyProfileViewed: { type: Boolean, default: false },
+      lastActiveAt: Date,
+      _id: false,
+    },
+    behaviorScore: Number,
     interviewIds: [{ type: Schema.Types.ObjectId, ref: "Interview" }],
     rejectionReason: String,
     employerNotes: String,

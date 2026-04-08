@@ -7,7 +7,8 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
-import { Plus, Pencil, Trash2, MapPin, Globe, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Globe, Users, UserX } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +53,7 @@ interface AgentOption {
 
 export default function AdminSuperAgentsPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [superAgents, setSuperAgents] = useState<SuperAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -199,11 +201,23 @@ export default function AdminSuperAgentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Deactivate this super agent?")) return;
+    const ok = await confirmDialog({ message: "Deactivate this super agent? They won't be able to log in.", confirmLabel: "Deactivate" });
+    if (!ok) return;
     await fetch("/api/admin/users", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: id }),
+    });
+    fetchSuperAgents();
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    const ok = await confirmDialog({ title: "Permanently Delete Super Agent", message: "This will permanently delete the super agent and their profile. This cannot be undone.", confirmLabel: "Delete Forever" });
+    if (!ok) return;
+    await fetch("/api/admin/users", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: id, permanent: true }),
     });
     fetchSuperAgents();
   };
@@ -247,6 +261,7 @@ export default function AdminSuperAgentsPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <div className="flex items-center justify-between">
         <PageHeader title="Super Agents" description="Manage super agents who oversee agent teams and regions" />
         {can("super_agents", "create") && (
@@ -343,6 +358,11 @@ export default function AdminSuperAgentsPage() {
                       {can("super_agents", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handleDelete(sa._id)} title="Deactivate">
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      )}
+                      {can("super_agents", "delete") && (
+                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(sa._id)} title="Delete permanently">
+                          <UserX className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
                     </div>

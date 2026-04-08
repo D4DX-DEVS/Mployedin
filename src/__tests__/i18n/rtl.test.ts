@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * RTL & i18n completeness tests
  *
  * Verifies:

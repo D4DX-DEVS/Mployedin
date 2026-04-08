@@ -36,15 +36,89 @@ export interface JobProfile {
   title?: string;
 }
 
+/**
+ * Returns the list of seeker skills that match job requirements (case-insensitive).
+ */
+/**
+ * Groups of related/interchangeable skills.
+ * If a seeker knows one skill in a group, they get partial credit (0.5)
+ * for any other skill in the same group that a job requires.
+ */
+const SKILL_GROUPS: string[][] = [
+  // Frontend frameworks
+  ["react", "reactjs", "react.js", "angular", "angularjs", "angular.js", "vue", "vuejs", "vue.js", "svelte", "next.js", "nextjs", "nuxt", "nuxt.js", "nuxtjs"],
+  // Backend JS
+  ["node", "nodejs", "node.js", "express", "expressjs", "express.js", "nestjs", "nest.js", "fastify", "koa"],
+  // Databases
+  ["mongodb", "mongoose", "postgresql", "postgres", "mysql", "mariadb", "sqlite", "dynamodb", "couchdb"],
+  // Cloud
+  ["aws", "amazon web services", "azure", "gcp", "google cloud", "digitalocean"],
+  // Mobile
+  ["react native", "flutter", "ionic", "swift", "kotlin", "swiftui", "jetpack compose"],
+  // CSS / UI
+  ["css", "sass", "scss", "less", "tailwind", "tailwindcss", "bootstrap", "styled-components", "material ui", "chakra ui"],
+  // Languages (typed)
+  ["typescript", "javascript", "js", "ts"],
+  // Python frameworks
+  ["django", "flask", "fastapi"],
+  // DevOps / CI
+  ["docker", "kubernetes", "k8s", "jenkins", "github actions", "gitlab ci", "circleci"],
+  // State management
+  ["redux", "zustand", "mobx", "recoil", "jotai", "pinia", "vuex", "ngrx"],
+  // Testing
+  ["jest", "mocha", "vitest", "cypress", "playwright", "selenium", "testing library"],
+  // Java ecosystem
+  ["java", "spring", "spring boot", "springboot"],
+  // PHP ecosystem
+  ["php", "laravel", "symfony", "codeigniter"],
+  // .NET
+  ["c#", "csharp", ".net", "dotnet", "asp.net"],
+];
+
+/** Pre-built lookup: skill → set of related skills */
+const RELATED_SKILLS_MAP: Map<string, Set<string>> = (() => {
+  const map = new Map<string, Set<string>>();
+  for (const group of SKILL_GROUPS) {
+    const lower = group.map((s) => s.toLowerCase());
+    for (const skill of lower) {
+      const existing = map.get(skill) ?? new Set<string>();
+      for (const other of lower) {
+        if (other !== skill) existing.add(other);
+      }
+      map.set(skill, existing);
+    }
+  }
+  return map;
+})();
+
+export function getMatchedSkills(seekerSkills: string[], jobSkills: string[]): string[] {
+  const jobSet = new Set(jobSkills.map((s) => s.toLowerCase()));
+  return seekerSkills.filter((s) => jobSet.has(s.toLowerCase()));
+}
+
 export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): number {
   // ── Skills (40%) ────────────────────────────────────────────────────
   const jobSkills = job.skills.map((s) => s.toLowerCase());
   const seekerSkills = seeker.skills.map((s) => s.toLowerCase());
-  const skillsScore =
-    jobSkills.length === 0
-      ? 1 // job requires no specific skills → full score
-      : seekerSkills.filter((s) => jobSkills.includes(s)).length /
-        jobSkills.length;
+
+  let skillsScore: number;
+  if (jobSkills.length === 0) {
+    skillsScore = 1;
+  } else {
+    let totalCredit = 0;
+    for (const jSkill of jobSkills) {
+      if (seekerSkills.includes(jSkill)) {
+        totalCredit += 1; // exact match
+      } else {
+        // Check related skills — partial credit (0.5)
+        const related = RELATED_SKILLS_MAP.get(jSkill);
+        if (related && seekerSkills.some((s) => related.has(s))) {
+          totalCredit += 0.5;
+        }
+      }
+    }
+    skillsScore = totalCredit / jobSkills.length;
+  }
 
   // ── Location (20%) ───────────────────────────────────────────────────
   const locationScore = (() => {
@@ -93,6 +167,21 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
   }
 
   return score;
+}
+
+/**
+ * Blend a behavioral score (0-100) into the base match score.
+ * @param baseScore  – result from calculateMatchScore (0-100)
+ * @param behaviorScore – behavioral engagement score (0-100)
+ * @param behaviorWeight – 0-1 fraction for behavior (default 0.1 = 10%)
+ */
+export function blendBehaviorScore(
+  baseScore: number,
+  behaviorScore: number,
+  behaviorWeight = 0.1,
+): number {
+  const baseWeight = 1 - behaviorWeight;
+  return Math.min(100, Math.round(baseScore * baseWeight + behaviorScore * behaviorWeight));
 }
 
 /**

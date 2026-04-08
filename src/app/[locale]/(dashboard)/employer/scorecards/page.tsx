@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { User, Calendar, Award } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,25 +13,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { usePagination } from "@/hooks/usePagination";
-
-interface Scorecard {
-  _id: string;
-  interviewId: {
-    _id: string;
-    scheduledAt: string;
-  };
-  applicationId: {
-    _id: string;
-    status: string;
-  };
-  jobSeekerId: {
-    userId: string;
-  };
-  overallScore: number;
-  recommendation: string;
-  createdAt: string;
-}
+import { useScorecards } from "@/hooks/useScorecards";
 
 const RECOMMENDATION_COLORS: Record<string, string> = {
   strong_yes: "bg-emerald-100 text-emerald-700 border-emerald-300",
@@ -58,34 +40,17 @@ function getScoreBadgeColor(score: number) {
 }
 
 export default function ScorecardListPage() {
-  const pagination = usePagination();
-  const [scorecards, setScorecards] = useState<Scorecard[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
+  const { data, isLoading: loading } = useScorecards({ page, limit });
+  const scorecards = data?.scorecards ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   useEffect(() => {
     document.title = "Interview Scorecards · MPLOYEDIN";
   }, []);
-
-  const fetchScorecards = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = pagination.paginationParams();
-      const res = await fetch(`/api/scorecards?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setScorecards(data.scorecards);
-        pagination.updateTotal(
-          data.pagination?.total ?? data.scorecards?.length ?? 0
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.page, pagination.limit]);
-
-  useEffect(() => {
-    fetchScorecards();
-  }, [fetchScorecards]);
 
   if (loading) {
     return (
@@ -107,7 +72,7 @@ export default function ScorecardListPage() {
     <div className="page-container">
       <PageHeader
         title="Interview Scorecards"
-        description={`${pagination.total} total scorecards`}
+        description={`${total} total scorecards`}
       />
 
       {scorecards.length === 0 ? (
@@ -176,12 +141,12 @@ export default function ScorecardListPage() {
       )}
 
       <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
     </div>
   );

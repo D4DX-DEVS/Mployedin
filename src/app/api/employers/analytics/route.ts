@@ -77,7 +77,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx): Promise<NextResponse
         selected: 0,
         hired: 0,
       },
-    } as AnalyticsResponse);
+    } as AnalyticsResponse, {
+      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },
+    });
   }
 
   // 1. FUNNEL: Group applications by status
@@ -193,7 +195,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx): Promise<NextResponse
     conversion,
   };
 
-  return NextResponse.json(response);
+  return NextResponse.json(response, {
+    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },
+  });
 }
 
 export const GET = withAuth(getHandler, { resource: "employers", action: "read" });

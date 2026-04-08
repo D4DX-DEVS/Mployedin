@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { toast } from "sonner";
 
 interface OfferJob {
   _id: string;
@@ -78,7 +79,7 @@ export default function OffersPage() {
 
   async function handleDeclineOffer(offerId: string) {
     if (!declineReason.trim()) {
-      alert("Please provide a reason for declining");
+      toast.error("Please provide a reason for declining");
       return;
     }
 

@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search, Inbox } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface CountryOption {
   _id: string;
@@ -50,6 +51,7 @@ interface CityItem {
 
 export default function CitiesPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<CityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -236,7 +238,8 @@ export default function CitiesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this city?")) return;
+    const ok = await confirmDialog("Are you sure you want to delete this city?");
+    if (!ok) return;
     await fetch(`/api/admin/location-data/cities/${id}`, { method: "DELETE" });
     fetchItems();
   };
@@ -255,6 +258,7 @@ export default function CitiesPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       {/* Header */}
       <div className="flex items-center justify-between">
         <PageHeader

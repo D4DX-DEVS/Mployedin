@@ -28,7 +28,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx): Promise<NextResponse>
   const allJobIds = jobs.map((j) => j._id);
 
   if (allJobIds.length === 0) {
-    return NextResponse.json({ stageDistribution: [], perJob: [], conversionRates: {}, stalledCount: 0 });
+    return NextResponse.json({ stageDistribution: [], perJob: [], conversionRates: {}, stalledCount: 0 }, {
+      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },
+    });
   }
 
   const matchFilter: Record<string, unknown> = {
@@ -111,6 +113,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx): Promise<NextResponse>
     perJob,
     conversionRates,
     stalledCount,
+  }, {
+    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },
   });
 }
 

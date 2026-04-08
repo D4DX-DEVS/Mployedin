@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Plus, Edit2, Eye, BarChart2, Clock, CheckCircle, XCircle, FileText, Trash2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,21 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
-
-interface Job {
-  _id: string;
-  title: string;
-  location: string | { isRemote?: boolean; city?: string; country?: string };
-  category: string;
-  status: "draft" | "active" | "closed" | "expired";
-  salary: { min: number; max: number; currency: string };
-  requirements: { skills: string[] };
-  "poster.approvalStatus": "pending" | "approved" | "rejected";
-  createdAt: string;
-  expiresAt?: string;
-}
+import { useConfirm } from "@/hooks/useConfirm";
+import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, type Job } from "@/hooks/useJobs";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -35,59 +24,49 @@ const STATUS_COLORS: Record<string, string> = {
 export default function EmployerJobsPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
-  const pagination = usePagination();
   const { can } = usePermissions();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
+
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
 
-  const fetchJobs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = pagination.paginationParams();
-      params.set("myJobs", "true");
-      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
-      if (search) params.set("search", search);
-      const res = await fetch(`/api/jobs?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setJobs(data.jobs);
-        pagination.updateTotal(data.pagination?.total ?? 0);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, search, pagination.page, pagination.limit]);
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [statusFilter, debouncedSearch]);
 
-  useEffect(() => {
-    document.title = "My Jobs · MPLOYEDIN";
-  }, []);
+  useEffect(() => { document.title = "My Jobs · MPLOYEDIN"; }, []);
 
-  useEffect(() => {
-    pagination.resetPage();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, search]);
+  // ── React Query ────────────────────────────────────────────────
+  const { data, isLoading } = useJobs({
+    page,
+    limit,
+    status: statusFilter,
+    search: debouncedSearch,
+    myJobs: true,
+  });
 
-  useEffect(() => {
-    const timer = setTimeout(fetchJobs, 300);
-    return () => clearTimeout(timer);
-  }, [fetchJobs]);
+  const jobs = data?.jobs ?? [];
+  const total = data?.pagination?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
-  async function updateStatus(jobId: string, status: string) {
-    const res = await fetch(`/api/jobs/${jobId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (res.ok) fetchJobs();
+  const updateStatus = useUpdateJobStatus();
+  const cloneJob = useCloneJob();
+  const deleteJob = useDeleteJob();
+
+  async function handleDeleteDraft(jobId: string) {
+    const ok = await confirmDialog("Delete this draft?");
+    if (!ok) return;
+    deleteJob.mutate(jobId);
   }
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <PageHeader
         title="My Job Postings"
-        description={`${pagination.total} total jobs`}
+        description={`${total} total jobs`}
         actions={
           can("jobs", "create") ? (
             <Button onClick={() => router.push(`/${locale}/employer/jobs/new`)} className="gap-2">
@@ -116,7 +95,7 @@ export default function EmployerJobsPage() {
         </Select>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="card-base p-4 sm:p-5 h-24 animate-pulse bg-muted/40" />
@@ -185,25 +164,24 @@ export default function EmployerJobsPage() {
                     {can("jobs", "create") && (
                       <Button size="sm" variant="ghost" title="Clone" className="h-8 w-8 p-0"
                         onClick={async () => {
-                          const res = await fetch(`/api/jobs/${job._id}/clone`, { method: "POST" });
-                          if (res.ok) fetchJobs();
+                          cloneJob.mutate(job._id);
                         }}>
                         <Copy className="w-4 h-4" />
                       </Button>
                     )}
                     {can("jobs", "update") && job.status === "draft" && (
-                      <Button size="sm" variant="outline" className="h-8 gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50" onClick={() => updateStatus(job._id, "active")}>
+                      <Button size="sm" variant="outline" className="h-8 gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50" onClick={() => updateStatus.mutate({ jobId: job._id, status: "active" })}>
                         <CheckCircle className="w-3.5 h-3.5" /> Activate
                       </Button>
                     )}
                     {can("jobs", "update") && job.status === "active" && (
-                      <Button size="sm" variant="outline" className="h-8 gap-1.5 text-destructive border-destructive/20 hover:bg-destructive/5" onClick={() => updateStatus(job._id, "closed")}>
+                      <Button size="sm" variant="outline" className="h-8 gap-1.5 text-destructive border-destructive/20 hover:bg-destructive/5" onClick={() => updateStatus.mutate({ jobId: job._id, status: "closed" })}>
                         <XCircle className="w-3.5 h-3.5" /> Close
                       </Button>
                     )}
                     {can("jobs", "delete") && job.status === "draft" && (
                       <Button size="sm" variant="ghost" title="Delete" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-                        onClick={async () => { if (confirm("Delete this draft?")) { await fetch(`/api/jobs/${job._id}`, { method: "DELETE" }); fetchJobs(); } }}>
+                        onClick={() => handleDeleteDraft(job._id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     )}
@@ -216,12 +194,12 @@ export default function EmployerJobsPage() {
       )}
 
       <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
     </div>
   );

@@ -10,14 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-
-interface WorkflowStage {
-  id: string;
-  label: string;
-  enabled: boolean;
-  autoProgress: boolean;
-  order: number;
-}
+import { useWorkflow, useSaveWorkflow, type WorkflowStage } from "@/hooks/useWorkflow";
 
 const DEFAULT_STAGES: WorkflowStage[] = [
   { id: "new", label: "New Application", enabled: true, autoProgress: false, order: 1 },
@@ -42,35 +35,34 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 export default function EmployerWorkflowPage() {
+  const { data: serverData, isLoading: loading, error: fetchError } = useWorkflow();
+  const saveWorkflow = useSaveWorkflow();
+
   const [stages, setStages] = useState<WorkflowStage[]>(DEFAULT_STAGES);
   const [aiAutoScreen, setAiAutoScreen] = useState(true);
   const [notifyOnStageChange, setNotifyOnStageChange] = useState(true);
   const [autoRejectBelow, setAutoRejectBelow] = useState(40);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [addingStage, setAddingStage] = useState(false);
   const [newStageLabel, setNewStageLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // Seed local state from server data
   useEffect(() => {
-    fetch("/api/employers/workflow")
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to load");
-        return r.json();
-      })
-      .then((d) => {
-        if (d.stages) setStages(d.stages);
-        if (d.settings) {
-          setAiAutoScreen(d.settings.aiAutoScreen ?? true);
-          setNotifyOnStageChange(d.settings.notifyOnStageChange ?? true);
-          setAutoRejectBelow(d.settings.autoRejectBelow ?? 40);
-        }
-      })
-      .catch(() => setError("Could not load workflow settings"))
-      .finally(() => setLoading(false));
-  }, []);
+    if (serverData) {
+      if (serverData.stages) setStages(serverData.stages);
+      if (serverData.settings) {
+        setAiAutoScreen(serverData.settings.aiAutoScreen ?? true);
+        setNotifyOnStageChange(serverData.settings.notifyOnStageChange ?? true);
+        setAutoRejectBelow(serverData.settings.autoRejectBelow ?? 40);
+      }
+    }
+  }, [serverData]);
+
+  useEffect(() => {
+    if (fetchError) setError("Could not load workflow settings");
+  }, [fetchError]);
 
   const markDirty = useCallback(() => { setDirty(true); setSaved(false); }, []);
 
@@ -114,24 +106,16 @@ export default function EmployerWorkflowPage() {
   };
 
   const handleSave = async () => {
-    setSaving(true);
     try {
-      const res = await fetch("/api/employers/workflow", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stages,
-          settings: { aiAutoScreen, notifyOnStageChange, autoRejectBelow },
-        }),
+      await saveWorkflow.mutateAsync({
+        stages,
+        settings: { aiAutoScreen, notifyOnStageChange, autoRejectBelow },
       });
-      if (!res.ok) throw new Error("Save failed");
       setSaved(true);
       setDirty(false);
       setTimeout(() => setSaved(false), 3000);
     } catch {
       setError("Failed to save workflow");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -156,18 +140,18 @@ export default function EmployerWorkflowPage() {
         actions={
           <Button
             onClick={handleSave}
-            disabled={saving || !dirty}
+            disabled={saveWorkflow.isPending || !dirty}
             className="gap-2"
             size="sm"
           >
-            {saving ? (
+            {saveWorkflow.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : saved ? (
               <CheckCircle className="h-4 w-4" />
             ) : (
               <Save className="h-4 w-4" />
             )}
-            {saving ? "Saving…" : saved ? "Saved!" : "Save Workflow"}
+            {saveWorkflow.isPending ? "Saving…" : saved ? "Saved!" : "Save Workflow"}
           </Button>
         }
       />
@@ -429,17 +413,17 @@ export default function EmployerWorkflowPage() {
           {/* Mobile save button */}
           <Button
             onClick={handleSave}
-            disabled={saving || !dirty}
+            disabled={saveWorkflow.isPending || !dirty}
             className="w-full gap-2 lg:hidden"
           >
-            {saving ? (
+            {saveWorkflow.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : saved ? (
               <CheckCircle className="h-4 w-4" />
             ) : (
               <Save className="h-4 w-4" />
             )}
-            {saving ? "Saving…" : saved ? "Saved!" : "Save Workflow"}
+            {saveWorkflow.isPending ? "Saving…" : saved ? "Saved!" : "Save Workflow"}
           </Button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
+import Employer from "@/models/Employer";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
 import { employerAdminCreateSchema } from "@/lib/validators/employers";
@@ -34,7 +35,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     query.assignedAgent = ctx.userId;
   }
 
-  const [employers, total] = await Promise.all([
+  const [users, total] = await Promise.all([
     User.find(query)
       .select("name email companyName industry location isActive createdAt")
       .sort({ name: 1 })
@@ -43,6 +44,26 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       .lean(),
     User.countDocuments(query),
   ]);
+
+  // Attach verificationDocs and domainVerified from Employer model
+  const userIds = users.map((u) => u._id);
+  const employerProfiles = await Employer.find({ userId: { $in: userIds } })
+    .select("userId verificationDocs domainVerified verificationLevel")
+    .lean();
+
+  const profileMap = new Map(
+    employerProfiles.map((e) => [String(e.userId), e])
+  );
+
+  const employers = users.map((u) => {
+    const profile = profileMap.get(String(u._id));
+    return {
+      ...u,
+      verificationDocs: profile?.verificationDocs ?? [],
+      domainVerified: profile?.domainVerified ?? false,
+      verificationLevel: profile?.verificationLevel,
+    };
+  });
 
   return NextResponse.json({
     employers,

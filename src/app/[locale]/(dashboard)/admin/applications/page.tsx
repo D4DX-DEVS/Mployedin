@@ -7,6 +7,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { Pencil, Trash2, Search, Inbox } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +26,7 @@ const STATUSES = ["applied", "shortlisted", "interview_scheduled", "selected", "
 
 export default function AdminApplicationsPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -57,12 +59,14 @@ export default function AdminApplicationsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to reject this application?")) return;
+    const ok = await confirmDialog("Are you sure you want to reject this application?");
+    if (!ok) return;
     await updateStatus(id, "rejected");
   };
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <PageHeader title="Applications" description="View and manage all job applications across the platform" />
 
       <div className="flex flex-wrap gap-3">

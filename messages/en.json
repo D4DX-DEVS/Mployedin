@@ -553,8 +553,8 @@
     "steps": {
       "companyProfile": "Complete Company Profile",
       "companyProfileDesc": "Add company name, industry and contact email",
-      "verifyDomain": "Verify Your Domain",
-      "verifyDomainDesc": "Verify your company domain to unlock publishing",
+      "addContact": "Add Contact Details",
+      "addContactDesc": "Add your website and phone number",
       "createJob": "Create Your First Job",
       "createJobDesc": "Post a job to start receiving applications",
       "addRequirements": "Add Requirements & Skills",

@@ -56,6 +56,22 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   const user = await User.findById(params?.id);
   if (!user) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
 
+  const permanent = new URL(req.url).searchParams.get("permanent") === "true";
+
+  if (permanent) {
+    const { Employer } = await import("@/models/Employer");
+    await Employer.deleteOne({ userId: user._id });
+    await user.deleteOne();
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "employer.delete",
+      resource: "employers",
+      resourceId: params?.id,
+      req,
+    });
+    return NextResponse.json({ message: "Employer permanently deleted" });
+  }
+
   user.isActive = false;
   await user.save();
 

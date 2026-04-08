@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Search, Filter, Loader2, CheckCircle2, Clock, AlertCircle, Pencil, Trash2, Inbox } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,6 +40,7 @@ const VISA_ICONS: Record<string, React.ReactNode> = {
 
 export default function AdminPlacementsPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [placements, setPlacements] = useState<Placement[]>([]);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [totalValue, setTotalValue] = useState(0);
@@ -91,7 +93,8 @@ export default function AdminPlacementsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this placement?")) return;
+    const ok = await confirmDialog("Delete this placement?");
+    if (!ok) return;
     await fetch(`/api/placements/${id}`, { method: "DELETE" });
     load();
   };
@@ -113,7 +116,8 @@ export default function AdminPlacementsPage() {
 
   return (
     <div className="page-container">
-      <PageHeader title="Placement Tracking" description={`${total} placements · Total salary value: ${totalValue.toLocaleString()} AED`} />
+      {ConfirmDialogNode}
+      <PageHeader title="Placement Tracking"description={`${total} placements · Total salary value: ${totalValue.toLocaleString()} AED`} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

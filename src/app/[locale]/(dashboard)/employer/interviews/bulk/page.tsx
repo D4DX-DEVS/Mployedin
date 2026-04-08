@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Calendar, Search, Users, Clock, Send, CheckCircle, Loader2, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { useShortlistedCandidates, useBulkScheduleInterviews } from "@/hooks/useInterviews";
 
 interface Candidate {
   _id: string;
@@ -23,40 +24,26 @@ interface InterviewSlot {
 }
 
 export default function EmployerBulkInterviewPage() {
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [slot, setSlot] = useState<InterviewSlot>({
     date: "", time: "10:00", duration: 45, type: "video", meetLink: "", location: "",
   });
-  const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ sent: number; failed: number } | null>(null);
   const [jobId, setJobId] = useState("");
 
-  const loadCandidates = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ status: "shortlisted", limit: "100" });
-      if (jobId) params.set("jobId", jobId);
-      const res = await fetch(`/api/applications?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        const apps = data.applications ?? [];
-        setCandidates(apps.map((app: { _id: string; jobSeeker?: { _id: string; name: string; email: string }; jobId?: { title: string } }) => ({
-          _id: app.jobSeeker?._id ?? app._id,
-          name: app.jobSeeker?.name ?? "Unknown",
-          email: app.jobSeeker?.email ?? "",
-          jobTitle: (app.jobId as { title?: string } | undefined)?.title,
-          applicationId: app._id,
-          selected: false,
-        })));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [jobId]);
+  const { data: rawApps = [], isLoading: loading } = useShortlistedCandidates(jobId);
+  const bulkSchedule = useBulkScheduleInterviews();
 
-  useEffect(() => { loadCandidates(); }, [loadCandidates]);
+  const [selections, setSelections] = useState<Record<string, boolean>>({});
+
+  const candidates: Candidate[] = rawApps.map((app: { _id: string; jobSeeker?: { _id: string; name: string; email: string }; jobId?: { title: string } }) => ({
+    _id: app.jobSeeker?._id ?? app._id,
+    name: app.jobSeeker?.name ?? "Unknown",
+    email: app.jobSeeker?.email ?? "",
+    jobTitle: (app.jobId as { title?: string } | undefined)?.title,
+    applicationId: app._id,
+    selected: selections[app.jobSeeker?._id ?? app._id] ?? false,
+  }));
 
   const filteredCandidates = candidates.filter(c =>
     !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase())
@@ -65,38 +52,32 @@ export default function EmployerBulkInterviewPage() {
   const selectedCount = candidates.filter(c => c.selected).length;
 
   const toggleSelect = (id: string) =>
-    setCandidates(cs => cs.map(c => c._id === id ? { ...c, selected: !c.selected } : c));
+    setSelections(prev => ({ ...prev, [id]: !prev[id] }));
 
   const toggleAll = () => {
     const allSelected = filteredCandidates.every(c => c.selected);
-    setCandidates(cs => cs.map(c => filteredCandidates.find(f => f._id === c._id) ? { ...c, selected: !allSelected } : c));
+    const updates: Record<string, boolean> = {};
+    filteredCandidates.forEach(c => { updates[c._id] = !allSelected; });
+    setSelections(prev => ({ ...prev, ...updates }));
   };
 
   const handleSend = async () => {
     const selected = candidates.filter(c => c.selected);
     if (!selected.length || !slot.date || !slot.time) return;
-    setSending(true);
+    const scheduledAt = new Date(`${slot.date}T${slot.time}:00`).toISOString();
     try {
-      const scheduledAt = new Date(`${slot.date}T${slot.time}:00`).toISOString();
-      const res = await fetch("/api/interviews/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          candidates: selected.map(c => ({ jobSeekerId: c._id, applicationId: c.applicationId })),
-          scheduledAt,
-          duration: slot.duration,
-          type: slot.type,
-          location: slot.location,
-          meetLink: slot.meetLink,
-        }),
+      const data = await bulkSchedule.mutateAsync({
+        candidates: selected.map(c => ({ jobSeekerId: c._id, applicationId: c.applicationId! })),
+        scheduledAt,
+        duration: slot.duration,
+        type: slot.type,
+        location: slot.location,
+        meetLink: slot.meetLink,
       });
-      if (res.ok) {
-        const data = await res.json();
-        setResult({ sent: data.created ?? selected.length, failed: data.failed ?? 0 });
-        setCandidates(cs => cs.map(c => ({ ...c, selected: false })));
-      }
-    } finally {
-      setSending(false);
+      setResult({ sent: data.created ?? selected.length, failed: data.failed ?? 0 });
+      setSelections({});
+    } catch {
+      // error handled by React Query
     }
   };
 
@@ -224,10 +205,10 @@ export default function EmployerBulkInterviewPage() {
           )}
 
           <button onClick={handleSend}
-            disabled={sending || selectedCount === 0 || !slot.date || !slot.time}
+            disabled={bulkSchedule.isPending || selectedCount === 0 || !slot.date || !slot.time}
             className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60">
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {sending ? "Scheduling…" : `Schedule for ${selectedCount} Candidate${selectedCount !== 1 ? "s" : ""}`}
+            {bulkSchedule.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {bulkSchedule.isPending ? "Scheduling…" : `Schedule for ${selectedCount} Candidate${selectedCount !== 1 ? "s" : ""}`}
           </button>
 
           <div className="flex items-center gap-2 pt-2 border-t text-xs text-muted-foreground">

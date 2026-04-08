@@ -114,4 +114,5 @@ export const adminUserPatchSchema = z.union([
 /** DELETE /api/admin/users */
 export const adminUserDeleteSchema = z.object({
   userId: commonSchemas.objectId,
+  permanent: z.boolean().optional(),
 });

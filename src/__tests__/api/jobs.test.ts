@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * API Integration Tests — Jobs CRUD flow
  *
  * Tests: create job → list jobs → apply → update status → cleanup

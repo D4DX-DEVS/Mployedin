@@ -37,6 +37,7 @@ interface ProfileData {
   portfolio: string;
   profileCompleteness: number;
   cvFileUrl: string;
+  cv?: { originalUrl?: string; parsedAt?: string; rawText?: string };
   cvExtractedByAI: boolean;
   badges: string[];
 }
@@ -52,7 +53,7 @@ type ChecklistStep = {
 
 function buildChecklist(profile: ProfileData | null): ChecklistStep[] {
   return [
-    { id: "cv",          label: "Upload Resume",      bonus: "+30%", done: !!profile?.cvFileUrl,                      href: "./cv",                    icon: FileText      },
+    { id: "cv",          label: "Upload Resume",      bonus: "+30%", done: !!(profile?.cvFileUrl || profile?.cv?.originalUrl), href: "./cv",                    icon: FileText      },
     { id: "skills",      label: "Add Skills",         bonus: "+20%", done: (profile?.skills?.length ?? 0) > 0,        href: "./cv",                    icon: Award         },
     { id: "experience",  label: "Add Experience",     bonus: "+15%", done: (profile?.experience?.length ?? 0) > 0,    href: "./cv",                    icon: Briefcase     },
     { id: "education",   label: "Add Education",      bonus: "+10%", done: (profile?.education?.length ?? 0) > 0,     href: "./cv",                    icon: GraduationCap },

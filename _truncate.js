@@ -1,0 +1,10 @@
+const fs = require('fs');
+const filePath = String.raw`c:\Users\moham\OneDrive\Desktop\Mbloyedin\mployedin\src\app\[locale]\(auth)\onboarding\page.tsx`;
+const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+console.log('Before:', lines.length, 'lines');
+const kept = lines.slice(0, 531);
+fs.writeFileSync(filePath, kept.join('\n'), 'utf8');
+const after = fs.readFileSync(filePath, 'utf8').split('\n');
+console.log('After:', after.length, 'lines');
+console.log('First:', after[0]);
+console.log('Last:', after[after.length - 1]);

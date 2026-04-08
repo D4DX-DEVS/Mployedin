@@ -1,4 +1,7 @@
 /**
+ * @jest-environment node
+ */
+/**
  * Performance benchmarks — verify API route handler execution time targets.
  * Uses jest fake timers + mocks to simulate timed execution.
  */

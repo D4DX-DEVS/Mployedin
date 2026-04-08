@@ -14,16 +14,18 @@ interface MatchingWeights {
   salary: number;
   languages: number;
   availability: number;
+  behaviorSignals: number;
 }
 
 const DEFAULT_WEIGHTS: MatchingWeights = {
-  skills: 30,
-  experience: 25,
-  education: 15,
-  location: 10,
-  salary: 10,
+  skills: 27,
+  experience: 23,
+  education: 13,
+  location: 9,
+  salary: 9,
   languages: 5,
-  availability: 5,
+  availability: 4,
+  behaviorSignals: 10,
 };
 
 async function GET(_req: NextRequest, ctx: { userId: string }) {

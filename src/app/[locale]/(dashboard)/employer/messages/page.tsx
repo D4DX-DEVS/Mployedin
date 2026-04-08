@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { MessageSquare, Search, Inbox, Loader2 } from "lucide-react";
@@ -8,22 +8,8 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { DirectMessageChat } from "@/components/features/dm/DirectMessageChat";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-
-interface Participant {
-  userId: string;
-  name: string;
-  role: string;
-  avatar?: string;
-}
-
-interface Conversation {
-  _id: string;
-  participants: string[];
-  participantDetails: Participant[];
-  lastMessage?: string;
-  lastMessageAt?: string;
-  unreadCounts?: Record<string, number>;
-}
+import { useConversations } from "@/hooks/useConversations";
+import type { Conversation } from "@/hooks/useConversations";
 
 export default function EmployerMessagesPage() {
   const { data: session } = useSession();
@@ -31,34 +17,13 @@ export default function EmployerMessagesPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: conversations = [], isLoading: loading } = useConversations();
   const [search, setSearch] = useState("");
   const [activeConvId, setActiveConvId] = useState<string | null>(
     searchParams.get("conv")
   );
 
   const currentUserId = (session?.user as unknown as { id?: string })?.id ?? "";
-
-  const loadConversations = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/dm");
-      if (res.ok) {
-        const data = await res.json();
-        setConversations(data.conversations ?? []);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadConversations();
-    // Refresh list every 30s to pick up new conversations started from other pages
-    const interval = setInterval(loadConversations, 30000);
-    return () => clearInterval(interval);
-  }, [loadConversations]);
 
   // Sync active conv with URL param
   useEffect(() => {

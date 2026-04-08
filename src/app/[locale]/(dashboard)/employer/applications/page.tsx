@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
-import { User, Calendar, Inbox, CheckSquare, Square, X, ChevronDown, GripVertical, Award, DollarSign, Filter, Clock, History, BarChart3, GitCompare, ArrowRight } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { useSearchParams, useParams } from "next/navigation";
+import { User, Calendar, Inbox, CheckSquare, Square, X, ChevronDown, GripVertical, Award, DollarSign, Filter, Clock, History, BarChart3, GitCompare, ArrowRight, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,19 +12,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { usePagination } from "@/hooks/usePagination";
+import {
+  useApplications,
+  useUpdateApplicationStatus,
+  useBulkAction,
+  useApplicationTimeline,
+  useCreateScorecard,
+  useCreateInterviewFromApp,
+  useCreateOfferFromApp,
+  useFetchInterviewForApp,
+  useCompareApplications,
+} from "@/hooks/useApplications";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ScorecardForm } from "@/components/scorecards/ScorecardForm";
 
 interface Applicant {
   _id: string;
   jobId: { _id: string; title: string };
-  jobSeekerId: { userId: string };
+  jobSeekerId: { _id?: string; userId: string };
   status: string;
   aiMatchScore?: number;
   appliedAt: string;
   coverLetter?: string;
   matchBreakdown?: { skills: number; experience: number; overall: number };
+  otherApplicationsCount?: number;
 }
 
 interface TimelineEntry {
@@ -64,73 +75,64 @@ const PIPELINE_STAGES = [
 
 export default function EmployerApplicationsPage() {
   const searchParams = useSearchParams();
+  const { locale } = useParams<{ locale: string }>();
   const jobId = searchParams.get("jobId") ?? "";
-  const pagination = usePagination();
   const { can } = usePermissions();
-  const [applications, setApplications] = useState<Applicant[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState("all");
   const [view, setView] = useState<"kanban" | "table">("table");
   const [selected, setSelected] = useState<string[]>([]);
-  const [bulkLoading, setBulkLoading] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectPrompt, setShowRejectPrompt] = useState(false);
   const [scorecardModal, setScorecardModal] = useState<{ applicationId: string; interviewId: string } | null>(null);
-  const [scorecardLoading, setScorecardLoading] = useState(false);
   const [interviewModal, setInterviewModal] = useState<{ appId: string; jobId: string; jobSeekerId: string } | null>(null);
   const [offerModal, setOfferModal] = useState<{ appId: string } | null>(null);
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
   const [daysFilter, setDaysFilter] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [timelinePanel, setTimelinePanel] = useState<{ appId: string; candidateLabel: string } | null>(null);
-  const [timelineData, setTimelineData] = useState<TimelineEntry[]>([]);
-  const [timelineLoading, setTimelineLoading] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [compareModal, setCompareModal] = useState(false);
+
+  // ── React Query hooks ─────────────────────────────────────────────
+  const applicationsQuery = useApplications({
+    page, limit,
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    jobId: jobId || undefined,
+  });
+  const updateStatus = useUpdateApplicationStatus();
+  const bulkAction = useBulkAction();
+  const createScorecard = useCreateScorecard();
+  const createInterview = useCreateInterviewFromApp();
+  const createOffer = useCreateOfferFromApp();
+  const fetchInterviewForApp = useFetchInterviewForApp();
+  const timelineQuery = useApplicationTimeline(timelinePanel?.appId ?? null);
+
+  // ── Derived values ────────────────────────────────────────────────
+  const applications = (applicationsQuery.data?.applications ?? []) as Applicant[];
+  const total = applicationsQuery.data?.pagination?.total ?? applications.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const isLoading = applicationsQuery.isLoading;
+  const timelineData: TimelineEntry[] = timelineQuery.data?.timeline ?? [];
+  const timelineLoading = timelineQuery.isLoading;
 
   useEffect(() => {
     document.title = "Applications · MPLOYEDIN";
   }, []);
 
-  const fetchApplications = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = pagination.paginationParams();
-      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
-      if (jobId) params.set("jobId", jobId);
-      const res = await fetch(`/api/applications?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setApplications(data.applications);
-        pagination.updateTotal(data.pagination?.total ?? data.applications?.length ?? 0);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, jobId, pagination.page, pagination.limit]);
+  useEffect(() => { setPage(1); setSelected([]); }, [statusFilter]);
 
-  useEffect(() => { fetchApplications(); }, [fetchApplications]);
-  useEffect(() => { pagination.resetPage(); setSelected([]); }, [statusFilter]);
-
-  async function updateApplicationStatus(id: string, status: string, reason?: string) {
-    const res = await fetch(`/api/applications/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, ...(reason && { rejectionReason: reason }) }),
-    });
-    if (res.ok) fetchApplications();
+  function updateApplicationStatus(id: string, status: string, reason?: string) {
+    return updateStatus.mutateAsync({ id, status, rejectionReason: reason });
   }
 
-  async function handleOpenScorecard(applicationId: string) {
-    // Fetch the interview for this application
+  async function handleOpenScorecard(data: { applicationId: string; interviewId: string }) {
     try {
-      const res = await fetch(`/api/interviews?applicationId=${applicationId}&limit=1`);
-      if (res.ok) {
-        const data = await res.json();
-        const interview = data.interviews?.[0];
-        if (interview) {
-          setScorecardModal({ applicationId, interviewId: interview._id });
-        }
+      const result = await fetchInterviewForApp.mutateAsync(data.applicationId);
+      const interview = result.interviews?.[0];
+      if (interview) {
+        setScorecardModal({ applicationId: data.applicationId, interviewId: interview._id });
       }
     } catch (err) {
       console.error("Failed to fetch interview:", err);
@@ -145,22 +147,14 @@ export default function EmployerApplicationsPage() {
     concerns?: string;
   }) {
     if (!scorecardModal) return;
-    setScorecardLoading(true);
     try {
-      const res = await fetch("/api/scorecards", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          interviewId: scorecardModal.interviewId,
-          ...data,
-        }),
+      await createScorecard.mutateAsync({
+        interviewId: scorecardModal.interviewId,
+        ...data,
       });
-      if (res.ok) {
-        setScorecardModal(null);
-        fetchApplications();
-      }
-    } finally {
-      setScorecardLoading(false);
+      setScorecardModal(null);
+    } catch {
+      // error handled by React Query
     }
   }
 
@@ -169,24 +163,16 @@ export default function EmployerApplicationsPage() {
   }) {
     if (!interviewModal) return;
     try {
-      // Create the interview
-      const res = await fetch("/api/interviews/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          candidates: [{
-            applicationId: interviewModal.appId,
-            jobSeekerId: interviewModal.jobSeekerId,
-          }],
-          jobId: interviewModal.jobId,
-          ...data,
-        }),
+      await createInterview.mutateAsync({
+        candidates: [{
+          applicationId: interviewModal.appId,
+          jobSeekerId: interviewModal.jobSeekerId,
+        }],
+        jobId: interviewModal.jobId,
+        ...data,
       });
-      if (res.ok) {
-        // Also update application status
-        await updateApplicationStatus(interviewModal.appId, "interview_scheduled");
-        setInterviewModal(null);
-      }
+      await updateApplicationStatus(interviewModal.appId, "interview_scheduled");
+      setInterviewModal(null);
     } catch (err) {
       console.error("Failed to create interview:", err);
     }
@@ -198,37 +184,16 @@ export default function EmployerApplicationsPage() {
   }) {
     if (!offerModal) return;
     try {
-      const res = await fetch("/api/offers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationId: offerModal.appId, ...data }),
-      });
-      if (res.ok) {
-        setOfferModal(null);
-        fetchApplications();
-      }
+      await createOffer.mutateAsync({ applicationId: offerModal.appId, ...data });
+      setOfferModal(null);
     } catch (err) {
       console.error("Failed to create offer:", err);
     }
   }
 
-  async function openTimeline(appId: string) {
+  function openTimeline(appId: string) {
     const label = `#${appId.slice(-4)}`;
     setTimelinePanel({ appId, candidateLabel: label });
-    setTimelineLoading(true);
-    try {
-      const res = await fetch(`/api/applications/${appId}/timeline`);
-      if (res.ok) {
-        const data = await res.json();
-        setTimelineData(data.timeline ?? []);
-      } else {
-        setTimelineData([]);
-      }
-    } catch {
-      setTimelineData([]);
-    } finally {
-      setTimelineLoading(false);
-    }
   }
 
   function toggleCompare(appId: string) {
@@ -256,28 +221,20 @@ export default function EmployerApplicationsPage() {
       setShowRejectPrompt(true);
       return;
     }
-    setBulkLoading(true);
     try {
-      const res = await fetch("/api/applications/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          applicationIds: selected,
-          action,
-          params: {
-            ...(targetStage && { targetStage }),
-            ...(action === "reject" && { rejectionReason: rejectionReason.trim() }),
-          },
-        }),
+      await bulkAction.mutateAsync({
+        applicationIds: selected,
+        action,
+        params: {
+          ...(targetStage && { targetStage }),
+          ...(action === "reject" && { rejectionReason: rejectionReason.trim() }),
+        },
       });
-      if (res.ok) {
-        setSelected([]);
-        setRejectionReason("");
-        setShowRejectPrompt(false);
-        fetchApplications();
-      }
-    } finally {
-      setBulkLoading(false);
+      setSelected([]);
+      setRejectionReason("");
+      setShowRejectPrompt(false);
+    } catch {
+      // error handled by React Query
     }
   }
 
@@ -306,7 +263,7 @@ export default function EmployerApplicationsPage() {
     <div className="page-container">
       <PageHeader
         title="Applications"
-        description={`${pagination.total} total applicants${jobId ? " for this job" : ""}`}
+        description={`${total} total applicants${jobId ? " for this job" : ""}`}
         actions={
           <div className="flex gap-2">
             <Button size="sm" variant={view === "table" ? "default" : "outline"} onClick={() => setView("table")}>Table</Button>
@@ -378,15 +335,15 @@ export default function EmployerApplicationsPage() {
           <span className="text-sm font-medium text-primary">{selected.length} selected</span>
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" className="h-8 text-xs"
-              onClick={() => handleBulkAction("move_stage", "shortlisted")} disabled={bulkLoading}>
+              onClick={() => handleBulkAction("move_stage", "shortlisted")} disabled={bulkAction.isPending}>
               Move to Shortlisted
             </Button>
             <Button size="sm" variant="outline" className="h-8 text-xs"
-              onClick={() => handleBulkAction("move_stage", "interview_scheduled")} disabled={bulkLoading}>
+              onClick={() => handleBulkAction("move_stage", "interview_scheduled")} disabled={bulkAction.isPending}>
               <Calendar className="w-3 h-3 mr-1" /> Move to Interview
             </Button>
             <Button size="sm" variant="outline" className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
-              onClick={() => setShowRejectPrompt(true)} disabled={bulkLoading}>
+              onClick={() => setShowRejectPrompt(true)} disabled={bulkAction.isPending}>
               Reject All
             </Button>
           </div>
@@ -409,8 +366,8 @@ export default function EmployerApplicationsPage() {
               maxLength={500}
             />
             <Button size="sm" variant="destructive" className="h-9"
-              onClick={() => handleBulkAction("reject")} disabled={bulkLoading || !rejectionReason.trim()}>
-              {bulkLoading ? "Rejecting…" : "Confirm Reject"}
+              onClick={() => handleBulkAction("reject")} disabled={bulkAction.isPending || !rejectionReason.trim()}>
+              {bulkAction.isPending ? "Rejecting…" : "Confirm Reject"}
             </Button>
             <Button size="sm" variant="ghost" className="h-9" onClick={() => setShowRejectPrompt(false)}>Cancel</Button>
           </div>
@@ -433,7 +390,7 @@ export default function EmployerApplicationsPage() {
         </div>
       )}
 
-      {loading ? (
+      {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="card-base h-28 animate-pulse" />
@@ -488,7 +445,7 @@ export default function EmployerApplicationsPage() {
           onToggle={canUpdate ? toggleSelect : undefined}
           onToggleAll={canUpdate ? toggleAll : undefined}
           onUpdateStatus={canUpdate ? updateApplicationStatus : undefined}
-          onScorecard={canUpdate ? setScorecardModal : undefined}
+          onScorecard={canUpdate ? handleOpenScorecard : undefined}
           onOffer={canUpdate ? (app: Applicant) => setOfferModal({ appId: app._id }) : undefined}
           onTimeline={openTimeline}
           onCompare={toggleCompare}
@@ -511,7 +468,7 @@ export default function EmployerApplicationsPage() {
                 interviewId={scorecardModal.interviewId}
                 onSubmit={handleScorecardSubmit}
                 onCancel={() => setScorecardModal(null)}
-                isLoading={scorecardLoading}
+                isLoading={createScorecard.isPending}
               />
             </div>
           </div>
@@ -554,12 +511,12 @@ export default function EmployerApplicationsPage() {
       )}
 
       <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(newLimit: number) => { setLimit(newLimit); setPage(1); }}
       />
     </div>
   );
@@ -674,6 +631,7 @@ function KanbanCard({
   const [reason, setReason] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const { locale } = useParams<{ locale: string }>();
 
   const daysInStage = Math.floor((Date.now() - new Date(app.appliedAt).getTime()) / 86400000);
   const daysColor = daysInStage >= 7 ? "text-red-500" : daysInStage >= 3 ? "text-amber-500" : "text-emerald-500";
@@ -703,6 +661,17 @@ function KanbanCard({
         )}
       </div>
       <p className="text-muted-foreground truncate">{app.jobId?.title}</p>
+
+      {/* Cross-application badge */}
+      {(app.otherApplicationsCount ?? 0) > 0 && (
+        <a
+          href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
+          className="flex items-center gap-1 text-[10px] text-blue-600 hover:underline mt-1"
+        >
+          <Users className="h-2.5 w-2.5" />
+          +{app.otherApplicationsCount} other role{app.otherApplicationsCount! > 1 ? "s" : ""}
+        </a>
+      )}
 
       {/* Days in stage indicator */}
       <div className="flex items-center gap-1 mt-1">
@@ -818,6 +787,7 @@ function TableView({
 }) {
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [reason, setReason] = useState("");
+  const { locale } = useParams<{ locale: string }>();
 
   if (!applications.length) {
     return (
@@ -890,7 +860,18 @@ function TableView({
                     <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
                       <User className="w-3.5 h-3.5 text-primary" />
                     </div>
-                    <span className="font-medium">Candidate #{app._id.slice(-4)}</span>
+                    <div>
+                      <span className="font-medium">Candidate #{app._id.slice(-4)}</span>
+                      {(app.otherApplicationsCount ?? 0) > 0 && (
+                        <a
+                          href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
+                          className="flex items-center gap-1 text-[10px] text-blue-600 hover:underline mt-0.5"
+                        >
+                          <Users className="h-2.5 w-2.5" />
+                          Also applied to {app.otherApplicationsCount} other role{app.otherApplicationsCount! > 1 ? "s" : ""}
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground truncate max-w-[160px]">
@@ -1480,32 +1461,10 @@ function CandidateCompareModal({
   applicationIds: string[];
   onClose: () => void;
 }) {
-  const [candidates, setCandidates] = useState<CompareCandidate[]>([]);
-  const [commonSkills, setCommonSkills] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchComparison() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/applications/compare?ids=${applicationIds.join(",")}`);
-        if (res.ok) {
-          const data = await res.json();
-          setCandidates(data.candidates ?? []);
-          setCommonSkills(data.commonSkills ?? []);
-        } else {
-          setError("Failed to load comparison data");
-        }
-      } catch {
-        setError("Failed to load comparison data");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchComparison();
-  }, [applicationIds]);
+  const { data, isLoading: loading, error: queryError } = useCompareApplications(applicationIds);
+  const candidates: CompareCandidate[] = data?.candidates ?? [];
+  const commonSkills: string[] = data?.commonSkills ?? [];
+  const error = queryError ? "Failed to load comparison data" : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">

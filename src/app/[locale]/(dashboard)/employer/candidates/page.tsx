@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-
-import { usePagination } from "@/hooks/usePagination";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,88 +11,49 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Sparkles, Loader2, Star, Users, MapPin, Briefcase, Eye, MessageSquare } from "lucide-react";
+import { Search, Sparkles, Loader2, Star, Users, MapPin, Briefcase, Eye, MessageSquare, Zap, FileText, CheckCircle } from "lucide-react";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
-
-interface Candidate {
-  _id: string;
-  userId?: { _id: string; name: string; email: string };
-  currentLocation?: string;
-  experience?: { jobTitle: string; company: string; isCurrent: boolean }[];
-  skills?: string[];
-  availabilityStatus?: string;
-  profileCompleteness?: number;
-  matchScore?: number;
-  matchBreakdown?: {
-    skills: number;
-    experience: number;
-    location: number;
-    language: number;
-  };
-  matchSummary?: string;
-  strengths?: string[];
-  gaps?: string[];
-  cv?: { originalUrl?: string };
-}
-
-interface Job { _id: string; title: string; }
+import { useCandidates, usePublishedJobs, useStartConversation, useAiMatch } from "@/hooks/useCandidates";
+import type { Candidate } from "@/hooks/useCandidates";
 
 export default function EmployerCandidatesPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
-  const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState("");
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [matching, setMatching] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [view, setView] = useState<"table" | "cards">("table");
-  const pagination = usePagination();
   const [viewingCv, setViewingCv] = useState<{ url: string; name: string } | null>(null);
+  const [matching, setMatching] = useState(false);
+  const [localCandidates, setLocalCandidates] = useState<Candidate[] | null>(null);
 
-  const loadJobs = useCallback(async () => {
-    const res = await fetch("/api/jobs?limit=50&status=published");
-    if (res.ok) {
-      const data = await res.json();
-      setJobs(data.jobs ?? []);
-    }
-  }, []);
+  const { data: jobs = [] } = usePublishedJobs();
+  const { data: candidatesData, isLoading: loading } = useCandidates({ page, limit, search: debouncedSearch });
+  const startDmMutation = useStartConversation();
+  const aiMatchMutation = useAiMatch();
 
-  const loadCandidates = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = pagination.paginationParams();
-      if (search) params.set("search", search);
-      const res = await fetch(`/api/job-seekers?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCandidates(data.items ?? []);
-        pagination.updateTotal(data.total ?? 0);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [search, pagination.page, pagination.limit]);
+  const candidates = localCandidates ?? candidatesData?.candidates ?? [];
+  const total = candidatesData?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
-  useEffect(() => { loadJobs(); }, [loadJobs]);
+  // Reset local AI match overrides when server data changes
+  useEffect(() => { setLocalCandidates(null); }, [candidatesData]);
+
+  // Debounce search input
   useEffect(() => {
-    const t = setTimeout(loadCandidates, 300);
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
-  }, [loadCandidates]);
+  }, [search]);
 
-  useEffect(() => { pagination.resetPage(); }, [search]);
+  // Reset page on search change
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
 
   const startDM = async (recipientUserId: string) => {
     try {
-      const res = await fetch("/api/dm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipientId: recipientUserId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        router.push(`/${locale}/employer/messages?conv=${data.conversation._id}`);
-      }
+      const data = await startDmMutation.mutateAsync(recipientUserId);
+      router.push(`/${locale}/employer/messages?conv=${data.conversation._id}`);
     } catch { /* ignore */ }
   };
 
@@ -106,32 +65,26 @@ export default function EmployerCandidatesPage() {
       const updated = await Promise.all(
         top.map(async (c) => {
           try {
-            const res = await fetch("/api/ai/match", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ jobId: selectedJob, jobSeekerId: c._id }),
-            });
-            if (res.ok) {
-              const data = await res.json();
-              return {
-                ...c,
-                matchScore: data.score,
-                matchBreakdown: data.breakdown,
-                matchSummary: data.summary,
-                strengths: data.strengths,
-                gaps: data.gaps,
-              };
-            }
+            const data = await aiMatchMutation.mutateAsync({ jobId: selectedJob, jobSeekerId: c._id });
+            return {
+              ...c,
+              matchScore: data.score,
+              matchBreakdown: data.breakdown,
+              matchSummary: data.summary,
+              strengths: data.strengths,
+              gaps: data.gaps,
+            };
           } catch { /* skip */ }
           return c;
         })
       );
-      setCandidates((prev) => {
-        const updMap = Object.fromEntries(updated.map((u) => [u._id, u]));
-        return prev
+      const baseCandidates = candidatesData?.candidates ?? [];
+      const updMap = Object.fromEntries(updated.map((u) => [u._id, u]));
+      setLocalCandidates(
+        baseCandidates
           .map((c) => updMap[c._id] ?? c)
-          .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
-      });
+          .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+      );
     } finally {
       setMatching(false);
     }
@@ -157,6 +110,20 @@ export default function EmployerCandidatesPage() {
   const currentRole = (c: Candidate) =>
     c.experience?.find((e) => e.isCurrent)?.jobTitle ?? null;
 
+  const getBehaviorBadges = (c: Candidate) => {
+    const badges: { label: string; icon: React.ReactNode; color: string }[] = [];
+    if (c.profileCompleteness != null && c.profileCompleteness >= 90) {
+      badges.push({ label: "Complete profile", icon: <CheckCircle className="h-3 w-3" />, color: "bg-emerald-50 text-emerald-700 border-emerald-200" });
+    }
+    if (c.availabilityStatus === "immediately") {
+      badges.push({ label: "Available now", icon: <Zap className="h-3 w-3" />, color: "bg-blue-50 text-blue-700 border-blue-200" });
+    }
+    if (c.matchScore != null && c.matchScore >= 80) {
+      badges.push({ label: "Strong match", icon: <Sparkles className="h-3 w-3" />, color: "bg-amber-50 text-amber-700 border-amber-200" });
+    }
+    return badges;
+  };
+
   return (
     <div className="page-container">
       {viewingCv && (
@@ -168,7 +135,7 @@ export default function EmployerCandidatesPage() {
       )}
       <PageHeader
         title="AI Candidate Matching"
-        description={`${pagination.total} candidates in database`}
+        description={`${total} candidates in database`}
         actions={
           <div className="flex gap-2">
             <Button size="sm" variant={view === "table" ? "default" : "outline"} onClick={() => setView("table")}>
@@ -239,6 +206,7 @@ export default function EmployerCandidatesPage() {
                 <TableHead>Location</TableHead>
                 <TableHead>Skills</TableHead>
                 <TableHead>Availability</TableHead>
+                <TableHead>Signals</TableHead>
                 {candidates.some((c) => c.matchScore != null) && (
                   <TableHead className="text-right">AI Score</TableHead>
                 )}
@@ -280,6 +248,16 @@ export default function EmployerCandidatesPage() {
                     <Badge variant={c.availabilityStatus === "immediately" ? "default" : c.availabilityStatus === "not_available" ? "destructive" : "secondary"} className="text-xs">
                       {availabilityLabel(c.availabilityStatus)}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1 max-w-[180px]">
+                      {getBehaviorBadges(c).map((b) => (
+                        <span key={b.label} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded-full border ${b.color}`}>
+                          {b.icon} {b.label}
+                        </span>
+                      ))}
+                      {getBehaviorBadges(c).length === 0 && <span className="text-muted-foreground text-xs">—</span>}
+                    </div>
                   </TableCell>
                   {candidates.some((cc) => cc.matchScore != null) && (
                     <TableCell className="text-right">
@@ -331,6 +309,11 @@ export default function EmployerCandidatesPage() {
                     <Briefcase className="h-3 w-3" /> {c.experience?.length ?? 0} roles
                   </span>
                 )}
+                {c.profileCompleteness != null && (
+                  <span className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" /> {c.profileCompleteness}% profile
+                  </span>
+                )}
               </div>
 
               {/* Skills */}
@@ -363,6 +346,20 @@ export default function EmployerCandidatesPage() {
                 </div>
               )}
 
+              {/* Behavioral Signal Badges */}
+              {getBehaviorBadges(c).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {getBehaviorBadges(c).map((b) => (
+                    <span
+                      key={b.label}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full border ${b.color}`}
+                    >
+                      {b.icon} {b.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Availability + Actions */}
               <div className="flex items-center justify-between pt-1 gap-2">
                 <Badge variant={c.availabilityStatus === "immediately" ? "default" : c.availabilityStatus === "not_available" ? "destructive" : "secondary"} className="text-xs">
@@ -389,6 +386,13 @@ export default function EmployerCandidatesPage() {
                   <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
                     <Star className="h-3 w-3 text-amber-500" /> Shortlist
                   </Button>
+                  <Button
+                    variant="ghost" size="sm" className="h-7 text-xs gap-1"
+                    onClick={() => router.push(`/${locale}/employer/candidates/${c._id}`)}
+                    title="Unified profile"
+                  >
+                    <Eye className="h-3 w-3" /> Profile
+                  </Button>
                 </div>
               </div>
             </div>
@@ -397,12 +401,12 @@ export default function EmployerCandidatesPage() {
       )}
 
       <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
     </div>
   );

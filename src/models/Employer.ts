@@ -62,6 +62,7 @@ export interface IEmployer extends Document {
   workflowMode: WorkflowMode;
   workflow?: Record<string, unknown>;
   matchingWeights?: Record<string, number>;
+  responseTimeCommitment?: number;
   // Related
   jobIds: mongoose.Types.ObjectId[];
   // Payment
@@ -124,6 +125,7 @@ const EmployerSchema = new Schema<IEmployer>(
     workflowMode: { type: String, enum: ["auto", "manual"], default: "manual" },
     workflow: { type: Schema.Types.Mixed },
     matchingWeights: { type: Schema.Types.Mixed },
+    responseTimeCommitment: { type: Number, min: 1, max: 30 },
     jobIds: [{ type: Schema.Types.ObjectId, ref: "Job" }],
     paymentStatus: {
       type: String,

@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search, Inbox } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface CountryItem {
   _id: string;
@@ -65,6 +66,7 @@ const CREATE_FIELDS: CrudField[] = [
 
 export default function CountriesPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<CountryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -153,13 +155,15 @@ export default function CountriesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this country?")) return;
+    const ok = await confirmDialog("Are you sure you want to delete this country?");
+    if (!ok) return;
     await fetch(`/api/admin/location-data/countries/${id}`, { method: "DELETE" });
     fetchItems();
   };
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       {/* Header */}
       <div className="flex items-center justify-between">
         <PageHeader

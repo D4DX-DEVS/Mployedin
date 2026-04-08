@@ -18,6 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { toast } from "sonner";
 
 /* ── Types ── */
 
@@ -152,7 +153,7 @@ export default function CVBuilderPage() {
           setForm((prev) => ({
             ...prev,
             fullName: prev.fullName || session.user.name || "",
-            email: session.user.email || "",
+            email: prev.email || session.user.email || "",
           }));
         }
       }
@@ -369,10 +370,9 @@ export default function CVBuilderPage() {
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Failed to save profile");
-      setSuccessMsg("Profile saved successfully!");
-      setTimeout(() => setSuccessMsg(""), 4000);
+      toast.success("Profile saved successfully!");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -497,7 +497,8 @@ export default function CVBuilderPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField label="Full Name" value={form.fullName}
                 onChange={(v) => setForm((f) => ({ ...f, fullName: v }))} placeholder="Your full name" />
-              <FormField label="Email" value={form.email} readOnly placeholder="From your account" />
+              <FormField label="Email" value={form.email}
+                onChange={(v) => setForm((f) => ({ ...f, email: v }))} placeholder="Contact email for your CV" />
               <FormField label="Phone" value={form.phone}
                 onChange={(v) => setForm((f) => ({ ...f, phone: v }))} placeholder="+971 50 000 0000" />
               <FormField label="Nationality" value={form.nationality}

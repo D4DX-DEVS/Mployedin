@@ -1,0 +1,228 @@
+import { useQuery } from "@tanstack/react-query";
+
+// Types
+export interface FunnelStage {
+  stage: string;
+  count: number;
+}
+
+export interface TrendData {
+  date: string;
+  count: number;
+}
+
+export interface TopJob {
+  jobId: string;
+  title: string;
+  count: number;
+}
+
+export interface ConversionMetrics {
+  applied: number;
+  shortlisted: number;
+  interview: number;
+  selected: number;
+  hired: number;
+}
+
+export interface AnalyticsData {
+  funnel: FunnelStage[];
+  trend: TrendData[];
+  topJobs: TopJob[];
+  conversion: ConversionMetrics;
+}
+
+export interface PipelineData {
+  stageDistribution: { stage: string; count: number }[];
+  perJob: {
+    jobId: string;
+    title: string;
+    total: number;
+    stages: { status: string; count: number }[];
+  }[];
+  conversionRates: {
+    appliedToShortlisted: number;
+    shortlistedToInterview: number;
+    interviewToOffer: number;
+    offerToHired: number;
+    overallHireRate: number;
+  };
+  stalledCount: number;
+}
+
+export interface HistoricalData {
+  timeToHire: {
+    transition: string;
+    avgDays: number;
+    medianDays: number;
+    count: number;
+  }[];
+  dropOff: {
+    stage: string;
+    stageName: string;
+    nextStage: string;
+    nextStageName: string;
+    count: number;
+    nextCount: number;
+    dropOffPct: number;
+  }[];
+  sourceBreakdown: { source: string; label: string; count: number; pct: number }[];
+  trend: { date: string; count: number }[];
+  perJobTimeToHire: {
+    jobId: string;
+    title: string;
+    stages: { transition: string; avgDays: number; count: number }[];
+  }[];
+  totalApplications: number;
+  dateRange: { start: string; end: string };
+}
+
+export interface JobPerformance {
+  jobId: string;
+  title: string;
+  status: string;
+  views: number;
+  uniqueViews: number;
+  applications: number;
+  conversionRate: number;
+  avgMatchScore: number;
+  createdAt: string;
+  daysActive: number;
+  insight?: string;
+}
+
+export interface PerformanceData {
+  jobs: JobPerformance[];
+  summary: {
+    totalJobs: number;
+    activeJobs: number;
+    totalViews: number;
+    totalUniqueViews: number;
+    totalApplications: number;
+    overallConversion: number;
+    underperforming: number;
+  };
+}
+
+export interface ResponseTimeData {
+  overall: {
+    avgHours: number;
+    medianHours: number;
+    totalMeasured: number;
+    avgDays: number;
+  };
+  commitment: number | null;
+  perJob: {
+    jobId: string;
+    title: string;
+    avgHours: number;
+    medianHours: number;
+    count: number;
+  }[];
+  distribution: { label: string; count: number }[];
+}
+
+// Query keys factory
+export const analyticsKeys = {
+  all: ["analytics"] as const,
+  overview: () => [...analyticsKeys.all, "overview"] as const,
+  pipeline: (jobId: string) => [...analyticsKeys.all, "pipeline", jobId] as const,
+  historical: (params: {
+    range: string;
+    customStart?: string;
+    customEnd?: string;
+  }) => [...analyticsKeys.all, "historical", params] as const,
+  jobs: () => [...analyticsKeys.all, "jobs"] as const,
+  responseTime: () => [...analyticsKeys.all, "response-time"] as const,
+};
+
+// Fetcher functions
+async function fetchAnalyticsOverview(): Promise<AnalyticsData> {
+  const res = await fetch("/api/employers/analytics");
+  if (!res.ok) throw new Error("Failed to fetch analytics overview");
+  return res.json();
+}
+
+async function fetchAnalyticsPipeline(jobId: string): Promise<PipelineData> {
+  const url = `/api/employers/analytics/pipeline${jobId ? `?jobId=${jobId}` : ""}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch pipeline data");
+  return res.json();
+}
+
+async function fetchAnalyticsHistorical(params: {
+  range: string;
+  customStart?: string;
+  customEnd?: string;
+}): Promise<HistoricalData> {
+  const searchParams = new URLSearchParams({ range: params.range });
+  if (params.customStart) searchParams.set("startDate", params.customStart);
+  if (params.customEnd) searchParams.set("endDate", params.customEnd);
+
+  const res = await fetch(
+    `/api/employers/analytics/historical?${searchParams.toString()}`
+  );
+  if (!res.ok) throw new Error("Failed to fetch historical data");
+  return res.json();
+}
+
+async function fetchAnalyticsJobs(): Promise<PerformanceData> {
+  const res = await fetch("/api/employers/analytics/jobs");
+  if (!res.ok) throw new Error("Failed to fetch job performance");
+  return res.json();
+}
+
+async function fetchAnalyticsResponseTime(): Promise<ResponseTimeData> {
+  const res = await fetch("/api/employers/analytics/response-time");
+  if (!res.ok) throw new Error("Failed to fetch response time data");
+  return res.json();
+}
+
+// Hooks
+export function useAnalyticsOverview(enabled = true) {
+  return useQuery({
+    queryKey: analyticsKeys.overview(),
+    queryFn: fetchAnalyticsOverview,
+    staleTime: 60 * 1000,
+    enabled,
+  });
+}
+
+export function useAnalyticsPipeline(jobId: string, enabled = true) {
+  return useQuery({
+    queryKey: analyticsKeys.pipeline(jobId),
+    queryFn: () => fetchAnalyticsPipeline(jobId),
+    staleTime: 60 * 1000,
+    enabled,
+  });
+}
+
+export function useAnalyticsHistorical(
+  params: { range: string; customStart?: string; customEnd?: string },
+  enabled = true
+) {
+  return useQuery({
+    queryKey: analyticsKeys.historical(params),
+    queryFn: () => fetchAnalyticsHistorical(params),
+    staleTime: 60 * 1000,
+    enabled,
+  });
+}
+
+export function useAnalyticsJobs(enabled = true) {
+  return useQuery({
+    queryKey: analyticsKeys.jobs(),
+    queryFn: fetchAnalyticsJobs,
+    staleTime: 60 * 1000,
+    enabled,
+  });
+}
+
+export function useAnalyticsResponseTime(enabled = true) {
+  return useQuery({
+    queryKey: analyticsKeys.responseTime(),
+    queryFn: fetchAnalyticsResponseTime,
+    staleTime: 60 * 1000,
+    enabled,
+  });
+}

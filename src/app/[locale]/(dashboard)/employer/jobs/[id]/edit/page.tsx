@@ -16,6 +16,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useJobDetail, useUpdateJob } from "@/hooks/useJobs";
+import { useCountrySearch } from "@/hooks/useCountrySearch";
+import type { CountryOption } from "@/hooks/useCountrySearch";
 
 // ─── Constants ───────────────────────────────────────────────────
 const JOB_CATEGORIES = [
@@ -38,12 +41,6 @@ const SALARY_PERIODS = [
 ];
 
 // ─── Types ───────────────────────────────────────────────────────
-interface CountryOption {
-  name: string;
-  code: string;
-  currencyCode: string;
-  currencySymbol: string;
-}
 
 interface FormData {
   title: string;
@@ -70,34 +67,6 @@ function formatSalary(value: number, currency: string, period: string): string {
   }
   if (value >= 1000) return `${sym}${(value / 1000).toFixed(0)}K`;
   return `${sym}${value.toLocaleString()}`;
-}
-
-// ─── Country search hook ─────────────────────────────────────────
-function useCountrySearch() {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CountryOption[]>([]);
-  const [loading, setLoading] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (!query.trim()) { setResults([]); return; }
-    timerRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/countries?q=${encodeURIComponent(query)}&limit=10`);
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data.countries ?? []);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }, 280);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [query]);
-
-  return { query, setQuery, results, loading };
 }
 
 // ─── Section card ─────────────────────────────────────────────────
@@ -180,7 +149,7 @@ export default function EditJobPage() {
 
   const [skillInput, setSkillInput] = useState("");
   const [tagInput, setTagInput] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [formLoaded, setFormLoaded] = useState(false);
   const [submitState, setSubmitState] = useState<"idle" | "saving" | "publishing" | "saved" | "error">("idle");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [globalError, setGlobalError] = useState("");
@@ -189,9 +158,63 @@ export default function EditJobPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Country search
-  const countrySearch = useCountrySearch();
+  const [countryQuery, setCountryQuery] = useState("");
+  const { data: countryResults = [], isLoading: countryLoading } = useCountrySearch(countryQuery);
   const [countryDropOpen, setCountryDropOpen] = useState(false);
   const countryRef = useRef<HTMLDivElement>(null);
+
+  // Load job via React Query
+  const { data: jobData, isLoading: jobLoading, isError: jobError } = useJobDetail(id);
+  const updateJob = useUpdateJob();
+
+  const loading = jobLoading || (!formLoaded && !jobError);
+
+  // Populate form when job data arrives
+  useEffect(() => {
+    if (!jobData || formLoaded) return;
+
+    const job = jobData;
+    let loc = { country: "", city: "", isRemote: false };
+    if (job.location && typeof job.location === "object") {
+      loc = {
+        country: (job.location as { country?: string }).country ?? "",
+        city: (job.location as { city?: string }).city ?? "",
+        isRemote: (job.location as { isRemote?: boolean }).isRemote ?? false,
+      };
+    }
+
+    setForm({
+      title: job.title ?? "",
+      description: (job as unknown as { description?: string }).description ?? "",
+      category: (job as unknown as { category?: string }).category ?? "",
+      location: loc,
+      requirements: {
+        skills: (job.requirements as unknown as { skills?: string[] })?.skills ?? [],
+        experienceMin: (job.requirements as unknown as { experienceMin?: number })?.experienceMin ?? 0,
+        experienceMax: (job.requirements as unknown as { experienceMax?: number })?.experienceMax ?? 5,
+      },
+      salary: {
+        min: (job.salary as unknown as { min?: number })?.min ?? 0,
+        max: (job.salary as unknown as { max?: number })?.max ?? 0,
+        currency: (job.salary as unknown as { currency?: string })?.currency ?? "USD",
+        period: (job.salary as unknown as { period?: string })?.period ?? "monthly",
+        isNegotiable: (job.salary as unknown as { isNegotiable?: boolean })?.isNegotiable ?? false,
+      },
+      applicationMode: (job as unknown as { applicationMode?: string }).applicationMode as "auto" | "manual" ?? (job as unknown as { workflowMode?: string }).workflowMode as "auto" | "manual" ?? "manual",
+      expiresAt: job.expiresAt ? new Date(job.expiresAt).toISOString().split("T")[0] : "",
+      tags: (job as unknown as { tags?: string[] }).tags ?? [],
+      vacancies: (job as unknown as { vacancies?: number }).vacancies ?? 1,
+    });
+
+    if (loc.country) setCountryQuery(loc.country);
+    document.title = `Edit: ${job.title} · MPLOYEDIN`;
+    setFormLoaded(true);
+  }, [jobData, formLoaded]);
+
+  // Show error if job not found
+  useEffect(() => {
+    if (jobError) setGlobalError("Job not found");
+  }, [jobError]);
 
   // Close country dropdown on outside click
   useEffect(() => {
@@ -204,58 +227,6 @@ export default function EditJobPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Load existing job
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch(`/api/jobs/${id}`);
-        if (!res.ok) { setGlobalError("Job not found"); setLoading(false); return; }
-        const { job } = await res.json();
-
-        let loc = { country: "", city: "", isRemote: false };
-        if (job.location && typeof job.location === "object") {
-          loc = {
-            country: job.location.country ?? "",
-            city: job.location.city ?? "",
-            isRemote: job.location.isRemote ?? false,
-          };
-        }
-
-        setForm({
-          title: job.title ?? "",
-          description: job.description ?? "",
-          category: job.category ?? "",
-          location: loc,
-          requirements: {
-            skills: job.requirements?.skills ?? [],
-            experienceMin: job.requirements?.experienceMin ?? 0,
-            experienceMax: job.requirements?.experienceMax ?? 5,
-          },
-          salary: {
-            min: job.salary?.min ?? 0,
-            max: job.salary?.max ?? 0,
-            currency: job.salary?.currency ?? "USD",
-            period: job.salary?.period ?? "monthly",
-            isNegotiable: job.salary?.isNegotiable ?? false,
-          },
-          applicationMode: job.applicationMode ?? job.workflowMode ?? "manual",
-          expiresAt: job.expiresAt ? new Date(job.expiresAt).toISOString().split("T")[0] : "",
-          tags: job.tags ?? [],
-          vacancies: job.vacancies ?? 1,
-        });
-
-        // Seed country search box with the stored country name
-        if (loc.country) countrySearch.setQuery(loc.country);
-
-        document.title = `Edit: ${job.title} · MPLOYEDIN`;
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
   function setField<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setFieldErrors((prev) => { const n = { ...prev }; delete n[key]; return n; });
@@ -266,7 +237,7 @@ export default function EditJobPage() {
     if (c.currencyCode && c.currencyCode.length === 3) {
       setField("salary", { ...form.salary, currency: c.currencyCode });
     }
-    countrySearch.setQuery(c.name);
+    setCountryQuery(c.name);
     setCountryDropOpen(false);
   }
 
@@ -309,57 +280,45 @@ export default function EditJobPage() {
     setSubmitState(publish ? "publishing" : "saving");
     setGlobalError("");
 
-    try {
-      const payload: Record<string, unknown> = {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        category: form.category || undefined,
-        requirements: form.requirements,
-        salary: {
-          min: form.salary.min,
-          max: form.salary.max,
-          currency: form.salary.currency,
-          period: form.salary.period,
-          isNegotiable: form.salary.isNegotiable,
-        },
-        applicationMode: form.applicationMode,
-        tags: form.tags,
-        vacancies: form.vacancies,
-        expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+    const payload: Record<string, unknown> = {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      category: form.category || undefined,
+      requirements: form.requirements,
+      salary: {
+        min: form.salary.min,
+        max: form.salary.max,
+        currency: form.salary.currency,
+        period: form.salary.period,
+        isNegotiable: form.salary.isNegotiable,
+      },
+      applicationMode: form.applicationMode,
+      tags: form.tags,
+      vacancies: form.vacancies,
+      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+    };
+
+    if (form.location.country.trim() && form.location.city.trim()) {
+      payload.location = {
+        country: form.location.country.trim(),
+        city: form.location.city.trim(),
+        isRemote: form.location.isRemote,
       };
+    }
 
-      if (form.location.country.trim() && form.location.city.trim()) {
-        payload.location = {
-          country: form.location.country.trim(),
-          city: form.location.city.trim(),
-          isRemote: form.location.isRemote,
-        };
-      }
+    if (publish) payload.status = "active";
 
-      if (publish) payload.status = "active";
-
-      const res = await fetch(`/api/jobs/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        setSubmitState("saved");
-        setTimeout(() => router.push(`/${locale}/employer/jobs/${id}`), 900);
-      } else {
-        const err = await res.json();
-        setGlobalError(err.error ?? "Failed to update job");
-        setSubmitState("error");
-        setTimeout(() => setSubmitState("idle"), 3000);
-      }
-    } catch {
-      setGlobalError("Network error. Please try again.");
+    try {
+      await updateJob.mutateAsync({ jobId: id, updates: payload });
+      setSubmitState("saved");
+      setTimeout(() => router.push(`/${locale}/employer/jobs/${id}`), 900);
+    } catch (err) {
+      setGlobalError(err instanceof Error ? err.message : "Failed to update job");
       setSubmitState("error");
       setTimeout(() => setSubmitState("idle"), 3000);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, id, locale, router]);
+  }, [form, id, locale, router, updateJob]);
 
   async function generateDescription() {
     if (!form.title.trim()) {
@@ -483,23 +442,23 @@ export default function EditJobPage() {
                     <Input
                       className="pl-8"
                       placeholder="Search country…"
-                      value={countrySearch.query}
+                      value={countryQuery}
                       onChange={(e) => {
-                        countrySearch.setQuery(e.target.value);
+                        setCountryQuery(e.target.value);
                         setField("location", { ...form.location, country: e.target.value });
                         setCountryDropOpen(true);
                       }}
-                      onFocus={() => { if (countrySearch.query) setCountryDropOpen(true); }}
+                      onFocus={() => { if (countryQuery) setCountryDropOpen(true); }}
                     />
                   </div>
-                  {countryDropOpen && (countrySearch.results.length > 0 || countrySearch.loading) && (
+                  {countryDropOpen && (countryResults.length > 0 || countryLoading) && (
                     <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-xl overflow-hidden max-h-52 overflow-y-auto">
-                      {countrySearch.loading ? (
+                      {countryLoading ? (
                         <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
                           <Loader2 className="w-3 h-3 animate-spin" /> Searching…
                         </div>
                       ) : (
-                        countrySearch.results.map((c) => (
+                        countryResults.map((c) => (
                           <button key={c.code} type="button" onMouseDown={() => selectCountry(c)}
                             className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between gap-2">
                             <span>{c.name}</span>

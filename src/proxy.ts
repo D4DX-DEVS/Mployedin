@@ -23,6 +23,7 @@ const AUTH_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
+  "/onboarding",
 ];
 
 /** Public routes that don't require auth */
@@ -115,7 +116,7 @@ export default auth(async function middleware(req: NextRequest) {
   const intlResponse = intlMiddleware(req);
 
   // Check auth session
-  const session = (req as unknown as { auth?: { user?: { id: string; role: UserRole; locale: string; isEmailVerified?: boolean } } }).auth;
+  const session = (req as unknown as { auth?: { user?: { id: string; role: UserRole; locale: string; isEmailVerified?: boolean; isOnboarded?: boolean } } }).auth;
   const isPublic = isPublicRoute(pathname);
 
   if (!session?.user && !isPublic) {
@@ -135,6 +136,14 @@ export default auth(async function middleware(req: NextRequest) {
       const urlLocale = pathname.split("/")[1] || defaultLocale;
       return withSecurityHeaders(
         NextResponse.redirect(new URL(`/${urlLocale}/verify-email`, req.url))
+      );
+    }
+    // Redirect non-onboarded job seekers trying to access the dashboard back to onboarding
+    const isJobSeekerDash = stripped.startsWith("/job-seeker");
+    if (isJobSeekerDash && session.user.role === "job_seeker" && session.user.isOnboarded === false) {
+      const urlLocale = pathname.split("/")[1] || defaultLocale;
+      return withSecurityHeaders(
+        NextResponse.redirect(new URL(`/${urlLocale}/onboarding`, req.url))
       );
     }
   }

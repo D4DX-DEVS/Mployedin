@@ -6,6 +6,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, X, Upload, Phone, Search } from "lucide-react";
+import { toast } from "sonner";
 
 // ──────────────────────────────────────────────────────────
 // FormInput
@@ -425,7 +426,7 @@ export function FormFileDrop({ label, error, hint, accept, maxSizeMB = 10, value
 
   const validateAndSet = (file: File) => {
     if (maxSizeMB && file.size > maxSizeMB * 1024 * 1024) {
-      alert(`File must be under ${maxSizeMB}MB`);
+      toast.error(`File must be under ${maxSizeMB}MB`);
       return;
     }
     onChange(file);

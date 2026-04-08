@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, useRef, useMemo } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   Save, Building2, Globe, Phone, Mail, Shield, FileText,
   Briefcase, Bell, AlertTriangle, Linkedin, Twitter, Facebook, Instagram,
   MapPin, Calendar, Users, Eye, Link2, CheckCircle2, Clock, Sparkles,
-  ChevronRight, Camera, X,
+  ChevronRight, Camera, X, Upload, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,9 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { LogoUpload } from "@/components/features/employer/LogoUpload";
+import { useConfirm } from "@/hooks/useConfirm";
+import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument } from "@/hooks/useEmployerProfile";
+import type { CompanyData } from "@/hooks/useEmployerProfile";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -54,45 +57,6 @@ const NAV_ITEMS: { key: TabKey; label: string; desc: string; icon: typeof Buildi
 ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface CompanyData {
-  _id: string;
-  companyName: string;
-  companyEmail: string;
-  phone: string;
-  designation?: string;
-  address?: string;
-  website?: string;
-  industry?: string;
-  companySize?: string;
-  logo?: string;
-  coverImage?: string;
-  description?: string;
-  foundedYear?: number;
-  socialLinks?: {
-    linkedin?: string;
-    twitter?: string;
-    facebook?: string;
-    instagram?: string;
-  };
-  hiringPreferences?: {
-    defaultVisibility?: string;
-    preferredLocations?: string[];
-    workType?: string;
-  };
-  notificationPrefs?: {
-    emailNewApplicant?: boolean;
-    emailInterviewScheduled?: boolean;
-    emailOfferResponse?: boolean;
-    emailWeeklyDigest?: boolean;
-    inAppAll?: boolean;
-  };
-  verificationLevel: string;
-  verificationDocs: string[];
-  paymentStatus: string;
-  subscriptionType?: string;
-  createdAt: string;
-}
 
 interface FormData {
   companyName: string;
@@ -212,41 +176,88 @@ function NotificationRow({
 
 // ─── Page Component ───────────────────────────────────────────────────────────
 
-export default function CompanySettingsPage() {
+export default function CompanySettingsPageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <CompanySettingsPage />
+    </Suspense>
+  );
+}
+
+function CompanySettingsPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
-  const [company, setCompany] = useState<CompanyData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
+  const [highlightField, setHighlightField] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormData>(buildInitialForm());
   const initialFormRef = useRef<FormData>(buildInitialForm());
   const [hasChanges, setHasChanges] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
+  const [docError, setDocError] = useState("");
+  const docInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchCompany = useCallback(async () => {
-    try {
-      const res = await fetch("/api/employers/me");
-      if (res.ok) {
-        const data = await res.json();
-        const emp = data.employer as CompanyData;
-        setCompany(emp);
-        const initial = buildInitialForm(emp);
-        setForm(initial);
-        initialFormRef.current = initial;
-      }
-    } finally {
-      setLoading(false);
+  // React Query hooks
+  const { data: company, isLoading: loading } = useEmployerProfile();
+  const updateProfile = useUpdateEmployerProfile();
+  const uploadDocMutation = useUploadDocument();
+  const deleteDocMutation = useDeleteDocument();
+  const saving = updateProfile.isPending;
+
+  // Populate form when company data changes
+  useEffect(() => {
+    if (company) {
+      const initial = buildInitialForm(company);
+      setForm(initial);
+      initialFormRef.current = initial;
     }
-  }, []);
+  }, [company]);
 
   useEffect(() => {
     document.title = "Company Settings · MPLOYEDIN";
-    fetchCompany();
-  }, [fetchCompany]);
+  }, []);
+
+  const uploadDoc = async (file: File) => {
+    setDocError("");
+    try {
+      await uploadDocMutation.mutateAsync(file);
+    } catch (err) {
+      setDocError(err instanceof Error ? err.message : "Upload failed");
+    }
+  };
+
+  const removeDoc = async (url: string) => {
+    await deleteDocMutation.mutateAsync(url);
+  };
+
+  // Handle query params from setup guide navigation (?tab=contact&highlight=website)
+  useEffect(() => {
+    const tab = searchParams.get("tab") as TabKey | null;
+    const highlight = searchParams.get("highlight");
+    if (tab && ["profile", "contact", "hiring", "notifications", "account"].includes(tab)) {
+      setActiveTab(tab);
+    }
+    if (highlight) {
+      setHighlightField(highlight);
+      // Scroll to and flash the highlighted field after a short delay
+      const timer = setTimeout(() => {
+        const el = document.querySelector(`[data-field="${highlight}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("ring-2", "ring-primary", "ring-offset-2", "rounded-lg");
+          setTimeout(() => {
+            el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "rounded-lg");
+            setHighlightField(null);
+          }, 3000);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     setHasChanges(JSON.stringify(form) !== JSON.stringify(initialFormRef.current));
@@ -286,7 +297,6 @@ export default function CompanySettingsPage() {
       return;
     }
 
-    setSaving(true);
     setError("");
     setSuccess("");
 
@@ -324,29 +334,15 @@ export default function CompanySettingsPage() {
     };
 
     try {
-      const res = await fetch("/api/employers/me", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const emp = data.employer as CompanyData;
-        setCompany(emp);
-        const newInitial = buildInitialForm(emp);
-        initialFormRef.current = newInitial;
-        setForm(newInitial);
-        setSuccess("Settings saved successfully.");
-        setTimeout(() => setSuccess(""), 4000);
-        router.refresh();
-      } else {
-        const err = await res.json();
-        setError(err.error ?? "Failed to update settings.");
-      }
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setSaving(false);
+      const emp = await updateProfile.mutateAsync(payload);
+      const newInitial = buildInitialForm(emp);
+      initialFormRef.current = newInitial;
+      setForm(newInitial);
+      setSuccess("Settings saved successfully.");
+      setTimeout(() => setSuccess(""), 4000);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update settings.");
     }
   }
 
@@ -392,7 +388,8 @@ export default function CompanySettingsPage() {
     : "CO";
 
   return (
-    <div className="page-container pb-24">
+    <div className={`page-container${hasChanges ? " pb-20" : ""}`}>
+      {ConfirmDialogNode}
       {/* ── Page Title ─────────────────────────────────────────────────── */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Company Settings</h1>
@@ -558,11 +555,11 @@ export default function CompanySettingsPage() {
                       currentLogo={company?.logo}
                       companyName={form.companyName}
                       onUploadComplete={(url) => {
-                        setCompany((prev) => prev ? { ...prev, logo: url } : prev);
+                        // React Query will automatically refetch after mutation
                         router.refresh();
                       }}
                       onRemove={() => {
-                        setCompany((prev) => prev ? { ...prev, logo: undefined } : prev);
+                        // React Query will automatically refetch after mutation
                         router.refresh();
                       }}
                     />
@@ -574,7 +571,7 @@ export default function CompanySettingsPage() {
                   <SectionHeader icon={Building2} title="Company Information" description="Basic details about your organization" />
                   <div className="p-6 space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <div>
+                      <div data-field="companyName" className="transition-all duration-300">
                         <FieldLabel required>Company Name</FieldLabel>
                         <Input
                           value={form.companyName}
@@ -583,7 +580,7 @@ export default function CompanySettingsPage() {
                           required
                         />
                       </div>
-                      <div>
+                      <div data-field="industry" className="transition-all duration-300">
                         <FieldLabel>Industry</FieldLabel>
                         <Select value={form.industry} onValueChange={(v) => setField("industry", v)}>
                           <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
@@ -666,7 +663,7 @@ export default function CompanySettingsPage() {
                   <SectionHeader icon={Mail} title="Contact Details" description="Primary contact information for your company" />
                   <div className="p-6 space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                      <div>
+                      <div data-field="companyEmail" className="transition-all duration-300">
                         <FieldLabel required>Company Email</FieldLabel>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
@@ -680,7 +677,7 @@ export default function CompanySettingsPage() {
                           />
                         </div>
                       </div>
-                      <div>
+                      <div data-field="phone" className="transition-all duration-300">
                         <FieldLabel required>Phone</FieldLabel>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
@@ -696,7 +693,7 @@ export default function CompanySettingsPage() {
                       </div>
                     </div>
 
-                    <div>
+                    <div data-field="website" className="transition-all duration-300">
                       <FieldLabel>Website</FieldLabel>
                       <div className="relative">
                         <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
@@ -950,6 +947,59 @@ export default function CompanySettingsPage() {
                   </div>
                 </SectionCard>
 
+                {/* Document Upload */}
+                <SectionCard>
+                  <SectionHeader icon={FileText} title="Verification Documents" description="Upload documents to verify your company (PDF, images, DOCX — max 10MB each)" />
+                  <div className="p-6 space-y-4">
+                    {docError && (
+                      <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{docError}</p>
+                    )}
+                    <div className="space-y-2">
+                      {(company?.verificationDocs ?? []).map((url) => {
+                        const name = url.split("/").pop() ?? url;
+                        return (
+                          <div key={url} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border/40 bg-muted/20">
+                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline truncate flex-1">{name}</a>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="shrink-0 h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => removeDoc(url)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <input
+                      ref={docInputRef}
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.docx"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadDoc(file);
+                        e.target.value = "";
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadDocMutation.isPending || (company?.verificationDocs?.length ?? 0) >= 10}
+                      onClick={() => docInputRef.current?.click()}
+                    >
+                      <Upload className="w-3.5 h-3.5 me-1.5" />
+                      {uploadDocMutation.isPending ? "Uploading…" : "Upload Document"}
+                    </Button>
+                    {(company?.verificationDocs?.length ?? 0) >= 10 && (
+                      <p className="text-xs text-muted-foreground">Maximum 10 documents reached.</p>
+                    )}
+                  </div>
+                </SectionCard>
+
                 {/* Danger Zone */}
                 <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] p-6 space-y-4">
                   <div className="flex items-center gap-2.5">
@@ -976,15 +1026,15 @@ export default function CompanySettingsPage() {
                       size="sm"
                       className="border-destructive/40 text-destructive hover:bg-destructive hover:text-white shrink-0 ml-4"
                       disabled={deactivating}
-                      onClick={() => {
-                        if (confirm("Are you sure you want to deactivate your account? All active jobs will be unpublished.")) {
-                          setDeactivating(true);
-                          fetch("/api/employers/me", {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ workflowMode: "manual" }),
-                          }).finally(() => setDeactivating(false));
-                        }
+                      onClick={async () => {
+                        const ok = await confirmDialog("Are you sure you want to deactivate your account? All active jobs will be unpublished.");
+                        if (!ok) return;
+                        setDeactivating(true);
+                        fetch("/api/employers/me", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ workflowMode: "manual" }),
+                        }).finally(() => setDeactivating(false));
                       }}
                     >
                       {deactivating ? "Processing…" : "Deactivate"}

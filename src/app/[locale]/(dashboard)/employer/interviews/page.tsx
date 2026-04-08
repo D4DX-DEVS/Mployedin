@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,24 +12,10 @@ import { Inbox, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
 import { AIInterviewQuestionsPanel } from "@/components/features/employer/AIInterviewQuestionsPanel";
-
-interface Interview {
-  _id: string;
-  jobSeekerId?: {
-    fullName?: string;
-    email?: string;
-    skills?: string[];
-    experience?: { jobTitle: string; company: string; isCurrent: boolean; startDate?: string }[];
-  };
-  jobId?: { title?: string; requirements?: { skills?: string[]; experienceMin?: number } };
-  scheduledAt: string;
-  type?: string;
-  status: string;
-  notes?: string;
-}
+import { useInterviews, useUpdateInterview } from "@/hooks/useInterviews";
+import type { Interview } from "@/hooks/useInterviews";
 
 interface AIQuestionsTarget {
   jobTitle: string;
@@ -40,12 +26,20 @@ interface AIQuestionsTarget {
 
 export default function EmployerInterviewsPage() {
   const { locale } = useParams<{ locale: string }>();
-  const pagination = usePagination();
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const { can } = usePermissions();
-  const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
   const [aiTarget, setAiTarget] = useState<AIQuestionsTarget | null>(null);
+
+  const { data, isLoading: loading } = useInterviews({ page, limit, status: status || undefined });
+  const updateMutation = useUpdateInterview();
+
+  const interviews = data?.interviews ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  useEffect(() => { setPage(1); }, [status]);
 
   function openAIQuestions(iv: Interview) {
     const skills = [
@@ -69,30 +63,8 @@ export default function EmployerInterviewsPage() {
     });
   }
 
-  const fetchInterviews = useCallback(async () => {
-    setLoading(true);
-    const params = pagination.paginationParams();
-    if (status) params.set("status", status);
-    const res = await fetch(`/api/interviews?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setInterviews(data.items ?? data.interviews ?? []);
-      pagination.updateTotal(data.total ?? 0);
-    }
-    setLoading(false);
-  }, [status, pagination.page, pagination.limit]);
-
-  useEffect(() => { fetchInterviews(); }, [fetchInterviews]);
-
-  useEffect(() => { pagination.resetPage(); }, [status]);
-
   async function updateInterviewStatus(id: string, newStatus: string) {
-    const res = await fetch(`/api/interviews/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    if (res.ok) fetchInterviews();
+    await updateMutation.mutateAsync({ id, status: newStatus });
   }
 
   return (
@@ -208,12 +180,12 @@ export default function EmployerInterviewsPage() {
       </div>
 
       <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
     </div>
   );

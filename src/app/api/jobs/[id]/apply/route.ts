@@ -6,6 +6,7 @@ import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
 import { ActivityEvent, ACTIVITY_PRIORITY } from "@/models/ActivityEvent";
 import Employer from "@/models/Employer";
+import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 
 /**
  * POST /api/jobs/[id]/apply
@@ -27,7 +28,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
 
   const [job, seeker] = await Promise.all([
     Job.findById(jobId).select("title employerId status").lean(),
-    JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean(),
+    JobSeeker.findOne({ userId: ctx.userId }).select("_id profileCompleteness updatedAt").lean(),
   ]);
 
   if (!job) {
@@ -50,6 +51,14 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
   const employer = await Employer.findById(job.employerId).select("companyName").lean();
   const company = employer?.companyName ?? "";
 
+  const { signals, score: bScore } = computeBehaviorSignals({
+    profileCompleteness: (seeker as { profileCompleteness?: number }).profileCompleteness ?? 0,
+    documents: [],
+    source: "easy_apply",
+    autoApplied: false,
+    lastActiveAt: (seeker as { updatedAt?: Date }).updatedAt,
+  });
+
   const application = await Application.create({
     jobSeekerId: seeker._id,
     jobId,
@@ -59,6 +68,8 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
     autoApplied: false,
     appliedAt: new Date(),
     statusHistory: [{ status: "applied", changedAt: new Date() }],
+    behaviorSignals: signals,
+    behaviorScore: bScore,
   });
 
   // Fire ActivityEvent (non-blocking — don't fail the response if this errors)

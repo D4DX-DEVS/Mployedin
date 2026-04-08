@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { calculateMatchScore } from "@/lib/matchScore";
 
 describe("calculateMatchScore", () => {

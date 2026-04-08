@@ -8,6 +8,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -40,6 +41,7 @@ const ADD_FIELDS: CrudField[] = [
 
 export default function AdminCommissionsPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("");
@@ -84,7 +86,8 @@ export default function AdminCommissionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this commission?")) return;
+    const ok = await confirmDialog("Delete this commission?");
+    if (!ok) return;
     await fetch(`/api/commissions/${id}`, { method: "DELETE" });
     fetchCommissions();
   };
@@ -100,6 +103,7 @@ export default function AdminCommissionsPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <div className="flex items-center justify-between">
         <PageHeader title="Commissions" description="Track and manage agent commission records" />
         {can("commissions", "create") && (

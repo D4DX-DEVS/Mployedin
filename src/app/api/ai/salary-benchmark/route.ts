@@ -4,6 +4,10 @@ import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 
+// In-memory cache: key → { data, expiresAt }
+const benchmarkCache = new Map<string, { data: unknown; expiresAt: number }>();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
@@ -43,6 +47,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "role is required" }, { status: 400 });
     }
 
+    // Check cache before hitting the AI
+    const cacheKey = `${role}|${location}|${seniority}|${currency}|${period}`;
+    const cached = benchmarkCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.data, {
+        headers: { "X-RateLimit-Remaining": String(remaining), "X-Cache": "HIT" },
+      });
+    }
+
+
     const prompt = `You are a compensation analyst. Provide a salary benchmark for the following role:
 
 Role: ${role}
@@ -70,6 +84,8 @@ Base the numbers on real market data for this currency and period. For example i
     try {
       const cleaned = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
       benchmark = JSON.parse(cleaned);
+      // Store in cache for 24 hours
+      benchmarkCache.set(cacheKey, { data: benchmark, expiresAt: Date.now() + CACHE_TTL_MS });
     } catch {
       return NextResponse.json(
         { error: "Failed to parse AI response" },
@@ -78,7 +94,7 @@ Base the numbers on real market data for this currency and period. For example i
     }
 
     return NextResponse.json(benchmark, {
-      headers: { "X-RateLimit-Remaining": String(remaining) },
+      headers: { "X-RateLimit-Remaining": String(remaining), "X-Cache": "MISS" },
     });
   } catch (err) {
     console.error("[Salary Benchmark Error]", err);

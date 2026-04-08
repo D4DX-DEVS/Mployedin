@@ -64,6 +64,8 @@ async function getHandler(req: NextRequest) {
   return NextResponse.json({
     jobs,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  }, {
+    headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
   });
 }
 

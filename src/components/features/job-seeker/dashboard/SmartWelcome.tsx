@@ -1,10 +1,12 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+// TODO: Re-add useMutation usage for auto-apply toggle when feature is ready
 import Link from "next/link";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Upload, Zap, ZapOff } from "lucide-react";
+import { CheckCircle2, Circle, Upload } from "lucide-react";
+// TODO: Re-add Zap, ZapOff when auto-apply feature is ready
 import { toast } from "sonner";
 import { useRef } from "react";
 
@@ -55,44 +57,46 @@ export function SmartWelcome({
     staleTime: 2 * 60 * 1000,
   });
 
+  // TODO: Auto-apply profile fetch — re-enable when auto-apply feature is ready
   // Fetch profile to know autoApply state
-  const { data: profile, isLoading: profileLoading } = useQuery({
-    queryKey: ["job-seeker-profile"],
-    queryFn: () => fetch("/api/job-seeker/profile").then((r) => r.json()),
-    staleTime: 5 * 60 * 1000,
-  });
+  // const { data: profile, isLoading: profileLoading } = useQuery({
+  //   queryKey: ["job-seeker-profile"],
+  //   queryFn: () => fetch("/api/job-seeker/profile").then((r) => r.json()),
+  //   staleTime: 5 * 60 * 1000,
+  // });
 
-  const autoApply = profile?.applicationMode === "auto";
+  // TODO: Auto-apply toggle — re-enable when auto-apply feature is ready
+  // const autoApply = profile?.applicationMode === "auto";
 
   // Auto Apply toggle mutation (optimistic)
-  const toggleAutoApply = useMutation({
-    mutationFn: (enabled: boolean) =>
-      fetch("/api/user/autoapply", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      }).then((r) => {
-        if (!r.ok) throw new Error("Failed");
-        return r.json();
-      }),
-    onMutate: async (enabled) => {
-      await qc.cancelQueries({ queryKey: ["job-seeker-profile"] });
-      const prev = qc.getQueryData(["job-seeker-profile"]);
-      qc.setQueryData(["job-seeker-profile"], (old: Record<string, unknown>) => ({
-        ...(old ?? {}),
-        applicationMode: enabled ? "auto" : "manual",
-      }));
-      return { prev };
-    },
-    onError: (_err, _enabled, ctx) => {
-      qc.setQueryData(["job-seeker-profile"], ctx?.prev);
-      toast.error("Failed to update Auto Apply setting");
-    },
-    onSuccess: (_, enabled) => {
-      toast.success(enabled ? "Auto Apply enabled" : "Auto Apply disabled");
-      qc.invalidateQueries({ queryKey: ["job-seeker-profile"] });
-    },
-  });
+  // const toggleAutoApply = useMutation({
+  //   mutationFn: (enabled: boolean) =>
+  //     fetch("/api/user/autoapply", {
+  //       method: "PATCH",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ enabled }),
+  //     }).then((r) => {
+  //       if (!r.ok) throw new Error("Failed");
+  //       return r.json();
+  //     }),
+  //   onMutate: async (enabled) => {
+  //     await qc.cancelQueries({ queryKey: ["job-seeker-profile"] });
+  //     const prev = qc.getQueryData(["job-seeker-profile"]);
+  //     qc.setQueryData(["job-seeker-profile"], (old: Record<string, unknown>) => ({
+  //       ...(old ?? {}),
+  //       applicationMode: enabled ? "auto" : "manual",
+  //     }));
+  //     return { prev };
+  //   },
+  //   onError: (_err, _enabled, ctx) => {
+  //     qc.setQueryData(["job-seeker-profile"], ctx?.prev);
+  //     toast.error("Failed to update Auto Apply setting");
+  //   },
+  //   onSuccess: (_, enabled) => {
+  //     toast.success(enabled ? "Auto Apply enabled" : "Auto Apply disabled");
+  //     qc.invalidateQueries({ queryKey: ["job-seeker-profile"] });
+  //   },
+  // });
 
   // Resume upload mutation
   const uploadResume = useMutation({
@@ -114,7 +118,7 @@ export function SmartWelcome({
   const completedCount = completionSteps.filter((s) => s.done).length;
   const allDone = completedCount === completionSteps.length;
 
-  if (statsLoading || profileLoading) return <HeroSkeleton />;
+  if (statsLoading) return <HeroSkeleton />;
 
   const recruiterViews = stats?.recruiterViews?.total ?? 0;
   const recruitersThisWeek = stats?.recruiterViews?.delta ?? 0;
@@ -148,21 +152,8 @@ export function SmartWelcome({
           )}
         </div>
 
-        {/* Auto Apply toggle */}
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            onClick={() => toggleAutoApply.mutate(!autoApply)}
-            disabled={toggleAutoApply.isPending}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              autoApply
-                ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
-                : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-primary"
-            }`}
-          >
-            {autoApply ? <Zap className="h-3 w-3" /> : <ZapOff className="h-3 w-3" />}
-            Auto Apply {autoApply ? "On" : "Off"}
-          </button>
-        </div>
+        {/* TODO: Auto-apply toggle — re-enable when auto-apply feature is ready */}
+        {/* When ready, restore the auto-apply toggle button here (Zap/ZapOff icons, toggleAutoApply mutation) */}
       </div>
 
       {/* Thin progress bar */}

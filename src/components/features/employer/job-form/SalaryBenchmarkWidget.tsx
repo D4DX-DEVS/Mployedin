@@ -80,12 +80,12 @@ export function SalaryBenchmarkWidget({
     }
   }
 
-  // Auto-fetch whenever role or currency changes (debounced via button)
-  // Expose manual trigger only — auto-fetch on mount if role is set
+  // Auto-fetch on mount and whenever role, location, currency, or period changes.
+  // lastFetchRef guard inside fetchBenchmark prevents redundant API calls.
   useEffect(() => {
     if (role.trim()) fetchBenchmark();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [role, location, currency, period]);
 
   if (!role.trim()) return null;
 

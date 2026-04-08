@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     // Create empty JobSeeker profile — filled in during onboarding
     await JobSeeker.create({
       userId: user._id,
+      isOnboarded: false,
       skills: [],
       experience: [],
       education: [],
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
       certifications: [],
       preferredCountries: [],
       preferredRoles: [],
+      preferredLocations: [],
     });
 
     await logActivity({

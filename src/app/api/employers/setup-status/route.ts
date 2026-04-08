@@ -22,7 +22,7 @@ export async function GET() {
     await connectDB();
     const userId = (session.user as unknown as { id: string }).id;
     const employer = await Employer.findOne({ userId })
-      .select("companyName companyEmail industry domainVerified jobIds")
+      .select("companyName companyEmail phone website industry jobIds")
       .lean();
 
     if (!employer) {
@@ -30,7 +30,9 @@ export async function GET() {
     }
 
     // Fetch first job (if any) to check requirements/salary/status
-    const firstJob = employer.jobIds?.length
+    const hasJob = Array.isArray(employer.jobIds) && employer.jobIds.length > 0;
+
+    const firstJob = hasJob
       ? await Job.findOne({ employerId: employer._id })
           .sort({ createdAt: 1 })
           .select("requirements salary status")
@@ -42,9 +44,9 @@ export async function GET() {
       Boolean(employer.companyEmail?.trim()) &&
       Boolean(employer.industry?.trim());
 
-    const hasDomainVerified = Boolean((employer as { domainVerified?: boolean }).domainVerified);
-
-    const hasJob = Array.isArray(employer.jobIds) && employer.jobIds.length > 0;
+    const hasContact =
+      Boolean((employer as { website?: string }).website?.trim()) &&
+      Boolean((employer as { phone?: string }).phone?.trim());
 
     const hasRequirements =
       Array.isArray(firstJob?.requirements?.skills) &&
@@ -59,20 +61,21 @@ export async function GET() {
 
     const isPublished = firstJob?.status === "active";
 
+    // Base steps everyone sees
     const steps: StepResult[] = [
       {
         id: "company_profile",
         label: "Complete Company Profile",
         description: "Add company name, industry and contact email",
-        href: "/employer/settings",
+        href: "/employer/settings?tab=profile&highlight=companyName",
         completed: hasProfile,
       },
       {
-        id: "verify_domain",
-        label: "Verify Your Domain",
-        description: "Verify your company domain to unlock publishing",
-        href: "/employer/settings",
-        completed: hasDomainVerified,
+        id: "add_contact",
+        label: "Add Contact Details",
+        description: "Add your website and phone number",
+        href: "/employer/settings?tab=contact&highlight=website",
+        completed: hasContact,
       },
       {
         id: "create_job",
@@ -81,28 +84,34 @@ export async function GET() {
         href: "/employer/jobs/new",
         completed: hasJob,
       },
-      {
-        id: "add_requirements",
-        label: "Add Requirements & Skills",
-        description: "Define skills and experience needed for the role",
-        href: "/employer/jobs",
-        completed: hasRequirements,
-      },
-      {
-        id: "set_salary",
-        label: "Set Salary Range",
-        description: "Specify compensation to attract the right candidates",
-        href: "/employer/jobs",
-        completed: Boolean(hasSalary),
-      },
-      {
-        id: "publish_job",
-        label: "Review & Publish",
-        description: "Make your job live to start receiving applications",
-        href: "/employer/jobs",
-        completed: isPublished,
-      },
     ];
+
+    // Only show job-detail steps once a job exists
+    if (hasJob) {
+      steps.push(
+        {
+          id: "add_requirements",
+          label: "Add Requirements & Skills",
+          description: "Define skills and experience needed for the role",
+          href: "/employer/jobs",
+          completed: hasRequirements,
+        },
+        {
+          id: "set_salary",
+          label: "Set Salary Range",
+          description: "Specify compensation to attract the right candidates",
+          href: "/employer/jobs",
+          completed: Boolean(hasSalary),
+        },
+        {
+          id: "publish_job",
+          label: "Review & Publish",
+          description: "Make your job live to start receiving applications",
+          href: "/employer/jobs",
+          completed: isPublished,
+        },
+      );
+    }
 
     const allDone = steps.every((s) => s.completed);
 

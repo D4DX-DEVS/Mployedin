@@ -1,10 +1,22 @@
-"use client";
+const fs = require('fs');
+const filePath = String.raw`c:\Users\moham\OneDrive\Desktop\Mbloyedin\mployedin\src\app\[locale]\(auth)\onboarding\page.tsx`;
+const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+console.log('Before:', lines.length, 'lines');
+const kept = lines.slice(0, 531);
+fs.writeFileSync(filePath, kept.join('\n'), 'utf8');
+const after = fs.readFileSync(filePath, 'utf8').split('\n');
+console.log('After:', after.length, 'lines');
+console.log('First:', after[0]);
+console.log('Last:', after[after.length-1]);
+process.exit(0);
+
+const content = `"use client";
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
-  Sparkles, ChevronRight, ChevronLeft, CheckCircle, Loader2,
-  MapPin, Briefcase, GraduationCap, Globe, X, Check,
+  Check, ChevronRight, ChevronLeft, Loader2, X,
+  Briefcase, GraduationCap, Sparkles, CheckCircle, MapPin, Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -168,7 +180,7 @@ export default function JobSeekerOnboardingPage() {
         body: JSON.stringify({
           messages: [{
             role: "user",
-            content: `I am a Gulf job seeker: "${personal.headline}", ${personal.yearsExperience} years experience. Suggest 3 job titles and 2 industries briefly.`,
+            content: \`I am a Gulf job seeker: "\${personal.headline}", \${personal.yearsExperience} years experience. Suggest 3 job titles and 2 industries briefly.\`,
           }],
         }),
       });
@@ -207,7 +219,7 @@ export default function JobSeekerOnboardingPage() {
         setSaveError((data as { error?: string }).error ?? "Failed to save. Please try again.");
         return;
       }
-      router.push(`/${locale ?? "en"}/job-seeker/dashboard`);
+      router.push(\`/\${locale ?? "en"}/job-seeker/dashboard\`);
     } catch {
       setSaveError("Network error. Please check your connection and try again.");
     } finally {
@@ -251,26 +263,26 @@ export default function JobSeekerOnboardingPage() {
             return (
               <div key={i} className="flex flex-1 items-start">
                 <div className="flex flex-col items-center gap-1.5 shrink-0">
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  <div className={\`h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300 \${
                     isCompleted
                       ? "bg-primary text-primary-foreground shadow-md scale-95"
                       : isActive
                       ? "bg-primary text-primary-foreground ring-4 ring-primary/20 shadow-md"
                       : "bg-muted text-muted-foreground"
-                  }`}>
+                  }\`}>
                     {isCompleted
                       ? <Check className="h-4 w-4" strokeWidth={2.5} />
                       : <Icon className="h-4 w-4" />}
                   </div>
-                  <span className={`text-xs font-medium ${
+                  <span className={\`text-xs font-medium \${
                     isActive ? "text-foreground" : isCompleted ? "text-primary" : "text-muted-foreground"
-                  }`}>{label}</span>
+                  }\`}>{label}</span>
                 </div>
                 {i < STEPS.length - 1 && (
                   <div className="flex-1 h-px mt-5 mx-2 bg-border overflow-hidden relative">
-                    <div className={`absolute inset-y-0 left-0 bg-primary transition-all duration-500 ease-in-out${
+                    <div className={\`absolute inset-y-0 left-0 bg-primary transition-all duration-500 ease-in-out\${
                       i < step ? " w-full" : " w-0"
-                    }`} />
+                    }\`} />
                   </div>
                 )}
               </div>
@@ -321,7 +333,7 @@ export default function JobSeekerOnboardingPage() {
                   value={personal.yearsExperience}
                   options={[0, 1, 2, 3, 5, 7, 10, 15].map((n) => ({
                     value: String(n),
-                    label: n === 0 ? "Fresh Graduate" : `${n}+ years`,
+                    label: n === 0 ? "Fresh Graduate" : \`\${n}+ years\`,
                   }))}
                   onChange={(v) => setPersonal((p) => ({ ...p, yearsExperience: v }))}
                 />
@@ -527,4 +539,16 @@ export default function JobSeekerOnboardingPage() {
       </div>
     </div>
   );
+}
+`;
+
+const targetPath = path.join(__dirname, 'src', 'app', '[locale]', '(auth)', 'onboarding', 'page.tsx');
+
+try {
+  fs.writeFileSync(targetPath, content, 'utf8');
+  console.log('✓ File written successfully to:', targetPath);
+  console.log('✓ File size:', fs.statSync(targetPath).size, 'bytes');
+} catch (err) {
+  console.error('✗ Error writing file:', err.message);
+  process.exit(1);
 }

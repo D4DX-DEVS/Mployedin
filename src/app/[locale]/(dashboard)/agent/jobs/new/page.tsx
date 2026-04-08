@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Briefcase, Building2, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 interface Employer {
   _id: string;
@@ -69,7 +70,7 @@ export default function AgentJobPosterPage() {
       if (res.ok) {
         router.push("../leads");
       } else {
-        alert("Failed to post job");
+        toast.error("Failed to post job");
       }
     } finally {
       setSubmitting(false);

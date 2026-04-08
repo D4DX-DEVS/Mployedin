@@ -26,6 +26,7 @@ const edgeAuthConfig: NextAuthConfig = {
         token.role = ((user as unknown) as { role: UserRole }).role ?? "job_seeker";
         token.locale = ((user as unknown) as { locale: string }).locale ?? "en";
         token.isEmailVerified = ((user as unknown) as { isEmailVerified?: boolean }).isEmailVerified ?? false;
+        token.isOnboarded = ((user as unknown) as { isOnboarded?: boolean }).isOnboarded ?? false;
       }
       return token;
     },
@@ -36,6 +37,7 @@ const edgeAuthConfig: NextAuthConfig = {
         ((session.user as unknown) as { role: UserRole }).role = token.role as UserRole;
         ((session.user as unknown) as { locale: string }).locale = token.locale as string;
         ((session.user as unknown) as { isEmailVerified: boolean }).isEmailVerified = token.isEmailVerified as boolean;
+        ((session.user as unknown) as { isOnboarded: boolean }).isOnboarded = (token.isOnboarded as boolean) ?? false;
       }
       return session;
     },

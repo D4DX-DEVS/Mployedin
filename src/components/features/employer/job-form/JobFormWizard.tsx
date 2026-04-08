@@ -251,7 +251,8 @@ export function JobFormWizard({ locale }: JobFormWizardProps) {
   const isLastStep = currentStep === JOB_FORM_STEPS.length;
 
   return (
-    <div className="page-container pb-24">
+    <>
+    <div className="page-container">
       <PageHeader
         title="Post a New Job"
         description="Create a job posting to attract qualified candidates"
@@ -378,6 +379,8 @@ export function JobFormWizard({ locale }: JobFormWizardProps) {
         </form>
       </FormProvider>
 
+    </div>
+
       {/* Sticky action bar */}
       <StickyActionBar
         currentStep={currentStep}
@@ -392,6 +395,6 @@ export function JobFormWizard({ locale }: JobFormWizardProps) {
         isLastStep={isLastStep}
         canSubmit={!submitting}
       />
-    </div>
+    </>
   );
 }

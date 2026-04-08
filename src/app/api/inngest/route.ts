@@ -1,8 +1,10 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/lib/inngest/client";
-import { autoApplyFunction, autoApplyDailyReset } from "@/lib/inngest/autoApply";
+// TODO: Auto-apply inngest functions — re-enable when auto-apply feature is ready
+// import { autoApplyFunction, autoApplyDailyReset } from "@/lib/inngest/autoApply";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [autoApplyFunction, autoApplyDailyReset],
+  // TODO: Re-add autoApplyFunction & autoApplyDailyReset when auto-apply feature is ready
+  functions: [],
 });

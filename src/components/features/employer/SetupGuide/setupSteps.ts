@@ -11,13 +11,13 @@ export const SETUP_STEP_DEFINITIONS = [
     id: "company_profile",
     labelKey: "setupGuide.steps.companyProfile",
     descriptionKey: "setupGuide.steps.companyProfileDesc",
-    hrefSuffix: "/employer/settings",
+    hrefSuffix: "/employer/settings?tab=profile&highlight=companyName",
   },
   {
-    id: "verify_domain",
-    labelKey: "setupGuide.steps.verifyDomain",
-    descriptionKey: "setupGuide.steps.verifyDomainDesc",
-    hrefSuffix: "/employer/settings",
+    id: "add_contact",
+    labelKey: "setupGuide.steps.addContact",
+    descriptionKey: "setupGuide.steps.addContactDesc",
+    hrefSuffix: "/employer/settings?tab=contact&highlight=website",
   },
   {
     id: "create_job",

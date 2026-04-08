@@ -58,6 +58,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({
     placements: formatted,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  }, {
+    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },
   });
 }
 

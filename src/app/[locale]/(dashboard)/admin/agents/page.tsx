@@ -7,7 +7,8 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
-import { Plus, Pencil, Trash2, MapPin, Globe } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Globe, UserX } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +50,7 @@ interface SuperAgentOption {
 
 export default function AdminAgentsPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -189,11 +191,23 @@ export default function AdminAgentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Deactivate this agent?")) return;
+    const ok = await confirmDialog({ message: "Deactivate this agent? They won't be able to log in.", confirmLabel: "Deactivate" });
+    if (!ok) return;
     await fetch("/api/admin/users", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: id }),
+    });
+    fetchAgents();
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    const ok = await confirmDialog({ title: "Permanently Delete Agent", message: "This will permanently delete the agent and their profile. This cannot be undone.", confirmLabel: "Delete Forever" });
+    if (!ok) return;
+    await fetch("/api/admin/users", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: id, permanent: true }),
     });
     fetchAgents();
   };
@@ -217,6 +231,7 @@ export default function AdminAgentsPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <div className="flex items-center justify-between">
         <PageHeader title="Agents" description="Manage recruitment agents and their assigned regions" />
         {can("agents", "create") && (
@@ -312,6 +327,11 @@ export default function AdminAgentsPage() {
                       {can("agents", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handleDelete(agent._id)} title="Deactivate">
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      )}
+                      {can("agents", "delete") && (
+                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(agent._id)} title="Delete permanently">
+                          <UserX className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
                     </div>

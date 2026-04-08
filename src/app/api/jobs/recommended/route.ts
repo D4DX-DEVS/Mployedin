@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
-import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc } from "@/lib/matchScore";
+import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, getMatchedSkills } from "@/lib/matchScore";
 
 /**
  * GET /api/jobs/recommended
@@ -30,7 +30,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const limitParam = Number(sp.get("limit") ?? "10");
   const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(20, Math.round(limitParam))) : 10;
   const sort = sp.get("sort") ?? "match";
-  const minScore = Number(sp.get("min_score") ?? "50");
+  const minScore = Number(sp.get("min_score") ?? "30");
 
   const seeker = await JobSeeker.findOne({ userId: ctx.userId })
     .select("skills preferredCountries preferredRoles preferredSalary preferredJobType experience")
@@ -43,7 +43,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const seekerProfile = seekerProfileFromDoc(seeker);
 
   // Exclude already-applied jobs
-  const appliedJobIds = await Application.find({ jobSeekerId: ctx.userId })
+  const seekerId = (seeker as unknown as { _id: unknown })._id;
+  const appliedJobIds = await Application.find({ jobSeekerId: seekerId })
     .select("jobId")
     .lean()
     .then((apps) => apps.map((a) => a.jobId));
@@ -52,21 +53,28 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const jobQuery: Record<string, unknown> = {
     status: "active",
     _id: { $nin: appliedJobIds },
-    $or: [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }],
   };
 
+  const andConditions: Record<string, unknown>[] = [
+    { $or: [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }] },
+  ];
+
   if (seeker.preferredCountries?.length) {
-    jobQuery["$or"] = [
-      { "location.country": { $in: seeker.preferredCountries } },
-      { "location.isRemote": true },
-    ];
+    andConditions.push({
+      $or: [
+        { "location.country": { $in: seeker.preferredCountries } },
+        { "location.isRemote": true },
+      ],
+    });
   }
+
+  jobQuery.$and = andConditions;
 
   // Candidate pool — larger pool so we can score then paginate
   const candidateJobs = await Job.find(jobQuery)
     .sort({ createdAt: -1 })
     .limit(200)
-    .select("title requirements salary location employerId tags createdAt")
+    .select("title description requirements salary location employerId tags createdAt expiresAt views uniqueViews")
     .populate("employerId", "companyName logo")
     .lean();
 
@@ -75,6 +83,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     .map((job) => ({
       ...job,
       matchScore: calculateMatchScore(seekerProfile, jobProfileFromDoc(job)),
+      matchedSkills: getMatchedSkills(seekerProfile.skills, job.requirements?.skills ?? []),
     }))
     .filter((j) => j.matchScore >= minScore);
 

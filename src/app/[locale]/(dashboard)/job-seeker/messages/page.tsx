@@ -40,8 +40,8 @@ export default function JobSeekerMessagesPage() {
 
   const currentUserId = (session?.user as unknown as { id?: string })?.id ?? "";
 
-  const loadConversations = useCallback(async () => {
-    setLoading(true);
+  const loadConversations = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const res = await fetch("/api/dm");
       if (res.ok) {
@@ -49,13 +49,13 @@ export default function JobSeekerMessagesPage() {
         setConversations(data.conversations ?? []);
       }
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadConversations();
-    const interval = setInterval(loadConversations, 30000);
+    loadConversations(false);
+    const interval = setInterval(() => loadConversations(true), 30000);
     return () => clearInterval(interval);
   }, [loadConversations]);
 

@@ -62,6 +62,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({
     scorecards,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  }, {
+    headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },
   });
 }
 

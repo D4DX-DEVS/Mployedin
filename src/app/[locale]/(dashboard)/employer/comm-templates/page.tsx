@@ -1,23 +1,17 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Trash2, Plus } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/shared/PageHeader";
 import type { CommTemplateType } from "@/models/CommTemplate";
-
-interface CommTemplate {
-  _id: string;
-  name: string;
-  type: CommTemplateType;
-  subject: string;
-  body: string;
-  isDefault: boolean;
-  createdAt: string;
-}
+import { toast } from "sonner";
+import { useCommTemplates, useCreateCommTemplate, useDeleteCommTemplate } from "@/hooks/useCommTemplates";
+import type { CommTemplate } from "@/hooks/useCommTemplates";
 
 const TYPE_LABELS: Record<CommTemplateType, string> = {
   rejection: "Rejection",
@@ -36,8 +30,7 @@ const TYPE_COLORS: Record<CommTemplateType, string> = {
 export default function CommTemplatesPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
-  const [templates, setTemplates] = useState<CommTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [filterType, setFilterType] = useState<CommTemplateType | "all">("all");
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -48,68 +41,36 @@ export default function CommTemplatesPage() {
   });
   const [saving, setSaving] = useState(false);
 
-  const fetchTemplates = useCallback(async () => {
-    setLoading(true);
-    try {
-      const url = filterType === "all"
-        ? "/api/employers/comm-templates"
-        : `/api/employers/comm-templates?type=${filterType}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setTemplates(data.templates);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [filterType]);
+  const { data: templates = [], isLoading: loading } = useCommTemplates(filterType);
+  const createMutation = useCreateCommTemplate();
+  const deleteMutation = useDeleteCommTemplate();
 
   useEffect(() => {
     document.title = "Communication Templates · MPLOYEDIN";
   }, []);
 
-  useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
-
   async function handleCreateTemplate(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch("/api/employers/comm-templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      if (res.ok) {
-        setFormData({ name: "", type: "rejection", subject: "", body: "" });
-        setShowForm(false);
-        await fetchTemplates();
-      } else {
-        const error = await res.json();
-        alert("Error creating template: " + (error.error || "Unknown error"));
-      }
+      await createMutation.mutateAsync(formData);
+      setFormData({ name: "", type: "rejection", subject: "", body: "" });
+      setShowForm(false);
+    } catch (err: unknown) {
+      toast.error("Error creating template: " + (err instanceof Error ? err.message : "Unknown error"));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDeleteTemplate(templateId: string, templateName: string) {
-    if (!confirm(`Delete template "${templateName}"?`)) return;
+    const ok = await confirmDialog(`Delete template "${templateName}"?`);
+    if (!ok) return;
 
     try {
-      const res = await fetch(`/api/employers/comm-templates/${templateId}`, {
-        method: "DELETE",
-      });
-
-      if (res.ok) {
-        await fetchTemplates();
-      } else {
-        alert("Error deleting template");
-      }
+      await deleteMutation.mutateAsync(templateId);
     } catch {
-      alert("Error deleting template");
+      toast.error("Error deleting template");
     }
   }
 
@@ -119,6 +80,7 @@ export default function CommTemplatesPage() {
 
   return (
     <div className="page-container space-y-6">
+      {ConfirmDialogNode}
       <PageHeader
         title="Communication Templates"
         description="Pre-written templates for rejection emails, interview invites, follow-ups, and offers"

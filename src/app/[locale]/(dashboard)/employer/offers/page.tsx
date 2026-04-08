@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { DollarSign, Calendar, Clock, X, Send, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,25 +12,8 @@ import {
 } from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { usePagination } from "@/hooks/usePagination";
-
-type OfferStatus = "pending" | "accepted" | "declined" | "expired" | "withdrawn";
-
-interface Offer {
-  _id: string;
-  jobId: { _id: string; title: string; location?: string };
-  applicationId: { _id: string; status: string };
-  jobSeekerId: { _id: string; name?: string };
-  salary: { amount: number; currency: string; period: "monthly" | "annually" };
-  startDate: string;
-  benefits?: string;
-  notes?: string;
-  status: OfferStatus;
-  expiresAt: string;
-  respondedAt?: string;
-  declineReason?: string;
-  createdAt: string;
-}
+import { useOffers, useWithdrawOffer } from "@/hooks/useOffers";
+import type { Offer, OfferStatus } from "@/hooks/useOffers";
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All Statuses" },
@@ -53,43 +36,29 @@ function getStatusColor(status: OfferStatus): string {
 }
 
 export default function EmployerOffersPage() {
-  const pagination = usePagination();
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState("all");
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
   const [detailOffer, setDetailOffer] = useState<Offer | null>(null);
+
+  const { data, isLoading: loading } = useOffers({ page, limit, status: statusFilter });
+  const withdrawMutation = useWithdrawOffer();
+
+  const offers = data?.offers ?? [];
+  const total = data?.pagination?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   useEffect(() => {
     document.title = "Offers · MPLOYEDIN";
   }, []);
 
-  const fetchOffers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = pagination.paginationParams();
-      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
-      const res = await fetch(`/api/offers?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setOffers(data.offers);
-        pagination.updateTotal(data.pagination?.total ?? 0);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, pagination.page, pagination.limit]);
-
-  useEffect(() => { fetchOffers(); }, [fetchOffers]);
-  useEffect(() => { pagination.resetPage(); }, [statusFilter]);
+  useEffect(() => { setPage(1); }, [statusFilter]);
 
   async function handleWithdraw(offerId: string) {
     try {
-      const res = await fetch(`/api/offers/${offerId}`, { method: "DELETE" });
-      if (res.ok) {
-        setWithdrawingId(null);
-        fetchOffers();
-      }
+      await withdrawMutation.mutateAsync(offerId);
+      setWithdrawingId(null);
     } catch (err) {
       console.error("Error withdrawing offer:", err);
     }
@@ -111,7 +80,7 @@ export default function EmployerOffersPage() {
     <div className="page-container">
       <PageHeader
         title="Offers"
-        description={`${pagination.total} total offers${pendingCount ? ` · ${pendingCount} pending` : ""}${acceptedCount ? ` · ${acceptedCount} accepted` : ""}`}
+        description={`${total} total offers${pendingCount ? ` · ${pendingCount} pending` : ""}${acceptedCount ? ` · ${acceptedCount} accepted` : ""}`}
       />
 
       {/* Filters */}
@@ -210,12 +179,12 @@ export default function EmployerOffersPage() {
       )}
 
       <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
 
       {/* Withdraw Confirmation Modal */}

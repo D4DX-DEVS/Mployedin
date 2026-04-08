@@ -523,8 +523,8 @@
     "steps": {
       "companyProfile": "إكمال ملف الشركة",
       "companyProfileDesc": "أضف اسم الشركة والصناعة والبريد الإلكتروني",
-      "verifyDomain": "التحقق من النطاق",
-      "verifyDomainDesc": "تحقق من نطاق شركتك لفتح النشر",
+      "addContact": "إضافة بيانات الاتصال",
+      "addContactDesc": "أضف رابط الموقع ورقم الهاتف",
       "createJob": "إنشاء أول وظيفة",
       "createJobDesc": "انشر وظيفة لبدء استقبال الطلبات",
       "addRequirements": "إضافة المتطلبات والمهارات",

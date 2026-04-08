@@ -481,6 +481,20 @@ export default function JobPreferencesPage() {
     }
   }, [prefs, loading]);
 
+  // Auto-save debounced — save 800ms after last change
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (loading || !isDirty) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      handleSave();
+    }, 800);
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefs, loading, isDirty]);
+
   const loadPreferences = useCallback(async () => {
     try {
       const res = await fetch("/api/job-seeker/profile");
@@ -854,35 +868,27 @@ export default function JobPreferencesPage() {
           )}
         </Section>
 
-        {/* ── Save Button ───────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={handleSave}
-            disabled={saving || !isDirty}
-            className="min-w-[160px]"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving…
-              </>
-            ) : saveState === "saved" ? (
-              <>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Preferences Saved
-              </>
-            ) : (
-              "Save Preferences"
-            )}
-          </Button>
-          {saveState === "saved" && (
-            <span className="text-sm font-medium text-green-600 flex items-center gap-1.5">
-              <Zap className="h-3.5 w-3.5" />
-              Match score updated
+        {/* ── Auto-save status ────────────────────────────────────────── */}
+        <div className="flex items-center gap-2 h-8">
+          {saving && (
+            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Saving…
             </span>
           )}
-          {saveState === "error" && (
-            <span className="text-sm text-destructive">Failed to save. Please try again.</span>
+          {saveState === "saved" && !saving && (
+            <span className="text-sm font-medium text-green-600 flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Saved
+            </span>
+          )}
+          {saveState === "error" && !saving && (
+            <span className="text-sm text-destructive flex items-center gap-1.5">
+              Failed to save.
+              <button onClick={handleSave} className="underline hover:no-underline">
+                Retry
+              </button>
+            </span>
           )}
         </div>
 

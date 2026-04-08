@@ -7,6 +7,7 @@ import { User } from "@/models/User";
 import type { UserRole } from "@/models/User";
 import { CompanyUser } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
+import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
 import { getFirebaseAdminAuth } from "@/lib/firebase/admin";
 import type { CompanyRole } from "@/models/CompanyUser";
@@ -104,6 +105,9 @@ export const authConfig: NextAuthConfig = {
           meta: { email: user.email, provider: "credentials" },
         });
 
+        // Look up isOnboarded from JobSeeker profile
+        const jobSeeker = await JobSeeker.findOne({ userId: user._id }).select("isOnboarded").lean();
+
         return {
           id: user._id.toString(),
           email: user.email,
@@ -112,6 +116,7 @@ export const authConfig: NextAuthConfig = {
           role: user.role,
           locale: user.locale,
           isEmailVerified: user.isEmailVerified ?? false,
+          isOnboarded: jobSeeker?.isOnboarded ?? false,
         };
         } catch (err) {
           console.error("[auth] authorize error:", err);
@@ -153,6 +158,19 @@ export const authConfig: NextAuthConfig = {
               isActive: true,
               locale: "en",
             });
+            // Create empty JobSeeker profile for new social-login users
+            await JobSeeker.create({
+              userId: dbUser._id,
+              isOnboarded: false,
+              skills: [],
+              experience: [],
+              education: [],
+              languages: [],
+              certifications: [],
+              preferredCountries: [],
+              preferredRoles: [],
+              preferredLocations: [],
+            });
           } else {
             const update: Record<string, unknown> = {};
 
@@ -168,6 +186,9 @@ export const authConfig: NextAuthConfig = {
               dbUser = await User.findByIdAndUpdate(dbUser._id, update, { new: true }) ?? dbUser;
             }
           }
+
+          // Look up isOnboarded
+          const fbJobSeeker = await JobSeeker.findOne({ userId: dbUser._id }).select("isOnboarded").lean();
 
           logActivity({
             actorId: dbUser._id.toString(),
@@ -185,6 +206,7 @@ export const authConfig: NextAuthConfig = {
             role: dbUser.role,
             locale: dbUser.locale,
             isEmailVerified,
+            isOnboarded: fbJobSeeker?.isOnboarded ?? false,
           };
         } catch (err) {
           console.error("[auth] firebase authorize error:", err);
@@ -203,13 +225,22 @@ export const authConfig: NextAuthConfig = {
     error: "/en/login",
   },
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session: updateData }) {
+      // Client called update() — merge the new values into the token
+      if (trigger === "update" && updateData) {
+        const data = updateData as Record<string, unknown>;
+        if (data.isOnboarded !== undefined) token.isOnboarded = data.isOnboarded;
+        if (data.role !== undefined) token.role = data.role;
+        if (data.locale !== undefined) token.locale = data.locale;
+        return token;
+      }
       if (user) {
         token.id = user.id;
         token.picture = user.image ?? token.picture;
         token.role = ((user as unknown) as { role: UserRole }).role ?? "job_seeker";
         token.locale = ((user as unknown) as { locale: string }).locale ?? "en";
         token.isEmailVerified = ((user as unknown) as { isEmailVerified?: boolean }).isEmailVerified ?? false;
+        token.isOnboarded = ((user as unknown) as { isOnboarded?: boolean }).isOnboarded ?? false;
         token.permissionMode = ((user as unknown) as { permissionMode?: string }).permissionMode ?? "role_default";
         token.customPermissions = ((user as unknown) as { customPermissions?: Record<string, string[]> }).customPermissions ?? undefined;
       }
@@ -274,6 +305,7 @@ export const authConfig: NextAuthConfig = {
         (session.user as unknown as { locale: string }).locale = token.locale as string;
         (session.user as unknown as { permissionMode: string }).permissionMode = (token.permissionMode as string) ?? "role_default";
         (session.user as unknown as { customPermissions?: Record<string, string[]> }).customPermissions = token.customPermissions as Record<string, string[]> | undefined;
+        (session.user as unknown as { isOnboarded: boolean }).isOnboarded = (token.isOnboarded as boolean) ?? false;
         if (token.companyUserRole) {
           (session.user as unknown as { companyUserRole: CompanyRole }).companyUserRole = token.companyUserRole as CompanyRole;
         }

@@ -7,7 +7,8 @@ import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, UserX } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +37,7 @@ const EDIT_FIELDS: CrudField[] = [
 
 export default function AdminJobSeekersPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [jobSeekers, setJobSeekers] = useState<JobSeeker[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -69,13 +71,22 @@ export default function AdminJobSeekersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Deactivate this job seeker?")) return;
+    const ok = await confirmDialog({ message: "Deactivate this job seeker? They won't be able to log in.", confirmLabel: "Deactivate" });
+    if (!ok) return;
     await fetch(`/api/job-seekers/${id}`, { method: "DELETE" });
+    fetchJobSeekers();
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    const ok = await confirmDialog({ title: "Permanently Delete Job Seeker", message: "This will permanently delete the job seeker and all their data. This cannot be undone.", confirmLabel: "Delete Forever" });
+    if (!ok) return;
+    await fetch(`/api/job-seekers/${id}?permanent=true`, { method: "DELETE" });
     fetchJobSeekers();
   };
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <PageHeader title="Job Seekers" description="Browse and manage all candidate profiles" />
 
       <div className="relative w-64">
@@ -140,6 +151,11 @@ export default function AdminJobSeekersPage() {
                       {can("job_seekers", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handleDelete(js._id)} title="Deactivate">
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      )}
+                      {can("job_seekers", "delete") && (
+                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(js._id)} title="Delete permanently">
+                          <UserX className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
                     </div>

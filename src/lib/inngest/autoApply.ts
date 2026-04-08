@@ -6,6 +6,7 @@ import Application from "@/models/Application";
 import { ActivityEvent, ACTIVITY_PRIORITY } from "@/models/ActivityEvent";
 import Employer from "@/models/Employer";
 import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc } from "@/lib/matchScore";
+import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 
 const AUTO_APPLY_DAILY_LIMIT = 5;
 const MIN_SCORE_FOR_AUTO_APPLY = 60;
@@ -33,7 +34,7 @@ export const autoApplyFunction = inngest.createFunction(
 
     const seeker = await step.run("fetch-seeker", () =>
       JobSeeker.findOne({ userId })
-        .select("_id userId applicationMode autoApplyCount autoApplyResetAt skills experience preferredCountries preferredRoles preferredSalary preferredJobType")
+        .select("_id userId applicationMode autoApplyCount autoApplyResetAt skills experience preferredCountries preferredRoles preferredSalary preferredJobType profileCompleteness updatedAt")
         .lean()
     );
 
@@ -106,6 +107,14 @@ export const autoApplyFunction = inngest.createFunction(
         const employer = await Employer.findById(job.employerId).select("companyName").lean() as { companyName?: string } | null;
         const company = employer?.companyName ?? "";
 
+        const { signals: bSignals, score: bScore } = computeBehaviorSignals({
+          profileCompleteness: (seeker as { profileCompleteness?: number }).profileCompleteness ?? 0,
+          documents: [],
+          source: "auto_apply",
+          autoApplied: true,
+          lastActiveAt: (seeker as { updatedAt?: Date }).updatedAt,
+        });
+
         const application = await Application.create({
           jobSeekerId: seeker._id,
           jobId: job._id,
@@ -116,6 +125,8 @@ export const autoApplyFunction = inngest.createFunction(
           aiMatchScore: score,
           appliedAt: now,
           statusHistory: [{ status: "applied", changedAt: now }],
+          behaviorSignals: bSignals,
+          behaviorScore: bScore,
         });
 
         await JobSeeker.updateOne({ _id: seeker._id }, { $inc: { autoApplyCount: 1 } });

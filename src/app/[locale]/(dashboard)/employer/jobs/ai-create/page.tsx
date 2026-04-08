@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Bot, Send, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 interface Message {
   role: "user" | "assistant";
@@ -138,7 +139,7 @@ Employment types: full_time, part_time, contract, internship, freelance`;
       if (res.ok) {
         router.push("../jobs");
       } else {
-        alert("Failed to create job. Please try again.");
+        toast.error("Failed to create job. Please try again.");
       }
     } finally {
       setCreating(false);

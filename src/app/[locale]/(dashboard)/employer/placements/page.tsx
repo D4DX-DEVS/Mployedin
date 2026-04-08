@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -9,59 +9,35 @@ import { Users, Briefcase, TrendingUp, Inbox } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
-
-interface Placement {
-  _id: string;
-  jobTitle?: string;
-  candidateName?: string;
-  candidateEmail?: string;
-  startDate?: string;
-  salary?: { amount: number; currency: string };
-  status: string;
-  type: string;
-  createdAt: string;
-}
+import { usePlacements, type Placement } from "@/hooks/usePlacements";
 
 export default function EmployerPlacementsPage() {
-  const pagination = usePagination();
   const { can } = usePermissions();
-  const [placements, setPlacements] = useState<Placement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [filter, setFilter] = useState("all");
-  const [stats, setStats] = useState({ total: 0, active: 0, thisMonth: 0 });
 
-  const loadPlacements = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = pagination.paginationParams();
-      if (filter !== "all") params.set("status", filter);
-      const res = await fetch(`/api/placements?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        const items = data.placements ?? data.items ?? [];
-        setPlacements(items);
-        pagination.updateTotal(data.total ?? items.length);
-        // Compute stats from current page (best effort)
-        const now = new Date();
-        setStats({
-          total: data.total ?? items.length,
-          active: items.filter((p: Placement) => p.status === "active").length,
-          thisMonth: items.filter((p: Placement) => {
-            const d = new Date(p.createdAt);
-            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-          }).length,
-        });
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [filter, pagination.page, pagination.limit]);
+  const { data, isLoading: loading } = usePlacements({ page, limit, status: filter });
+  const placements = data?.placements ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
-  useEffect(() => { loadPlacements(); }, [loadPlacements]);
+  // Compute stats from current page (best effort)
+  const stats = useMemo(() => {
+    const now = new Date();
+    return {
+      total,
+      active: placements.filter((p) => p.status === "active").length,
+      thisMonth: placements.filter((p) => {
+        const d = new Date(p.createdAt);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }).length,
+    };
+  }, [placements, total]);
 
-  useEffect(() => { pagination.resetPage(); }, [filter]);
+  // Reset page when filter changes
+  useEffect(() => { setPage(1); }, [filter]);
 
   return (
     <div className="page-container">
@@ -147,12 +123,12 @@ export default function EmployerPlacementsPage() {
       </div>
 
       <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        total={pagination.total}
-        limit={pagination.limit}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
     </div>
   );

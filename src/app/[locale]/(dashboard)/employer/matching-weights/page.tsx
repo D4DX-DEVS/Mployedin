@@ -3,16 +3,7 @@
 import { useState, useEffect } from "react";
 import { Sliders, Save, RotateCcw, Loader2, CheckCircle } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
-
-interface MatchingWeights {
-  skills: number;
-  experience: number;
-  education: number;
-  location: number;
-  salary: number;
-  languages: number;
-  availability: number;
-}
+import { useMatchingWeights, useSaveMatchingWeights, type MatchingWeights } from "@/hooks/useMatchingWeights";
 
 const DEFAULT_WEIGHTS: MatchingWeights = {
   skills: 35,
@@ -45,21 +36,17 @@ const WEIGHT_DESCRIPTIONS: Record<keyof MatchingWeights, string> = {
 };
 
 export default function EmployerMatchingWeightsPage() {
+  const { data: serverWeights, isLoading: loading } = useMatchingWeights();
+  const saveWeights = useSaveMatchingWeights();
+
   const [weights, setWeights] = useState<MatchingWeights>(DEFAULT_WEIGHTS);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [total, setTotal] = useState(100);
 
+  // Seed local state from server data
   useEffect(() => {
-    fetch("/api/employers/matching-weights")
-      .then(r => r.json())
-      .then(d => {
-        if (d.weights) setWeights(d.weights);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+    if (serverWeights) setWeights(serverWeights);
+  }, [serverWeights]);
 
   useEffect(() => {
     setTotal(Object.values(weights).reduce((a, b) => a + b, 0));
@@ -71,18 +58,9 @@ export default function EmployerMatchingWeightsPage() {
   };
 
   const handleSave = async () => {
-    setSaving(true);
-    try {
-      await fetch("/api/employers/matching-weights", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weights }),
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } finally {
-      setSaving(false);
-    }
+    await saveWeights.mutateAsync(weights);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   const isTotalValid = total === 100;
@@ -139,10 +117,10 @@ export default function EmployerMatchingWeightsPage() {
           ))}
 
           <div className="flex items-center gap-3 pt-2 border-t">
-            <button onClick={handleSave} disabled={saving || !isTotalValid}
+            <button onClick={handleSave} disabled={saveWeights.isPending || !isTotalValid}
               className="btn-primary flex items-center gap-2 disabled:opacity-60">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {saving ? "Saving…" : saved ? "Saved!" : "Save Weights"}
+              {saveWeights.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+              {saveWeights.isPending ? "Saving…" : saved ? "Saved!" : "Save Weights"}
             </button>
             <button onClick={() => setWeights(DEFAULT_WEIGHTS)}
               className="btn-outline flex items-center gap-2">

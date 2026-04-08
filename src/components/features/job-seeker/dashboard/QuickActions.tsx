@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Search, FileText, Zap, Target } from "lucide-react";
+import { Search, FileText, Target } from "lucide-react";
+// TODO: Re-add Zap when auto-apply feature is ready
 
 interface QuickActionsProps {
   locale: string;
@@ -18,12 +19,13 @@ const actions = [
     href: "/job-seeker/cv",
     color: "bg-purple-50 text-purple-600 border-purple-200",
   },
-  {
-    icon: Zap,
-    label: "Auto Apply Settings",
-    href: "/job-seeker/settings",
-    color: "bg-amber-50 text-amber-600 border-amber-200",
-  },
+  // TODO: Auto-apply quick action — re-enable when auto-apply feature is ready
+  // {
+  //   icon: Zap,
+  //   label: "Auto Apply Settings",
+  //   href: "/job-seeker/settings",
+  //   color: "bg-amber-50 text-amber-600 border-amber-200",
+  // },
   {
     icon: Target,
     label: "Set Preferences",

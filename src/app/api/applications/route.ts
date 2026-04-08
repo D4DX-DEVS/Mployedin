@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
@@ -9,6 +10,7 @@ import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { applicationCreateSchema } from "@/lib/validators/applications";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -54,8 +56,22 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     Application.countDocuments(query),
   ]);
 
+  // For employer view: compute cross-application counts per candidate
+  let crossAppCounts: Record<string, number> = {};
+  if (ctx.role === "employer" && applications.length > 0) {
+    const seekerIds = [...new Set(applications.map((a) => String(a.jobSeekerId?._id)))];
+    const counts = await Application.aggregate([
+      { $match: { ...query, jobSeekerId: { $in: seekerIds.map((id) => new mongoose.Types.ObjectId(id)) } } },
+      { $group: { _id: "$jobSeekerId", count: { $sum: 1 } } },
+    ]);
+    crossAppCounts = Object.fromEntries(counts.map((c) => [String(c._id), c.count]));
+  }
+
   return NextResponse.json({
-    applications,
+    applications: applications.map((app) => ({
+      ...app,
+      otherApplicationsCount: Math.max(0, (crossAppCounts[String(app.jobSeekerId?._id)] ?? 1) - 1),
+    })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   });
 }
@@ -100,15 +116,28 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     .lean() as { workflow?: { settings?: { autoRejectBelow?: number } } } | null;
   const autoRejectBelow = empRecord?.workflow?.settings?.autoRejectBelow;
 
+  const seekerDoc = seeker as { _id: unknown; profileCompleteness?: number; updatedAt?: Date; documents?: { name: string; url: string; type: string }[] };
+  const isEasyApply = !!body.easyApply;
+  const { signals, score: bScore } = computeBehaviorSignals({
+    profileCompleteness: seekerDoc.profileCompleteness ?? 0,
+    documents: seekerDoc.documents ?? [],
+    coverLetter,
+    source: isEasyApply ? "easy_apply" : "full_form",
+    autoApplied: false,
+    lastActiveAt: seekerDoc.updatedAt,
+  });
+
   const application = await Application.create({
     jobSeekerId: seeker._id,
     jobId,
     employerId: job.employerId,
     coverLetter,
-    source: body.easyApply ? 'easy_apply' : 'full_form',
+    source: isEasyApply ? 'easy_apply' : 'full_form',
     status: "applied",
     appliedAt: new Date(),
     statusHistory: [{ status: "applied", changedAt: new Date(), note: "Application submitted" }],
+    behaviorSignals: signals,
+    behaviorScore: bScore,
   });
 
   // If employer has auto-reject threshold and score already known, apply it immediately

@@ -37,6 +37,11 @@ export default function LoginPage() {
       const sessionRes = await fetch("/api/auth/session");
       const session = await sessionRes.json();
       const role = (session?.user?.role as string) ?? "job_seeker";
+      const isOnboarded = (session?.user?.isOnboarded as boolean) ?? true;
+      if (role === "job_seeker" && !isOnboarded) {
+        router.push(`/${locale}/onboarding`);
+        return;
+      }
       const dashMap: Record<string, string> = {
         admin: "admin",
         employer: "employer",
@@ -72,6 +77,11 @@ export default function LoginPage() {
       const sessionRes = await fetch("/api/auth/session");
       const session = await sessionRes.json();
       const role = (session?.user?.role as string) ?? "job_seeker";
+      const isOnboarded = (session?.user?.isOnboarded as boolean) ?? true;
+      if (role === "job_seeker" && !isOnboarded) {
+        router.push(`/${locale}/onboarding`);
+        return;
+      }
       const dashMap: Record<string, string> = {
         admin: "admin",
         employer: "employer",

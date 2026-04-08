@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { canAccess } from "@/lib/permissions/matrix";
 
 describe("RBAC Permission Matrix", () => {

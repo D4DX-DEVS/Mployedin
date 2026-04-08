@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Search, Filter, Eye, CheckCircle, XCircle, Loader2, Pencil, Trash2 } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -30,6 +31,7 @@ interface Interview {
 
 export default function AdminInterviewOversightPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,8 @@ export default function AdminInterviewOversightPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Cancel this interview?")) return;
+    const ok = await confirmDialog("Cancel this interview?");
+    if (!ok) return;
     await fetch(`/api/interviews/${id}`, { method: "DELETE" });
     load();
   };
@@ -97,6 +100,7 @@ export default function AdminInterviewOversightPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <PageHeader
         title="Interview Oversight"
         description={`${total} interviews across the platform`}

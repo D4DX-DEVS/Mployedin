@@ -265,13 +265,65 @@ function getCsrfToken(): string {
   return match?.split("=")[1] ?? "";
 }
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════════
+ * AUTO APPLY TAB — DISABLED (future feature)
+ * TODO: Re-enable by moving this JSX back into the Tabs component
+ * and uncommenting the TabsTrigger above.
+ * ══════════════════════════════════════════════════════════════════════════════
+ *
+ * <TabsContent value="auto-apply" className="mt-5 space-y-5 focus-visible:outline-none">
+ *   <SettingCard
+ *     icon={<Zap className="h-4 w-4" />}
+ *     title="Auto Apply Mode"
+ *     description="AI finds matching jobs and applies on your behalf — fully automated."
+ *     accent={values.autoApply}
+ *   >
+ *     <SettingRow
+ *       label="Enable Auto Apply"
+ *       description={values.autoApply
+ *         ? "AI is submitting applications automatically."
+ *         : "Manual mode — you review every application before it's sent."}
+ *       tooltip="When enabled, AI submits applications that meet your match threshold without any action from you."
+ *     >
+ *       <Controller control={control} name="autoApply"
+ *         render={({ field }) => (<Switch checked={field.value} onCheckedChange={field.onChange} />)} />
+ *     </SettingRow>
+ *   </SettingCard>
+ *
+ *   {!values.autoApply && (
+ *     <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/30 px-4 py-3.5">
+ *       <Hand className="h-4 w-4 text-muted-foreground shrink-0" />
+ *       <p className="text-sm text-muted-foreground">Manual mode is active — you control every application before it's submitted.</p>
+ *     </div>
+ *   )}
+ *
+ *   {values.autoApply && (
+ *     <>
+ *       <SettingCard icon={<Settings2 className="h-4 w-4" />} title="Auto Apply Filters"
+ *         description="Narrow down which jobs the AI targets on your behalf." accent>
+ *         <SettingRow label="Match Score Threshold"
+ *           description={`AI only applies when match score ≥ ${values.autoApplyFilters.minScore}%`}
+ *           tooltip="Higher threshold = fewer, more targeted applications.">
+ *           ... Match Score slider, Apply Speed selector, Only Verified toggle ...
+ *         </SettingRow>
+ *       </SettingCard>
+ *       <SettingCard icon={<FileText className="h-4 w-4" />} title="Job Type & Location Targets"
+ *         description="Set which jobs you want the AI to pursue.">
+ *         ... Preferred Job Types chips, Preferred Locations TagInput, Salary Range inputs ...
+ *       </SettingCard>
+ *     </>
+ *   )}
+ * </TabsContent>
+ */
+
 export default function JobSeekerSettingsPage() {
   const { data: session, update: updateSession } = useSession();
   const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, type: "success", message: "" });
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [activeTab, setActiveTab] = useState("auto-apply");
+  const [activeTab, setActiveTab] = useState("interviews"); // TODO: was "auto-apply" — re-enable when auto-apply feature is ready
 
   // ── Avatar state ────────────────────────────────────────────────────────────
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -558,23 +610,12 @@ export default function JobSeekerSettingsPage() {
             </div>
           </div>
 
-          {/* AI active banner */}
-          {values.autoApply && (
-            <div className="mx-5 mb-5 flex items-center justify-between rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 gap-3 flex-wrap">
-              <div className="flex items-center gap-2.5">
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-70" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                </span>
-                <span className="text-xs font-medium text-primary">AI is actively applying to jobs on your behalf</span>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span><span className="font-semibold text-foreground">{MOCK_STATS.applied}</span> applied this week</span>
-                <span className="text-border">·</span>
-                <span><span className="font-semibold text-foreground">{MOCK_STATS.interviews}</span> interviews booked</span>
-              </div>
-            </div>
-          )}
+          {/* TODO: Auto-apply banner — re-enable when auto-apply feature is ready */}
+          {/* When ready, restore:
+              - AI active banner showing applied count and interviews booked
+              - Pulsing indicator dot
+              - Conditional on values.autoApply
+          */}
         </div>
 
         {/* ── Mobile save bar ─────────────────────────────────────────────── */}
@@ -595,11 +636,13 @@ export default function JobSeekerSettingsPage() {
         {/* ── Tabs ────────────────────────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full h-auto p-1 rounded-2xl flex flex-wrap gap-1 bg-muted/40 border border-border/40">
+            {/* TODO: Auto-apply tab — re-enable when auto-apply feature is ready
             <TabsTrigger value="auto-apply" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Zap className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Auto Apply</span>
               <span className="sm:hidden">Apply</span>
             </TabsTrigger>
+            */}
             <TabsTrigger value="interviews" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Interviews</span>
@@ -622,217 +665,8 @@ export default function JobSeekerSettingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* ════════════════════ AUTO APPLY TAB ════════════════════ */}
-          <TabsContent value="auto-apply" className="mt-5 space-y-5 focus-visible:outline-none">
-            <SettingCard
-              icon={<Zap className="h-4 w-4" />}
-              title="Auto Apply Mode"
-              description="AI finds matching jobs and applies on your behalf — fully automated."
-              accent={values.autoApply}
-            >
-              <SettingRow
-                label="Enable Auto Apply"
-                description={values.autoApply
-                  ? "AI is submitting applications automatically."
-                  : "Manual mode — you review every application before it's sent."}
-                tooltip="When enabled, AI submits applications that meet your match threshold without any action from you."
-              >
-                <Controller
-                  control={control}
-                  name="autoApply"
-                  render={({ field }) => (
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  )}
-                />
-              </SettingRow>
-            </SettingCard>
-
-            {!values.autoApply && (
-              <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/30 px-4 py-3.5">
-                <Hand className="h-4 w-4 text-muted-foreground shrink-0" />
-                <p className="text-sm text-muted-foreground">Manual mode is active — you control every application before it's submitted.</p>
-              </div>
-            )}
-
-            {values.autoApply && (
-              <>
-                <SettingCard
-                  icon={<Settings2 className="h-4 w-4" />}
-                  title="Auto Apply Filters"
-                  description="Narrow down which jobs the AI targets on your behalf."
-                  accent
-                >
-                  {/* Match Score */}
-                  <SettingRow
-                    label="Match Score Threshold"
-                    description={`AI only applies when match score ≥ ${values.autoApplyFilters.minScore}%`}
-                    tooltip="Higher threshold = fewer, more targeted applications."
-                  >
-                    <div className="flex items-center gap-3">
-                      <Controller
-                        control={control}
-                        name="autoApplyFilters.minScore"
-                        render={({ field }) => (
-                          <input
-                            type="range"
-                            min={50}
-                            max={95}
-                            step={5}
-                            value={field.value}
-                            onChange={(e) => field.onChange(parseInt(e.target.value))}
-                            className="w-28 accent-primary"
-                          />
-                        )}
-                      />
-                      <span className="w-11 rounded-lg bg-primary/10 px-2 py-1 text-center text-xs font-bold text-primary">
-                        {values.autoApplyFilters.minScore}%
-                      </span>
-                    </div>
-                  </SettingRow>
-
-                  {/* Apply Speed */}
-                  <SettingRow
-                    label="AI Apply Speed"
-                    description="How aggressively the AI selects jobs within your threshold."
-                    tooltip="Aggressive mode applies to more jobs but may include weaker fits."
-                  >
-                    <Controller
-                      control={control}
-                      name="applySpeed"
-                      render={({ field }) => (
-                        <div className="flex gap-1.5">
-                          {SPEED_OPTIONS.map((opt) => (
-                            <Tooltip key={opt.value}>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => field.onChange(opt.value)}
-                                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                                    field.value === opt.value
-                                      ? "border-primary bg-primary text-primary-foreground"
-                                      : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                                  }`}
-                                >
-                                  {opt.label}
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="text-xs">{opt.desc}</TooltipContent>
-                            </Tooltip>
-                          ))}
-                        </div>
-                      )}
-                    />
-                  </SettingRow>
-
-                  {/* Only Verified Employers */}
-                  <SettingRow
-                    label="Only verified employers"
-                    description="Skip jobs from unverified companies."
-                    tooltip="Verified employers have confirmed their company domain."
-                  >
-                    <Controller
-                      control={control}
-                      name="autoApplyFilters.onlyVerifiedEmployers"
-                      render={({ field }) => (
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      )}
-                    />
-                  </SettingRow>
-                </SettingCard>
-
-                <SettingCard
-                  icon={<FileText className="h-4 w-4" />}
-                  title="Job Type & Location Targets"
-                  description="Set which jobs you want the AI to pursue."
-                >
-                  {/* Preferred Job Types */}
-                  <div className="py-3">
-                    <p className="text-sm font-medium text-foreground mb-2.5">Preferred Job Types</p>
-                    <Controller
-                      control={control}
-                      name="preferredJobTypes"
-                      render={({ field }) => (
-                        <div className="flex flex-wrap gap-2">
-                          {JOB_TYPE_OPTIONS.map((type) => {
-                            const active = field.value.includes(type);
-                            return (
-                              <button
-                                key={type}
-                                type="button"
-                                onClick={() => field.onChange(
-                                  active ? field.value.filter((v) => v !== type) : [...field.value, type]
-                                )}
-                                className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                                  active
-                                    ? "border-primary bg-primary/10 text-primary"
-                                    : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                                }`}
-                              >
-                                {type}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    />
-                  </div>
-
-                  {/* Preferred Locations */}
-                  <div className="py-3 border-t border-border/50">
-                    <div className="flex items-center gap-1.5 mb-2.5">
-                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">Preferred Locations</p>
-                    </div>
-                    <Controller
-                      control={control}
-                      name="preferredLocations"
-                      render={({ field }) => (
-                        <TagInput values={field.value} onChange={field.onChange} placeholder="e.g. Dubai, London, Remote…" />
-                      )}
-                    />
-                  </div>
-
-                  {/* Salary Range */}
-                  <div className="py-3 border-t border-border/50">
-                    <div className="flex items-center gap-1.5 mb-2.5">
-                      <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">Target Salary Range</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Controller
-                        control={control}
-                        name="salaryMin"
-                        render={({ field }) => (
-                          <Input type="number" placeholder="Min" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} className="h-9 text-sm" />
-                        )}
-                      />
-                      <Controller
-                        control={control}
-                        name="salaryMax"
-                        render={({ field }) => (
-                          <Input type="number" placeholder="Max" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} className="h-9 text-sm" />
-                        )}
-                      />
-                      <Controller
-                        control={control}
-                        name="salaryCurrency"
-                        render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger className="h-9 w-24 text-sm shrink-0">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CURRENCIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </SettingCard>
-              </>
-            )}
-          </TabsContent>
+          {/* ════════════════════ AUTO APPLY TAB (DISABLED — future feature) ════════════════════ */}
+          {/* TODO: Re-enable when auto-apply feature is ready — uncomment the TabsContent block below */}
 
           {/* ════════════════════ INTERVIEWS TAB ════════════════════ */}
           <TabsContent value="interviews" className="mt-5 space-y-5 focus-visible:outline-none">

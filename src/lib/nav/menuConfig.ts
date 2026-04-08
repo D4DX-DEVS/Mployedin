@@ -806,6 +806,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             ],
           },
           {
+            title: "Analytics",
+            titleAr: "التحليلات",
+            href: p("/employer/analytics"),
+            icon: "BarChart2",
+            description: "Pipeline analytics & insights",
+            descriptionAr: "تحليلات خط التوظيف والرؤى",
+          },
+          {
             title: "Messages",
             titleAr: "الرسائل",
             href: p("/employer/messages"),
@@ -845,11 +853,11 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
       {
         items: [
           {
-            title: "Dashboard",
+            title: "Home",
             titleAr: "لوحة التحكم",
             href: p("/job-seeker"),
             icon: "LayoutDashboard",
-            description: "Overview & key metrics",
+            description: "Your job seeker home",
             descriptionAr: "نظرة عامة والمقاييس الرئيسية",
           },
           {
@@ -885,11 +893,11 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تعيين تفضيلات مطابقة الوظائف",
               },
               {
-                title: "Job Search",
+                title: "Jobs",
                 titleAr: "البحث عن وظيفة",
                 href: p("/job-seeker/jobs"),
                 icon: "Briefcase",
-                description: "Browse available jobs",
+                description: "Browse recommended jobs",
                 descriptionAr: "تصفح الوظائف المتاحة",
               },
               {

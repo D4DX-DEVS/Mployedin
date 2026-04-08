@@ -77,6 +77,21 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   const seeker = await JobSeeker.findById(params?.id);
   if (!seeker) return NextResponse.json({ error: "Job seeker not found" }, { status: 404 });
 
+  const permanent = new URL(req.url).searchParams.get("permanent") === "true";
+
+  if (permanent) {
+    await User.findByIdAndDelete(seeker.userId);
+    await seeker.deleteOne();
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "job_seeker.delete",
+      resource: "job_seekers",
+      resourceId: params?.id,
+      req,
+    });
+    return NextResponse.json({ message: "Job seeker permanently deleted" });
+  }
+
   // Soft-delete: deactivate linked user
   await User.findByIdAndUpdate(seeker.userId, { isActive: false });
 

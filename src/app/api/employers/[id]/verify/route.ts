@@ -17,7 +17,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   }
 
   await connectDB();
-  const employer = await Employer.findById(params?.id);
+  const employer = await Employer.findOne({ userId: params?.id });
   if (!employer) {
     return NextResponse.json({ error: "Employer not found" }, { status: 404 });
   }
@@ -28,6 +28,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
   employer.domainVerified = true;
   employer.domainVerifiedAt = new Date();
+  employer.verificationLevel = "company";
+  employer.verifiedAt = new Date();
+  employer.verifiedBy = new (await import("mongoose")).default.Types.ObjectId(ctx.userId);
   await employer.save();
 
   await logActivity({
@@ -59,7 +62,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   }
 
   await connectDB();
-  const employer = await Employer.findById(params?.id);
+  const employer = await Employer.findOne({ userId: params?.id });
   if (!employer) {
     return NextResponse.json({ error: "Employer not found" }, { status: 404 });
   }

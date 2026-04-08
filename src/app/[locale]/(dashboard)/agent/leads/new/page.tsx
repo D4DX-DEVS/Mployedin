@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import Link from "next/link";
+import { toast } from "sonner";
 
 export default function NewLeadPage() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function NewLeadPage() {
       router.back();
     } else {
       const err = await res.json();
-      alert(err.error ?? "Failed to create lead");
+      toast.error(err.error ?? "Failed to create lead");
     }
     setSaving(false);
   };

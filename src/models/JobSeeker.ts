@@ -59,6 +59,25 @@ export interface IJobSeeker extends Document {
   education: IEducation[];
   languages: ILanguageSkill[];
   certifications: string[];
+  // Documents
+  documents: {
+    id: string;
+    name: string;
+    category: "resume" | "college_certificate" | "course_certificate" | "professional_certificate" | "other";
+    url: string;
+    size: number;
+    uploadedAt: Date;
+  }[];
+  // Onboarding
+  headline?: string;
+  workStatus?: "experienced" | "fresher";
+  marketingConsent: boolean;
+  totalExperienceYears: number;
+  totalExperienceMonths: number;
+  currentSalary?: { amount: number; currency: string };
+  industry?: string;
+  preferredLocations: string[];
+  isOnboarded: boolean;
   // Preferences
   preferredCountries: string[];
   preferredRoles: string[];
@@ -148,6 +167,27 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     education: [EducationSchema],
     languages: [LanguageSchema],
     certifications: [String],
+    documents: [{
+      id: { type: String, required: true },
+      name: { type: String, required: true },
+      category: { type: String, enum: ["resume", "college_certificate", "course_certificate", "professional_certificate", "other"], default: "other" },
+      url: { type: String, required: true },
+      size: { type: Number, default: 0 },
+      uploadedAt: { type: Date, default: Date.now },
+      _id: false,
+    }],
+    headline: String,
+    workStatus: { type: String, enum: ["experienced", "fresher"] },
+    marketingConsent: { type: Boolean, default: false },
+    totalExperienceYears: { type: Number, default: 0, min: 0 },
+    totalExperienceMonths: { type: Number, default: 0, min: 0, max: 11 },
+    currentSalary: {
+      amount: Number,
+      currency: { type: String, default: "USD" },
+    },
+    industry: String,
+    preferredLocations: [String],
+    isOnboarded: { type: Boolean, default: false, index: true },
     preferredCountries: [String],
     preferredRoles: [String],
     preferredSalary: {

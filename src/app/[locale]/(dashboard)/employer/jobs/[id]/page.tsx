@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   ArrowLeft, Edit2, Copy, CheckCircle, XCircle, Clock, MapPin,
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useJobDetail, useUpdateJobStatus, useCloneJob } from "@/hooks/useJobs";
 
 interface Job {
   _id: string;
@@ -48,46 +49,20 @@ export default function JobDetailPage() {
   const router = useRouter();
   const { locale, id } = useParams<{ locale: string; id: string }>();
   const { can } = usePermissions();
-  const [job, setJob] = useState<Job | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: job, isLoading: loading } = useJobDetail(id);
+  const updateStatusMutation = useUpdateJobStatus();
+  const cloneMutation = useCloneJob();
   const [cloning, setCloning] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch(`/api/jobs/${id}`);
-        if (res.ok) {
-          const data = await res.json();
-          setJob(data.job);
-          document.title = `${data.job.title} · MPLOYEDIN`;
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [id]);
-
   async function updateStatus(status: string) {
-    const res = await fetch(`/api/jobs/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setJob(data.job);
-    }
+    updateStatusMutation.mutate({ jobId: id, status });
   }
 
   async function cloneJob() {
     setCloning(true);
     try {
-      const res = await fetch(`/api/jobs/${id}/clone`, { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        router.push(`/${locale}/employer/jobs/${data.job._id}/edit`);
-      }
+      const data = await cloneMutation.mutateAsync(id);
+      router.push(`/${locale}/employer/jobs/${data.job._id}/edit`);
     } finally {
       setCloning(false);
     }

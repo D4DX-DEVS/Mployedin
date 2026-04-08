@@ -8,11 +8,16 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, Inbox } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, UserX } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface Employer {
   _id: string;
@@ -26,6 +31,9 @@ interface Employer {
   status?: string;
   isActive?: boolean;
   createdAt: string;
+  verificationLevel?: "basic" | "company" | "premium";
+  domainVerified?: boolean;
+  verificationDocs?: string[];
 }
 
 const FIELDS: CrudField[] = [
@@ -41,12 +49,16 @@ const EDIT_FIELDS: CrudField[] = FIELDS.filter(f => f.name !== "password");
 
 export default function AdminEmployersPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Employer | null>(null);
+  const [verifyItem, setVerifyItem] = useState<Employer | null>(null);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const fetchEmployers = useCallback(async () => {
     setLoading(true);
@@ -85,13 +97,53 @@ export default function AdminEmployersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Deactivate this employer?")) return;
+    const ok = await confirmDialog({ message: "Deactivate this employer? They won't be able to log in.", confirmLabel: "Deactivate" });
+    if (!ok) return;
     await fetch(`/api/employers/${id}`, { method: "DELETE" });
     fetchEmployers();
   };
 
+  const handlePermanentDelete = async (id: string) => {
+    const ok = await confirmDialog({ title: "Permanently Delete Employer", message: "This will permanently delete the employer and all their data. This cannot be undone.", confirmLabel: "Delete Forever" });
+    if (!ok) return;
+    await fetch(`/api/employers/${id}?permanent=true`, { method: "DELETE" });
+    fetchEmployers();
+  };
+
+  const handleVerify = async () => {
+    if (!verifyItem) return;
+    setVerifyLoading(true);
+    setVerifyError(null);
+    const res = await fetch(`/api/employers/${verifyItem._id}/verify`, { method: "POST" });
+    if (res.ok) {
+      const data = await res.json();
+      setVerifyItem((prev) => prev ? { ...prev, domainVerified: true, verificationLevel: "company" } : prev);
+      setEmployers((prev) => prev.map((e) => e._id === verifyItem._id
+        ? { ...e, domainVerified: true, verificationLevel: "company" }
+        : e));
+    } else {
+      const data = await res.json();
+      setVerifyError(data.error ?? "Verification failed");
+    }
+    setVerifyLoading(false);
+  };
+
+  const handleRevoke = async () => {
+    if (!verifyItem) return;
+    setVerifyLoading(true);
+    const res = await fetch(`/api/employers/${verifyItem._id}/verify`, { method: "DELETE" });
+    if (res.ok) {
+      setVerifyItem((prev) => prev ? { ...prev, domainVerified: false, verificationLevel: "basic" } : prev);
+      setEmployers((prev) => prev.map((e) => e._id === verifyItem._id
+        ? { ...e, domainVerified: false, verificationLevel: "basic" }
+        : e));
+    }
+    setVerifyLoading(false);
+  };
+
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <div className="flex items-center justify-between">
         <PageHeader title="Employers" description="Manage all employer accounts and company profiles" />
         {can("employers", "create") && (
@@ -104,7 +156,7 @@ export default function AdminEmployersPage() {
       <div className="relative w-64">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
         <Input
-          placeholder="Search employer\u2026"
+          placeholder="Search employer…"
           value={search}
           onChange={(e) => { setSearch(e.target.value); resetPage(); }}
           className="pl-9 h-9"
@@ -120,7 +172,7 @@ export default function AdminEmployersPage() {
               <TableHead>Industry</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Joined</TableHead>
-              {(can("employers", "update") || can("employers", "delete")) && (
+              {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
                 <TableHead>Actions</TableHead>
               )}
             </TableRow>
@@ -147,22 +199,44 @@ export default function AdminEmployersPage() {
               </TableRow>
             ) : employers.map((emp) => (
               <TableRow key={emp._id}>
-                <TableCell className="font-medium">{emp.companyName || emp.name}</TableCell>
-                <TableCell className="text-muted-foreground">{emp.email ?? emp.contactEmail ?? "\u2014"}</TableCell>
-                <TableCell className="text-muted-foreground">{emp.industry ?? "\u2014"}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{emp.companyName || emp.name}</span>
+                    {emp.domainVerified && (
+                      <Badge className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 border-emerald-200">Verified</Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{emp.email ?? emp.contactEmail ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{emp.industry ?? "—"}</TableCell>
                 <TableCell><StatusBadge status={emp.status ?? (emp.isActive !== false ? "active" : "inactive")} /></TableCell>
                 <TableCell className="text-muted-foreground">{new Date(emp.createdAt).toLocaleDateString()}</TableCell>
-                {(can("employers", "update") || can("employers", "delete")) && (
+                {(can("employers", "update") || can("employers", "delete") || can("employers", "approve")) && (
                   <TableCell>
                     <div className="flex items-center gap-1">
+                      {can("employers", "approve") && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => setVerifyItem(emp)}
+                          title={emp.domainVerified ? "Verified — click to manage" : "Verify employer"}
+                        >
+                          <ShieldCheck className={`h-3.5 w-3.5 ${emp.domainVerified ? "text-emerald-600" : "text-muted-foreground"}`} />
+                        </Button>
+                      )}
                       {can("employers", "update") && (
                         <Button variant="ghost" size="xs" onClick={() => setEditItem(emp)} title="Edit">
                           <Pencil className="h-3.5 w-3.5 text-primary" />
                         </Button>
                       )}
                       {can("employers", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(emp._id)} title="Delete">
+                        <Button variant="ghost" size="xs" onClick={() => handleDelete(emp._id)} title="Deactivate">
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      )}
+                      {can("employers", "delete") && (
+                        <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(emp._id)} title="Delete permanently">
+                          <UserX className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
                     </div>
@@ -180,6 +254,100 @@ export default function AdminEmployersPage() {
       <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title="Edit Employer" fields={EDIT_FIELDS}
         initialValues={editItem ? { name: editItem.name ?? "", email: editItem.email ?? editItem.contactEmail ?? "", companyName: editItem.companyName ?? "", industry: editItem.industry ?? "", location: editItem.location ?? "", phone: editItem.phone ?? "" } : undefined}
         onSubmit={handleEdit} />
+
+      {/* Verification Modal */}
+      <Dialog open={!!verifyItem} onOpenChange={(open) => { if (!open) { setVerifyItem(null); setVerifyError(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Employer Verification</DialogTitle>
+            <DialogDescription>
+              {verifyItem?.companyName} — review documents and manage verification status.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Current status */}
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Status:</span>
+              {verifyItem?.domainVerified ? (
+                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Verified</Badge>
+              ) : (
+                <Badge variant="outline" className="text-muted-foreground">Unverified</Badge>
+              )}
+              {verifyItem?.verificationLevel && verifyItem.verificationLevel !== "basic" && (
+                <Badge variant="secondary" className="capitalize">{verifyItem.verificationLevel}</Badge>
+              )}
+            </div>
+
+            {/* Documents */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Uploaded Documents</p>
+              {(verifyItem?.verificationDocs?.length ?? 0) === 0 ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 rounded-lg bg-muted/30">
+                  <FileText className="w-4 h-4" />
+                  No documents uploaded yet
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {verifyItem?.verificationDocs?.map((url) => {
+                    const name = url.split("/").pop() ?? url;
+                    return (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-xs text-primary p-2.5 rounded-lg border border-border/40 hover:bg-muted/30 transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate flex-1">{name}</span>
+                        <ExternalLink className="w-3 h-3 shrink-0 opacity-50" />
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Error message */}
+            {verifyError && (
+              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                <ShieldOff className="w-4 h-4 shrink-0" />
+                <span>{verifyError}</span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+              {verifyItem?.domainVerified ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={verifyLoading}
+                  onClick={handleRevoke}
+                  className="flex-1"
+                >
+                  <ShieldOff className="w-3.5 h-3.5 me-1.5" />
+                  {verifyLoading ? "Revoking…" : "Revoke Verification"}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  disabled={verifyLoading}
+                  onClick={handleVerify}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 me-1.5" />
+                  {verifyLoading ? "Verifying…" : "Verify Employer"}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setVerifyItem(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

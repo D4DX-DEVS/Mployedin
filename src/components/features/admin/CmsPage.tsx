@@ -8,6 +8,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -24,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Search, Inbox } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 
 export interface CmsColumn {
   key: string;
@@ -66,6 +68,7 @@ export default function CmsPage({
   statusFilterOptions,
 }: CmsPageProps) {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -133,11 +136,12 @@ export default function CmsPage({
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this item?")) return;
+    const ok = await confirmDialog("Are you sure you want to delete this item?");
+    if (!ok) return;
     const r = await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
     if (!r.ok) {
       const err = await r.json();
-      alert(err.error || "Failed to delete");
+      toast.error(err.error || "Failed to delete");
       return;
     }
     fetchItems();
@@ -159,6 +163,7 @@ export default function CmsPage({
 
   return (
     <div className="space-y-6">
+      {ConfirmDialogNode}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>

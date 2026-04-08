@@ -8,6 +8,7 @@ import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Building2, Briefcase, Search, Loader2, Plus, Edit2, Trash2 } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface Employer {
   _id: string;
@@ -27,6 +28,7 @@ const EMPLOYER_FIELDS: CrudField[] = [
 
 export default function AgentEmployersPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,13 +71,15 @@ export default function AgentEmployersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this employer?")) return;
+    const ok = await confirmDialog("Delete this employer?");
+    if (!ok) return;
     await fetch(`/api/employers/${id}`, { method: "DELETE" });
     loadEmployers();
   };
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <div className="flex items-center justify-between">
         <PageHeader
           title="My Employers"

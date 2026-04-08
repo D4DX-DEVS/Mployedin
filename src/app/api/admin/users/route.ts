@@ -244,18 +244,36 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({ user: { ...user.toObject(), passwordHash: undefined } }, { status: 201 });
 }
 
-// DELETE /api/admin/users — deactivate users
+// DELETE /api/admin/users — deactivate or permanently delete users
 async function deleteHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   await connectDB();
   const body = await validateBody(req, adminUserDeleteSchema);
-  const { userId } = body;
+  const { userId, permanent } = body as { userId: string; permanent?: boolean };
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
 
   const user = await User.findById(userId);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  if (permanent) {
+    // Clean up role profile before deleting user
+    if (user.role === "agent") {
+      await Agent.findOneAndDelete({ userId: user._id });
+    } else if (user.role === "super_agent") {
+      await SuperAgent.findOneAndDelete({ userId: user._id });
+    }
+    await user.deleteOne();
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "user.delete",
+      resource: "users",
+      resourceId: String(userId),
+      req,
+    });
+    return NextResponse.json({ message: "User permanently deleted" });
+  }
 
   user.isActive = false;
   await user.save();

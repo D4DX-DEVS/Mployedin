@@ -1,10 +1,13 @@
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
+import { Employer } from "@/models/Employer";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { MapPin, Briefcase, Clock, Users, Globe } from "lucide-react";
 import Link from "next/link";
 import EasyApply from "@/components/features/public/EasyApply";
+import TrackJobView from "@/components/features/public/TrackJobView";
+import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -70,6 +73,15 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const employer = job.employerId as any;
+
+  // Fetch employer response-time commitment for display
+  let responseTimeDays: number | null = null;
+  if (employer?._id) {
+    const emp = await Employer.findById(employer._id)
+      .select("responseTimeCommitment")
+      .lean();
+    responseTimeDays = (emp as unknown as { responseTimeCommitment?: number })?.responseTimeCommitment ?? null;
+  }
   const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0]) : null;
   const daysLeft = closesInDays(job.expiresAt as Date | null);
 
@@ -114,6 +126,7 @@ export default async function JobDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <TrackJobView jobId={String(job._id)} />
 
       <div className="min-h-screen bg-background">
         {/* Breadcrumb */}
@@ -284,6 +297,12 @@ export default async function JobDetailPage({ params }: PageProps) {
                       <Globe className="h-3.5 w-3.5" /> Website
                     </a>
                   )}
+                  {responseTimeDays && (
+                    <p className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
+                      <Clock className="h-3.5 w-3.5" />
+                      Typically responds within {responseTimeDays} day{responseTimeDays > 1 ? "s" : ""}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -291,6 +310,9 @@ export default async function JobDetailPage({ params }: PageProps) {
               <Link href={`/${locale}/jobs`} className="block text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
                 ← Back to all jobs
               </Link>
+
+              {/* Similar Jobs */}
+              <SimilarJobs jobId={String(job._id)} locale={locale} />
             </div>
           </div>
         </div>

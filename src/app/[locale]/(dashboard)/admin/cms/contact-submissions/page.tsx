@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,7 @@ export default function ContactSubmissionsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [viewItem, setViewItem] = useState<ContactItem | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -75,7 +77,8 @@ export default function ContactSubmissionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this submission?")) return;
+    const ok = await confirmDialog("Are you sure you want to delete this submission?");
+    if (!ok) return;
     await fetch(`/api/admin/cms/contact-submissions/${id}`, { method: "DELETE" });
     fetchItems();
   };
@@ -89,6 +92,7 @@ export default function ContactSubmissionsPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Contact Inbox</h1>
         <p className="text-muted-foreground text-sm mt-1">View messages from the public contact form</p>

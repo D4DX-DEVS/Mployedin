@@ -13,6 +13,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Edit2, Trash2, Search, Inbox } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 
 type LeadStatus = "new" | "contacted" | "interested" | "negotiating" | "converted" | "lost";
 
@@ -55,6 +56,7 @@ const LEAD_FIELDS: CrudField[] = [
 
 export default function AgentLeadsPage() {
   const { can } = usePermissions();
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +104,8 @@ export default function AgentLeadsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this lead?")) return;
+    const ok = await confirmDialog("Delete this lead?");
+    if (!ok) return;
     await fetch(`/api/leads/${id}`, { method: "DELETE" });
     fetchLeads();
   };
@@ -114,6 +117,7 @@ export default function AgentLeadsPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       <PageHeader
         title="Lead Pipeline"
         description="Track and manage employer leads through the sales funnel"

@@ -1,21 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { GraduationCap, Plus, CheckCircle, Clock, ExternalLink, Loader2, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-
-interface TrainingItem {
-  _id?: string;
-  title: string;
-  provider: string;
-  url?: string;
-  targetRole?: string;
-  status: "not_started" | "in_progress" | "completed";
-  dueDate?: string;
-  notes?: string;
-  completedAt?: string;
-}
+import { useTraining, useCreateTraining, useUpdateTrainingStatus, type TrainingItem } from "@/hooks/useTraining";
 
 const SUGGESTED_TRAININGS = [
   { title: "Gulf Labour Law Essentials", provider: "MPLOYEDIN Academy", url: "#" },
@@ -26,62 +15,25 @@ const SUGGESTED_TRAININGS = [
 ];
 
 export default function EmployerTrainingTrackerPage() {
-  const [items, setItems] = useState<TrainingItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: items = [], isLoading: loading } = useTraining();
+  const createTraining = useCreateTraining();
+  const updateStatus = useUpdateTrainingStatus();
+
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<Omit<TrainingItem, "_id">>({
     title: "",  provider: "", url: "", targetRole: "", status: "not_started", dueDate: "", notes: "",
   });
-  const [saving, setSaving] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/employers/training");
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data.items ?? []);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   const handleSave = async () => {
     if (!form.title || !form.provider) return;
-    setSaving(true);
-    try {
-      const { url: _url, dueDate, ...rest } = form;
-      const payload = {
-        ...rest,
-        ...(dueDate ? { dueDate: new Date(dueDate).toISOString() } : {}),
-      };
-      await fetch("/api/employers/training", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      setForm({ title: "", provider: "", url: "", targetRole: "", status: "not_started", dueDate: "", notes: "" });
-      setShowForm(false);
-      load();
-    } finally {
-      setSaving(false);
-    }
+    await createTraining.mutateAsync(form);
+    setForm({ title: "", provider: "", url: "", targetRole: "", status: "not_started", dueDate: "", notes: "" });
+    setShowForm(false);
   };
 
-  const updateStatus = async (id: string | undefined, status: TrainingItem["status"]) => {
-    if (!id) {
-      setItems(prev => prev.map(item => !item._id && item.title === id ? { ...item, status } : item));
-      return;
-    }
-    await fetch(`/api/employers/training/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, ...(status === "completed" ? { completedAt: new Date().toISOString() } : {}) }),
-    });
-    load();
+  const handleUpdateStatus = (id: string | undefined, status: TrainingItem["status"]) => {
+    if (!id) return;
+    updateStatus.mutate({ id, status });
   };
 
   const completed = items.filter(i => i.status === "completed").length;
@@ -137,9 +89,9 @@ export default function EmployerTrainingTrackerPage() {
           </div>
           <div className="flex justify-end gap-2">
             <button onClick={() => setShowForm(false)} className="btn-outline text-sm">Cancel</button>
-            <button onClick={handleSave} disabled={saving || !form.title}
+            <button onClick={handleSave} disabled={createTraining.isPending || !form.title}
               className="btn-primary flex items-center gap-2 text-sm disabled:opacity-60">
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {createTraining.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Add
             </button>
           </div>
@@ -188,13 +140,13 @@ export default function EmployerTrainingTrackerPage() {
                 </div>
                 <div className="flex gap-2 mt-2">
                   {item.status !== "in_progress" && (
-                    <button onClick={() => updateStatus(item._id, "in_progress")}
+                    <button onClick={() => handleUpdateStatus(item._id, "in_progress")}
                       className="text-xs px-2 py-1 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors">
                       Start
                     </button>
                   )}
                   {item.status !== "completed" && (
-                    <button onClick={() => updateStatus(item._id, "completed")}
+                    <button onClick={() => handleUpdateStatus(item._id, "completed")}
                       className="text-xs px-2 py-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors">
                       Complete
                     </button>

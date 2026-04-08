@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { validateUploadedFile } from "@/lib/security/file-validation";
 
 describe("validateUploadedFile - CV documents", () => {

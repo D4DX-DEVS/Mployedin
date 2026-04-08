@@ -7,11 +7,13 @@ const createJestConfig = nextJest({
 
 const config: Config = {
   coverageProvider: "v8",
-  testEnvironment: "node",
+  // Use jsdom by default for React component tests;
+  // API tests override to "node" via docblock: @jest-environment node
+  testEnvironment: "jsdom",
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
-  setupFilesAfterEnv: [],
+  setupFilesAfterEnv: ["<rootDir>/src/test-utils/setup.ts"],
   testMatch: [
     "**/__tests__/**/*.test.ts",
     "**/__tests__/**/*.test.tsx",
@@ -19,12 +21,13 @@ const config: Config = {
   testPathIgnorePatterns: [
     "/node_modules/",
     "/e2e/",
-    "/\.next/",
+    "/\\.next/",
   ],
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",
     "!src/**/*.d.ts",
     "!src/**/types.ts",
+    "!src/test-utils/**",
   ],
   coverageThreshold: {
     global: {

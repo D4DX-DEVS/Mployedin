@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { encrypt, decrypt, hash, encryptIfPlain } from "@/lib/security/encryption";
 
 describe("Encryption utilities", () => {

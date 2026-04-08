@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock } from "lucide-react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -22,26 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-
-type CompanyRole = "owner" | "admin" | "hiring_manager" | "viewer";
-type MemberStatus = "pending" | "active" | "deactivated";
-
-interface TeamMember {
-  _id: string;
-  email: string;
-  companyRole: CompanyRole;
-  jobAccess: string[];
-  permissions: {
-    canCreateJobs: boolean;
-    canManageTeam: boolean;
-    canViewAnalytics: boolean;
-    canExportData: boolean;
-  };
-  status: MemberStatus;
-  invitedAt: string;
-  acceptedAt?: string;
-  user?: { name: string; email: string; avatar?: string } | null;
-}
+import { useTeam, useInviteTeamMember, useUpdateTeamMember, useRemoveTeamMember } from "@/hooks/useTeam";
+import type { CompanyRole, MemberStatus } from "@/hooks/useTeam";
 
 const ROLE_LABELS: Record<CompanyRole, string> = {
   owner: "Owner",
@@ -72,70 +55,43 @@ const ROLE_ICONS: Record<CompanyRole, React.ReactNode> = {
 
 export default function TeamManagementPage() {
   useParams<{ locale: string }>();
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
+  const { data: members = [], isLoading: loading } = useTeam();
+  const inviteMutation = useInviteTeamMember();
+  const updateMutation = useUpdateTeamMember();
+  const removeMutation = useRemoveTeamMember();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteData, setInviteData] = useState({ email: "", companyRole: "hiring_manager" as CompanyRole });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchMembers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/employers/team");
-      if (res.ok) {
-        const data = await res.json();
-        setMembers(data.members);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     document.title = "Team Management · MPLOYEDIN";
   }, []);
-
-  useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError("");
     try {
-      const res = await fetch("/api/employers/team", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(inviteData),
-      });
-      if (res.ok) {
-        setShowInviteModal(false);
-        setInviteData({ email: "", companyRole: "hiring_manager" });
-        fetchMembers();
-      } else {
-        const data = await res.json();
-        setError(data.error ?? "Failed to send invite");
-      }
+      await inviteMutation.mutateAsync(inviteData);
+      setShowInviteModal(false);
+      setInviteData({ email: "", companyRole: "hiring_manager" });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to send invite");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDeactivate(memberId: string) {
-    if (!confirm("Are you sure you want to deactivate this team member?")) return;
-    const res = await fetch(`/api/employers/team/${memberId}`, { method: "DELETE" });
-    if (res.ok) fetchMembers();
+    const ok = await confirmDialog("Are you sure you want to deactivate this team member?");
+    if (!ok) return;
+    await removeMutation.mutateAsync(memberId);
   }
 
   async function handleRoleChange(memberId: string, newRole: CompanyRole) {
-    const res = await fetch(`/api/employers/team/${memberId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companyRole: newRole }),
-    });
-    if (res.ok) fetchMembers();
+    await updateMutation.mutateAsync({ memberId, companyRole: newRole });
   }
 
   const activeCount = members.filter((m) => m.status === "active").length;
@@ -150,6 +106,7 @@ export default function TeamManagementPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       {/* Header */}
       <PageHeader
         title="Team Management"
