@@ -3,10 +3,107 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Conversation from "@/models/Conversation";
 import User from "@/models/User";
+import JobSeeker from "@/models/JobSeeker";
+import Employer from "@/models/Employer";
+import Agent from "@/models/Agent";
+import Application from "@/models/Application";
 import mongoose from "mongoose";
 import type { UserRole } from "@/models/User";
+import { triggerDMEvent } from "@/lib/pusher";
 
 interface AuthCtx { userId: string; role: UserRole; }
+
+/**
+ * Industry-standard role-based messaging permission matrix.
+ * Mirrors LinkedIn/Naukri model: only cross-role pairs that make business sense.
+ *
+ *   job_seeker  → employer          ✅ (apply / follow-up)
+ *   employer    → job_seeker        ✅ (recruiter outreach)
+ *   employer    → agent             ✅ (hire through recruiter)
+ *   agent       → employer          ✅ (recruiter reaching client)
+ *   admin       → anyone            ✅
+ *   super_agent → anyone            ✅
+ *   same role   → same role         ❌ (prevents peer spam)
+ *   agent       ↔ job_seeker        ⚠️  (conditional — requires assignment or active application)
+ */
+function canRolesMessage(from: UserRole, to: UserRole): "yes" | "no" | "conditional" {
+  if (from === "admin" || from === "super_agent") return "yes";
+
+  // agent ↔ job_seeker requires context check (not a blanket yes or no)
+  if ((from === "agent" && to === "job_seeker") || (from === "job_seeker" && to === "agent")) {
+    return "conditional";
+  }
+
+  const allowed: Partial<Record<UserRole, UserRole[]>> = {
+    job_seeker: ["employer"],
+    employer: ["job_seeker", "agent"],
+    agent: ["employer"],
+  };
+  return allowed[from]?.includes(to) ? "yes" : "no";
+}
+
+/**
+ * Context-based unlock for agent ↔ job_seeker messaging.
+ * Allowed if:
+ *   1. Agent is directly assigned to the job seeker (Agent.assignedJobSeekerIds or JobSeeker.agentId)
+ *   2. An active application exists where this agent is involved with this job seeker
+ *   3. A shortlisted/advanced application with aiMatchScore ≥ 70 managed by this agent
+ *
+ * Returns { allowed, reason } — reason is the user-facing message when blocked.
+ */
+async function checkAgentJobSeekerContext(
+  agentUserId: string,
+  jobSeekerUserId: string
+): Promise<{ allowed: boolean; reason: string }> {
+  const [agentDoc, jobSeekerDoc] = await Promise.all([
+    Agent.findOne({ userId: new mongoose.Types.ObjectId(agentUserId) })
+      .select("_id assignedJobSeekerIds")
+      .lean(),
+    JobSeeker.findOne({ userId: new mongoose.Types.ObjectId(jobSeekerUserId) })
+      .select("_id agentId")
+      .lean(),
+  ]);
+
+  if (!agentDoc || !jobSeekerDoc) {
+    return { allowed: false, reason: "Profile not found." };
+  }
+
+  // Check 1: Direct assignment
+  const assignedToAgent =
+    jobSeekerDoc.agentId?.toString() === agentDoc._id.toString() ||
+    agentDoc.assignedJobSeekerIds.some((id: mongoose.Types.ObjectId) => id.toString() === jobSeekerDoc._id.toString());
+
+  if (assignedToAgent) return { allowed: true, reason: "" };
+
+  // Check 2: Active application where this agent is involved with this job seeker
+  const activeApplication = await Application.findOne({
+    jobSeekerId: jobSeekerDoc._id,
+    agentId: agentDoc._id,
+    status: { $nin: ["rejected", "withdrawn"] },
+  })
+    .select("_id")
+    .lean();
+
+  if (activeApplication) return { allowed: true, reason: "" };
+
+  // Check 3: High-match shortlisted application managed by this agent
+  const highMatchApplication = await Application.findOne({
+    jobSeekerId: jobSeekerDoc._id,
+    agentId: agentDoc._id,
+    status: { $in: ["shortlisted", "interview_scheduled", "selected", "offer", "hired"] },
+    aiMatchScore: { $gte: 70 },
+  })
+    .select("_id")
+    .lean();
+
+  if (highMatchApplication) return { allowed: true, reason: "" };
+
+  return {
+    allowed: false,
+    reason:
+      "Agents can only message job seekers they are assigned to or have an active application with.",
+  };
+}
 
 /**
  * GET /api/dm — list all conversations for the current user, sorted by latest message
@@ -60,14 +157,67 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const roleA = userA.role as UserRole;
+    const roleB = userB.role as UserRole;
+    const permission = canRolesMessage(roleA, roleB);
+
+    if (permission === "no") {
+      return NextResponse.json(
+        { error: "Messaging between these roles is not allowed." },
+        { status: 403 }
+      );
+    }
+
+    if (permission === "conditional") {
+      // Determine which is the agent and which is the job seeker
+      const agentUserId = roleA === "agent" ? ctx.userId : recipientId;
+      const jobSeekerUserId = roleA === "job_seeker" ? ctx.userId : recipientId;
+
+      const { allowed, reason } = await checkAgentJobSeekerContext(agentUserId, jobSeekerUserId);
+      if (!allowed) {
+        return NextResponse.json({ error: reason }, { status: 403 });
+      }
+    }
+
+    // Enrich participant details with headline/companyName
+    const [jobSeekerA, jobSeekerB, employerA, employerB] = await Promise.all([
+      userA.role === "job_seeker" ? JobSeeker.findOne({ userId: userA._id }).select("headline").lean() : null,
+      userB.role === "job_seeker" ? JobSeeker.findOne({ userId: userB._id }).select("headline").lean() : null,
+      userA.role === "employer" ? Employer.findOne({ userId: userA._id }).select("companyName logo").lean() : null,
+      userB.role === "employer" ? Employer.findOne({ userId: userB._id }).select("companyName logo").lean() : null,
+    ]);
+
     conversation = await Conversation.create({
       participants: sortedIds,
       participantDetails: [
-        { userId: userA._id, name: userA.name ?? userA.email ?? "User", role: userA.role, avatar: userA.image },
-        { userId: userB._id, name: userB.name ?? userB.email ?? "User", role: userB.role, avatar: userB.image },
+        {
+          userId: userA._id,
+          name: userA.name ?? userA.email ?? "User",
+          role: userA.role,
+          avatar: userA.image,
+          headline: jobSeekerA?.headline,
+          companyName: employerA?.companyName,
+        },
+        {
+          userId: userB._id,
+          name: userB.name ?? userB.email ?? "User",
+          role: userB.role,
+          avatar: userB.image,
+          headline: jobSeekerB?.headline,
+          companyName: employerB?.companyName,
+        },
       ],
       unreadCounts: {},
     });
+  }
+
+  // Notify recipient in real-time so their conversation list updates immediately
+  if (conversation) {
+    const conv = conversation as unknown as { _id: { toString(): string }; participants: { toString(): string }[] };
+    const recipientObjectId = conv.participants.find((p) => p.toString() !== ctx.userId);
+    if (recipientObjectId) {
+      await triggerDMEvent(recipientObjectId.toString(), "new-conversation", { conversation }).catch(() => {});
+    }
   }
 
   return NextResponse.json({ conversation });

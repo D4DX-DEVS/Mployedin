@@ -213,7 +213,7 @@ export default function UnifiedCandidatePage() {
           </div>
 
           {/* Right — Summary Stats */}
-          <div className="grid grid-cols-2 gap-3 min-w-[200px]">
+          <div className="grid grid-cols-2 gap-3 min-w-0 md:min-w-[200px]">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <p className="text-2xl font-bold text-blue-700">{summary.totalApplications}</p>
               <p className="text-xs text-blue-600">Applications</p>
@@ -296,7 +296,7 @@ export default function UnifiedCandidatePage() {
                         <p className="text-xs font-medium text-muted-foreground">Match Breakdown</p>
                         {Object.entries(app.matchBreakdown).map(([k, v]) => (
                           <div key={k} className="flex items-center gap-2 text-xs">
-                            <span className="capitalize text-muted-foreground w-20">{k}</span>
+                            <span className="capitalize text-muted-foreground w-16 sm:w-20">{k}</span>
                             <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                               <div
                                 className={`h-full rounded-full ${v >= 80 ? "bg-emerald-500" : v >= 60 ? "bg-amber-500" : "bg-red-400"}`}

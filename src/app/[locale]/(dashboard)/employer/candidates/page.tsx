@@ -202,11 +202,11 @@ export default function EmployerCandidatesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Candidate</TableHead>
-                <TableHead>Current Role</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Skills</TableHead>
-                <TableHead>Availability</TableHead>
-                <TableHead>Signals</TableHead>
+                <TableHead className="hidden md:table-cell">Current Role</TableHead>
+                <TableHead className="hidden lg:table-cell">Location</TableHead>
+                <TableHead className="hidden lg:table-cell">Skills</TableHead>
+                <TableHead className="hidden md:table-cell">Availability</TableHead>
+                <TableHead className="hidden lg:table-cell">Signals</TableHead>
                 {candidates.some((c) => c.matchScore != null) && (
                   <TableHead className="text-right">AI Score</TableHead>
                 )}
@@ -221,10 +221,10 @@ export default function EmployerCandidatesPage() {
                       <p className="text-xs text-muted-foreground">{c.userId?.email}</p>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <span className="text-sm">{currentRole(c) ?? <span className="text-muted-foreground">—</span>}</span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden lg:table-cell">
                     {c.currentLocation ? (
                       <span className="text-sm flex items-center gap-1">
                         <MapPin className="h-3 w-3 text-muted-foreground" />
@@ -234,8 +234,8 @@ export default function EmployerCandidatesPage() {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-[200px]">
+                  <TableCell className="hidden lg:table-cell">
+                    <div className="flex flex-wrap gap-1 max-w-[120px] sm:max-w-[200px]">
                       {c.skills?.slice(0, 3).map((s) => (
                         <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
                       ))}
@@ -244,13 +244,13 @@ export default function EmployerCandidatesPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Badge variant={c.availabilityStatus === "immediately" ? "default" : c.availabilityStatus === "not_available" ? "destructive" : "secondary"} className="text-xs">
                       {availabilityLabel(c.availabilityStatus)}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1 max-w-[180px]">
+                  <TableCell className="hidden lg:table-cell">
+                    <div className="flex flex-wrap gap-1 max-w-[120px] sm:max-w-[180px]">
                       {getBehaviorBadges(c).map((b) => (
                         <span key={b.label} className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium rounded-full border ${b.color}`}>
                           {b.icon} {b.label}
@@ -361,11 +361,11 @@ export default function EmployerCandidatesPage() {
               )}
 
               {/* Availability + Actions */}
-              <div className="flex items-center justify-between pt-1 gap-2">
+              <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
                 <Badge variant={c.availabilityStatus === "immediately" ? "default" : c.availabilityStatus === "not_available" ? "destructive" : "secondary"} className="text-xs">
                   {availabilityLabel(c.availabilityStatus)}
                 </Badge>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap">
                   {c.cv?.originalUrl && (
                     <Button
                       variant="ghost" size="sm" className="h-7 text-xs gap-1"

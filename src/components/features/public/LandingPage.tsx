@@ -156,13 +156,13 @@ export default function LandingPage() {
                 )}
                 <div className="absolute inset-0 bg-black/40" />
                 <div className="relative flex h-full items-center">
-                  <div className="container mx-auto px-4">
+                  <div className="container mx-auto px-4 sm:px-6">
                     <div className="max-w-2xl text-white">
-                      <h1 className="text-3xl font-bold sm:text-4xl lg:text-5xl leading-tight">
+                      <h1 className="text-2xl font-bold sm:text-3xl lg:text-5xl leading-tight">
                         {isAr ? banner.titleAr || banner.title : banner.title}
                       </h1>
                       {(banner.subtitle || banner.subtitleAr) && (
-                        <p className="mt-4 text-lg text-white/80 sm:text-xl">
+                        <p className="mt-4 text-base sm:text-lg lg:text-xl text-white/80">
                           {isAr ? banner.subtitleAr || banner.subtitle : banner.subtitle}
                         </p>
                       )}

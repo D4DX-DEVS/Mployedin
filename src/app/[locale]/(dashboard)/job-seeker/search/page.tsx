@@ -99,7 +99,7 @@ export default function JobSeekerNLSearchPage() {
             <button
               key={p}
               onClick={() => { setQuery(p); search(p); }}
-              className="btn-pill"
+              className="btn-pill text-xs sm:text-sm"
             >
               {p}
             </button>

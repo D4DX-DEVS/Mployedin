@@ -6,7 +6,14 @@
       "Bash(node -e \"require\\(''''recharts''''\\)\")",
       "Bash(npx tsc:*)",
       "Bash(node -e \"require\\(''''@dnd-kit/core''''\\)\")",
-      "Bash(find C:/Users/moham/OneDrive/Desktop/Mbloyedin/mployedin/src/app -path *job-seeker* -name *.tsx)"
+      "Bash(find C:/Users/moham/OneDrive/Desktop/Mbloyedin/mployedin/src/app -path *job-seeker* -name *.tsx)",
+      "Bash(find /c/Users/moham/OneDrive/Desktop/Mployedin/mployedin/src/app/[locale] -maxdepth 2 -type d)",
+      "WebSearch",
+      "Bash(npm run:*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "code-review-graph"
+  ]
 }

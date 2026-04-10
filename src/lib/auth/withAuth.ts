@@ -36,10 +36,10 @@ export function withAuth(
 ) {
   return async (
     req: NextRequest,
-    { params }: { params?: Promise<Record<string, string>> | Record<string, string> } = {}
+    context: { params: Promise<Record<string, string>> }
   ): Promise<NextResponse> => {
-    // Next.js 16+ passes params as a Promise; resolve it if needed
-    const resolvedParams = params instanceof Promise ? await params : params;
+    // Next.js 15+ always passes params as a Promise
+    const resolvedParams = await context.params;
     const session = await auth();
 
     if (!session?.user) {

@@ -12,6 +12,7 @@ import {
   ChevronRight,
   FileText,
   MapPin,
+  RefreshCw,
   Sparkles,
   Target,
   UserCircle,
@@ -122,6 +123,9 @@ export function JobSeekerHomePage({ locale }: { locale: string }) {
   const [jobs, setJobs] = useState<FeedJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [aiInsights, setAiInsights] = useState<Array<{ type: string; title: string; message: string; action?: string }>>([]);
+  const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
+  const [aiInsightsKey, setAiInsightsKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -165,6 +169,33 @@ export function JobSeekerHomePage({ locale }: { locale: string }) {
       active = false;
     };
   }, []);
+
+  // Fetch real AI insights (cached per day in sessionStorage)
+  useEffect(() => {
+    const cacheKey = `ai_insights_job_seeker_${new Date().toDateString()}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached && aiInsightsKey === 0) {
+      try { setAiInsights(JSON.parse(cached)); return; } catch { /* ignore */ }
+    }
+
+    let active = true;
+    const load = async () => {
+      setAiInsightsLoading(true);
+      try {
+        const res = await fetch("/api/ai/daily-insights");
+        if (res.ok && active) {
+          const data = await res.json();
+          const items = data.insights ?? [];
+          setAiInsights(items);
+          sessionStorage.setItem(cacheKey, JSON.stringify(items));
+        }
+      } finally {
+        if (active) setAiInsightsLoading(false);
+      }
+    };
+    void load();
+    return () => { active = false; };
+  }, [aiInsightsKey]);
 
   const name = session?.user?.name ?? "Job Seeker";
   const image = session?.user?.image ?? "";
@@ -468,11 +499,48 @@ export function JobSeekerHomePage({ locale }: { locale: string }) {
               </div>
             </section>
 
-            <section className="rounded-[24px] border border-blue-200 bg-blue-50 p-5 text-blue-900">
-              <div className="text-sm font-semibold">Career tip</div>
-              <p className="mt-2 text-sm leading-6 text-blue-800">
-                Keep your profile and preferences updated weekly to maintain strong job matching quality.
-              </p>
+            <section className="card-base rounded-[24px] p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-primary">
+                  <Sparkles className="h-4 w-4" />
+                  <span className="text-sm font-semibold">AI Daily Insights</span>
+                </div>
+                <button
+                  onClick={() => {
+                    const key = `ai_insights_job_seeker_${new Date().toDateString()}`;
+                    sessionStorage.removeItem(key);
+                    setAiInsights([]);
+                    setAiInsightsKey((k) => k + 1);
+                  }}
+                  title="Refresh insights"
+                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-primary/10"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {aiInsightsLoading && (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-3 animate-pulse rounded bg-muted w-full" />
+                  ))}
+                </div>
+              )}
+
+              {!aiInsightsLoading && aiInsights.length === 0 && (
+                <p className="text-xs text-muted-foreground">Complete your profile to unlock AI insights.</p>
+              )}
+
+              {!aiInsightsLoading && aiInsights.length > 0 && (
+                <ul className="space-y-2.5">
+                  {aiInsights.map((insight, idx) => (
+                    <li key={idx} className="rounded-2xl bg-muted/25 px-3 py-2.5">
+                      <div className="text-xs font-semibold">{insight.title}</div>
+                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{insight.message}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           </aside>
         </div>
@@ -523,6 +591,25 @@ export function JobSeekerHomePage({ locale }: { locale: string }) {
                   </div>
                 )}
               </div>
+
+              {/* Real AI insights inside the slide-out panel */}
+              {aiInsights.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="text-sm font-semibold">Personalised AI insights</span>
+                  </div>
+                  {aiInsights.map((insight, idx) => (
+                    <div key={idx} className="rounded-3xl border border-border/60 px-5 py-4">
+                      <div className="text-sm font-semibold">{insight.title}</div>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">{insight.message}</p>
+                      {insight.action && (
+                        <p className="mt-2 text-xs font-medium text-primary">{insight.action}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="rounded-3xl border border-border/60 bg-muted/20 p-5">
                 <div className="text-sm font-semibold">How this helps</div>

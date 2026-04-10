@@ -472,7 +472,17 @@
     "matchingJobs": "Apply to Matching Jobs",
     "loadingJobs": "Loading matching jobs...",
     "totalMatches": "{count} jobs match your updated profile",
-    "viewMatchingJobs": "View Matching Jobs"
+    "viewMatchingJobs": "View Matching Jobs",
+    "possibleImprovement": "possible improvement",
+    "sinceLastAnalysis": "since last analysis",
+    "gapVisualization": "Skill Gap Visualization",
+    "mediumGap": "Medium Gap",
+    "doThisNext": "Do This Next",
+    "matchImpact": "match impact",
+    "week": "Week",
+    "loadingProfile": "Loading your profile...",
+    "savingSkills": "Saving...",
+    "skillsSaved": "Saved to profile"
   },
   "preferences": {
     "title": "Job Preferences",

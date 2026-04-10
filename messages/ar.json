@@ -442,7 +442,17 @@
     "matchingJobs": "التقديم على الوظائف المطابقة",
     "loadingJobs": "جار تحميل الوظائف المطابقة...",
     "totalMatches": "{count} وظيفة تطابق ملفك المحدث",
-    "viewMatchingJobs": "عرض الوظائف المطابقة"
+    "viewMatchingJobs": "عرض الوظائف المطابقة",
+    "possibleImprovement": "تحسين ممكن",
+    "sinceLastAnalysis": "منذ آخر تحليل",
+    "gapVisualization": "رسم بياني لفجوة المهارات",
+    "mediumGap": "فجوة متوسطة",
+    "doThisNext": "افعل هذا بعد ذلك",
+    "matchImpact": "تأثير التطابق",
+    "week": "الأسبوع",
+    "loadingProfile": "جار تحميل ملفك الشخصي...",
+    "savingSkills": "جار الحفظ...",
+    "skillsSaved": "تم الحفظ في ملفك"
   },
   "preferences": {
     "title": "تفضيلات الوظيفة",

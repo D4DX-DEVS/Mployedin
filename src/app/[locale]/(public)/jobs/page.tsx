@@ -117,7 +117,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
             {total > 0 ? `${total.toLocaleString()} active jobs` : "Browse open positions"}
           </p>
 
-          <form method="GET" action={`/${locale}/jobs`} className="flex flex-col sm:flex-row gap-3">
+          <form method="GET" action={`/${locale}/jobs`} className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
@@ -138,7 +138,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
             </div>
             <button
               type="submit"
-              className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              className="h-10 px-4 sm:px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors whitespace-nowrap"
             >
               Search
             </button>

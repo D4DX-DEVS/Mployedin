@@ -22,22 +22,20 @@ export async function GET() {
     await connectDB();
     const userId = (session.user as unknown as { id: string }).id;
     const employer = await Employer.findOne({ userId })
-      .select("companyName companyEmail phone website industry jobIds")
+      .select("companyName companyEmail phone website industry")
       .lean();
 
     if (!employer) {
       return NextResponse.json({ error: "Employer not found" }, { status: 404 });
     }
 
-    // Fetch first job (if any) to check requirements/salary/status
-    const hasJob = Array.isArray(employer.jobIds) && employer.jobIds.length > 0;
+    // Query Jobs collection directly — employer.jobIds may be stale/empty
+    const firstJob = await Job.findOne({ employerId: employer._id })
+      .sort({ createdAt: 1 })
+      .select("requirements salary status")
+      .lean();
 
-    const firstJob = hasJob
-      ? await Job.findOne({ employerId: employer._id })
-          .sort({ createdAt: 1 })
-          .select("requirements salary status")
-          .lean()
-      : null;
+    const hasJob = firstJob !== null;
 
     const hasProfile =
       Boolean(employer.companyName?.trim()) &&

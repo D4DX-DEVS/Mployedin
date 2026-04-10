@@ -203,7 +203,7 @@ export default function TeamManagementPage() {
                           value={member.companyRole}
                           onValueChange={(val) => handleRoleChange(member._id, val as CompanyRole)}
                         >
-                          <SelectTrigger className="w-40 h-8 text-xs">
+                          <SelectTrigger className="w-full sm:w-40 h-8 text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -298,7 +298,7 @@ export default function TeamManagementPage() {
                       value={member.companyRole}
                       onValueChange={(val) => handleRoleChange(member._id, val as CompanyRole)}
                     >
-                      <SelectTrigger className="h-7 text-xs w-36 border-dashed">
+                      <SelectTrigger className="h-7 text-xs w-full sm:w-36 border-dashed">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

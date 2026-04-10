@@ -1,29 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { MessageSquare, Search, Inbox, Loader2 } from "lucide-react";
+import { MessageSquare, Search, Inbox, Loader2, ChevronLeft } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DirectMessageChat } from "@/components/features/dm/DirectMessageChat";
+import { NewChatSearch } from "@/components/features/dm/NewChatSearch";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-
-interface Participant {
-  userId: string;
-  name: string;
-  role: string;
-  avatar?: string;
-}
-
-interface Conversation {
-  _id: string;
-  participants: string[];
-  participantDetails: Participant[];
-  lastMessage?: string;
-  lastMessageAt?: string;
-  unreadCounts?: Record<string, number>;
-}
+import { useConversations } from "@/hooks/useConversations";
 
 export default function JobSeekerMessagesPage() {
   const { data: session } = useSession();
@@ -31,33 +17,13 @@ export default function JobSeekerMessagesPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: conversations = [], isLoading: loading } = useConversations();
   const [search, setSearch] = useState("");
   const [activeConvId, setActiveConvId] = useState<string | null>(
     searchParams.get("conv")
   );
 
   const currentUserId = (session?.user as unknown as { id?: string })?.id ?? "";
-
-  const loadConversations = useCallback(async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
-    try {
-      const res = await fetch("/api/dm");
-      if (res.ok) {
-        const data = await res.json();
-        setConversations(data.conversations ?? []);
-      }
-    } finally {
-      if (!isBackground) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadConversations(false);
-    const interval = setInterval(() => loadConversations(true), 30000);
-    return () => clearInterval(interval);
-  }, [loadConversations]);
 
   useEffect(() => {
     const conv = searchParams.get("conv");
@@ -69,10 +35,22 @@ export default function JobSeekerMessagesPage() {
     router.replace(`/${locale}/job-seeker/messages?conv=${id}`, { scroll: false });
   }
 
+  function clearConversation() {
+    setActiveConvId(null);
+    router.replace(`/${locale}/job-seeker/messages`, { scroll: false });
+  }
+
+  // Enhanced search: name + headline + companyName
   const filtered = conversations.filter((c) => {
     if (!search) return true;
+    const q = search.toLowerCase();
     const other = c.participantDetails.find((p) => p.userId !== currentUserId);
-    return other?.name.toLowerCase().includes(search.toLowerCase());
+    if (!other) return false;
+    return (
+      other.name.toLowerCase().includes(q) ||
+      (other.headline?.toLowerCase().includes(q) ?? false) ||
+      (other.companyName?.toLowerCase().includes(q) ?? false)
+    );
   });
 
   const activeConversation = conversations.find((c) => c._id === activeConvId);
@@ -81,12 +59,18 @@ export default function JobSeekerMessagesPage() {
     <div className="page-container">
       <PageHeader
         title="Messages"
-        description="Messages from employers and recruiters"
+        description="Messages with employers and recruiters"
+        actions={<NewChatSearch dashboardPrefix="job-seeker" />}
       />
 
       <div className="flex gap-0 rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm min-h-[600px]">
-        {/* Conversation list */}
-        <div className="w-72 shrink-0 border-r flex flex-col">
+        {/* Conversation list — responsive sidebar */}
+        <div
+          className={cn(
+            "w-full md:w-80 shrink-0 border-r flex flex-col",
+            activeConvId ? "hidden md:flex" : "flex"
+          )}
+        >
           <div className="p-3 border-b">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -94,7 +78,7 @@ export default function JobSeekerMessagesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search conversations…"
-                className="pl-8 h-8 text-xs"
+                className="pl-8 h-10 sm:h-8 text-xs"
               />
             </div>
           </div>
@@ -108,7 +92,9 @@ export default function JobSeekerMessagesPage() {
               <div className="flex flex-col items-center gap-2 py-12 text-center px-4">
                 <Inbox className="h-6 w-6 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground">
-                  {search ? "No conversations match your search." : "No messages yet. Employers will reach out here."}
+                  {search
+                    ? "No conversations match your search."
+                    : "No messages yet. Start a conversation with the \"New Chat\" button above."}
                 </p>
               </div>
             ) : (
@@ -116,6 +102,7 @@ export default function JobSeekerMessagesPage() {
                 const other = conv.participantDetails.find((p) => p.userId !== currentUserId);
                 const unread = conv.unreadCounts?.[currentUserId] ?? 0;
                 const isActive = conv._id === activeConvId;
+                const subtitle = other?.companyName ?? other?.headline;
 
                 return (
                   <button
@@ -140,6 +127,9 @@ export default function JobSeekerMessagesPage() {
                           </span>
                         )}
                       </div>
+                      {subtitle && (
+                        <p className="text-[11px] text-muted-foreground/60 truncate">{subtitle}</p>
+                      )}
                       <p className="text-xs text-muted-foreground truncate">
                         {conv.lastMessage ?? "Start a conversation"}
                       </p>
@@ -157,13 +147,23 @@ export default function JobSeekerMessagesPage() {
         </div>
 
         {/* Chat window */}
-        <div className="flex-1 flex flex-col">
+        <div className={cn("flex-1 flex flex-col", !activeConvId ? "hidden md:flex" : "flex")}>
           {activeConversation && currentUserId ? (
-            <DirectMessageChat
-              key={activeConversation._id}
-              conversation={activeConversation}
-              currentUserId={currentUserId}
-            />
+            <>
+              {/* Mobile back button */}
+              <button
+                onClick={clearConversation}
+                className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-border/40 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </button>
+              <DirectMessageChat
+                key={activeConversation._id}
+                conversation={activeConversation}
+                currentUserId={currentUserId}
+              />
+            </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
               <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
@@ -172,7 +172,7 @@ export default function JobSeekerMessagesPage() {
               <div>
                 <p className="font-medium text-foreground">Select a conversation</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Choose a conversation from the left to read and reply.
+                  Choose a conversation from the left, or start a new chat.
                 </p>
               </div>
             </div>

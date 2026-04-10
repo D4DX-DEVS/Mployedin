@@ -365,7 +365,7 @@ export default function JobSeekerDocumentsPage() {
 
         {/* Action buttons */}
         {file && (
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={uploadDocument}
               disabled={uploading}

@@ -28,7 +28,7 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-lg">
             M
           </div>
-          <span className="text-xl font-bold tracking-tight">MPLOYEDIN</span>
+          <span className="text-lg sm:text-xl font-bold tracking-tight">MPLOYEDIN</span>
         </Link>
 
         {/* Desktop Nav */}

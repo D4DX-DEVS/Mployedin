@@ -155,7 +155,7 @@ export const JobFeedCard = memo(function JobFeedCard({
           : "hover:border-primary/30"
       }`}
     >
-      <div className="flex gap-3.5">
+      <div className="flex gap-2 sm:gap-3.5">
         {/* Bulk-select checkbox */}
         <div className="pt-0.5">
           <Checkbox
@@ -172,7 +172,7 @@ export const JobFeedCard = memo(function JobFeedCard({
             <div className="min-w-0 flex-1">
               <Link
                 href={`/${locale}/job-seeker/jobs/${job._id}`}
-                className="text-[15px] font-semibold text-foreground hover:text-primary transition-colors line-clamp-1"
+                className="text-sm sm:text-[15px] font-semibold text-foreground hover:text-primary transition-colors line-clamp-1"
               >
                 {job.title}
               </Link>

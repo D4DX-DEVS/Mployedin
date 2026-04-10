@@ -169,19 +169,19 @@ export default function JobDetailPage() {
 
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border/60 rounded-xl border border-border/60 bg-muted/30 overflow-hidden">
-          <div className="flex flex-col items-center justify-center p-4 gap-1">
+          <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
             <div className="text-xl font-bold text-foreground">{job.vacancies ?? 1}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <Users className="w-3 h-3" /> Vacancies
             </div>
           </div>
-          <div className="flex flex-col items-center justify-center p-4 gap-1">
+          <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
             <div className="text-xl font-bold text-foreground">{job.views ?? 0}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <Eye className="w-3 h-3" /> Views
             </div>
           </div>
-          <div className="flex flex-col items-center justify-center p-4 gap-1">
+          <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
             <div className="text-xl font-bold text-foreground leading-tight">
               {job.salary?.min && job.salary?.max
                 ? `${job.salary.min.toLocaleString()}–${job.salary.max.toLocaleString()}`
@@ -192,7 +192,7 @@ export default function JobDetailPage() {
               {job.salary?.isNegotiable && " (Negotiable)"}
             </div>
           </div>
-          <div className="flex flex-col items-center justify-center p-4 gap-1">
+          <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
             <div className="text-base font-bold text-foreground leading-tight text-center">{expires ?? "No expiry"}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="w-3 h-3" /> Expires
@@ -225,7 +225,7 @@ export default function JobDetailPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
             {(job.requirements.experienceMin !== undefined || job.requirements.experienceMax !== undefined) && (
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Experience</p>

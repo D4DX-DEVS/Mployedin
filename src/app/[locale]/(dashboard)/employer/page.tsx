@@ -1,16 +1,22 @@
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import Job from "@/models/Job";
 import { Application } from "@/models/Application";
 import { Interview } from "@/models/Interview";
 import { Placement } from "@/models/Placement";
-import { Briefcase, FileText, Calendar, UserCheck, Users, Plus } from "lucide-react";
-import { CompanyUser } from "@/models/CompanyUser";
 import { SetupGuide } from "@/components/features/employer/SetupGuide";
+import {
+  SmartHeader,
+  InteractivePipeline,
+  PriorityActions,
+  AIInsightsPanel,
+  DashboardAIHint,
+  EnhancedJobsList,
+  CandidateQuality,
+} from "@/components/features/employer/dashboard";
+import type { EnhancedJob } from "@/components/features/employer/dashboard";
 
 export default async function EmployerDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -19,88 +25,202 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
 
   await connectDB();
   const userId = (session.user as unknown as { id: string }).id;
-  const employer = await Employer.findOne({ userId }).select("_id").lean();
+  const employer = await Employer.findOne({ userId }).select("_id companyName").lean();
   const employerId = employer?._id;
+  const userName = session.user.name?.split(" ")[0] ?? "there";
 
-  const [activeJobs, totalApplications, scheduledInterviews, placements, teamMembers] = employerId
+  // Parallel data fetch — all queries run concurrently
+  const [
+    activeJobCount,
+    totalApplications,
+    newApplications,
+    inReview,
+    scheduledInterviews,
+    placements,
+    recentJobs,
+    matchStats,
+    jobsWithoutSalary,
+    jobsWithNoApps,
+    lastActivity,
+  ] = employerId
     ? await Promise.all([
         Job.countDocuments({ employerId, status: "active" }),
         Application.countDocuments({ employerId }),
+        Application.countDocuments({ employerId, status: "applied" }),
+        Application.countDocuments({ employerId, status: "shortlisted" }),
         Interview.countDocuments({ employerId, status: "scheduled" }),
         Placement.countDocuments({ employerId }),
-        CompanyUser.countDocuments({ companyId: employerId, status: "active" }),
+        // Top 5 active jobs with applicant count + avg match + top match + views + createdAt
+        Job.aggregate([
+          { $match: { employerId, status: "active" } },
+          { $sort: { createdAt: -1 } },
+          { $limit: 5 },
+          {
+            $lookup: {
+              from: "applications",
+              localField: "_id",
+              foreignField: "jobId",
+              as: "apps",
+            },
+          },
+          {
+            $project: {
+              _id: 1,
+              title: 1,
+              status: 1,
+              views: 1,
+              createdAt: 1,
+              location: { city: 1, country: 1, isRemote: 1 },
+              applicantCount: { $size: "$apps" },
+              avgMatchScore: {
+                $cond: {
+                  if: { $gt: [{ $size: "$apps" }, 0] },
+                  then: { $avg: "$apps.aiMatchScore" },
+                  else: 0,
+                },
+              },
+              topMatchScore: {
+                $cond: {
+                  if: { $gt: [{ $size: "$apps" }, 0] },
+                  then: { $max: "$apps.aiMatchScore" },
+                  else: 0,
+                },
+              },
+            },
+          },
+        ]),
+        // Global match stats for AI Insights + Candidate Quality
+        Application.aggregate([
+          { $match: { employerId, aiMatchScore: { $gt: 0 } } },
+          {
+            $group: {
+              _id: null,
+              avg: { $avg: "$aiMatchScore" },
+              max: { $max: "$aiMatchScore" },
+              highCount: { $sum: { $cond: [{ $gte: ["$aiMatchScore", 80] }, 1, 0] } },
+              lowCount: { $sum: { $cond: [{ $lt: ["$aiMatchScore", 50] }, 1, 0] } },
+            },
+          },
+        ]),
+        // Jobs without salary (for AI insight)
+        Job.countDocuments({ employerId, status: "active", $or: [{ "salary.min": { $exists: false } }, { "salary.min": 0 }, { showSalary: false }] }),
+        // Jobs with zero applications (for AI insight)
+        Job.aggregate([
+          { $match: { employerId, status: "active" } },
+          { $lookup: { from: "applications", localField: "_id", foreignField: "jobId", as: "apps" } },
+          { $match: { apps: { $size: 0 } } },
+          { $count: "count" },
+        ]),
+        // Last application activity (time context)
+        Application.findOne({ employerId }).sort({ updatedAt: -1 }).select("updatedAt").lean(),
       ])
-    : [0, 0, 0, 0, 0];
+    : [0, 0, 0, 0, 0, 0, [], [], 0, [], null];
 
-  const kpis = [
-    { label: "Active Jobs", value: activeJobs, color: "text-primary", icon: Briefcase, href: `/${locale}/employer/jobs`, sub: "Posted and live" },
-    { label: "Total Applications", value: totalApplications, color: "text-cyan-600", icon: FileText, href: `/${locale}/employer/applications`, sub: "Across all jobs" },
-    { label: "Interviews Scheduled", value: scheduledInterviews, color: "text-amber-600", icon: Calendar, href: `/${locale}/employer/interviews`, sub: "Upcoming sessions" },
-    { label: "Placements", value: placements, color: "text-emerald-600", icon: UserCheck, href: `/${locale}/employer/placements`, sub: "Successful hires" },
-    { label: "Team Members", value: teamMembers, color: "text-violet-600", icon: Users, href: `/${locale}/employer/team`, sub: "Active team members" },
-  ];
+  const hiredCount = employerId
+    ? await Application.countDocuments({ employerId, status: "hired" })
+    : 0;
 
-  const actions = [
-    { href: `/${locale}/employer/jobs/new`, title: "Post a New Job", desc: "Create a job posting to attract candidates", icon: Briefcase },
-    { href: `/${locale}/employer/applications`, title: "Review Applications", desc: "View and manage incoming applications", icon: FileText },
-    { href: `/${locale}/employer/interviews`, title: "Schedule Interviews", desc: "Manage interviews with shortlisted candidates", icon: Calendar },
-  ];
+  // Extract match stats
+  const stats = (matchStats as Array<{ avg: number; max: number; highCount: number; lowCount: number }>)[0];
+  const avgMatchScore = stats?.avg ?? 0;
+  const topMatchScore = stats?.max ?? 0;
+  const highMatchCount = stats?.highCount ?? 0;
+  const lowMatchCount = stats?.lowCount ?? 0;
+
+  const hasJobsWithNoApps = ((jobsWithNoApps as Array<{ count: number }>)[0]?.count ?? 0) > 0;
+  const hasJobsWithoutSalary = (jobsWithoutSalary as number) > 0;
+
+  // Compute last activity in minutes
+  const lastActivityMinutes = lastActivity?.updatedAt
+    ? Math.round((Date.now() - new Date(lastActivity.updatedAt as Date).getTime()) / 60000)
+    : null;
+
+  const enhancedJobs: EnhancedJob[] = (recentJobs as Array<{
+    _id: { toString(): string };
+    title: string;
+    status: string;
+    applicantCount: number;
+    avgMatchScore: number;
+    topMatchScore: number;
+    views: number;
+    createdAt: Date;
+    location?: { city?: string; country?: string; isRemote?: boolean };
+  }>).map((j) => ({
+    _id: j._id.toString(),
+    title: j.title,
+    status: j.status,
+    applicantCount: j.applicantCount,
+    avgMatchScore: j.avgMatchScore ?? 0,
+    topMatchScore: j.topMatchScore ?? 0,
+    views: j.views ?? 0,
+    location: j.location,
+    createdAt: j.createdAt ? new Date(j.createdAt).toISOString() : "",
+  }));
 
   return (
     <div className="page-container">
-      <PageHeader
-        title="Employer Dashboard"
-        description="Manage your job postings and review candidates"
-        actions={
-          <Link href={`/${locale}/employer/jobs/new`} className="btn-primary gap-2">
-            <Plus className="w-4 h-4" /> Post a Job
-          </Link>
-        }
+      {/* ── Smart Welcome Header with urgency + time context ── */}
+      <SmartHeader
+        userName={userName}
+        newApplications={newApplications}
+        scheduledInterviews={scheduledInterviews}
+        activeJobCount={activeJobCount}
+        lastActivityMinutes={lastActivityMinutes}
+        locale={locale}
       />
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5 lg:gap-6">
-        {kpis.map((kpi) => (
-          <Link
-            key={kpi.label}
-            href={kpi.href}
-            className="card-base p-6 flex flex-col gap-4 group hover:border-border/80 relative overflow-hidden isolate shadow-sm transition-all hover:shadow-md"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="flex items-center justify-between relative z-10">
-              <p className="text-sm font-medium text-muted-foreground">{kpi.label}</p>
-              <div className={`p-2.5 rounded-xl bg-background border border-border/40 ${kpi.color}`}>
-                <kpi.icon className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="relative z-10">
-              <p className={`text-3xl font-bold ${kpi.color} tracking-tight`}>{kpi.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{kpi.sub}</p>
-            </div>
-          </Link>
-        ))}
+      {/* ── Interactive Hiring Pipeline (clickable + animated counts) ── */}
+      <InteractivePipeline
+        activeJobs={activeJobCount}
+        newApplications={newApplications}
+        inReview={inReview}
+        interviews={scheduledInterviews}
+        hired={hiredCount}
+        locale={locale}
+      />
+
+      {/* ── Priority Actions (urgency-tagged, not generic) ── */}
+      <PriorityActions
+        activeJobs={activeJobCount}
+        newApplications={newApplications}
+        scheduledInterviews={scheduledInterviews}
+        totalApplications={totalApplications}
+        placements={placements}
+        locale={locale}
+      />
+
+      {/* ── AI Insights + Candidate Quality (side by side on desktop) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <AIInsightsPanel
+          activeJobCount={activeJobCount}
+          totalApplications={totalApplications}
+          avgMatchScore={avgMatchScore}
+          highMatchCount={highMatchCount}
+          lowMatchCount={lowMatchCount}
+          topMatchScore={topMatchScore}
+          hiredCount={hiredCount}
+          hasJobsWithNoApps={hasJobsWithNoApps}
+          hasJobsWithoutSalary={hasJobsWithoutSalary}
+        />
+        <CandidateQuality
+          avgMatchScore={avgMatchScore}
+          highMatchCount={highMatchCount}
+          lowMatchCount={lowMatchCount}
+          totalApplications={totalApplications}
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {actions.map((a) => (
-          <Link
-            key={a.href}
-            href={a.href}
-            className="card-base p-5 block hover:border-primary/50 hover:shadow-md transition-all group"
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                <a.icon className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm mb-0.5">{a.title}</p>
-                <p className="text-xs text-muted-foreground">{a.desc}</p>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+      {/* ── Inline AI Hint (increases discoverability) ── */}
+      <DashboardAIHint
+        hasJobs={activeJobCount > 0}
+        hasApplications={totalApplications > 0}
+        hasInterviews={scheduledInterviews > 0}
+      />
 
-      {/* Job Creation Setup Guide — only shown to employers who haven't completed all steps */}
+      {/* ── Enhanced Active Jobs with match scores + views + quick actions ── */}
+      <EnhancedJobsList jobs={enhancedJobs} locale={locale} />
+
+      {/* Setup Guide (conditional — new employers) */}
       <SetupGuide />
     </div>
   );

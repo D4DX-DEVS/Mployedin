@@ -5,6 +5,8 @@ export interface IParticipantDetail {
   name: string;
   role: string;
   avatar?: string;
+  headline?: string;
+  companyName?: string;
 }
 
 export interface IConversation extends Document {
@@ -25,6 +27,8 @@ const ParticipantDetailSchema = new Schema<IParticipantDetail>(
     name: { type: String, required: true },
     role: { type: String, required: true },
     avatar: String,
+    headline: String,
+    companyName: String,
   },
   { _id: false }
 );

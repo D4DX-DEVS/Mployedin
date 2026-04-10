@@ -432,40 +432,74 @@ export function RecruitmentAssistant() {
   if (!mounted) return null;
 
   const panelClass = cn(
-    "fixed z-[100] flex flex-col bg-background border border-border/70 shadow-2xl rounded-2xl overflow-hidden transition-all duration-300",
-    expanded
-      ? "inset-4 md:inset-8"
-      : minimized
-        ? "bottom-6 right-6 h-14 w-72"
-        : "bottom-6 right-6 h-[600px] w-[420px] max-h-[90vh]"
+    "fixed z-[100] flex flex-col bg-background border border-border/70 shadow-2xl overflow-hidden transition-all duration-300 ease-in-out",
+    minimized
+      ? "bottom-6 right-6 h-12 w-48 rounded-full bg-gradient-to-r from-indigo-700 to-primary border-0"
+      : expanded
+        ? "top-0 right-0 bottom-0 w-full md:w-[480px] lg:w-[520px] rounded-none md:rounded-l-2xl md:border-l md:border-y border-r-0"
+        : "bottom-6 right-6 h-[600px] w-[420px] max-h-[90vh] rounded-2xl"
   );
 
   return createPortal(
     <>
-      {/* Floating trigger button */}
+      {/* Floating trigger button — only shown when fully closed */}
       {!open && (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => { setOpen(true); setMinimized(false); }}
           className="fixed bottom-6 right-6 z-[99] h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1 group"
           aria-label="Open Recruitment AI"
+          title="Ask AI to create jobs, screen candidates, or prepare interviews"
         >
           <Sparkles className="h-5 w-5 absolute top-2.5 right-2.5 text-white/60 group-hover:text-white/80 transition-colors" />
           <Bot className="h-6 w-6" />
+          {/* Suggestion pulse indicator */}
+          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-400 border-2 border-white" />
+          </span>
         </button>
       )}
 
       {open && (
         <>
-          {/* Backdrop */}
-          {!expanded && (
+          {/* Backdrop — hidden when minimized */}
+          {!minimized && (
             <div
-              className="fixed inset-0 z-[99]"
-              onClick={() => setOpen(false)}
+              className={cn(
+                "fixed inset-0 z-[99] transition-colors duration-300",
+                expanded ? "bg-black/20 backdrop-blur-[2px]" : ""
+              )}
+              onClick={() => expanded ? setExpanded(false) : setOpen(false)}
               aria-hidden
             />
           )}
 
-          <div className={panelClass} onClick={(e) => e.stopPropagation()}>
+          {/* Minimized pill — clickable to restore */}
+          {minimized && (
+            <div
+              className={panelClass}
+              onClick={() => setMinimized(false)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && setMinimized(false)}
+            >
+              <div className="flex items-center gap-2.5 px-4 h-full cursor-pointer">
+                <Bot className="h-5 w-5 text-white shrink-0" />
+                <span className="text-sm font-semibold text-white truncate">Recruitment AI</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setOpen(false); setMinimized(false); }}
+                  className="ml-auto text-white/60 hover:text-white transition-colors p-0.5 rounded-full hover:bg-white/20"
+                  title="Close"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Full panel */}
+          {!minimized && (
+            <div className={panelClass} onClick={(e) => e.stopPropagation()}>
             {/* ── Header ── */}
             <div className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-indigo-700 to-primary shrink-0">
               <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -473,35 +507,32 @@ export function RecruitmentAssistant() {
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-bold text-white leading-tight">Recruitment AI</h2>
-                {!minimized && (
-                  <p className="text-xs text-white/60 truncate">
-                    {isStreaming ? "Thinking…" : "Your hiring assistant"}
-                  </p>
-                )}
+                <p className="text-xs text-white/60 truncate">
+                  {isStreaming ? "Thinking…" : "Your hiring assistant"}
+                </p>
               </div>
-              {!minimized && (
-                <>
-                  <button
-                    onClick={newConversation}
-                    className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-                    title="New conversation"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setShowHistory((v) => !v)}
-                    className={cn(
-                      "text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10",
-                      showHistory && "text-white bg-white/20"
-                    )}
-                    title="History"
-                  >
-                    <History className="h-4 w-4" />
-                  </button>
-                </>
-              )}
               <button
-                onClick={() => setExpanded((e) => !e)}
+                onClick={newConversation}
+                className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+                title="New conversation"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setShowHistory((v) => !v)}
+                className={cn(
+                  "text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10",
+                  showHistory && "text-white bg-white/20"
+                )}
+                title="History"
+              >
+                <History className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setExpanded((e) => !e);
+                  setMinimized(false);
+                }}
                 className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
                 title={expanded ? "Restore" : "Expand"}
               >
@@ -512,9 +543,9 @@ export function RecruitmentAssistant() {
                 )}
               </button>
               <button
-                onClick={() => setMinimized((m) => !m)}
+                onClick={() => { setMinimized(true); setExpanded(false); }}
                 className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-                title={minimized ? "Expand" : "Minimize"}
+                title="Minimize"
               >
                 <Minus className="h-4 w-4" />
               </button>
@@ -527,8 +558,6 @@ export function RecruitmentAssistant() {
               </button>
             </div>
 
-            {!minimized && (
-              <>
                 {/* ── Tab bar ── */}
                 <div className="flex border-b border-border shrink-0 bg-background/95">
                   {TABS.map((tab) => (
@@ -554,7 +583,7 @@ export function RecruitmentAssistant() {
 
                 {/* ── History panel ── */}
                 {showHistory && (
-                  <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                  <div className="flex-1 overflow-y-auto ai-panel-scroll p-3 space-y-1">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-2">
                       Recent Conversations
                     </p>
@@ -594,7 +623,7 @@ export function RecruitmentAssistant() {
                 {!showHistory && (
                   <>
                     {/* ── Messages / Welcome ── */}
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="flex-1 overflow-y-auto ai-panel-scroll">
                       {showWelcome ? (
                         /* Welcome screen */
                         activeTab === "job_creator" ? (
@@ -685,9 +714,8 @@ export function RecruitmentAssistant() {
                     />
                   </>
                 )}
-              </>
-            )}
           </div>
+          )}
         </>
       )}
     </>,

@@ -129,7 +129,7 @@ export default function EmployerOffersPage() {
                   <TableCell className="font-medium">
                     {offer.jobSeekerId?.name || `Candidate #${offer._id.slice(-4)}`}
                   </TableCell>
-                  <TableCell className="text-muted-foreground truncate max-w-[180px]">
+                  <TableCell className="text-muted-foreground truncate max-w-[120px] sm:max-w-[180px]">
                     {offer.jobId?.title}
                   </TableCell>
                   <TableCell>
@@ -189,8 +189,8 @@ export default function EmployerOffersPage() {
 
       {/* Withdraw Confirmation Modal */}
       {withdrawingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-background rounded-lg border border-border shadow-lg max-w-sm w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-4">
+          <div className="bg-background rounded-lg border border-border shadow-lg max-w-sm w-full mx-auto px-4">
             <div className="px-6 py-4 border-b border-border">
               <h2 className="text-lg font-semibold">Withdraw Offer</h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -209,8 +209,8 @@ export default function EmployerOffersPage() {
 
       {/* Offer Detail Modal */}
       {detailOffer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
-          <div className="bg-background rounded-lg border border-border shadow-lg max-w-lg w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-4 sm:py-8">
+          <div className="bg-background rounded-lg border border-border shadow-lg max-w-lg w-full mx-auto px-4 max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold">Offer Details</h2>
@@ -221,7 +221,7 @@ export default function EmployerOffersPage() {
               </Button>
             </div>
             <div className="px-6 py-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Candidate</p>
                   <p className="font-medium text-sm">

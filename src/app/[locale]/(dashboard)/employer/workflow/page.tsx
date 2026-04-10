@@ -181,7 +181,7 @@ export default function EmployerWorkflowPage() {
               .sort((a, b) => a.order - b.order)
               .map((stage, i) => (
                 <div key={stage.id} className="flex items-center gap-1">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-xs font-medium">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-xs sm:text-xs font-medium whitespace-nowrap">
                     <span className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage.id] ?? "bg-gray-400"}`} />
                     {stage.label}
                   </div>

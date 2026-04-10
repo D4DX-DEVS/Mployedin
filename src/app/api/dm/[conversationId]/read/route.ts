@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Conversation from "@/models/Conversation";
 import DirectMessage from "@/models/DirectMessage";
+import { triggerDMEvent } from "@/lib/pusher";
 import mongoose from "mongoose";
 
 /**
@@ -37,6 +38,12 @@ async function patchHandler(req: NextRequest, ctx: { userId: string }, params?: 
     },
     { readAt: new Date() }
   );
+
+  // Notify sender that their messages were read (enables "seen" checkmarks)
+  const senderId = conv.participants.find((p) => p.toString() !== ctx.userId)?.toString();
+  if (senderId) {
+    await triggerDMEvent(senderId, "messages-read", { conversationId }).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true });
 }

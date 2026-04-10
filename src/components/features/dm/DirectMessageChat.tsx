@@ -92,20 +92,26 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
   // Pusher real-time subscription
   useEffect(() => {
     const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    if (!pusherKey) return; // gracefully skip if not configured
+    if (!pusherKey || !currentUserId) return; // gracefully skip if not configured or user not ready
 
     try {
       const pusher = getPusherClient();
       const channelName = `private-dm-${currentUserId}`;
 
-      // Unsubscribe from previous channel if switching conversations
-      if (channelRef.current) {
+      // Reuse existing channel when the channel name hasn't changed (e.g. switching conversations).
+      // Avoid unnecessary unsubscribe/resubscribe which triggers a new Pusher auth request.
+      let channel: Channel;
+      if (channelRef.current && channelRef.current.name === channelName) {
         channelRef.current.unbind_all();
-        pusher.unsubscribe(channelRef.current.name);
+        channel = channelRef.current;
+      } else {
+        if (channelRef.current) {
+          channelRef.current.unbind_all();
+          pusher.unsubscribe(channelRef.current.name);
+        }
+        channel = pusher.subscribe(channelName);
+        channelRef.current = channel;
       }
-
-      const channel = pusher.subscribe(channelName);
-      channelRef.current = channel;
 
       channel.bind("pusher:subscription_succeeded", () => setPusherReady(true));
       channel.bind("pusher:subscription_error", () => setPusherReady(false));
@@ -122,10 +128,23 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
         }
       });
 
+      // When recipient reads messages, mark our sent messages as read
+      channel.bind("messages-read", (data: { conversationId: string }) => {
+        if (data.conversationId === conversation._id) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.senderId === currentUserId && !m.readAt
+                ? { ...m, readAt: new Date().toISOString() }
+                : m
+            )
+          );
+        }
+      });
+
       return () => {
+        // Only unbind handlers — do NOT unsubscribe. The channel is shared with
+        // useConversations (same user) and must stay alive across conversation switches.
         channel.unbind_all();
-        pusher.unsubscribe(channelName);
-        channelRef.current = null;
         setPusherReady(false);
       };
     } catch {

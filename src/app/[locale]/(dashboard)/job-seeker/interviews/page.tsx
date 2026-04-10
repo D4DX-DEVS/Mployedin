@@ -205,14 +205,14 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
 
           {/* Candidate response actions */}
           {canRespond && !showReschedule && (
-            <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-              <Button size="sm" onClick={() => handleRespond("confirmed")} disabled={responding}>
+            <div className="flex flex-col sm:flex-row gap-2 mt-3 pt-3 border-t border-border">
+              <Button size="sm" onClick={() => handleRespond("confirmed")} disabled={responding} className="flex-1 sm:flex-none">
                 <Check className="w-3.5 h-3.5 me-1" /> Confirm
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setShowReschedule(true)} disabled={responding}>
+              <Button size="sm" variant="outline" onClick={() => setShowReschedule(true)} disabled={responding} className="flex-1 sm:flex-none">
                 <RotateCcw className="w-3.5 h-3.5 me-1" /> Reschedule
               </Button>
-              <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10"
+              <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 flex-1 sm:flex-none"
                 onClick={() => handleRespond("declined")} disabled={responding}>
                 <X className="w-3.5 h-3.5 me-1" /> Decline
               </Button>

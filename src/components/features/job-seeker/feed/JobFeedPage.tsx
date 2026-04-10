@@ -341,7 +341,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
       </Tabs>
 
       {/* ── Body: feed + sidebar ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_300px] gap-5 items-start">
         {/* Feed column */}
         <div className="space-y-3">
           {/* Sort bar */}
@@ -444,8 +444,8 @@ export function JobFeedPage({ locale }: { locale: string }) {
           )}
         </div>
 
-        {/* Sidebar column — desktop only */}
-        <div className="hidden xl:block sticky top-4">
+        {/* Sidebar column — hidden on mobile, visible on tablet+ */}
+        <div className="hidden lg:block sticky top-4">
           <JobFeedSidebar
             filters={filters}
             onFiltersChange={setFilters}

@@ -87,7 +87,7 @@ export default function ApplicationsPage() {
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="flex-wrap h-auto gap-1">
+        <TabsList className="flex-wrap h-auto gap-1 overflow-x-auto">
           {STATUS_TABS.map((t) => (
             <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
           ))}
@@ -201,7 +201,7 @@ function ApplicationCard({
   return (
     <>
       <div className="card-base hover:shadow-md transition-shadow">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h3 className="font-semibold text-foreground">{job?.title ?? "Job"}</h3>
@@ -288,7 +288,7 @@ function ApplicationCard({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShowWithdraw(false); }}
         >
-          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Withdraw Application</h2>
               <button

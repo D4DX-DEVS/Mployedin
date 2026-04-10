@@ -54,7 +54,7 @@ export function DashboardShell({
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden min-w-0">
         {/* Topbar */}
         <header className="h-16 border-b border-border/40 bg-background z-30 sticky top-0 transition-all">
-          <div className="flex h-full items-center gap-4 px-4 sm:px-6 lg:px-8">
+          <div className="flex h-full items-center gap-2 sm:gap-3 md:gap-4 px-4 sm:px-6 lg:px-8">
             {!isJobSeeker && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
 
             {isJobSeeker && (
@@ -98,8 +98,8 @@ export function DashboardShell({
       {/* Cmd+K menu */}
       <CommandMenu navGroups={navGroups} locale={locale} />
 
-      {/* Floating AI assistant — hidden for employer role (they use RecruitmentAssistant instead) */}
-      {userRole !== "employer" && userRole !== "job_seeker" && <ConversationalAI context="general_assist" />}
+      {/* Floating AI assistant — employer uses RecruitmentAssistant instead */}
+      {userRole !== "employer" && <ConversationalAI context={userRole === "job_seeker" ? "general_assist" : "agent_assist"} />}
     </div>
   );
 }

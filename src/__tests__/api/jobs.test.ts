@@ -85,7 +85,7 @@ describe("Jobs API", () => {
 
     const { GET } = await import("@/app/api/jobs/route");
     const req = makeRequest("/api/jobs");
-    const res = await GET(req);
+    const res = await GET(req, { params: Promise.resolve({}) });
 
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -99,7 +99,7 @@ describe("Jobs API", () => {
     jest.resetModules();
     const { GET } = await import("@/app/api/jobs/route");
     const req = makeRequest("/api/jobs");
-    const res = await GET(req);
+    const res = await GET(req, { params: Promise.resolve({}) });
 
     expect([401, 403]).toContain(res.status);
   });

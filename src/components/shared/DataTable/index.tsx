@@ -168,7 +168,7 @@ export function DataTable<TData, TValue>({
               placeholder={searchPlaceholder}
               value={searchValue}
               onChange={handleSearch}
-              className="h-9 w-[200px] lg:w-[280px] pl-9"
+              className="h-9 w-full sm:w-[200px] lg:w-[280px] pl-9"
             />
           </div>
           {onFiltersChange && (
@@ -216,7 +216,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+      <div className="rounded-xl border border-border/50 overflow-x-auto bg-card shadow-sm shadow-black/[0.03]">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -335,7 +335,7 @@ export function DataTable<TData, TValue>({
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-9 w-9 sm:h-8 sm:w-8"
               onClick={() => onPageChange?.(0)}
               disabled={pageIndex === 0}
             >
@@ -344,7 +344,7 @@ export function DataTable<TData, TValue>({
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-9 w-9 sm:h-8 sm:w-8"
               onClick={() => onPageChange?.(pageIndex - 1)}
               disabled={pageIndex === 0}
             >
@@ -356,7 +356,7 @@ export function DataTable<TData, TValue>({
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-9 w-9 sm:h-8 sm:w-8"
               onClick={() => onPageChange?.(pageIndex + 1)}
               disabled={pageIndex >= pageCount - 1}
             >
@@ -365,7 +365,7 @@ export function DataTable<TData, TValue>({
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-9 w-9 sm:h-8 sm:w-8"
               onClick={() => onPageChange?.(pageCount - 1)}
               disabled={pageIndex >= pageCount - 1}
             >

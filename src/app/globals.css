@@ -180,6 +180,24 @@ body {
   background: hsl(var(--sidebar-border));
 }
 
+/* ── AI PANEL SCROLLBAR (thin, neutral, non-intrusive) ── */
+.ai-panel-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ai-panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-panel-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.15);
+  border-radius: 4px;
+}
+
+.ai-panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
 /* ── AI STREAMING ANIMATION ── */
 @keyframes cursor-blink {
 
