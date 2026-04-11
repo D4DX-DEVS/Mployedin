@@ -33,6 +33,7 @@ export const jobCreateSchema = z.object({
   expiresAt: z.string().datetime().optional(),
   applicationMode: z.enum(["auto", "manual"]).optional(),
   employerId: commonSchemas.objectId.optional(),
+  agentId: commonSchemas.objectId.optional(),
   vacancies: z.number().int().min(1).max(100).optional(),
   tags: z.array(z.string().max(50)).max(20).optional(),
   visibility: z.enum(["public", "private", "invite_only"]).optional(),

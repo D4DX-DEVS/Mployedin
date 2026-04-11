@@ -21,6 +21,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   const { searchParams } = new URL(req.url);
   const applicationId = searchParams.get("applicationId") ?? "";
+  const applicationIds = searchParams.get("applicationIds") ?? "";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
 
@@ -45,6 +46,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   if (applicationId) query.applicationId = applicationId;
+  else if (applicationIds) {
+    const ids = applicationIds.split(",").map((s) => s.trim()).filter(Boolean);
+    if (ids.length > 0) query.applicationId = { $in: ids };
+  }
 
   const skip = (page - 1) * limit;
   const [scorecards, total] = await Promise.all([

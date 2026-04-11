@@ -1,0 +1,163 @@
+import { NextRequest, NextResponse } from "next/server";
+import { connectDB } from "@/lib/db/mongoose";
+import { withAuth } from "@/lib/auth/withAuth";
+import Job from "@/models/Job";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { notify } from "@/lib/notifications/trigger";
+import type { UserRole } from "@/models/User";
+
+interface AuthCtx {
+  userId: string;
+  role: UserRole;
+  locale: string;
+}
+
+async function patchHandler(
+  req: NextRequest,
+  ctx: AuthCtx,
+  params?: Record<string, string>
+) {
+  if (ctx.role !== "super_agent" && ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  await connectDB();
+
+  const jobId = params?.id;
+  if (!jobId) {
+    return NextResponse.json({ error: "Job ID required" }, { status: 400 });
+  }
+
+  const job = await Job.findById(jobId);
+  if (!job) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+
+  // Ownership validation: job must be under this super agent's agents
+  if (ctx.role === "super_agent") {
+    const saProfile = await SuperAgent.findOne({ userId: ctx.userId })
+      .select("agentIds")
+      .lean();
+    if (!saProfile) {
+      return NextResponse.json(
+        { error: "Super agent profile not found" },
+        { status: 404 }
+      );
+    }
+
+    const agentIds = (saProfile.agentIds ?? []).map(String);
+    let isOwnedJob = false;
+
+    if (job.agentId && agentIds.includes(String(job.agentId))) {
+      isOwnedJob = true;
+    }
+
+    if (!isOwnedJob) {
+      const managedAgents = await Agent.find({
+        _id: { $in: saProfile.agentIds ?? [] },
+      })
+        .select("assignedEmployerIds")
+        .lean();
+      const managedEmployerIds = managedAgents
+        .flatMap((a) => a.assignedEmployerIds ?? [])
+        .map(String);
+
+      if (
+        job.employerId &&
+        managedEmployerIds.includes(String(job.employerId))
+      ) {
+        isOwnedJob = true;
+      }
+    }
+
+    if (!isOwnedJob) {
+      return NextResponse.json(
+        { error: "Forbidden — this job is not under your agents" },
+        { status: 403 }
+      );
+    }
+  }
+
+  let body: { status?: string; reason?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const { status, reason } = body;
+  if (!status || !["approved", "rejected"].includes(status)) {
+    return NextResponse.json(
+      { error: "status must be 'approved' or 'rejected'" },
+      { status: 400 }
+    );
+  }
+
+  const prevApprovalStatus = job.poster?.approvalStatus ?? "pending";
+
+  job.poster = job.poster ?? { approvalStatus: "pending" };
+  job.poster.approvalStatus = status as "approved" | "rejected";
+
+  if (status === "approved") {
+    job.status = "active";
+    job.approvedBy = ctx.userId as unknown as typeof job.approvedBy;
+    job.approvedAt = new Date();
+  } else if (status === "rejected") {
+    job.status = "draft";
+  }
+
+  await job.save();
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: status === "approved" ? "job.approve" : "job.reject",
+    resource: "jobs",
+    resourceId: String(job._id),
+    changes: {
+      before: { approvalStatus: prevApprovalStatus },
+      after: { approvalStatus: status },
+    },
+    meta: reason ? { reason } : undefined,
+    req,
+  });
+
+  // Notify the agent who posted the job
+  if (job.agentId) {
+    const agentDoc = await Agent.findById(job.agentId)
+      .select("userId")
+      .lean();
+    if (agentDoc?.userId) {
+      await notify({
+        userId: String(agentDoc.userId),
+        type: status === "approved" ? "job_approved" : "job_rejected",
+        title: status === "approved" ? "Job Approved" : "Job Rejected",
+        message:
+          status === "approved"
+            ? `Your job "${job.title}" has been approved and is now live.`
+            : `Your job "${job.title}" was rejected.${reason ? ` Reason: ${reason}` : ""}`,
+        link: `/${ctx.locale}/agent/jobs`,
+        sendEmail: true,
+        metadata: { jobId: String(job._id), reason },
+      }).catch(() => {});
+    }
+  }
+
+  return NextResponse.json({
+    job: {
+      _id: job._id,
+      title: job.title,
+      status: job.status,
+      poster: job.poster,
+      approvedBy: job.approvedBy,
+      approvedAt: job.approvedAt,
+    },
+    message: `Job ${status} successfully`,
+  });
+}
+
+export const PATCH = withAuth(patchHandler, {
+  resource: "jobs",
+  action: "update",
+});

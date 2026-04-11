@@ -14,9 +14,10 @@ interface JobApproval {
   title: string;
   location: string | { isRemote?: boolean; city?: string; country?: string };
   category: string;
-  approvalStatus: string;
+  poster?: { approvalStatus?: string };
   createdAt: string;
   employerId?: { name?: string; companyName?: string };
+  agentId?: { userId?: string };
   postedByAgent?: { name?: string };
 }
 
@@ -41,14 +42,18 @@ export default function SuperAgentApprovalsPage() {
 
   useEffect(() => { loadJobs(); }, [loadJobs]);
 
-  const handleAction = async (id: string, action: "approved" | "rejected") => {
+  const handleAction = async (id: string, action: "approved" | "rejected", reason?: string) => {
     setProcessingId(id);
     try {
-      await fetch(`/api/jobs/${id}`, {
+      const res = await fetch(`/api/super-agent/approvals/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approvalStatus: action }),
+        body: JSON.stringify({ status: action, reason }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error("Approval action failed:", data.error ?? res.statusText);
+      }
       await loadJobs();
     } finally {
       setProcessingId(null);
@@ -133,7 +138,7 @@ export default function SuperAgentApprovalsPage() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{typeof job.location === "object" && job.location ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", ") || "—") : (job.location ?? "—")}</TableCell>
                   <TableCell>
-                    <StatusBadge status={job.approvalStatus} />
+                    <StatusBadge status={job.poster?.approvalStatus ?? "pending"} />
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(job.createdAt).toLocaleDateString()}

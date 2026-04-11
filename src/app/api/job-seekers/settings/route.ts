@@ -18,7 +18,7 @@ interface JobSeekerSettings {
   openToRelocation: boolean;
 }
 
-async function GET(_req: NextRequest, ctx: { userId: string; role: string }) {
+async function getHandler(_req: NextRequest, ctx: { userId: string; role: string }) {
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -39,7 +39,7 @@ async function GET(_req: NextRequest, ctx: { userId: string; role: string }) {
   return NextResponse.json({ settings: js?.settings ?? defaults });
 }
 
-async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
+async function patchHandler(req: NextRequest, ctx: { userId: string; role: string }) {
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -67,6 +67,5 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   return NextResponse.json({ success: true });
 }
 
-export const GET_handler = withAuth(GET);
-export const PATCH_handler = withAuth(PATCH);
-export { GET_handler as GET, PATCH_handler as PATCH };
+export const GET = withAuth(getHandler);
+export const PATCH = withAuth(patchHandler);

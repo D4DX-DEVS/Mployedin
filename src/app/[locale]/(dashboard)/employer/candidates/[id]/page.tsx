@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, Briefcase, MapPin, Calendar, Clock, CheckCircle,
   XCircle, FileText, Star, MessageSquare, User, ChevronDown, ChevronUp,
+  GraduationCap, Languages, Award, Eye, Download, AlertCircle,
 } from "lucide-react";
 import { useCandidateDetail } from "@/hooks/useCandidates";
+import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 
 /* ── Types ── */
 interface CandidateJob {
@@ -65,12 +67,22 @@ interface CandidateProfile {
     userId?: { name: string; email: string };
     currentLocation?: string;
     skills?: string[];
-    experience?: { jobTitle: string; company: string; isCurrent: boolean; startDate?: string; endDate?: string }[];
-    education?: { degree?: string; institution?: string; field?: string }[];
+    experience?: { jobTitle: string; company: string; isCurrent: boolean; startDate?: string; endDate?: string; description?: string; country?: string }[];
+    education?: { degree?: string; institution?: string; field?: string; graduationDate?: string; grade?: string }[];
     languages?: { language: string; proficiency: string }[];
+    certifications?: string[];
     availabilityStatus?: string;
     profileCompleteness?: number;
     badges?: string[];
+    cv?: { originalUrl?: string };
+    headline?: string;
+    totalExperienceYears?: number;
+    preferredSalary?: { min: number; max: number; currency: string };
+    preferredJobType?: string;
+    preferredLocations?: string[];
+    preferredRoles?: string[];
+    noticePeriod?: number;
+    workStatus?: string;
   };
   company: string;
   applications: UnifiedApplication[];
@@ -118,8 +130,9 @@ export default function UnifiedCandidatePage() {
   const { locale, id } = useParams<{ locale: string; id: string }>();
   const router = useRouter();
   const { data, isLoading: loading } = useCandidateDetail(id);
-  const [activeTab, setActiveTab] = useState<"applications" | "interviews" | "timeline" | "notes">("applications");
+  const [activeTab, setActiveTab] = useState<"profile" | "applications" | "interviews" | "timeline" | "notes">("profile");
   const [expandedApp, setExpandedApp] = useState<string | null>(null);
+  const [viewingCv, setViewingCv] = useState(false);
 
   if (loading) {
     return (
@@ -148,6 +161,7 @@ export default function UnifiedCandidatePage() {
   const currentRole = candidate.experience?.find((e: { isCurrent?: boolean }) => e.isCurrent);
 
   const tabs = [
+    { key: "profile" as const, label: "Profile", count: null },
     { key: "applications" as const, label: "Applications", count: applications.length },
     { key: "interviews" as const, label: "Interviews", count: interviews.length },
     { key: "timeline" as const, label: "Activity", count: timeline.length },
@@ -210,6 +224,20 @@ export default function UnifiedCandidatePage() {
                 )}
               </div>
             )}
+
+            {/* Resume actions */}
+            {candidate.cv?.originalUrl && (
+              <div className="flex gap-2 pt-2">
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setViewingCv(true)}>
+                  <Eye className="w-3 h-3 me-1.5" /> View CV
+                </Button>
+                <a href={candidate.cv.originalUrl} target="_blank" rel="noopener noreferrer">
+                  <Button size="sm" variant="ghost" className="h-8 text-xs">
+                    <Download className="w-3 h-3 me-1.5" /> Download
+                  </Button>
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Right — Summary Stats */}
@@ -250,12 +278,274 @@ export default function UnifiedCandidatePage() {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t.label} <span className="ml-1 text-xs opacity-60">({t.count})</span>
+            {t.label} {t.count != null && <span className="ml-1 text-xs opacity-60">({t.count})</span>}
           </button>
         ))}
       </div>
 
       {/* Tab Content */}
+      {activeTab === "profile" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column — Structured Profile */}
+          <div className="space-y-6">
+            {/* Summary */}
+            <div className="card-base p-5 space-y-3">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <User className="h-4 w-4 text-primary" /> Summary
+              </h3>
+              {candidate.headline && (
+                <p className="text-sm text-muted-foreground">{candidate.headline}</p>
+              )}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {candidate.workStatus && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Work Status</span>
+                    <p className="font-medium capitalize">{candidate.workStatus}</p>
+                  </div>
+                )}
+                {candidate.totalExperienceYears != null && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Total Experience</span>
+                    <p className="font-medium">{candidate.totalExperienceYears} years</p>
+                  </div>
+                )}
+                {candidate.noticePeriod != null && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Notice Period</span>
+                    <p className="font-medium">{candidate.noticePeriod} days</p>
+                  </div>
+                )}
+                {candidate.preferredJobType && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Preferred Type</span>
+                    <p className="font-medium capitalize">{candidate.preferredJobType}</p>
+                  </div>
+                )}
+                {candidate.preferredSalary && (
+                  <div className="col-span-2">
+                    <span className="text-xs text-muted-foreground">Expected Salary</span>
+                    <p className="font-medium">
+                      {candidate.preferredSalary.currency} {candidate.preferredSalary.min?.toLocaleString()} – {candidate.preferredSalary.max?.toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {candidate.preferredRoles && candidate.preferredRoles.length > 0 && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Preferred Roles</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {candidate.preferredRoles.map((r: string) => (
+                      <Badge key={r} variant="outline" className="text-xs">{r}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {candidate.preferredLocations && candidate.preferredLocations.length > 0 && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Preferred Locations</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {candidate.preferredLocations.map((l: string) => (
+                      <Badge key={l} variant="outline" className="text-xs">{l}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Work History */}
+            {candidate.experience && candidate.experience.length > 0 && (
+              <div className="card-base p-5 space-y-3">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-primary" /> Work History
+                </h3>
+                <div className="space-y-4">
+                  {candidate.experience.map((exp: { jobTitle: string; company: string; isCurrent: boolean; startDate?: string; endDate?: string; description?: string; country?: string }, i: number) => (
+                    <div key={i} className="relative pl-4 border-l-2 border-border">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-sm">{exp.jobTitle}</p>
+                        {exp.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Current</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {exp.startDate ? formatDate(exp.startDate) : "?"} – {exp.isCurrent ? "Present" : (exp.endDate ? formatDate(exp.endDate) : "?")}
+                      </p>
+                      {exp.description && (
+                        <p className="text-xs text-muted-foreground mt-1">{exp.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Education */}
+            {candidate.education && candidate.education.length > 0 && (
+              <div className="card-base p-5 space-y-3">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4 text-primary" /> Education
+                </h3>
+                <div className="space-y-3">
+                  {candidate.education.map((edu: { degree?: string; institution?: string; field?: string; graduationDate?: string; grade?: string }, i: number) => (
+                    <div key={i} className="pl-4 border-l-2 border-border">
+                      <p className="font-medium text-sm">{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
+                      <p className="text-xs text-muted-foreground">{edu.institution}</p>
+                      <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
+                        {edu.graduationDate && <span>{formatDate(edu.graduationDate)}</span>}
+                        {edu.grade && <span>Grade: {edu.grade}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Languages */}
+            {candidate.languages && candidate.languages.length > 0 && (
+              <div className="card-base p-5 space-y-3">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <Languages className="h-4 w-4 text-primary" /> Languages
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {candidate.languages.map((lang: { language: string; proficiency: string }, i: number) => (
+                    <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 rounded-lg">
+                      <span className="text-sm font-medium">{lang.language}</span>
+                      <Badge variant="secondary" className="text-[10px] capitalize">{lang.proficiency}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Certifications */}
+            {candidate.certifications && candidate.certifications.length > 0 && (
+              <div className="card-base p-5 space-y-3">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <Award className="h-4 w-4 text-primary" /> Certifications
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {candidate.certifications.map((cert: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="text-xs">{cert}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Full Skills */}
+            {candidate.skills && candidate.skills.length > 0 && (
+              <div className="card-base p-5 space-y-3">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-primary" /> All Skills
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {candidate.skills.map((s: string) => (
+                    <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column — AI Insights + Resume */}
+          <div className="space-y-6">
+            {/* AI Match Insights (from first application with score) */}
+            {(() => {
+              const scoredApp = applications.find((a: UnifiedApplication) => a.aiMatchScore != null && a.matchBreakdown);
+              if (!scoredApp) return null;
+              const breakdown = scoredApp.matchBreakdown!;
+              const jobSkills = (scoredApp.job as CandidateJob & { requirements?: { skills?: string[] } })?.requirements?.skills;
+              const candidateSkills = candidate.skills ?? [];
+              const missingSkills = jobSkills?.filter((s: string) => !candidateSkills.some((cs: string) => cs.toLowerCase() === s.toLowerCase())) ?? [];
+              return (
+                <div className="card-base p-5 space-y-4">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <Star className="h-4 w-4 text-amber-500" /> AI Match Insights
+                    <span className="text-xs text-muted-foreground ms-auto">for {scoredApp.job?.title}</span>
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <div className={`text-3xl font-bold ${scoreColor(scoredApp.aiMatchScore!)}`}>
+                      {scoredApp.aiMatchScore}%
+                    </div>
+                    <span className="text-sm text-muted-foreground">Overall Match</span>
+                  </div>
+                  <div className="space-y-2">
+                    {Object.entries(breakdown).map(([k, v]) => {
+                      const val = Number(v) || 0;
+                      return (
+                      <div key={k} className="flex items-center gap-2 text-xs">
+                        <span className="capitalize text-muted-foreground w-20">{k}</span>
+                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${val >= 80 ? "bg-emerald-500" : val >= 60 ? "bg-amber-500" : "bg-red-400"}`}
+                            style={{ width: `${val}%` }}
+                          />
+                        </div>
+                        <span className="font-medium w-8 text-right">{val}%</span>
+                      </div>
+                      );
+                    })}
+                  </div>
+                  {/* Strengths */}
+                  {candidateSkills.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-emerald-700 mb-1">Strengths</p>
+                      <div className="flex flex-wrap gap-1">
+                        {candidateSkills.slice(0, 8).map((s: string) => (
+                          <Badge key={s} className="text-[10px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{s}</Badge>
+                        ))}
+                        {candidateSkills.length > 8 && (
+                          <span className="text-[10px] text-muted-foreground">+{candidateSkills.length - 8} more</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {/* Gaps */}
+                  {missingSkills.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-amber-700 mb-1 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" /> Skill Gaps
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {missingSkills.map((s: string) => (
+                          <Badge key={s} variant="outline" className="text-[10px] border-amber-300 text-amber-700">{s}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Inline Resume Viewer (desktop) */}
+            {candidate.cv?.originalUrl && (
+              <div className="card-base overflow-hidden">
+                <div className="px-5 py-3 border-b flex items-center justify-between">
+                  <h3 className="font-semibold text-sm flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" /> Resume / CV
+                  </h3>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setViewingCv(true)}>
+                      <Eye className="w-3 h-3 me-1" /> Expand
+                    </Button>
+                    <a href={candidate.cv.originalUrl} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" variant="ghost" className="h-7 text-xs">
+                        <Download className="w-3 h-3 me-1" /> Download
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+                <div className="h-[500px]">
+                  <iframe
+                    src={candidate.cv.originalUrl}
+                    className="w-full h-full border-0"
+                    title={`${name}'s Resume`}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {activeTab === "applications" && (
         <div className="space-y-3">
           {applications.length === 0 ? (
@@ -425,6 +715,15 @@ export default function UnifiedCandidatePage() {
             ))
           )}
         </div>
+      )}
+
+      {/* Resume Viewer Modal */}
+      {viewingCv && candidate.cv?.originalUrl && (
+        <ResumeViewerModal
+          url={candidate.cv.originalUrl}
+          candidateName={name}
+          onClose={() => setViewingCv(false)}
+        />
       )}
     </div>
   );

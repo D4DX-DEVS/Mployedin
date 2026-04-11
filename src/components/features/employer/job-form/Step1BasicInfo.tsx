@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useFormContext } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Wifi, ChevronDown, Sparkles } from "lucide-react";
+import { MapPin, Wifi, ChevronDown, Sparkles, UserCog } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -47,6 +47,27 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
   const [suggestions, setSuggestions] = useState<Suggestions | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Agent list for "Assign Agent" dropdown
+  const [agents, setAgents] = useState<{ _id: string; name: string }[]>([]);
+  const [loadingAgents, setLoadingAgents] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchAgents() {
+      setLoadingAgents(true);
+      try {
+        const res = await fetch("/api/employers/agents");
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          setAgents(data.agents ?? []);
+        }
+      } catch { /* optional field — fail silently */ }
+      finally { if (!cancelled) setLoadingAgents(false); }
+    }
+    fetchAgents();
+    return () => { cancelled = true; };
+  }, []);
 
   // Debounced fetch on title change
   useEffect(() => {
@@ -293,6 +314,35 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
           )}
         </div>
       </div>
+
+      {/* Assign Agent (optional) */}
+      {agents.length > 0 && (
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium flex items-center gap-1.5">
+            <UserCog className="w-3.5 h-3.5" />
+            Assign Agent <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+          </Label>
+          <Select
+            value={watch("agentId") ?? ""}
+            onValueChange={(v) => setValue("agentId", v || undefined, { shouldValidate: false })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="No agent — self-manage" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">No agent — self-manage</SelectItem>
+              {agents.map((a) => (
+                <SelectItem key={a._id} value={a._id}>
+                  {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Assigning an agent routes this job through the approval workflow before going live.
+          </p>
+        </div>
+      )}
     </motion.div>
   );
 }

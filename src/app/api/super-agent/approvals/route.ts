@@ -30,15 +30,23 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {
-    approvalStatus: status,
+    "poster.approvalStatus": status,
   };
-  if (employerIds.length > 0) {
+
+  // Scope to agents managed by this super agent (via agentId on jobs)
+  if (agentDocIds.length > 0) {
+    query.$or = [
+      { agentId: { $in: agentDocIds } },
+      ...(employerIds.length > 0 ? [{ employerId: { $in: employerIds } }] : []),
+    ];
+  } else if (employerIds.length > 0) {
     query.employerId = { $in: employerIds };
   }
 
   const [jobs, total] = await Promise.all([
     Job.find(query)
-      .populate("employerId", "name companyName")
+      .populate("employerId", "companyName")
+      .populate("agentId", "userId")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

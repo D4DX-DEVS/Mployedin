@@ -4,6 +4,9 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Job from "@/models/Job";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { Employer } from "@/models/Employer";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
+import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
@@ -11,8 +14,8 @@ import { jobCreateSchema } from "@/lib/validators/jobs";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
-// GET /api/jobs — paginated public job search
-async function getHandler(req: NextRequest) {
+// GET /api/jobs — paginated job search (role-scoped)
+async function getHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
@@ -23,13 +26,25 @@ async function getHandler(req: NextRequest) {
   const location = searchParams.get("location") ?? "";
   const currency = searchParams.get("currency") ?? "";
   const remote = searchParams.get("remote") === "true";
-  const myJobs = searchParams.get("myJobs") === "true"; // for employer view
+  const myJobs = searchParams.get("myJobs") === "true";
   const employerId = searchParams.get("employerId") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
 
-  if (!myJobs) {
+  // Agent-scoped: only their own jobs + jobs from assigned employers
+  if (ctx.role === "agent") {
+    const agentDoc = await Agent.findOne({ userId: ctx.userId })
+      .select("_id assignedEmployerIds")
+      .lean();
+    if (agentDoc) {
+      const conditions: Record<string, unknown>[] = [{ agentId: agentDoc._id }];
+      if (agentDoc.assignedEmployerIds?.length) {
+        conditions.push({ employerId: { $in: agentDoc.assignedEmployerIds } });
+      }
+      query.$or = conditions;
+    }
+  } else if (!myJobs) {
     query.status = "active";
     query.$or = [{ expiresAt: { $exists: false } }, { expiresAt: { $gte: new Date() } }];
   }
@@ -86,11 +101,23 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
   let agentId: string | undefined;
 
   if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id agentId").lean();
     if (!emp) return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
     employerId = String(emp._id);
+
+    // 8C.1: employer can assign agentId via body
+    if (body.agentId) {
+      const assignedAgent = await Agent.findById(body.agentId).select("assignedEmployerIds").lean();
+      if (!assignedAgent || !assignedAgent.assignedEmployerIds?.map(String).includes(employerId)) {
+        return NextResponse.json({ error: "This agent is not assigned to your account" }, { status: 403 });
+      }
+      agentId = body.agentId;
+    }
+    // 8C.4: auto-assign from Employer.agentId if not manually specified
+    else if (emp.agentId) {
+      agentId = String(emp.agentId);
+    }
   } else if (ctx.role === "agent") {
-    const { Agent } = await import("@/models/Agent");
     const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
     if (!agent) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
     agentId = String(agent._id);
@@ -103,9 +130,28 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     }
   } else if (ctx.role === "admin") {
     employerId = body.employerId;
+    if (body.agentId) agentId = body.agentId;
   }
 
-  const resolvedStatus = status ?? (ctx.role === "admin" ? "active" : "draft");
+  // 8C.2: determine approval status based on role & agent involvement
+  let approvalStatus: "pending" | "approved";
+  let resolvedStatus: string;
+
+  if (ctx.role === "admin") {
+    approvalStatus = "approved";
+    resolvedStatus = status ?? "active";
+  } else if (ctx.role === "agent") {
+    approvalStatus = "pending";
+    resolvedStatus = "draft";
+  } else if (ctx.role === "employer" && agentId) {
+    // Employer posted with agent involvement → needs approval
+    approvalStatus = "pending";
+    resolvedStatus = "draft";
+  } else {
+    // Employer self-posting without agent → auto-approved
+    approvalStatus = "approved";
+    resolvedStatus = status ?? "active";
+  }
 
   const job = await Job.create({
     title,
@@ -122,7 +168,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     vacancies: vacancies ?? 1,
     tags: tags ?? [],
     visibility: visibility ?? "public",
-    "poster.approvalStatus": ctx.role === "admin" ? "approved" : "pending",
+    "poster.approvalStatus": approvalStatus,
   });
 
   await logActivity({
@@ -133,6 +179,30 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     changes: { after: { title, category, location } },
     req,
   });
+
+  // 8C.3: Notify super agent when job needs approval
+  if (approvalStatus === "pending" && agentId) {
+    const agentDoc = await Agent.findById(agentId).select("superAgentId userId").lean();
+    if (agentDoc?.superAgentId) {
+      const saDoc = await SuperAgent.findById(agentDoc.superAgentId).select("userId").lean();
+      if (saDoc?.userId) {
+        const agentUser = await import("@/models/User").then(m =>
+          m.default.findById(agentDoc.userId).select("name").lean()
+        );
+        const agentName = (agentUser as { name?: string })?.name ?? "An agent";
+
+        await notify({
+          userId: String(saDoc.userId),
+          type: "job_posted",
+          title: "New Job Pending Approval",
+          message: `${agentName} submitted "${title}" for approval.`,
+          link: `/${ctx.locale}/super-agent/approvals`,
+          sendEmail: true,
+          metadata: { jobId: String(job._id), agentId },
+        }).catch(() => {});
+      }
+    }
+  }
 
   return NextResponse.json({ job }, { status: 201 });
 }

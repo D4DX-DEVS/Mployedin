@@ -153,6 +153,7 @@ export const jobFormSchema = z.object({
   showSalary: z.boolean().default(true),
   expiresAt: z.string().optional(),
   tags: z.array(z.string().max(50)).max(20).default([]),
+  agentId: z.string().optional(),
 });
 
 export type JobFormValues = z.infer<typeof jobFormSchema>;

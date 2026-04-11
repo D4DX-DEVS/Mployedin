@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -332,6 +333,7 @@ export default function TeamManagementPage() {
               </div>
               Invite Team Member
             </DialogTitle>
+            <DialogDescription className="sr-only">Enter an email address and role to invite a new member to your team.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleInvite} className="space-y-4 pt-1">
             <div className="space-y-2">

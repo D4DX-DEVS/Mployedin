@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Clock, Flame, ArrowRight } from "lucide-react";
+import { Plus, Clock, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SmartHeaderProps {
@@ -39,20 +39,12 @@ export function SmartHeader({
     urgencyLevel = "cta";
   }
 
-  const primaryAction = newApplications > 0
-    ? { label: "Review Candidates", href: `/${locale}/employer/applications?status=applied` }
-    : { label: "Post a Job", href: `/${locale}/employer/jobs/new` };
-
-  const secondaryAction = activeJobCount > 0
-    ? { label: "View Jobs", href: `/${locale}/employer/jobs` }
-    : null;
+  const newJobHref = `/${locale}/employer/jobs/new`;
+  const viewJobsHref = `/${locale}/employer/jobs`;
 
   return (
-    <div className="card-base p-6 sm:p-8 bg-gradient-to-br from-background via-background to-primary/[0.04] relative overflow-hidden">
-      {/* Subtle decorative pattern */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/[0.03] to-transparent rounded-full -translate-y-1/2 translate-x-1/4 pointer-events-none" />
-
-      <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="card-base p-6 sm:p-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="min-w-0 space-y-1.5">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
             Welcome back, {userName}
@@ -84,21 +76,20 @@ export function SmartHeader({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {secondaryAction && (
+          {activeJobCount > 0 && (
             <Link
-              href={secondaryAction.href}
+              href={viewJobsHref}
               className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg border border-border/60 hover:border-border transition-colors"
             >
-              {secondaryAction.label}
+              View Jobs
             </Link>
           )}
           <Link
-            href={primaryAction.href}
+            href={newJobHref}
             className="btn-primary gap-2"
           >
-            {primaryAction.label === "Post a Job" && <Plus className="w-4 h-4" />}
-            {primaryAction.label === "Review Candidates" && <ArrowRight className="w-4 h-4" />}
-            {primaryAction.label}
+            <Plus className="w-4 h-4" />
+            New Job Posting
           </Link>
         </div>
       </div>

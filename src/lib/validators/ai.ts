@@ -22,6 +22,7 @@ export const aiReportSchema = z.object({
 export const aiMatchSchema = z.object({
   jobId: z.string().regex(/^[a-f\d]{24}$/i),
   jobSeekerId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
+  applicationId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
   candidateIds: z
     .array(z.string().regex(/^[a-f\d]{24}$/i))
     .max(100, "Maximum 100 candidates per match request")

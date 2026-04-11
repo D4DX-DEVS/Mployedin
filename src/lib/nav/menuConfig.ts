@@ -615,6 +615,22 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "حسابات أصحاب العمل المعينة",
               },
               {
+                title: "Jobs",
+                titleAr: "الوظائف",
+                href: p("/agent/jobs"),
+                icon: "Briefcase",
+                description: "Manage job postings",
+                descriptionAr: "إدارة إعلانات الوظائف",
+              },
+              {
+                title: "Candidates",
+                titleAr: "المرشحون",
+                href: p("/agent/candidates"),
+                icon: "Users",
+                description: "Review & manage candidates",
+                descriptionAr: "مراجعة وإدارة المرشحين",
+              },
+              {
                 title: "Job Seekers",
                 titleAr: "الباحثون عن عمل",
                 href: p("/agent/job-seekers"),

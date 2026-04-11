@@ -9,7 +9,14 @@
       "Bash(find C:/Users/moham/OneDrive/Desktop/Mbloyedin/mployedin/src/app -path *job-seeker* -name *.tsx)",
       "Bash(find /c/Users/moham/OneDrive/Desktop/Mployedin/mployedin/src/app/[locale] -maxdepth 2 -type d)",
       "WebSearch",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(cat:*)",
+      "Bash(cat '/c/Users/moham/OneDrive/Desktop/Mployedin/mployedin/src/app/[locale]/\\(dashboard\\)/employer/jobs/page.tsx')",
+      "Bash(cat '/c/Users/moham/OneDrive/Desktop/Mployedin/mployedin/src/app/[locale]/\\(dashboard\\)/agent/jobs/new/page.tsx')",
+      "Bash(cat '/c/Users/moham/OneDrive/Desktop/Mployedin/mployedin/src/app/[locale]/\\(dashboard\\)/agent/job-seekers/page.tsx')",
+      "Bash(cat '/c/Users/moham/OneDrive/Desktop/Mployedin/mployedin/src/app/[locale]/\\(dashboard\\)/admin/approvals/page.tsx')",
+      "Bash(cat '/c/Users/moham/OneDrive/Desktop/Mployedin/mployedin/src/app/[locale]/\\(dashboard\\)/admin/jobs/page.tsx')"
     ]
   },
   "enableAllProjectMcpServers": true,

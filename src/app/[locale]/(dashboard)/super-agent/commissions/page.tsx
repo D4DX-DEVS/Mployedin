@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Inbox } from "lucide-react";
+import { Inbox, Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Commission {
   _id: string;
@@ -27,6 +29,44 @@ export default function SuperAgentCommissionsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+
+  // Override rate settings
+  const [overrideRate, setOverrideRate] = useState<number>(0);
+  const [savingRate, setSavingRate] = useState(false);
+  const [rateMessage, setRateMessage] = useState("");
+
+  useEffect(() => {
+    fetch("/api/super-agent/profile")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.profile?.overrideRate != null) {
+          setOverrideRate(data.profile.overrideRate);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const saveOverrideRate = async () => {
+    setSavingRate(true);
+    setRateMessage("");
+    try {
+      const res = await fetch("/api/super-agent/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ overrideRate }),
+      });
+      if (res.ok) {
+        setRateMessage("Saved ✓");
+        setTimeout(() => setRateMessage(""), 2000);
+      } else {
+        setRateMessage("Failed to save");
+      }
+    } catch {
+      setRateMessage("Network error");
+    } finally {
+      setSavingRate(false);
+    }
+  };
 
   const fetchCommissions = useCallback(async () => {
     setLoading(true);
@@ -55,6 +95,32 @@ export default function SuperAgentCommissionsPage() {
   return (
     <div className="page-container">
       <PageHeader title="Commission Management" description="Review and approve agent commission payouts" />
+
+      {/* Override Rate Settings */}
+      <div className="card-base p-4 flex flex-wrap items-end gap-3">
+        <div className="flex items-center gap-2">
+          <Settings2 className="h-4 w-4 text-muted-foreground" />
+          <Label htmlFor="overrideRate" className="text-sm font-medium whitespace-nowrap">
+            Commission Override Rate (%)
+          </Label>
+        </div>
+        <Input
+          id="overrideRate"
+          type="number"
+          min={0}
+          max={100}
+          step={0.5}
+          value={overrideRate}
+          onChange={(e) => setOverrideRate(Number(e.target.value))}
+          className="w-24"
+        />
+        <Button size="sm" onClick={saveOverrideRate} disabled={savingRate}>
+          {savingRate ? "Saving…" : "Save"}
+        </Button>
+        {rateMessage && (
+          <span className="text-xs text-muted-foreground">{rateMessage}</span>
+        )}
+      </div>
 
       <div className="flex gap-3">
         {(["", "pending", "approved", "paid"] as const).map((s) => (

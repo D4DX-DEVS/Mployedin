@@ -25,6 +25,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -196,6 +197,7 @@ export default function ContactSubmissionsPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Contact Message</DialogTitle>
+            <DialogDescription className="sr-only">View the full details of the selected contact form submission.</DialogDescription>
           </DialogHeader>
           {viewItem && (
             <div className="space-y-4">

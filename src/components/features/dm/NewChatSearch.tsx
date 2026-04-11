@@ -7,6 +7,7 @@ import { Search, Loader2, MessageSquare, Users } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -134,6 +135,7 @@ export function NewChatSearch({ dashboardPrefix, trigger }: NewChatSearchProps) 
             <Users className="h-4 w-4" />
             Start a Conversation
           </DialogTitle>
+          <DialogDescription className="sr-only">Search for users by name, headline, or company to start a direct message conversation.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">

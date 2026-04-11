@@ -47,6 +47,8 @@ export interface IApplication extends Document {
   aiMatchScore?: number;
   matchBreakdown?: IAIMatchBreakdown;
   matchNotes?: string;
+  matchStrengths?: string[];
+  matchGaps?: string[];
   behaviorSignals?: IBehaviorSignals;
   behaviorScore?: number;
   interviewIds: mongoose.Types.ObjectId[];
@@ -106,6 +108,8 @@ const ApplicationSchema = new Schema<IApplication>(
       overall: Number,
     },
     matchNotes: String,
+    matchStrengths: [{ type: String }],
+    matchGaps: [{ type: String }],
     behaviorSignals: {
       responseTime: Number,
       coverLetterCustomized: Boolean,

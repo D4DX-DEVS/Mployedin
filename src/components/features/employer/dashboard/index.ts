@@ -8,5 +8,7 @@ export { PriorityActions } from "./PriorityActions";
 export { AIInsightsPanel } from "./AIInsightsPanel";
 export { EnhancedJobsList } from "./EnhancedJobsList";
 export { CandidateQuality } from "./CandidateQuality";
+export { CandidateQualityChart } from "./CandidateQualityChart";
+export { CurrentOpeningsList, OpeningsStats, TimeToHire } from "./StatsCards";
 export type { ActiveJob } from "./ActiveJobsList";
 export type { EnhancedJob } from "./EnhancedJobsList";

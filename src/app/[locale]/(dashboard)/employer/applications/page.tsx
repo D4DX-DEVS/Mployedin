@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useParams } from "next/navigation";
-import { User, Calendar, Inbox, CheckSquare, Square, X, ChevronDown, GripVertical, Award, DollarSign, Filter, Clock, History, BarChart3, GitCompare, ArrowRight, Users } from "lucide-react";
+import { User, Calendar, Inbox, CheckSquare, Square, X, ChevronDown, GripVertical, Award, DollarSign, Filter, Clock, History, BarChart3, GitCompare, ArrowRight, Users, FileText, Eye, Sparkles, Zap, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,19 +22,34 @@ import {
   useCreateOfferFromApp,
   useFetchInterviewForApp,
   useCompareApplications,
+  useComputeAiMatch,
+  useBulkAiMatch,
 } from "@/hooks/useApplications";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useScorecardsByApplicationIds } from "@/hooks/useScorecards";
+import type { Scorecard } from "@/hooks/useScorecards";
 import { ScorecardForm } from "@/components/scorecards/ScorecardForm";
+import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 
 interface Applicant {
   _id: string;
   jobId: { _id: string; title: string };
-  jobSeekerId: { _id?: string; userId: string };
+  jobSeekerId: {
+    _id?: string;
+    userId?: { _id?: string; name?: string } | string;
+    skills?: string[];
+    currentLocation?: string;
+    totalExperienceYears?: number;
+    experience?: { jobTitle?: string; company?: string; isCurrent?: boolean }[];
+    cv?: { originalUrl?: string };
+  };
   status: string;
   aiMatchScore?: number;
   appliedAt: string;
   coverLetter?: string;
   matchBreakdown?: { skills: number; experience: number; overall: number };
+  matchStrengths?: string[];
+  matchGaps?: string[];
   otherApplicationsCount?: number;
 }
 
@@ -94,6 +109,15 @@ export default function EmployerApplicationsPage() {
   const [timelinePanel, setTimelinePanel] = useState<{ appId: string; candidateLabel: string } | null>(null);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [compareModal, setCompareModal] = useState(false);
+  const [viewingCv, setViewingCv] = useState<{
+    url: string; name: string;
+    applicationId?: string; status?: string;
+    candidate?: { role?: string; experience?: number; skills?: string[]; location?: string };
+    aiMatchScore?: number;
+    matchBreakdown?: { skills?: number; experience?: number; location?: number; overall?: number };
+  } | null>(null);
+  // Bulk AI match progress state
+  const [bulkMatchProgress, setBulkMatchProgress] = useState<{ done: number; total: number } | null>(null);
 
   // ── React Query hooks ─────────────────────────────────────────────
   const applicationsQuery = useApplications({
@@ -108,6 +132,8 @@ export default function EmployerApplicationsPage() {
   const createOffer = useCreateOfferFromApp();
   const fetchInterviewForApp = useFetchInterviewForApp();
   const timelineQuery = useApplicationTimeline(timelinePanel?.appId ?? null);
+  const computeAiMatch = useComputeAiMatch();
+  const bulkAiMatch = useBulkAiMatch();
 
   // ── Derived values ────────────────────────────────────────────────
   const applications = (applicationsQuery.data?.applications ?? []) as Applicant[];
@@ -117,6 +143,11 @@ export default function EmployerApplicationsPage() {
   const timelineData: TimelineEntry[] = timelineQuery.data?.timeline ?? [];
   const timelineLoading = timelineQuery.isLoading;
 
+  // Fetch scorecards for all visible applications in one batched request
+  const applicationIds = applications.map((a) => a._id);
+  const scorecardsQuery = useScorecardsByApplicationIds(applicationIds);
+  const scorecardMap: Record<string, Scorecard> = scorecardsQuery.data ?? {};
+
   useEffect(() => {
     document.title = "Applications · MPLOYEDIN";
   }, []);
@@ -125,6 +156,69 @@ export default function EmployerApplicationsPage() {
 
   function updateApplicationStatus(id: string, status: string, reason?: string) {
     return updateStatus.mutateAsync({ id, status, rejectionReason: reason });
+  }
+
+  async function handleGenerateAiMatch(app: Applicant) {
+    const jobId = app.jobId._id;
+    const jobSeekerId = typeof app.jobSeekerId?.userId === "object"
+      ? (app.jobSeekerId.userId?._id ?? "")
+      : (app.jobSeekerId?.userId ?? "");
+    if (!jobId || !jobSeekerId) return;
+    try {
+      await computeAiMatch.mutateAsync({ applicationId: app._id, jobId, jobSeekerId });
+    } catch (err) {
+      console.error("Failed to compute AI match:", err);
+    }
+  }
+
+  /** Run AI match for all applications that don't have a score yet */
+  async function handleBulkAiMatch() {
+    const unscored = applications.filter((app) => app.aiMatchScore == null);
+    if (!unscored.length) return;
+    const items = unscored
+      .map((app) => {
+        const jobId = app.jobId._id;
+        const jobSeekerId = typeof app.jobSeekerId?.userId === "object"
+          ? (app.jobSeekerId.userId?._id ?? "")
+          : (app.jobSeekerId?.userId ?? "");
+        if (!jobId || !jobSeekerId) return null;
+        return { applicationId: app._id, jobId, jobSeekerId };
+      })
+      .filter(Boolean) as { applicationId: string; jobId: string; jobSeekerId: string }[];
+
+    if (!items.length) return;
+    setBulkMatchProgress({ done: 0, total: items.length });
+    try {
+      await bulkAiMatch.mutateAsync({
+        applications: items,
+        onProgress: (done, total) => setBulkMatchProgress({ done, total }),
+      });
+    } finally {
+      setBulkMatchProgress(null);
+    }
+  }
+
+  /** Auto-shortlist top candidates: shortlist those with score >= 70%, or top 5 if none qualify */
+  async function handleAutoShortlist() {
+    const scored = [...filteredApplications]
+      .filter((app) => app.aiMatchScore != null && app.status === "applied")
+      .sort((a, b) => (b.aiMatchScore ?? 0) - (a.aiMatchScore ?? 0));
+    if (!scored.length) return;
+
+    const threshold = 70;
+    let toShortlist = scored.filter((app) => (app.aiMatchScore ?? 0) >= threshold);
+    // Fall back to top 5 if none exceed threshold
+    if (!toShortlist.length) toShortlist = scored.slice(0, 5);
+
+    try {
+      await bulkAction.mutateAsync({
+        applicationIds: toShortlist.map((a) => a._id),
+        action: "move_stage",
+        params: { targetStage: "shortlisted" },
+      });
+    } catch (err) {
+      console.error("Auto shortlist failed:", err);
+    }
   }
 
   async function handleOpenScorecard(data: { applicationId: string; interviewId: string }) {
@@ -194,6 +288,31 @@ export default function EmployerApplicationsPage() {
   function openTimeline(appId: string) {
     const label = `#${appId.slice(-4)}`;
     setTimelinePanel({ appId, candidateLabel: label });
+  }
+
+  function getCandidateName(app: Applicant): string {
+    const u = app.jobSeekerId?.userId;
+    if (typeof u === "object" && u?.name) return u.name;
+    return `Candidate #${app._id.slice(-4)}`;
+  }
+
+  function buildViewingCv(app: Applicant): NonNullable<typeof viewingCv> {
+    const js = app.jobSeekerId;
+    const currentRole = js?.experience?.find((e) => e.isCurrent)?.jobTitle;
+    return {
+      url: js!.cv!.originalUrl!,
+      name: getCandidateName(app),
+      applicationId: app._id,
+      status: app.status,
+      candidate: {
+        role: currentRole,
+        experience: js?.totalExperienceYears,
+        skills: js?.skills,
+        location: js?.currentLocation,
+      },
+      aiMatchScore: app.aiMatchScore,
+      matchBreakdown: app.matchBreakdown,
+    };
   }
 
   function toggleCompare(appId: string) {
@@ -289,6 +408,43 @@ export default function EmployerApplicationsPage() {
             <Badge variant="secondary" className="ms-1.5 text-[10px] px-1.5">Active</Badge>
           )}
         </Button>
+        {/* Quick match filters */}
+        <Button
+          size="sm"
+          variant={scoreRange[0] === 70 && scoreRange[1] === 100 ? "default" : "outline"}
+          className="h-9 text-xs gap-1.5"
+          onClick={() => setScoreRange(scoreRange[0] === 70 && scoreRange[1] === 100 ? [0, 100] : [70, 100])}
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+          High Match (&gt;70%)
+        </Button>
+        {/* ATS Auto Picker actions */}
+        {canUpdate && (
+          <div className="flex gap-2 ml-auto">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 text-xs gap-1.5"
+              disabled={bulkAiMatch.isPending || applications.every((a) => a.aiMatchScore != null)}
+              onClick={handleBulkAiMatch}
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
+              {bulkMatchProgress
+                ? `Scoring ${bulkMatchProgress.done}/${bulkMatchProgress.total}…`
+                : "Run AI Match for All"}
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              className="h-9 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+              disabled={bulkAction.isPending || !filteredApplications.some((a) => a.aiMatchScore != null && a.status === "applied")}
+              onClick={handleAutoShortlist}
+            >
+              <CheckCheck className="w-3.5 h-3.5" />
+              Auto Shortlist Top Candidates
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Advanced filters */}
@@ -406,6 +562,8 @@ export default function EmployerApplicationsPage() {
             onTimeline={openTimeline}
             onCompare={toggleCompare}
             compareIds={compareIds}
+            getCandidateName={getCandidateName}
+            onViewCv={(app) => setViewingCv(buildViewingCv(app))}
           />
           {dragModal && (
             <DragModal
@@ -419,7 +577,7 @@ export default function EmployerApplicationsPage() {
                     setInterviewModal({
                       appId,
                       jobId: app.jobId._id,
-                      jobSeekerId: app.jobSeekerId?.userId ?? "",
+                      jobSeekerId: typeof app.jobSeekerId?.userId === "object" ? (app.jobSeekerId.userId._id ?? "") : (app.jobSeekerId?.userId ?? ""),
                     });
                   }
                   setDragModal(null);
@@ -446,14 +604,18 @@ export default function EmployerApplicationsPage() {
           onToggleAll={canUpdate ? toggleAll : undefined}
           onUpdateStatus={canUpdate ? updateApplicationStatus : undefined}
           onScorecard={canUpdate ? handleOpenScorecard : undefined}
+          onGenerateAiMatch={canUpdate ? handleGenerateAiMatch : undefined}
+          aiMatchPendingId={computeAiMatch.isPending ? computeAiMatch.variables?.applicationId : undefined}
+          scorecardMap={scorecardMap}
           onOffer={canUpdate ? (app: Applicant) => setOfferModal({ appId: app._id }) : undefined}
           onTimeline={openTimeline}
           onCompare={toggleCompare}
           compareIds={compareIds}
+          getCandidateName={getCandidateName}
+          onViewCv={(app) => setViewingCv(buildViewingCv(app))}
         />
       )}
 
-      {/* Scorecard Modal */}
       {scorecardModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
           <div className="bg-background rounded-lg border border-border shadow-lg max-w-2xl w-full mx-4">
@@ -510,6 +672,25 @@ export default function EmployerApplicationsPage() {
         />
       )}
 
+      {/* Resume Viewer Modal */}
+      {viewingCv && (
+        <ResumeViewerModal
+          url={viewingCv.url}
+          candidateName={viewingCv.name}
+          onClose={() => setViewingCv(null)}
+          applicationId={viewingCv.applicationId}
+          status={viewingCv.status}
+          candidate={viewingCv.candidate}
+          aiMatchScore={viewingCv.aiMatchScore}
+          matchBreakdown={viewingCv.matchBreakdown}
+          onStatusChange={
+            viewingCv.applicationId && canUpdate
+              ? (newStatus) => updateApplicationStatus(viewingCv.applicationId!, newStatus)
+              : undefined
+          }
+        />
+      )}
+
       <PaginationControls
         page={page}
         totalPages={totalPages}
@@ -523,7 +704,7 @@ export default function EmployerApplicationsPage() {
 }
 
 function KanbanView({
-  grouped, onUpdateStatus, dragModal, setDragModal, onTimeline, onCompare, compareIds
+  grouped, onUpdateStatus, dragModal, setDragModal, onTimeline, onCompare, compareIds, getCandidateName, onViewCv
 }: {
   grouped: Record<string, Applicant[]>;
   onUpdateStatus?: (id: string, status: string, reason?: string) => void;
@@ -532,6 +713,8 @@ function KanbanView({
   onTimeline?: (appId: string) => void;
   onCompare?: (appId: string) => void;
   compareIds?: string[];
+  getCandidateName: (app: Applicant) => string;
+  onViewCv?: (app: Applicant) => void;
 }) {
   const dragRef = useRef<{ id: string; fromStatus: string } | null>(null);
   const [highlightedColumn, setHighlightedColumn] = useState<string | null>(null);
@@ -606,6 +789,8 @@ function KanbanView({
               onTimeline={onTimeline}
               onCompare={onCompare}
               isComparing={compareIds?.includes(app._id)}
+              candidateName={getCandidateName(app)}
+              onViewCv={onViewCv}
             />
           ))}
           {!grouped[stage.value]?.length && (
@@ -618,7 +803,7 @@ function KanbanView({
 }
 
 function KanbanCard({
-  app, onUpdateStatus, onDragStart, onTimeline, onCompare, isComparing
+  app, onUpdateStatus, onDragStart, onTimeline, onCompare, isComparing, candidateName, onViewCv
 }: {
   app: Applicant;
   onUpdateStatus?: (id: string, status: string, reason?: string) => void;
@@ -626,6 +811,8 @@ function KanbanCard({
   onTimeline?: (appId: string) => void;
   onCompare?: (appId: string) => void;
   isComparing?: boolean;
+  candidateName: string;
+  onViewCv?: (app: Applicant) => void;
 }) {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -653,7 +840,13 @@ function KanbanCard({
       <div className="flex items-center gap-1.5 mb-1.5">
         <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
         <User className="w-3 h-3 text-primary" />
-        <span className="font-medium truncate">Candidate #{app._id.slice(-4)}</span>
+        <a
+          href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
+          className="font-medium truncate hover:text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {candidateName}
+        </a>
         {app.aiMatchScore != null && (
           <span className={`ms-auto font-bold ${app.aiMatchScore >= 70 ? "text-emerald-600" : "text-amber-600"}`}>
             {app.aiMatchScore}%
@@ -661,6 +854,38 @@ function KanbanCard({
         )}
       </div>
       <p className="text-muted-foreground truncate">{app.jobId?.title}</p>
+
+      {/* Quick info: experience + location */}
+      <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
+        {app.jobSeekerId?.totalExperienceYears != null && (
+          <span>{app.jobSeekerId.totalExperienceYears}+ yrs</span>
+        )}
+        {app.jobSeekerId?.currentLocation && (
+          <span className="truncate">{app.jobSeekerId.currentLocation}</span>
+        )}
+      </div>
+
+      {/* Skills badges */}
+      {app.jobSeekerId?.skills && app.jobSeekerId.skills.length > 0 && (
+        <div className="flex flex-wrap gap-0.5 mt-1">
+          {app.jobSeekerId.skills.slice(0, 2).map((s) => (
+            <span key={s} className="text-[9px] px-1.5 py-0 bg-muted rounded-full">{s}</span>
+          ))}
+          {app.jobSeekerId.skills.length > 2 && (
+            <span className="text-[9px] text-muted-foreground">+{app.jobSeekerId.skills.length - 2}</span>
+          )}
+        </div>
+      )}
+
+      {/* CV indicator */}
+      {app.jobSeekerId?.cv?.originalUrl && onViewCv && (
+        <button
+          className="flex items-center gap-0.5 text-[10px] text-primary hover:underline mt-1"
+          onClick={(e) => { e.stopPropagation(); onViewCv(app); }}
+        >
+          <FileText className="w-2.5 h-2.5" /> View CV
+        </button>
+      )}
 
       {/* Cross-application badge */}
       {(app.otherApplicationsCount ?? 0) > 0 && (
@@ -772,7 +997,7 @@ function KanbanCard({
 }
 
 function TableView({
-  applications, selected, onToggle, onToggleAll, onUpdateStatus, onScorecard, onOffer, onTimeline, onCompare, compareIds
+  applications, selected, onToggle, onToggleAll, onUpdateStatus, onScorecard, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOffer, onTimeline, onCompare, compareIds, getCandidateName, onViewCv
 }: {
   applications: Applicant[];
   selected: string[];
@@ -780,10 +1005,15 @@ function TableView({
   onToggleAll?: () => void;
   onUpdateStatus?: (id: string, status: string, reason?: string) => void;
   onScorecard?: (data: { applicationId: string; interviewId: string }) => void;
+  onGenerateAiMatch?: (app: Applicant) => void;
+  aiMatchPendingId?: string;
+  scorecardMap?: Record<string, Scorecard>;
   onOffer?: (app: Applicant) => void;
   onTimeline?: (appId: string) => void;
   onCompare?: (appId: string) => void;
   compareIds?: string[];
+  getCandidateName: (app: Applicant) => string;
+  onViewCv?: (app: Applicant) => void;
 }) {
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [reason, setReason] = useState("");
@@ -836,9 +1066,12 @@ function TableView({
             )}
             <TableHead>Applicant</TableHead>
             <TableHead>Job</TableHead>
+            <TableHead className="hidden lg:table-cell">Experience</TableHead>
+            <TableHead className="hidden md:table-cell">Skills</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>AI Match</TableHead>
-            <TableHead>Applied</TableHead>
+            <TableHead className="hidden sm:table-cell">Applied</TableHead>
+            <TableHead className="w-10">CV</TableHead>
             {onScorecard && <TableHead>Scorecard</TableHead>}
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -846,8 +1079,14 @@ function TableView({
         <TableBody>
           {applications.map((app) => {
             const isSelected = selected.includes(app._id);
+            const isTopMatch = (app.aiMatchScore ?? 0) >= 80;
+            const rowClass = isSelected
+              ? "bg-primary/5"
+              : isTopMatch
+              ? "bg-emerald-50/60 dark:bg-emerald-950/20"
+              : undefined;
             return (
-              <TableRow key={app._id} className={isSelected ? "bg-primary/5" : undefined}>
+              <TableRow key={app._id} className={rowClass}>
                 {onToggle && (
                   <TableCell className="w-10">
                     <button onClick={() => onToggle(app._id)} className="text-muted-foreground hover:text-foreground">
@@ -861,7 +1100,15 @@ function TableView({
                       <User className="w-3.5 h-3.5 text-primary" />
                     </div>
                     <div>
-                      <span className="font-medium">Candidate #{app._id.slice(-4)}</span>
+                      <a
+                        href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
+                        className="font-medium hover:text-primary hover:underline"
+                      >
+                        {getCandidateName(app)}
+                      </a>
+                      {app.jobSeekerId?.currentLocation && (
+                        <p className="text-[10px] text-muted-foreground">{app.jobSeekerId.currentLocation}</p>
+                      )}
                       {(app.otherApplicationsCount ?? 0) > 0 && (
                         <a
                           href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
@@ -877,57 +1124,149 @@ function TableView({
                 <TableCell className="text-muted-foreground truncate max-w-[160px]">
                   {app.jobId?.title}
                 </TableCell>
+                <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
+                  {app.jobSeekerId?.totalExperienceYears != null
+                    ? `${app.jobSeekerId.totalExperienceYears}+ yrs`
+                    : "—"}
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  <div className="flex flex-wrap gap-0.5 max-w-[140px]">
+                    {app.jobSeekerId?.skills?.slice(0, 3).map((s) => (
+                      <span key={s} className="text-[10px] px-1.5 py-0 bg-muted rounded-full whitespace-nowrap">{s}</span>
+                    ))}
+                    {(app.jobSeekerId?.skills?.length ?? 0) > 3 && (
+                      <span className="text-[10px] text-muted-foreground">+{app.jobSeekerId!.skills!.length - 3}</span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <StatusBadge status={app.status} />
                 </TableCell>
                 <TableCell>
                   {app.aiMatchScore != null ? (
                     <div className="group relative inline-block">
-                      <span className={`font-semibold cursor-help ${app.aiMatchScore >= 70 ? "text-emerald-600" : app.aiMatchScore >= 50 ? "text-amber-600" : "text-muted-foreground"}`}>
+                      <span className={`inline-flex items-center gap-1 font-semibold cursor-help px-1.5 py-0.5 rounded-md text-sm ${
+                        app.aiMatchScore >= 70
+                          ? "text-emerald-700 bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-400"
+                          : app.aiMatchScore >= 50
+                          ? "text-amber-700 bg-amber-100 dark:bg-amber-900/40 dark:text-amber-400"
+                          : "text-muted-foreground bg-muted"
+                      }`}>
                         {app.aiMatchScore}%
                       </span>
-                      {app.matchBreakdown && (
-                        <div className="absolute left-0 top-full mt-1 z-30 hidden group-hover:block w-48 p-2.5 bg-popover border border-border rounded-lg shadow-lg">
-                          <div className="flex items-center gap-1 mb-1.5">
-                            <BarChart3 className="w-3 h-3 text-primary" />
-                            <span className="text-[10px] font-semibold">AI Breakdown</span>
-                          </div>
-                          {[
-                            { label: "Skills", value: app.matchBreakdown.skills },
-                            { label: "Experience", value: app.matchBreakdown.experience },
-                            { label: "Overall", value: app.matchBreakdown.overall },
-                          ].map((item) => (
-                            <div key={item.label} className="flex items-center gap-1.5 mb-0.5">
-                              <span className="text-[10px] text-muted-foreground w-14">{item.label}</span>
-                              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-red-400"}`}
-                                  style={{ width: `${item.value}%` }}
-                                />
+                      {(app.matchBreakdown || app.matchStrengths?.length || app.matchGaps?.length) && (
+                        <div className="absolute left-0 top-full mt-1 z-30 hidden group-hover:block w-56 p-3 bg-popover border border-border rounded-lg shadow-lg">
+                          {app.matchBreakdown && (
+                            <>
+                              <div className="flex items-center gap-1 mb-1.5">
+                                <BarChart3 className="w-3 h-3 text-primary" />
+                                <span className="text-[10px] font-semibold">AI Breakdown</span>
                               </div>
-                              <span className="text-[10px] font-medium w-7 text-right">{item.value}%</span>
+                              {[
+                                { label: "Skills", value: app.matchBreakdown.skills },
+                                { label: "Experience", value: app.matchBreakdown.experience },
+                                { label: "Overall", value: app.matchBreakdown.overall },
+                              ].map((item) => (
+                                <div key={item.label} className="flex items-center gap-1.5 mb-0.5">
+                                  <span className="text-[10px] text-muted-foreground w-14">{item.label}</span>
+                                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-red-400"}`}
+                                      style={{ width: `${item.value}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-medium w-7 text-right">{item.value}%</span>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                          {app.matchStrengths && app.matchStrengths.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-border/50">
+                              <p className="text-[10px] font-semibold text-emerald-600 mb-1">Strengths</p>
+                              {app.matchStrengths.map((s, i) => (
+                                <p key={i} className="text-[10px] text-muted-foreground flex gap-1">
+                                  <span className="text-emerald-500 shrink-0">✓</span> {s}
+                                </p>
+                              ))}
                             </div>
-                          ))}
+                          )}
+                          {app.matchGaps && app.matchGaps.length > 0 && (
+                            <div className="mt-1.5">
+                              <p className="text-[10px] font-semibold text-red-500 mb-1">Gaps</p>
+                              {app.matchGaps.map((g, i) => (
+                                <p key={i} className="text-[10px] text-muted-foreground flex gap-1">
+                                  <span className="text-red-400 shrink-0">✗</span> {g}
+                                </p>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
+                  ) : onGenerateAiMatch ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+                      title="Generate AI match score"
+                      disabled={aiMatchPendingId === app._id}
+                      onClick={() => onGenerateAiMatch(app)}
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${aiMatchPendingId === app._id ? "animate-pulse text-primary" : ""}`} />
+                    </Button>
                   ) : "—"}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
+                <TableCell className="hidden sm:table-cell text-muted-foreground text-xs">
                   {new Date(app.appliedAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  {app.jobSeekerId?.cv?.originalUrl ? (
+                    <Button
+                      variant="ghost" size="sm" className="h-7 w-7 p-0 text-primary"
+                      title="View CV"
+                      onClick={() => onViewCv?.(app)}
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 {onScorecard && (
                   <TableCell>
-                    {["interview_scheduled", "selected"].includes(app.status) && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-xs text-primary hover:bg-primary/10"
-                        onClick={() => onScorecard({ applicationId: app._id, interviewId: "mock" })}
-                      >
-                        <Award className="w-3 h-3 me-1" /> Scorecard
-                      </Button>
-                    )}
+                    {(() => {
+                      const sc = scorecardMap?.[app._id];
+                      if (sc) {
+                        const scoreColor = sc.overallScore >= 4 ? "text-emerald-600" : sc.overallScore >= 3 ? "text-amber-600" : "text-red-500";
+                        return (
+                          <div className="flex items-center gap-1">
+                            <span className={`text-xs font-semibold ${scoreColor}`}>{sc.overallScore.toFixed(1)}/5</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+                              title="View scorecard"
+                              onClick={() => onScorecard({ applicationId: app._id, interviewId: "mock" })}
+                            >
+                              <Award className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        );
+                      }
+                      if (["interview_scheduled", "selected"].includes(app.status)) {
+                        return (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs text-primary hover:bg-primary/10"
+                            onClick={() => onScorecard({ applicationId: app._id, interviewId: "mock" })}
+                          >
+                            <Award className="w-3 h-3 me-1" /> Add
+                          </Button>
+                        );
+                      }
+                      return <span className="text-xs text-muted-foreground">—</span>;
+                    })()}
                   </TableCell>
                 )}
                 <TableCell>

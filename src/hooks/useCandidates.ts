@@ -9,6 +9,7 @@ export interface Candidate {
   skills?: string[];
   availabilityStatus?: string;
   profileCompleteness?: number;
+  totalExperienceYears?: number;
   matchScore?: number;
   matchBreakdown?: {
     skills: number;
@@ -20,11 +21,22 @@ export interface Candidate {
   strengths?: string[];
   gaps?: string[];
   cv?: { originalUrl?: string };
+  shortlisted?: boolean;
 }
 
 export interface CandidateJob {
   _id: string;
   title: string;
+  requirements?: {
+    skills?: string[];
+    experienceMin?: number;
+    experienceMax?: number;
+  };
+  location?: {
+    city?: string;
+    country?: string;
+    isRemote?: boolean;
+  };
 }
 
 interface CandidatesResponse {

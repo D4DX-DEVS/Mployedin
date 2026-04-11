@@ -39,6 +39,21 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     if (!emp) return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 } });
     const jobs = await Job.find({ employerId: emp._id }).select("_id").lean();
     query.jobId = { $in: jobs.map((j) => j._id) };
+  } else if (ctx.role === "agent") {
+    // Agent sees applications for their jobs + jobs from assigned employers
+    const { Agent } = await import("@/models/Agent");
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    if (!agentDoc) return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 } });
+    const jobFilter: Record<string, unknown> = {
+      $or: [
+        { agentId: agentDoc._id },
+        ...(agentDoc.assignedEmployerIds?.length
+          ? [{ employerId: { $in: agentDoc.assignedEmployerIds } }]
+          : []),
+      ],
+    };
+    const agentJobs = await Job.find(jobFilter).select("_id").lean();
+    query.jobId = { $in: agentJobs.map((j) => j._id) };
   }
 
   if (status) query.status = status;
@@ -51,14 +66,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .skip(skip)
       .limit(limit)
       .populate("jobId", "title location salary category employerId")
-      .populate("jobSeekerId", "userId")
+      .populate({
+        path: "jobSeekerId",
+        select: "userId skills currentLocation totalExperienceYears experience cv.originalUrl",
+        populate: { path: "userId", select: "name" },
+      })
       .lean(),
     Application.countDocuments(query),
   ]);
 
-  // For employer view: compute cross-application counts per candidate
+  // For employer/agent view: compute cross-application counts per candidate
   let crossAppCounts: Record<string, number> = {};
-  if (ctx.role === "employer" && applications.length > 0) {
+  if ((ctx.role === "employer" || ctx.role === "agent") && applications.length > 0) {
     const seekerIds = [...new Set(applications.map((a) => String(a.jobSeekerId?._id)))];
     const counts = await Application.aggregate([
       { $match: { ...query, jobSeekerId: { $in: seekerIds.map((id) => new mongoose.Types.ObjectId(id)) } } },

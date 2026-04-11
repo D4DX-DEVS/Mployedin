@@ -195,9 +195,77 @@ export function useFetchInterviewForApp() {
   });
 }
 
+/** Compute AI match score for an application and persist it */
+export function useComputeAiMatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      applicationId,
+      jobId,
+      jobSeekerId,
+    }: {
+      applicationId: string;
+      jobId: string;
+      jobSeekerId: string;
+    }) => {
+      const res = await fetch("/api/ai/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationId, jobId, jobSeekerId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Failed to compute AI match score");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+    },
+  });
+}
+
+/**
+ * Bulk-compute AI match scores for multiple applications sequentially.
+ * Reports progress via the `onProgress` callback.
+ */
+export function useBulkAiMatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      applications,
+      onProgress,
+    }: {
+      applications: { applicationId: string; jobId: string; jobSeekerId: string }[];
+      onProgress?: (done: number, total: number) => void;
+    }) => {
+      let done = 0;
+      const results: { applicationId: string; score?: number; error?: string }[] = [];
+      for (const app of applications) {
+        try {
+          const res = await fetch("/api/ai/match", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(app),
+          });
+          const data = await res.json();
+          results.push({ applicationId: app.applicationId, score: data.score });
+        } catch {
+          results.push({ applicationId: app.applicationId, error: "failed" });
+        }
+        done++;
+        onProgress?.(done, applications.length);
+      }
+      return results;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+    },
+  });
+}
+
 /** Compare multiple applications side-by-side */
-export function useCompareApplications(ids: string[]) {
-  return useQuery({
+export function useCompareApplications(ids: string[]) {return useQuery({
     queryKey: applicationKeys.compare(ids),
     queryFn: async () => {
       const res = await fetch(`/api/applications/compare?ids=${ids.join(",")}`);

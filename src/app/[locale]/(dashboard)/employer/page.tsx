@@ -6,17 +6,17 @@ import Job from "@/models/Job";
 import { Application } from "@/models/Application";
 import { Interview } from "@/models/Interview";
 import { Placement } from "@/models/Placement";
+import { Offer } from "@/models/Offer";
 import { SetupGuide } from "@/components/features/employer/SetupGuide";
 import {
   SmartHeader,
   InteractivePipeline,
   PriorityActions,
-  AIInsightsPanel,
-  DashboardAIHint,
-  EnhancedJobsList,
-  CandidateQuality,
+  CandidateQualityChart,
+  CurrentOpeningsList,
+  OpeningsStats,
+  TimeToHire,
 } from "@/components/features/employer/dashboard";
-import type { EnhancedJob } from "@/components/features/employer/dashboard";
 
 export default async function EmployerDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
@@ -37,10 +37,10 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
     inReview,
     scheduledInterviews,
     placements,
-    recentJobs,
+    offerCount,
+    offersSent,
     matchStats,
-    jobsWithoutSalary,
-    jobsWithNoApps,
+    timeToHireResult,
     lastActivity,
   ] = employerId
     ? await Promise.all([
@@ -50,46 +50,11 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         Application.countDocuments({ employerId, status: "shortlisted" }),
         Interview.countDocuments({ employerId, status: "scheduled" }),
         Placement.countDocuments({ employerId }),
-        // Top 5 active jobs with applicant count + avg match + top match + views + createdAt
-        Job.aggregate([
-          { $match: { employerId, status: "active" } },
-          { $sort: { createdAt: -1 } },
-          { $limit: 5 },
-          {
-            $lookup: {
-              from: "applications",
-              localField: "_id",
-              foreignField: "jobId",
-              as: "apps",
-            },
-          },
-          {
-            $project: {
-              _id: 1,
-              title: 1,
-              status: 1,
-              views: 1,
-              createdAt: 1,
-              location: { city: 1, country: 1, isRemote: 1 },
-              applicantCount: { $size: "$apps" },
-              avgMatchScore: {
-                $cond: {
-                  if: { $gt: [{ $size: "$apps" }, 0] },
-                  then: { $avg: "$apps.aiMatchScore" },
-                  else: 0,
-                },
-              },
-              topMatchScore: {
-                $cond: {
-                  if: { $gt: [{ $size: "$apps" }, 0] },
-                  then: { $max: "$apps.aiMatchScore" },
-                  else: 0,
-                },
-              },
-            },
-          },
-        ]),
-        // Global match stats for AI Insights + Candidate Quality
+        // Total offers created
+        Offer.countDocuments({ employerId }),
+        // Offers sent (pending = recently sent, not yet responded)
+        Offer.countDocuments({ employerId, status: "pending" }),
+        // Global match stats for Candidate Quality chart
         Application.aggregate([
           { $match: { employerId, aiMatchScore: { $gt: 0 } } },
           {
@@ -102,64 +67,52 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
             },
           },
         ]),
-        // Jobs without salary (for AI insight)
-        Job.countDocuments({ employerId, status: "active", $or: [{ "salary.min": { $exists: false } }, { "salary.min": 0 }, { showSalary: false }] }),
-        // Jobs with zero applications (for AI insight)
-        Job.aggregate([
-          { $match: { employerId, status: "active" } },
-          { $lookup: { from: "applications", localField: "_id", foreignField: "jobId", as: "apps" } },
-          { $match: { apps: { $size: 0 } } },
-          { $count: "count" },
+        // Time to hire: avg days from application to placement
+        Placement.aggregate([
+          { $match: { employerId } },
+          {
+            $lookup: {
+              from: "applications",
+              localField: "applicationId",
+              foreignField: "_id",
+              as: "app",
+            },
+          },
+          { $unwind: { path: "$app", preserveNullAndEmptyArrays: false } },
+          {
+            $project: {
+              days: {
+                $divide: [
+                  { $subtract: ["$placedAt", "$app.createdAt"] },
+                  1000 * 60 * 60 * 24,
+                ],
+              },
+            },
+          },
+          { $group: { _id: null, avgDays: { $avg: "$days" } } },
         ]),
         // Last application activity (time context)
         Application.findOne({ employerId }).sort({ updatedAt: -1 }).select("updatedAt").lean(),
       ])
-    : [0, 0, 0, 0, 0, 0, [], [], 0, [], null];
-
-  const hiredCount = employerId
-    ? await Application.countDocuments({ employerId, status: "hired" })
-    : 0;
+    : [0, 0, 0, 0, 0, 0, 0, 0, [], [], null];
 
   // Extract match stats
   const stats = (matchStats as Array<{ avg: number; max: number; highCount: number; lowCount: number }>)[0];
   const avgMatchScore = stats?.avg ?? 0;
-  const topMatchScore = stats?.max ?? 0;
   const highMatchCount = stats?.highCount ?? 0;
   const lowMatchCount = stats?.lowCount ?? 0;
 
-  const hasJobsWithNoApps = ((jobsWithNoApps as Array<{ count: number }>)[0]?.count ?? 0) > 0;
-  const hasJobsWithoutSalary = (jobsWithoutSalary as number) > 0;
+  // Time to hire (avg days)
+  const avgTimeToHire = (timeToHireResult as Array<{ avgDays: number }>)[0]?.avgDays ?? null;
 
   // Compute last activity in minutes
   const lastActivityMinutes = lastActivity?.updatedAt
     ? Math.round((Date.now() - new Date(lastActivity.updatedAt as Date).getTime()) / 60000)
     : null;
 
-  const enhancedJobs: EnhancedJob[] = (recentJobs as Array<{
-    _id: { toString(): string };
-    title: string;
-    status: string;
-    applicantCount: number;
-    avgMatchScore: number;
-    topMatchScore: number;
-    views: number;
-    createdAt: Date;
-    location?: { city?: string; country?: string; isRemote?: boolean };
-  }>).map((j) => ({
-    _id: j._id.toString(),
-    title: j.title,
-    status: j.status,
-    applicantCount: j.applicantCount,
-    avgMatchScore: j.avgMatchScore ?? 0,
-    topMatchScore: j.topMatchScore ?? 0,
-    views: j.views ?? 0,
-    location: j.location,
-    createdAt: j.createdAt ? new Date(j.createdAt).toISOString() : "",
-  }));
-
   return (
     <div className="page-container">
-      {/* ── Smart Welcome Header with urgency + time context ── */}
+      {/* ── Smart Welcome Header ── */}
       <SmartHeader
         userName={userName}
         newApplications={newApplications}
@@ -169,56 +122,52 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         locale={locale}
       />
 
-      {/* ── Interactive Hiring Pipeline (clickable + animated counts) ── */}
+      {/* ── Hiring Pipeline (4-stage: Applied / Screening / Interviews / Offers) ── */}
       <InteractivePipeline
-        activeJobs={activeJobCount}
+        totalApplications={totalApplications}
         newApplications={newApplications}
         inReview={inReview}
         interviews={scheduledInterviews}
-        hired={hiredCount}
+        offers={offerCount as number}
+        offersSent={offersSent as number}
         locale={locale}
       />
 
-      {/* ── Priority Actions (urgency-tagged, not generic) ── */}
-      <PriorityActions
-        activeJobs={activeJobCount}
-        newApplications={newApplications}
-        scheduledInterviews={scheduledInterviews}
-        totalApplications={totalApplications}
-        placements={placements}
-        locale={locale}
-      />
-
-      {/* ── AI Insights + Candidate Quality (side by side on desktop) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <AIInsightsPanel
-          activeJobCount={activeJobCount}
-          totalApplications={totalApplications}
-          avgMatchScore={avgMatchScore}
-          highMatchCount={highMatchCount}
-          lowMatchCount={lowMatchCount}
-          topMatchScore={topMatchScore}
-          hiredCount={hiredCount}
-          hasJobsWithNoApps={hasJobsWithNoApps}
-          hasJobsWithoutSalary={hasJobsWithoutSalary}
-        />
-        <CandidateQuality
-          avgMatchScore={avgMatchScore}
-          highMatchCount={highMatchCount}
-          lowMatchCount={lowMatchCount}
-          totalApplications={totalApplications}
-        />
+      {/* ── Priority Actions + Candidate Quality Chart (side by side) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
+        <div className="lg:col-span-3">
+          <PriorityActions
+            activeJobs={activeJobCount}
+            newApplications={newApplications}
+            scheduledInterviews={scheduledInterviews}
+            totalApplications={totalApplications}
+            placements={placements}
+            locale={locale}
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <CandidateQualityChart
+            avgMatchScore={avgMatchScore}
+            highMatchCount={highMatchCount}
+            lowMatchCount={lowMatchCount}
+            totalApplications={totalApplications}
+          />
+        </div>
       </div>
 
-      {/* ── Inline AI Hint (increases discoverability) ── */}
-      <DashboardAIHint
-        hasJobs={activeJobCount > 0}
-        hasApplications={totalApplications > 0}
-        hasInterviews={scheduledInterviews > 0}
-      />
-
-      {/* ── Enhanced Active Jobs with match scores + views + quick actions ── */}
-      <EnhancedJobsList jobs={enhancedJobs} locale={locale} />
+      {/* ── Stats Row: Current Openings list / stats + Time to Hire ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        <CurrentOpeningsList
+          activeJobs={activeJobCount}
+          totalApplications={totalApplications}
+          locale={locale}
+        />
+        <OpeningsStats
+          activeJobs={activeJobCount}
+          totalApplications={totalApplications}
+        />
+        <TimeToHire avgDays={avgTimeToHire} />
+      </div>
 
       {/* Setup Guide (conditional — new employers) */}
       <SetupGuide />
