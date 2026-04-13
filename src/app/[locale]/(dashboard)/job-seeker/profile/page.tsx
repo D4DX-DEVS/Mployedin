@@ -283,7 +283,7 @@ export default function JobSeekerProfilePage() {
                 disabled={step.done}
                 className={cn(
                   "group w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
-                  step.done ? "opacity-60 cursor-default" : "hover:bg-muted/60 cursor-pointer",
+                  step.done ? "cursor-default" : "hover:bg-muted/60 cursor-pointer",
                   idx === 0 && !step.done && "bg-primary/5 hover:bg-primary/10"
                 )}
               >
@@ -299,7 +299,7 @@ export default function JobSeekerProfilePage() {
                 </div>
                 <span className={cn(
                   "flex-1 text-sm font-medium",
-                  step.done ? "line-through text-muted-foreground" : "text-foreground"
+                  step.done ? "text-muted-foreground" : "text-foreground"
                 )}>
                   {step.label}
                 </span>

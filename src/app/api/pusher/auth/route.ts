@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
     // Only allow auth for the user's own private DM channel
     const expectedChannel = `private-dm-${userId}`;
     if (channelName !== expectedChannel) {
+      console.warn(
+        `[Pusher Auth] Channel mismatch for user ${userId}: requested="${channelName}", expected="${expectedChannel}"`
+      );
       return NextResponse.json({ error: "Forbidden — cannot auth this channel" }, { status: 403 });
     }
 

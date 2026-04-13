@@ -4,6 +4,11 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { MapPin, Briefcase, Clock, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
+// Revalidate every 60 seconds — fresh job listings without blocking every request
+export const revalidate = 60;
+// searchParams opt-out static rendering per-request but ISR still applies
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Browse Jobs | mployedin",
   description: "Discover thousands of jobs in the UAE, Saudi Arabia, Qatar and across the GCC. Search by skills, location, and salary.",

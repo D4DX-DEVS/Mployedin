@@ -77,6 +77,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     interviews: ["create", "read", "update"],
     placements: ["read"],
     employers: ["read", "update"],
+    job_seekers: ["read"],
     notifications: ["read"],
     ai_assistant: ["read"],
     offers: ["create", "read", "update", "delete"],

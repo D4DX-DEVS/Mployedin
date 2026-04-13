@@ -7,16 +7,25 @@ import { Application } from "@/models/Application";
 import { Interview } from "@/models/Interview";
 import { Placement } from "@/models/Placement";
 import { Offer } from "@/models/Offer";
+import dynamic from "next/dynamic";
 import { SetupGuide } from "@/components/features/employer/SetupGuide";
 import {
   SmartHeader,
   InteractivePipeline,
   PriorityActions,
-  CandidateQualityChart,
   CurrentOpeningsList,
   OpeningsStats,
   TimeToHire,
 } from "@/components/features/employer/dashboard";
+
+// Lazy-load the recharts-based chart component — it's below the fold and not needed for initial paint
+const CandidateQualityChart = dynamic(
+  () =>
+    import("@/components/features/employer/dashboard/CandidateQualityChart").then(
+      (m) => m.CandidateQualityChart
+    ),
+  { ssr: false, loading: () => <div className="h-full min-h-[200px] animate-pulse rounded-2xl bg-muted/50" /> }
+);
 
 export default async function EmployerDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();

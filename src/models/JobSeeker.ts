@@ -105,6 +105,13 @@ export interface IJobSeeker extends Document {
     analysesCount?: number;
     lastAnalysisAt?: Date;
   };
+  googleCalendar?: {
+    connected: boolean;
+    accessToken?: string;  // encrypted
+    refreshToken?: string; // encrypted
+    expiresAt?: Date;
+    email?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -221,6 +228,13 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       skillsAdded: { type: Number, default: 0, min: 0 },
       analysesCount: { type: Number, default: 0, min: 0 },
       lastAnalysisAt: Date,
+    },
+    googleCalendar: {
+      connected: { type: Boolean, default: false },
+      accessToken: { type: String, select: false },
+      refreshToken: { type: String, select: false },
+      expiresAt: Date,
+      email: String,
     },
   },
   { timestamps: true }

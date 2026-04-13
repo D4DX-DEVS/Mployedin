@@ -53,6 +53,13 @@ type ProfileData = {
   cv?: { originalUrl?: string };
 };
 
+/** Typed bundle passed from the server component for zero-waterfall hydration. */
+export type InitialHomeData = {
+  profile: ProfileData;
+  stats: DashboardStats;
+  jobs: FeedJob[];
+};
+
 function formatSalary(job: FeedJob) {
   const salary = job.salary;
   if (!salary?.min || !salary?.max || !salary.currency) return null;
@@ -116,18 +123,31 @@ function buildSuggestions(profile: ProfileData | null) {
   return suggestions.slice(0, 3);
 }
 
-export function JobSeekerHomePage({ locale }: { locale: string }) {
+export function JobSeekerHomePage({
+  locale,
+  initialData,
+}: {
+  locale: string;
+  initialData?: InitialHomeData;
+}) {
   const { data: session } = useSession();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [jobs, setJobs] = useState<FeedJob[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<ProfileData | null>(initialData?.profile ?? null);
+  const [stats, setStats] = useState<DashboardStats | null>(initialData?.stats ?? null);
+  const [jobs, setJobs] = useState<FeedJob[]>(initialData?.jobs ?? []);
+  // If SSR data was provided this is false from the start — no loading flash
+  const [loading, setLoading] = useState(!initialData);
   const [guideOpen, setGuideOpen] = useState(false);
   const [aiInsights, setAiInsights] = useState<Array<{ type: string; title: string; message: string; action?: string }>>([]);
   const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
   const [aiInsightsKey, setAiInsightsKey] = useState(0);
 
   useEffect(() => {
+    // SSR primed — skip the initial data fetch entirely
+    if (initialData) {
+      setLoading(false);
+      return;
+    }
+
     let active = true;
 
     async function load() {
@@ -168,7 +188,7 @@ export function JobSeekerHomePage({ locale }: { locale: string }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialData]);
 
   // Fetch real AI insights (cached per day in sessionStorage)
   useEffect(() => {
