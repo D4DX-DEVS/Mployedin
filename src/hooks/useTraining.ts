@@ -47,10 +47,10 @@ export function useCreateTraining() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (form: Omit<TrainingItem, "_id">) => {
-      const { url: _url, dueDate, ...rest } = form;
+      const { dueDate, ...rest } = form;
       const payload = {
         ...rest,
-        ...(dueDate ? { dueDate: new Date(dueDate).toISOString() } : {}),
+        ...(dueDate ? { dueDate } : {}),
       };
       const res = await fetch("/api/employers/training", {
         method: "POST",

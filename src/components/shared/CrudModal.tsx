@@ -13,13 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 export interface CrudField {
@@ -95,21 +89,13 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
                   </Label>
 
                   {field.type === "select" ? (
-                    <Select
+                    <SearchableSelect
+                      id={field.name}
+                      options={field.options ?? []}
                       value={values[field.name] ?? ""}
                       onValueChange={(v) => setValues((prev) => ({ ...prev, [field.name]: v }))}
-                    >
-                      <SelectTrigger id={field.name}>
-                        <SelectValue placeholder={field.placeholder || "Select\u2026"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {field.options?.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder={field.placeholder || "Select\u2026"}
+                    />
                   ) : field.type === "textarea" ? (
                     <Textarea
                       id={field.name}

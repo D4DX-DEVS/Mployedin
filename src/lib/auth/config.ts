@@ -11,6 +11,7 @@ import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
 import { getFirebaseAdminAuth } from "@/lib/firebase/admin";
 import type { CompanyRole } from "@/models/CompanyUser";
+import logger from "@/lib/logger";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -119,7 +120,7 @@ export const authConfig: NextAuthConfig = {
           isOnboarded: jobSeeker?.isOnboarded ?? false,
         };
         } catch (err) {
-          console.error("[auth] authorize error:", err);
+          logger.error({ err }, "Credentials authorize error");
           return null;
         }
       },
@@ -209,7 +210,7 @@ export const authConfig: NextAuthConfig = {
             isOnboarded: fbJobSeeker?.isOnboarded ?? false,
           };
         } catch (err) {
-          console.error("[auth] firebase authorize error:", err);
+          logger.error({ err }, "Firebase authorize error");
           return null;
         }
       },
@@ -219,7 +220,11 @@ export const authConfig: NextAuthConfig = {
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
     }),
   ],
-  session: { strategy: "jwt", maxAge: 60 * 60 }, // 1 hour
+  session: {
+    strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60,    // 7 days absolute lifetime
+    updateAge: 60 * 60,           // silently refresh token if > 1 hour old (sliding window)
+  },
   pages: {
     signIn: "/en/login",
     error: "/en/login",

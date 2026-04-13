@@ -43,11 +43,12 @@ export const matchingWeightsSchema = z.object({
 export const trainingCreateSchema = z.object({
   title: z.string().min(1).max(200).trim(),
   provider: z.string().max(200).trim().optional().or(z.literal("")),
+  url: z.string().url().max(500).optional().or(z.literal("")),
   targetRole: z.string().max(200).trim().optional().or(z.literal("")),
   status: z
     .enum(["not_started", "in_progress", "completed"])
     .default("not_started"),
-  dueDate: z.string().datetime().optional(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}(T.*)?$/).optional().or(z.literal("")),
   notes: z.string().max(2000).trim().optional().or(z.literal("")),
 });
 

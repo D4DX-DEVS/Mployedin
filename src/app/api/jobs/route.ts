@@ -95,7 +95,22 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
 
-  const { title, description, category, location, requirements, salary, expiresAt, applicationMode, vacancies, tags, visibility, status } = body;
+  const {
+    title,
+    description,
+    category,
+    location,
+    requirements,
+    salary,
+    expiresAt,
+    applicationMode,
+    vacancies,
+    maxApplicants,
+    showSalary,
+    tags,
+    visibility,
+    status,
+  } = body;
 
   let employerId: string | undefined;
   let agentId: string | undefined;
@@ -165,7 +180,9 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     applicationMode: applicationMode ?? "manual",
     status: resolvedStatus,
     expiresAt: expiresAt ? new Date(expiresAt) : undefined,
-    vacancies: vacancies ?? 1,
+    vacancies,
+    maxApplicants,
+    showSalary,
     tags: tags ?? [],
     visibility: visibility ?? "public",
     "poster.approvalStatus": approvalStatus,

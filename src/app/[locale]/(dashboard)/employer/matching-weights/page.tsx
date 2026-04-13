@@ -6,13 +6,14 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { useMatchingWeights, useSaveMatchingWeights, type MatchingWeights } from "@/hooks/useMatchingWeights";
 
 const DEFAULT_WEIGHTS: MatchingWeights = {
-  skills: 35,
-  experience: 25,
-  education: 10,
-  location: 10,
-  salary: 10,
+  skills: 27,
+  experience: 23,
+  education: 13,
+  location: 9,
+  salary: 9,
   languages: 5,
-  availability: 5,
+  availability: 4,
+  behaviorSignals: 10,
 };
 
 const WEIGHT_LABELS: Record<keyof MatchingWeights, string> = {
@@ -23,6 +24,7 @@ const WEIGHT_LABELS: Record<keyof MatchingWeights, string> = {
   salary: "Salary Expectation",
   languages: "Language Match",
   availability: "Availability",
+  behaviorSignals: "Behavior Signals",
 };
 
 const WEIGHT_DESCRIPTIONS: Record<keyof MatchingWeights, string> = {
@@ -33,6 +35,7 @@ const WEIGHT_DESCRIPTIONS: Record<keyof MatchingWeights, string> = {
   salary: "Candidate's salary expectations vs. offered range",
   languages: "Match on required language proficiencies",
   availability: "Immediate availability for joining",
+  behaviorSignals: "AI-inferred soft skills, communication style, and culture fit signals",
 };
 
 export default function EmployerMatchingWeightsPage() {

@@ -51,6 +51,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const allowedFields = [
     "title", "description", "category", "location", "requirements",
     "salary", "status", "expiresAt", "applicationMode", "tags", "vacancies",
+    "maxApplicants", "showSalary", "visibility",
   ];
   const adminFields = ["poster.approvalStatus", "featuredUntil"];
 
@@ -95,8 +96,14 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  job.status = "closed";
-  await job.save();
+  const hardDeleted = job.status === "draft";
+
+  if (hardDeleted) {
+    await job.deleteOne();
+  } else {
+    job.status = "closed";
+    await job.save();
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -107,7 +114,9 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
     req: _req,
   });
 
-  return NextResponse.json({ message: "Job closed successfully" });
+  return NextResponse.json({
+    message: hardDeleted ? "Job deleted successfully" : "Job archived successfully",
+  });
 }
 
 export const GET = withAuth(getHandler);

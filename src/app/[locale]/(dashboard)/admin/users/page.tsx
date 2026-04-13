@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -213,23 +216,27 @@ export default function AdminUsersPage() {
               className="ps-10 shadow-none border-border/80 bg-background/50 focus:bg-background transition-colors"
             />
           </div>
-          <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); resetPage(); }}>
-            <SelectTrigger className="w-[140px] shadow-none border-border/80 bg-background/50"><SelectValue placeholder="All roles" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All roles</SelectItem>
-              {ROLES.map((r) => (
-                <SelectItem key={r} value={r} className="capitalize">{r.replace("_", " ")}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={activeFilter} onValueChange={(v) => { setActiveFilter(v); resetPage(); }}>
-            <SelectTrigger className="w-[130px] shadow-none border-border/80 bg-background/50"><SelectValue placeholder="All status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All status</SelectItem>
-              <SelectItem value="true">Active</SelectItem>
-              <SelectItem value="false">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            className="w-[140px]"
+            options={[
+              { value: "all", label: "All roles" },
+              ...ROLES.map((r) => ({ value: r, label: r.replace("_", " ") })),
+            ]}
+            value={roleFilter}
+            onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
+            placeholder="All roles"
+          />
+          <SearchableSelect
+            className="w-[130px]"
+            options={[
+              { value: "all", label: "All status" },
+              { value: "true", label: "Active" },
+              { value: "false", label: "Inactive" },
+            ]}
+            value={activeFilter}
+            onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
+            placeholder="All status"
+          />
         </div>
       </div>
 

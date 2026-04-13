@@ -3,17 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useFormContext } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Wifi, ChevronDown, Sparkles, UserCog } from "lucide-react";
+import { MapPin, Wifi, Sparkles, UserCog } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { JOB_CATEGORIES, COUNTRIES, type JobFormValues } from "./jobFormSchema";
@@ -47,6 +41,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
   const [suggestions, setSuggestions] = useState<Suggestions | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const suggestionsListId = "job-title-suggestions";
 
   // Agent list for "Assign Agent" dropdown
   const [agents, setAgents] = useState<{ _id: string; name: string }[]>([]);
@@ -101,8 +96,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, category]);
+  }, [title, category, onSuggestionsLoaded]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -143,135 +137,167 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.25 }}
-      className="space-y-6"
+      className="space-y-5"
     >
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Basic Information</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Start with the essentials — we&apos;ll help you fill in the rest.
-        </p>
-      </div>
-
-      {/* Job Title */}
-      <div className="space-y-1.5">
-        <Label htmlFor="title" className="text-sm font-medium">
-          Job Title <span className="text-destructive">*</span>
-        </Label>
-        <div className="relative" ref={suggestionsRef}>
-          <Input
-            id="title"
-            {...register("title")}
-            placeholder="e.g. Senior Software Engineer"
-            className={cn(errors.title && "border-destructive")}
-            autoComplete="off"
-            onFocus={() => titleSuggestions.length > 0 && setShowSuggestions(true)}
-          />
-          {fetchingSuggestions && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-            </div>
-          )}
-
-          {/* Suggestions dropdown */}
-          <AnimatePresence>
-            {showSuggestions && titleSuggestions.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.15 }}
-                className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-lg shadow-lg overflow-hidden"
-              >
-                {/* Auto-fill banner */}
-                {suggestions && (
-                  <button
-                    type="button"
-                    onClick={autoFillFromSuggestions}
-                    className="w-full px-3 py-2 bg-primary/5 border-b border-border text-xs font-medium text-primary flex items-center gap-1.5 hover:bg-primary/10 transition-colors"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Auto-fill skills, salary &amp; experience from AI
-                  </button>
-                )}
-                <ul>
-                  {titleSuggestions.map((t) => (
-                    <li key={t}>
-                      <button
-                        type="button"
-                        onClick={() => applyTitleSuggestion(t)}
-                        className="w-full text-left px-3 py-2.5 text-sm hover:bg-accent transition-colors"
-                      >
-                        {t}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-foreground">Basic Information</h2>
+          <p className="text-sm text-muted-foreground">
+            Start with the essentials and keep the role easy to scan.
+          </p>
         </div>
-        {errors.title && (
-          <p className="text-xs text-destructive mt-1">{errors.title.message}</p>
-        )}
+        <div className="rounded-xl border border-border/70 bg-background px-3 py-2 text-xs text-muted-foreground sm:max-w-xs">
+          {suggestions
+            ? "Use a suggested title to prefill skills, salary, and experience."
+            : "Clear titles and location details usually improve candidate quality first."}
+        </div>
       </div>
 
-      {/* Category */}
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">Category</Label>
-        <Select
-          value={category ?? ""}
-          onValueChange={(v) => setValue("category", v, { shouldValidate: true })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a job category" />
-          </SelectTrigger>
-          <SelectContent>
-            {JOB_CATEGORIES.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(15rem,0.9fr)]">
+        {/* Job Title */}
+        <div className="space-y-1.5">
+          <Label htmlFor="title" className="text-sm font-medium">
+            Job Title <span className="text-destructive">*</span>
+          </Label>
+          <div className="relative" ref={suggestionsRef}>
+            <Input
+              id="title"
+              {...register("title")}
+              placeholder="e.g. Senior Software Engineer"
+              className={cn(errors.title && "border-destructive")}
+              autoComplete="off"
+              aria-autocomplete="list"
+              aria-expanded={showSuggestions && titleSuggestions.length > 0}
+              aria-controls={titleSuggestions.length > 0 ? suggestionsListId : undefined}
+              onFocus={() => titleSuggestions.length > 0 && setShowSuggestions(true)}
+            />
+            {fetchingSuggestions && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+              </div>
+            )}
+
+            <AnimatePresence>
+              {showSuggestions && titleSuggestions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  id={suggestionsListId}
+                  role="listbox"
+                  className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-border bg-background shadow-lg"
+                >
+                  {suggestions && (
+                    <button
+                      type="button"
+                      onClick={autoFillFromSuggestions}
+                      className="flex w-full items-center gap-1.5 border-b border-border bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Auto-fill skills, salary &amp; experience from AI
+                    </button>
+                  )}
+                  <ul>
+                    {titleSuggestions.map((t) => (
+                      <li key={t}>
+                        <button
+                          type="button"
+                          onClick={() => applyTitleSuggestion(t)}
+                          role="option"
+                          className="w-full px-3 py-2.5 text-left text-sm transition-colors hover:bg-accent"
+                        >
+                          {t}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Use the exact role candidates search for instead of internal team titles.
+          </p>
+          {errors.title && (
+            <p className="mt-1 text-xs text-destructive">{errors.title.message}</p>
+          )}
+        </div>
+
+        {/* Category */}
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Category</Label>
+          <SearchableSelect
+            options={JOB_CATEGORIES.map((c) => ({ value: c, label: c }))}
+            value={category ?? ""}
+            onValueChange={(v) => setValue("category", v, { shouldValidate: true })}
+            placeholder="Select a job category"
+          />
+          <p className="text-xs text-muted-foreground">
+            Pick the closest category so recommendations and benchmarks stay relevant.
+          </p>
+        </div>
       </div>
 
       {/* Location */}
-      <div className="space-y-3">
-        <Label className="text-sm font-medium flex items-center gap-1.5">
-          <MapPin className="w-3.5 h-3.5" />
-          Location
-        </Label>
+      <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-1">
+            <Label className="flex items-center gap-1.5 text-sm font-medium">
+              <MapPin className="w-3.5 h-3.5" />
+              Location
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Add the base location first, then decide whether the role can be done remotely.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-background px-3 py-2.5">
+            <Wifi className="w-4 h-4 text-muted-foreground" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Remote work available</p>
+              <p className="text-xs text-muted-foreground">Show this role to remote-ready applicants</p>
+            </div>
+            <Switch
+              checked={isRemote}
+              onCheckedChange={(v) =>
+                setValue("location.isRemote", v, { shouldValidate: false })
+              }
+            />
+            {isRemote && (
+              <Badge variant="secondary" className="text-xs">
+                Remote
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {/* Country */}
           <div className="space-y-1.5">
             <Label htmlFor="location-country" className="text-xs text-muted-foreground">
               Country <span className="text-destructive">*</span>
             </Label>
-            <Select
+            <SearchableSelect
+              id="location-country"
+              options={COUNTRIES.map((c) => ({ value: c, label: c }))}
               value={watch("location.country") ?? ""}
               onValueChange={(v) => {
                 setValue("location.country", v, { shouldValidate: true });
                 // Auto-select currency based on country
-                import("./jobFormSchema").then(({ COUNTRY_CURRENCY_MAP }) => {
-                  const currency = COUNTRY_CURRENCY_MAP[v];
-                  if (currency) {
-                    setValue("salary.currency", currency, { shouldValidate: false });
-                  }
-                });
+                import("./jobFormSchema")
+                  .then(({ COUNTRY_CURRENCY_MAP }) => {
+                    const currency = COUNTRY_CURRENCY_MAP[v];
+                    if (currency) {
+                      setValue("salary.currency", currency, { shouldValidate: false });
+                    }
+                  })
+                  .catch(() => {
+                    // ignore auto-currency lookup failures
+                  });
               }}
-            >
-              <SelectTrigger id="location-country">
-                <SelectValue placeholder="Select country" />
-              </SelectTrigger>
-              <SelectContent>
-                {COUNTRIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Select country"
+            />
             {errors.location?.country && (
               <p className="text-xs text-destructive">{errors.location.country.message}</p>
             )}
@@ -293,51 +319,28 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             )}
           </div>
         </div>
-
-        {/* Remote toggle */}
-        <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background">
-          <Wifi className="w-4 h-4 text-muted-foreground" />
-          <div className="flex-1">
-            <p className="text-sm font-medium">Remote Work Available</p>
-            <p className="text-xs text-muted-foreground">Candidates can work remotely</p>
-          </div>
-          <Switch
-            checked={isRemote}
-            onCheckedChange={(v) =>
-              setValue("location.isRemote", v, { shouldValidate: false })
-            }
-          />
-          {isRemote && (
-            <Badge variant="secondary" className="text-xs">
-              Remote
-            </Badge>
-          )}
-        </div>
       </div>
 
       {/* Assign Agent (optional) */}
       {agents.length > 0 && (
-        <div className="space-y-1.5">
-          <Label className="text-sm font-medium flex items-center gap-1.5">
+        <div className="space-y-2 rounded-2xl border border-dashed border-border/80 bg-background/60 p-4">
+          <Label className="flex items-center gap-1.5 text-sm font-medium">
             <UserCog className="w-3.5 h-3.5" />
             Assign Agent <span className="text-xs text-muted-foreground font-normal">(optional)</span>
           </Label>
-          <Select
-            value={watch("agentId") ?? ""}
-            onValueChange={(v) => setValue("agentId", v || undefined, { shouldValidate: false })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="No agent — self-manage" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">No agent — self-manage</SelectItem>
-              {agents.map((a) => (
-                <SelectItem key={a._id} value={a._id}>
-                  {a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={[
+              { value: "__none__", label: "No agent - self-manage" },
+              ...agents.map((agent) => ({ value: agent._id, label: agent.name })),
+            ]}
+            value={watch("agentId") ?? "__none__"}
+            onValueChange={(value) =>
+              setValue("agentId", value === "__none__" ? undefined : value, {
+                shouldValidate: false,
+              })
+            }
+            placeholder={loadingAgents ? "Loading agents..." : "No agent - self-manage"}
+          />
           <p className="text-xs text-muted-foreground">
             Assigning an agent routes this job through the approval workflow before going live.
           </p>

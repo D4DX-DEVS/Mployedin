@@ -9,13 +9,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table,
   TableBody,
@@ -198,25 +192,19 @@ export default function StatesPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <Select
+        <SearchableSelect
+          className="w-[200px] h-9"
+          options={[
+            { value: "all", label: "All Countries" },
+            ...countries.map((c) => ({ value: c._id, label: c.name })),
+          ]}
           value={countryFilter}
           onValueChange={(v) => {
             setCountryFilter(v);
             resetPage();
           }}
-        >
-          <SelectTrigger className="w-[200px] h-9">
-            <SelectValue placeholder="Select Country" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Countries</SelectItem>
-            {countries.map((c) => (
-              <SelectItem key={c._id} value={c._id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Select Country"
+        />
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
           <Input
@@ -229,22 +217,20 @@ export default function StatesPage() {
             className="pl-9 h-9"
           />
         </div>
-        <Select
+        <SearchableSelect
+          className="w-[140px] h-9"
+          options={[
+            { value: "all", label: "All" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
+          ]}
           value={statusFilter}
           onValueChange={(v) => {
             setStatusFilter(v);
             resetPage();
           }}
-        >
-          <SelectTrigger className="w-[140px] h-9">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+          placeholder="Status"
+        />
       </div>
 
       {/* Table */}

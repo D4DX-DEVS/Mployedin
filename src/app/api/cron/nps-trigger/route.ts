@@ -4,6 +4,8 @@ import Application from "@/models/Application";
 import { CandidateNPS } from "@/models/CandidateNPS";
 import JobSeeker from "@/models/JobSeeker";
 import { notify } from "@/lib/notifications/trigger";
+import { verifyCronRequest } from "@/lib/security/cron-auth";
+import logger from "@/lib/logger";
 
 const TERMINAL_STATUSES = ["hired", "rejected", "withdrawn"];
 const WINDOW_HOURS = 24;       // send NPS request after 24h
@@ -17,11 +19,8 @@ const MAX_WINDOW_DAYS = 14;    // don't send if final status >14 days ago (too l
  * and sends an in-app + email notification asking for feedback.
  */
 export async function GET(req: NextRequest) {
-  // Verify cron secret
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET ?? ""}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = verifyCronRequest(req);
+  if (authError) return authError;
 
   await connectDB();
 
@@ -91,7 +90,7 @@ export async function GET(req: NextRequest) {
 
       sent++;
     } catch (err) {
-      console.error(`[NPS Trigger] Failed for app ${app._id}:`, err);
+      logger.error({ err, appId: String(app._id) }, "NPS trigger failed for application");
     }
   }
 

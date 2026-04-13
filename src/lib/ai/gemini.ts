@@ -3,6 +3,8 @@
  * All Gemini API interactions go through this module.
  */
 
+import logger from "@/lib/logger";
+
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 
 function getApiKey(): string {
@@ -77,8 +79,9 @@ export async function generateText(
   };
   const usage = data.usage;
   if (usage) {
-    console.log(
-      `[AI Usage] model=${model} prompt_tokens=${usage.prompt_tokens} completion_tokens=${usage.completion_tokens} total=${usage.total_tokens} latency=${Date.now() - start}ms`
+    logger.info(
+      { model, promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens, latencyMs: Date.now() - start },
+      "AI usage"
     );
   }
   return data.choices[0].message.content;
@@ -124,8 +127,9 @@ export async function generateMultimodal(
   };
   const usage = data.usage;
   if (usage) {
-    console.log(
-      `[AI Usage] model=${model} prompt_tokens=${usage.prompt_tokens} completion_tokens=${usage.completion_tokens} total=${usage.total_tokens} latency=${Date.now() - start}ms`
+    logger.info(
+      { model, promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens, latencyMs: Date.now() - start },
+      "AI usage"
     );
   }
   return data.choices[0].message.content;

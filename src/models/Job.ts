@@ -51,7 +51,7 @@ export interface IJob extends Document {
   location: IJobLocation;
   status: JobStatus;
   workflowMode: WorkflowMode;
-  vacancies: number;
+  vacancies?: number;
   applicantIds: mongoose.Types.ObjectId[];
   poster: IJobPoster;
   approvedBy?: mongoose.Types.ObjectId;
@@ -100,7 +100,7 @@ const JobSchema = new Schema<IJob>(
       default: "draft",
     },
     workflowMode: { type: String, enum: ["auto", "manual"], default: "manual" },
-    vacancies: { type: Number, default: 1 },
+    vacancies: { type: Number, min: 1 },
     applicantIds: [{ type: Schema.Types.ObjectId, ref: "JobSeeker" }],
     poster: {
       url: String,

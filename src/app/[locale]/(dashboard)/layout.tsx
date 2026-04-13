@@ -10,7 +10,7 @@ import User from "@/models/User";
 import { Employer } from "@/models/Employer";
 import type { UserRole } from "@/models/User";
 import { DashboardProviders } from "@/components/shared/DashboardProviders";
-import { RecruitmentAssistant } from "@/components/features/employer/RecruitmentAssistant";
+import { RecruitmentAssistantLoader } from "@/components/features/employer/RecruitmentAssistantLoader";
 
 /**
  * Per-request cached DB look-up for the logged-in user's shell data.
@@ -68,7 +68,7 @@ export default async function DashboardLayout({
             {children}
           </DashboardShell>
           {/* Recruitment AI assistant — employer-only floating panel */}
-          {role === "employer" && <RecruitmentAssistant />}
+          {role === "employer" && <RecruitmentAssistantLoader />}
         </DashboardProviders>
       </CsrfProvider>
     </SessionWrapper>

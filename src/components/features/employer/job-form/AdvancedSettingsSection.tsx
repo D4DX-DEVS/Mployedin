@@ -8,14 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import type { JobFormValues } from "./jobFormSchema";
 
 export function AdvancedSettingsSection() {
@@ -27,6 +20,8 @@ export function AdvancedSettingsSection() {
   const visibility = watch("visibility");
   const tags = watch("tags") ?? [];
   const applicationMode = watch("applicationMode");
+  const expiresAt = watch("expiresAt");
+  const maxApplicants = watch("maxApplicants");
 
   const [tagInput, setTagInput] = useState("");
 
@@ -42,15 +37,46 @@ export function AdvancedSettingsSection() {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-background overflow-hidden">
+    <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex items-center justify-between w-full px-5 py-4 text-sm font-medium hover:bg-muted/40 transition-colors"
+        aria-expanded={open}
+        className="flex w-full items-center justify-between px-5 py-4 text-sm font-medium transition-colors hover:bg-muted/40"
       >
-        <div className="flex items-center gap-2">
-          <Settings className="w-4 h-4 text-muted-foreground" />
-          Advanced Settings
+        <div className="space-y-2 text-left">
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4 text-muted-foreground" />
+            Advanced Settings
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="secondary" className="text-[11px]">
+              {applicationMode === "auto" ? "Auto match" : "Manual review"}
+            </Badge>
+            <Badge variant="secondary" className="text-[11px]">
+              {visibility === "invite_only" ? "Invite only" : visibility}
+            </Badge>
+            {autoScreening && (
+              <Badge variant="secondary" className="text-[11px]">
+                Screening at {minMatchScore}%
+              </Badge>
+            )}
+            {expiresAt && (
+              <Badge variant="secondary" className="text-[11px]">
+                Expires {expiresAt}
+              </Badge>
+            )}
+            {typeof maxApplicants === "number" && !Number.isNaN(maxApplicants) && (
+              <Badge variant="secondary" className="text-[11px]">
+                Max {maxApplicants} applicants
+              </Badge>
+            )}
+            {tags.length > 0 && (
+              <Badge variant="secondary" className="text-[11px]">
+                {tags.length} tags
+              </Badge>
+            )}
+          </div>
         </div>
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
           <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -67,30 +93,43 @@ export function AdvancedSettingsSection() {
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="px-5 pb-5 space-y-5 border-t border-border pt-4">
+            <div className="space-y-5 border-t border-border px-5 pb-5 pt-4">
 
-              {/* Application Mode */}
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Application Mode</Label>
-                <Select
-                  value={applicationMode}
-                  onValueChange={(v) =>
-                    setValue("applicationMode", v as "auto" | "manual", { shouldValidate: false })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">Manual Review — You review every applicant</SelectItem>
-                    <SelectItem value="auto">Auto Match — AI shortlists top candidates</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <Label className="text-sm font-medium">Application Mode</Label>
+                  <SearchableSelect
+                    options={[
+                      { value: "manual", label: "Manual Review — You review every applicant" },
+                      { value: "auto", label: "Auto Match — AI shortlists top candidates" },
+                    ]}
+                    value={applicationMode}
+                    onValueChange={(v) =>
+                      setValue("applicationMode", v as "auto" | "manual", { shouldValidate: false })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <Label className="text-sm font-medium">Visibility</Label>
+                  <SearchableSelect
+                    options={[
+                      { value: "public", label: "Public — Visible on job board" },
+                      { value: "private", label: "Private — Only via direct link" },
+                      { value: "invite_only", label: "Invite Only — Specific candidates" },
+                    ]}
+                    value={visibility}
+                    onValueChange={(v) =>
+                      setValue("visibility", v as "public" | "private" | "invite_only", {
+                        shouldValidate: false,
+                      })
+                    }
+                  />
+                </div>
               </div>
 
-              {/* Auto Screening */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-border">
+              <div className="space-y-3 rounded-xl border border-border/70 bg-background p-4">
+                <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
                   <div className="flex-1">
                     <p className="text-sm font-medium">Auto Screening</p>
                     <p className="text-xs text-muted-foreground">
@@ -113,9 +152,9 @@ export function AdvancedSettingsSection() {
                       exit={{ opacity: 0, height: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="pl-4 border-l-2 border-primary/30 space-y-2">
+                      <div className="space-y-2 border-l-2 border-primary/30 pl-4">
                         <div className="flex items-center justify-between">
-                          <Label className="text-xs text-muted-foreground">
+                          <Label htmlFor="min-match-score" className="text-xs text-muted-foreground">
                             Minimum Match Score
                           </Label>
                           <span className="text-sm font-semibold text-primary">
@@ -123,11 +162,13 @@ export function AdvancedSettingsSection() {
                           </span>
                         </div>
                         <input
+                          id="min-match-score"
                           type="range"
                           min={0}
                           max={100}
                           step={5}
                           value={minMatchScore}
+                          aria-label="Minimum match score threshold"
                           onChange={(e) =>
                             setValue("minMatchScore", Number(e.target.value), {
                               shouldValidate: false,
@@ -146,66 +187,43 @@ export function AdvancedSettingsSection() {
                 </AnimatePresence>
               </div>
 
-              {/* Visibility */}
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Visibility</Label>
-                <Select
-                  value={visibility}
-                  onValueChange={(v) =>
-                    setValue("visibility", v as "public" | "private" | "invite_only", {
-                      shouldValidate: false,
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="public">Public — Visible on job board</SelectItem>
-                    <SelectItem value="private">Private — Only via direct link</SelectItem>
-                    <SelectItem value="invite_only">Invite Only — Specific candidates</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <Label htmlFor="expires-at" className="text-sm font-medium">
+                    Expiry Date
+                  </Label>
+                  <Input
+                    id="expires-at"
+                    type="date"
+                    {...register("expiresAt")}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-48"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Job auto-closes on this date (optional)
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <Label htmlFor="max-applicants" className="text-sm font-medium">
+                    Max Applicants
+                  </Label>
+                  <Input
+                    id="max-applicants"
+                    type="number"
+                    min={1}
+                    max={10000}
+                    {...register("maxApplicants", { valueAsNumber: true, setValueAs: (v) => v === "" || isNaN(v) ? undefined : Number(v) })}
+                    placeholder="No limit"
+                    className="w-36"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Job auto-closes when this many applications are received (optional)
+                  </p>
+                </div>
               </div>
 
-              {/* Expiry Date */}
-              <div className="space-y-1.5">
-                <Label htmlFor="expires-at" className="text-sm font-medium">
-                  Expiry Date
-                </Label>
-                <Input
-                  id="expires-at"
-                  type="date"
-                  {...register("expiresAt")}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-48"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Job auto-closes on this date (optional)
-                </p>
-              </div>
-
-              {/* Max Applicants */}
-              <div className="space-y-1.5">
-                <Label htmlFor="max-applicants" className="text-sm font-medium">
-                  Max Applicants
-                </Label>
-                <Input
-                  id="max-applicants"
-                  type="number"
-                  min={1}
-                  max={10000}
-                  {...register("maxApplicants", { valueAsNumber: true, setValueAs: (v) => v === "" || isNaN(v) ? undefined : Number(v) })}
-                  placeholder="No limit"
-                  className="w-36"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Job auto-closes when this many applications are received (optional)
-                </p>
-              </div>
-
-              {/* Tags */}
-              <div className="space-y-2">
+              <div className="space-y-2 rounded-xl border border-border/70 bg-background p-4">
                 <Label className="text-sm font-medium">Tags</Label>
                 <div className="flex gap-2">
                   <Input

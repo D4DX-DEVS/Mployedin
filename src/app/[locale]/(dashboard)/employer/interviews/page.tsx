@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Inbox, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -91,16 +91,20 @@ export default function EmployerInterviewsPage() {
       />
 
       <div className="flex gap-3">
-        <Select value={status || "all"} onValueChange={(v) => setStatus(v === "all" ? "" : v)}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="All Statuses" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-            <SelectItem value="no-show">No Show</SelectItem>
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          className="w-44"
+          options={[
+            { value: "all", label: "All Statuses" },
+            { value: "scheduled", label: "Scheduled" },
+            { value: "confirmed", label: "Confirmed" },
+            { value: "rescheduled", label: "Rescheduled" },
+            { value: "completed", label: "Completed" },
+            { value: "cancelled", label: "Cancelled" },
+          ]}
+          value={status || "all"}
+          onValueChange={(v) => setStatus(v === "all" ? "" : v)}
+          placeholder="All Statuses"
+        />
       </div>
 
       <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03] overflow-x-auto">

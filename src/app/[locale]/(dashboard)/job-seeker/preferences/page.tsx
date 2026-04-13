@@ -5,13 +5,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Target,
   MapPin,
@@ -737,7 +731,9 @@ export default function JobPreferencesPage() {
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
                 Currency
               </label>
-              <Select
+              <SearchableSelect
+                className="h-9 text-sm"
+                options={CURRENCIES.map((c) => ({ value: c, label: c }))}
                 value={prefs.preferredSalary.currency}
                 onValueChange={(v) =>
                   setPrefs((p) => ({
@@ -745,18 +741,7 @@ export default function JobPreferencesPage() {
                     preferredSalary: { min: 0, max: 0, currency: v },
                   }))
                 }
-              >
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
           </div>
         </Section>
@@ -827,23 +812,14 @@ export default function JobPreferencesPage() {
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
                   Availability
                 </label>
-                <Select
+                <SearchableSelect
+                  className="h-9 text-sm"
+                  options={AVAILABILITY_OPTIONS.filter((o) => o.value !== "not_available").map((opt) => ({ value: opt.value, label: opt.label }))}
                   value={prefs.availabilityStatus}
                   onValueChange={(v) =>
                     setPrefs((p) => ({ ...p, availabilityStatus: v }))
                   }
-                >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {AVAILABILITY_OPTIONS.filter((o) => o.value !== "not_available").map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">

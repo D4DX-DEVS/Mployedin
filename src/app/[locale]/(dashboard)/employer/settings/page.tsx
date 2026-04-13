@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -582,24 +582,24 @@ function CompanySettingsPage() {
                       </div>
                       <div data-field="industry" className="transition-all duration-300">
                         <FieldLabel>Industry</FieldLabel>
-                        <Select value={form.industry} onValueChange={(v) => setField("industry", v)}>
-                          <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
-                          <SelectContent>
-                            {INDUSTRIES.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          options={INDUSTRIES.map((i) => ({ value: i, label: i }))}
+                          value={form.industry}
+                          onValueChange={(v) => setField("industry", v)}
+                          placeholder="Select industry"
+                        />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                       <div>
                         <FieldLabel>Company Size</FieldLabel>
-                        <Select value={form.companySize} onValueChange={(v) => setField("companySize", v)}>
-                          <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
-                          <SelectContent>
-                            {COMPANY_SIZES.map((s) => <SelectItem key={s} value={s}>{s} employees</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          options={COMPANY_SIZES.map((s) => ({ value: s, label: `${s} employees` }))}
+                          value={form.companySize}
+                          onValueChange={(v) => setField("companySize", v)}
+                          placeholder="Select size"
+                        />
                       </div>
                       <div>
                         <FieldLabel>Founded Year</FieldLabel>
@@ -779,40 +779,23 @@ function CompanySettingsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
                       <FieldLabel>Default Job Visibility</FieldLabel>
-                      <Select
+                      <SearchableSelect
+                        options={[
+                          { value: "public", label: "Public \u2014 Visible on job board" },
+                          { value: "private", label: "Private \u2014 Invite only" },
+                        ]}
                         value={form.defaultVisibility}
                         onValueChange={(v) => setField("defaultVisibility", v)}
-                      >
-                        <SelectTrigger>
-                          <div className="flex items-center gap-2">
-                            <Eye className="w-4 h-4 text-muted-foreground" />
-                            <SelectValue />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="public">Public — Visible on job board</SelectItem>
-                          <SelectItem value="private">Private — Invite only</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      />
                     </div>
                     <div>
                       <FieldLabel>Preferred Work Type</FieldLabel>
-                      <Select
+                      <SearchableSelect
+                        options={WORK_TYPES.map((w) => ({ value: w.value, label: w.label }))}
                         value={form.workType}
                         onValueChange={(v) => setField("workType", v)}
-                      >
-                        <SelectTrigger>
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-muted-foreground" />
-                            <SelectValue placeholder="Select work type" />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {WORK_TYPES.map((w) => (
-                            <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Select work type"
+                      />
                     </div>
                   </div>
 

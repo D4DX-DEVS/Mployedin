@@ -112,7 +112,7 @@ export function useVoiceInput({
             setTranscript(text);
             onTranscript?.(text);
           } else {
-            const msg = "No speech detected. Please try again.";
+            const msg = "Could not hear your voice. Try speaking louder, closer to the mic, or hold the button for at least 1–2 seconds.";
             setError(msg);
             onError?.(msg);
           }

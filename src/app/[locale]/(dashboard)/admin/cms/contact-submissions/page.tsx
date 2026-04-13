@@ -7,13 +7,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table,
   TableBody,
@@ -109,16 +103,16 @@ export default function ContactSubmissionsPage() {
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); resetPage(); }}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="unread">Unread</SelectItem>
-            <SelectItem value="read">Read</SelectItem>
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          className="w-[140px]"
+          options={[
+            { value: "all", label: "All" },
+            { value: "unread", label: "Unread" },
+            { value: "read", label: "Read" },
+          ]}
+          value={statusFilter}
+          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+        />
       </div>
 
       <div className="rounded-lg border bg-card">

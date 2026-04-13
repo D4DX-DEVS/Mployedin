@@ -9,13 +9,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table,
   TableBody,
@@ -179,22 +173,20 @@ export default function JobAttributePage({ category, title, titleAr, description
             className="pl-9 h-9"
           />
         </div>
-        <Select
+        <SearchableSelect
+          className="w-[140px] h-9"
+          options={[
+            { value: "all", label: "All" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
+          ]}
           value={statusFilter}
           onValueChange={(v) => {
             setStatusFilter(v);
             resetPage();
           }}
-        >
-          <SelectTrigger className="w-[140px] h-9">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+          placeholder="Status"
+        />
       </div>
 
       {/* Table */}

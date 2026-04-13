@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, FormProvider, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence } from "framer-motion";
-import { Copy } from "lucide-react";
+import { Copy, Sparkles, FileText, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
 
@@ -52,9 +52,61 @@ interface JobTemplateData {
 
 interface JobFormWizardProps {
   locale: string;
+  useAiPrefill?: boolean;
 }
 
-export function JobFormWizard({ locale }: JobFormWizardProps) {
+const AI_PREFILL_STORAGE_KEY = "job-ai-prefill";
+
+function getDraftStorageKey() {
+  const userId =
+    typeof window !== "undefined"
+      ? (document.cookie.match(/session-user-id=([^;]+)/)?.[1] ?? "anon")
+      : "anon";
+
+  return `job-draft-${userId}`;
+}
+
+const DEFAULT_JOB_FORM_VALUES: JobFormValues = {
+  title: "",
+  category: "",
+  location: { country: "", city: "", isRemote: false },
+  description: "",
+  requirements: { skills: [], experienceMin: 0, experienceMax: 10 },
+  salary: { min: 0, max: 0, currency: "USD", isNegotiable: false, period: "monthly" },
+  applicationMode: "manual",
+  autoScreeningEnabled: false,
+  minMatchScore: 70,
+  visibility: "public",
+  vacancies: undefined,
+  maxApplicants: undefined,
+  showSalary: true,
+  tags: [],
+  expiresAt: "",
+  agentId: undefined,
+};
+
+function mergeJobFormValues(base: JobFormValues, incoming: Partial<JobFormValues>): JobFormValues {
+  return {
+    ...base,
+    ...incoming,
+    location: {
+      ...base.location,
+      ...incoming.location,
+    },
+    requirements: {
+      ...base.requirements,
+      ...incoming.requirements,
+      skills: incoming.requirements?.skills ?? base.requirements.skills,
+    },
+    salary: {
+      ...base.salary,
+      ...incoming.salary,
+    },
+    tags: incoming.tags ?? base.tags,
+  };
+}
+
+export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
@@ -67,25 +119,14 @@ export function JobFormWizard({ locale }: JobFormWizardProps) {
   const [templates, setTemplates] = useState<JobTemplateData[]>([]);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [templateLoadError, setTemplateLoadError] = useState("");
+  const templateTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const templateCloseRef = useRef<HTMLButtonElement | null>(null);
 
   const methods = useForm<JobFormValues>({
     resolver: zodResolver(jobFormSchema) as Resolver<JobFormValues>,
     mode: "onChange",
-    defaultValues: {
-      title: "",
-      category: "",
-      location: { country: "", city: "", isRemote: false },
-      description: "",
-      requirements: { skills: [], experienceMin: 0, experienceMax: 10 },
-      salary: { min: 0, max: 0, currency: "USD", isNegotiable: false, period: "monthly" },
-      applicationMode: "manual",
-      autoScreeningEnabled: false,
-      minMatchScore: 70,
-      visibility: "public",
-      vacancies: 1,
-      tags: [],
-      expiresAt: "",
-    },
+    defaultValues: DEFAULT_JOB_FORM_VALUES,
   });
 
   const { watch, trigger, handleSubmit, reset } = methods;
@@ -95,12 +136,25 @@ export function JobFormWizard({ locale }: JobFormWizardProps) {
 
   // Restore draft from localStorage on mount
   useEffect(() => {
+    if (useAiPrefill && typeof window !== "undefined") {
+      const rawPrefill = sessionStorage.getItem(AI_PREFILL_STORAGE_KEY);
+      if (rawPrefill) {
+        try {
+          const parsed = JSON.parse(rawPrefill) as Partial<JobFormValues>;
+          reset(mergeJobFormValues(DEFAULT_JOB_FORM_VALUES, parsed));
+          sessionStorage.removeItem(AI_PREFILL_STORAGE_KEY);
+          return;
+        } catch {
+          sessionStorage.removeItem(AI_PREFILL_STORAGE_KEY);
+        }
+      }
+    }
+
     const saved = loadDraft();
     if (saved) {
-      reset(saved);
+      reset(mergeJobFormValues(DEFAULT_JOB_FORM_VALUES, saved));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadDraft, reset, useAiPrefill]);
 
   // Debounced auto-save to localStorage (1500ms)
   const debouncedAutoSave = useDebounce(
@@ -108,14 +162,7 @@ export function JobFormWizard({ locale }: JobFormWizardProps) {
       (values: JobFormValues) => {
         // Only persists to localStorage — avoids API call on every keystroke
         try {
-          const userId =
-            typeof window !== "undefined"
-              ? (document.cookie.match(/session-user-id=([^;]+)/)?.[1] ?? "anon")
-              : "anon";
-          localStorage.setItem(
-            `job-draft-${userId}`,
-            JSON.stringify({ values, savedAt: Date.now() })
-          );
+          localStorage.setItem(getDraftStorageKey(), JSON.stringify({ values, savedAt: Date.now() }));
         } catch {
           // ignore storage errors
         }
@@ -188,11 +235,7 @@ export function JobFormWizard({ locale }: JobFormWizardProps) {
         const jobId = draftId ?? String(data.job._id);
         // Clear draft
         try {
-          const userId =
-            typeof window !== "undefined"
-              ? (document.cookie.match(/session-user-id=([^;]+)/)?.[1] ?? "anon")
-              : "anon";
-          localStorage.removeItem(`job-draft-${userId}`);
+          localStorage.removeItem(getDraftStorageKey());
         } catch { /* ignore */ }
         router.push(`/${locale}/employer/jobs/${jobId}`);
       } else {
@@ -210,13 +253,18 @@ export function JobFormWizard({ locale }: JobFormWizardProps) {
 
   async function loadTemplates() {
     setLoadingTemplates(true);
+    setTemplateLoadError("");
     try {
       const res = await fetch("/api/employers/job-templates");
       if (res.ok) {
         const data = (await res.json()) as { templates: JobTemplateData[] };
         setTemplates(data.templates);
+      } else {
+        setTemplateLoadError("Could not load templates right now. Please try again.");
       }
-    } catch { /* ignore */ }
+    } catch {
+      setTemplateLoadError("Could not load templates right now. Please try again.");
+    }
     finally { setLoadingTemplates(false); }
   }
 
@@ -249,95 +297,238 @@ export function JobFormWizard({ locale }: JobFormWizardProps) {
   const expMin = formValues.requirements?.experienceMin ?? 0;
   const expMax = formValues.requirements?.experienceMax ?? 10;
   const isLastStep = currentStep === JOB_FORM_STEPS.length;
+  const handleSuggestionsLoaded = useCallback((suggestions: Suggestions) => {
+    setAiSuggestions(suggestions);
+  }, []);
+
+  const closeTemplateModal = useCallback(() => {
+    setShowTemplateModal(false);
+    templateTriggerRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!showTemplateModal) return;
+
+    templateCloseRef.current?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeTemplateModal();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeTemplateModal, showTemplateModal]);
 
   return (
     <>
-    <div className="page-container">
-      <PageHeader
-        title="Post a New Job"
-        description="Create a job posting to attract qualified candidates"
-      />
+    <div className="page-container gap-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:gap-5 sm:pb-24">
+      <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 p-4 shadow-sm">
+        <PageHeader
+          title="Post a New Job"
+          description="Create a job posting to attract qualified candidates"
+          className="pb-0"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="hidden rounded-full border border-border/70 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground md:inline-flex">
+                Auto-saves while you type
+              </span>
+              <Button
+                ref={templateTriggerRef}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2 bg-background/90"
+                onClick={() => {
+                  setShowTemplateModal(true);
+                  if (templates.length === 0) loadTemplates();
+                }}
+              >
+                <Copy className="w-4 h-4" />
+                Load Template
+              </Button>
+            </div>
+          }
+        />
 
-      {/* Load Template */}
-      <div className="mb-6">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => {
-            setShowTemplateModal(true);
-            if (templates.length === 0) loadTemplates();
-          }}
-        >
-          <Copy className="w-4 h-4" />
-          Load Template
-        </Button>
-      </div>
+        <div className="mt-3 rounded-xl border border-border/70 bg-background/85 p-2.5 shadow-sm sm:p-3">
+          <StepIndicator
+            steps={JOB_FORM_STEPS}
+            currentStep={currentStep}
+            completedSteps={completedSteps}
+            onStepClick={async (step) => {
+              if (step < currentStep) {
+                setCurrentStep(step);
+              } else {
+                await goToStep(step);
+              }
+            }}
+          />
+        </div>
+      </section>
 
       {/* Template Modal */}
       {showTemplateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-xl max-w-md w-full p-6 space-y-4 shadow-xl">
-            <h2 className="text-lg font-semibold">Select a Template</h2>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeTemplateModal();
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-lg overflow-hidden rounded-3xl border border-white/20 bg-background shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="template-modal-title"
+            aria-describedby="template-modal-description"
+          >
+            <div className="border-b border-border/70 bg-gradient-to-br from-background via-background to-primary/10 px-5 py-5 sm:px-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/85 px-3 py-1 text-xs font-medium text-muted-foreground">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    Reuse proven job formats
+                  </div>
+                  <div>
+                    <h2 id="template-modal-title" className="text-lg font-semibold text-foreground">Select a Template</h2>
+                    <p id="template-modal-description" className="mt-1 text-sm text-muted-foreground">
+                      Start from a previous hiring format, then adjust only what changed.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  {!loadingTemplates && templates.length > 0 && (
+                    <div className="rounded-2xl border border-border/70 bg-background/85 px-3 py-2 text-right">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Available</p>
+                      <p className="text-lg font-semibold text-foreground">{templates.length}</p>
+                    </div>
+                  )}
+                  <Button
+                    ref={templateCloseRef}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 rounded-full p-0"
+                    onClick={closeTemplateModal}
+                    aria-label="Close template modal"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 px-5 py-5 sm:px-6">
             {loadingTemplates ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Loading templates…</p>
+              <div className="space-y-3 py-1">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                    <div className="h-3 w-32 animate-pulse rounded bg-muted" />
+                    <div className="mt-3 h-2.5 w-48 animate-pulse rounded bg-muted" />
+                    <div className="mt-2 h-2.5 w-24 animate-pulse rounded bg-muted" />
+                  </div>
+                ))}
+              </div>
+            ) : templateLoadError ? (
+              <div className="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-5 text-center">
+                <p className="text-sm font-medium text-destructive">{templateLoadError}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={loadTemplates}
+                  className="mt-3"
+                >
+                  Retry
+                </Button>
+              </div>
             ) : templates.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No templates saved yet.</p>
+              <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-6 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <p className="text-sm font-medium text-foreground">No templates saved yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Create and save a few strong job posts first, then they will appear here.
+                </p>
+              </div>
             ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto">
+              <div className="max-h-[26rem] space-y-3 overflow-y-auto pr-1">
                 {templates.map((tpl) => (
                   <button
                     key={tpl._id}
                     type="button"
                     onClick={() => applyTemplate(tpl)}
-                    className="w-full text-left p-3 rounded-lg border border-border hover:bg-accent transition-colors"
+                    className="group w-full rounded-2xl border border-border/70 bg-background p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.03] hover:shadow-sm"
                   >
-                    <p className="font-medium text-sm">{tpl.name}</p>
-                    {tpl.title && (
-                      <p className="text-xs text-muted-foreground">{tpl.title}</p>
-                    )}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">{tpl.name}</p>
+                        {tpl.title && (
+                          <p className="text-xs text-muted-foreground">{tpl.title}</p>
+                        )}
+                        <div className="flex flex-wrap gap-1.5">
+                          {tpl.category && (
+                            <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground">
+                              {tpl.category}
+                            </span>
+                          )}
+                          {typeof tpl.vacancies === "number" && tpl.vacancies > 0 && (
+                            <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground">
+                              {tpl.vacancies} openings
+                            </span>
+                          )}
+                          {tpl.applicationMode && (
+                            <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground capitalize">
+                              {tpl.applicationMode} review
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="inline-flex items-center gap-1 text-xs font-medium text-primary opacity-70 transition-opacity group-hover:opacity-100">
+                        Use
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </div>
+                    </div>
                   </button>
                 ))}
               </div>
             )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowTemplateModal(false)}
-              className="w-full"
-            >
-              Cancel
-            </Button>
+
+              <div className="flex flex-col-reverse gap-2 border-t border-border/70 pt-4 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeTemplateModal}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Progress indicator */}
-      <StepIndicator
-        steps={JOB_FORM_STEPS}
-        currentStep={currentStep}
-        completedSteps={completedSteps}
-        onStepClick={async (step) => {
-          if (step < currentStep) {
-            setCurrentStep(step);
-          } else {
-            await goToStep(step);
-          }
-        }}
-      />
-
       <FormProvider {...methods}>
         <form onSubmit={onSubmit} noValidate>
-          <div className="flex flex-col lg:flex-row gap-6">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18.5rem]">
             {/* Main content */}
-            <div className="flex-1 min-w-0">
-              <div className="rounded-xl border border-border bg-background p-5 sm:p-6">
+            <div className="min-w-0">
+              <div className="rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5">
                 <AnimatePresence mode="wait">
                   {currentStep === 1 && (
                     <Step1BasicInfo
                       key="step1"
-                      onSuggestionsLoaded={setAiSuggestions}
+                      onSuggestionsLoaded={handleSuggestionsLoaded}
                     />
                   )}
                   {currentStep === 2 && <Step2JobDetails key="step2" />}
@@ -353,20 +544,20 @@ export function JobFormWizard({ locale }: JobFormWizardProps) {
 
               {/* Advanced settings only on last step */}
               {currentStep === 4 && (
-                <div className="mt-4">
+                <div className="mt-3">
                   <AdvancedSettingsSection />
                 </div>
               )}
 
               {submitError && (
-                <div className="mt-4 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+                <div className="mt-3 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
                   {submitError}
                 </div>
               )}
             </div>
 
             {/* Right sidebar — smart panels */}
-            <div className="w-full lg:w-72 shrink-0 space-y-4 lg:sticky lg:top-4 lg:self-start">
+            <div className="w-full space-y-3 xl:sticky xl:top-4 xl:self-start">
               <JobQualityScore values={formValues} />
               <MatchPreviewPanel
                 skills={skills}

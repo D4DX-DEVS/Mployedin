@@ -13,9 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -381,17 +379,15 @@ export default function AdminAgentsPage() {
 
             <div className="space-y-2">
               <Label>Assigned Super Agent</Label>
-              <Select value={addForm.superAgentId} onValueChange={(v) => setAddForm((f) => ({ ...f, superAgentId: v === "none" ? "" : v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select super agent (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {superAgents.map((sa) => (
-                    <SelectItem key={sa._id} value={sa._id}>{sa.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={[
+                  { value: "none", label: "None" },
+                  ...superAgents.map((sa) => ({ value: sa._id, label: sa.name })),
+                ]}
+                value={addForm.superAgentId || "none"}
+                onValueChange={(v) => setAddForm((f) => ({ ...f, superAgentId: v === "none" ? "" : v }))}
+                placeholder="Select super agent (optional)"
+              />
             </div>
 
             <CascadingLocationPicker
@@ -438,13 +434,14 @@ export default function AdminAgentsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={editForm.isActive} onValueChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Active</SelectItem>
-                    <SelectItem value="false">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={[
+                    { value: "true", label: "Active" },
+                    { value: "false", label: "Inactive" },
+                  ]}
+                  value={editForm.isActive}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, isActive: v }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Commission Rate (%)</Label>
@@ -454,17 +451,15 @@ export default function AdminAgentsPage() {
 
             <div className="space-y-2">
               <Label>Assigned Super Agent</Label>
-              <Select value={editForm.superAgentId || "none"} onValueChange={(v) => setEditForm((f) => ({ ...f, superAgentId: v === "none" ? "" : v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select super agent" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {superAgents.map((sa) => (
-                    <SelectItem key={sa._id} value={sa._id}>{sa.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={[
+                  { value: "none", label: "None" },
+                  ...superAgents.map((sa) => ({ value: sa._id, label: sa.name })),
+                ]}
+                value={editForm.superAgentId || "none"}
+                onValueChange={(v) => setEditForm((f) => ({ ...f, superAgentId: v === "none" ? "" : v }))}
+                placeholder="Select super agent"
+              />
             </div>
 
             <CascadingLocationPicker

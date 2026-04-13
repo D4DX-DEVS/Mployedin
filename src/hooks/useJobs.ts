@@ -7,10 +7,12 @@ export interface Job {
   location: string | { isRemote?: boolean; city?: string; country?: string };
   category: string;
   status: "draft" | "active" | "closed" | "expired";
-  salary: { min: number; max: number; currency: string; isNegotiable?: boolean };
+  salary: { min: number; max: number; currency: string; isNegotiable?: boolean; period?: string };
   requirements: { skills: string[]; experienceMin?: number; experienceMax?: number; education?: string; languages?: string[] };
   "poster.approvalStatus": "pending" | "approved" | "rejected";
   vacancies?: number;
+  maxApplicants?: number;
+  showSalary?: boolean;
   views?: number;
   tags?: string[];
   description?: string;

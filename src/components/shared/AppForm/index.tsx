@@ -6,6 +6,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, X, Upload, Phone, Search } from "lucide-react";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 
 // ──────────────────────────────────────────────────────────
@@ -82,124 +83,22 @@ interface FormSelectProps {
   disabled?: boolean;
 }
 
-export function FormSelect({ label, error, hint, placeholder, options, value, onChange, required, disabled, searchable }: FormSelectProps & { searchable?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  const filtered = useMemo(() => {
-    if (!search) return options;
-    const q = search.toLowerCase();
-    return options.filter((o) => o.label.toLowerCase().includes(q));
-  }, [options, search]);
-
-  const selectedLabel = options.find((o) => o.value === value)?.label;
-
-  useEffect(() => {
-    if (!searchable) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch("");
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [searchable]);
-
-  useEffect(() => {
-    if (open && searchable && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [open, searchable]);
-
-  // Non-searchable: plain <select>
-  if (!searchable) {
-    return (
-      <div className="space-y-1">
-        {label && (
-          <label className="block text-xs font-medium text-muted-foreground">
-            {label} {required && <span className="text-destructive">*</span>}
-          </label>
-        )}
-        <div className="relative">
-          <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            required={required}
-            disabled={disabled}
-            className={`w-full h-10 rounded-lg border px-3 pr-8 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 bg-background ${
-              error ? "border-destructive" : ""
-            }`}
-          >
-            {placeholder && <option value="">{placeholder}</option>}
-            {options.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        </div>
-        {error && <p className="text-xs text-destructive">{error}</p>}
-        {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
-      </div>
-    );
-  }
-
-  // Searchable: custom dropdown
+export function FormSelect({ label, error, hint, placeholder, options, value, onChange, required, disabled }: FormSelectProps & { searchable?: boolean }) {
   return (
-    <div className="space-y-1 relative" ref={containerRef}>
+    <div className="space-y-1">
       {label && (
         <label className="block text-xs font-medium text-muted-foreground">
           {label} {required && <span className="text-destructive">*</span>}
         </label>
       )}
-      <div
-        onClick={() => { if (!disabled) setOpen(!open); }}
-        className={`w-full h-10 rounded-lg border px-3 text-sm flex items-center cursor-pointer bg-background ${
-          error ? "border-destructive" : ""
-        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-      >
-        <span className={selectedLabel ? "" : "text-muted-foreground"}>
-          {selectedLabel ?? placeholder ?? "Select…"}
-        </span>
-        <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
-      </div>
-      {open && (
-        <div className="absolute z-[99] w-full top-full mt-1 bg-background border rounded-lg shadow-lg overflow-hidden">
-          <div className="p-2 border-b">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search…"
-                className="w-full h-8 pl-8 pr-3 text-sm rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
-              />
-            </div>
-          </div>
-          <div className="max-h-48 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-muted-foreground">No results</div>
-            ) : (
-              filtered.map((o) => (
-                <div
-                  key={o.value}
-                  onClick={() => { onChange(o.value); setOpen(false); setSearch(""); }}
-                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-muted/40 flex items-center justify-between ${
-                    value === o.value ? "bg-primary/5 text-primary font-medium" : ""
-                  }`}
-                >
-                  {o.label}
-                  {value === o.value && <span className="text-primary text-xs">✓</span>}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+      <SearchableSelect
+        options={options}
+        value={value}
+        onValueChange={onChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={error ? "border-destructive" : undefined}
+      />
       {error && <p className="text-xs text-destructive">{error}</p>}
       {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>

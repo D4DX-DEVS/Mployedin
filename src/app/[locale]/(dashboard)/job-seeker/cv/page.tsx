@@ -14,9 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 
@@ -76,7 +74,7 @@ const PROFICIENCY_OPTIONS = [
   { value: "conversational", label: "Conversational" },
   { value: "professional", label: "Professional" },
   { value: "native", label: "Native" },
-] as const;
+];
 
 export default function CVBuilderPage() {
   const router = useRouter();
@@ -683,19 +681,11 @@ export default function CVBuilderPage() {
                     onChange={(v) => updateLanguage(i, "language", v)} placeholder="e.g. English" />
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">Proficiency</Label>
-                    <Select
+                    <SearchableSelect
+                      options={PROFICIENCY_OPTIONS}
                       value={lang.proficiency}
                       onValueChange={(v) => updateLanguage(i, "proficiency", v)}
-                    >
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PROFICIENCY_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
                   <button
                     onClick={() => removeLanguage(i)}

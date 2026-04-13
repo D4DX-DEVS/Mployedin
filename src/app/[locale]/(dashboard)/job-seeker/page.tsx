@@ -78,14 +78,14 @@ export default async function JobSeekerPage({
         matchScore: calculateMatchScore(seekerProfile, jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0])),
         // Serialize nested objects to plain primitives only
         location: loc
-          ? { city: loc.city ?? null, country: loc.country ?? null, isRemote: loc.isRemote ?? false }
-          : null,
+          ? { city: loc.city ?? undefined, country: loc.country ?? undefined, isRemote: loc.isRemote ?? false }
+          : undefined,
         salary: sal
-          ? { min: sal.min ?? null, max: sal.max ?? null, currency: sal.currency ?? null }
-          : null,
+          ? { min: sal.min ?? undefined, max: sal.max ?? undefined, currency: sal.currency ?? undefined }
+          : undefined,
         employerId: emp
-          ? { companyName: emp.companyName ?? null, logo: emp.logo ?? null }
-          : null,
+          ? { companyName: emp.companyName ?? undefined, logo: emp.logo ?? undefined }
+          : undefined,
       };
     })
     .filter((j) => j.matchScore >= 30)

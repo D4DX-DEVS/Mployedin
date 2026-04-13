@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Search, Shield, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -70,15 +70,16 @@ export default function AuditLogsPage() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
-        <Select value={resource} onValueChange={(v) => { setResource(v); resetPage(); }}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="All resources" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All resources</SelectItem>
-            {["users", "jobs", "applications", "interviews", "placements", "offers", "commissions", "employers", "job_seekers", "agents", "super_agents", "leads", "saved_jobs", "messages", "conversation_threads", "settings"].map((r) => (
-              <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          className="w-44"
+          options={[
+            { value: "all", label: "All resources" },
+            ...["users", "jobs", "applications", "interviews", "placements", "offers", "commissions", "employers", "job_seekers", "agents", "super_agents", "leads", "saved_jobs", "messages", "conversation_threads", "settings"].map((r) => ({ value: r, label: r })),
+          ]}
+          value={resource}
+          onValueChange={(v) => { setResource(v); resetPage(); }}
+          placeholder="All resources"
+        />
         <div className="relative">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input

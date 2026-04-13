@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface Question {
   question: string;
@@ -181,16 +181,12 @@ export function AIInterviewQuestionsPanel({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Questions:</span>
-            <Select value={count} onValueChange={setCount}>
-              <SelectTrigger className="h-7 w-16 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {["5", "8", "10", "15"].map((n) => (
-                  <SelectItem key={n} value={n} className="text-xs">{n}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              className="h-7 w-16 text-xs"
+              options={["5", "8", "10", "15"].map((n) => ({ value: n, label: n }))}
+              value={count}
+              onValueChange={setCount}
+            />
             <Button
               size="sm" className="h-7 text-xs gap-1.5 flex-1"
               onClick={() => generate(activeTab)}

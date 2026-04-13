@@ -1,5 +1,3 @@
-"use client";
-
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { CsrfProvider } from "@/components/shared/CsrfProvider";
 

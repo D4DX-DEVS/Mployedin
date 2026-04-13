@@ -9,6 +9,7 @@ import {
   useUpdateApplicationStatus,
   useBulkAction,
   useApplicationTimeline,
+  useCreateInterviewFromApp,
   useCompareApplications,
   applicationKeys,
 } from "@/hooks/useApplications";
@@ -240,6 +241,40 @@ describe("useBulkAction", () => {
         }),
       ),
     ).rejects.toThrow("Failed to perform bulk action");
+  });
+});
+
+describe("useCreateInterviewFromApp", () => {
+  it("posts interview scheduling payload to the bulk interviews route", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ created: 1, failed: 0, ids: ["iv1"] }),
+    });
+
+    const { result } = renderHook(() => useCreateInterviewFromApp(), {
+      wrapper: createWrapper(),
+    });
+
+    const payload = {
+      candidates: [{ applicationId: "a1", jobSeekerId: "js1" }],
+      jobId: "j1",
+      scheduledAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      type: "video",
+      duration: 45,
+      meetLink: "https://meet.example.com/interview",
+    };
+
+    await act(async () => {
+      await result.current.mutateAsync(payload);
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/interviews/bulk",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    );
   });
 });
 

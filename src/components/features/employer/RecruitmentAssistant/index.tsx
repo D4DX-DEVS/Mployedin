@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { VoiceInputStatus } from "@/components/shared/VoiceInputStatus";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import {
@@ -667,36 +668,6 @@ export function RecruitmentAssistant() {
                       )}
                     </div>
 
-                    {/* ── Recording indicator banner ── */}
-                    {isRecording && (
-                      <div className="px-4 py-2 bg-red-50 dark:bg-red-950/30 border-y border-red-200 dark:border-red-800/40 shrink-0 flex items-center gap-2">
-                        <div className="flex items-end gap-0.5 h-4 shrink-0">
-                          {[0.5, 0.8, 1, 0.6, 0.9].map((h, i) => (
-                            <span
-                              key={i}
-                              className="w-0.5 bg-red-500 rounded-full"
-                              style={{
-                                height: `${h * 100}%`,
-                                animation: "voiceBar 0.7s ease-in-out infinite alternate",
-                                animationDelay: `${i * 0.12}s`,
-                              }}
-                            />
-                          ))}
-                        </div>
-                        <p className="text-xs text-red-600 dark:text-red-400 font-medium">
-                          Listening… speak clearly, tap mic to stop
-                        </p>
-                        <span className="ml-auto text-[10px] text-red-400 tabular-nums">≤30s</span>
-                      </div>
-                    )}
-
-                    {/* ── Voice error ── */}
-                    {voiceError && !isRecording && (
-                      <p className="text-xs text-red-500 px-4 -mb-1 pb-1 shrink-0">
-                        {voiceError}
-                      </p>
-                    )}
-
                     {/* ── Input bar ── */}
                     <InputBar
                       value={input}
@@ -709,6 +680,7 @@ export function RecruitmentAssistant() {
                       onToggleVoice={toggleVoice}
                       tabId={activeTab}
                       textareaRef={textareaRef}
+                      voiceError={voiceError}
                       voiceLanguage={voiceLanguage}
                       onVoiceLanguageChange={setVoiceLanguage}
                     />
@@ -945,6 +917,7 @@ interface InputBarProps {
   onToggleVoice: () => void;
   tabId: TabId;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  voiceError: string | null;
   voiceLanguage: string;
   onVoiceLanguageChange: (lang: string) => void;
 }
@@ -967,6 +940,7 @@ function InputBar({
   onToggleVoice,
   tabId,
   textareaRef,
+  voiceError,
   voiceLanguage,
   onVoiceLanguageChange,
 }: InputBarProps) {
@@ -1034,16 +1008,17 @@ function InputBar({
             onClick={onToggleVoice}
             disabled={isStreaming || isVoiceProcessing}
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150",
+              "w-9 h-9 rounded-xl border flex items-center justify-center transition-all duration-150",
               isRecording
-                ? "bg-red-500 text-white shadow-lg shadow-red-500/40"
+                ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
                 : isVoiceProcessing
-                  ? "bg-amber-100 text-amber-600"
-                  : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary",
+                  ? "border-amber-200 bg-amber-50 text-amber-600"
+                  : "border-border/60 bg-background text-muted-foreground shadow-sm shadow-black/[0.04] hover:bg-primary/10 hover:text-primary",
               (isStreaming || isVoiceProcessing) && !isRecording && "opacity-50 cursor-not-allowed"
             )}
-            title={isRecording ? `Stop recording (${currentLang.label})` : `Start voice input (${currentLang.label})`}
-            aria-label={isRecording ? "Stop recording" : "Start voice input"}
+            title={isVoiceProcessing ? `Processing voice input (${currentLang.label})` : isRecording ? `Stop voice input (${currentLang.label})` : `Start voice input (${currentLang.label})`}
+            aria-label={isVoiceProcessing ? "Processing voice input" : isRecording ? "Stop voice input" : "Start voice input"}
+            aria-pressed={isRecording}
           >
             {isVoiceProcessing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1059,7 +1034,7 @@ function InputBar({
         <Button
           size="icon"
           onClick={onSend}
-          disabled={!value.trim() || isStreaming || isRecording}
+          disabled={!value.trim() || isStreaming || isRecording || isVoiceProcessing}
           className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 shadow-sm self-end"
           aria-label="Send message"
         >
@@ -1067,40 +1042,14 @@ function InputBar({
         </Button>
       </div>
 
-      {isRecording && (
-        <div className="flex items-center justify-center gap-2 mt-2">
-          {/* Animated waveform bars */}
-          <div className="flex items-end gap-0.5 h-4">
-            {[0.4, 0.7, 1, 0.6, 0.9, 0.5, 0.8].map((h, i) => (
-              <span
-                key={i}
-                className="w-0.5 bg-red-500 rounded-full"
-                style={{
-                  height: `${h * 100}%`,
-                  animation: `voiceBar 0.8s ease-in-out infinite alternate`,
-                  animationDelay: `${i * 0.1}s`,
-                }}
-              />
-            ))}
-          </div>
-          <p className="text-[11px] text-red-500 font-medium">
-            Recording {currentLang.label} — tap mic to stop
-          </p>
-        </div>
-      )}
-
-      {isVoiceProcessing && (
-        <p className="text-[11px] text-amber-600 text-center mt-1.5">
-          Processing audio…
-        </p>
-      )}
-
-      {/* Disclaimer */}
-      {!isRecording && !isVoiceProcessing && (
-        <p className="text-[10px] text-muted-foreground/50 text-center mt-2 tracking-wide uppercase">
-          AI can make mistakes. Check important info.
-        </p>
-      )}
+      <VoiceInputStatus
+        className="mt-2"
+        isRecording={isRecording}
+        isProcessing={isVoiceProcessing}
+        error={voiceError}
+        recordingText={`Recording ${currentLang.label} - tap the mic to stop.`}
+        idleText="AI can make mistakes. Check important info."
+      />
     </div>
   );
 }

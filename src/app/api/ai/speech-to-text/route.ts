@@ -83,6 +83,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Reject blobs that are obviously too small to contain real speech.
+    // A valid WEBM_OPUS frame for even 0.5 s of audio is >2 KB; anything smaller
+    // is almost certainly a silent/empty recording triggered by a quick tap.
+    const MIN_AUDIO_BYTES = 2000; // ~2 KB
+    if (audioFile.size < MIN_AUDIO_BYTES) {
+      return NextResponse.json(
+        { error: "No voice detected. Please hold the mic button and speak clearly." },
+        { status: 422 }
+      );
+    }
+
     const audioBuffer = await audioFile.arrayBuffer();
     const audioBase64 = Buffer.from(audioBuffer).toString("base64");
 
@@ -96,9 +107,11 @@ export async function POST(req: NextRequest) {
           ? "MP4"
           : "LINEAR16";
 
-    // For Indian languages or auto-detect, use "latest_long" which has better multi-language support
+    // Auto-detect MUST use "default" model — it's the only model that honours
+    // alternativeLanguageCodes. "latest_long"/"latest_short" silently ignore them.
+    // Indian languages use "latest_long" for better regional accuracy on single-language input.
     const isIndianLanguage = ["ml-IN", "hi-IN", "ta-IN", "te-IN", "ur-PK"].includes(languageCode);
-    const model = isAutoDetect || isIndianLanguage ? "latest_long" : "latest_short";
+    const model = isAutoDetect ? "default" : isIndianLanguage ? "latest_long" : "latest_short";
 
     const requestBody = {
       config: {

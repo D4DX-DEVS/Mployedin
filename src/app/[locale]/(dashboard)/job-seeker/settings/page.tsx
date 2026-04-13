@@ -32,13 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Tooltip,
   TooltipContent,
@@ -852,18 +846,12 @@ export default function JobSeekerSettingsPage() {
                     control={control}
                     name="timeBuffer"
                     render={({ field }) => (
-                      <Select value={String(field.value)} onValueChange={(v) => field.onChange(Number(v))}>
-                        <SelectTrigger className="h-8 w-32 text-sm rounded-lg">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[0, 15, 30, 60].map((m) => (
-                            <SelectItem key={m} value={String(m)}>
-                              {m === 0 ? "No buffer" : `${m} min`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        className="h-8 w-32 text-sm rounded-lg"
+                        options={[0, 15, 30, 60].map((m) => ({ value: String(m), label: m === 0 ? "No buffer" : `${m} min` }))}
+                        value={String(field.value)}
+                        onValueChange={(v) => field.onChange(Number(v))}
+                      />
                     )}
                   />
                 </SettingRow>
@@ -933,14 +921,12 @@ export default function JobSeekerSettingsPage() {
                         control={control}
                         name="salaryCurrency"
                         render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger className="h-9 w-24 text-sm shrink-0">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CURRENCIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          <SearchableSelect
+                            className="h-9 w-24 text-sm shrink-0"
+                            options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          />
                         )}
                       />
                     </div>
@@ -986,14 +972,13 @@ export default function JobSeekerSettingsPage() {
                   control={control}
                   name="defaultResumeId"
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="h-8 w-48 text-sm rounded-lg">
-                        <SelectValue placeholder="Select resume" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MOCK_RESUMES.map((r) => <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      className="h-8 w-48 text-sm rounded-lg"
+                      options={MOCK_RESUMES.map((r) => ({ value: r.id, label: r.label }))}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select resume"
+                    />
                   )}
                 />
               </SettingRow>

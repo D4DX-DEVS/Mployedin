@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { interviewKeys } from "@/hooks/useInterviews";
 
 // ── Types ──────────────────────────────────────────────────────────
 export interface ApplicationsFilters {
@@ -152,6 +153,7 @@ export function useCreateInterviewFromApp() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+      qc.invalidateQueries({ queryKey: interviewKeys.lists() });
     },
   });
 }

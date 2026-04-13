@@ -2,15 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import Interview from "@/models/Interview";
 import { notifyInterviewScheduled } from "@/lib/notifications/trigger";
+import { verifyCronRequest } from "@/lib/security/cron-auth";
 
 // This route is meant to be called by a cron job (e.g. Vercel Cron, external scheduler)
 // Secured with a shared CRON_SECRET header
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = verifyCronRequest(req);
+  if (authError) return authError;
 
   await connectDB();
 
@@ -23,7 +22,11 @@ export async function GET(req: NextRequest) {
     status: "scheduled",
     reminderSent: { $ne: true },
   })
-    .populate("jobSeekerId", "name email phone")
+    .populate({
+      path: "jobSeekerId",
+      select: "userId",
+      populate: { path: "userId", select: "_id name email" },
+    })
     .populate("jobId", "title")
     .lean();
 
@@ -32,12 +35,17 @@ export async function GET(req: NextRequest) {
 
   for (const interview of upcomingInterviews) {
     try {
-      const candidate = interview.jobSeekerId as { _id: string; name: string; email: string };
+      const candidate = interview.jobSeekerId as { userId?: { _id?: string; name?: string; email?: string } };
       const job = interview.jobId as { title: string };
       const scheduledAt = new Date(interview.scheduledAt as string);
 
+      if (!candidate.userId?._id) {
+        errors.push(`Interview ${interview._id}: job seeker user not found`);
+        continue;
+      }
+
       await notifyInterviewScheduled(
-        candidate._id.toString(),
+        candidate.userId._id.toString(),
         job?.title ?? "Interview",
         scheduledAt,
         (interview as { location?: string }).location ?? "TBD",

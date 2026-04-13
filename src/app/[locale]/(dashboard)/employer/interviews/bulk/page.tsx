@@ -18,7 +18,7 @@ interface InterviewSlot {
   date: string;
   time: string;
   duration: number;
-  type: "video" | "phone" | "in_person";
+  type: "video" | "offline" | "hybrid";
   location?: string;
   meetLink?: string;
 }
@@ -36,14 +36,23 @@ export default function EmployerBulkInterviewPage() {
 
   const [selections, setSelections] = useState<Record<string, boolean>>({});
 
-  const candidates: Candidate[] = rawApps.map((app: { _id: string; jobSeeker?: { _id: string; name: string; email: string }; jobId?: { title: string } }) => ({
-    _id: app.jobSeeker?._id ?? app._id,
-    name: app.jobSeeker?.name ?? "Unknown",
-    email: app.jobSeeker?.email ?? "",
-    jobTitle: (app.jobId as { title?: string } | undefined)?.title,
-    applicationId: app._id,
-    selected: selections[app.jobSeeker?._id ?? app._id] ?? false,
-  }));
+  const candidates: Candidate[] = rawApps.map((app: {
+    _id: string;
+    jobSeekerId?: { _id?: string; userId?: { name?: string; email?: string } | string };
+    jobId?: { title?: string };
+  }) => {
+    const user = typeof app.jobSeekerId?.userId === "object" ? app.jobSeekerId.userId : undefined;
+    const candidateId = app.jobSeekerId?._id ?? app._id;
+
+    return {
+      _id: candidateId,
+      name: user?.name ?? "Candidate",
+      email: user?.email ?? "",
+      jobTitle: (app.jobId as { title?: string } | undefined)?.title,
+      applicationId: app._id,
+      selected: selections[candidateId] ?? false,
+    };
+  });
 
   const filteredCandidates = candidates.filter(c =>
     !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase())
@@ -176,23 +185,26 @@ export default function EmployerBulkInterviewPage() {
               <select value={slot.type} onChange={e => setSlot(s => ({ ...s, type: e.target.value as InterviewSlot["type"] }))}
                 className="select-field w-full mt-1">
                 <option value="video">Video Call</option>
-                <option value="phone">Phone</option>
-                <option value="in_person">In Person</option>
+                <option value="offline">In Person</option>
+                <option value="hybrid">Hybrid</option>
               </select>
             </div>
-            {slot.type === "video" && (
+            {slot.type !== "offline" && (
               <div>
                 <label className="text-xs text-muted-foreground">Meeting Link</label>
                 <input value={slot.meetLink} onChange={e => setSlot(s => ({ ...s, meetLink: e.target.value }))}
                   placeholder="https://meet.google.com/…" className="input-field w-full mt-1" />
               </div>
             )}
-            {slot.type === "in_person" && (
+            {slot.type !== "video" && (
               <div>
                 <label className="text-xs text-muted-foreground">Location</label>
                 <input value={slot.location} onChange={e => setSlot(s => ({ ...s, location: e.target.value }))}
                   placeholder="Office address…" className="input-field w-full mt-1" />
               </div>
+            )}
+            {slot.type === "hybrid" && (
+              <p className="text-[11px] text-muted-foreground">Add both a meeting link and a location for hybrid interviews.</p>
             )}
           </div>
 

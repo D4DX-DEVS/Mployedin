@@ -11,6 +11,7 @@ interface ITrainingItem extends Document {
   employerUserId: string;
   title: string;
   provider: string;
+  url?: string;
   targetRole: string;
   status: "not_started" | "in_progress" | "completed";
   dueDate?: Date;
@@ -28,6 +29,7 @@ try {
       employerUserId: { type: String, required: true, index: true },
       title: { type: String, required: true },
       provider: { type: String, default: "" },
+      url: { type: String, default: "" },
       targetRole: { type: String, default: "" },
       status: { type: String, enum: ["not_started", "in_progress", "completed"], default: "not_started" },
       dueDate: Date,
@@ -54,6 +56,7 @@ async function POST(req: NextRequest, ctx: { userId: string }) {
     employerUserId: ctx.userId,
     title: body.title,
     provider: body.provider ?? "",
+    url: body.url ?? "",
     targetRole: body.targetRole ?? "",
     status: body.status ?? "not_started",
     dueDate: body.dueDate ? new Date(body.dueDate) : undefined,

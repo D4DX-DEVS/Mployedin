@@ -69,7 +69,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .populate({
         path: "jobSeekerId",
         select: "userId skills currentLocation totalExperienceYears experience cv.originalUrl",
-        populate: { path: "userId", select: "name" },
+        populate: { path: "userId", select: "name email" },
       })
       .lean(),
     Application.countDocuments(query),

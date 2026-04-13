@@ -7,9 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { useOffers, useWithdrawOffer } from "@/hooks/useOffers";
@@ -85,14 +83,13 @@ export default function EmployerOffersPage() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="All statuses" /></SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((s) => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          className="w-48"
+          options={STATUS_OPTIONS}
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+          placeholder="All statuses"
+        />
       </div>
 
       {loading ? (

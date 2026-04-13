@@ -2,9 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { Sidebar, MobileMenuButton } from "@/components/shared/Sidebar";
-import { CommandMenu, CommandMenuTrigger } from "@/components/shared/CommandMenu";
-import { ConversationalAI } from "@/components/shared/ConversationalAI";
-import { NotificationBell } from "@/components/shared/NotificationBell";
+import { CommandMenuTrigger } from "@/components/shared/CommandMenu";
+import dynamic from "next/dynamic";
+
+const ConversationalAI = dynamic(
+  () =>
+    import("@/components/shared/ConversationalAI").then((m) => m.ConversationalAI),
+  { ssr: false }
+);
+const CommandMenu = dynamic(
+  () =>
+    import("@/components/shared/CommandMenu").then((m) => m.CommandMenu),
+  { ssr: false }
+);
+const NotificationBell = dynamic(
+  () =>
+    import("@/components/shared/NotificationBell").then((m) => m.NotificationBell),
+  { ssr: false }
+);
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
 import { JobSeekerTopNav, JobSeekerTopNavMobile } from "@/components/shared/JobSeekerTopNav";

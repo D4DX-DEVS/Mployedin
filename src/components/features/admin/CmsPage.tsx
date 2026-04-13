@@ -9,13 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table,
   TableBody,
@@ -188,16 +182,12 @@ export default function CmsPage({
           />
         </div>
         {hasStatusFilter && (
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); resetPage(); }}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {defaultStatusOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            className="w-[140px]"
+            options={defaultStatusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+          />
         )}
       </div>
 

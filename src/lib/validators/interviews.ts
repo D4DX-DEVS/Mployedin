@@ -12,7 +12,7 @@ export const interviewCreateSchema = z.object({
     { message: "Interview must be scheduled in the future" }
   ),
   duration: z.number().int().min(15).max(480).default(45),
-  type: z.enum(["in_person", "video", "phone"]).default("video"),
+  type: z.enum(["video", "offline", "hybrid"]).default("video"),
   location: z.string().max(500).optional(),
   meetLink: z.string().url().max(2048).optional().or(z.literal("")),
   instructions: z.string().max(2000).optional(),
@@ -22,11 +22,11 @@ export const interviewCreateSchema = z.object({
 export const interviewUpdateSchema = z.object({
   scheduledAt: z.string().datetime().optional(),
   duration: z.number().int().min(15).max(480).optional(),
-  type: z.enum(["in_person", "video", "phone"]).optional(),
+  type: z.enum(["video", "offline", "hybrid"]).optional(),
   location: z.string().max(500).optional(),
   meetLink: z.string().url().max(2048).optional().or(z.literal("")),
   status: z
-    .enum(["scheduled", "confirmed", "completed", "cancelled", "no_show", "rescheduled"])
+    .enum(["scheduled", "confirmed", "completed", "cancelled", "rescheduled"])
     .optional(),
   feedback: z.string().max(5000).optional(),
   notes: z.string().max(2000).optional(),
@@ -61,7 +61,7 @@ export const interviewBulkSchema = z.object({
     { message: "Interview must be scheduled in the future" }
   ),
   duration: z.number().int().min(15).max(480).default(45),
-  type: z.enum(["in_person", "video", "phone"]).default("video"),
+  type: z.enum(["video", "offline", "hybrid"]).default("video"),
   location: z.string().max(500).optional(),
   meetLink: z.string().url().max(2048).optional().or(z.literal("")),
   jobId: commonSchemas.objectId.optional(),

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Loader2 } from "lucide-react";
+import { Users, Loader2, MapPin, BriefcaseBusiness } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface MatchPreviewPanelProps {
@@ -55,7 +55,7 @@ export function MatchPreviewPanel({
       } finally {
         setLoading(false);
       }
-    }, 2000);
+    }, 700);
 
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -64,12 +64,23 @@ export function MatchPreviewPanel({
 
   if (!data && !loading) return null;
 
+  const activeFilters = [
+    country ? `Location: ${country}` : null,
+    skills.length > 0 ? `${Math.min(skills.length, 15)} skills` : null,
+    experienceMax > 0 ? `${experienceMin}-${experienceMax} yrs` : null,
+  ].filter(Boolean) as string[];
+
   return (
-    <div className="rounded-xl border border-border bg-background p-4 space-y-3">
+    <div className="space-y-3 rounded-2xl border border-border bg-gradient-to-br from-background via-background to-secondary/60 p-4 shadow-sm">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-sm font-semibold">
-          <Users className="w-4 h-4 text-primary" />
-          Candidate Preview
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5 text-sm font-semibold">
+            <Users className="w-4 h-4 text-primary" />
+            Candidate Preview
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Live talent-pool snapshot for the criteria you have entered.
+          </p>
         </div>
         <AnimatePresence>
           {loading && (
@@ -84,6 +95,16 @@ export function MatchPreviewPanel({
         </AnimatePresence>
       </div>
 
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {activeFilters.map((filter) => (
+            <Badge key={filter} variant="secondary" className="rounded-full px-3 py-1 text-[11px]">
+              {filter}
+            </Badge>
+          ))}
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
         {data && !loading && (
           <motion.div
@@ -93,22 +114,29 @@ export function MatchPreviewPanel({
             exit={{ opacity: 0 }}
             className="space-y-3"
           >
-            <div>
-              <span className="text-2xl font-bold text-foreground tabular-nums">
-                ~{data.count.toLocaleString()}
-              </span>
-              <span className="text-sm text-muted-foreground ml-2">
-                matching candidates
-              </span>
+            <div className="rounded-2xl border border-border/70 bg-background/80 p-3.5">
+              <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <BriefcaseBusiness className="h-3.5 w-3.5" />
+                Talent pool size
+              </div>
+              <div className="mt-2">
+                <span className="text-2xl font-bold text-foreground tabular-nums">
+                  ~{data.count.toLocaleString()}
+                </span>
+                <span className="ml-2 text-sm text-muted-foreground">
+                  matching candidates
+                </span>
+              </div>
             </div>
 
             {data.topSkills.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs text-muted-foreground font-medium">
-                  Top skills in this pool
-                </p>
+              <div className="space-y-1.5 rounded-2xl border border-border/70 bg-background/80 p-3.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Most common skills in this pool
+                </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {data.topSkills.map((skill) => (
+                  {data.topSkills.slice(0, 4).map((skill) => (
                     <Badge key={skill} variant="secondary" className="text-xs">
                       {skill}
                     </Badge>
@@ -118,7 +146,7 @@ export function MatchPreviewPanel({
             )}
 
             <p className="text-xs text-muted-foreground">
-              Based on current candidate profiles on the platform.
+              Live estimate based on current candidate profiles.
             </p>
           </motion.div>
         )}

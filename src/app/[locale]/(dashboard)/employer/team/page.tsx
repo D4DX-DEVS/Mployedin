@@ -16,13 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { useTeam, useInviteTeamMember, useUpdateTeamMember, useRemoveTeamMember } from "@/hooks/useTeam";
 import type { CompanyRole, MemberStatus } from "@/hooks/useTeam";
@@ -200,19 +194,16 @@ export default function TeamManagementPage() {
                           {ROLE_LABELS[member.companyRole]}
                         </Badge>
                       ) : member.status === "active" ? (
-                        <Select
+                        <SearchableSelect
+                          className="w-full sm:w-40 h-8 text-xs"
+                          options={[
+                            { value: "admin", label: "Admin" },
+                            { value: "hiring_manager", label: "Hiring Manager" },
+                            { value: "viewer", label: "Viewer" },
+                          ]}
                           value={member.companyRole}
                           onValueChange={(val) => handleRoleChange(member._id, val as CompanyRole)}
-                        >
-                          <SelectTrigger className="w-full sm:w-40 h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="hiring_manager">Hiring Manager</SelectItem>
-                            <SelectItem value="viewer">Viewer</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        />
                       ) : (
                         <Badge variant="outline" className={ROLE_COLORS[member.companyRole]}>
                           {ROLE_LABELS[member.companyRole]}
@@ -295,19 +286,16 @@ export default function TeamManagementPage() {
                       {ROLE_LABELS[member.companyRole]}
                     </Badge>
                   ) : (
-                    <Select
+                    <SearchableSelect
+                      className="h-7 text-xs w-full sm:w-36"
+                      options={[
+                        { value: "admin", label: "Admin" },
+                        { value: "hiring_manager", label: "Hiring Manager" },
+                        { value: "viewer", label: "Viewer" },
+                      ]}
                       value={member.companyRole}
                       onValueChange={(val) => handleRoleChange(member._id, val as CompanyRole)}
-                    >
-                      <SelectTrigger className="h-7 text-xs w-full sm:w-36 border-dashed">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="hiring_manager">Hiring Manager</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    />
                   )}
                   <span className="text-xs text-muted-foreground ml-auto">
                     {member.acceptedAt
@@ -350,43 +338,17 @@ export default function TeamManagementPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="invite-role">Role</Label>
-              <Select
+              <SearchableSelect
+                id="invite-role"
+                className="w-full"
+                options={[
+                  { value: "admin", label: "Admin — Full access, can manage team" },
+                  { value: "hiring_manager", label: "Hiring Manager — Manage assigned jobs only" },
+                  { value: "viewer", label: "Viewer — Read-only access" },
+                ]}
                 value={inviteData.companyRole}
                 onValueChange={(val) => setInviteData({ ...inviteData, companyRole: val as CompanyRole })}
-              >
-                <SelectTrigger id="invite-role" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">
-                    <div className="flex items-center gap-2 py-0.5">
-                      <Shield className="h-4 w-4 text-blue-600 shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm">Admin</p>
-                        <p className="text-xs text-muted-foreground">Full access, can manage team</p>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="hiring_manager">
-                    <div className="flex items-center gap-2 py-0.5">
-                      <Briefcase className="h-4 w-4 text-amber-600 shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm">Hiring Manager</p>
-                        <p className="text-xs text-muted-foreground">Manage assigned jobs only</p>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="viewer">
-                    <div className="flex items-center gap-2 py-0.5">
-                      <Eye className="h-4 w-4 text-gray-500 shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm">Viewer</p>
-                        <p className="text-xs text-muted-foreground">Read-only access</p>
-                      </div>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              />
             </div>
 
             {error && (

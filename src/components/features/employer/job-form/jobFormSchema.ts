@@ -148,7 +148,7 @@ export const jobFormSchema = z.object({
   autoScreeningEnabled: z.boolean().default(false),
   minMatchScore: z.number().int().min(0).max(100).default(70),
   visibility: z.enum(["public", "private", "invite_only"]).default("public"),
-  vacancies: z.number().int().min(1).max(100).default(1),
+  vacancies: z.number().int().min(1).max(100).optional(),
   maxApplicants: z.number().int().min(1).max(10000).optional(),
   showSalary: z.boolean().default(true),
   expiresAt: z.string().optional(),

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ensureIndexes } from "./indexes";
+import logger from "@/lib/logger";
 
 // Validated lazily inside connectDB so module evaluation doesn't throw
 // when MONGODB_URI is absent during Next.js build-time static analysis.
@@ -45,13 +46,13 @@ export async function connectDB(): Promise<typeof mongoose> {
     cached.promise = mongoose
       .connect(MONGODB_URI, opts)
       .then(async (mongooseInstance) => {
-        console.log("✅ MongoDB connected");
+        logger.info("MongoDB connected");
         await ensureIndexes();
         return mongooseInstance;
       })
       .catch((err) => {
         cached.promise = null;
-        console.error("❌ MongoDB connection error:", err);
+        logger.error({ err }, "MongoDB connection error");
         throw err;
       });
   }

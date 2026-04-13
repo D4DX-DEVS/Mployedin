@@ -7,7 +7,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import Job from "@/models/Job";
 import { validateBody } from "@/lib/validators";
 import { applicationUpdateSchema } from "@/lib/validators/applications";
-import { notify } from "@/lib/notifications/trigger";
+import { notify, notifyStatusChange } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -100,6 +100,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const statusChanged = effectiveStatus !== prevStatus;
 
   if (statusChanged) {
+    const jobTitle = (application.jobId as unknown as { title?: string })?.title ?? "a job";
+
     await logActivity({
       ...actorFromCtx(ctx),
       action: "application.status_change",
@@ -110,9 +112,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     });
 
     // Automation: notify employer on stage change if setting enabled
-    if (notifyOnStageChange && emp) {
-      const empUserId = String(emp.userId ?? ctx.userId);
-      const jobTitle = (application.jobId as unknown as { title?: string })?.title ?? "a job";
+    if (notifyOnStageChange && emp?.userId) {
+      const empUserId = String(emp.userId);
       await notify({
         userId: empUserId,
         type: "system",
@@ -121,6 +122,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         link: `/employer/applications`,
         sendEmail: false,
       }).catch(() => { /* non-blocking */ });
+    }
+
+    const JobSeeker = (await import("@/models/JobSeeker")).default;
+    const seeker = await JobSeeker.findById(application.jobSeekerId).select("userId").lean() as { userId?: unknown } | null;
+    if (seeker?.userId) {
+      await notifyStatusChange(
+        String(seeker.userId),
+        jobTitle,
+        effectiveStatus.replace(/_/g, " "),
+        String(application._id)
+      ).catch(() => { /* non-blocking */ });
     }
   }
 

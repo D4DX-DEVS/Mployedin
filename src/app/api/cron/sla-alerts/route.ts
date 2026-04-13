@@ -4,6 +4,7 @@ import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
 import User from "@/models/User";
 import { notify } from "@/lib/notifications/trigger";
+import { verifyCronRequest } from "@/lib/security/cron-auth";
 
 // SLA alert cron — notifies employers when candidates are stalled in a stage for too long
 // Run daily. Threshold: 7 days in same non-final stage.
@@ -12,10 +13,8 @@ const FINAL_STATUSES = ["rejected", "selected", "hired", "withdrawn"];
 const STALE_DAYS = 7;
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = verifyCronRequest(req);
+  if (authError) return authError;
 
   await connectDB();
 

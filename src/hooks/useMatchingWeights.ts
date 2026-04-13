@@ -9,6 +9,7 @@ export interface MatchingWeights {
   salary: number;
   languages: number;
   availability: number;
+  behaviorSignals: number;
 }
 
 interface MatchingWeightsResponse {

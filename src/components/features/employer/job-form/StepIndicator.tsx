@@ -19,76 +19,68 @@ export function StepIndicator({
   onStepClick,
 }: StepIndicatorProps) {
   return (
-    <nav aria-label="Form progress" className="mb-8">
-      <ol className="flex items-center gap-0">
+    <nav aria-label="Form progress">
+      <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {steps.map((step, index) => {
           const isCompleted = completedSteps.has(step.id);
           const isCurrent = step.id === currentStep;
           const isClickable = isCompleted || step.id < currentStep;
 
           return (
-            <li key={step.id} className="flex items-center flex-1 last:flex-none">
-              {/* Step button */}
+            <li key={step.id} className="min-w-0">
               <button
                 type="button"
                 onClick={() => isClickable && onStepClick?.(step.id)}
                 disabled={!isClickable}
                 className={cn(
-                  "flex flex-col items-center gap-1.5 group",
-                  isClickable && "cursor-pointer"
+                  "w-full rounded-xl border px-3 py-2.5 text-left transition-all",
+                  isClickable && "cursor-pointer hover:border-primary/40 hover:bg-primary/[0.04]",
+                  isCurrent && "border-primary bg-primary/[0.07] shadow-sm",
+                  isCompleted && !isCurrent && "border-primary/20 bg-primary/[0.05]",
+                  !isCurrent && !isCompleted && "border-border bg-background"
                 )}
                 aria-current={isCurrent ? "step" : undefined}
               >
-                <motion.div
-                  layout
-                  className={cn(
-                    "w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-colors",
-                    isCompleted &&
-                      "bg-primary border-primary text-primary-foreground",
-                    isCurrent &&
-                      !isCompleted &&
-                      "border-primary text-primary bg-primary/10",
-                    !isCurrent &&
-                      !isCompleted &&
-                      "border-border text-muted-foreground bg-background"
-                  )}
-                >
-                  {isCompleted ? (
-                    <Check className="w-4 h-4" strokeWidth={2.5} />
-                  ) : (
-                    <span>{step.id}</span>
-                  )}
-                </motion.div>
-                <motion.span
-                  className={cn(
-                    "text-xs font-medium whitespace-nowrap hidden sm:block",
-                    isCurrent && "text-primary",
-                    isCompleted && "text-primary",
-                    !isCurrent && !isCompleted && "text-muted-foreground"
-                  )}
-                  animate={{ opacity: 1 }}
-                  initial={{ opacity: 0 }}
-                  transition={{ delay: 0.1 * index }}
-                >
-                  {step.label}
-                </motion.span>
-              </button>
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    layout
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors",
+                      isCompleted && "border-primary bg-primary text-primary-foreground",
+                      isCurrent && !isCompleted && "border-primary bg-primary/10 text-primary",
+                      !isCurrent && !isCompleted && "border-border bg-background text-muted-foreground"
+                    )}
+                  >
+                    {isCompleted ? (
+                      <Check className="w-4 h-4" strokeWidth={2.5} />
+                    ) : (
+                      <span>{step.id}</span>
+                    )}
+                  </motion.div>
 
-              {/* Connector line */}
-              {index < steps.length - 1 && (
-                <div className="flex-1 mx-2 mb-5 sm:mb-3.5">
-                  <div className="h-0.5 bg-border relative overflow-hidden rounded-full">
-                    <motion.div
-                      className="absolute inset-y-0 left-0 bg-primary"
-                      initial={{ width: "0%" }}
-                      animate={{
-                        width: completedSteps.has(step.id) ? "100%" : "0%",
-                      }}
-                      transition={{ duration: 0.4, ease: "easeInOut" }}
-                    />
+                  <div className="min-w-0">
+                    <motion.p
+                      className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+                      animate={{ opacity: 1 }}
+                      initial={{ opacity: 0 }}
+                      transition={{ delay: 0.05 * index }}
+                    >
+                      Step {step.id}
+                    </motion.p>
+                    <motion.p
+                      className={cn(
+                        "truncate text-sm font-semibold",
+                        isCurrent || isCompleted ? "text-foreground" : "text-muted-foreground"
+                      )}
+                      animate={{ opacity: 1 }}
+                      initial={{ opacity: 0 }}
+                      transition={{ delay: 0.08 * index }}
+                    >
+                      {step.label}
+                    </motion.p>
                   </div>
                 </div>
-              )}
+              </button>
             </li>
           );
         })}

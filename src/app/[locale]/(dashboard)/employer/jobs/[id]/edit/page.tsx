@@ -11,9 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useJobDetail, useUpdateJob } from "@/hooks/useJobs";
@@ -418,12 +416,12 @@ export default function EditJobPage() {
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Category">
-                <Select value={form.category} onValueChange={(v) => setField("category", v)}>
-                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
-                    {JOB_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={JOB_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                  value={form.category}
+                  onValueChange={(v) => setField("category", v)}
+                  placeholder="Select category"
+                />
               </Field>
               <Field label="Vacancies" hint="Number of open positions">
                 <Input type="number" min={1} max={100} value={form.vacancies}
@@ -582,24 +580,20 @@ export default function EditJobPage() {
                 </div>
               </Field>
               <Field label="Currency">
-                <Select value={form.salary.currency} onValueChange={(v) => setField("salary", { ...form.salary, currency: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => (
-                      <SelectItem key={code} value={code}>{sym} {code}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => ({ value: code, label: `${sym} ${code}` }))}
+                  value={form.salary.currency}
+                  onValueChange={(v) => setField("salary", { ...form.salary, currency: v })}
+                />
               </Field>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Pay Period">
-                <Select value={form.salary.period} onValueChange={(v) => setField("salary", { ...form.salary, period: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {SALARY_PERIODS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={SALARY_PERIODS.map((p) => ({ value: p.value, label: p.label }))}
+                  value={form.salary.period}
+                  onValueChange={(v) => setField("salary", { ...form.salary, period: v })}
+                />
               </Field>
               <Field label="Negotiable?">
                 <label className="flex items-center gap-3 cursor-pointer h-10">
@@ -674,13 +668,14 @@ export default function EditJobPage() {
                       min={new Date().toISOString().split("T")[0]} />
                   </Field>
                   <Field label="Application Mode" hint="How will you review applicants?">
-                    <Select value={form.applicationMode} onValueChange={(v) => setField("applicationMode", v as "auto" | "manual")}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="manual">Manual Review</SelectItem>
-                        <SelectItem value="auto">Auto Match (AI)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={[
+                        { value: "manual", label: "Manual Review" },
+                        { value: "auto", label: "Auto Match (AI)" },
+                      ]}
+                      value={form.applicationMode}
+                      onValueChange={(v) => setField("applicationMode", v as "auto" | "manual")}
+                    />
                   </Field>
                 </div>
               </div>

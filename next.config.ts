@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       "lucide-react",
       "recharts",
+      "framer-motion",
+      "date-fns",
       "@radix-ui/react-icons",
       "@radix-ui/react-dialog",
       "@radix-ui/react-dropdown-menu",
@@ -20,6 +22,16 @@ const nextConfig: NextConfig = {
       "@radix-ui/react-tooltip",
       "@radix-ui/react-popover",
       "@radix-ui/react-avatar",
+      "@radix-ui/react-accordion",
+      "@radix-ui/react-checkbox",
+      "@radix-ui/react-label",
+      "@radix-ui/react-progress",
+      "@radix-ui/react-separator",
+      "@radix-ui/react-switch",
+      "@radix-ui/react-toast",
+      "@tanstack/react-table",
+      "cmdk",
+      "zod",
     ],
   },
 
@@ -47,6 +59,7 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const isProd = process.env.NODE_ENV === "production";
     return [
       {
         source: "/(.*)",
@@ -61,20 +74,23 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Static assets — long-lived immutable cache
-      {
-        source: "/_next/static/(.*)",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-        ],
-      },
-      // Public media assets
-      {
-        source: "/public/(.*)",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=3600" },
-        ],
-      },
+      // Static assets — long-lived immutable cache (production only)
+      ...(isProd
+        ? [
+            {
+              source: "/_next/static/(.*)",
+              headers: [
+                { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+              ],
+            },
+            {
+              source: "/public/(.*)",
+              headers: [
+                { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=3600" },
+              ],
+            },
+          ]
+        : []),
     ];
   },
 };

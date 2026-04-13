@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Users\\moham\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m code_review_graph update --quiet --skip-flows",
+            "shell": "powershell",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:\\Users\\moham\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe -m code_review_graph status --json",
+            "shell": "powershell",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -14,6 +14,7 @@ import {
 } from "@/lib/validators/offers";
 import {
   interviewCreateSchema,
+  interviewBulkSchema,
   scorecardCreateSchema,
 } from "@/lib/validators/interviews";
 import { commonSchemas } from "@/lib/validators/index";
@@ -109,6 +110,29 @@ describe("jobCreateSchema", () => {
     const result = jobCreateSchema.safeParse({ ...validJob, status: "archived" });
     expect(result.success).toBe(false);
   });
+
+  test("accepts hidden salary and no salary range", () => {
+    const result = jobCreateSchema.safeParse({
+      ...validJob,
+      showSalary: false,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.showSalary).toBe(false);
+    }
+  });
+
+  test("accepts optional applicant limit and omitted vacancies", () => {
+    const result = jobCreateSchema.safeParse({
+      ...validJob,
+      maxApplicants: 25,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxApplicants).toBe(25);
+      expect(result.data.vacancies).toBeUndefined();
+    }
+  });
 });
 
 // ── jobUpdateSchema ──────────────────────────────────────────────────────────
@@ -124,6 +148,15 @@ describe("jobUpdateSchema", () => {
 
   test("rejects title below min length", () => {
     expect(jobUpdateSchema.safeParse({ title: "No" }).success).toBe(false);
+  });
+
+  test("accepts applicant cap and salary visibility updates", () => {
+    const result = jobUpdateSchema.safeParse({ maxApplicants: 100, showSalary: false });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.maxApplicants).toBe(100);
+      expect(result.data.showSalary).toBe(false);
+    }
   });
 });
 
@@ -296,6 +329,27 @@ describe("interviewCreateSchema", () => {
     const result = interviewCreateSchema.safeParse({
       ...validInterview,
       meetLink: "",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("accepts offline and hybrid interview types", () => {
+    expect(interviewCreateSchema.safeParse({ ...validInterview, type: "offline" }).success).toBe(true);
+    expect(interviewCreateSchema.safeParse({ ...validInterview, type: "hybrid" }).success).toBe(true);
+  });
+
+  test("rejects legacy phone interview type", () => {
+    expect(interviewCreateSchema.safeParse({ ...validInterview, type: "phone" }).success).toBe(false);
+  });
+});
+
+describe("interviewBulkSchema", () => {
+  test("accepts a bulk schedule request with application ids", () => {
+    const result = interviewBulkSchema.safeParse({
+      candidates: [{ jobSeekerId: validObjectId, applicationId: validObjectId }],
+      scheduledAt: futureDate,
+      duration: 45,
+      type: "video",
     });
     expect(result.success).toBe(true);
   });

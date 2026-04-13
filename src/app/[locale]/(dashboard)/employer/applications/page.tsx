@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams, useParams } from "next/navigation";
-import { User, Calendar, Inbox, CheckSquare, Square, X, ChevronDown, GripVertical, Award, DollarSign, Filter, Clock, History, BarChart3, GitCompare, ArrowRight, Users, FileText, Eye, Sparkles, Zap, CheckCheck } from "lucide-react";
+import { User, Calendar, Inbox, CheckSquare, Square, X, ChevronDown, GripVertical, Award, DollarSign, Filter, Clock, History, BarChart3, Users, FileText, Sparkles, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -21,7 +22,6 @@ import {
   useCreateInterviewFromApp,
   useCreateOfferFromApp,
   useFetchInterviewForApp,
-  useCompareApplications,
   useComputeAiMatch,
   useBulkAiMatch,
 } from "@/hooks/useApplications";
@@ -62,23 +62,6 @@ interface TimelineEntry {
   createdAt: string;
 }
 
-interface CompareCandidate {
-  applicationId: string;
-  status: string;
-  appliedAt: string;
-  aiMatchScore: number | null;
-  matchBreakdown: { skills: number; experience: number; education: number; availability: number; overall: number } | null;
-  candidate: {
-    name: string;
-    profilePicture: string | null;
-    skills: string[];
-    yearsOfExperience: number;
-    preferredSalary: { min: number; max: number; currency: string } | null;
-    profileCompleteness: number;
-  };
-  job: { title: string; salaryRange: { min: number; max: number; currency: string } | null };
-}
-
 const PIPELINE_STAGES = [
   { value: "applied", label: "Applied", color: "border-blue-400" },
   { value: "shortlisted", label: "Shortlisted", color: "border-amber-400" },
@@ -91,7 +74,7 @@ const PIPELINE_STAGES = [
 export default function EmployerApplicationsPage() {
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
-  const jobId = searchParams.get("jobId") ?? "";
+  const jobId = searchParams.get("jobId") ?? searchParams.get("job") ?? "";
   const { can } = usePermissions();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -107,8 +90,6 @@ export default function EmployerApplicationsPage() {
   const [daysFilter, setDaysFilter] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [timelinePanel, setTimelinePanel] = useState<{ appId: string; candidateLabel: string } | null>(null);
-  const [compareIds, setCompareIds] = useState<string[]>([]);
-  const [compareModal, setCompareModal] = useState(false);
   const [viewingCv, setViewingCv] = useState<{
     url: string; name: string;
     applicationId?: string; status?: string;
@@ -257,7 +238,7 @@ export default function EmployerApplicationsPage() {
   }) {
     if (!interviewModal) return;
     try {
-      await createInterview.mutateAsync({
+      const result = await createInterview.mutateAsync({
         candidates: [{
           applicationId: interviewModal.appId,
           jobSeekerId: interviewModal.jobSeekerId,
@@ -265,7 +246,9 @@ export default function EmployerApplicationsPage() {
         jobId: interviewModal.jobId,
         ...data,
       });
-      await updateApplicationStatus(interviewModal.appId, "interview_scheduled");
+      if ((result.created ?? 0) < 1) {
+        throw new Error("Failed to schedule interview");
+      }
       setInterviewModal(null);
     } catch (err) {
       console.error("Failed to create interview:", err);
@@ -285,8 +268,8 @@ export default function EmployerApplicationsPage() {
     }
   }
 
-  function openTimeline(appId: string) {
-    const label = `#${appId.slice(-4)}`;
+  function openTimeline(appId: string, candidateName?: string) {
+    const label = candidateName || `#${appId.slice(-4)}`;
     setTimelinePanel({ appId, candidateLabel: label });
   }
 
@@ -315,11 +298,12 @@ export default function EmployerApplicationsPage() {
     };
   }
 
-  function toggleCompare(appId: string) {
-    setCompareIds((prev) => {
-      if (prev.includes(appId)) return prev.filter((id) => id !== appId);
-      if (prev.length >= 3) return prev; // max 3
-      return [...prev, appId];
+  function openInterviewModal(app: Applicant) {
+    if (!app.jobId?._id || !app.jobSeekerId?._id) return;
+    setInterviewModal({
+      appId: app._id,
+      jobId: app.jobId._id,
+      jobSeekerId: app.jobSeekerId._id,
     });
   }
 
@@ -393,15 +377,16 @@ export default function EmployerApplicationsPage() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-center">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="All statuses" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {PIPELINE_STAGES.map((s) => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          className="w-48"
+          options={[
+            { value: "all", label: "All statuses" },
+            ...PIPELINE_STAGES.map((s) => ({ value: s.value, label: s.label })),
+          ]}
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+          placeholder="All statuses"
+        />
         <Button size="sm" variant={showFilters ? "secondary" : "outline"} onClick={() => setShowFilters(!showFilters)} className="h-9">
           <Filter className="w-3.5 h-3.5 me-1.5" /> Filters
           {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter) && (
@@ -431,7 +416,7 @@ export default function EmployerApplicationsPage() {
               <Sparkles className={`w-3.5 h-3.5 ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
               {bulkMatchProgress
                 ? `Scoring ${bulkMatchProgress.done}/${bulkMatchProgress.total}…`
-                : "Run AI Match for All"}
+                : "Score All Candidates"}
             </Button>
             <Button
               size="sm"
@@ -441,7 +426,7 @@ export default function EmployerApplicationsPage() {
               onClick={handleAutoShortlist}
             >
               <CheckCheck className="w-3.5 h-3.5" />
-              Auto Shortlist Top Candidates
+              Shortlist Top Matches
             </Button>
           </div>
         )}
@@ -465,16 +450,18 @@ export default function EmployerApplicationsPage() {
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-medium">Days in Pipeline</label>
-            <Select value={daysFilter?.toString() ?? "any"} onValueChange={(v) => setDaysFilter(v === "any" ? null : +v)}>
-              <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">Any</SelectItem>
-                <SelectItem value="3">3+ days</SelectItem>
-                <SelectItem value="7">7+ days</SelectItem>
-                <SelectItem value="14">14+ days</SelectItem>
-                <SelectItem value="30">30+ days</SelectItem>
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              className="w-36 h-8 text-xs"
+              options={[
+                { value: "any", label: "Any" },
+                { value: "3", label: "3+ days" },
+                { value: "7", label: "7+ days" },
+                { value: "14", label: "14+ days" },
+                { value: "30", label: "30+ days" },
+              ]}
+              value={daysFilter?.toString() ?? "any"}
+              onValueChange={(v) => setDaysFilter(v === "any" ? null : +v)}
+            />
           </div>
           <div className="flex items-end">
             <Button size="sm" variant="ghost" className="h-8 text-xs"
@@ -492,11 +479,7 @@ export default function EmployerApplicationsPage() {
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" className="h-8 text-xs"
               onClick={() => handleBulkAction("move_stage", "shortlisted")} disabled={bulkAction.isPending}>
-              Move to Shortlisted
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 text-xs"
-              onClick={() => handleBulkAction("move_stage", "interview_scheduled")} disabled={bulkAction.isPending}>
-              <Calendar className="w-3 h-3 mr-1" /> Move to Interview
+              Shortlist Selected
             </Button>
             <Button size="sm" variant="outline" className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
               onClick={() => setShowRejectPrompt(true)} disabled={bulkAction.isPending}>
@@ -530,22 +513,6 @@ export default function EmployerApplicationsPage() {
         </div>
       )}
 
-      {/* Compare bar */}
-      {compareIds.length > 0 && (
-        <div className="flex items-center gap-3 p-3 bg-cyan-500/5 border border-cyan-500/20 rounded-xl">
-          <GitCompare className="w-4 h-4 text-cyan-600" />
-          <span className="text-sm font-medium text-cyan-700">{compareIds.length} selected to compare</span>
-          <Button size="sm" variant="outline" className="h-8 text-xs border-cyan-500/30 text-cyan-700 hover:bg-cyan-50"
-            disabled={compareIds.length < 2}
-            onClick={() => setCompareModal(true)}>
-            Compare Now
-          </Button>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 ml-auto" onClick={() => setCompareIds([])}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
-
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -560,8 +527,7 @@ export default function EmployerApplicationsPage() {
             dragModal={dragModal}
             setDragModal={setDragModal}
             onTimeline={openTimeline}
-            onCompare={toggleCompare}
-            compareIds={compareIds}
+            onScheduleInterview={canUpdate ? openInterviewModal : undefined}
             getCandidateName={getCandidateName}
             onViewCv={(app) => setViewingCv(buildViewingCv(app))}
           />
@@ -577,7 +543,7 @@ export default function EmployerApplicationsPage() {
                     setInterviewModal({
                       appId,
                       jobId: app.jobId._id,
-                      jobSeekerId: typeof app.jobSeekerId?.userId === "object" ? (app.jobSeekerId.userId._id ?? "") : (app.jobSeekerId?.userId ?? ""),
+                      jobSeekerId: app.jobSeekerId?._id ?? "",
                     });
                   }
                   setDragModal(null);
@@ -609,8 +575,7 @@ export default function EmployerApplicationsPage() {
           scorecardMap={scorecardMap}
           onOffer={canUpdate ? (app: Applicant) => setOfferModal({ appId: app._id }) : undefined}
           onTimeline={openTimeline}
-          onCompare={toggleCompare}
-          compareIds={compareIds}
+          onScheduleInterview={canUpdate ? openInterviewModal : undefined}
           getCandidateName={getCandidateName}
           onViewCv={(app) => setViewingCv(buildViewingCv(app))}
         />
@@ -664,14 +629,6 @@ export default function EmployerApplicationsPage() {
         />
       )}
 
-      {/* Candidate Comparison Modal */}
-      {compareModal && compareIds.length >= 2 && (
-        <CandidateCompareModal
-          applicationIds={compareIds}
-          onClose={() => setCompareModal(false)}
-        />
-      )}
-
       {/* Resume Viewer Modal */}
       {viewingCv && (
         <ResumeViewerModal
@@ -704,15 +661,14 @@ export default function EmployerApplicationsPage() {
 }
 
 function KanbanView({
-  grouped, onUpdateStatus, dragModal, setDragModal, onTimeline, onCompare, compareIds, getCandidateName, onViewCv
+  grouped, onUpdateStatus, dragModal, setDragModal, onTimeline, onScheduleInterview, getCandidateName, onViewCv
 }: {
   grouped: Record<string, Applicant[]>;
   onUpdateStatus?: (id: string, status: string, reason?: string) => void;
   dragModal: any;
   setDragModal: (modal: any) => void;
-  onTimeline?: (appId: string) => void;
-  onCompare?: (appId: string) => void;
-  compareIds?: string[];
+  onTimeline?: (appId: string, candidateName?: string) => void;
+  onScheduleInterview?: (app: Applicant) => void;
   getCandidateName: (app: Applicant) => string;
   onViewCv?: (app: Applicant) => void;
 }) {
@@ -787,8 +743,7 @@ function KanbanView({
               onUpdateStatus={onUpdateStatus}
               onDragStart={handleDragStart}
               onTimeline={onTimeline}
-              onCompare={onCompare}
-              isComparing={compareIds?.includes(app._id)}
+              onScheduleInterview={onScheduleInterview}
               candidateName={getCandidateName(app)}
               onViewCv={onViewCv}
             />
@@ -803,14 +758,13 @@ function KanbanView({
 }
 
 function KanbanCard({
-  app, onUpdateStatus, onDragStart, onTimeline, onCompare, isComparing, candidateName, onViewCv
+  app, onUpdateStatus, onDragStart, onTimeline, onScheduleInterview, candidateName, onViewCv
 }: {
   app: Applicant;
   onUpdateStatus?: (id: string, status: string, reason?: string) => void;
   onDragStart?: (appId: string, fromStatus: string) => void;
-  onTimeline?: (appId: string) => void;
-  onCompare?: (appId: string) => void;
-  isComparing?: boolean;
+  onTimeline?: (appId: string, candidateName?: string) => void;
+  onScheduleInterview?: (app: Applicant) => void;
   candidateName: string;
   onViewCv?: (app: Applicant) => void;
 }) {
@@ -835,7 +789,7 @@ function KanbanCard({
       onMouseLeave={() => setHovered(false)}
       className={`bg-background rounded-lg border p-3 text-xs shadow-sm transition-all relative ${
         isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"
-      } ${isComparing ? "ring-2 ring-cyan-500/50" : ""}`}
+      }`}
     >
       <div className="flex items-center gap-1.5 mb-1.5">
         <GripVertical className="w-3 h-3 text-muted-foreground flex-shrink-0" />
@@ -931,19 +885,11 @@ function KanbanCard({
       )}
 
       {/* Action buttons row */}
-      <div className="flex items-center gap-1 mt-2">
+      <div className="flex items-center gap-1 mt-2 flex-wrap">
         {onTimeline && (
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Activity Timeline"
-            onClick={(e) => { e.stopPropagation(); onTimeline(app._id); }}>
-            <History className="w-3 h-3" />
-          </Button>
-        )}
-        {onCompare && (
-          <Button variant="ghost" size="sm"
-            className={`h-6 w-6 p-0 ${isComparing ? "text-cyan-600 bg-cyan-50" : ""}`}
-            title="Compare"
-            onClick={(e) => { e.stopPropagation(); onCompare(app._id); }}>
-            <GitCompare className="w-3 h-3" />
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px]" title="Activity Timeline"
+            onClick={(e) => { e.stopPropagation(); onTimeline(app._id, candidateName); }}>
+            <History className="w-3 h-3 mr-1" /> Timeline
           </Button>
         )}
         <div className="flex gap-1 ml-auto">
@@ -957,8 +903,8 @@ function KanbanCard({
               )}
               {app.status === "shortlisted" && (
                 <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] hover:bg-purple-100 text-purple-600"
-                  onClick={() => onUpdateStatus(app._id, "interview_scheduled")}>
-                  <Calendar className="w-3 h-3 mr-1" /> Interview
+                  onClick={() => onScheduleInterview?.(app)}>
+                  <Calendar className="w-3 h-3 mr-1" /> Schedule Interview
                 </Button>
               )}
               {!["rejected", "selected"].includes(app.status) && (
@@ -997,7 +943,7 @@ function KanbanCard({
 }
 
 function TableView({
-  applications, selected, onToggle, onToggleAll, onUpdateStatus, onScorecard, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOffer, onTimeline, onCompare, compareIds, getCandidateName, onViewCv
+  applications, selected, onToggle, onToggleAll, onUpdateStatus, onScorecard, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOffer, onTimeline, onScheduleInterview, getCandidateName, onViewCv
 }: {
   applications: Applicant[];
   selected: string[];
@@ -1009,9 +955,8 @@ function TableView({
   aiMatchPendingId?: string;
   scorecardMap?: Record<string, Scorecard>;
   onOffer?: (app: Applicant) => void;
-  onTimeline?: (appId: string) => void;
-  onCompare?: (appId: string) => void;
-  compareIds?: string[];
+  onTimeline?: (appId: string, candidateName?: string) => void;
+  onScheduleInterview?: (app: Applicant) => void;
   getCandidateName: (app: Applicant) => string;
   onViewCv?: (app: Applicant) => void;
 }) {
@@ -1071,7 +1016,6 @@ function TableView({
             <TableHead>Status</TableHead>
             <TableHead>AI Match</TableHead>
             <TableHead className="hidden sm:table-cell">Applied</TableHead>
-            <TableHead className="w-10">CV</TableHead>
             {onScorecard && <TableHead>Scorecard</TableHead>}
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -1219,19 +1163,6 @@ function TableView({
                 <TableCell className="hidden sm:table-cell text-muted-foreground text-xs">
                   {new Date(app.appliedAt).toLocaleDateString()}
                 </TableCell>
-                <TableCell>
-                  {app.jobSeekerId?.cv?.originalUrl ? (
-                    <Button
-                      variant="ghost" size="sm" className="h-7 w-7 p-0 text-primary"
-                      title="View CV"
-                      onClick={() => onViewCv?.(app)}
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </Button>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
-                </TableCell>
                 {onScorecard && (
                   <TableCell>
                     {(() => {
@@ -1270,18 +1201,17 @@ function TableView({
                   </TableCell>
                 )}
                 <TableCell>
-                  <div className="flex gap-1 items-center">
-                    {onTimeline && (
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Activity Timeline"
-                        onClick={() => onTimeline(app._id)}>
-                        <History className="w-3.5 h-3.5" />
+                  <div className="flex gap-1 items-center flex-wrap">
+                    {app.jobSeekerId?.cv?.originalUrl && onViewCv && (
+                      <Button variant="ghost" size="sm" className="h-7 text-xs"
+                        onClick={() => onViewCv(app)}>
+                        <FileText className="w-3 h-3 me-1" /> View CV
                       </Button>
                     )}
-                    {onCompare && (
-                      <Button variant="ghost" size="sm"
-                        className={`h-7 w-7 p-0 ${compareIds?.includes(app._id) ? "text-cyan-600 bg-cyan-50" : ""}`}
-                        title="Compare" onClick={() => onCompare(app._id)}>
-                        <GitCompare className="w-3.5 h-3.5" />
+                    {onTimeline && (
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" title="Activity Timeline"
+                        onClick={() => onTimeline(app._id, getCandidateName(app))}>
+                        <History className="w-3.5 h-3.5 me-1" /> Activity
                       </Button>
                     )}
                     {onUpdateStatus && (
@@ -1294,20 +1224,20 @@ function TableView({
                         )}
                         {app.status === "shortlisted" && (
                           <Button size="sm" variant="ghost" className="h-7 text-xs"
-                            onClick={() => onUpdateStatus(app._id, "interview_scheduled")}>
-                            <Calendar className="w-3 h-3 me-1" /> Interview
+                            onClick={() => onScheduleInterview?.(app)}>
+                            <Calendar className="w-3 h-3 me-1" /> Schedule Interview
                           </Button>
                         )}
                         {app.status === "interview_scheduled" && (
                           <Button size="sm" variant="ghost" className="h-7 text-xs text-emerald-600"
                             onClick={() => onUpdateStatus(app._id, "selected")}>
-                            Select
+                            Mark Selected
                           </Button>
                         )}
                         {app.status === "selected" && onOffer && (
                           <Button size="sm" variant="ghost" className="h-7 text-xs text-cyan-600"
                             onClick={() => onOffer(app)}>
-                            <DollarSign className="w-3 h-3 me-1" /> Send Offer
+                            <DollarSign className="w-3 h-3 me-1" /> Create Offer
                           </Button>
                         )}
                         {!["rejected", "selected", "offer"].includes(app.status) && (
@@ -1530,26 +1460,30 @@ function InterviewScheduleModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1">Type</label>
-              <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="video">Video</SelectItem>
-                  <SelectItem value="offline">In-Person</SelectItem>
-                  <SelectItem value="hybrid">Hybrid</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                className="h-9"
+                options={[
+                  { value: "video", label: "Video" },
+                  { value: "offline", label: "In-Person" },
+                  { value: "hybrid", label: "Hybrid" },
+                ]}
+                value={type}
+                onValueChange={(v) => setType(v as typeof type)}
+              />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1">Duration</label>
-              <Select value={String(duration)} onValueChange={(v) => setDuration(+v)}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="15">15 min</SelectItem>
-                  <SelectItem value="30">30 min</SelectItem>
-                  <SelectItem value="45">45 min</SelectItem>
-                  <SelectItem value="60">60 min</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                className="h-9"
+                options={[
+                  { value: "15", label: "15 min" },
+                  { value: "30", label: "30 min" },
+                  { value: "45", label: "45 min" },
+                  { value: "60", label: "60 min" },
+                ]}
+                value={String(duration)}
+                onValueChange={(v) => setDuration(+v)}
+              />
             </div>
           </div>
           {type !== "video" && (
@@ -1636,23 +1570,27 @@ function OfferCreateModal({
               <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
                 placeholder="Amount" min="0" step="100"
                 className="flex-1 h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40" />
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="w-24 h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="GBP">GBP</SelectItem>
-                  <SelectItem value="SAR">SAR</SelectItem>
-                  <SelectItem value="AED">AED</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
-                <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="annually">Annually</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                className="w-24 h-9"
+                options={[
+                  { value: "USD", label: "USD" },
+                  { value: "EUR", label: "EUR" },
+                  { value: "GBP", label: "GBP" },
+                  { value: "SAR", label: "SAR" },
+                  { value: "AED", label: "AED" },
+                ]}
+                value={currency}
+                onValueChange={setCurrency}
+              />
+              <SearchableSelect
+                className="w-28 h-9"
+                options={[
+                  { value: "monthly", label: "Monthly" },
+                  { value: "annually", label: "Annually" },
+                ]}
+                value={period}
+                onValueChange={(v) => setPeriod(v as typeof period)}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -1723,226 +1661,175 @@ function ActivityTimelinePanel({
     return actionLabels[action] ?? { label: action.replace(/\./g, " ").replace(/^./, (c) => c.toUpperCase()), color: "bg-muted-foreground" };
   }
 
-  return (
-    <div className="fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-background border-l border-border shadow-xl flex flex-col">
-      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold">Activity Timeline</h2>
-          <p className="text-xs text-muted-foreground">Candidate {candidateLabel}</p>
-        </div>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-          <X className="w-4 h-4" />
-        </Button>
-      </div>
-      <div className="flex-1 overflow-y-auto px-5 py-4">
-        {loading ? (
-          <div className="space-y-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex gap-3">
-                <div className="w-2 h-2 rounded-full bg-muted animate-pulse mt-1.5" />
-                <div className="flex-1 space-y-1">
-                  <div className="h-3 w-24 bg-muted animate-pulse rounded" />
-                  <div className="h-2 w-32 bg-muted animate-pulse rounded" />
+  const [mounted, setMounted] = useState(false);
+  const latestEntry = entries[0];
+
+  useEffect(() => {
+    setMounted(true);
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  const sheet = (
+    <div
+      className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Activity timeline for ${candidateLabel}`}
+        className="absolute inset-y-0 right-0 flex h-screen min-h-0 w-[92vw] max-w-[460px] flex-col overflow-hidden border-l border-border/60 bg-background shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in slide-in-from-right duration-300 sm:w-[520px] sm:max-w-[520px]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="sticky top-0 z-10 shrink-0 border-b border-border/60 bg-gradient-to-br from-slate-50 via-background to-blue-50/70 px-5 py-4 dark:from-slate-950 dark:via-background dark:to-slate-900 sm:px-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 shadow-sm ring-1 ring-primary/10">
+                  <History className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80">Application Activity</p>
+                  <h2 className="truncate text-lg font-semibold text-foreground sm:text-xl">{candidateLabel}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Recent workflow events for this application</p>
                 </div>
               </div>
-            ))}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="rounded-full border border-border/60 bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                  <span className="font-semibold text-foreground">App ID</span>
+                  <span className="ml-1.5 font-mono">{appId.slice(-8)}</span>
+                </div>
+                <div className="rounded-full border border-border/60 bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                  <span className="font-semibold text-foreground">Events</span>
+                  <span className="ml-1.5">{entries.length}</span>
+                </div>
+                {latestEntry && (
+                  <div className="rounded-full border border-border/60 bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                    <span className="font-semibold text-foreground">Latest</span>
+                    <span className="ml-1.5">{new Date(latestEntry.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0 hover:bg-destructive/10 hover:text-destructive" onClick={onClose} aria-label="Close activity timeline">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        ) : entries.length === 0 ? (
-          <div className="text-center py-12">
-            <History className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No activity recorded yet</p>
-          </div>
-        ) : (
-          <div className="relative">
-            <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_28%),linear-gradient(to_bottom,rgba(148,163,184,0.08),transparent_28%)] px-4 py-4 sm:px-5">
+          {loading ? (
             <div className="space-y-4">
-              {entries.map((entry) => {
-                const info = getActionInfo(entry.action);
-                return (
-                  <div key={entry.id} className="flex gap-3 relative">
-                    <div className={`w-2.5 h-2.5 rounded-full ${info.color} mt-1.5 flex-shrink-0 z-10 ring-2 ring-background`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold">{info.label}</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {new Date(entry.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        by {entry.actorName || "System"} ({entry.actorRole})
-                      </p>
-                      {entry.changes?.after && (
-                        <div className="mt-1 p-1.5 bg-muted/30 rounded text-[10px] space-y-0.5">
-                          {Object.entries(entry.changes.after).map(([key, val]) => (
-                            <div key={key} className="flex gap-1">
-                              <span className="text-muted-foreground">{key}:</span>
-                              <span className="font-medium">{String(val)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-border/50 bg-background/80 p-4 shadow-sm">
+                  <div className="flex gap-3">
+                    <div className="mt-1 h-10 w-10 rounded-2xl bg-muted animate-pulse" />
+                    <div className="flex-1 space-y-2.5">
+                      <div className="h-4 w-32 rounded bg-muted animate-pulse" />
+                      <div className="h-3 w-40 rounded bg-muted animate-pulse" />
+                      <div className="h-14 w-full rounded-xl bg-muted animate-pulse" />
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CandidateCompareModal({
-  applicationIds,
-  onClose,
-}: {
-  applicationIds: string[];
-  onClose: () => void;
-}) {
-  const { data, isLoading: loading, error: queryError } = useCompareApplications(applicationIds);
-  const candidates: CompareCandidate[] = data?.candidates ?? [];
-  const commonSkills: string[] = data?.commonSkills ?? [];
-  const error = queryError ? "Failed to load comparison data" : null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
-      <div className="bg-background rounded-lg border border-border shadow-lg max-w-4xl w-full mx-4">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Compare Candidates</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">{applicationIds.length} candidates selected</p>
-          </div>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-        <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {applicationIds.map((id) => (
-                <div key={id} className="h-48 bg-muted animate-pulse rounded-lg" />
+                </div>
               ))}
             </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <p className="text-sm text-destructive">{error}</p>
+          ) : entries.length === 0 ? (
+            <div className="flex min-h-[320px] flex-col items-center justify-center rounded-3xl border border-dashed border-border/70 bg-background/70 px-6 text-center shadow-sm">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/8 ring-1 ring-primary/10">
+                <History className="h-7 w-7 text-primary/60" />
+              </div>
+              <p className="text-base font-semibold text-foreground">No activity recorded yet</p>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">Status changes, interviews, offers, and other candidate actions will appear here once the workflow starts moving.</p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Candidate cards grid */}
-              <div className={`grid gap-4 ${candidates.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
-                {candidates.map((c) => (
-                  <div key={c.applicationId} className="border border-border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="w-4 h-4 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{c.candidate.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{c.job.title}</p>
-                      </div>
-                    </div>
-
-                    {/* AI Score */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">AI Match</span>
-                      <span className={`text-sm font-bold ${(c.aiMatchScore ?? 0) >= 70 ? "text-emerald-600" : "text-amber-600"}`}>
-                        {c.aiMatchScore != null ? `${c.aiMatchScore}%` : "N/A"}
-                      </span>
-                    </div>
-
-                    {/* Breakdown bars */}
-                    {c.matchBreakdown && (
-                      <div className="space-y-1">
-                        {[
-                          { label: "Skills", value: c.matchBreakdown.skills },
-                          { label: "Experience", value: c.matchBreakdown.experience },
-                          { label: "Education", value: c.matchBreakdown.education },
-                          { label: "Availability", value: c.matchBreakdown.availability },
-                        ].map((item) => (
-                          <div key={item.label} className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-muted-foreground w-16">{item.label}</span>
-                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-red-400"}`}
-                                style={{ width: `${item.value}%` }}
-                              />
+            <div className="relative pl-6">
+              <div className="absolute bottom-4 left-[13px] top-4 w-px bg-gradient-to-b from-primary/30 via-border to-transparent" />
+              <div className="space-y-3 sm:space-y-4">
+                {entries.map((entry) => {
+                  const info = getActionInfo(entry.action);
+                  return (
+                    <div key={entry.id} className="relative">
+                      <div className={`absolute left-[-18px] top-5 h-3.5 w-3.5 rounded-full ${info.color} ring-4 ring-background shadow-sm`} />
+                      <div className="rounded-2xl border border-border/55 bg-background/92 p-3.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(15,23,42,0.1)] sm:p-4">
+                        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-semibold text-foreground">
+                                {info.label}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(entry.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(entry.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                              </span>
                             </div>
-                            <span className="text-[10px] font-medium w-7 text-right">{item.value}%</span>
+
+                            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1.5 rounded-full bg-muted/35 px-2.5 py-1">
+                                <User className="h-3.5 w-3.5" />
+                                <span className="font-medium text-foreground/85">{entry.actorName || "System"}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 rounded-full bg-muted/35 px-2.5 py-1">
+                                <Clock className="h-3.5 w-3.5" />
+                                <span>{entry.actorRole}</span>
+                              </div>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        </div>
 
-                    {/* Stats */}
-                    <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div>
-                        <span className="text-muted-foreground">Experience</span>
-                        <p className="font-medium">{c.candidate.yearsOfExperience} years</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Profile</span>
-                        <p className="font-medium">{c.candidate.profileCompleteness}%</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Status</span>
-                        <p className="font-medium capitalize">{c.status.replace(/_/g, " ")}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Applied</span>
-                        <p className="font-medium">{new Date(c.appliedAt).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-
-                    {/* Skills */}
-                    <div>
-                      <span className="text-[10px] text-muted-foreground">Skills</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {c.candidate.skills.slice(0, 8).map((skill) => (
-                          <Badge key={skill} variant={commonSkills.includes(skill) ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
-                            {skill}
-                          </Badge>
-                        ))}
-                        {c.candidate.skills.length > 8 && (
-                          <span className="text-[10px] text-muted-foreground">+{c.candidate.skills.length - 8}</span>
+                        {entry.changes?.after && Object.keys(entry.changes.after).length > 0 && (
+                          <div className="mt-3 rounded-2xl border border-border/45 bg-slate-50/80 p-3 dark:bg-slate-950/30">
+                            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Updated Fields</p>
+                            <div className="grid gap-2">
+                              {Object.entries(entry.changes.after).map(([key, val]) => (
+                                <div key={key} className="rounded-xl border border-border/35 bg-background/90 px-3 py-2 text-sm shadow-sm">
+                                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{key.replace(/_/g, " ")}</div>
+                                  <div className="mt-1 font-medium text-foreground">{String(val)}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
-
-                    {/* Salary */}
-                    {c.candidate.preferredSalary && (
-                      <div className="text-[11px]">
-                        <span className="text-muted-foreground">Expected Salary</span>
-                        <p className="font-medium">
-                          {c.candidate.preferredSalary.currency} {c.candidate.preferredSalary.min.toLocaleString()} - {c.candidate.preferredSalary.max.toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-
-              {/* Common skills */}
-              {commonSkills.length > 0 && (
-                <div className="p-3 bg-muted/30 rounded-lg">
-                  <span className="text-xs font-medium">Common Skills ({commonSkills.length})</span>
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {commonSkills.map((skill) => (
-                      <Badge key={skill} variant="default" className="text-[10px] px-1.5 py-0">
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
-        </div>
-        <div className="px-6 py-3 border-t border-border flex justify-end">
-          <Button variant="ghost" onClick={onClose} className="h-9">Close</Button>
         </div>
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(sheet, document.body);
 }
+

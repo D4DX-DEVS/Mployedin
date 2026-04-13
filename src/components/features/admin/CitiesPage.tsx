@@ -9,13 +9,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table,
   TableBody,
@@ -274,45 +268,33 @@ export default function CitiesPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <Select
+        <SearchableSelect
+          className="w-[200px] h-9"
+          options={[
+            { value: "all", label: "All Countries" },
+            ...countries.map((c) => ({ value: c._id, label: c.name })),
+          ]}
           value={countryFilter}
           onValueChange={(v) => {
             setCountryFilter(v);
             setStateFilter("all");
             resetPage();
           }}
-        >
-          <SelectTrigger className="w-[200px] h-9">
-            <SelectValue placeholder="Select Country" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Countries</SelectItem>
-            {countries.map((c) => (
-              <SelectItem key={c._id} value={c._id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
+          placeholder="Select Country"
+        />
+        <SearchableSelect
+          className="w-[200px] h-9"
+          options={[
+            { value: "all", label: "All States" },
+            ...filteredStates.map((s) => ({ value: s._id, label: s.name })),
+          ]}
           value={stateFilter}
           onValueChange={(v) => {
             setStateFilter(v);
             resetPage();
           }}
-        >
-          <SelectTrigger className="w-[200px] h-9">
-            <SelectValue placeholder="Select State" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All States</SelectItem>
-            {filteredStates.map((s) => (
-              <SelectItem key={s._id} value={s._id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Select State"
+        />
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
           <Input
@@ -325,22 +307,20 @@ export default function CitiesPage() {
             className="pl-9 h-9"
           />
         </div>
-        <Select
+        <SearchableSelect
+          className="w-[140px] h-9"
+          options={[
+            { value: "all", label: "All" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
+          ]}
           value={statusFilter}
           onValueChange={(v) => {
             setStatusFilter(v);
             resetPage();
           }}
-        >
-          <SelectTrigger className="w-[140px] h-9">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+          placeholder="Status"
+        />
       </div>
 
       {/* Table */}

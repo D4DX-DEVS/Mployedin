@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 
 interface ApplicationJob {
@@ -305,16 +305,12 @@ function ApplicationCard({
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Reason <span className="text-destructive">*</span></label>
-              <Select value={withdrawReason} onValueChange={setWithdrawReason}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a reason…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {WITHDRAWAL_REASONS.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={WITHDRAWAL_REASONS}
+                value={withdrawReason}
+                onValueChange={setWithdrawReason}
+                placeholder="Select a reason\u2026"
+              />
             </div>
 
             <div className="space-y-1.5">

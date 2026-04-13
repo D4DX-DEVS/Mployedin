@@ -5,15 +5,14 @@ import Application from "@/models/Application";
 import { notify } from "@/lib/notifications/trigger";
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
+import { verifyCronRequest } from "@/lib/security/cron-auth";
 
 // Called by cron scheduler (e.g. Vercel Cron)
 // Expires all pending offers whose expiresAt has passed
 
 export async function GET(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = verifyCronRequest(req);
+  if (authError) return authError;
 
   await connectDB();
   const now = new Date();

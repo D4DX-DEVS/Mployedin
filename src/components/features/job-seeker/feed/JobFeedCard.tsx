@@ -51,6 +51,7 @@ interface JobCardProps {
   onApply: () => void;
   onHide: () => void;
   locale: string;
+  showMatchScore?: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -134,6 +135,7 @@ export const JobFeedCard = memo(function JobFeedCard({
   onApply,
   onHide,
   locale,
+  showMatchScore = true,
 }: JobCardProps) {
   const company = job.employerId?.companyName ?? "Company";
   const palette = logoPalette(company);
@@ -183,11 +185,13 @@ export const JobFeedCard = memo(function JobFeedCard({
 
             <div className="flex items-start gap-3 shrink-0">
               {/* Match score badge */}
-              <span
-                className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap ${matchColor(job.matchScore)}`}
-              >
-                {job.matchScore}% match
-              </span>
+              {showMatchScore && (
+                <span
+                  className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap ${matchColor(job.matchScore)}`}
+                >
+                  {job.matchScore}% match
+                </span>
+              )}
 
               {/* Company logo */}
               <div
