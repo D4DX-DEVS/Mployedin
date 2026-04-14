@@ -7,7 +7,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import Job from "@/models/Job";
 import { validateBody } from "@/lib/validators";
 import { applicationUpdateSchema } from "@/lib/validators/applications";
-import { notify, notifyStatusChange } from "@/lib/notifications/trigger";
+import { notify, notifyStatusChange, notifyInterviewSelected } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -21,6 +21,7 @@ interface WorkflowSettings {
 interface EmpLean {
   _id: unknown;
   userId?: unknown;
+  companyName?: string;
   workflow?: { settings?: WorkflowSettings };
 }
 
@@ -33,7 +34,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // Ownership check for employers — capture emp for automation rules below
   let emp = null as EmpLean | null;
   if (ctx.role === "employer") {
-    emp = (await Employer.findOne({ userId: ctx.userId }).select("_id userId workflow").lean()) as EmpLean | null;
+    emp = (await Employer.findOne({ userId: ctx.userId }).select("_id userId companyName workflow").lean()) as EmpLean | null;
     const job = application.jobId as unknown as { employerId: string };
     if (!emp || String(job.employerId) !== String(emp._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -127,12 +128,15 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     const JobSeeker = (await import("@/models/JobSeeker")).default;
     const seeker = await JobSeeker.findById(application.jobSeekerId).select("userId").lean() as { userId?: unknown } | null;
     if (seeker?.userId) {
-      await notifyStatusChange(
-        String(seeker.userId),
-        jobTitle,
-        effectiveStatus.replace(/_/g, " "),
-        String(application._id)
-      ).catch(() => { /* non-blocking */ });
+      const seekerUserId = String(seeker.userId);
+      const appId = String(application._id);
+
+      if (effectiveStatus === "interview_scheduled") {
+        const companyName = emp?.companyName ?? "the employer";
+        notifyInterviewSelected(seekerUserId, jobTitle, companyName, appId).catch(() => { /* non-blocking */ });
+      } else {
+        notifyStatusChange(seekerUserId, jobTitle, effectiveStatus.replace(/_/g, " "), appId).catch(() => { /* non-blocking */ });
+      }
     }
   }
 

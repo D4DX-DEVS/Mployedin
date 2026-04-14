@@ -54,7 +54,7 @@ async function fetchJobs(filters: JobsFilters): Promise<JobsResponse> {
   if (filters.status && filters.status !== "all") params.set("status", filters.status);
   if (filters.search) params.set("search", filters.search);
 
-  const res = await fetch(`/api/jobs?${params}`);
+  const res = await fetch(`/api/jobs?${params}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch jobs");
   return res.json();
 }
@@ -105,6 +105,54 @@ export function useCloneJob() {
   });
 }
 
+/** Save a job as a reusable template */
+export function useSaveAsTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (job: Job) => {
+      const location = typeof job.location === "string"
+        ? undefined
+        : job.location;
+      const body = {
+        name: job.title,
+        title: job.title,
+        description: job.description,
+        category: job.category,
+        requirements: job.requirements,
+        salary: job.salary,
+        location,
+        tags: job.tags,
+        vacancies: job.vacancies,
+        sourceJobId: job._id,
+      };
+      const res = await fetch("/api/employers/job-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Failed to save template");
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["job-templates"] });
+    },
+  });
+}
+
+/** Fetch all job templates for the authenticated employer */
+export function useJobTemplates() {
+  return useQuery({
+    queryKey: ["job-templates"],
+    queryFn: async () => {
+      const res = await fetch("/api/employers/job-templates");
+      if (!res.ok) throw new Error("Failed to fetch job templates");
+      const data = await res.json();
+      return (data.templates ?? []) as Array<{ _id: string; sourceJobId?: string }>;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 /** Delete a draft job */
 export function useDeleteJob() {
   const qc = useQueryClient();
@@ -113,7 +161,30 @@ export function useDeleteJob() {
       const res = await fetch(`/api/jobs/${jobId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete job");
     },
+    onMutate: async (jobId: string) => {
+      await qc.cancelQueries({ queryKey: jobKeys.lists() });
+      const previousData = qc.getQueriesData<JobsResponse>({ queryKey: jobKeys.lists() });
+      qc.setQueriesData<JobsResponse>({ queryKey: jobKeys.lists() }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          jobs: old.jobs.filter((j) => j._id !== jobId),
+          pagination: { ...old.pagination, total: old.pagination.total - 1 },
+        };
+      });
+      return { previousData };
+    },
     onSuccess: () => {
+      // optimistic update already removed the job — just sync details cache
+      qc.invalidateQueries({ queryKey: jobKeys.details() });
+    },
+    onError: (_err, _jobId, context) => {
+      // roll back optimistic update
+      if (context?.previousData) {
+        for (const [queryKey, data] of context.previousData) {
+          qc.setQueryData(queryKey, data);
+        }
+      }
       qc.invalidateQueries({ queryKey: jobKeys.lists() });
     },
   });

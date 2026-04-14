@@ -92,6 +92,7 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/contact",
   "/api/cron/",
   "/api/filters",
+  "/api/ai/", // AI routes use session auth + rate limiting; CSRF adds friction on streaming/audio
 ];
 
 /**

@@ -11,6 +11,7 @@ import type { UserRole } from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
 import { jobCreateSchema } from "@/lib/validators/jobs";
+import { autoAssignAgent } from "@/lib/agents/autoAssign";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -44,6 +45,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       }
       query.$or = conditions;
     }
+  } else if (myJobs && ctx.role === "employer") {
+    // Employer fetching their own jobs — scope to their employerId, no status filter
+    const empDoc = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (empDoc) query.employerId = empDoc._id;
   } else if (!myJobs) {
     query.status = "active";
     query.$or = [{ expiresAt: { $exists: false } }, { expiresAt: { $gte: new Date() } }];
@@ -102,6 +107,11 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     location,
     requirements,
     salary,
+    employmentType,
+    workMode,
+    responsibilities,
+    qualifications,
+    benefits,
     expiresAt,
     applicationMode,
     vacancies,
@@ -131,6 +141,14 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     // 8C.4: auto-assign from Employer.agentId if not manually specified
     else if (emp.agentId) {
       agentId = String(emp.agentId);
+    }
+    // 8D.1: smart auto-assign fallback — pick best available agent for this employer
+    else {
+      const assigned = await autoAssignAgent({
+        employerId,
+        jobCity: (location as { city?: string } | undefined)?.city,
+      });
+      if (assigned) agentId = assigned;
     }
   } else if (ctx.role === "agent") {
     const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
@@ -175,6 +193,11 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     location: location ?? { country: "", city: "", isRemote: false },
     requirements: requirements ?? { skills: [], experienceMin: 0, experienceMax: 99 },
     salary: salary ?? { min: 0, max: 0, currency: "USD", period: "monthly" },
+    employmentType,
+    workMode,
+    responsibilities: responsibilities ?? [],
+    qualifications: qualifications ?? [],
+    benefits: benefits ?? [],
     employerId,
     agentId,
     applicationMode: applicationMode ?? "manual",

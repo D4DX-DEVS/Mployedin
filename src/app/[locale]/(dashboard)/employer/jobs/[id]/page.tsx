@@ -4,13 +4,14 @@ import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   ArrowLeft, Edit2, Copy, CheckCircle, XCircle, Clock, MapPin,
-  Briefcase, DollarSign, Users, Eye, Calendar, Tag,
+  Briefcase, DollarSign, Users, Eye, Calendar, Tag, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useJobDetail, useUpdateJobStatus, useCloneJob } from "@/hooks/useJobs";
+import { useJobDetail, useUpdateJobStatus, useCloneJob, useDeleteJob } from "@/hooks/useJobs";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface Job {
   _id: string;
@@ -52,10 +53,25 @@ export default function JobDetailPage() {
   const { data: job, isLoading: loading } = useJobDetail(id);
   const updateStatusMutation = useUpdateJobStatus();
   const cloneMutation = useCloneJob();
+  const deleteMutation = useDeleteJob();
   const [cloning, setCloning] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
   async function updateStatus(status: string) {
     updateStatusMutation.mutate({ jobId: id, status });
+  }
+
+  async function handleDelete() {
+    const ok = await confirmDialog("Delete this draft job? This cannot be undone.");
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await deleteMutation.mutateAsync(id);
+      router.push(`/${locale}/employer/jobs`);
+    } catch {
+      setDeleting(false);
+    }
   }
 
   async function cloneJob() {
@@ -108,6 +124,7 @@ export default function JobDetailPage() {
 
   return (
     <div className="page-container">
+      {ConfirmDialogNode}
       {/* Back + Actions */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <Button variant="ghost" size="sm" className="gap-2 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => router.push(`/${locale}/employer/jobs`)}>
@@ -125,6 +142,12 @@ export default function JobDetailPage() {
           {can("jobs", "update") && job.status === "draft" && (
             <Button size="sm" className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateStatus("active")}>
               <CheckCircle className="w-3.5 h-3.5" /> Activate
+            </Button>
+          )}
+          {can("jobs", "delete") && job.status === "draft" && (
+            <Button size="sm" variant="outline" className="gap-1.5 h-9 border-destructive/20 text-destructive hover:bg-destructive/5"
+              onClick={() => { void handleDelete(); }} disabled={deleting}>
+              <Trash2 className="w-3.5 h-3.5" /> {deleting ? "Deleting…" : "Delete Draft"}
             </Button>
           )}
           {can("jobs", "update") && job.status === "active" && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Settings, X } from "lucide-react";
@@ -10,6 +10,11 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import type { JobFormValues } from "./jobFormSchema";
+
+interface AssignedAgent {
+  _id: string;
+  name: string;
+}
 
 export function AdvancedSettingsSection() {
   const [open, setOpen] = useState(false);
@@ -22,6 +27,16 @@ export function AdvancedSettingsSection() {
   const applicationMode = watch("applicationMode");
   const expiresAt = watch("expiresAt");
   const maxApplicants = watch("maxApplicants");
+  const agentId = watch("agentId");
+
+  const [agents, setAgents] = useState<AssignedAgent[]>([]);
+
+  useEffect(() => {
+    fetch("/api/employers/agents")
+      .then((r) => r.ok ? r.json() : { agents: [] })
+      .then((data: { agents?: AssignedAgent[] }) => setAgents(data.agents ?? []))
+      .catch(() => {});
+  }, []);
 
   const [tagInput, setTagInput] = useState("");
 
@@ -74,6 +89,11 @@ export function AdvancedSettingsSection() {
             {tags.length > 0 && (
               <Badge variant="secondary" className="text-[11px]">
                 {tags.length} tags
+              </Badge>
+            )}
+            {agentId && agents.length > 0 && (
+              <Badge variant="secondary" className="text-[11px]">
+                Agent: {agents.find((a) => a._id === agentId)?.name ?? "assigned"}
               </Badge>
             )}
           </div>
@@ -222,6 +242,25 @@ export function AdvancedSettingsSection() {
                   </p>
                 </div>
               </div>
+
+              {agents.length > 0 && (
+                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <Label className="text-sm font-medium">Assign Agent</Label>
+                  <SearchableSelect
+                    options={[
+                      { value: "", label: "No agent — self-manage" },
+                      ...agents.map((a) => ({ value: a._id, label: a.name })),
+                    ]}
+                    value={agentId ?? ""}
+                    onValueChange={(v) =>
+                      setValue("agentId", v === "" ? undefined : v, { shouldValidate: false })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Assigned agent will manage candidates for this job. Job will require approval before going live.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2 rounded-xl border border-border/70 bg-background p-4">
                 <Label className="text-sm font-medium">Tags</Label>

@@ -29,8 +29,20 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   let interviewRate = 0;
   let offerRate = 0;
 
+  interface JobMetricRow {
+    jobId: string;
+    title: string;
+    status: string;
+    applications: number;
+    interviews: number;
+    offers: number;
+    interviewRate: number;
+    offerRate: number;
+  }
+  let jobMetrics: JobMetricRow[] = [];
+
   if (agentId) {
-    const jobIds = await Job.find({
+    const jobDocs = await Job.find({
       $or: [
         { agentId },
         ...(agentDoc?.assignedEmployerIds?.length
@@ -38,35 +50,73 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           : []),
       ],
     })
-      .select("_id status")
+      .select("_id title status")
+      .sort({ createdAt: -1 })
+      .limit(20)
       .lean();
 
-    activeJobs = jobIds.filter((j) => j.status === "active").length;
+    activeJobs = jobDocs.filter((j) => j.status === "active").length;
 
-    const allJobIds = jobIds.map((j) => j._id);
+    const allJobIds = jobDocs.map((j) => j._id);
     if (allJobIds.length > 0) {
-      const statusCounts = await Application.aggregate([
+      const perJobCounts = await Application.aggregate([
         { $match: { jobId: { $in: allJobIds } } },
-        { $group: { _id: "$status", count: { $sum: 1 } } },
+        {
+          $group: {
+            _id: { jobId: "$jobId", status: "$status" },
+            count: { $sum: 1 },
+          },
+        },
       ]);
 
-      const countMap: Record<string, number> = {};
-      statusCounts.forEach((s: { _id: string; count: number }) => {
-        countMap[s._id] = s.count;
+      // Build per-job map
+      const jobMap = new Map<string, Record<string, number>>();
+      perJobCounts.forEach((r: { _id: { jobId: unknown; status: string }; count: number }) => {
+        const jid = String(r._id.jobId);
+        if (!jobMap.has(jid)) jobMap.set(jid, {});
+        jobMap.get(jid)![r._id.status] = r.count;
       });
 
-      totalApps =
-        Object.values(countMap).reduce((a: number, b: number) => a + b, 0);
-      const interviews =
-        (countMap["interview_scheduled"] ?? 0) +
-        (countMap["selected"] ?? 0) +
-        (countMap["offer"] ?? 0) +
-        (countMap["hired"] ?? 0);
-      const offers =
-        (countMap["offer"] ?? 0) + (countMap["hired"] ?? 0);
+      // Aggregate totals
+      let totalInterviews = 0;
+      let totalOffers = 0;
+      jobMap.forEach((counts) => {
+        totalApps += Object.values(counts).reduce((a, b) => a + b, 0);
+        totalInterviews +=
+          (counts["interview_scheduled"] ?? 0) +
+          (counts["selected"] ?? 0) +
+          (counts["offer"] ?? 0) +
+          (counts["hired"] ?? 0);
+        totalOffers += (counts["offer"] ?? 0) + (counts["hired"] ?? 0);
+      });
 
-      interviewRate = totalApps > 0 ? Math.round((interviews / totalApps) * 100) : 0;
-      offerRate = totalApps > 0 ? Math.round((offers / totalApps) * 100) : 0;
+      interviewRate = totalApps > 0 ? Math.round((totalInterviews / totalApps) * 100) : 0;
+      offerRate = totalApps > 0 ? Math.round((totalOffers / totalApps) * 100) : 0;
+
+      // Build per-job metrics rows (top 10 by application count)
+      jobMetrics = jobDocs
+        .map((j) => {
+          const counts = jobMap.get(String(j._id)) ?? {};
+          const apps = Object.values(counts).reduce((a, b) => a + b, 0);
+          const intvs =
+            (counts["interview_scheduled"] ?? 0) +
+            (counts["selected"] ?? 0) +
+            (counts["offer"] ?? 0) +
+            (counts["hired"] ?? 0);
+          const offs = (counts["offer"] ?? 0) + (counts["hired"] ?? 0);
+          return {
+            jobId: String(j._id),
+            title: j.title as string,
+            status: j.status as string,
+            applications: apps,
+            interviews: intvs,
+            offers: offs,
+            interviewRate: apps > 0 ? Math.round((intvs / apps) * 100) : 0,
+            offerRate: apps > 0 ? Math.round((offs / apps) * 100) : 0,
+          };
+        })
+        .sort((a, b) => b.applications - a.applications)
+        .slice(0, 10);
     }
   }
 
@@ -124,6 +174,55 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           ))}
         </div>
       </div>
+
+      {/* Per-Job Metrics */}
+      {jobMetrics.length > 0 && (
+        <div className="card-base">
+          <h2 className="text-sm font-semibold mb-4">Job Performance</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 text-left">
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Job Title</th>
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground">Status</th>
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground text-right">Apps</th>
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground text-right">Interviews</th>
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground text-right">Offers</th>
+                  <th className="pb-2 pr-4 font-medium text-muted-foreground text-right">Int. Rate</th>
+                  <th className="pb-2 font-medium text-muted-foreground text-right">Offer Rate</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/30">
+                {jobMetrics.map((row) => (
+                  <tr key={row.jobId} className="hover:bg-muted/20 transition-colors">
+                    <td className="py-2.5 pr-4 font-medium truncate max-w-[200px]">
+                      <Link href={`/${locale}/agent/jobs/${row.jobId}`} className="hover:text-primary transition-colors">
+                        {row.title}
+                      </Link>
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        row.status === "active"
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          : row.status === "draft"
+                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                            : "bg-muted text-muted-foreground"
+                      }`}>
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 pr-4 text-right tabular-nums">{row.applications}</td>
+                    <td className="py-2.5 pr-4 text-right tabular-nums">{row.interviews}</td>
+                    <td className="py-2.5 pr-4 text-right tabular-nums">{row.offers}</td>
+                    <td className="py-2.5 pr-4 text-right tabular-nums text-blue-600 dark:text-blue-400">{row.interviewRate}%</td>
+                    <td className="py-2.5 text-right tabular-nums text-green-600 dark:text-green-400">{row.offerRate}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="card-base">

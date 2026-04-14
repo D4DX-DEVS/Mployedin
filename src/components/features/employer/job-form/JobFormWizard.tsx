@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence } from "framer-motion";
 import { Copy, Sparkles, FileText, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/PageHeader";
 
 import { jobFormSchema, JOB_FORM_STEPS, type JobFormValues } from "./jobFormSchema";
@@ -71,8 +72,15 @@ const DEFAULT_JOB_FORM_VALUES: JobFormValues = {
   category: "",
   location: { country: "", city: "", isRemote: false },
   description: "",
-  requirements: { skills: [], experienceMin: 0, experienceMax: 10 },
+  requirements: { skills: [], preferredSkills: [], experienceMin: 0, experienceMax: 10 },
   salary: { min: 0, max: 0, currency: "USD", isNegotiable: false, period: "monthly" },
+  employmentType: undefined,
+  workMode: undefined,
+  duration: undefined,
+  responsibilities: [],
+  qualifications: [],
+  benefits: [],
+  learningOutcomes: [],
   applicationMode: "manual",
   autoScreeningEnabled: false,
   minMatchScore: 70,
@@ -97,12 +105,17 @@ function mergeJobFormValues(base: JobFormValues, incoming: Partial<JobFormValues
       ...base.requirements,
       ...incoming.requirements,
       skills: incoming.requirements?.skills ?? base.requirements.skills,
+      preferredSkills: incoming.requirements?.preferredSkills ?? base.requirements.preferredSkills,
     },
     salary: {
       ...base.salary,
       ...incoming.salary,
     },
     tags: incoming.tags ?? base.tags,
+    responsibilities: incoming.responsibilities ?? base.responsibilities,
+    qualifications: incoming.qualifications ?? base.qualifications,
+    benefits: incoming.benefits ?? base.benefits,
+    learningOutcomes: incoming.learningOutcomes ?? base.learningOutcomes,
   };
 }
 
@@ -121,7 +134,6 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templateLoadError, setTemplateLoadError] = useState("");
   const templateTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const templateCloseRef = useRef<HTMLButtonElement | null>(null);
 
   const methods = useForm<JobFormValues>({
     resolver: zodResolver(jobFormSchema) as Resolver<JobFormValues>,
@@ -134,8 +146,14 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
 
   const { draftId, savedIndicator, saveDraft, loadDraft } = useJobFormDraft(locale);
 
+  // Track whether AI prefill has been applied to prevent localStorage draft from overwriting it
+  const aiPrefillApplied = useRef(false);
+
   // Restore draft from localStorage on mount
   useEffect(() => {
+    // If AI prefill was already applied, skip any further resets from this effect
+    if (aiPrefillApplied.current) return;
+
     if (useAiPrefill && typeof window !== "undefined") {
       const rawPrefill = sessionStorage.getItem(AI_PREFILL_STORAGE_KEY);
       if (rawPrefill) {
@@ -143,6 +161,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
           const parsed = JSON.parse(rawPrefill) as Partial<JobFormValues>;
           reset(mergeJobFormValues(DEFAULT_JOB_FORM_VALUES, parsed));
           sessionStorage.removeItem(AI_PREFILL_STORAGE_KEY);
+          aiPrefillApplied.current = true;
           return;
         } catch {
           sessionStorage.removeItem(AI_PREFILL_STORAGE_KEY);
@@ -187,7 +206,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
       setCompletedSteps((prev) => new Set([...prev, currentStep]));
     }
     setCurrentStep(step);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleNext() {
@@ -196,7 +215,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
 
   function handlePrev() {
     setCurrentStep((s) => Math.max(1, s - 1));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   // ─── Draft Save ───────────────────────────────────────────────────────────────
@@ -303,32 +322,12 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
 
   const closeTemplateModal = useCallback(() => {
     setShowTemplateModal(false);
-    templateTriggerRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    if (!showTemplateModal) return;
-
-    templateCloseRef.current?.focus();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        closeTemplateModal();
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [closeTemplateModal, showTemplateModal]);
-
   return (
-    <>
-    <div className="page-container gap-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:gap-5 sm:pb-24">
+    <div className="flex h-full flex-col">
+    <div className="flex-1 overflow-y-auto">
+    <div className="page-container gap-4 sm:gap-5">
       <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 p-4 shadow-sm">
         <PageHeader
           title="Post a New Job"
@@ -373,60 +372,52 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
         </div>
       </section>
 
-      {/* Template Modal */}
-      {showTemplateModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              closeTemplateModal();
-            }
+      <Dialog open={showTemplateModal} onOpenChange={setShowTemplateModal}>
+        <DialogContent
+          hideClose
+          className="w-[calc(100vw-2rem)] max-w-lg overflow-hidden rounded-3xl border-white/20 p-0"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            templateTriggerRef.current?.focus();
           }}
         >
-          <div
-            className="w-full max-w-lg overflow-hidden rounded-3xl border border-white/20 bg-background shadow-2xl"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="template-modal-title"
-            aria-describedby="template-modal-description"
-          >
-            <div className="border-b border-border/70 bg-gradient-to-br from-background via-background to-primary/10 px-5 py-5 sm:px-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/85 px-3 py-1 text-xs font-medium text-muted-foreground">
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
-                    Reuse proven job formats
-                  </div>
-                  <div>
-                    <h2 id="template-modal-title" className="text-lg font-semibold text-foreground">Select a Template</h2>
-                    <p id="template-modal-description" className="mt-1 text-sm text-muted-foreground">
-                      Start from a previous hiring format, then adjust only what changed.
-                    </p>
-                  </div>
+          <div className="border-b border-border/70 bg-gradient-to-br from-background via-background to-primary/10 px-5 py-5 sm:px-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/85 px-3 py-1 text-xs font-medium text-muted-foreground">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  Reuse proven job formats
                 </div>
-                <div className="flex items-start gap-2">
-                  {!loadingTemplates && templates.length > 0 && (
-                    <div className="rounded-2xl border border-border/70 bg-background/85 px-3 py-2 text-right">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Available</p>
-                      <p className="text-lg font-semibold text-foreground">{templates.length}</p>
-                    </div>
-                  )}
+                <div>
+                  <DialogTitle className="text-lg font-semibold text-foreground">Select a Template</DialogTitle>
+                  <DialogDescription className="mt-1 text-sm text-muted-foreground">
+                    Start from a previous hiring format, then adjust only what changed.
+                  </DialogDescription>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                {!loadingTemplates && templates.length > 0 && (
+                  <div className="rounded-2xl border border-border/70 bg-background/85 px-3 py-2 text-right">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Available</p>
+                    <p className="text-lg font-semibold text-foreground">{templates.length}</p>
+                  </div>
+                )}
+                <DialogClose asChild>
                   <Button
-                    ref={templateCloseRef}
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="h-9 w-9 rounded-full p-0"
-                    onClick={closeTemplateModal}
                     aria-label="Close template modal"
                   >
                     <X className="h-4 w-4" />
                   </Button>
-                </div>
+                </DialogClose>
               </div>
             </div>
+          </div>
 
-            <div className="space-y-4 px-5 py-5 sm:px-6">
+          <div className="space-y-4 px-5 py-5 sm:px-6">
             {loadingTemplates ? (
               <div className="space-y-3 py-1">
                 {[1, 2, 3].map((item) => (
@@ -461,7 +452,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
                 </p>
               </div>
             ) : (
-              <div className="max-h-[26rem] space-y-3 overflow-y-auto pr-1">
+              <div className="max-h-[min(26rem,calc(100dvh-14rem))] space-y-3 overflow-y-auto pr-1">
                 {templates.map((tpl) => (
                   <button
                     key={tpl._id}
@@ -503,20 +494,20 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
               </div>
             )}
 
-              <div className="flex flex-col-reverse gap-2 border-t border-border/70 pt-4 sm:flex-row sm:justify-end">
+            <div className="flex flex-col-reverse gap-2 border-t border-border/70 pt-4 sm:flex-row sm:justify-end">
+              <DialogClose asChild>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={closeTemplateModal}
                   className="w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
-              </div>
+              </DialogClose>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <FormProvider {...methods}>
         <form onSubmit={onSubmit} noValidate>
@@ -571,6 +562,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
       </FormProvider>
 
     </div>
+    </div>
 
       {/* Sticky action bar */}
       <StickyActionBar
@@ -586,6 +578,6 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
         isLastStep={isLastStep}
         canSubmit={!submitting}
       />
-    </>
+    </div>
   );
 }

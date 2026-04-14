@@ -32,15 +32,25 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
   } = useFormContext<JobFormValues>();
 
   const rawSkills = watch("requirements.skills") ?? [];
+  const rawPreferredSkills = watch("requirements.preferredSkills") ?? [];
   const expMin = watch("requirements.experienceMin");
   const expMax = watch("requirements.experienceMax");
 
   // Bridge between string[] (form) and Skill[] (SkillsChips)
   const skillObjects: Skill[] = rawSkills.map((name) => ({ name }));
+  const preferredSkillObjects: Skill[] = rawPreferredSkills.map((name) => ({ name }));
 
   function handleSkillsChange(skills: Skill[]) {
     setValue(
       "requirements.skills",
+      skills.map((s) => s.name),
+      { shouldValidate: true }
+    );
+  }
+
+  function handlePreferredSkillsChange(skills: Skill[]) {
+    setValue(
+      "requirements.preferredSkills",
       skills.map((s) => s.name),
       { shouldValidate: true }
     );
@@ -139,6 +149,33 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
           {rawSkills.length >= 30 && (
             <p className="text-xs text-muted-foreground">Maximum 30 skills reached.</p>
           )}
+        </div>
+
+        {/* Preferred / Nice-to-have Skills */}
+        <div className="space-y-3 rounded-2xl border border-dashed border-border/70 bg-background/60 p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Preferred Skills <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Nice-to-have skills that give candidates an edge but are not mandatory.
+              </p>
+            </div>
+            <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
+              {rawPreferredSkills.length}/30
+            </Badge>
+          </div>
+
+          <SkillsChips
+            label=""
+            value={preferredSkillObjects}
+            onChange={handlePreferredSkillsChange}
+            maxSkills={30}
+            showLevels={false}
+            enableAISuggest={false}
+            placeholder="e.g. Kotlin, CI/CD, App Store publishing"
+          />
         </div>
 
         <div className="space-y-3 rounded-2xl border border-border bg-background p-4 shadow-sm">

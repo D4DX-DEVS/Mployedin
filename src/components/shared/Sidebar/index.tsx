@@ -10,6 +10,20 @@ import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
 import { Menu, X } from "lucide-react";
 
+function usePendingApprovalCount(role: string | undefined) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (role !== "super_agent") return;
+    let cancelled = false;
+    fetch("/api/super-agent/approvals/count")
+      .then((r) => r.ok ? r.json() : { count: 0 })
+      .then((d: { count?: number }) => { if (!cancelled) setCount(d.count ?? 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [role]);
+  return count;
+}
+
 
 interface SidebarProps {
   navGroups: NavGroup[];
@@ -22,6 +36,8 @@ interface SidebarProps {
 export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, companyLogo }: SidebarProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const userRole = (session?.user as { role?: string } | undefined)?.role;
+  const pendingApprovals = usePendingApprovalCount(userRole);
   const isRtl = locale === "ar";
   const userImage = session?.user?.image;
   const displayImage = companyLogo ?? userImage;
@@ -198,6 +214,11 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, 
                       isChildActive ? "text-primary" : "text-muted-foreground group-hover:text-brand-blue"
                     )} />
                     <span className="truncate">{locale === "ar" ? child.titleAr : child.title}</span>
+                    {child.title === "Approvals" && pendingApprovals > 0 && (
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                        {pendingApprovals > 99 ? "99+" : pendingApprovals}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

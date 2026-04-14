@@ -3,6 +3,7 @@ import { commonSchemas } from "./index";
 
 export const jobTemplateCreateSchema = z.object({
   name: z.string().min(1).max(100).trim(),
+  sourceJobId: z.string().optional(),
   title: z.string().max(200).trim().optional(),
   description: z.string().max(5000).trim().optional(),
   category: z.string().max(100).optional(),

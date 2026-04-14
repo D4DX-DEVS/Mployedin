@@ -96,7 +96,7 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const hardDeleted = job.status === "draft";
+  const hardDeleted = ["draft", "closed", "expired"].includes(job.status);
 
   if (hardDeleted) {
     await job.deleteOne();

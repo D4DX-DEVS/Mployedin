@@ -40,6 +40,20 @@ export const SALARY_PERIODS = [
   { value: "lpa", label: "LPA (India)" },
 ] as const;
 
+export const EMPLOYMENT_TYPES = [
+  { value: "full_time", label: "Full-time" },
+  { value: "part_time", label: "Part-time" },
+  { value: "contract", label: "Contract" },
+  { value: "internship", label: "Internship" },
+  { value: "freelance", label: "Freelance" },
+] as const;
+
+export const WORK_MODES = [
+  { value: "onsite", label: "On-site" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "remote", label: "Remote" },
+] as const;
+
 /** Map country name to default currency code */
 export const COUNTRY_CURRENCY_MAP: Record<string, CurrencyCode> = {
   "United Arab Emirates": "AED",
@@ -126,9 +140,19 @@ export const jobFormSchema = z.object({
   // Step 3 — Requirements
   requirements: z.object({
     skills: z.array(z.string().max(100)).max(50).default([]),
+    preferredSkills: z.array(z.string().max(100)).max(30).default([]),
     experienceMin: z.number().int().min(0).max(50).default(0),
     experienceMax: z.number().int().min(0).max(50).default(10),
   }),
+
+  // New optional fields
+  employmentType: z.enum(["full_time", "part_time", "contract", "internship", "freelance"]).optional(),
+  workMode: z.enum(["onsite", "hybrid", "remote"]).optional(),
+  duration: z.string().max(100).optional(),
+  responsibilities: z.array(z.string().max(500)).max(20).default([]),
+  qualifications: z.array(z.string().max(500)).max(20).default([]),
+  benefits: z.array(z.string().max(500)).max(20).default([]),
+  learningOutcomes: z.array(z.string().max(500)).max(20).default([]),
 
   // Step 4 — Salary & Settings
   salary: z

@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { motion } from "framer-motion";
-import { Sparkles, Loader2, AlertCircle } from "lucide-react";
+import { Sparkles, Loader2, AlertCircle, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { JobFormValues } from "./jobFormSchema";
@@ -43,6 +44,96 @@ const DESCRIPTION_SECTIONS = [
     content: "## Benefits\n- Mention standout perks, flexibility, or growth opportunities."
   },
 ] as const;
+
+/** Reusable list-input for structured optional fields (responsibilities, qualifications, benefits) */
+function ListField({
+  label,
+  hint,
+  fieldName,
+  placeholder,
+  maxItems,
+}: {
+  label: string;
+  hint: string;
+  fieldName: "responsibilities" | "qualifications" | "benefits" | "learningOutcomes";
+  placeholder: string;
+  maxItems: number;
+}) {
+  const { watch, setValue } = useFormContext<JobFormValues>();
+  const [inputValue, setInputValue] = useState("");
+  const items = watch(fieldName) ?? [];
+
+  function addItem() {
+    const trimmed = inputValue.trim();
+    if (!trimmed || items.includes(trimmed) || items.length >= maxItems) return;
+    setValue(fieldName, [...items, trimmed], { shouldValidate: true });
+    setInputValue("");
+  }
+
+  function removeItem(index: number) {
+    setValue(
+      fieldName,
+      items.filter((_, i) => i !== index),
+      { shouldValidate: true }
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-dashed border-border/70 bg-background/60 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">
+            {label} <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+          </p>
+          <p className="text-xs text-muted-foreground">{hint}</p>
+        </div>
+        {items.length > 0 && (
+          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
+            {items.length}/{maxItems}
+          </Badge>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Input
+          placeholder={placeholder}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addItem();
+            }
+          }}
+          className="flex-1 text-sm"
+          maxLength={500}
+        />
+        <Button type="button" size="sm" variant="outline" onClick={addItem} className="px-3 shrink-0">
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+      {items.length > 0 && (
+        <ul className="space-y-1.5">
+          {items.map((item, i) => (
+            <li
+              key={i}
+              className="flex items-start gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-sm"
+            >
+              <span className="mt-0.5 text-xs text-muted-foreground">{i + 1}.</span>
+              <span className="flex-1 text-foreground/90">{item}</span>
+              <button
+                type="button"
+                onClick={() => removeItem(i)}
+                className="mt-0.5 shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export function Step2JobDetails() {
   const {
@@ -297,6 +388,36 @@ export function Step2JobDetails() {
           {aiError}
         </motion.p>
       )}
+
+      {/* Structured optional fields */}
+      <ListField
+        label="Key Responsibilities"
+        hint="List what this person will do day-to-day."
+        fieldName="responsibilities"
+        placeholder="e.g. Develop and maintain cross-platform mobile apps"
+        maxItems={20}
+      />
+      <ListField
+        label="Qualifications"
+        hint="Academic or professional qualifications for this role."
+        fieldName="qualifications"
+        placeholder="e.g. Bachelor's degree in Computer Science"
+        maxItems={20}
+      />
+      <ListField
+        label="Benefits"
+        hint="Perks and benefits that make this role attractive."
+        fieldName="benefits"
+        placeholder="e.g. Flexible working hours"
+        maxItems={20}
+      />
+      <ListField
+        label="What You Will Learn"
+        hint="Skills or experience candidates will gain in this role."
+        fieldName="learningOutcomes"
+        placeholder="e.g. Real-world software testing workflows"
+        maxItems={20}
+      />
     </motion.div>
   );
 }

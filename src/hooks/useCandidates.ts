@@ -52,6 +52,7 @@ export interface CandidatesFilters {
   page: number;
   limit: number;
   search?: string;
+  jobId?: string;
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────
@@ -66,6 +67,59 @@ export const candidateKeys = {
 
 // ── Fetchers ───────────────────────────────────────────────────────
 async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates: Candidate[]; total: number }> {
+  // When a job is selected, fetch applicants for that job from applications API
+  if (filters.jobId) {
+    const params = new URLSearchParams();
+    params.set("page", String(filters.page));
+    params.set("limit", String(filters.limit));
+    params.set("jobId", filters.jobId);
+    if (filters.search) params.set("search", filters.search);
+
+    const res = await fetch(`/api/applications?${params}`);
+    if (!res.ok) throw new Error("Failed to fetch candidates for job");
+    const data = await res.json() as {
+      applications?: Array<{
+        jobSeekerId?: {
+          _id?: unknown;
+          userId?: { _id: string; name: string; email: string };
+          skills?: string[];
+          currentLocation?: string;
+          totalExperienceYears?: number;
+          experience?: { jobTitle: string; company: string; isCurrent: boolean }[];
+          availabilityStatus?: string;
+          profileCompleteness?: number;
+          cv?: { originalUrl?: string };
+        };
+        aiMatchScore?: number;
+        matchBreakdown?: { skills: number; experience: number; location: number; language: number };
+        strengths?: string[];
+        gaps?: string[];
+      }>;
+      pagination?: { total?: number };
+    };
+
+    const candidates: Candidate[] = (data.applications ?? [])
+      .filter((app) => app.jobSeekerId?._id)
+      .map((app) => ({
+        _id: String(app.jobSeekerId!._id),
+        userId: app.jobSeekerId!.userId,
+        skills: app.jobSeekerId!.skills,
+        currentLocation: app.jobSeekerId!.currentLocation,
+        totalExperienceYears: app.jobSeekerId!.totalExperienceYears,
+        experience: app.jobSeekerId!.experience,
+        availabilityStatus: app.jobSeekerId!.availabilityStatus,
+        profileCompleteness: app.jobSeekerId!.profileCompleteness,
+        cv: app.jobSeekerId!.cv,
+        matchScore: app.aiMatchScore,
+        matchBreakdown: app.matchBreakdown,
+        strengths: app.strengths,
+        gaps: app.gaps,
+      }));
+
+    return { candidates, total: data.pagination?.total ?? candidates.length };
+  }
+
+  // No job selected — browse all job seekers
   const params = new URLSearchParams();
   params.set("page", String(filters.page));
   params.set("limit", String(filters.limit));
@@ -79,8 +133,9 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
 }
 
 async function fetchPublishedJobs(): Promise<CandidateJob[]> {
-  const res = await fetch("/api/jobs?limit=50&status=published");
-  if (!res.ok) throw new Error("Failed to fetch published jobs");
+  // myJobs=true scopes to this employer's own jobs across all statuses
+  const res = await fetch("/api/jobs?myJobs=true&limit=100");
+  if (!res.ok) throw new Error("Failed to fetch jobs");
   const data: PublishedJobsResponse = await res.json();
   return data.jobs ?? [];
 }

@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Google Cloud Speech-to-Text REST API
-// Docs: https://cloud.google.com/speech-to-text/docs/reference/rest/v1/speech/recognize
+// Google Cloud Speech-to-Text REST API (used for manual language selection)
 const SPEECH_API_URL =
   "https://speech.googleapis.com/v1/speech:recognize";
 
+// Gemini direct — used for auto-detect mode (multilingual audio understanding)
+const geminiAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+
 const SUPPORTED_LANGUAGES: Record<string, string> = {
-  auto: "en-US",       // Auto-detect: use en-US as primary + all as alternatives
+  auto: "auto",
   en: "en-US",
   ar: "ar-SA",
   ml: "ml-IN",         // Malayalam
@@ -25,8 +28,12 @@ const SUPPORTED_LANGUAGES: Record<string, string> = {
   "te-IN": "te-IN",
 };
 
-// All supported language codes for auto-detection
-const ALL_LANGUAGE_CODES = ["en-US", "ar-SA", "ml-IN", "hi-IN", "ta-IN", "te-IN", "ur-PK"];
+// Google enhanced models only exist for these language codes (v1 Speech API).
+// For all other languages, useEnhanced silently falls back and can degrade accuracy.
+const ENHANCED_SUPPORTED = new Set(["en-US", "hi-IN"]);
+
+// All supported language codes (used for auto-detect alternatives)
+const ALL_LANGUAGE_CODES = ["ml-IN", "en-US", "ar-SA", "hi-IN", "ta-IN", "te-IN", "ur-PK"];
 
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -57,14 +64,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GOOGLE_CLOUD_SPEECH_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Speech service not configured" },
-        { status: 503 }
-      );
-    }
-
     // Read audio from form data
     const formData = await req.formData();
     const audioFile = formData.get("audio") as File | null;
@@ -83,10 +82,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Reject blobs that are obviously too small to contain real speech.
-    // A valid WEBM_OPUS frame for even 0.5 s of audio is >2 KB; anything smaller
-    // is almost certainly a silent/empty recording triggered by a quick tap.
-    const MIN_AUDIO_BYTES = 2000; // ~2 KB
+    // Reject blobs that are obviously empty (just container headers, no audio frames).
+    const MIN_AUDIO_BYTES = 500;
     if (audioFile.size < MIN_AUDIO_BYTES) {
       return NextResponse.json(
         { error: "No voice detected. Please hold the mic button and speak clearly." },
@@ -96,6 +93,99 @@ export async function POST(req: NextRequest) {
 
     const audioBuffer = await audioFile.arrayBuffer();
     const audioBase64 = Buffer.from(audioBuffer).toString("base64");
+
+    // ─── AUTO-DETECT MODE: Use Gemini for multilingual audio transcription ───
+    if (isAutoDetect) {
+      const geminiKey = process.env.GEMINI_API_KEY;
+      if (!geminiKey) {
+        return NextResponse.json(
+          { error: "Speech service not configured" },
+          { status: 503 }
+        );
+      }
+
+      try {
+        const mimeType = audioFile.type || "audio/webm";
+        // Gemini supports audio/wav, audio/mp3, audio/aac, audio/ogg, audio/flac
+        // For webm, we pass as-is — Gemini handles it via media processing
+        const geminiMime = mimeType.includes("webm")
+          ? "audio/webm"
+          : mimeType.includes("ogg")
+            ? "audio/ogg"
+            : mimeType.includes("mp4") || mimeType.includes("m4a")
+              ? "audio/mp4"
+              : mimeType;
+
+        const model = geminiAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const result = await model.generateContent([
+          {
+            inlineData: {
+              mimeType: geminiMime,
+              data: audioBase64,
+            },
+          },
+          {
+            text: `Transcribe this audio exactly as spoken. The speaker may use Malayalam, English, Hindi, Arabic, Tamil, Telugu, Urdu, or any mix of these languages.
+
+Rules:
+- Output ONLY the transcription, nothing else
+- Keep the original language as spoken (do NOT translate)
+- If the speaker mixes languages (e.g. Malayalam with English words), keep the mix exactly as spoken
+- If you cannot understand the audio, respond with exactly: [EMPTY]
+- Do not add timestamps, labels, or any formatting
+- First line: the detected primary language code (e.g. ml, en, hi, ar, ta, te, ur)
+- Second line: the transcription`,
+          },
+        ]);
+
+        const responseText = result.response.text().trim();
+
+        if (!responseText || responseText === "[EMPTY]") {
+          return NextResponse.json(
+            { transcript: "", language: "auto" },
+            { headers: { "X-RateLimit-Remaining": String(remaining) } }
+          );
+        }
+
+        // Parse: first line = language code, rest = transcript
+        const lines = responseText.split("\n");
+        let detectedLang = "auto";
+        let transcript = responseText;
+
+        if (lines.length >= 2) {
+          const firstLine = lines[0].trim().toLowerCase();
+          // Check if first line looks like a language code
+          if (/^(ml|en|hi|ar|ta|te|ur)(-[a-z]{2})?$/i.test(firstLine)) {
+            detectedLang = firstLine.replace(/-.*/, ""); // normalize ml-IN → ml
+            transcript = lines.slice(1).join("\n").trim();
+          }
+        }
+
+        // Map short code to BCP-47 for the response
+        const langMap: Record<string, string> = {
+          ml: "ml-IN", en: "en-US", hi: "hi-IN", ar: "ar-SA",
+          ta: "ta-IN", te: "te-IN", ur: "ur-PK",
+        };
+
+        return NextResponse.json(
+          { transcript, language: langMap[detectedLang] ?? "auto" },
+          { headers: { "X-RateLimit-Remaining": String(remaining) } }
+        );
+      } catch (geminiErr) {
+        console.error("[Gemini Speech Error]", geminiErr);
+        // Fall through to Google Speech API as fallback
+      }
+    }
+
+    // ─── MANUAL MODE (or Gemini fallback): Google Cloud Speech-to-Text ───
+    const apiKey = process.env.GOOGLE_CLOUD_SPEECH_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Speech service not configured" },
+        { status: 503 }
+      );
+    }
 
     // Determine encoding from MIME type
     const mimeType = audioFile.type || "audio/webm";
@@ -107,30 +197,28 @@ export async function POST(req: NextRequest) {
           ? "MP4"
           : "LINEAR16";
 
-    // Auto-detect MUST use "default" model — it's the only model that honours
-    // alternativeLanguageCodes. "latest_long"/"latest_short" silently ignore them.
-    // Indian languages use "latest_long" for better regional accuracy on single-language input.
-    const isIndianLanguage = ["ml-IN", "hi-IN", "ta-IN", "te-IN", "ur-PK"].includes(languageCode);
+    // If auto-detect fell through (Gemini failed), use en-US as fallback for Google Speech
+    const speechLangCode = languageCode === "auto" ? "en-US" : languageCode;
+    const isIndianLanguage = ["ml-IN", "hi-IN", "ta-IN", "te-IN", "ur-PK"].includes(speechLangCode);
     const model = isAutoDetect ? "default" : isIndianLanguage ? "latest_long" : "latest_short";
+
+    const useEnhanced = ENHANCED_SUPPORTED.has(speechLangCode);
 
     const requestBody = {
       config: {
         encoding,
         sampleRateHertz: encoding === "WEBM_OPUS" || encoding === "OGG_OPUS" ? undefined : 16000,
-        languageCode,
-        // Auto-detect: include all supported languages as alternatives (max 3)
-        // Indian language: include English for code-mixing
-        // English: include common South Asian languages
+        languageCode: speechLangCode,
         alternativeLanguageCodes: isAutoDetect
-          ? ALL_LANGUAGE_CODES.filter((l) => l !== languageCode).slice(0, 3)
+          ? ALL_LANGUAGE_CODES.filter((l) => l !== speechLangCode).slice(0, 3)
           : isIndianLanguage
             ? ["en-US"]
             : (["ar-SA", "ml-IN", "hi-IN"] as string[])
-                .filter((l) => l !== languageCode)
+                .filter((l) => l !== speechLangCode)
                 .slice(0, 3),
         enableAutomaticPunctuation: true,
         model,
-        useEnhanced: true,
+        ...(useEnhanced ? { useEnhanced: true } : {}),
         // Boost recruitment & tech vocabulary recognition accuracy
         speechContexts: [
           {
@@ -189,7 +277,7 @@ export async function POST(req: NextRequest) {
         .trim() ?? "";
 
     return NextResponse.json(
-      { transcript, language: languageCode },
+      { transcript, language: speechLangCode },
       {
         headers: {
           "X-RateLimit-Remaining": String(remaining),

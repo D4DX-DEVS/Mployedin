@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { JOB_CATEGORIES, COUNTRIES, type JobFormValues } from "./jobFormSchema";
+import { JOB_CATEGORIES, COUNTRIES, EMPLOYMENT_TYPES, WORK_MODES, type JobFormValues } from "./jobFormSchema";
 
 interface Suggestions {
   titles: string[];
@@ -32,7 +32,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
   } = useFormContext<JobFormValues>();
 
   const title = watch("title");
-  const isRemote = watch("location.isRemote");
+  const workMode = watch("workMode");
   const category = watch("category");
 
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
@@ -239,6 +239,33 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
         </div>
       </div>
 
+      {/* Employment Type */}
+      <div className="space-y-1.5">
+        <Label className="text-sm font-medium">Employment Type <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
+        <SearchableSelect
+          options={EMPLOYMENT_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+          value={watch("employmentType") ?? ""}
+          onValueChange={(v) => setValue("employmentType", v as JobFormValues["employmentType"], { shouldValidate: true })}
+          placeholder="Select employment type"
+        />
+        <p className="text-xs text-muted-foreground">
+          Full-time, part-time, contract, etc. Helps candidates filter by work arrangement.
+        </p>
+      </div>
+
+      {/* Duration (for internships/contracts) */}
+      <div className="space-y-1.5">
+        <Label className="text-sm font-medium">Duration <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
+        <Input
+          {...register("duration")}
+          placeholder="e.g. 3-6 Months, 1 Year"
+          maxLength={100}
+        />
+        <p className="text-xs text-muted-foreground">
+          Useful for internships or contract roles. Leave blank for permanent positions.
+        </p>
+      </div>
+
       {/* Location */}
       <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -248,27 +275,32 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               Location
             </Label>
             <p className="text-xs text-muted-foreground">
-              Add the base location first, then decide whether the role can be done remotely.
+              Add the base location and select the work arrangement.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-background px-3 py-2.5">
-            <Wifi className="w-4 h-4 text-muted-foreground" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Remote work available</p>
-              <p className="text-xs text-muted-foreground">Show this role to remote-ready applicants</p>
+          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background px-3 py-2">
+            <Wifi className="w-4 h-4 text-muted-foreground shrink-0" />
+            <div className="flex gap-1">
+              {WORK_MODES.map((mode) => (
+                <button
+                  key={mode.value}
+                  type="button"
+                  onClick={() => {
+                    setValue("workMode", mode.value as JobFormValues["workMode"], { shouldValidate: false });
+                    setValue("location.isRemote", mode.value === "remote", { shouldValidate: false });
+                  }}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                    workMode === mode.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {mode.label}
+                </button>
+              ))}
             </div>
-            <Switch
-              checked={isRemote}
-              onCheckedChange={(v) =>
-                setValue("location.isRemote", v, { shouldValidate: false })
-              }
-            />
-            {isRemote && (
-              <Badge variant="secondary" className="text-xs">
-                Remote
-              </Badge>
-            )}
           </div>
         </div>
 

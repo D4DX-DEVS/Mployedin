@@ -167,7 +167,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
+      <div className="page-container">
         <PageHeader
           title="Analytics"
           description="Pipeline funnel, trends & historical insights"
@@ -194,7 +194,7 @@ export default function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="space-y-8">
+      <div className="page-container">
         <PageHeader
           title="Analytics"
           description="Pipeline funnel, trends & historical insights"
@@ -215,7 +215,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       {/* Header with tabs + refresh */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <PageHeader

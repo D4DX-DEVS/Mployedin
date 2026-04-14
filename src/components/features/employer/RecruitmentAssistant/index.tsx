@@ -11,7 +11,6 @@ import {
   Minimize2,
   Send,
   Mic,
-  MicOff,
   History,
   Plus,
   Trash2,
@@ -23,9 +22,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { VoiceInputStatus } from "@/components/shared/VoiceInputStatus";
 import { Textarea } from "@/components/ui/textarea";
-import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { useVoiceInput, type VoiceInputState } from "@/hooks/useVoiceInput";
 import {
   JobCreatorWelcome,
   InterviewWelcome,
@@ -43,14 +41,20 @@ interface ExtractedJob {
   title?: string;
   category?: string;
   description?: string;
+  employmentType?: string;
+  workMode?: string;
   location?: { country?: string; city?: string; isRemote?: boolean };
   requirements?: {
     skills?: string[];
+    preferredSkills?: string[];
     experienceMin?: number;
     experienceMax?: number;
     education?: string;
   };
-  salary?: { min?: number; max?: number; currency?: string; period?: string };
+  responsibilities?: string[];
+  qualifications?: string[];
+  benefits?: string[];
+  salary?: { min?: number; max?: number; currency?: string; period?: string; isNegotiable?: boolean };
   vacancies?: number;
   visibility?: string;
   tags?: string[];
@@ -130,10 +134,38 @@ function sanitizeExtractedJob(job: ExtractedJob): ExtractedJob {
     tags.push("Hybrid");
   }
 
+  // Normalize employmentType
+  const validEmploymentTypes = ["full_time", "part_time", "contract", "internship", "freelance"];
+  const employmentType = validEmploymentTypes.includes(job.employmentType ?? "")
+    ? job.employmentType
+    : undefined;
+
+  // Normalize workMode — infer from location/tags if not set
+  const validWorkModes = ["onsite", "hybrid", "remote"];
+  let workMode = validWorkModes.includes(job.workMode ?? "")
+    ? job.workMode
+    : undefined;
+  if (!workMode) {
+    if (isRemote) workMode = "remote";
+    else if (/hybrid/i.test(workTypeText) || tags.includes("Hybrid")) workMode = "hybrid";
+  }
+
+  // Move preferredSkills to top-level requirements
+  const requirements = {
+    ...job.requirements,
+    preferredSkills: job.requirements?.preferredSkills ?? [],
+  };
+
   return {
     ...job,
     description,
+    employmentType,
+    workMode,
     location: { country, city, isRemote },
+    requirements,
+    responsibilities: job.responsibilities ?? [],
+    qualifications: job.qualifications ?? [],
+    benefits: job.benefits ?? [],
     salary: job.salary
       ? { ...job.salary, period: period as "monthly" | "yearly" | "lpa" }
       : job.salary,
@@ -203,25 +235,37 @@ export function RecruitmentAssistant() {
 
   // Voice input — language is user-selectable (not just URL locale)
   const {
+    state: voiceState,
     isRecording,
     isProcessing: isVoiceProcessing,
     startRecording,
-    stopRecording,
+    cancelRecording,
+    submitRecording,
     transcript,
+    detectedLanguage,
+    durationMs,
+    durationLabel,
     clearTranscript,
     error: voiceError,
   } = useVoiceInput({
     language: voiceLanguage,
-    maxDurationMs: 30000,
+    maxDurationMs: 60000,
+    mode: "explicitSend",
     onTranscript: (text) => {
       setInput((prev) => prev ? `${prev} ${text}` : text);
     },
   });
 
-  // Auto-focus textarea when voice transcript arrives
+  // Auto-focus + auto-resize textarea when voice transcript arrives
   useEffect(() => {
     if (transcript && textareaRef.current) {
       textareaRef.current.focus();
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+      });
     }
   }, [transcript]);
 
@@ -278,6 +322,7 @@ export function RecruitmentAssistant() {
 
       clearTranscript();
       setInput("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
       setExtractedJob(null);
 
       const userMsg: Message = {
@@ -420,14 +465,6 @@ export function RecruitmentAssistant() {
     }
   };
 
-  const toggleVoice = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-
   const showWelcome = messages.length === 0 && !isStreaming;
 
   if (!mounted) return null;
@@ -438,7 +475,7 @@ export function RecruitmentAssistant() {
       ? "bottom-6 right-6 h-12 w-48 rounded-full bg-gradient-to-r from-indigo-700 to-primary border-0"
       : expanded
         ? "top-0 right-0 bottom-0 w-full md:w-[480px] lg:w-[520px] rounded-none md:rounded-l-2xl md:border-l md:border-y border-r-0"
-        : "bottom-6 right-6 h-[600px] w-[420px] max-h-[90vh] rounded-2xl"
+        : "bottom-3 right-3 h-[min(600px,calc(100vh-1.5rem))] w-[calc(100vw-1.5rem)] sm:bottom-6 sm:right-6 sm:h-[600px] sm:w-[420px] max-h-[90vh] rounded-2xl"
   );
 
   return createPortal(
@@ -671,18 +708,28 @@ export function RecruitmentAssistant() {
                     {/* ── Input bar ── */}
                     <InputBar
                       value={input}
-                      onChange={setInput}
+                      onChange={(nextValue) => {
+                        if (detectedLanguage) {
+                          clearTranscript();
+                        }
+                        setInput(nextValue);
+                      }}
                       onSend={() => sendMessage()}
                       onKeyDown={handleKeyDown}
                       isStreaming={isStreaming}
-                      isRecording={isRecording}
-                      isVoiceProcessing={isVoiceProcessing}
-                      onToggleVoice={toggleVoice}
+                      voiceState={voiceState}
                       tabId={activeTab}
                       textareaRef={textareaRef}
                       voiceError={voiceError}
+                      detectedLanguage={detectedLanguage}
+                      durationMs={durationMs}
+                      durationLabel={durationLabel}
                       voiceLanguage={voiceLanguage}
                       onVoiceLanguageChange={setVoiceLanguage}
+                      onStartVoice={() => void startRecording()}
+                      onCancelVoice={cancelRecording}
+                      onSubmitVoice={submitRecording}
+                      isCompact={!expanded}
                     />
                   </>
                 )}
@@ -845,6 +892,10 @@ function JobPreviewCard({
             value={`${job.salary.currency ?? "USD"} ${job.salary.min?.toLocaleString()} – ${job.salary.max?.toLocaleString()} / ${job.salary.period ?? "month"}`}
           />
         )}
+        {job.employmentType && (
+          <Row label="Type" value={job.employmentType.replace("_", "-")} />
+        )}
+        {job.workMode && <Row label="Work Mode" value={job.workMode} />}
         {job.requirements?.skills?.length ? (
           <div className="flex gap-1.5 flex-wrap mt-1">
             {job.requirements.skills.slice(0, 8).map((s) => (
@@ -856,6 +907,12 @@ function JobPreviewCard({
               </span>
             ))}
           </div>
+        ) : null}
+        {job.responsibilities?.length ? (
+          <Row label="Responsibilities" value={`${job.responsibilities.length} items`} />
+        ) : null}
+        {job.benefits?.length ? (
+          <Row label="Benefits" value={`${job.benefits.length} items`} />
         ) : null}
       </div>
       {createdMsg ? (
@@ -912,14 +969,19 @@ interface InputBarProps {
   onSend: () => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   isStreaming: boolean;
-  isRecording: boolean;
-  isVoiceProcessing: boolean;
-  onToggleVoice: () => void;
+  voiceState: VoiceInputState;
   tabId: TabId;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   voiceError: string | null;
+  detectedLanguage: string | null;
+  durationMs: number;
+  durationLabel: string;
   voiceLanguage: string;
   onVoiceLanguageChange: (lang: string) => void;
+  onStartVoice: () => void;
+  onCancelVoice: () => void;
+  onSubmitVoice: () => void;
+  isCompact: boolean;
 }
 
 const INPUT_PLACEHOLDERS: Record<TabId, string> = {
@@ -935,121 +997,220 @@ function InputBar({
   onSend,
   onKeyDown,
   isStreaming,
-  isRecording,
-  isVoiceProcessing,
-  onToggleVoice,
+  voiceState,
   tabId,
   textareaRef,
   voiceError,
+  detectedLanguage,
+  durationMs,
+  durationLabel,
   voiceLanguage,
   onVoiceLanguageChange,
+  onStartVoice,
+  onCancelVoice,
+  onSubmitVoice,
+  isCompact,
 }: InputBarProps) {
   const [showLangPicker, setShowLangPicker] = useState(false);
   const currentLang = VOICE_LANGUAGES.find((l) => l.code === voiceLanguage) ?? VOICE_LANGUAGES[0];
+  const isRecording = voiceState === "recording";
+  const isVoiceProcessing = voiceState === "processing";
+  const detectedLanguageLabel = getDetectedLanguageLabel(detectedLanguage);
+
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [textareaRef]);
 
   return (
     <div className="border-t border-border/70 bg-background/95 p-3 shrink-0">
-      <div className="flex gap-2 items-end">
-        {/* Attachment (placeholder — future feature) */}
-        <button
-          className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted flex-shrink-0 mb-0.5"
-          title="Attach file (coming soon)"
-          disabled
-        >
-          <Paperclip className="h-4 w-4" />
-        </button>
-
-        {/* Text input */}
+      <div className="space-y-3">
         <Textarea
           ref={textareaRef}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => { onChange(e.target.value); autoResize(); }}
           onKeyDown={onKeyDown}
           placeholder={INPUT_PLACEHOLDERS[tabId]}
-          className="min-h-[40px] max-h-[120px] resize-none text-sm flex-1 bg-muted/30 border-border/50 focus:border-primary/50 rounded-xl"
+          className="min-h-[40px] max-h-[160px] resize-none text-sm flex-1 bg-muted/30 border-border/50 focus:border-primary/50 rounded-xl overflow-y-auto transition-[height] duration-100"
           rows={1}
           disabled={isStreaming || isRecording || isVoiceProcessing}
         />
 
-        {/* Voice language picker + mic button */}
-        <div className="flex-shrink-0 flex flex-col items-center gap-0.5 relative">
-          {/* Language selector — shown above mic */}
-          <div className="relative">
-            <button
-              onClick={() => setShowLangPicker((v) => !v)}
-              disabled={isRecording || isVoiceProcessing}
-              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-muted disabled:opacity-40"
-              title="Voice language"
+        {voiceState === "recording" ? (
+          <div className={cn("gap-2", isCompact ? "flex flex-col" : "flex items-center") }>
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className={cn(
+                "flex min-w-0 items-center gap-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700",
+                isCompact ? "w-full px-3 py-2.5" : "flex-1 px-4 py-2"
+              )}
             >
-              <Globe className="h-2.5 w-2.5" />
-              <span>{currentLang.flag} {currentLang.code.toUpperCase()}</span>
-            </button>
-            {showLangPicker && !isRecording && (
-              <div className="absolute bottom-full right-0 mb-1 z-50 w-36 rounded-xl border border-border bg-popover shadow-lg overflow-hidden">
-                {VOICE_LANGUAGES.map((lang) => (
-                  <button
-                    key={lang.code}
-                    onClick={() => { onVoiceLanguageChange(lang.code); setShowLangPicker(false); }}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted transition-colors",
-                      lang.code === voiceLanguage && "bg-primary/10 text-primary font-medium"
-                    )}
-                  >
-                    <span>{lang.flag}</span>
-                    <span>{lang.label}</span>
-                  </button>
+              <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+              </span>
+              <div className="flex items-end gap-0.5 h-4" aria-hidden="true">
+                {[0.45, 0.8, 1, 0.65, 0.9, 0.55, 0.75].map((height, index) => (
+                  <span
+                    key={index}
+                    className="w-0.5 rounded-full bg-current origin-bottom"
+                    style={{
+                      height: `${height * 100}%`,
+                      animation: "voiceBar 0.8s ease-in-out infinite alternate",
+                      animationDelay: `${index * 0.1}s`,
+                    }}
+                  />
                 ))}
               </div>
-            )}
+              <div className="min-w-0">
+                <p className="font-medium leading-none">Listening...</p>
+                <p className={cn("text-xs text-red-700/80", isCompact ? "mt-1 truncate" : "mt-1")}>
+                  {isCompact ? "Tap send when ready." : "Tap send when you're ready."}
+                </p>
+              </div>
+              <span
+                className="ml-auto font-mono text-sm tabular-nums"
+                aria-label={`Recording length ${Math.max(1, Math.floor(durationMs / 1000))} seconds`}
+              >
+                {durationLabel}
+              </span>
+            </div>
+            <div className={cn("flex gap-2", isCompact ? "w-full" : "shrink-0") }>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancelVoice}
+                className={cn(
+                  "h-10 rounded-xl border-border/60 text-muted-foreground hover:text-foreground",
+                  isCompact ? "flex-1 px-3" : "px-3"
+                )}
+                aria-label="Cancel voice input"
+              >
+                <X className="mr-1.5 h-4 w-4" /> Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={onSubmitVoice}
+                className={cn("h-10 rounded-xl", isCompact ? "flex-1 px-3" : "px-4")}
+                aria-label="Send voice input"
+              >
+                <Send className="mr-1.5 h-4 w-4" /> Send
+              </Button>
+            </div>
           </div>
-
-          {/* Mic button */}
-          <button
-            onClick={onToggleVoice}
-            disabled={isStreaming || isVoiceProcessing}
-            className={cn(
-              "w-9 h-9 rounded-xl border flex items-center justify-center transition-all duration-150",
-              isRecording
-                ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
-                : isVoiceProcessing
-                  ? "border-amber-200 bg-amber-50 text-amber-600"
-                  : "border-border/60 bg-background text-muted-foreground shadow-sm shadow-black/[0.04] hover:bg-primary/10 hover:text-primary",
-              (isStreaming || isVoiceProcessing) && !isRecording && "opacity-50 cursor-not-allowed"
-            )}
-            title={isVoiceProcessing ? `Processing voice input (${currentLang.label})` : isRecording ? `Stop voice input (${currentLang.label})` : `Start voice input (${currentLang.label})`}
-            aria-label={isVoiceProcessing ? "Processing voice input" : isRecording ? "Stop voice input" : "Start voice input"}
-            aria-pressed={isRecording}
+        ) : voiceState === "processing" ? (
+          <div
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="flex items-center justify-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
           >
-            {isVoiceProcessing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isRecording ? (
-              <MicOff className="h-4 w-4" />
-            ) : (
-              <Mic className="h-4 w-4" />
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="font-medium">Processing voice...</span>
+          </div>
+        ) : (
+          <div className="flex gap-2 items-end justify-end">
+            {!isCompact && (
+              <button
+                className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted flex-shrink-0 mb-0.5"
+                title="Attach file (coming soon)"
+                disabled
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
             )}
-          </button>
-        </div>
 
-        {/* Send button */}
-        <Button
-          size="icon"
-          onClick={onSend}
-          disabled={!value.trim() || isStreaming || isRecording || isVoiceProcessing}
-          className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 shadow-sm self-end"
-          aria-label="Send message"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
+            <div className="flex-shrink-0 flex flex-col items-center gap-0.5 relative">
+              <div className="relative">
+                <button
+                  onClick={() => setShowLangPicker((v) => !v)}
+                  disabled={isStreaming || isVoiceProcessing}
+                  className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-muted disabled:opacity-40"
+                  title="Voice language"
+                >
+                  <Globe className="h-2.5 w-2.5" />
+                  <span>{currentLang.flag} {currentLang.code.toUpperCase()}</span>
+                </button>
+                {showLangPicker && !isRecording && !isVoiceProcessing && (
+                  <div className="absolute bottom-full right-0 mb-1 z-50 w-36 rounded-xl border border-border bg-popover shadow-lg overflow-hidden">
+                    {VOICE_LANGUAGES.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => { onVoiceLanguageChange(lang.code); setShowLangPicker(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted transition-colors",
+                          lang.code === voiceLanguage && "bg-primary/10 text-primary font-medium"
+                        )}
+                      >
+                        <span>{lang.flag}</span>
+                        <span>{lang.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={onStartVoice}
+                disabled={isStreaming || isVoiceProcessing}
+                className={cn(
+                  "w-9 h-9 rounded-xl border flex items-center justify-center transition-all duration-150",
+                  "border-border/60 bg-background text-muted-foreground shadow-sm shadow-black/[0.04] hover:bg-primary/10 hover:text-primary",
+                  (isStreaming || isVoiceProcessing) && "opacity-50 cursor-not-allowed"
+                )}
+                title={`Start voice input (${currentLang.label})`}
+                aria-label="Start voice input"
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+            </div>
+
+            <Button
+              size="icon"
+              onClick={onSend}
+              disabled={!value.trim() || isStreaming || isVoiceProcessing}
+              className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 shadow-sm self-end"
+              aria-label="Send message"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
-      <VoiceInputStatus
-        className="mt-2"
-        isRecording={isRecording}
-        isProcessing={isVoiceProcessing}
-        error={voiceError}
-        recordingText={`Recording ${currentLang.label} - tap the mic to stop.`}
-        idleText="AI can make mistakes. Check important info."
-      />
+      <div className="mt-2 min-h-5" aria-live="polite" aria-atomic="true">
+        {voiceError ? (
+          <p role="alert" className="text-xs text-destructive">
+            {voiceError}
+          </p>
+        ) : voiceState === "idle" && detectedLanguageLabel ? (
+          <p className="text-[11px] text-muted-foreground/80">
+            Detected language: {detectedLanguageLabel}
+          </p>
+        ) : voiceState === "idle" ? (
+          <p className="text-[11px] text-muted-foreground/70">
+            AI can make mistakes. Check important info.
+          </p>
+        ) : null}
+      </div>
     </div>
   );
+}
+
+function getDetectedLanguageLabel(language: string | null): string | null {
+  if (!language) {
+    return null;
+  }
+
+  const voiceLanguageMatch = VOICE_LANGUAGES.find((entry) => {
+    const code = entry.code.toLowerCase();
+    const normalizedLanguage = language.toLowerCase();
+    return normalizedLanguage === code || normalizedLanguage.startsWith(`${code}-`);
+  });
+
+  return voiceLanguageMatch?.label ?? language;
 }

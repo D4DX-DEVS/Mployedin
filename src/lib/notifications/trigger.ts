@@ -135,6 +135,23 @@ export async function notifyInterviewScheduled(
   });
 }
 
+export async function notifyInterviewSelected(
+  jobSeekerId: string,
+  jobTitle: string,
+  companyName: string,
+  applicationId: string
+): Promise<void> {
+  await notify({
+    userId: jobSeekerId,
+    type: "interview_scheduled",
+    title: "Congratulations! Selected for Interview",
+    message: `Great news! You have been selected for an interview for the "${jobTitle}" position at ${companyName}. The employer will reach out to you soon with further details.`,
+    link: `/en/job-seeker/applications`,
+    sendEmail: true,
+    metadata: { jobTitle, companyName, applicationId },
+  });
+}
+
 export async function notifyMention(
   mentionedUserId: string,
   authorName: string,

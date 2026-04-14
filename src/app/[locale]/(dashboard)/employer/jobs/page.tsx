@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote } from "lucide-react";
+import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote, BookTemplate } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useConfirm } from "@/hooks/useConfirm";
-import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, type Job } from "@/hooks/useJobs";
+import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, useSaveAsTemplate, useJobTemplates, type Job } from "@/hooks/useJobs";
 import { useDebounce } from "@/hooks/useDebounce";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -59,6 +59,13 @@ export default function EmployerJobsPage() {
   const updateStatus = useUpdateJobStatus();
   const cloneJob = useCloneJob();
   const deleteJob = useDeleteJob();
+  const saveAsTemplate = useSaveAsTemplate();
+  const { data: jobTemplates = [] } = useJobTemplates();
+  const [savingTemplateId, setSavingTemplateId] = useState<string | null>(null);
+
+  const savedTemplateIds = new Set(
+    jobTemplates.filter((t) => t.sourceJobId).map((t) => t.sourceJobId as string)
+  );
 
   const activeJobs = jobs.filter((job) => job.status === "active").length;
   const draftJobs = jobs.filter((job) => job.status === "draft").length;
@@ -86,11 +93,24 @@ export default function EmployerJobsPage() {
     }
   }
 
+  async function handleSaveAsTemplate(job: Job) {
+    setSavingTemplateId(job._id);
+    try {
+      await saveAsTemplate.mutateAsync(job);
+      toast.success(`"${job.title}" saved as template`);
+    } catch {
+      toast.error("Failed to save template");
+    } finally {
+      setSavingTemplateId(null);
+    }
+  }
+
   async function handleActivateJob(job: Job) {
     setPendingJobAction({ jobId: job._id, action: "activate" });
 
     try {
       await updateStatus.mutateAsync({ jobId: job._id, status: "active" });
+      toast.success("Job activated successfully!");
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Failed to activate job");
     } finally {
@@ -116,7 +136,10 @@ export default function EmployerJobsPage() {
   }
 
   async function handleDeleteJob(job: Job) {
-    const prompt = "Delete this draft job?";
+    const prompt =
+      job.status === "draft"
+        ? "Delete this draft job? This cannot be undone."
+        : "Permanently delete this job post? All associated data will be removed and this cannot be undone.";
     const ok = await confirmDialog(prompt);
     if (!ok) return;
 
@@ -299,6 +322,27 @@ export default function EmployerJobsPage() {
                           <Copy className="w-4 h-4" /> {cloningJobId === job._id ? "Cloning…" : "Clone"}
                         </Button>
                       )}
+                      {can("jobs", "create") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          title={savedTemplateIds.has(job._id) ? "Already saved as template" : "Save as Template"}
+                          className={`h-9 gap-2 ${
+                            savedTemplateIds.has(job._id)
+                              ? "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-50 cursor-default"
+                              : ""
+                          }`}
+                          onClick={() => { if (!savedTemplateIds.has(job._id)) void handleSaveAsTemplate(job); }}
+                          disabled={savingTemplateId === job._id || savedTemplateIds.has(job._id)}>
+                          {savedTemplateIds.has(job._id) ? (
+                            <><CheckCircle className="w-4 h-4" /> Saved</>
+                          ) : savingTemplateId === job._id ? (
+                            <><BookTemplate className="w-4 h-4" /> Saving…</>
+                          ) : (
+                            <><BookTemplate className="w-4 h-4" /> Template</>
+                          )}
+                        </Button>
+                      )}
                     </div>
                     <div className="flex flex-wrap justify-end gap-2">
                       {can("jobs", "update") && job.status === "draft" && (
@@ -311,7 +355,7 @@ export default function EmployerJobsPage() {
                           <Clock className="w-4 h-4" /> {isDeactivating ? "Deactivating…" : "Deactivate"}
                         </Button>
                       )}
-                      {can("jobs", "delete") && job.status === "draft" && (
+                      {can("jobs", "delete") && (job.status === "draft" || job.status === "closed" || job.status === "expired") && (
                         <Button size="sm" variant="outline" title="Delete" className="h-9 gap-2 border-destructive/20 text-destructive hover:bg-destructive/5"
                           onClick={() => { void handleDeleteJob(job); }} disabled={isDeleting}>
                           <Trash2 className="w-4 h-4" /> {isDeleting ? "Deleting…" : "Delete"}

@@ -38,6 +38,34 @@ const SALARY_PERIODS = [
   { value: "lpa", label: "LPA (Lakhs Per Annum)" },
 ];
 
+const EMPLOYMENT_TYPE_OPTIONS = [
+  { value: "full_time", label: "Full-time" },
+  { value: "part_time", label: "Part-time" },
+  { value: "contract", label: "Contract" },
+  { value: "internship", label: "Internship" },
+  { value: "freelance", label: "Freelance" },
+];
+
+const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
+  full_time: "Full-time",
+  part_time: "Part-time",
+  contract: "Contract",
+  internship: "Internship",
+  freelance: "Freelance",
+};
+
+const WORK_MODE_OPTIONS = [
+  { value: "onsite", label: "On-site" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "remote", label: "Remote" },
+];
+
+const WORK_MODE_LABELS: Record<string, string> = {
+  onsite: "On-site",
+  hybrid: "Hybrid",
+  remote: "Remote",
+};
+
 // ─── Types ───────────────────────────────────────────────────────
 
 interface FormData {
@@ -45,12 +73,19 @@ interface FormData {
   description: string;
   category: string;
   location: { country: string; city: string; isRemote: boolean };
-  requirements: { skills: string[]; experienceMin: number; experienceMax: number };
+  requirements: { skills: string[]; preferredSkills: string[]; experienceMin: number; experienceMax: number };
   salary: { min: number; max: number; currency: string; period: string; isNegotiable: boolean };
   applicationMode: "auto" | "manual";
   expiresAt: string;
   tags: string[];
   vacancies: number;
+  employmentType: string;
+  workMode: string;
+  duration: string;
+  responsibilities: string[];
+  qualifications: string[];
+  benefits: string[];
+  learningOutcomes: string[];
 }
 
 type FieldErrors = Partial<Record<string, string>>;
@@ -127,6 +162,71 @@ function Field({
   );
 }
 
+// ─── Reusable list section for edit page ──────────────────────────
+function EditListSection({
+  title,
+  subtitle,
+  items,
+  inputValue,
+  onInputChange,
+  onAdd,
+  onRemove,
+  placeholder,
+}: {
+  title: string;
+  subtitle: string;
+  items: string[];
+  inputValue: string;
+  onInputChange: (v: string) => void;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border/60 bg-card overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-border/40 bg-muted/20">
+        <div>
+          <p className="text-sm font-semibold">{title}</p>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+        {items.length > 0 && (
+          <Badge variant="secondary" className="ml-auto rounded-full px-2.5 py-0.5 text-xs">
+            {items.length}
+          </Badge>
+        )}
+      </div>
+      <div className="p-5 space-y-3">
+        <div className="flex gap-2">
+          <Input
+            placeholder={placeholder}
+            value={inputValue}
+            onChange={(e) => onInputChange(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onAdd(); } }}
+            className="flex-1 text-sm"
+            maxLength={500}
+          />
+          <Button type="button" size="sm" variant="outline" onClick={onAdd} className="px-3">
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+        {items.length > 0 && (
+          <ul className="space-y-1.5">
+            {items.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-sm">
+                <span className="mt-0.5 text-xs text-muted-foreground">{i + 1}.</span>
+                <span className="flex-1 text-foreground/90">{item}</span>
+                <button type="button" onClick={() => onRemove(i)} className="mt-0.5 shrink-0 text-muted-foreground hover:text-destructive transition-colors">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────
 export default function EditJobPage() {
   const router = useRouter();
@@ -137,16 +237,28 @@ export default function EditJobPage() {
     description: "",
     category: "",
     location: { country: "", city: "", isRemote: false },
-    requirements: { skills: [], experienceMin: 0, experienceMax: 5 },
+    requirements: { skills: [], preferredSkills: [], experienceMin: 0, experienceMax: 5 },
     salary: { min: 0, max: 0, currency: "USD", period: "monthly", isNegotiable: false },
     applicationMode: "manual",
     expiresAt: "",
     tags: [],
     vacancies: 1,
+    employmentType: "",
+    workMode: "",
+    duration: "",
+    responsibilities: [],
+    qualifications: [],
+    benefits: [],
+    learningOutcomes: [],
   });
 
   const [skillInput, setSkillInput] = useState("");
   const [tagInput, setTagInput] = useState("");
+  const [preferredSkillInput, setPreferredSkillInput] = useState("");
+  const [responsibilityInput, setResponsibilityInput] = useState("");
+  const [qualificationInput, setQualificationInput] = useState("");
+  const [benefitInput, setBenefitInput] = useState("");
+  const [learningOutcomeInput, setLearningOutcomeInput] = useState("");
   const [formLoaded, setFormLoaded] = useState(false);
   const [submitState, setSubmitState] = useState<"idle" | "saving" | "publishing" | "saved" | "error">("idle");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -188,6 +300,7 @@ export default function EditJobPage() {
       location: loc,
       requirements: {
         skills: (job.requirements as unknown as { skills?: string[] })?.skills ?? [],
+        preferredSkills: (job.requirements as unknown as { preferredSkills?: string[] })?.preferredSkills ?? [],
         experienceMin: (job.requirements as unknown as { experienceMin?: number })?.experienceMin ?? 0,
         experienceMax: (job.requirements as unknown as { experienceMax?: number })?.experienceMax ?? 5,
       },
@@ -202,6 +315,13 @@ export default function EditJobPage() {
       expiresAt: job.expiresAt ? new Date(job.expiresAt).toISOString().split("T")[0] : "",
       tags: (job as unknown as { tags?: string[] }).tags ?? [],
       vacancies: (job as unknown as { vacancies?: number }).vacancies ?? 1,
+      employmentType: (job as unknown as { employmentType?: string }).employmentType ?? "",
+      workMode: (job as unknown as { workMode?: string }).workMode ?? "",
+      duration: (job as unknown as { duration?: string }).duration ?? "",
+      responsibilities: (job as unknown as { responsibilities?: string[] }).responsibilities ?? [],
+      qualifications: (job as unknown as { qualifications?: string[] }).qualifications ?? [],
+      benefits: (job as unknown as { benefits?: string[] }).benefits ?? [],
+      learningOutcomes: (job as unknown as { learningOutcomes?: string[] }).learningOutcomes ?? [],
     });
 
     if (loc.country) setCountryQuery(loc.country);
@@ -261,6 +381,28 @@ export default function EditJobPage() {
     setField("tags", form.tags.filter((t) => t !== tag));
   }
 
+  function addPreferredSkill() {
+    const s = preferredSkillInput.trim();
+    if (!s || form.requirements.preferredSkills.includes(s)) { setPreferredSkillInput(""); return; }
+    setField("requirements", { ...form.requirements, preferredSkills: [...form.requirements.preferredSkills, s] });
+    setPreferredSkillInput("");
+  }
+
+  function removePreferredSkill(skill: string) {
+    setField("requirements", { ...form.requirements, preferredSkills: form.requirements.preferredSkills.filter((s) => s !== skill) });
+  }
+
+  function addListItem(field: "responsibilities" | "qualifications" | "benefits" | "learningOutcomes", value: string, setter: (v: string) => void) {
+    const trimmed = value.trim();
+    if (!trimmed || form[field].includes(trimmed)) { setter(""); return; }
+    setField(field, [...form[field], trimmed]);
+    setter("");
+  }
+
+  function removeListItem(field: "responsibilities" | "qualifications" | "benefits" | "learningOutcomes", index: number) {
+    setField(field, form[field].filter((_, i) => i !== index));
+  }
+
   function validate(forPublish = false): boolean {
     const errors: FieldErrors = {};
     if (!form.title.trim()) errors.title = "Job title is required";
@@ -294,13 +436,20 @@ export default function EditJobPage() {
       tags: form.tags,
       vacancies: form.vacancies,
       expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+      employmentType: form.employmentType || undefined,
+      workMode: form.workMode || undefined,
+      duration: form.duration || undefined,
+      responsibilities: form.responsibilities.length > 0 ? form.responsibilities : undefined,
+      qualifications: form.qualifications.length > 0 ? form.qualifications : undefined,
+      benefits: form.benefits.length > 0 ? form.benefits : undefined,
+      learningOutcomes: form.learningOutcomes.length > 0 ? form.learningOutcomes : undefined,
     };
 
     if (form.location.country.trim() && form.location.city.trim()) {
       payload.location = {
         country: form.location.country.trim(),
         city: form.location.city.trim(),
-        isRemote: form.location.isRemote,
+        isRemote: form.workMode === "remote",
       };
     }
 
@@ -428,6 +577,22 @@ export default function EditJobPage() {
                   onChange={(e) => setField("vacancies", Math.max(1, Number(e.target.value)))} />
               </Field>
             </div>
+            <Field label="Employment Type" hint="Full-time, part-time, contract, etc.">
+              <SearchableSelect
+                options={EMPLOYMENT_TYPE_OPTIONS.map((t) => ({ value: t.value, label: t.label }))}
+                value={form.employmentType}
+                onValueChange={(v) => setField("employmentType", v)}
+                placeholder="Select employment type (optional)"
+              />
+            </Field>
+            <Field label="Duration" hint="For internships or contracts (e.g. 3-6 Months)">
+              <Input
+                placeholder="e.g. 3-6 Months, 1 Year"
+                value={form.duration}
+                onChange={(e) => setField("duration", e.target.value)}
+                maxLength={100}
+              />
+            </Field>
           </Section>
 
           {/* ② Location */}
@@ -474,15 +639,28 @@ export default function EditJobPage() {
                   onChange={(e) => setField("location", { ...form.location, city: e.target.value })} />
               </Field>
             </div>
-            <label className="flex items-center gap-3 cursor-pointer w-fit">
-              <div onClick={() => setField("location", { ...form.location, isRemote: !form.location.isRemote })}
-                className={cn("w-9 h-5 rounded-full transition-colors relative", form.location.isRemote ? "bg-primary" : "bg-muted-foreground/30")}>
-                <span className={cn("absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform", form.location.isRemote ? "translate-x-4" : "translate-x-0.5")} />
+            <Field label="Work Mode" hint="On-site, hybrid, or fully remote">
+              <div className="flex gap-1.5">
+                {WORK_MODE_OPTIONS.map((mode) => (
+                  <button
+                    key={mode.value}
+                    type="button"
+                    onClick={() => {
+                      setField("workMode", mode.value);
+                      setField("location", { ...form.location, isRemote: mode.value === "remote" });
+                    }}
+                    className={cn(
+                      "rounded-full px-4 py-2 text-xs font-medium transition-colors",
+                      form.workMode === mode.value
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-border text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
               </div>
-              <span className="text-sm font-medium">Remote work available
-                <span className="font-normal text-muted-foreground ms-1.5 text-xs">· Boosts applications by ~40%</span>
-              </span>
-            </label>
+            </Field>
           </Section>
 
           {/* ③ Job Description */}
@@ -550,6 +728,27 @@ export default function EditJobPage() {
                 </div>
               )}
             </Field>
+            <Field label="Preferred Skills" hint="Nice-to-have skills (optional)">
+              <div className="flex gap-2">
+                <Input placeholder="e.g. Kotlin, CI/CD, App Store publishing" value={preferredSkillInput}
+                  onChange={(e) => setPreferredSkillInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addPreferredSkill(); } }}
+                  className="flex-1" />
+                <Button type="button" size="sm" variant="outline" onClick={addPreferredSkill} className="px-3">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              {form.requirements.preferredSkills.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {form.requirements.preferredSkills.map((s) => (
+                    <Badge key={s} variant="outline" className="gap-1 text-xs border-dashed">
+                      {s}
+                      <button type="button" onClick={() => removePreferredSkill(s)} className="hover:text-destructive ml-0.5"><X className="w-3 h-3" /></button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Min Experience (years)">
                 <Input type="number" min={0} max={50} value={form.requirements.experienceMin}
@@ -561,6 +760,54 @@ export default function EditJobPage() {
               </Field>
             </div>
           </Section>
+
+          {/* ④b Key Responsibilities (optional) */}
+          <EditListSection
+            title="Key Responsibilities"
+            subtitle="What this person will do day-to-day (optional)"
+            items={form.responsibilities}
+            inputValue={responsibilityInput}
+            onInputChange={setResponsibilityInput}
+            onAdd={() => addListItem("responsibilities", responsibilityInput, setResponsibilityInput)}
+            onRemove={(i) => removeListItem("responsibilities", i)}
+            placeholder="e.g. Develop and maintain cross-platform mobile apps"
+          />
+
+          {/* ④c Qualifications (optional) */}
+          <EditListSection
+            title="Qualifications"
+            subtitle="Academic or professional qualifications (optional)"
+            items={form.qualifications}
+            inputValue={qualificationInput}
+            onInputChange={setQualificationInput}
+            onAdd={() => addListItem("qualifications", qualificationInput, setQualificationInput)}
+            onRemove={(i) => removeListItem("qualifications", i)}
+            placeholder="e.g. Bachelor's degree in Computer Science"
+          />
+
+          {/* ④d Benefits (optional) */}
+          <EditListSection
+            title="Benefits"
+            subtitle="Perks that make this role attractive (optional)"
+            items={form.benefits}
+            inputValue={benefitInput}
+            onInputChange={setBenefitInput}
+            onAdd={() => addListItem("benefits", benefitInput, setBenefitInput)}
+            onRemove={(i) => removeListItem("benefits", i)}
+            placeholder="e.g. Flexible working hours"
+          />
+
+          {/* ④e What You Will Learn (optional) */}
+          <EditListSection
+            title="What You Will Learn"
+            subtitle="Skills or experience candidates will gain (optional)"
+            items={form.learningOutcomes}
+            inputValue={learningOutcomeInput}
+            onInputChange={setLearningOutcomeInput}
+            onAdd={() => addListItem("learningOutcomes", learningOutcomeInput, setLearningOutcomeInput)}
+            onRemove={(i) => removeListItem("learningOutcomes", i)}
+            placeholder="e.g. Real-world software testing workflows"
+          />
 
           {/* ⑤ Compensation */}
           <Section icon={DollarSign} title="Compensation" subtitle="Salary transparency attracts 2× more applicants">
@@ -722,7 +969,11 @@ export default function EditJobPage() {
                   <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
                     <MapPin className="w-3 h-3 flex-shrink-0" />
                     {[form.location.city, form.location.country].filter(Boolean).join(", ") || "Location not set"}
-                    {form.location.isRemote && <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[10px] font-medium">Remote</span>}
+                    {form.workMode && <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium",
+                      form.workMode === "remote" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                        : form.workMode === "hybrid" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                        : "bg-muted text-muted-foreground"
+                    )}>{WORK_MODE_LABELS[form.workMode] ?? form.workMode}</span>}
                   </p>
                 </div>
                 {(form.salary.min > 0 || form.salary.max > 0) && (
@@ -738,6 +989,8 @@ export default function EditJobPage() {
                 )}
                 <div className="flex flex-wrap gap-1.5">
                   {form.category && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{form.category}</span>}
+                  {form.employmentType && <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">{EMPLOYMENT_TYPE_LABELS[form.employmentType] ?? form.employmentType}</span>}
+                  {form.duration && <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full font-medium">{form.duration}</span>}
                   <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{form.vacancies} {form.vacancies === 1 ? "vacancy" : "vacancies"}</span>
                   {form.applicationMode === "auto" && <span className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 px-2 py-0.5 rounded-full font-medium">AI Matching</span>}
                 </div>
@@ -749,6 +1002,17 @@ export default function EditJobPage() {
                         <span key={s} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">{s}</span>
                       ))}
                       {form.requirements.skills.length > 8 && <span className="text-xs text-muted-foreground">+{form.requirements.skills.length - 8} more</span>}
+                    </div>
+                  </div>
+                )}
+                {form.requirements.preferredSkills.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Nice to Have</p>
+                    <div className="flex flex-wrap gap-1">
+                      {form.requirements.preferredSkills.slice(0, 6).map((s) => (
+                        <span key={s} className="text-xs bg-secondary/50 text-secondary-foreground/70 px-2 py-0.5 rounded-full border border-dashed border-border">{s}</span>
+                      ))}
+                      {form.requirements.preferredSkills.length > 6 && <span className="text-xs text-muted-foreground">+{form.requirements.preferredSkills.length - 6} more</span>}
                     </div>
                   </div>
                 )}

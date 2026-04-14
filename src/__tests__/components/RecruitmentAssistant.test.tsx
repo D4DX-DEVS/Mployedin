@@ -2,9 +2,8 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import EmployerAIJobCreatePage from "@/app/[locale]/(dashboard)/employer/jobs/ai-create/page";
-import { toast } from "sonner";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { RecruitmentAssistant } from "@/components/features/employer/RecruitmentAssistant";
 
 const pushMock = jest.fn();
 const useVoiceInputMock = jest.fn();
@@ -14,30 +13,14 @@ jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
 }));
 
-jest.mock("sonner", () => ({
-  toast: {
-    error: jest.fn(),
-    success: jest.fn(),
-  },
-}));
-
-jest.mock("@/components/shared/PageHeader", () => ({
-  PageHeader: ({ title, description }: { title: string; description: string }) => (
-    <header>
-      <h1>{title}</h1>
-      <p>{description}</p>
-    </header>
-  ),
-}));
-
-jest.mock("@/components/ui/button", () => ({
-  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button {...props}>{children}</button>
-  ),
-}));
-
 jest.mock("@/hooks/useVoiceInput", () => ({
   useVoiceInput: (...args: unknown[]) => useVoiceInputMock(...args),
+}));
+
+jest.mock("@/components/features/employer/RecruitmentAssistant/tabs/WelcomeScreens", () => ({
+  JobCreatorWelcome: () => <div>Job creator welcome</div>,
+  InterviewWelcome: () => <div>Interview welcome</div>,
+  ScreeningWelcome: () => <div>Screening welcome</div>,
 }));
 
 const baseVoiceInputState = {
@@ -57,7 +40,12 @@ const baseVoiceInputState = {
   error: null,
 };
 
-describe("EmployerAIJobCreatePage", () => {
+async function openAssistant() {
+  const openButton = await screen.findByRole("button", { name: "Open Recruitment AI" });
+  fireEvent.click(openButton);
+}
+
+describe("RecruitmentAssistant", () => {
   beforeEach(() => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
@@ -69,30 +57,32 @@ describe("EmployerAIJobCreatePage", () => {
     useVoiceInputMock.mockReturnValue({ ...baseVoiceInputState });
   });
 
-  it("configures voice input for explicit send without toast-backed errors", () => {
-    render(<EmployerAIJobCreatePage />);
+  it("configures voice input for explicit send mode", async () => {
+    render(<RecruitmentAssistant />);
+
+    await screen.findByRole("button", { name: "Open Recruitment AI" });
 
     const options = useVoiceInputMock.mock.calls[0][0] as Record<string, unknown>;
 
     expect(options.language).toBe("auto");
     expect(options.mode).toBe("explicitSend");
     expect(options.maxDurationMs).toBe(15000);
-    expect(options.onError).toBeUndefined();
-    expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it("shows a visible recording status when voice capture is active", () => {
+  it("shows cancel, live recording state, and send controls while recording", async () => {
     useVoiceInputMock.mockReturnValue({
       ...baseVoiceInputState,
       state: "recording",
       isRecording: true,
+      durationMs: 4000,
       durationLabel: "00:04",
     });
 
-    render(<EmployerAIJobCreatePage />);
+    render(<RecruitmentAssistant />);
+    await openAssistant();
 
     expect(screen.getByRole("status")).toHaveTextContent("Listening...");
-    expect(screen.getByRole("status")).toHaveTextContent("Tap send when you're ready.");
+    expect(screen.getByRole("status")).toHaveTextContent("Tap send when ready.");
     expect(screen.getByRole("status")).toHaveTextContent("00:04");
     expect(screen.getByRole("button", { name: "Cancel voice input" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Send voice input" })).toBeVisible();
@@ -100,40 +90,32 @@ describe("EmployerAIJobCreatePage", () => {
     expect(screen.getByRole("textbox")).toBeDisabled();
   });
 
-  it("shows processing feedback while audio is being transcribed", () => {
+  it("shows processing feedback and disables the composer while transcribing", async () => {
     useVoiceInputMock.mockReturnValue({
       ...baseVoiceInputState,
       state: "processing",
       isProcessing: true,
     });
 
-    render(<EmployerAIJobCreatePage />);
+    render(<RecruitmentAssistant />);
+    await openAssistant();
 
     expect(screen.getByRole("status")).toHaveTextContent("Processing voice...");
     expect(screen.queryByRole("button", { name: "Start voice input" })).not.toBeInTheDocument();
     expect(screen.getByRole("textbox")).toBeDisabled();
   });
 
-  it("announces voice errors when recording is unavailable", () => {
+  it("shows inline-only voice feedback when transcription fails or language is detected", async () => {
     useVoiceInputMock.mockReturnValue({
       ...baseVoiceInputState,
-      error: "Microphone access denied.",
-    });
-
-    render(<EmployerAIJobCreatePage />);
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Microphone access denied.");
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  });
-
-  it("shows the detected language hint after a successful transcription", () => {
-    useVoiceInputMock.mockReturnValue({
-      ...baseVoiceInputState,
+      error: "Didn't catch that. Try again.",
       detectedLanguage: "en-US",
     });
 
-    render(<EmployerAIJobCreatePage />);
+    render(<RecruitmentAssistant />);
+    await openAssistant();
 
-    expect(screen.getByText("Detected language: English")).toBeVisible();
+    expect(screen.getByRole("alert")).toHaveTextContent("Didn't catch that. Try again.");
+    expect(screen.queryByText("Detected language: English")).not.toBeInTheDocument();
   });
 });

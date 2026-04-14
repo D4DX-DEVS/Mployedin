@@ -642,6 +642,7 @@ body {
 }
 
 /* ── LAYOUT CONTAINERS ── */
+@layer components {
 .page-container {
   width: 100%;
   max-width: 1400px;
@@ -652,18 +653,23 @@ body {
   flex-direction: column;
   gap: 1.5rem; /* space-y-6 */
 }
+}
 
+@layer components {
 @media (min-width: 768px) {
   .page-container {
     padding: 2rem; /* md:p-8 */
     gap: 2rem; /* space-y-8 */
   }
 }
+}
 
+@layer components {
 @media (min-width: 1024px) {
   .page-container {
     padding: 2.5rem; /* lg:p-10 */
   }
+}
 }
 /* Voice recording waveform animation */
 @keyframes voiceBar {

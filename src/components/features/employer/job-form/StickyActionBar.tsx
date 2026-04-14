@@ -33,7 +33,7 @@ export function StickyActionBar({
   canSubmit,
 }: StickyActionBarProps) {
   return (
-    <div className="sticky bottom-0 z-40 border-t border-border/80 bg-background/95 backdrop-blur-md" role="toolbar" aria-label="Form navigation">
+    <div className="z-40 shrink-0 border-t border-border/80 bg-background/95 backdrop-blur-md" role="toolbar" aria-label="Form navigation">
       <div className="mx-auto max-w-5xl px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-3.5">
         <div className="mb-2.5 flex items-center justify-between gap-3 sm:hidden">
           <div className="inline-flex items-center rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">

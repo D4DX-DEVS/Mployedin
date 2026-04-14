@@ -140,7 +140,7 @@ export default function EmployerCandidatesPage() {
     isError: hasCandidatesError,
     isFetching: isRefreshingCandidates,
     refetch: refetchCandidates,
-  } = useCandidates({ page, limit, search: debouncedSearch });
+  } = useCandidates({ page, limit, search: debouncedSearch, jobId: selectedJob || undefined });
   const startDmMutation = useStartConversation();
   const aiMatchMutation = useAiMatch();
 
@@ -453,6 +453,7 @@ export default function EmployerCandidatesPage() {
             value={selectedJob || "none"}
             onValueChange={(v) => {
               setSelectedJob(v === "none" ? "" : v);
+              setPage(1);
               setLocalCandidates(null);
               setScoreFilter("all");
               setExpandedId(null);

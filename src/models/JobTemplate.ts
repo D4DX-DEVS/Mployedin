@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IJobTemplate extends Document {
   _id: mongoose.Types.ObjectId;
   employerId: mongoose.Types.ObjectId;
+  sourceJobId?: mongoose.Types.ObjectId;
   name: string; // template name e.g. "Senior Dev Template"
   // core job fields (all optional, whatever was saved)
   title?: string;
@@ -27,6 +28,7 @@ export interface IJobTemplate extends Document {
 const JobTemplateSchema = new Schema<IJobTemplate>(
   {
     employerId: { type: Schema.Types.ObjectId, ref: "Employer", required: true },
+    sourceJobId: { type: Schema.Types.ObjectId, ref: "Job", index: true },
     name: { type: String, required: true, trim: true, maxlength: 100 },
     title: { type: String, trim: true },
     description: String,

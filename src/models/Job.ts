@@ -10,6 +10,7 @@ export type WorkflowMode = "auto" | "manual";
 
 export interface IJobRequirements {
   skills: string[];
+  preferredSkills?: string[];
   experienceMin: number;
   experienceMax: number;
   education?: string;
@@ -19,6 +20,8 @@ export interface IJobRequirements {
 
 export type SalaryPeriod = "monthly" | "yearly" | "lpa";
 export type JobVisibility = "public" | "private" | "invite_only";
+export type EmploymentType = "full_time" | "part_time" | "contract" | "internship" | "freelance";
+export type WorkMode = "onsite" | "hybrid" | "remote";
 
 export interface IJobSalary {
   min: number;
@@ -49,6 +52,13 @@ export interface IJob extends Document {
   requirements: IJobRequirements;
   salary: IJobSalary;
   location: IJobLocation;
+  employmentType?: EmploymentType;
+  workMode?: WorkMode;
+  duration?: string;
+  responsibilities?: string[];
+  qualifications?: string[];
+  benefits?: string[];
+  learningOutcomes?: string[];
   status: JobStatus;
   workflowMode: WorkflowMode;
   vacancies?: number;
@@ -76,12 +86,26 @@ const JobSchema = new Schema<IJob>(
     description: { type: String, required: true },
     requirements: {
       skills: [String],
+      preferredSkills: [String],
       experienceMin: { type: Number, default: 0 },
       experienceMax: { type: Number, default: 30 },
       education: String,
       languages: [String],
       nationality: [String],
     },
+    employmentType: {
+      type: String,
+      enum: ["full_time", "part_time", "contract", "internship", "freelance"],
+    },
+    workMode: {
+      type: String,
+      enum: ["onsite", "hybrid", "remote"],
+    },
+    duration: String,
+    responsibilities: [String],
+    qualifications: [String],
+    benefits: [String],
+    learningOutcomes: [String],
     salary: {
       min: Number,
       max: Number,
