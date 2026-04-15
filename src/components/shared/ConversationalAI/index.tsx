@@ -29,6 +29,10 @@ interface ProfileSummary {
 }
 
 // ─── Markdown renderer ─────────────────────────────────────────
+function hasMalayalam(text: string): boolean {
+  return /[\u0D00-\u0D7F]/.test(text);
+}
+
 function renderInline(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g);
   return parts.map((part, i) => {
@@ -472,7 +476,8 @@ export function ConversationalAI({
                         "max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
                         msg.role === "user"
                           ? "bg-gradient-to-br from-primary to-indigo-600 text-white rounded-tr-none shadow-sm"
-                          : "bg-muted text-foreground rounded-tl-none"
+                          : "bg-muted text-foreground rounded-tl-none",
+                        hasMalayalam(msg.content) && "font-malayalam"
                       )}
                     >
                       {msg.role === "assistant" ? (

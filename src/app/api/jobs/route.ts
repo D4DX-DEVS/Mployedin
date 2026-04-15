@@ -96,7 +96,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (remote) query["location.isRemote"] = true;
   if (currency) query["salary.currency"] = currency;
   if (showSalary === "true" || showSalary === "false") query.showSalary = showSalary === "true";
-  if (skills.length > 0) query["requirements.skills"] = { $all: skills };
+  if (skills.length > 0) {
+    query["requirements.skills"] = {
+      $all: skills.map((skill) => new RegExp(`^${escapeRegex(skill)}$`, "i")),
+    };
+  }
   if (employerId) query.employerId = employerId;
 
   const skip = (page - 1) * limit;

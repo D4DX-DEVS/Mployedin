@@ -134,9 +134,6 @@ export function DashboardShell({
             <div>
               {children}
             </div>
-            <div className="pt-8">
-              <PublicFooter locale={locale} variant="embedded" />
-            </div>
           </main>
         )}
       </div>

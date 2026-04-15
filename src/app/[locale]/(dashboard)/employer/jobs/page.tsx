@@ -240,12 +240,15 @@ export default function EmployerJobsPage() {
 
       const data = await res.json();
       const filters = data.filters ?? {};
-      setSearch(filters.search ?? "");
+      const hasSkills = Array.isArray(filters.skills) && filters.skills.length > 0;
+      // Always clear text search when skills are extracted — mixing $text + skills
+      // $all causes $text to match descriptions that merely mention the skill name.
+      setSearch(hasSkills ? "" : (filters.search ?? ""));
       setStatusFilter(filters.status ?? "all");
       setApprovalStatusFilter(filters.approvalStatus ?? "all");
       setWorkModeFilter(filters.workMode ?? "all");
       setLocationFilter(filters.location ?? "");
-      setSkillsFilter(Array.isArray(filters.skills) ? filters.skills.join(", ") : "");
+      setSkillsFilter(hasSkills ? filters.skills.join(", ") : "");
       setSalaryVisibilityFilter(
         filters.showSalary === true ? "shown" : filters.showSalary === false ? "hidden" : "all"
       );

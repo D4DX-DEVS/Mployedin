@@ -222,8 +222,14 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
 
   async function handleSaveDraft() {
     setSavingDraft(true);
-    await saveDraft(methods.getValues());
+    const savedId = await saveDraft(methods.getValues());
     setSavingDraft(false);
+    // Navigate to the saved draft or jobs list after saving
+    if (savedId) {
+      router.push(`/${locale}/employer/jobs/${savedId}`);
+    } else {
+      router.push(`/${locale}/employer/jobs`);
+    }
   }
 
   // ─── Submit ───────────────────────────────────────────────────────────────────

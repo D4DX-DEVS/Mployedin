@@ -3,8 +3,8 @@ import { auth } from "@/lib/auth/config";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Sonix AI async STT
-const SONIX_API_URL = "https://api.sonix.ai/v1/media";
+// Soniox real-time Speech-to-Text via WebSocket
+const SONIOX_WS_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
 
 // Google Cloud Speech-to-Text REST API (fallback)
 const SPEECH_API_URL = "https://speech.googleapis.com/v1/speech:recognize";
@@ -30,15 +30,26 @@ const SUPPORTED_LANGUAGES: Record<string, string> = {
   "te-IN": "te-IN",
 };
 
-// Sonix uses shorter locale codes
-const SONIX_LANGUAGE_MAP: Record<string, string> = {
-  "en-US": "en-US",
+// Soniox language hint codes (ISO 639-1 short forms)
+const SONIOX_LANGUAGE_HINTS: Record<string, string> = {
+  "en-US": "en",
   "ar-SA": "ar",
   "ml-IN": "ml",
   "hi-IN": "hi",
   "ur-PK": "ur",
   "ta-IN": "ta",
   "te-IN": "te",
+};
+
+// Map Soniox short code → full BCP-47 locale
+const SONIOX_TO_LOCALE: Record<string, string> = {
+  en: "en-US",
+  ar: "ar-SA",
+  ml: "ml-IN",
+  hi: "hi-IN",
+  ur: "ur-PK",
+  ta: "ta-IN",
+  te: "te-IN",
 };
 
 // Google enhanced models only exist for these language codes (v1 Speech API)
@@ -49,84 +60,128 @@ const ALL_LANGUAGE_CODES = ["ml-IN", "en-US", "ar-SA", "hi-IN", "ta-IN", "te-IN"
 
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024; // 5 MB
 
-// ─── Sonix polling helper ─────────────────────────────────────────────────────
-async function trySonixTranscription(
+// Strip LLM stop-token artifacts that occasionally appear at the end of transcriptions
+// (e.g. Gemini sometimes appends "<end>", "[END]", "[end]" as completion markers)
+function cleanTranscript(text: string): string {
+  return text
+    .replace(/<\/?end>/gi, "")
+    .replace(/\[end\]/gi, "")
+    .replace(/\[END_OF_TRANSCRIPTION\]/gi, "")
+    .replace(/\[DONE\]/gi, "")
+    .trim();
+}
+
+// ─── Soniox real-time WebSocket helper ───────────────────────────────────────
+// Uses Soniox's real-time STT API with auto language identification.
+// Pass languageCode=null for full auto-detect.
+async function trySonioxTranscription(
   audioFile: File,
-  languageCode: string,
-  isAutoDetect: boolean,
-  sonixKey: string
+  languageCode: string | null,
+  sonioxKey: string
 ): Promise<{ transcript: string; language: string } | null> {
-  const ext = audioFile.type.includes("ogg")
-    ? "ogg"
-    : audioFile.type.includes("mp4") || audioFile.type.includes("m4a")
-      ? "m4a"
-      : "webm";
+  const arrayBuffer = await audioFile.arrayBuffer();
+  const audioBytes = new Uint8Array(arrayBuffer);
 
-  const uploadForm = new FormData();
-  uploadForm.append("name", `recording-${Date.now()}.${ext}`);
+  return new Promise((resolve) => {
+    const ws = new WebSocket(SONIOX_WS_URL);
+    const finalTokens: string[] = [];
+    let detectedLang: string | null = null;
+    let settled = false;
 
-  // For manual language selection, pass Sonix language code
-  if (!isAutoDetect) {
-    const sonixLang = SONIX_LANGUAGE_MAP[languageCode] ?? languageCode;
-    uploadForm.append("language", sonixLang);
-  }
+    const done = (result: { transcript: string; language: string } | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      try { ws.close(); } catch { /* ignore */ }
+      resolve(result);
+    };
 
-  uploadForm.append("file", audioFile);
+    // 30-second hard timeout
+    const timeoutId = setTimeout(() => {
+      console.error("[Soniox STT] Timed out after 30s");
+      done(null);
+    }, 30000);
 
-  const uploadRes = await fetch(SONIX_API_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${sonixKey}` },
-    body: uploadForm,
-  });
+    ws.addEventListener("open", () => {
+      const config: Record<string, unknown> = {
+        api_key: sonioxKey,
+        model: "stt-rt-v4",
+        audio_format: "auto",
+        enable_language_identification: true,
+        enable_endpoint_detection: true,
+      };
 
-  if (!uploadRes.ok) {
-    const err = await uploadRes.text();
-    console.error("[Sonix Upload Error]", uploadRes.status, err);
-    return null;
-  }
+      // Only set language_hints when the user picked a specific language.
+      // For auto-detect, Soniox's multilingual model handles it natively.
+      if (languageCode) {
+        config.language_hints = [SONIOX_LANGUAGE_HINTS[languageCode] ?? languageCode.split("-")[0]];
+      }
 
-  const uploadData = await uploadRes.json() as { id: string; status: string; language?: string };
-  const mediaId = uploadData.id;
+      ws.send(JSON.stringify(config));
 
-  // Poll until completed (max 15 seconds, 1.5s intervals)
-  const deadline = Date.now() + 15000;
+      // Stream audio in chunks (Soniox recommended: 3840 bytes)
+      const CHUNK_SIZE = 3840;
+      for (let offset = 0; offset < audioBytes.length; offset += CHUNK_SIZE) {
+        ws.send(audioBytes.slice(offset, offset + CHUNK_SIZE));
+      }
 
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 1500));
-
-    const statusRes = await fetch(`${SONIX_API_URL}/${mediaId}`, {
-      headers: { Authorization: `Bearer ${sonixKey}` },
+      // Empty string signals end-of-audio to the server
+      ws.send("");
     });
 
-    if (!statusRes.ok) break;
+    ws.addEventListener("message", (event: MessageEvent) => {
+      interface SonioxToken {
+        text: string;
+        is_final: boolean;
+        language?: string;
+        translation_status?: string;
+      }
+      interface SonioxResponse {
+        error_code?: string;
+        error_message?: string;
+        tokens?: SonioxToken[];
+        finished?: boolean;
+      }
 
-    const statusData = await statusRes.json() as { id: string; status: string; language?: string };
+      let res: SonioxResponse;
+      try {
+        res = JSON.parse(event.data as string) as SonioxResponse;
+      } catch {
+        return;
+      }
 
-    if (statusData.status === "completed") {
-      const transcriptRes = await fetch(`${SONIX_API_URL}/${mediaId}/transcript.txt`, {
-        headers: { Authorization: `Bearer ${sonixKey}` },
-      });
+      if (res.error_code) {
+        console.error("[Soniox STT Error]", res.error_code, res.error_message);
+        done(null);
+        return;
+      }
 
-      if (!transcriptRes.ok) break;
+      for (const token of res.tokens ?? []) {
+        if (token.is_final && token.text && token.translation_status !== "translation") {
+          finalTokens.push(token.text);
+          if (token.language && !detectedLang) {
+            detectedLang = token.language;
+          }
+        }
+      }
 
-      const rawText = await transcriptRes.text();
-      const transcript = rawText.trim();
+      if (res.finished) {
+        const transcript = cleanTranscript(finalTokens.join(""));
+        if (!transcript) {
+          done(null);
+          return;
+        }
+        const language =
+          SONIOX_TO_LOCALE[detectedLang ?? ""] ?? (languageCode || "en-US");
+        done({ transcript, language });
+      }
+    });
 
-      if (!transcript) return null;
-
-      const detectedLang = statusData.language
-        ? (SUPPORTED_LANGUAGES[statusData.language] ?? statusData.language)
-        : isAutoDetect
-          ? "auto"
-          : languageCode;
-
-      return { transcript, language: detectedLang };
-    }
-
-    if (statusData.status === "failed") break;
-  }
-
-  return null;
+    ws.addEventListener("error", () => {
+      console.error("[Soniox STT] WebSocket error");
+      done(null);
+    });
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -183,18 +238,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ─── PRIMARY: Sonix AI ────────────────────────────────────────────────────
-    const sonixKey = process.env.SONIX_API_KEY;
-    if (sonixKey) {
+    // ─── PRIMARY: Soniox real-time STT ───────────────────────────────────────
+    // Auto-detect: no language hint → Soniox identifies language automatically.
+    // Manual: pass the explicit BCP-47 language code.
+    const sonioxKey = process.env.SONIOX_API_KEY;
+    if (sonioxKey) {
       try {
-        const result = await trySonixTranscription(audioFile, languageCode, isAutoDetect, sonixKey);
+        const result = await trySonioxTranscription(
+          audioFile,
+          isAutoDetect ? null : languageCode,
+          sonioxKey
+        );
         if (result) {
           return NextResponse.json(result, {
             headers: { "X-RateLimit-Remaining": String(remaining) },
           });
         }
-      } catch (sonixErr) {
-        console.error("[Sonix STT Error]", sonixErr);
+      } catch (sonioxErr) {
+        console.error("[Soniox STT Error]", sonioxErr);
         // Fall through to Gemini / Google
       }
     }
@@ -202,7 +263,7 @@ export async function POST(req: NextRequest) {
     const audioBuffer = await audioFile.arrayBuffer();
     const audioBase64 = Buffer.from(audioBuffer).toString("base64");
 
-    // ─── FALLBACK 1: Gemini (auto-detect mode only) ───────────────────────────
+    // ─── FALLBACK 1: Gemini (auto-detect only — multilingual, code-switching) ─
     if (isAutoDetect) {
       const geminiKey = process.env.GEMINI_API_KEY;
       if (geminiKey) {
@@ -266,7 +327,7 @@ Rules:
           };
 
           return NextResponse.json(
-            { transcript, language: langMap[detectedLang] ?? "auto" },
+            { transcript: cleanTranscript(transcript), language: langMap[detectedLang] ?? "auto" },
             { headers: { "X-RateLimit-Remaining": String(remaining) } }
           );
         } catch (geminiErr) {
@@ -276,7 +337,7 @@ Rules:
       }
     }
 
-    // ─── FALLBACK 2: Google Cloud Speech-to-Text ──────────────────────────────
+    // ─── FALLBACK 2: Google Cloud Speech-to-Text ─────────────────────────────
     const apiKey = process.env.GOOGLE_CLOUD_SPEECH_KEY;
     if (!apiKey) {
       return NextResponse.json(
@@ -355,7 +416,7 @@ Rules:
     }
 
     const speechData = await speechRes.json();
-    const transcript =
+    const rawTranscript =
       speechData.results
         ?.flatMap((r: { alternatives?: Array<{ transcript?: string }> }) =>
           r.alternatives?.map((a) => a.transcript ?? "") ?? []
@@ -364,7 +425,7 @@ Rules:
         .trim() ?? "";
 
     return NextResponse.json(
-      { transcript, language: speechLangCode },
+      { transcript: cleanTranscript(rawTranscript), language: speechLangCode },
       { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );
   } catch (err) {

@@ -22,6 +22,7 @@
   --color-ring: hsl(var(--ring));
   --font-sans: var(--font-inter);
   --font-arabic: var(--font-noto-arabic);
+  --font-malayalam: var(--font-noto-malayalam);
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
@@ -208,6 +209,10 @@ body {
 
 .font-arabic {
   font-family: var(--font-arabic), var(--font-sans), system-ui, sans-serif;
+}
+
+.font-malayalam {
+  font-family: var(--font-malayalam), var(--font-sans), system-ui, sans-serif;
 }
 
 /* ── PORTAL Z-INDEX FIX ── */

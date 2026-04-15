@@ -1,5 +1,3 @@
-import PublicFooter from "@/components/shared/PublicFooter";
-
 export default async function AuthLayout({
   children,
   params,
@@ -48,8 +46,6 @@ export default async function AuthLayout({
           </div>
         </div>
       </div>
-
-      <PublicFooter locale={locale} variant="embedded" />
     </div>
   );
 }

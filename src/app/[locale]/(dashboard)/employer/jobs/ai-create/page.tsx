@@ -11,6 +11,10 @@ import type { JobFormValues } from "@/components/features/employer/job-form/jobF
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+function hasMalayalam(text: string): boolean {
+  return /[\u0D00-\u0D7F]/.test(text);
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -356,11 +360,13 @@ export default function EmployerAIJobCreatePage() {
                     <Bot className="h-4 w-4 text-primary" />
                   </div>
                 )}
-                <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
+                <div className={cn(
+                  "max-w-[85%] rounded-2xl px-3 py-2 text-sm",
                   msg.role === "user"
                     ? "bg-primary text-white rounded-tr-none"
-                    : "bg-muted text-foreground rounded-tl-none"
-                }`}>
+                    : "bg-muted text-foreground rounded-tl-none",
+                  hasMalayalam(msg.content) && "font-malayalam"
+                )}>
                   {(() => {
                     const hasJobData = /<JOB_DATA>[\s\S]*?<\/JOB_DATA>/.test(msg.content);
                     const displayText = msg.content.replace(/<JOB_DATA>[\s\S]*?<\/JOB_DATA>/, "").trim();

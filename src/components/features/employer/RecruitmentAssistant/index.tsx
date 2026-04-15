@@ -756,6 +756,10 @@ function renderInline(text: string) {
   });
 }
 
+function hasMalayalam(text: string): boolean {
+  return /[\u0D00-\u0D7F]/.test(text);
+}
+
 function renderMarkdown(text: string) {
   const blocks = text.split(/\n{2,}/);
   return blocks.map((block, bi) => {
@@ -824,7 +828,8 @@ function MessageBubble({
           "max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
           msg.role === "user"
             ? "bg-gradient-to-br from-primary to-indigo-600 text-white rounded-tr-none shadow-sm"
-            : "bg-muted text-foreground rounded-tl-none"
+            : "bg-muted text-foreground rounded-tl-none",
+          hasMalayalam(msg.content) && "font-malayalam"
         )}
       >
         {displayContent ? (

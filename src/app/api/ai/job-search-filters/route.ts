@@ -97,7 +97,9 @@ Return ONLY valid JSON with this exact shape:
 
 Guidelines:
 - Extract filters only when the user clearly asked for them.
-- Put leftover title or keyword intent into "search".
+- Put leftover title or keyword intent into "search". Do NOT also put those words into "skills".
+- Use "skills" only when the user explicitly asks for a required skill/technology (e.g. "React developer", "Python jobs"). Skills should be the exact technology names (e.g. "React", "Node.js", "Python").
+- If skills are extracted, leave "search" null unless there is additional non-skill keyword intent.
 - If the user asks for remote jobs, set workMode to "remote".
 - If the user asks for salary hidden or undisclosed jobs, set showSalary to false.
 - Never invent company names, dates, or IDs.
