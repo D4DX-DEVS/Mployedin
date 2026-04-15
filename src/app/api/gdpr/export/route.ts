@@ -7,12 +7,19 @@ import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import Notification from "@/models/Notification";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 /**
  * GET /api/gdpr/export
  * Returns all data associated with the current user (GDPR data export).
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
+  // Max 3 exports per day per user to prevent data harvesting abuse
+  const { allowed } = checkRateLimit(`gdpr-export:${ctx.userId}`, { limit: 3, windowSec: 86400, prefix: "gdpr" });
+  if (!allowed) {
+    return NextResponse.json({ error: "Export limit reached. You may request up to 3 exports per day." }, { status: 429 });
+  }
+
   await connectDB();
 
   const [user, seekerProfile, applications, interviews, notifications] = await Promise.all([

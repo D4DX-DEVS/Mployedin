@@ -151,10 +151,10 @@ export const JobFeedCard = memo(function JobFeedCard({
 
   return (
     <div
-      className={`card-base group relative transition-all duration-200 ${
+      className={`card-base group relative overflow-hidden rounded-[26px] border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all duration-200 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.35)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_60px_-38px_rgba(37,99,235,0.18)] ${
         isSelected
-          ? "border-primary/60 bg-primary/[0.03] ring-1 ring-primary/20 dark:bg-primary/[0.08]"
-          : "hover:border-primary/30"
+          ? "border-primary/60 bg-primary/[0.04] ring-1 ring-primary/20"
+          : ""
       }`}
     >
       <div className="flex gap-2 sm:gap-3.5">
@@ -169,37 +169,37 @@ export const JobFeedCard = memo(function JobFeedCard({
 
         {/* Card body */}
         <div className="min-w-0 flex-1">
-          {/* Top row: title + logo + match */}
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {remote ? "Remote-ready" : "Recommended role"}
+              </div>
               <Link
                 href={`/${locale}/job-seeker/jobs/${job._id}`}
-                className="text-sm sm:text-[15px] font-semibold text-foreground hover:text-primary transition-colors line-clamp-1"
+                className="mt-1 block line-clamp-2 text-base font-semibold text-foreground transition-colors hover:text-primary sm:text-[17px]"
               >
                 {job.title}
               </Link>
-              <p className="mt-0.5 text-xs text-muted-foreground truncate">
+              <p className="mt-1 text-sm text-muted-foreground truncate">
                 {company}
               </p>
             </div>
 
-            <div className="flex items-start gap-3 shrink-0">
-              {/* Match score badge */}
+            <div className="flex shrink-0 items-start gap-3">
               {showMatchScore && (
                 <span
-                  className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap ${matchColor(job.matchScore)}`}
+                  className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${matchColor(job.matchScore)}`}
                 >
                   {job.matchScore}% match
                 </span>
               )}
 
-              {/* Company logo */}
               <div
-                className={`flex h-11 w-11 items-center justify-center rounded-xl text-xs font-semibold shadow-sm ${palette.bg} ${palette.text}`}
+                className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-semibold shadow-sm ${palette.bg} ${palette.text}`}
               >
                 {job.employerId?.logo ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={job.employerId.logo} alt="" className="h-full w-full rounded-xl object-cover" />
+                  <img src={job.employerId.logo} alt={`${company} logo`} className="h-full w-full rounded-2xl object-cover" />
                 ) : (
                   logo
                 )}
@@ -229,23 +229,23 @@ export const JobFeedCard = memo(function JobFeedCard({
           )}
 
           {/* Meta: experience · location · salary */}
-          <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
             {(job.requirements?.experienceMin != null || job.requirements?.experienceMax != null) && (
-              <span className="flex items-center gap-1.5">
-                <Briefcase className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
+                <Briefcase className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                 {job.requirements.experienceMin ?? 0}–{job.requirements.experienceMax ?? 0} yrs
               </span>
             )}
-            <span className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
               {job.location.city}
               {remote && job.location.city ? " · Remote" : ""}
               {!remote && job.location.country ? `, ${job.location.country}` : ""}
               {remote && !job.location.city ? "Remote" : ""}
             </span>
             {job.salary?.min > 0 && (
-              <span className="flex items-center gap-1.5">
-                <DollarSign className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
+                <DollarSign className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                 {fmtSalary(job.salary)}
               </span>
             )}
@@ -266,10 +266,10 @@ export const JobFeedCard = memo(function JobFeedCard({
                 return (
                   <span
                     key={skill}
-                    className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-colors ${
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
                       isMatched
-                        ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-700"
-                        : "bg-secondary text-secondary-foreground border-border/60"
+                        ? "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                        : "border-border/60 bg-secondary text-secondary-foreground"
                     }`}
                   >
                     {isMatched && <Check className="h-2.5 w-2.5" />}
@@ -286,8 +286,8 @@ export const JobFeedCard = memo(function JobFeedCard({
           )}
 
           {/* Bottom: posted date + stats + actions */}
-          <div className="mt-3 flex items-center justify-between pt-2.5 border-t border-border/40">
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          <div className="mt-4 flex flex-col gap-3 border-t border-border/40 pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
               <span>{relativeTime(job.createdAt)}</span>
               {(job.views ?? 0) > 0 && (
                 <span className="flex items-center gap-1">
@@ -298,23 +298,23 @@ export const JobFeedCard = memo(function JobFeedCard({
               {(job.uniqueViews ?? 0) > 0 && (
                 <span className="flex items-center gap-1">
                   <Users className="h-3 w-3" />
-                  {fmtCount(job.uniqueViews!)} applicants
+                  {fmtCount(job.uniqueViews!)} viewers
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
               <button
                 onClick={onHide}
-                className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-border bg-secondary/80 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                className="inline-flex items-center gap-1 rounded-xl border border-border bg-secondary/80 px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <EyeOff className="h-3 w-3" />
                 <span className="hidden sm:inline">Hide</span>
               </button>
               <button
                 onClick={onSave}
-                className={`inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
+                className={`inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-xs transition-colors ${
                   isSaved
-                    ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-400"
+                    ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
                     : "border-border bg-secondary/80 text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
@@ -324,7 +324,7 @@ export const JobFeedCard = memo(function JobFeedCard({
               <button
                 onClick={onApply}
                 disabled={isApplied}
-                className={`inline-flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-lg font-semibold transition-all ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
                   isApplied
                     ? "bg-muted text-muted-foreground cursor-not-allowed"
                     : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow-md"

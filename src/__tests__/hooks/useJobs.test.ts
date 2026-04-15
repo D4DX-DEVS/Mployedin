@@ -129,6 +129,37 @@ describe("useJobs", () => {
     expect(url).toContain("search=react");
   });
 
+  it("includes advanced filter params when provided", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => jobsPayload,
+    });
+
+    renderHook(
+      () => useJobs({
+        page: 1,
+        limit: 10,
+        myJobs: true,
+        status: "draft",
+        approvalStatus: "pending",
+        workMode: "remote",
+        location: "Dubai",
+        skills: ["React", "Node.js"],
+        showSalary: "false",
+      }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
+    const url: string = mockFetch.mock.calls[0][0];
+    expect(url).toContain("status=draft");
+    expect(url).toContain("approvalStatus=pending");
+    expect(url).toContain("workMode=remote");
+    expect(url).toContain("location=Dubai");
+    expect(url).toContain("skills=React%2CNode.js");
+    expect(url).toContain("showSalary=false");
+  });
+
   it("transitions to error state when fetch fails", async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
 

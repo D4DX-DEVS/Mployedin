@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 interface PublicFooterProps {
   locale: string;
@@ -40,11 +41,8 @@ export default function PublicFooter({ locale }: PublicFooterProps) {
         <div className="grid gap-6 sm:gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-                M
-              </div>
-              <span className="text-lg font-bold">MPLOYEDIN</span>
+            <div className="mb-4">
+              <Image src="/logo.png" alt="Mployedin" width={140} height={36} className="h-9 w-auto object-contain" />
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {isAr

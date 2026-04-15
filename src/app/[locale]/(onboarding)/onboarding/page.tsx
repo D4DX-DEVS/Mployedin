@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Check, ChevronRight, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle } from "lucide-react";
@@ -388,8 +389,7 @@ export default function JobSeekerOnboardingPage() {
       {/* Top bar */}
       <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-base shadow-sm">M</div>
-          <span className="text-xl font-bold tracking-tight">mployedin</span>
+          <Image src="/logo.png" alt="Mployedin" width={140} height={36} className="h-9 w-auto object-contain" />
         </div>
         {userName && (
           <span className="text-sm text-gray-600">Welcome, {userName}</span>

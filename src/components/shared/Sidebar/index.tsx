@@ -1,105 +1,259 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { ChevronDown, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
-import { Menu, X } from "lucide-react";
 
 function usePendingApprovalCount(role: string | undefined) {
   const [count, setCount] = useState(0);
+
   useEffect(() => {
     if (role !== "super_agent") return;
     let cancelled = false;
+
     fetch("/api/super-agent/approvals/count")
-      .then((r) => r.ok ? r.json() : { count: 0 })
-      .then((d: { count?: number }) => { if (!cancelled) setCount(d.count ?? 0); })
+      .then((response) => response.ok ? response.json() : { count: 0 })
+      .then((data: { count?: number }) => {
+        if (!cancelled) setCount(data.count ?? 0);
+      })
       .catch(() => {});
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [role]);
+
   return count;
 }
-
 
 interface SidebarProps {
   navGroups: NavGroup[];
   locale: string;
+  userRole?: string;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
   companyLogo?: string;
 }
 
-export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, companyLogo }: SidebarProps) {
+export function Sidebar({
+  navGroups,
+  locale,
+  userRole,
+  mobileOpen = false,
+  onMobileClose,
+  companyLogo,
+}: SidebarProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const userRole = (session?.user as { role?: string } | undefined)?.role;
-  const pendingApprovals = usePendingApprovalCount(userRole);
+  const sessionRole = (session?.user as { role?: string } | undefined)?.role;
+  const effectiveRole = userRole ?? sessionRole;
+  const pendingApprovals = usePendingApprovalCount(effectiveRole);
   const isRtl = locale === "ar";
+  const isEmployerShell = effectiveRole === "employer";
   const userImage = session?.user?.image;
   const displayImage = companyLogo ?? userImage;
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const mobileSidebarRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setImageLoadFailed(false);
   }, [displayImage]);
 
-  // Flatten all top-level items from groups (usually just 1 group, but just in case)
-  const allMainItems = navGroups.flatMap(g => g.items);
+  const allMainItems = navGroups.flatMap((group) => group.items);
 
-  // Find the active main item based on exact matches first, then prefixes
   const getInitialActiveItem = () => {
-    // 1. Exact match for a child item
     for (const item of allMainItems) {
-      if (item.children?.some(c => pathname === c.href)) return item.title;
+      if (item.children?.some((child) => pathname === child.href)) return item.title;
     }
-    // 2. Exact match for a main item
+
     for (const item of allMainItems) {
       if (pathname === item.href) return item.title;
     }
-    // 3. Prefix match for a child (e.g. /admin/jobs/new matches /admin/jobs)
+
     for (const item of allMainItems) {
-      if (item.children?.some(c => pathname.startsWith(c.href + "/"))) return item.title;
+      if (item.children?.some((child) => pathname.startsWith(child.href + "/"))) return item.title;
     }
-    // 4. Prefix match for a main item
+
     for (const item of allMainItems) {
       if (pathname.startsWith(item.href + "/")) return item.title;
     }
+
     return allMainItems[0]?.title || "";
   };
 
   const [activeMainTitle, setActiveMainTitle] = useState<string>(getInitialActiveItem());
+  const [submenuExpanded, setSubmenuExpanded] = useState(true);
 
-  // Update active item if route changes (e.g. from command menu)
   useEffect(() => {
     const current = getInitialActiveItem();
     if (current) setActiveMainTitle(current);
-    // eslint-disable-next-deps
   }, [pathname, navGroups]);
 
   useEffect(() => {
     if (mobileOpen) document.body.style.overflow = "hidden";
     else document.body.style.overflow = "";
-    return () => { document.body.style.overflow = ""; };
+
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [mobileOpen]);
 
-  const activeMainItem = allMainItems.find(i => i.title === activeMainTitle);
-  const hasSubmenu = activeMainItem?.children && activeMainItem.children.length > 0;
+  useEffect(() => {
+    if (!mobileOpen || !mobileSidebarRef.current) return;
+
+    const sidebarElement = mobileSidebarRef.current;
+    const focusableSelector = [
+      'a[href]',
+      'button:not([disabled])',
+      'textarea:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',');
+
+    const getFocusableElements = () => Array.from(sidebarElement.querySelectorAll<HTMLElement>(focusableSelector));
+
+    const initialFocusable = getFocusableElements()[0];
+    (initialFocusable ?? sidebarElement).focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onMobileClose?.();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusableElements = getFocusableElements();
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        sidebarElement.focus();
+        return;
+      }
+
+      const firstFocusable = focusableElements[0];
+      const lastFocusable = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement;
+
+      if (event.shiftKey && activeElement === firstFocusable) {
+        event.preventDefault();
+        lastFocusable.focus();
+      } else if (!event.shiftKey && activeElement === lastFocusable) {
+        event.preventDefault();
+        firstFocusable.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileOpen, onMobileClose]);
+
+  useEffect(() => {
+    setSubmenuExpanded(true);
+  }, [activeMainTitle]);
+
+  const activeMainItem = allMainItems.find((item) => item.title === activeMainTitle);
+  const hasSubmenu = Boolean(activeMainItem?.children?.length);
+  const submenuId = activeMainItem
+    ? `sidebar-submenu-${activeMainItem.title.toLowerCase().replace(/\s+/g, "-")}`
+    : undefined;
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + "/");
   }
 
-  // --- Primary Icon Sidebar ---
+  function renderSubmenuLink(child: NavItem, variant: "inline" | "panel") {
+    const ChildIcon = getIcon(child.icon);
+    const isChildActive = isActive(child.href);
+
+    return (
+      <Link
+        key={child.href}
+        href={child.href}
+        prefetch={false}
+        onClick={() => onMobileClose?.()}
+        className={cn(
+          "flex items-center gap-3 transition-all duration-200 group relative overflow-hidden",
+          variant === "inline"
+            ? cn(
+                "rounded-2xl border px-3 py-2.5",
+                isChildActive
+                  ? "border-sky-100 bg-[linear-gradient(135deg,_rgba(14,165,233,0.14),_rgba(255,255,255,0.96))] text-slate-950 font-semibold shadow-[0_22px_42px_-32px_rgba(2,132,199,0.65)]"
+                  : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-white hover:text-slate-900 hover:shadow-[0_18px_36px_-34px_rgba(15,23,42,0.5)] font-medium"
+              )
+            : cn(
+                "rounded-lg px-3 py-2.5",
+                isChildActive
+                  ? "bg-white text-primary font-bold shadow-sm ring-1 ring-border/50"
+                  : "text-sidebar-fg/70 hover:bg-white hover:text-sidebar-fg font-medium hover:shadow-sm hover:ring-1 hover:ring-border/50"
+              )
+        )}
+      >
+        {isChildActive && (
+          <div
+            className={cn(
+              "absolute left-0 top-1/2 h-1/2 w-1 -translate-y-1/2 rounded-r-full",
+              variant === "inline" ? "bg-sky-500" : "bg-primary"
+            )}
+          />
+        )}
+        <ChildIcon
+          className={cn(
+            "h-[18px] w-[18px] shrink-0 transition-colors",
+            variant === "inline"
+              ? isChildActive
+                ? "text-sky-600"
+                : "text-slate-400 group-hover:text-sky-600"
+              : isChildActive
+                ? "text-primary"
+                : "text-muted-foreground group-hover:text-brand-blue"
+          )}
+        />
+        <span className="truncate">{locale === "ar" ? child.titleAr : child.title}</span>
+        {child.title === "Approvals" && pendingApprovals > 0 && (
+          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+            {pendingApprovals > 99 ? "99+" : pendingApprovals}
+          </span>
+        )}
+      </Link>
+    );
+  }
+
   const primarySidebar = (
-    <div className="w-[200px] h-full flex flex-col bg-slate-900 border-r border-slate-800 z-20 shrink-0">
-      {/* Logo */}
-      <div className="h-16 flex items-center gap-3 px-4 border-b border-slate-800 shrink-0">
+    <div
+      className={cn(
+        "h-full flex flex-col z-20 shrink-0",
+        isEmployerShell
+          ? "w-[216px] border-r border-sky-100/80 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_52%),linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(239,246,255,0.9))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.55)] backdrop-blur-xl"
+          : "w-[200px] bg-slate-900 border-r border-slate-800"
+      )}
+    >
+      <div
+        className={cn(
+          "shrink-0 flex items-center gap-3 px-4",
+          isEmployerShell
+            ? "h-20 border-b border-sky-100/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.6),_rgba(255,255,255,0.22))]"
+            : "h-16 border-b border-slate-800"
+        )}
+      >
         {displayImage && !imageLoadFailed ? (
-          <div className="w-9 h-9 rounded-xl overflow-hidden shadow-lg ring-1 ring-white/20 bg-white shrink-0">
+          <div
+            className={cn(
+              "overflow-hidden bg-white shrink-0",
+              isEmployerShell
+                ? "h-11 w-11 rounded-2xl border border-sky-100 shadow-[0_20px_40px_-28px_rgba(2,132,199,0.55)] ring-4 ring-white/70"
+                : "w-9 h-9 rounded-xl shadow-lg ring-1 ring-white/20"
+            )}
+          >
             <Image
               src={displayImage}
               alt={companyLogo ? "Company logo" : "Profile image"}
@@ -112,44 +266,114 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, 
             />
           </div>
         ) : !companyLogo && status === "loading" ? (
-          <div className="w-9 h-9 rounded-xl bg-slate-700/70 animate-pulse ring-1 ring-white/20 shrink-0" />
+          <div
+            className={cn(
+              "animate-pulse shrink-0",
+              isEmployerShell
+                ? "h-11 w-11 rounded-2xl border border-sky-100/80 bg-white/80 ring-4 ring-white/70"
+                : "w-9 h-9 rounded-xl bg-slate-700/70 ring-1 ring-white/20"
+            )}
+          />
         ) : (
-          <div className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg font-bold text-lg ring-1 ring-white/20 shrink-0">
+          <div
+            className={cn(
+              "flex items-center justify-center font-bold shrink-0",
+              isEmployerShell
+                ? "h-11 w-11 rounded-2xl bg-[linear-gradient(135deg,_rgba(14,165,233,0.98),_rgba(37,99,235,0.94))] text-white shadow-[0_22px_42px_-24px_rgba(37,99,235,0.7)] ring-4 ring-white/70 text-lg"
+                : "w-9 h-9 rounded-xl bg-primary text-primary-foreground shadow-lg text-lg ring-1 ring-white/20"
+            )}
+          >
             M
           </div>
         )}
-        <span className="text-white font-bold text-sm tracking-wide truncate">Mployedin</span>
+        <div className="min-w-0">
+          <span
+            className={cn(
+              "block truncate font-semibold tracking-tight",
+              isEmployerShell ? "text-[15px] text-slate-950" : "text-sm text-white font-bold tracking-wide"
+            )}
+          >
+            Mployedin
+          </span>
+          {isEmployerShell && (
+            <span className="mt-0.5 block truncate text-[11px] font-medium uppercase tracking-[0.16em] text-sky-700/70">
+              Employer workspace
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Icon + Label Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1 sidebar-scroll">
-        {allMainItems.map(item => {
+        {allMainItems.map((item) => {
           const Icon = getIcon(item.icon);
           const isSelected = activeMainTitle === item.title;
+          const hasChildren = Boolean(item.children?.length);
+          const itemSubmenuId = `sidebar-submenu-${item.title.toLowerCase().replace(/\s+/g, "-")}`;
+          const showInlineChildren = isEmployerShell && hasChildren && isSelected && submenuExpanded;
 
           const itemContent = (
             <>
               <Icon className="w-[18px] h-[18px] shrink-0" />
               <span className="truncate text-[13px] font-medium">{locale === "ar" ? item.titleAr : item.title}</span>
+              {isEmployerShell && hasChildren && (
+                <ChevronDown
+                  className={cn(
+                    "ml-auto h-4 w-4 shrink-0 transition-transform duration-200",
+                    showInlineChildren ? "rotate-180 text-sky-600" : "text-slate-400"
+                  )}
+                />
+              )}
             </>
           );
 
           const itemClass = cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
-            isSelected
-              ? "bg-white text-primary shadow-md"
-              : "text-white/60 hover:bg-white/10 hover:text-white"
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl border transition-all duration-200",
+            isEmployerShell
+              ? isSelected
+                ? "border-sky-100 bg-white text-slate-950 shadow-[0_22px_44px_-30px_rgba(2,132,199,0.58)]"
+                : "border-transparent text-slate-600 hover:border-sky-100/80 hover:bg-white/90 hover:text-slate-950 hover:shadow-[0_18px_32px_-30px_rgba(15,23,42,0.5)]"
+              : isSelected
+                ? "border-transparent bg-white text-primary shadow-md"
+                : "border-transparent text-white/60 hover:bg-white/10 hover:text-white"
           );
 
-          return item.children && item.children.length > 0 ? (
-            <button
-              key={item.title}
-              onClick={() => setActiveMainTitle(item.title)}
-              className={itemClass}
-            >
-              {itemContent}
-            </button>
-          ) : (
+          if (hasChildren) {
+            return (
+              <div key={item.title} className="space-y-1">
+                <button
+                  id={`${itemSubmenuId}-label`}
+                  type="button"
+                  onClick={() => {
+                    if (isEmployerShell && isSelected) {
+                      setSubmenuExpanded((previous) => !previous);
+                      return;
+                    }
+
+                    setActiveMainTitle(item.title);
+                    setSubmenuExpanded(true);
+                  }}
+                  aria-controls={isEmployerShell ? itemSubmenuId : undefined}
+                  aria-expanded={isEmployerShell ? showInlineChildren : undefined}
+                  className={itemClass}
+                >
+                  {itemContent}
+                </button>
+
+                {showInlineChildren && (
+                  <div
+                    id={itemSubmenuId}
+                    role="region"
+                    aria-labelledby={`${itemSubmenuId}-label`}
+                    className="ml-4 space-y-1 border-l border-sky-100/80 pl-3"
+                  >
+                    {item.children!.map((child) => renderSubmenuLink(child, "inline"))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return (
             <Link
               key={item.title}
               href={item.href}
@@ -168,60 +392,60 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, 
     </div>
   );
 
-  // --- Secondary Submenu Sidebar ---
+  if (isEmployerShell) {
+    return (
+      <>
+        <aside className="hidden lg:flex h-full transition-all duration-300 relative z-40 bg-transparent">
+          {primarySidebar}
+        </aside>
+
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden flex" role="dialog" aria-modal="true" aria-label="Navigation menu">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => onMobileClose?.()} />
+
+            <aside
+              ref={mobileSidebarRef}
+              tabIndex={-1}
+              className={cn(
+              "relative flex h-full max-w-[85vw] animate-in duration-300 ease-out shadow-2xl",
+                "bg-transparent",
+              isRtl ? "right-0 left-auto slide-in-from-right" : "slide-in-from-left"
+            )}
+          >
+              {primarySidebar}
+            </aside>
+          </div>
+        )}
+      </>
+    );
+  }
+
   const secondarySidebar = (
-    <div className={cn(
-      "h-full overflow-hidden transition-[width] duration-300 ease-in-out bg-surface-2 border-r border-sidebar-border z-10 flex flex-col shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
-      hasSubmenu ? "w-[240px]" : "w-0 border-r-0"
-    )}>
+    <div
+      className={cn(
+        "h-full overflow-hidden transition-[width] duration-300 ease-in-out z-10 flex flex-col shrink-0 bg-surface-2 border-r border-sidebar-border shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
+        hasSubmenu ? "w-[240px]" : "w-0 border-r-0"
+      )}
+    >
       {activeMainItem && hasSubmenu && (
         <div className="flex flex-col h-full min-w-[240px]">
-          <div className="h-16 flex items-center px-6 border-b border-sidebar-border/50 shrink-0 bg-background/50 backdrop-blur-sm">
-            <h2 className="font-bold text-[15px] tracking-tight text-sidebar-fg">
+          <div className="h-16 shrink-0 flex items-center border-b border-sidebar-border/50 bg-background/50 px-6 backdrop-blur-sm">
+            <h2 className="text-[15px] font-bold tracking-tight text-sidebar-fg">
               {locale === "ar" ? activeMainItem.titleAr : activeMainItem.title}
             </h2>
-            {/* Mobile Close Button in Submenu Header */}
             <button
               onClick={() => onMobileClose?.()}
-              className="lg:hidden ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+              className="lg:hidden ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
-          <nav className="flex-1 overflow-y-auto py-5 px-3 sidebar-scroll">
+
+          <nav className="flex-1 overflow-y-auto px-3 py-5 sidebar-scroll">
             <div className="space-y-1">
-              {activeMainItem.children!.map(child => {
-                const ChildIcon = getIcon(child.icon);
-                const isChildActive = isActive(child.href);
-                return (
-                  <Link
-                    key={child.href}
-                    href={child.href}
-                    prefetch={false}
-                    onClick={() => onMobileClose?.()}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative overflow-hidden",
-                      isChildActive
-                        ? "bg-white text-primary font-bold shadow-sm ring-1 ring-border/50"
-                        : "text-sidebar-fg/70 hover:bg-white hover:text-sidebar-fg font-medium hover:shadow-sm hover:ring-1 hover:ring-border/50"
-                    )}
-                  >
-                    {isChildActive && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full" />
-                    )}
-                    <ChildIcon className={cn(
-                      "w-[18px] h-[18px] shrink-0 transition-colors",
-                      isChildActive ? "text-primary" : "text-muted-foreground group-hover:text-brand-blue"
-                    )} />
-                    <span className="truncate">{locale === "ar" ? child.titleAr : child.title}</span>
-                    {child.title === "Approvals" && pendingApprovals > 0 && (
-                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                        {pendingApprovals > 99 ? "99+" : pendingApprovals}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
+              <div id={submenuId} className="space-y-1">
+                {activeMainItem.children!.map((child) => renderSubmenuLink(child, "panel"))}
+              </div>
             </div>
           </nav>
         </div>
@@ -231,21 +455,23 @@ export function Sidebar({ navGroups, locale, mobileOpen = false, onMobileClose, 
 
   return (
     <>
-      {/* --- Desktop Layout --- */}
       <aside className="hidden lg:flex h-full transition-all duration-300 relative z-40 bg-background">
         {primarySidebar}
         {secondarySidebar}
       </aside>
 
-      {/* --- Mobile Layout Overlay --- */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 lg:hidden flex" role="dialog" aria-modal="true" aria-label="Navigation menu">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => onMobileClose?.()} />
 
-          <aside className={cn(
-            "relative flex h-full max-w-[85vw] animate-in slide-in-from-left duration-300 ease-out shadow-2xl bg-background",
-            isRtl && "right-0 left-auto slide-in-from-right"
-          )}>
+          <aside
+            ref={mobileSidebarRef}
+            tabIndex={-1}
+            className={cn(
+              "relative flex h-full max-w-[85vw] animate-in duration-300 ease-out shadow-2xl bg-background",
+              isRtl ? "right-0 left-auto slide-in-from-right" : "slide-in-from-left"
+            )}
+          >
             {primarySidebar}
             {secondarySidebar}
           </aside>
@@ -259,7 +485,7 @@ export function MobileMenuButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-border/50 bg-background hover:bg-muted shadow-sm transition-colors"
+      className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 hover:bg-white shadow-[0_18px_36px_-28px_rgba(15,23,42,0.45)] backdrop-blur-sm transition-colors"
       aria-label="Open menu"
     >
       <Menu className="h-5 w-5 text-foreground" />

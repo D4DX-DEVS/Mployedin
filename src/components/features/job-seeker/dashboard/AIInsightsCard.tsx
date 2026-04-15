@@ -11,10 +11,10 @@ interface Insight {
 }
 
 const typeConfig = {
-  tip: { icon: Lightbulb, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
-  alert: { icon: AlertTriangle, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" },
-  opportunity: { icon: Rocket, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
-  metric: { icon: BarChart3, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" },
+  tip: { icon: Lightbulb, tone: "dashboard-tone-primary" },
+  alert: { icon: AlertTriangle, tone: "dashboard-tone-warning" },
+  opportunity: { icon: Rocket, tone: "dashboard-tone-success" },
+  metric: { icon: BarChart3, tone: "dashboard-tone-metric" },
 };
 
 export function AIInsightsCard() {
@@ -81,14 +81,14 @@ export function AIInsightsCard() {
           return (
             <div
               key={i}
-              className={`rounded-lg border p-4 ${config.bg} ${config.border}`}
+              className={`rounded-lg border p-4 ${config.tone}`}
             >
               <div className="flex items-start gap-3">
-                <div className={`mt-0.5 rounded-lg p-1.5 bg-white/60`}>
-                  <Icon className={`h-4 w-4 ${config.color}`} />
+                <div className="mt-0.5 rounded-lg border border-border/40 bg-background/80 p-1.5">
+                  <Icon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-semibold ${config.color}`}>
+                  <p className="text-sm font-semibold">
                     {insight.title}
                   </p>
                   <p className="mt-0.5 text-xs text-foreground/80">

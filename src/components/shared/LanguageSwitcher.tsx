@@ -50,12 +50,15 @@ export function LanguageSwitcher() {
   };
 
   return (
-    <div dir="ltr" className="relative flex p-[3px] rounded-full border border-blue-100 items-center h-9 w-[152px]" style={{ backgroundColor: "#ffffff" }}>
+    <div
+      dir="ltr"
+      className="relative flex h-9 w-[152px] items-center rounded-full border border-primary/15 bg-card p-[3px]"
+    >
       {/* Sliding toggle indicator */}
       <div
         className="absolute top-[3px] bottom-[3px] w-[calc(50%-3px)] rounded-full shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
         style={{
-          backgroundColor: "#dbeafe",
+          backgroundColor: "hsl(var(--accent))",
           transform: activeIndex === 0 ? "translateX(0)" : "translateX(100%)",
           left: "3px",
         }}
@@ -68,8 +71,8 @@ export function LanguageSwitcher() {
             onClick={() => switchLocale(l.code)}
             className={`relative z-10 flex items-center justify-center gap-1.5 w-1/2 py-1 rounded-full text-[13px] font-medium cursor-pointer select-none transition-colors duration-200 ${
               isActive
-                ? "text-blue-700"
-                : "text-gray-400 hover:text-gray-600"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
             }`}
             aria-label={`Switch to ${l.code === "en" ? "English" : "Arabic"}`}
           >

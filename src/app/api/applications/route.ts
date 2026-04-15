@@ -6,14 +6,27 @@ import Application from "@/models/Application";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
+import User from "@/models/User";
 import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { applicationCreateSchema } from "@/lib/validators/applications";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
+import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput } from "@/lib/ai/sanitize";
+import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
+
+function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
+  const cleaned = (values ?? [])
+    .map((value) => sanitizeAIInput(value, maxLength))
+    .filter(Boolean)
+    .slice(0, maxItems);
+
+  return cleaned.length > 0 ? cleaned.join(", ") : "Not specified";
+}
 
 // GET /api/applications — paginated list (filtered by role)
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
@@ -24,6 +37,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
   const status = searchParams.get("status") ?? "";
   const jobId = searchParams.get("jobId") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -59,6 +73,49 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (status) query.status = status;
   if (jobId) query.jobId = jobId;
 
+  if (search) {
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const [matchingUsers, matchingJobs] = await Promise.all([
+      User.find({
+        $or: [
+          { name: { $regex: escapedSearch, $options: "i" } },
+          { email: { $regex: escapedSearch, $options: "i" } },
+        ],
+      }).select("_id").lean(),
+      jobId
+        ? Promise.resolve([])
+        : Job.find({ title: { $regex: escapedSearch, $options: "i" } }).select("_id").lean(),
+    ]);
+
+    const seekerClauses: Array<Record<string, unknown>> = [
+      { fullName: { $regex: escapedSearch, $options: "i" } },
+      { skills: { $regex: escapedSearch, $options: "i" } },
+      { currentLocation: { $regex: escapedSearch, $options: "i" } },
+      { "experience.jobTitle": { $regex: escapedSearch, $options: "i" } },
+    ];
+
+    if (matchingUsers.length > 0) {
+      seekerClauses.unshift({ userId: { $in: matchingUsers.map((user) => user._id) } });
+    }
+
+    const matchingSeekers = await JobSeeker.find({ $or: seekerClauses }).select("_id").lean();
+    const searchClauses: Array<Record<string, unknown>> = [];
+
+    if (matchingSeekers.length > 0) {
+      searchClauses.push({ jobSeekerId: { $in: matchingSeekers.map((seeker) => seeker._id) } });
+    }
+
+    if (!jobId && matchingJobs.length > 0) {
+      searchClauses.push({ jobId: { $in: matchingJobs.map((job) => job._id) } });
+    }
+
+    if (searchClauses.length === 0) {
+      return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 } });
+    }
+
+    query.$and = [...(query.$and ?? []), { $or: searchClauses }];
+  }
+
   const skip = (page - 1) * limit;
   const [applications, total] = await Promise.all([
     Application.find(query)
@@ -68,7 +125,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .populate("jobId", "title location salary category employerId")
       .populate({
         path: "jobSeekerId",
-        select: "userId skills currentLocation totalExperienceYears experience cv.originalUrl",
+        select: "userId fullName skills currentLocation totalExperienceYears experience availabilityStatus profileCompleteness cv.originalUrl",
         populate: { path: "userId", select: "name email" },
       })
       .lean(),
@@ -131,9 +188,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // Check employer's autoRejectBelow threshold for newly scored applications
   // (score would be set by a separate scoring step; we set initial status here)
   const empRecord = await Employer.findOne({ userId: job.employerId as unknown as string })
-    .select("workflow")
-    .lean() as { workflow?: { settings?: { autoRejectBelow?: number } } } | null;
+    .select("workflow companyName")
+    .lean() as { companyName?: string; workflow?: { settings?: { autoRejectBelow?: number; aiAutoScreen?: boolean } } } | null;
   const autoRejectBelow = empRecord?.workflow?.settings?.autoRejectBelow;
+  const aiAutoScreen = empRecord?.workflow?.settings?.aiAutoScreen ?? false;
 
   const seekerDoc = seeker as { _id: unknown; profileCompleteness?: number; updatedAt?: Date; documents?: { name: string; url: string; type: string }[] };
   const isEasyApply = !!body.easyApply;
@@ -159,13 +217,71 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     behaviorScore: bScore,
   });
 
-  // If employer has auto-reject threshold and score already known, apply it immediately
-  // (In practice score is set post-creation; this guard handles edge cases)
-  if (autoRejectBelow !== undefined && application.aiMatchScore !== undefined && application.aiMatchScore < autoRejectBelow) {
-    application.status = "rejected";
-    application.rejectionReason = `AI match score (${application.aiMatchScore}) below employer threshold`;
-    application.statusHistory.push({ status: "rejected", changedAt: new Date(), note: "Auto-rejected by pipeline rule" });
-    await application.save();
+  // aiAutoScreen: if enabled, compute AI match score immediately and apply auto-reject if threshold set
+  if (aiAutoScreen) {
+    try {
+      const seekerDoc = seeker as Record<string, unknown>;
+      const jobDoc = job as Record<string, unknown>;
+      const jobReqs = jobDoc.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
+      const jobLoc = jobDoc.location as { city?: string; country?: string; isRemote?: boolean } | undefined;
+      const locationStr = sanitizeAIInput(
+        jobLoc?.isRemote ? "Remote" : [jobLoc?.city, jobLoc?.country].filter(Boolean).join(", ") || "N/A",
+        120
+      );
+      const requiredSkills = sanitizeAiList(jobReqs?.skills, 20, 60);
+      const expRange = sanitizeAIInput(jobReqs ? `${jobReqs.experienceMin ?? 0}–${jobReqs.experienceMax ?? 10}+ years` : "N/A", 40);
+      const seekerExperience = seekerDoc.experience as Array<{ jobTitle?: string; isCurrent?: boolean }> | undefined;
+      const currentTitle = sanitizeAIInput(seekerExperience?.find((e) => e.isCurrent)?.jobTitle ?? "N/A", 120);
+      const seekerSkills = sanitizeAiList(seekerDoc.skills as string[] | undefined, 25, 60);
+      const seekerLangs = (seekerDoc.languages as Array<{ language: string; proficiency: string }> | undefined ?? [])
+        .map((language) => sanitizeAIInput(`${language.language} (${language.proficiency})`, 60))
+        .filter(Boolean)
+        .join(", ") || "N/A";
+      const jobTitle = sanitizeAIInput(String(jobDoc.title ?? "N/A"), 120);
+      const jobDescription = sanitizeAIInput(String(jobDoc.description ?? ""), 500);
+
+      const prompt = `You are a recruitment AI. Score the match between this job seeker and job posting.
+
+JOB:
+Title: ${jobTitle}
+Location: ${locationStr}
+Required Skills: ${requiredSkills}
+Experience Required: ${expRange}
+Description: ${jobDescription}
+
+JOB SEEKER:
+Current Title: ${currentTitle}
+Skills: ${seekerSkills}
+Years of Experience: ${sanitizeAIInput(String(seekerDoc.totalExperienceYears ?? "N/A"), 20)}
+Languages: ${seekerLangs}
+
+Return JSON only: {"score":<0-100>,"breakdown":{"skills":<0-100>,"experience":<0-100>,"location":<0-100>},"strengths":[],"gaps":[]}`;
+
+      const raw = redactPII(
+        await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.match)
+      ).replace(/```json\n?|```/g, "").trim();
+
+      const matchData = JSON.parse(raw);
+      application.aiMatchScore = matchData.score;
+      application.matchBreakdown = {
+        skills: matchData.breakdown?.skills ?? 0,
+        experience: matchData.breakdown?.experience ?? 0,
+        overall: matchData.score,
+      };
+      application.matchStrengths = matchData.strengths ?? [];
+      application.matchGaps = matchData.gaps ?? [];
+
+      // Apply auto-reject with the freshly computed score
+      if (autoRejectBelow !== undefined && application.aiMatchScore < autoRejectBelow) {
+        application.status = "rejected";
+        application.rejectionReason = `AI match score (${application.aiMatchScore}) below threshold (${autoRejectBelow})`;
+        application.statusHistory.push({ status: "rejected", changedAt: new Date(), note: "Auto-rejected by AI screening" });
+      }
+
+      await application.save();
+    } catch {
+      // Non-blocking: scoring failure never fails the job seeker's submission
+    }
   }
 
   await logActivity({
@@ -176,6 +292,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     meta: { jobId },
     req,
   });
+
+  // Notify candidate: submission confirmation
+  const companyName = empRecord?.companyName ?? "the employer";
+  notifyApplicationReceived(
+    ctx.userId,
+    "",
+    String(job.title ?? "the position"),
+    companyName,
+    String(application._id)
+  ).catch(() => { /* non-blocking */ });
 
   return NextResponse.json({ application }, { status: 201 });
 }

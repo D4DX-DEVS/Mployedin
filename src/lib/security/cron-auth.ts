@@ -10,9 +10,6 @@
  *   X-Cron-Signature : HMAC-SHA256(secret, "timestamp:route"), hex-encoded
  *
  * Requests older than REPLAY_WINDOW_SEC are rejected (replay protection).
- *
- * Backwards-compatible fallback: if CRON_SECRET_V2 is absent the old
- * X-Cron-Secret header is still accepted so existing callers don't break.
  */
 
 import { createHmac, timingSafeEqual } from "crypto";
@@ -61,12 +58,6 @@ export function verifyCronRequest(req: NextRequest): NextResponse | null {
     }
 
     return null; // authorised
-  }
-
-  // ── Legacy fallback: plain X-Cron-Secret header ───────────────────────────
-  const legacySecret = req.headers.get("x-cron-secret");
-  if (legacySecret && timingSafeEqual(Buffer.from(legacySecret), Buffer.from(secret))) {
-    return null; // authorised (legacy)
   }
 
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -9,23 +9,45 @@ import SuperAgent from "@/models/SuperAgent";
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
 import { jobCreateSchema } from "@/lib/validators/jobs";
 import { autoAssignAgent } from "@/lib/agents/autoAssign";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 // GET /api/jobs — paginated job search (role-scoped)
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
+  const rateLimit = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.api);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)) },
+      }
+    );
+  }
+
   await connectDB();
 
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
   const search = searchParams.get("search") ?? "";
+  const status = searchParams.get("status") ?? "";
+  const approvalStatus = searchParams.get("approvalStatus") ?? "";
   const category = searchParams.get("category") ?? "";
   const location = searchParams.get("location") ?? "";
   const currency = searchParams.get("currency") ?? "";
+  const workMode = searchParams.get("workMode") ?? "";
+  const showSalary = searchParams.get("showSalary") ?? "";
+  const skills = (searchParams.get("skills") ?? "")
+    .split(",")
+    .map((skill) => skill.trim())
+    .filter((skill) => skill.length > 0 && skill.length <= 50)
+    .slice(0, 8);
   const remote = searchParams.get("remote") === "true";
   const myJobs = searchParams.get("myJobs") === "true";
   const employerId = searchParams.get("employerId") ?? "";
@@ -54,8 +76,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.$or = [{ expiresAt: { $exists: false } }, { expiresAt: { $gte: new Date() } }];
   }
 
+  const canFilterManagedJobs = myJobs || ctx.role === "agent" || ctx.role === "admin" || ctx.role === "super_agent";
+
+  if (status && canFilterManagedJobs) query.status = status;
+  if (approvalStatus && canFilterManagedJobs) query["poster.approvalStatus"] = approvalStatus;
   if (search) query.$text = { $search: search };
   if (category) query.category = category;
+  if (workMode) query.workMode = workMode;
   if (location) {
     const locationPattern = new RegExp(escapeRegex(location), "i");
     const locationCondition = {
@@ -68,6 +95,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
   if (remote) query["location.isRemote"] = true;
   if (currency) query["salary.currency"] = currency;
+  if (showSalary === "true" || showSalary === "false") query.showSalary = showSalary === "true";
+  if (skills.length > 0) query["requirements.skills"] = { $all: skills };
   if (employerId) query.employerId = employerId;
 
   const skip = (page - 1) * limit;
@@ -76,14 +105,14 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .sort(search ? { score: { $meta: "textScore" } } : { createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("employerId", "companyName country industry")
+      .populate("employerId", "companyName country industry logo")
       .lean(),
     Job.countDocuments(query),
   ]);
 
   return NextResponse.json({
     jobs,
-    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    pagination: { page, limit, total, pages: Math.ceil(total / limit), totalPages: Math.ceil(total / limit) },
   }, {
     headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
   });
@@ -188,7 +217,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
 
   const job = await Job.create({
     title,
-    description,
+    description: sanitizeHtml(description),
     category,
     location: location ?? { country: "", city: "", isRemote: false },
     requirements: requirements ?? { skills: [], experienceMin: 0, experienceMax: 99 },

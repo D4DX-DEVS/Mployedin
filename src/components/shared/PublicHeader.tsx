@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,11 +25,8 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
-        <Link href={`/${locale}`} className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-lg">
-            M
-          </div>
-          <span className="text-lg sm:text-xl font-bold tracking-tight">MPLOYEDIN</span>
+        <Link href={`/${locale}`} className="flex items-center">
+          <Image src="/logo.png" alt="Mployedin" width={160} height={40} className="h-10 w-auto object-contain" priority />
         </Link>
 
         {/* Desktop Nav */}

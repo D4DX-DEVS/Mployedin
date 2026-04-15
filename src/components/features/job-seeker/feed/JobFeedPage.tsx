@@ -84,6 +84,16 @@ interface SearchResult {
   pages: number;
 }
 
+interface SearchJobsResponse {
+  jobs?: Record<string, unknown>[];
+  total?: number;
+  pagination?: {
+    total?: number;
+    pages?: number;
+    totalPages?: number;
+  };
+}
+
 async function fetchSearchJobs(q: string, page: number): Promise<SearchResult> {
   const params = new URLSearchParams({
     search: q,
@@ -93,17 +103,19 @@ async function fetchSearchJobs(q: string, page: number): Promise<SearchResult> {
   });
   const res = await fetch(`/api/jobs?${params}`);
   if (!res.ok) throw new Error("Search failed");
-  const data = await res.json();
+  const data = (await res.json()) as SearchJobsResponse;
+  const total = data?.pagination?.total ?? data?.total ?? 0;
+  const pages = data?.pagination?.pages ?? data?.pagination?.totalPages ?? Math.ceil(total / SEARCH_PAGE_SIZE);
   // Map raw job docs to FeedJob shape
   const jobs: FeedJob[] = (data.jobs ?? []).map((j: Record<string, unknown>) => ({
     ...j,
     matchScore: 0,
     matchedSkills: [],
-  }));
+  })) as unknown as FeedJob[];
   return {
     jobs,
-    total: data.total ?? 0,
-    pages: Math.ceil((data.total ?? 0) / SEARCH_PAGE_SIZE),
+    total,
+    pages,
   };
 }
 
@@ -317,6 +329,8 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   const allJobs = data?.pages.flatMap((p) => p.jobs) ?? [];
   const total = data?.pages[0]?.total ?? 0;
+  const activeFilterCount =
+    filters.workTypes.length + filters.matchRanges.length + filters.dateRanges.length;
 
   const visibleJobs = allJobs
     .filter((j) => !hidden.has(j._id))
@@ -325,68 +339,149 @@ export function JobFeedPage({ locale }: { locale: string }) {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-4">
-      {/* ── Page header ───────────────────────────────────────────────────── */}
-      <div className="card-base !py-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-bold text-foreground tracking-tight">
-              Recommended for you
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Jobs matching your skills, experience & preferences
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {selected.size > 0 && (
-              <Badge variant="default" className="text-xs">
-                {selected.size} selected
-              </Badge>
-            )}
-            <button
-              onClick={handleBulkApply}
-              disabled={selected.size === 0 || bulkApplyMutation.isPending}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold px-5 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow-md disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:cursor-not-allowed transition-all"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              {bulkApplyMutation.isPending
-                ? "Applying…"
-                : selected.size > 0
-                ? `Apply (${selected.size})`
-                : "Bulk Apply"}
-            </button>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-5 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-6 sm:py-6">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_300px] xl:items-start">
+          <div className="space-y-5">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                Job search workspace
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                  Search jobs with a faster, denser board view.
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
+                  Browse profile-based matches, switch into discovery mode, and apply in bulk without losing the cleaner Mployedin dashboard feel.
+                </p>
+              </div>
+            </div>
 
-      {/* ── Search bar ────────────────────────────────────────────────────── */}
-      <div className="card-base !py-3">
-        <div className="relative flex items-center gap-2">
-          <Search className="absolute left-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setSearchPage(1);
-            }}
-            onKeyDown={(e) => e.key === "Escape" && setSearchQuery("")}
-            placeholder="Search jobs by title, skills, or keyword…"
-            className="input-field w-full h-10 pl-9 pr-10 rounded-xl text-sm"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => { setSearchQuery(""); setSearchPage(1); }}
-              className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Clear search"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Live matches
+                </div>
+                <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  {isSearchMode ? searchData?.total ?? 0 : total}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {isSearchMode ? "jobs returned for this search" : "jobs aligned to your profile"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Ready to apply
+                </div>
+                <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  {selected.size}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  saved in the current bulk-apply tray
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Filter signal
+                </div>
+                <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  {activeFilterCount}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  active filter{activeFilterCount === 1 ? "" : "s"} shaping the list
+                </p>
+              </div>
+            </div>
 
-      {/* ── Tabs ──────────────────────────────────────────────────────────── */}
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-[60%] text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setSearchPage(1);
+                  }}
+                  onKeyDown={(e) => e.key === "Escape" && setSearchQuery("")}
+                  placeholder="Search jobs by title, skills, or keyword..."
+                  aria-label="Search jobs"
+                  style={{ paddingLeft: "2.25rem" }}
+                  className="input-field h-12 w-full rounded-2xl border-border/70 bg-background/95 pr-12 text-sm shadow-none"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSearchPage(1);
+                    }}
+                    className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+                <Link
+                  href={`/${locale}/job-seeker/preferences`}
+                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-border/70 bg-background/90 px-4 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary"
+                >
+                  Refine preferences
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <aside className="rounded-[26px] border border-border/70 bg-background/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                  Search smarter
+                </div>
+                <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+                  Keep the list relevant.
+                </h2>
+              </div>
+              <div className="rounded-2xl bg-primary/[0.08] p-2 text-primary">
+                <Search className="h-4 w-4" />
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Best for
+                </div>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  Profile match for strong-fit roles, discovery for fresh openings.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Quick control
+                </div>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  Press Escape to clear the search box instantly.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Focus mode
+                </div>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {activeFilterCount > 0
+                    ? `${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"} are tightening the feed right now.`
+                    : "Add work type, match score, or date filters for a tighter shortlist."}
+                </p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
       {!isSearchMode && (
         <Tabs
           value={tab}
@@ -396,47 +491,55 @@ export function JobFeedPage({ locale }: { locale: string }) {
             setSortMode(t === "like" ? "latest" : "match");
           }}
         >
-          <div className="flex items-center justify-between gap-4">
-            <TabsList>
-              <TabsTrigger value="profile">
-                Profile match
-                {total > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
-                    {total}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="like">You might like</TabsTrigger>
-            </TabsList>
+          <div className="flex flex-col gap-3 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                Browse mode
+              </div>
+              <TabsList className="mt-3 h-auto rounded-full border border-border/60 bg-muted/30 p-1">
+                <TabsTrigger value="profile" className="rounded-full px-4 py-2 text-xs sm:text-sm">
+                  Profile match
+                  {total > 0 && (
+                    <Badge variant="secondary" className="ml-1.5 rounded-full px-1.5 py-0 text-[10px]">
+                      {total}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="like" className="rounded-full px-4 py-2 text-xs sm:text-sm">
+                  You might like
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <Link
               href={`/${locale}/job-seeker/preferences`}
-              className="text-xs font-medium text-primary hover:text-primary/80 hover:underline transition-colors"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
             >
-              Edit Preferences →
+              Edit preferences
+              <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
         </Tabs>
       )}
 
-      {/* ── Body: feed + sidebar ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_300px] gap-5 items-start">
-        {/* Feed column */}
-        <div className="space-y-3">
-
-          {/* ── Search results mode ──────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-5 items-start lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_300px]">
+        <div className="space-y-4">
           {isSearchMode ? (
             <>
-              {/* Search status bar */}
-              <div className="card-base !py-2.5 !px-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    {searchLoading
-                      ? "Searching…"
-                      : searchData
-                      ? `${searchData.total} result${searchData.total !== 1 ? "s" : ""} for "${debouncedSearch}"`
-                      : `Results for "${debouncedSearch}"`}
-                  </span>
+              <div className="rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:px-5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                      Search results
+                    </div>
+                    <span className="mt-1 block text-sm text-muted-foreground">
+                      {searchLoading
+                        ? "Searching..."
+                        : searchData
+                        ? `${searchData.total} result${searchData.total !== 1 ? "s" : ""} for "${debouncedSearch}"`
+                        : `Results for "${debouncedSearch}"`}
+                    </span>
+                  </div>
                   {searchData && searchData.pages > 1 && (
                     <span className="text-xs text-muted-foreground">
                       Page {searchPage} of {searchData.pages}
@@ -445,7 +548,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 </div>
               </div>
 
-              {/* Search loading */}
               {searchLoading && (
                 <div className="space-y-3">
                   <CardSkeleton />
@@ -454,27 +556,24 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 </div>
               )}
 
-              {/* Search error */}
               {searchError && !searchLoading && (
-                <div className="card-base text-center py-10">
+                <div className="card-base rounded-[24px] py-10 text-center">
                   <p className="text-sm text-muted-foreground">Search failed. Please try again.</p>
                 </div>
               )}
 
-              {/* Search empty */}
               {!searchLoading && !searchError && searchData?.jobs.length === 0 && (
-                <div className="card-base text-center py-12">
-                  <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary/10 mb-4">
+                <div className="card-base rounded-[26px] py-12 text-center">
+                  <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                     <Search className="h-7 w-7 text-primary/60" />
                   </div>
-                  <p className="text-sm font-semibold text-foreground mb-1">No jobs found</p>
-                  <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                  <p className="mb-1 text-sm font-semibold text-foreground">No jobs found</p>
+                  <p className="mx-auto max-w-xs text-xs text-muted-foreground">
                     Try different keywords or check your spelling
                   </p>
                 </div>
               )}
 
-              {/* Search result cards */}
               {!searchLoading &&
                 searchData?.jobs
                   .filter((j) => !hidden.has(j._id))
@@ -498,13 +597,12 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     />
                   ))}
 
-              {/* Pagination */}
               {searchData && searchData.pages > 1 && !searchLoading && (
-                <div className="flex items-center justify-center gap-3 pt-2 pb-1">
+                <div className="flex items-center justify-center gap-3 pb-1 pt-2">
                   <button
                     onClick={() => setSearchPage((p) => Math.max(1, p - 1))}
                     disabled={searchPage <= 1}
-                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border border-border bg-secondary/80 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary/80 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
                     Previous
@@ -515,7 +613,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   <button
                     onClick={() => setSearchPage((p) => Math.min(searchData.pages, p + 1))}
                     disabled={searchPage >= searchData.pages}
-                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border border-border bg-secondary/80 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary/80 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Next
                     <ChevronRight className="h-3.5 w-3.5" />
@@ -525,110 +623,104 @@ export function JobFeedPage({ locale }: { locale: string }) {
             </>
           ) : (
             <>
-          {/* Sort bar */}
-          <div className="card-base !py-2.5 !px-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs text-muted-foreground font-medium">Sort:</span>
-                <div className="flex gap-1">
-                  {(["match", "latest", "salary"] as SortMode[]).map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => setSortMode(mode)}
-                      className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
-                        sortMode === mode
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      }`}
-                    >
-                      {SORT_LABELS[mode]}
-                    </button>
-                  ))}
+              <div className="rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:px-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Sort
+                    </span>
+                    <div className="flex gap-1">
+                      {(["match", "latest", "salary"] as SortMode[]).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => setSortMode(mode)}
+                          className={`rounded-full px-3.5 py-2 text-xs font-medium transition-all ${
+                            sortMode === mode
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                          }`}
+                        >
+                          {SORT_LABELS[mode]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    {visibleJobs.length} of {total} jobs
+                  </span>
                 </div>
               </div>
-              <span className="text-xs text-muted-foreground hidden sm:inline">
-                {visibleJobs.length} of {total} jobs
-              </span>
-            </div>
-          </div>
 
-          {/* Loading state */}
-          {isLoading && (
-            <div className="space-y-3">
-              <CardSkeleton />
-              <CardSkeleton />
-              <CardSkeleton />
-            </div>
-          )}
+              {isLoading && (
+                <div className="space-y-3">
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                </div>
+              )}
 
-          {/* Error state */}
-          {error && !isLoading && (
-            <div className="card-base text-center py-10">
-              <p className="text-sm text-muted-foreground">
-                Failed to load recommendations. Please try again.
-              </p>
-            </div>
-          )}
+              {error && !isLoading && (
+                <div className="card-base rounded-[24px] py-10 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Failed to load recommendations. Please try again.
+                  </p>
+                </div>
+              )}
 
-          {/* Empty state */}
-          {!isLoading && !error && visibleJobs.length === 0 && (
-            <div className="card-base text-center py-12">
-              <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary/10 mb-4">
-                <Search className="h-7 w-7 text-primary/60" />
-              </div>
-              <p className="text-sm font-semibold text-foreground mb-1">No matches right now</p>
-              <p className="text-xs text-muted-foreground mb-4 max-w-xs mx-auto">
-                Try adjusting your filters or expanding your preferences to see more jobs
-              </p>
-              <Link
-                href={`/${locale}/job-seeker/preferences`}
-                className="inline-flex items-center gap-1.5 text-sm font-semibold px-5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-all"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Set Preferences
-              </Link>
-            </div>
-          )}
+              {!isLoading && !error && visibleJobs.length === 0 && (
+                <div className="card-base rounded-[26px] py-12 text-center">
+                  <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                    <Search className="h-7 w-7 text-primary/60" />
+                  </div>
+                  <p className="mb-1 text-sm font-semibold text-foreground">No matches right now</p>
+                  <p className="mx-auto mb-4 max-w-xs text-xs text-muted-foreground">
+                    Try adjusting your filters or expanding your preferences to see more jobs
+                  </p>
+                  <Link
+                    href={`/${locale}/job-seeker/preferences`}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Set Preferences
+                  </Link>
+                </div>
+              )}
 
-          {/* Job cards */}
-          {visibleJobs.map((job) => (
-            <JobFeedCard
-              key={job._id}
-              job={job}
-              isSelected={selected.has(job._id)}
-              isSaved={savedIds.has(job._id)}
-              isApplied={appliedIds.has(job._id)}
-              onToggleSelect={() => toggleSelect(job._id)}
-              onSave={() => saveMutation.mutate(job._id)}
-              onApply={() => applyMutation.mutate(job._id)}
-              onHide={() => {
-                setHidden((s) => new Set([...s, job._id]));
-                toast.success("Job hidden");
-              }}
-              locale={locale}
-            />
-          ))}
+              {visibleJobs.map((job) => (
+                <JobFeedCard
+                  key={job._id}
+                  job={job}
+                  isSelected={selected.has(job._id)}
+                  isSaved={savedIds.has(job._id)}
+                  isApplied={appliedIds.has(job._id)}
+                  onToggleSelect={() => toggleSelect(job._id)}
+                  onSave={() => saveMutation.mutate(job._id)}
+                  onApply={() => applyMutation.mutate(job._id)}
+                  onHide={() => {
+                    setHidden((s) => new Set([...s, job._id]));
+                    toast.success("Job hidden");
+                  }}
+                  locale={locale}
+                />
+              ))}
 
-          {/* Infinite scroll sentinel */}
-          <div ref={sentinelRef} className="h-1" />
-          {isFetchingNextPage && (
-            <div className="flex justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-primary/60" />
-            </div>
-          )}
+              <div ref={sentinelRef} className="h-1" />
+              {isFetchingNextPage && (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary/60" />
+                </div>
+              )}
 
-          {/* End of list */}
-          {!hasNextPage && visibleJobs.length > 0 && !isLoading && (
-            <p className="text-center text-xs text-muted-foreground py-4">
-              You&apos;ve seen all recommendations
-            </p>
-          )}
+              {!hasNextPage && visibleJobs.length > 0 && !isLoading && (
+                <p className="py-4 text-center text-xs text-muted-foreground">
+                  You&apos;ve seen all recommendations
+                </p>
+              )}
             </>
           )}
         </div>
 
-        {/* Sidebar column — hidden on mobile, visible on tablet+ */}
-        <div className="hidden lg:block sticky top-4">
+        <div className="sticky top-4 hidden lg:block">
           <JobFeedSidebar
             filters={filters}
             onFiltersChange={setFilters}

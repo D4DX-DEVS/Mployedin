@@ -46,6 +46,7 @@ export const AI_TOKEN_LIMITS: Record<string, number> = {
   job_description: 3000,
   cv_extract: 16000,
   report: 2000,
+  nl_search: 1000,
   match: 2000,
   skills_gap: 2000,
   skills_suggest: 1000,

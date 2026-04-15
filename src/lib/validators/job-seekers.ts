@@ -7,6 +7,8 @@ import { commonSchemas } from "./index";
  */
 export const jobSeekerProfileUpdateSchema = z
   .object({
+    name: z.string().min(1).max(200).trim().optional(),
+    fullName: z.string().min(1).max(200).trim().optional(),
     summary: z.string().max(5000).trim().optional(),
     nationality: z.string().max(100).trim().optional(),
     currentLocation: z.string().max(200).trim().optional(),

@@ -7,6 +7,7 @@ import FAQ from "@/models/FAQ";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { faqCreateSchema } from "@/lib/validators/cms";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -58,8 +59,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const item = await FAQ.create({
     question: question.trim(),
     questionAr: (questionAr ?? "").trim(),
-    answer: answer.trim(),
-    answerAr: (answerAr ?? "").trim(),
+    answer: sanitizeHtml(answer),
+    answerAr: sanitizeHtml(answerAr),
     category: (category ?? "general").trim(),
     sortOrder: sortOrder ?? 0,
     isActive: isActive !== false,

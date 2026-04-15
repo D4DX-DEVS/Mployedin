@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
 
   try {
     await connectDB();
+    const isLocalE2eHost = ["localhost", "127.0.0.1"].includes(req.nextUrl.hostname);
+    const allowE2eVerificationToken =
+      (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") &&
+      isLocalE2eHost &&
+      req.headers.get("x-mployedin-e2e") === "employer-register";
 
     const form = await req.formData();
     const get = (k: string) => (form.get(k) as string | null) ?? "";
@@ -77,13 +82,14 @@ export async function POST(req: NextRequest) {
     const employer = await Employer.create({
       userId: user._id,
       companyName,
+      companyEmail: contactEmail,
+      phone: contactPhone,
       industry,
-      size,
+      companySize: size,
       website,
       country,
       city,
-      contactTitle,
-      contactPhone,
+      designation: contactTitle,
       verificationLevel,
       verificationStatus: verificationLevel === "basic" ? "verified" : "pending",
     });
@@ -118,7 +124,14 @@ export async function POST(req: NextRequest) {
       console.error("[Registration] Failed to send verification email:", err)
     );
 
-    return NextResponse.json({ success: true, message: "Registration successful. Please check your email to verify your account." }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Registration successful. Please check your email to verify your account.",
+        ...(allowE2eVerificationToken ? { verificationToken: rawToken } : {}),
+      },
+      { status: 201 }
+    );
   } catch (err) {
     console.error("employer-register error:", err);
     return NextResponse.json({ message: "Server error." }, { status: 500 });

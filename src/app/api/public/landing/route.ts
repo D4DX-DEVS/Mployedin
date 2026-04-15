@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 import FAQ from "@/models/FAQ";
 import Banner from "@/models/Banner";
 import Testimonial from "@/models/Testimonial";
@@ -10,7 +11,11 @@ import BlogPost from "@/models/BlogPost";
  * Public aggregated landing page data — NO AUTH required.
  * Returns all active CMS content for the landing page in one call.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+  const { allowed } = checkRateLimit(`landing:${ip}`, { limit: 30, windowSec: 60, prefix: "landing" });
+  if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
   try {
     await connectDB();
 

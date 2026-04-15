@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote, BookTemplate } from "lucide-react";
+import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote, BookTemplate, Search, Sparkles, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -22,6 +21,8 @@ const STATUS_COLORS: Record<string, string> = {
   expired: "bg-red-100 text-red-700 border-red-200",
 };
 
+const JOB_SUMMARY_MAX_LENGTH = 180;
+
 type PendingJobAction = "activate" | "deactivate" | "delete";
 
 export default function EmployerJobsPage() {
@@ -33,13 +34,27 @@ export default function EmployerJobsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState("all");
+  const [workModeFilter, setWorkModeFilter] = useState("all");
+  const [salaryVisibilityFilter, setSalaryVisibilityFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [skillsFilter, setSkillsFilter] = useState("");
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
   const [cloningJobId, setCloningJobId] = useState<string | null>(null);
   const [pendingJobAction, setPendingJobAction] = useState<{ jobId: string; action: PendingJobAction } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
+  const debouncedLocation = useDebounce(locationFilter, 300);
+  const debouncedSkills = useDebounce(skillsFilter, 300);
+  const normalizedSkills = debouncedSkills
+    .split(",")
+    .map((skill) => skill.trim())
+    .filter(Boolean);
 
   // Reset page when filters change
-  useEffect(() => { setPage(1); }, [statusFilter, debouncedSearch]);
+  useEffect(() => { setPage(1); }, [statusFilter, approvalStatusFilter, workModeFilter, salaryVisibilityFilter, debouncedSearch, debouncedLocation, debouncedSkills]);
 
   useEffect(() => { document.title = "My Jobs · MPLOYEDIN"; }, []);
 
@@ -48,13 +63,25 @@ export default function EmployerJobsPage() {
     page,
     limit,
     status: statusFilter,
+    approvalStatus: approvalStatusFilter,
+    workMode: workModeFilter,
     search: debouncedSearch,
+    location: debouncedLocation,
+    skills: normalizedSkills,
+    showSalary: salaryVisibilityFilter === "all" ? undefined : salaryVisibilityFilter === "shown" ? "true" : "false",
     myJobs: true,
   });
 
   const jobs = data?.jobs ?? [];
   const total = data?.pagination?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
+  const hasActiveFilters = statusFilter !== "all"
+    || approvalStatusFilter !== "all"
+    || workModeFilter !== "all"
+    || salaryVisibilityFilter !== "all"
+    || Boolean(search.trim())
+    || Boolean(locationFilter.trim())
+    || Boolean(skillsFilter.trim());
 
   const updateStatus = useUpdateJobStatus();
   const cloneJob = useCloneJob();
@@ -154,172 +181,470 @@ export default function EmployerJobsPage() {
     }
   }
 
+  function formatLocation(job: Job): string {
+    if (!job.location) return "Location not set";
+    if (typeof job.location === "string") return job.location;
+    if (job.location.isRemote) return "Remote";
+    return [job.location.city, job.location.country].filter(Boolean).join(", ") || "Location not set";
+  }
+
+  function formatSalary(job: Job): string {
+    if (job.showSalary === false) return "Salary not disclosed";
+
+    const min = job.salary?.min ?? 0;
+    const max = job.salary?.max ?? 0;
+    const currency = job.salary?.currency ?? "USD";
+
+    if (min <= 0 && max <= 0) return "Salary not set";
+
+    if (min > 0 && max > 0) {
+      return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
+    }
+
+    return `${Math.max(min, max).toLocaleString()} ${currency}`;
+  }
+
+  function getApprovalStatus(job: Job): "pending" | "approved" | "rejected" | undefined {
+    return job.poster?.approvalStatus ?? job["poster.approvalStatus"];
+  }
+
+  function resetFilters() {
+    setSearch("");
+    setStatusFilter("all");
+    setApprovalStatusFilter("all");
+    setWorkModeFilter("all");
+    setSalaryVisibilityFilter("all");
+    setLocationFilter("");
+    setSkillsFilter("");
+    setAiQuery("");
+    setAiSummary(null);
+    setPage(1);
+  }
+
+  async function handleApplyAiSearch() {
+    const query = aiQuery.trim();
+    if (!query) return;
+
+    setIsApplyingAiSearch(true);
+
+    try {
+      const res = await fetch("/api/ai/job-search-filters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+
+      if (!res.ok) {
+        throw new Error("AI search failed");
+      }
+
+      const data = await res.json();
+      const filters = data.filters ?? {};
+      setSearch(filters.search ?? "");
+      setStatusFilter(filters.status ?? "all");
+      setApprovalStatusFilter(filters.approvalStatus ?? "all");
+      setWorkModeFilter(filters.workMode ?? "all");
+      setLocationFilter(filters.location ?? "");
+      setSkillsFilter(Array.isArray(filters.skills) ? filters.skills.join(", ") : "");
+      setSalaryVisibilityFilter(
+        filters.showSalary === true ? "shown" : filters.showSalary === false ? "hidden" : "all"
+      );
+      setAiSummary(data.summary ?? null);
+
+      toast.success(data.degraded ? "AI search unavailable. Keyword search applied." : "AI search applied.");
+    } catch {
+      setSearch(query);
+      setAiSummary(`AI search was unavailable, so keyword results are being shown for "${query}".`);
+      toast.error("AI search unavailable. Keyword search applied instead.");
+    } finally {
+      setIsApplyingAiSearch(false);
+    }
+  }
+
+  function getFilledSlots(job: Job): number {
+    return job.applicantIds?.length ?? 0;
+  }
+
+  function getJobSummary(job: Job): string | null {
+    if (!job.description) return null;
+
+    const parser = new DOMParser();
+    const plainText = parser.parseFromString(job.description, "text/html").body.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    if (!plainText) return null;
+
+    if (plainText.length <= JOB_SUMMARY_MAX_LENGTH) return plainText;
+
+    return `${plainText.slice(0, JOB_SUMMARY_MAX_LENGTH - 3).trimEnd()}...`;
+  }
+
   return (
-    <div className="page-container">
+    <div className="page-container space-y-6">
       {ConfirmDialogNode}
-      <PageHeader
-        title="My Job Postings"
-        description={`${total} total jobs`}
-        actions={
-          can("jobs", "create") ? (
-            <Button onClick={() => router.push(`/${locale}/employer/jobs/new`)} className="gap-2">
-              <Plus className="w-4 h-4" /> Post a Job
-            </Button>
-          ) : null
-        }
-      />
-
-      {/* Filters */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-border/70 bg-background px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Active</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{activeJobs}</p>
+      <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_36%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5" />
+              Hiring workspace
             </div>
-            <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
-              <ShieldCheck className="h-5 w-5" />
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+              My Job Postings
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+              Review live roles, keep draft jobs moving, and jump into applications from the same polished workspace used in job creation.
+            </p>
+          </div>
+
+          {can("jobs", "create") ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-left backdrop-blur">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Portfolio</p>
+                <p className="mt-1 text-lg font-semibold text-slate-950">{total} total jobs</p>
+                <p className="text-xs text-slate-500">Active, draft, and archived roles in one place.</p>
+              </div>
+              <Button
+                onClick={() => router.push(`/${locale}/employer/jobs/new`)}
+                className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+              >
+                <Plus className="h-4 w-4" />
+                Post a Job
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Active</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{activeJobs}</p>
+                <p className="mt-1 text-xs text-slate-500">Roles currently accepting candidates.</p>
+              </div>
+              <div className="rounded-2xl bg-emerald-50 p-2.5 text-emerald-600">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="rounded-2xl border border-border/70 bg-background px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Drafts</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{draftJobs}</p>
-            </div>
-            <div className="rounded-xl bg-amber-50 p-2 text-amber-600">
+          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Drafts</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{draftJobs}</p>
+                <p className="mt-1 text-xs text-slate-500">Roles waiting for a final review or activation.</p>
+              </div>
+              <div className="rounded-2xl bg-amber-50 p-2.5 text-amber-600">
               <BriefcaseBusiness className="h-5 w-5" />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="rounded-2xl border border-border/70 bg-background px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Salary Hidden</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{hiddenSalaryJobs}</p>
-            </div>
-            <div className="rounded-xl bg-slate-100 p-2 text-slate-600">
+          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Salary Hidden</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{hiddenSalaryJobs}</p>
+                <p className="mt-1 text-xs text-slate-500">Jobs using private compensation details.</p>
+              </div>
+              <div className="rounded-2xl bg-slate-100 p-2.5 text-slate-600">
               <Banknote className="h-5 w-5" />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="rounded-2xl border border-border/70 bg-background px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Openings</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{totalOpenings}</p>
-            </div>
-            <div className="rounded-xl bg-blue-50 p-2 text-blue-600">
+          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Openings</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{totalOpenings}</p>
+                <p className="mt-1 text-xs text-slate-500">Combined vacancies across the current results.</p>
+              </div>
+              <div className="rounded-2xl bg-blue-50 p-2.5 text-blue-600">
               <Users className="h-5 w-5" />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="flex items-center gap-3 flex-wrap rounded-2xl border border-border/70 bg-background p-3 shadow-sm">
-        <Input
-          placeholder="Search jobs…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:w-64 h-9"
-        />
-        <SearchableSelect
-          className="w-full sm:w-44 h-9"
-          options={[
-            { value: "all", label: "All statuses" },
-            { value: "active", label: "Active" },
-            { value: "draft", label: "Draft" },
-            { value: "closed", label: "Closed" },
-          ]}
-          value={statusFilter}
-          onValueChange={setStatusFilter}
-          placeholder="All statuses"
-        />
-      </div>
+      <section className="rounded-[28px] border border-slate-200 bg-white/95 p-4 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Browse roles</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Filter the jobs you want to act on next</h2>
+            <p className="mt-1 text-sm text-slate-500">Search by keyword, layer on structured filters, or describe the jobs you need in plain English.</p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
+          <div className="relative min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Search jobs"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-11 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm shadow-none"
+            />
+          </div>
+          <SearchableSelect
+            className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"
+            options={[
+              { value: "all", label: "All statuses" },
+              { value: "active", label: "Active" },
+              { value: "draft", label: "Draft" },
+              { value: "closed", label: "Closed" },
+              { value: "expired", label: "Expired" },
+            ]}
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+            placeholder="All statuses"
+          />
+          <SearchableSelect
+            className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"
+            options={[
+              { value: "all", label: "All approvals" },
+              { value: "pending", label: "Pending approval" },
+              { value: "approved", label: "Approved" },
+              { value: "rejected", label: "Rejected" },
+            ]}
+            value={approvalStatusFilter}
+            onValueChange={setApprovalStatusFilter}
+            placeholder="All approvals"
+          />
+        </div>
+
+        <div className="mt-3 grid gap-3 xl:grid-cols-[220px_220px_220px_minmax(0,1fr)_minmax(0,1fr)_150px]">
+          <SearchableSelect
+            className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"
+            options={[
+              { value: "all", label: "All work modes" },
+              { value: "onsite", label: "On-site" },
+              { value: "hybrid", label: "Hybrid" },
+              { value: "remote", label: "Remote" },
+            ]}
+            value={workModeFilter}
+            onValueChange={setWorkModeFilter}
+            placeholder="All work modes"
+          />
+          <SearchableSelect
+            className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"
+            options={[
+              { value: "all", label: "All salary visibility" },
+              { value: "shown", label: "Salary shown" },
+              { value: "hidden", label: "Salary hidden" },
+            ]}
+            value={salaryVisibilityFilter}
+            onValueChange={setSalaryVisibilityFilter}
+            placeholder="All salary visibility"
+          />
+          <div className="relative min-w-0">
+            <Input
+              placeholder="Filter by location"
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              className="h-11 rounded-xl border-slate-200 bg-slate-50 text-sm shadow-none"
+            />
+          </div>
+          <div className="relative min-w-0">
+            <Input
+              placeholder="Skills, comma separated"
+              value={skillsFilter}
+              onChange={(e) => setSkillsFilter(e.target.value)}
+              className="h-11 rounded-xl border-slate-200 bg-slate-50 text-sm shadow-none"
+            />
+          </div>
+          <div className="relative min-w-0 xl:col-span-2">
+            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
+            <Input
+              placeholder="AI search: e.g. draft remote React roles in Dubai with hidden salary"
+              value={aiQuery}
+              onChange={(e) => setAiQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleApplyAiSearch();
+                }
+              }}
+              className="h-11 rounded-xl border-sky-100 bg-sky-50/60 pl-9 text-sm shadow-none"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-900">Need a faster cut?</p>
+            <p className="text-sm text-slate-500">Describe the roles you want, and AI will apply the matching filters for you.</p>
+            {aiSummary ? <p className="mt-2 text-sm text-sky-700">{aiSummary}</p> : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => { void handleApplyAiSearch(); }}
+              disabled={!aiQuery.trim() || isApplyingAiSearch}
+              className="h-11 gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              <Sparkles className="h-4 w-4" />
+              {isApplyingAiSearch ? "Applying AI search…" : "Apply AI Search"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={resetFilters}
+              disabled={!hasActiveFilters && !aiQuery && !aiSummary}
+              className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm"
+            >
+              Clear filters
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {isLoading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="card-base p-4 sm:p-5 h-24 animate-pulse bg-muted/40" />
+            <div
+              key={i}
+              className="h-40 animate-pulse rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]"
+            />
           ))}
         </div>
       ) : jobs.length === 0 ? (
-        <div className="card-base p-6 text-center py-16">
-          <div className="w-14 h-14 rounded-2xl bg-muted/60 flex items-center justify-center mx-auto mb-4">
-            <FileText className="w-7 h-7 text-muted-foreground" />
+        <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] px-6 py-16 text-center shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-sky-50 text-sky-600">
+            <FileText className="h-7 w-7" />
           </div>
-          <h3 className="font-semibold text-base mb-1.5">No jobs found</h3>
-          <p className="text-sm text-muted-foreground mb-5">Start by posting your first job opening</p>
-          <Button onClick={() => router.push(`/${locale}/employer/jobs/new`)} className="gap-2">
-            <Plus className="w-4 h-4" /> Post a Job
-          </Button>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{hasActiveFilters ? "No matching roles" : "No roles yet"}</p>
+          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
+            {hasActiveFilters ? "No jobs match the current search." : "Start your employer hiring workflow here."}
+          </h3>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
+            {hasActiveFilters
+              ? "Adjust the filters, remove a keyword, or try the AI search box to broaden the results."
+              : "Post your first role, invite the right applicants, and manage every next step from a consistent employer dashboard."}
+          </p>
+          {hasActiveFilters ? (
+            <Button
+              onClick={resetFilters}
+              variant="outline"
+              className="mt-6 h-11 rounded-xl border-slate-200 bg-white px-4 text-sm"
+            >
+              Clear filters
+            </Button>
+          ) : (
+            <Button
+              onClick={() => router.push(`/${locale}/employer/jobs/new`)}
+              className="mt-6 h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+            >
+              <Plus className="h-4 w-4" />
+              Post a Job
+            </Button>
+          )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {jobs.map((job) => {
             const posted = new Date(job.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
             const expires = job.expiresAt ? new Date(job.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
-            const isSalaryVisible = job.showSalary !== false && ((job.salary?.min ?? 0) > 0 || (job.salary?.max ?? 0) > 0);
             const isActivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "activate";
             const isDeactivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "deactivate";
             const isDeleting = pendingJobAction?.jobId === job._id && pendingJobAction.action === "delete";
+            const approvalStatus = getApprovalStatus(job);
+            const jobSummary = getJobSummary(job);
+
             return (
-              <div key={job._id} className="card-base p-5 sm:p-6 hover:shadow-md transition-shadow">
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                      <h3 className="font-semibold text-[15px] text-foreground">{job.title}</h3>
-                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border text-xs font-medium px-2 py-0.5`}>{job.status}</Badge>
-                      {job["poster.approvalStatus"] === "pending" && (
-                        <Badge className="bg-amber-100 text-amber-700 border-amber-200 border text-xs font-medium px-2 py-0.5">Pending Approval</Badge>
+              <article
+                key={job._id}
+                className="rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] p-3.5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] transition-all hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_28px_70px_-44px_rgba(2,132,199,0.28)] sm:p-4"
+              >
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">{job.title}</h3>
+                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2.5 py-0.5 text-xs font-medium capitalize`}>{job.status}</Badge>
+                      {approvalStatus === "pending" && (
+                        <Badge className="border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Pending Approval</Badge>
+                      )}
+                      {approvalStatus === "rejected" && (
+                        <Badge className="border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700">Approval Rejected</Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap mb-2">
-                      {job.location && <span>{typeof job.location === "object" ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", ")) : job.location}</span>}
-                      {job.category && <><span className="text-border">·</span><span>{job.category}</span></>}
-                      {isSalaryVisible && (
-                        <><span className="text-border">·</span><span>{job.salary.min.toLocaleString()} – {job.salary.max.toLocaleString()} {job.salary.currency}</span></>
-                      )}
-                      {job.showSalary === false && (
-                        <><span className="text-border">·</span><span>Salary not disclosed</span></>
-                      )}
-                      {job.vacancies != null && (
-                        <><span className="text-border">·</span><span>{job.vacancies} opening{job.vacancies === 1 ? "" : "s"}</span></>
-                      )}
-                      <><span className="text-border">·</span><span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Posted {posted}</span></>
-                      {expires && <><span className="text-border">·</span><span>Expires {expires}</span></>}
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">{formatLocation(job)}</span>
+                      {job.category ? (
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">{job.category}</span>
+                      ) : null}
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">{formatSalary(job)}</span>
+                      {job.vacancies != null ? (
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+                          {job.vacancies} opening{job.vacancies === 1 ? "" : "s"}
+                        </span>
+                      ) : null}
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">Posted {posted}</span>
+                      {expires ? (
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">Expires {expires}</span>
+                      ) : null}
                     </div>
+
                     {job.requirements?.skills?.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="mt-2 flex flex-wrap gap-1.5">
                         {job.requirements.skills.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="text-xs font-normal bg-muted/40">{s}</Badge>
+                          <Badge key={s} variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-normal text-slate-600">{s}</Badge>
                         ))}
                       </div>
                     )}
+
+                    {jobSummary ? (
+                      <p className="mt-2.5 line-clamp-2 max-w-3xl text-sm leading-5 text-slate-600">{jobSummary}</p>
+                    ) : null}
+
+                    <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
+                      <div className="rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Views</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-950 sm:text-base">{job.views?.toLocaleString() ?? 0}</p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Applicants</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-950 sm:text-base">{getFilledSlots(job)}</p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Capacity</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-950 sm:text-base">{job.maxApplicants ?? "Open"}</p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex min-w-[220px] flex-col gap-2">
-                    <Button size="sm" className="h-9 gap-2"
-                      onClick={() => router.push(`/${locale}/employer/applications?jobId=${job._id}`)}>
-                      <Users className="w-4 h-4" /> Applications
-                    </Button>
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Button size="sm" variant="outline" title="View job" className="h-9 gap-2"
+                  <div aria-label={`Actions for ${job.title}`} role="group" className="flex flex-col gap-2 rounded-[20px] border border-slate-200/90 bg-white/92 p-2.5 backdrop-blur xl:self-start">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/85 px-3 py-2">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Next actions</p>
+                        <p className="mt-0.5 text-xs text-slate-500">Manage this role in one place.</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-slate-300" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        size="sm"
+                        className="col-span-2 h-10 gap-2 rounded-xl bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
+                        onClick={() => router.push(`/${locale}/employer/applications?jobId=${job._id}`)}
+                      >
+                        <Users className="h-4 w-4" />
+                        Applications
+                        <ArrowRight className="ml-auto h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="outline" title="View job" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
                         onClick={() => router.push(`/${locale}/employer/jobs/${job._id}`)}>
-                        <Eye className="w-4 h-4" /> View
+                        <Eye className="h-4 w-4" /> View
                       </Button>
                       {can("jobs", "update") && (
-                        <Button size="sm" variant="outline" title="Edit" className="h-9 gap-2"
+                        <Button size="sm" variant="outline" title="Edit" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
                           onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/edit`)}>
-                          <Edit2 className="w-4 h-4" /> Edit
+                          <Edit2 className="h-4 w-4" /> Edit
                         </Button>
                       )}
                       {can("jobs", "create") && (
-                        <Button size="sm" variant="outline" title="Clone" className="h-9 gap-2"
+                        <Button size="sm" variant="outline" title="Clone" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
                           onClick={() => { void handleCloneJob(job); }}
                           disabled={cloningJobId === job._id}>
-                          <Copy className="w-4 h-4" /> {cloningJobId === job._id ? "Cloning…" : "Clone"}
+                          <Copy className="h-4 w-4" /> {cloningJobId === job._id ? "Cloning…" : "Clone"}
                         </Button>
                       )}
                       {can("jobs", "create") && (
@@ -327,44 +652,42 @@ export default function EmployerJobsPage() {
                           size="sm"
                           variant="outline"
                           title={savedTemplateIds.has(job._id) ? "Already saved as template" : "Save as Template"}
-                          className={`h-9 gap-2 ${
+                          className={`h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm ${
                             savedTemplateIds.has(job._id)
-                              ? "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-50 cursor-default"
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 cursor-default"
                               : ""
                           }`}
                           onClick={() => { if (!savedTemplateIds.has(job._id)) void handleSaveAsTemplate(job); }}
                           disabled={savingTemplateId === job._id || savedTemplateIds.has(job._id)}>
                           {savedTemplateIds.has(job._id) ? (
-                            <><CheckCircle className="w-4 h-4" /> Saved</>
+                            <><CheckCircle className="h-4 w-4" /> Saved</>
                           ) : savingTemplateId === job._id ? (
-                            <><BookTemplate className="w-4 h-4" /> Saving…</>
+                            <><BookTemplate className="h-4 w-4" /> Saving…</>
                           ) : (
-                            <><BookTemplate className="w-4 h-4" /> Template</>
+                            <><BookTemplate className="h-4 w-4" /> Template</>
                           )}
                         </Button>
                       )}
-                    </div>
-                    <div className="flex flex-wrap justify-end gap-2">
                       {can("jobs", "update") && job.status === "draft" && (
-                        <Button size="sm" variant="outline" className="h-9 gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50" onClick={() => { void handleActivateJob(job); }} disabled={isActivating}>
-                        <CheckCircle className="w-3.5 h-3.5" /> {isActivating ? "Activating…" : "Activate"}
+                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-xl border-emerald-200 px-3 text-emerald-700 hover:bg-emerald-50" onClick={() => { void handleActivateJob(job); }} disabled={isActivating}>
+                        <CheckCircle className="h-3.5 w-3.5" /> {isActivating ? "Activating…" : "Activate"}
                         </Button>
                       )}
                       {can("jobs", "update") && job.status === "active" && (
-                        <Button size="sm" variant="outline" className="h-9 gap-2 border-orange-200 text-orange-700 hover:bg-orange-50" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
-                          <Clock className="w-4 h-4" /> {isDeactivating ? "Deactivating…" : "Deactivate"}
+                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-orange-200 px-3 text-orange-700 hover:bg-orange-50" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
+                          <Clock className="h-4 w-4" /> {isDeactivating ? "Deactivating…" : "Deactivate"}
                         </Button>
                       )}
                       {can("jobs", "delete") && (job.status === "draft" || job.status === "closed" || job.status === "expired") && (
-                        <Button size="sm" variant="outline" title="Delete" className="h-9 gap-2 border-destructive/20 text-destructive hover:bg-destructive/5"
+                        <Button size="sm" variant="outline" title="Delete" className="h-9 gap-2 rounded-xl border-destructive/20 px-3 text-destructive hover:bg-destructive/5"
                           onClick={() => { void handleDeleteJob(job); }} disabled={isDeleting}>
-                          <Trash2 className="w-4 h-4" /> {isDeleting ? "Deleting…" : "Delete"}
+                          <Trash2 className="h-4 w-4" /> {isDeleting ? "Deleting…" : "Delete"}
                         </Button>
                       )}
                     </div>
                   </div>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>

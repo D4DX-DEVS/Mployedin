@@ -1,23 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   useAnalyticsOverview,
   useAnalyticsPipeline,
   useAnalyticsHistorical,
   useAnalyticsJobs,
   useAnalyticsResponseTime,
+  type AnalyticsData,
+  type PipelineData,
+  type HistoricalData,
+  type PerformanceData,
+  type ResponseTimeData,
 } from "@/hooks/useAnalytics";
-import type {
-  AnalyticsData,
-  PipelineData,
-  HistoricalData,
-  PerformanceData,
-  ResponseTimeData,
-  JobPerformance,
-} from "@/hooks/useAnalytics";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { cn } from "@/lib/utils";
 import {
   BarChart3,
   TrendingUp,
@@ -31,265 +27,330 @@ import {
   Calendar,
   Eye,
   Zap,
+  Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import {
+  BarChart,
+  Bar,
   AreaChart,
   Area,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell,
-  PieChart,
-  Pie,
   Legend,
 } from "recharts";
 
-/* ── Constants ── */
+type DateRange = "7d" | "30d" | "90d" | "180d" | "custom";
+
+const AUTO_REFRESH_MS = 30000;
+
+const ANALYTICS_TABS = [
+  { key: "pipeline" as const, label: "Pipeline", icon: BarChart3, description: "Live funnel health and conversion metrics" },
+  { key: "historical" as const, label: "Historical", icon: TrendingUp, description: "Trends, drop-off, and time-to-hire benchmarks" },
+  { key: "performance" as const, label: "Performance", icon: Eye, description: "Job-level visibility and application lift" },
+  { key: "response" as const, label: "Response Time", icon: Clock, description: "Service-level tracking and commitment promises" },
+];
+
+const FUNNEL_STAGES = ["applied", "shortlisted", "interview", "offer", "hired"];
 
 const STAGE_NAMES: Record<string, string> = {
   applied: "Applied",
   shortlisted: "Shortlisted",
-  interview_scheduled: "Interview",
-  selected: "Selected",
+  interview: "Interview",
   offer: "Offer",
   hired: "Hired",
-  rejected: "Rejected",
-  withdrawn: "Withdrawn",
 };
 
 const STAGE_COLORS: Record<string, string> = {
   applied: "#3b82f6",
   shortlisted: "#6366f1",
-  interview_scheduled: "#8b5cf6",
-  selected: "#f59e0b",
-  offer: "#10b981",
-  hired: "#059669",
+  interview: "#8b5cf6",
+  offer: "#f59e0b",
+  hired: "#10b981",
   rejected: "#ef4444",
-  withdrawn: "#94a3b8",
 };
 
 const SOURCE_COLORS: Record<string, string> = {
-  easy_apply: "#3b82f6",
-  full_form: "#8b5cf6",
-  direct: "#10b981",
-  auto_apply: "#f59e0b",
+  direct: "#3b82f6",
+  referral: "#10b981",
+  linkedin: "#0a66c2",
+  indeed: "#2164f3",
+  other: "#94a3b8",
 };
 
-const FUNNEL_STAGES = [
-  "applied",
-  "shortlisted",
-  "interview_scheduled",
-  "offer",
-  "hired",
-];
-
-const AUTO_REFRESH_MS = 60_000;
-
-type TabKey = "pipeline" | "historical" | "performance" | "response";
-type DateRange = "7d" | "30d" | "90d" | "180d" | "custom";
-
-/* ── Component ── */
-
-export default function AnalyticsPage() {
-  const queryClient = useQueryClient();
-  const [selectedJobId, setSelectedJobId] = useState<string>("");
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const [activeTab, setActiveTab] = useState<TabKey>("pipeline");
+export default function EmployerAnalyticsPage() {
+  const [activeTab, setActiveTab] = useState<typeof ANALYTICS_TABS[number]["key"]>("pipeline");
+  const [selectedJobId, setSelectedJobId] = useState("");
   const [dateRange, setDateRange] = useState<DateRange>("30d");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [refreshing, setRefreshing] = useState(false);
 
-  // React Query hooks
-  const overviewQuery = useAnalyticsOverview(activeTab === "pipeline");
-  const pipelineQuery = useAnalyticsPipeline(
-    selectedJobId,
-    activeTab === "pipeline"
-  );
-  const historicalQuery = useAnalyticsHistorical(
-    {
-      range: dateRange,
-      customStart: dateRange === "custom" ? customStart : undefined,
-      customEnd: dateRange === "custom" ? customEnd : undefined,
-    },
+  const { data, error, isLoading, refetch: refetchOverview } = useAnalyticsOverview();
+  const { data: pipeline, refetch: refetchPipeline } = useAnalyticsPipeline(selectedJobId);
+  const { data: historical, refetch: refetchHistorical } = useAnalyticsHistorical(
+    { range: dateRange, customStart, customEnd },
     activeTab === "historical"
   );
-  const performanceQuery = useAnalyticsJobs(activeTab === "performance");
-  const responseTimeQuery = useAnalyticsResponseTime(activeTab === "response");
+  const { data: performance, refetch: refetchPerformance } = useAnalyticsJobs(activeTab === "performance");
+  const { data: responseTime, refetch: refetchResponseTime } = useAnalyticsResponseTime(activeTab === "response");
 
-  // Derive data from queries
-  const data = overviewQuery.data ?? null;
-  const pipeline = pipelineQuery.data ?? null;
-  const historical = historicalQuery.data ?? null;
-  const performance = performanceQuery.data ?? null;
-  const responseTime = responseTimeQuery.data ?? null;
+  const activeTabMeta = ANALYTICS_TABS.find((t) => t.key === activeTab) || ANALYTICS_TABS[0];
 
-  const loading =
-    (activeTab === "pipeline" &&
-      (overviewQuery.isLoading || pipelineQuery.isLoading)) ||
-    (activeTab === "historical" && historicalQuery.isLoading) ||
-    (activeTab === "performance" && performanceQuery.isLoading) ||
-    (activeTab === "response" && responseTimeQuery.isLoading);
+  const headlineMetrics =
+    activeTab === "pipeline" && data && pipeline
+      ? [
+          {
+            label: "Total Applied",
+            value: data.conversion.applied,
+            description: "All inbound applications",
+            icon: Users,
+            color: "blue",
+          },
+          {
+            label: "In Pipeline",
+            value: data.conversion.applied - data.conversion.hired - (pipeline.perJob.reduce((sum, j) => sum + (j.stages.find((s) => s.status === "rejected")?.count || 0), 0)),
+            description: "Active candidates right now",
+            icon: TrendingUp,
+            color: "indigo",
+          },
+          {
+            label: "Conversion Rate",
+            value: `${pipeline.conversionRates.overallHireRate}%`,
+            description: "End-to-end hire rate",
+            icon: Zap,
+            color: "purple",
+          },
+          {
+            label: "Hired (All-Time)",
+            value: data.conversion.hired,
+            description: "Successful placements",
+            icon: Sparkles,
+            color: "green",
+          },
+        ]
+      : [];
 
-  const error =
-    overviewQuery.error ??
-    pipelineQuery.error ??
-    historicalQuery.error ??
-    performanceQuery.error ??
-    responseTimeQuery.error;
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const refreshActions: Promise<unknown>[] = [refetchOverview(), refetchPipeline()];
 
-  const refreshing =
-    overviewQuery.isFetching || pipelineQuery.isFetching;
+      if (activeTab === "historical") {
+        refreshActions.push(refetchHistorical());
+      }
 
-  // Refresh handler
-  const handleRefresh = () => {
-    if (activeTab === "pipeline") {
-      overviewQuery.refetch();
-      pipelineQuery.refetch();
-    } else if (activeTab === "historical") {
-      historicalQuery.refetch();
-    } else if (activeTab === "performance") {
-      performanceQuery.refetch();
-    } else {
-      responseTimeQuery.refetch();
+      if (activeTab === "performance") {
+        refreshActions.push(refetchPerformance());
+      }
+
+      if (activeTab === "response") {
+        refreshActions.push(refetchResponseTime());
+      }
+
+      await Promise.all(refreshActions);
+      setLastRefresh(new Date());
+    } finally {
+      setRefreshing(false);
     }
-    setLastRefresh(new Date());
   };
 
   useEffect(() => {
-    document.title = "Analytics · MPLOYEDIN";
-  }, []);
+    let interval: NodeJS.Timeout | null = null;
+    if (activeTab === "pipeline") {
+      interval = setInterval(() => {
+        refetchOverview();
+        refetchPipeline();
+        setLastRefresh(new Date());
+      }, AUTO_REFRESH_MS);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTab, refetchOverview, refetchPipeline]);
 
-  /* ── Loading / Error ── */
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="page-container">
-        <PageHeader
-          title="Analytics"
-          description="Pipeline funnel, trends & historical insights"
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {Array.from({ length: 5 }).map((_, i) => (
+      <div className="page-container space-y-6">
+        <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_36%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
+          <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+            <Sparkles className="h-3.5 w-3.5" />
+            Analytics workspace
+          </div>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+            Analytics
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            Pipeline funnel, trends, performance, and response-time insights in the same modern employer workspace.
+          </p>
+        </section>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm animate-pulse"
-            >
-              <div className="h-4 bg-slate-200 rounded w-20 mb-3" />
-              <div className="h-8 bg-slate-200 rounded w-16 mb-2" />
-              <div className="h-3 bg-slate-100 rounded w-24" />
-            </div>
+              className="h-[120px] animate-pulse rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]"
+            />
           ))}
         </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm animate-pulse">
-          <div className="h-5 bg-slate-200 rounded w-40 mb-6" />
-          <div className="h-64 bg-slate-100 rounded" />
-        </div>
+
+        <div className="h-[360px] animate-pulse rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="page-container">
-        <PageHeader
-          title="Analytics"
-          description="Pipeline funnel, trends & historical insights"
-        />
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-600">
-            Error: {error instanceof Error ? error.message : String(error)}
+      <div className="page-container space-y-6">
+        <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_36%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
+          <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+            <Sparkles className="h-3.5 w-3.5" />
+            Analytics workspace
+          </div>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+            Analytics
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            Pipeline funnel, trends, performance, and response-time insights in the same modern employer workspace.
           </p>
-          <button
-            onClick={handleRefresh}
-            className="mt-2 text-sm text-red-700 underline"
-          >
-            Retry
-          </button>
-        </div>
+        </section>
+
+        <AnalyticsPanel className="border-red-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(254,242,242,0.96))]">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
+                Unable to load analytics
+              </p>
+              <p className="mt-2 text-sm leading-6 text-red-700">
+                Error: {error instanceof Error ? error.message : String(error)}
+              </p>
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-50"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </button>
+          </div>
+        </AnalyticsPanel>
       </div>
     );
   }
 
   return (
-    <div className="page-container">
-      {/* Header with tabs + refresh */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <PageHeader
-          title="Analytics"
-          description="Pipeline funnel, trends & historical insights"
-        />
-        <div className="flex items-center gap-3">
-          {/* Refresh */}
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors"
-            title="Refresh now"
-          >
-            <RefreshCw
-              className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`}
-            />
-            <span className="hidden sm:inline">
-              {lastRefresh.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          </button>
-        </div>
-      </div>
+    <div className="page-container space-y-6">
+      <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_36%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+              <activeTabMeta.icon className="h-3.5 w-3.5" />
+              {activeTabMeta.label}
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+              Analytics Command Center
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+              Review funnel health, hiring velocity, job-level performance, and response commitments from one cleaner employer workspace.
+            </p>
+          </div>
 
-      {/* Tab Switcher */}
-      <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
-        <button
-          onClick={() => setActiveTab("pipeline")}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === "pipeline"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <BarChart3 className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
-          Pipeline
-        </button>
-        <button
-          onClick={() => setActiveTab("historical")}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === "historical"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Clock className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
-          Historical
-        </button>
-        <button
-          onClick={() => setActiveTab("performance")}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === "performance"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Eye className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
-          Performance
-        </button>
-        <button
-          onClick={() => setActiveTab("response")}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === "response"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Zap className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
-          Response Time
-        </button>
-      </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 backdrop-blur">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                View Focus
+              </p>
+              <p className="mt-1 text-lg font-semibold text-slate-950">{activeTabMeta.label}</p>
+              <p className="text-xs text-slate-500">{activeTabMeta.description}</p>
+            </div>
+            <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 backdrop-blur">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Last Refresh
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-950">
+                    {lastRefresh.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {activeTab === "pipeline"
+                      ? `Live pipeline checks auto-refresh every ${AUTO_REFRESH_MS / 1000} seconds.`
+                      : "Manual refresh keeps this view current on demand."}
+                  </p>
+                </div>
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-sky-200 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Refresh now"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {headlineMetrics.length > 0 && (
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {headlineMetrics.map((metric) => (
+              <HeroMetricCard
+                key={metric.label}
+                label={metric.label}
+                value={metric.value}
+                description={metric.description}
+                icon={metric.icon}
+                color={metric.color}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <AnalyticsPanel className="p-3 sm:p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {ANALYTICS_TABS.map((tab) => {
+              const Icon = tab.icon;
+
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition",
+                    activeTab === tab.key
+                      ? "bg-slate-950 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.9)]"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Current Lens
+            </p>
+            <p className="mt-1 font-medium text-slate-900">{activeTabMeta.description}</p>
+          </div>
+        </div>
+      </AnalyticsPanel>
 
       {activeTab === "pipeline" && data && pipeline && (
         <PipelineTab
@@ -320,10 +381,9 @@ export default function AnalyticsPage() {
         <ResponseTimeTab data={responseTime} />
       )}
 
-      {/* Auto-refresh footer */}
       {activeTab === "pipeline" && (
-        <p className="text-xs text-slate-400 text-center">
-          Auto-refreshes every 60 seconds
+        <p className="text-center text-xs text-slate-400">
+          Live pipeline analytics refresh automatically every {AUTO_REFRESH_MS / 1000} seconds.
         </p>
       )}
     </div>
@@ -390,46 +450,60 @@ function PipelineTab({
   const totalApplications = data.conversion.applied;
 
   return (
-    <>
-      {/* Job filter */}
+    <div className="space-y-6">
       {jobOptions.length > 0 && (
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400" />
-          <select
-            value={selectedJobId}
-            onChange={(e) => setSelectedJobId(e.target.value)}
-            className="text-sm border border-slate-300 rounded-md px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">All Jobs</option>
-            {jobOptions.map((j) => (
-              <option key={j.jobId} value={j.jobId}>
-                {j.title} ({j.total})
-              </option>
-            ))}
-          </select>
-        </div>
+        <AnalyticsPanel>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <AnalyticsSectionHeader
+              title="Pipeline scope"
+              description="Focus this funnel on one role or keep the full portfolio visible."
+              icon={Filter}
+              eyebrow="Job filter"
+            />
+            <div className="min-w-full lg:min-w-[280px] xl:min-w-[340px]">
+              <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Selected job
+              </label>
+              <select
+                value={selectedJobId}
+                onChange={(e) => setSelectedJobId(e.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+              >
+                <option value="">All Jobs</option>
+                {jobOptions.map((j) => (
+                  <option key={j.jobId} value={j.jobId}>
+                    {j.title} ({j.total})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </AnalyticsPanel>
       )}
 
-      {/* Stalled Candidates Alert */}
       {pipeline.stalledCount > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-amber-800">
-              {pipeline.stalledCount} stalled candidate
-              {pipeline.stalledCount > 1 ? "s" : ""}
-            </p>
-            <p className="text-sm text-amber-700 mt-0.5">
-              These applications have had no activity for 7+ days. Review them
-              to keep your pipeline moving.
-            </p>
+        <div className="rounded-[28px] border border-amber-200 bg-[linear-gradient(180deg,_rgba(255,251,235,0.98),_rgba(255,247,237,0.96))] p-5 shadow-[0_24px_60px_-46px_rgba(245,158,11,0.38)]">
+          <div className="flex items-start gap-4">
+            <div className="rounded-2xl bg-amber-100 p-3 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-600">
+                Action needed
+              </p>
+              <p className="mt-2 text-lg font-semibold text-amber-950">
+                {pipeline.stalledCount} stalled candidate{pipeline.stalledCount > 1 ? "s" : ""}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                These applications have had no activity for 7+ days. Review them to keep your pipeline moving.
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Conversion Rate Cards */}
       <section>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <ConversionCard label="Applied" count={data.conversion.applied} subtitle="100% of total" color="blue" />
           <ConversionCard label="Shortlisted" count={data.conversion.shortlisted} subtitle={`${conversionRates.appliedToShortlisted}% from Applied`} color="indigo" />
           <ConversionCard label="Interview" count={data.conversion.interview} subtitle={`${conversionRates.shortlistedToInterview}% from Shortlisted`} color="purple" />
@@ -438,23 +512,24 @@ function PipelineTab({
         </div>
       </section>
 
-      {/* Pipeline Funnel */}
-      <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-slate-600" />
-          Pipeline Funnel
-        </h2>
+      <AnalyticsPanel>
+        <AnalyticsSectionHeader
+          title="Pipeline Funnel"
+          description="See how candidate volume compresses from first application to final hire."
+          icon={BarChart3}
+          eyebrow="Conversion"
+        />
 
         {funnelChartData.every((d) => d.count === 0) ? (
-          <p className="text-center text-slate-500 py-8">No application data available</p>
+          <p className="py-10 text-center text-slate-500">No application data available</p>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={funnelChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="stage" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} />
               <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} allowDecimals={false} />
-              <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "13px" }} />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={60}>
+              <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} />
+              <Bar dataKey="count" radius={[8, 8, 0, 0]} maxBarSize={60}>
                 {funnelChartData.map((entry, idx) => (
                   <Cell key={idx} fill={entry.fill} />
                 ))}
@@ -463,76 +538,84 @@ function PipelineTab({
           </ResponsiveContainer>
         )}
 
-        {/* Conversion rates */}
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap gap-3">
           <RateBadge label="Applied → Shortlisted" value={pipeline.conversionRates.appliedToShortlisted} />
           <RateBadge label="Shortlisted → Interview" value={pipeline.conversionRates.shortlistedToInterview} />
           <RateBadge label="Interview → Offer" value={pipeline.conversionRates.interviewToOffer} />
           <RateBadge label="Offer → Hired" value={pipeline.conversionRates.offerToHired} />
           <RateBadge label="Overall Hire Rate" value={pipeline.conversionRates.overallHireRate} highlight />
         </div>
-      </section>
+      </AnalyticsPanel>
 
-      {/* Application Trend */}
-      <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-slate-600" />
-          Daily Applications (Last 30 Days)
-        </h2>
+      <AnalyticsPanel>
+        <AnalyticsSectionHeader
+          title="Daily Applications"
+          description="Track inbound candidate momentum across the last 30 days."
+          icon={TrendingUp}
+          eyebrow="Trend"
+        />
 
         <ResponsiveContainer width="100%" height={280}>
           <AreaChart data={trendChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} interval={Math.floor(trendChartData.length / 8)} />
             <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} allowDecimals={false} />
-            <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "13px" }} labelFormatter={(label) => `Date: ${label}`} />
-            <Area type="monotone" dataKey="count" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
+            <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} labelFormatter={(label) => `Date: ${label}`} />
+            <Area type="monotone" dataKey="count" stroke="#0ea5e9" fill="#38bdf8" fillOpacity={0.18} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
           </AreaChart>
         </ResponsiveContainer>
-      </section>
+      </AnalyticsPanel>
 
-      {/* Per-Job Breakdown */}
       {pipeline.perJob.length > 0 && (
-        <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-            <Briefcase className="w-5 h-5 text-slate-600" />
-            Per-Job Pipeline Breakdown
-          </h2>
+        <AnalyticsPanel className="overflow-hidden p-0">
+          <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+            <AnalyticsSectionHeader
+              title="Per-Job Pipeline Breakdown"
+              description="Compare each role across the main funnel stages without leaving analytics."
+              icon={Briefcase}
+              eyebrow="Job detail"
+              compact
+            />
+          </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[860px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Job Title</th>
-                  <th className="text-center py-3 px-4 font-semibold text-slate-700">Total</th>
+                <tr className="border-b border-slate-200 bg-slate-50/80">
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Job Title</th>
+                  <th className="px-4 py-3 text-center font-semibold text-slate-700">Total</th>
                   {FUNNEL_STAGES.map((s) => (
-                    <th key={s} className="text-center py-3 px-4 font-semibold text-slate-700">{STAGE_NAMES[s]}</th>
+                    <th key={s} className="px-4 py-3 text-center font-semibold text-slate-700">{STAGE_NAMES[s]}</th>
                   ))}
-                  <th className="text-center py-3 px-4 font-semibold text-slate-700">Rejected</th>
+                  <th className="px-4 py-3 text-center font-semibold text-slate-700">Rejected</th>
                 </tr>
               </thead>
               <tbody>
                 {pipeline.perJob.map((job) => (
-                  <tr key={job.jobId} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="py-3 px-4 text-slate-900 font-medium max-w-[200px] truncate">{job.title}</td>
-                    <td className="text-center py-3 px-4 text-slate-800 font-bold">{job.total}</td>
+                  <tr key={job.jobId} className="border-b border-slate-100 transition hover:bg-sky-50/40">
+                    <td className="max-w-[240px] truncate px-4 py-3 font-medium text-slate-900">{job.title}</td>
+                    <td className="px-4 py-3 text-center text-base font-bold text-slate-800">{job.total}</td>
                     {FUNNEL_STAGES.map((stage) => {
                       const stageCount = job.stages.find((s) => s.status === stage)?.count ?? 0;
                       return (
-                        <td key={stage} className="text-center py-3 px-4 text-slate-600">
+                        <td key={stage} className="px-4 py-3 text-center text-slate-600">
                           {stageCount > 0 ? (
-                            <span className="inline-block min-w-[28px] px-2 py-0.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: STAGE_COLORS[stage] }}>{stageCount}</span>
+                            <span className="inline-flex min-w-[30px] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: STAGE_COLORS[stage] }}>
+                              {stageCount}
+                            </span>
                           ) : (
                             <span className="text-slate-300">0</span>
                           )}
                         </td>
                       );
                     })}
-                    <td className="text-center py-3 px-4 text-slate-600">
+                    <td className="px-4 py-3 text-center text-slate-600">
                       {(() => {
-                        const c = job.stages.find((s) => s.status === "rejected")?.count ?? 0;
-                        return c > 0 ? (
-                          <span className="inline-block min-w-[28px] px-2 py-0.5 rounded-full text-xs font-semibold text-white bg-red-500">{c}</span>
+                        const count = job.stages.find((s) => s.status === "rejected")?.count ?? 0;
+                        return count > 0 ? (
+                          <span className="inline-flex min-w-[30px] items-center justify-center rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white">
+                            {count}
+                          </span>
                         ) : (
                           <span className="text-slate-300">0</span>
                         );
@@ -543,36 +626,40 @@ function PipelineTab({
               </tbody>
             </table>
           </div>
-        </section>
+        </AnalyticsPanel>
       )}
 
-      {/* Top Jobs Table */}
-      <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-          <Briefcase className="w-5 h-5 text-slate-600" />
-          Top Jobs by Applications
-        </h2>
+      <AnalyticsPanel className="overflow-hidden p-0">
+        <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+          <AnalyticsSectionHeader
+            title="Top Jobs by Applications"
+            description="Identify which roles currently attract the highest candidate attention."
+            icon={Briefcase}
+            eyebrow="Top roles"
+            compact
+          />
+        </div>
 
         {data.topJobs.length === 0 ? (
-          <p className="text-center text-slate-500 py-8">No job applications yet</p>
+          <p className="px-6 py-12 text-center text-slate-500">No job applications yet</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Job Title</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Applications</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">% of Total</th>
+                <tr className="border-b border-slate-200 bg-slate-50/80">
+                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Job Title</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-700">Applications</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-700">% of Total</th>
                 </tr>
               </thead>
               <tbody>
                 {data.topJobs.map((job, idx) => {
                   const percentage = totalApplications > 0 ? ((job.count / totalApplications) * 100).toFixed(1) : "0";
                   return (
-                    <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50">
-                      <td className="py-3 px-4 text-slate-900 font-medium">{job.title}</td>
-                      <td className="text-right py-3 px-4 text-slate-700 font-semibold">{job.count}</td>
-                      <td className="text-right py-3 px-4 text-slate-600">{percentage}%</td>
+                    <tr key={idx} className="border-b border-slate-100 transition hover:bg-sky-50/40">
+                      <td className="px-4 py-3 font-medium text-slate-900">{job.title}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-700">{job.count}</td>
+                      <td className="px-4 py-3 text-right text-slate-600">{percentage}%</td>
                     </tr>
                   );
                 })}
@@ -580,8 +667,8 @@ function PipelineTab({
             </table>
           </div>
         )}
-      </section>
-    </>
+      </AnalyticsPanel>
+    </div>
   );
 }
 
@@ -622,19 +709,23 @@ function HistoricalTab({
   }));
 
   return (
-    <>
-      {/* Date Range Picker */}
-      <section className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+    <div className="space-y-6">
+      <AnalyticsPanel>
         <div className="flex flex-wrap items-center gap-3">
-          <Calendar className="w-4 h-4 text-slate-500" />
-          <span className="text-sm font-medium text-slate-700">Period:</span>
+          <div className="rounded-2xl bg-slate-100 p-2 text-slate-600">
+            <Calendar className="h-4 w-4" />
+          </div>
+          <div className="mr-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Date range</p>
+            <p className="mt-1 text-sm font-medium text-slate-900">Compare historical patterns over any hiring window.</p>
+          </div>
           {(["7d", "30d", "90d", "180d"] as DateRange[]).map((r) => (
             <button
               key={r}
               onClick={() => setDateRange(r)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+              className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
                 dateRange === r
-                  ? "bg-slate-900 text-white"
+                  ? "bg-slate-950 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.9)]"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
@@ -643,9 +734,9 @@ function HistoricalTab({
           ))}
           <button
             onClick={() => setDateRange("custom")}
-            className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+            className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
               dateRange === "custom"
-                ? "bg-slate-900 text-white"
+                ? "bg-slate-950 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.9)]"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
@@ -657,29 +748,30 @@ function HistoricalTab({
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="text-sm border border-slate-300 rounded-md px-2 py-1.5"
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               />
               <span className="text-slate-400">to</span>
               <input
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="text-sm border border-slate-300 rounded-md px-2 py-1.5"
+                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               />
             </div>
           )}
-          <span className="text-xs text-slate-400 ml-auto">
+          <span className="ml-auto rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500">
             {historical.dateRange.start} — {historical.dateRange.end} · {historical.totalApplications} applications
           </span>
         </div>
-      </section>
+      </AnalyticsPanel>
 
-      {/* Application Trend (with date range) */}
-      <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-slate-600" />
-          Applications Over Time
-        </h2>
+      <AnalyticsPanel>
+        <AnalyticsSectionHeader
+          title="Applications Over Time"
+          description="Spot trendlines, surges, and soft periods across the selected date range."
+          icon={TrendingUp}
+          eyebrow="Trend"
+        />
 
         {trendChartData.length === 0 ? (
           <p className="text-center text-slate-500 py-8">No data for this period</p>
@@ -695,7 +787,7 @@ function HistoricalTab({
               />
               <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} allowDecimals={false} />
               <Tooltip
-                contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "13px" }}
+                contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }}
                 labelFormatter={(_, payload) => {
                   const item = payload?.[0]?.payload as { fullDate?: string } | undefined;
                   return item?.fullDate ? `Date: ${item.fullDate}` : "";
@@ -705,16 +797,16 @@ function HistoricalTab({
             </AreaChart>
           </ResponsiveContainer>
         )}
-      </section>
+      </AnalyticsPanel>
 
-      {/* Two-column: Source Distribution + Drop-off */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Source Distribution */}
-        <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-            <Users className="w-5 h-5 text-slate-600" />
-            Application Sources
-          </h2>
+        <AnalyticsPanel>
+          <AnalyticsSectionHeader
+            title="Application Sources"
+            description="See which channels are contributing the most candidates."
+            icon={Users}
+            eyebrow="Attribution"
+          />
 
           {sourceChartData.length === 0 ? (
             <p className="text-center text-slate-500 py-8">No source data available</p>
@@ -740,7 +832,7 @@ function HistoricalTab({
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "13px" }}
+                    contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }}
                     formatter={(value) => [value ?? 0, "Applications"]}
                   />
                   <Legend />
@@ -767,14 +859,15 @@ function HistoricalTab({
               </div>
             </>
           )}
-        </section>
+        </AnalyticsPanel>
 
-        {/* Drop-off Rates */}
-        <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-            <ArrowDownRight className="w-5 h-5 text-slate-600" />
-            Stage Drop-off Rates
-          </h2>
+        <AnalyticsPanel>
+          <AnalyticsSectionHeader
+            title="Stage Drop-off Rates"
+            description="Pinpoint where candidates are slipping out between major transitions."
+            icon={ArrowDownRight}
+            eyebrow="Leak points"
+          />
 
           {historical.dropOff.length === 0 ? (
             <p className="text-center text-slate-500 py-8">No data available</p>
@@ -818,15 +911,16 @@ function HistoricalTab({
               ))}
             </div>
           )}
-        </section>
+        </AnalyticsPanel>
       </div>
 
-      {/* Time-to-Hire per Stage */}
-      <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-slate-600" />
-          Time-to-Hire by Stage
-        </h2>
+      <AnalyticsPanel>
+        <AnalyticsSectionHeader
+          title="Time-to-Hire by Stage"
+          description="Benchmark average and median time spent between key hiring transitions."
+          icon={Clock}
+          eyebrow="Speed"
+        />
 
         {historical.timeToHire.length === 0 ? (
           <p className="text-center text-slate-500 py-8">
@@ -851,7 +945,7 @@ function HistoricalTab({
                   label={{ value: "Days", angle: -90, position: "insideLeft", style: { fontSize: 12, fill: "#94a3b8" } }}
                 />
                 <Tooltip
-                  contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "13px" }}
+                  contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }}
                   formatter={(value, name) => {
                     if (name === "avgDays") return [`${value} days`, "Avg"];
                     if (name === "medianDays") return [`${value} days`, "Median"];
@@ -863,11 +957,10 @@ function HistoricalTab({
               </BarChart>
             </ResponsiveContainer>
 
-            {/* Detail table */}
-            <div className="mt-6 overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="mt-6 overflow-x-auto rounded-[24px] border border-slate-200">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
+                  <tr className="border-b border-slate-200 bg-slate-50/80">
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Stage Transition</th>
                     <th className="text-right py-3 px-4 font-semibold text-slate-700">Avg Days</th>
                     <th className="text-right py-3 px-4 font-semibold text-slate-700">Median Days</th>
@@ -888,20 +981,24 @@ function HistoricalTab({
             </div>
           </>
         )}
-      </section>
+      </AnalyticsPanel>
 
-      {/* Per-Job Time-to-Hire */}
       {historical.perJobTimeToHire.length > 0 && (
-        <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-            <Briefcase className="w-5 h-5 text-slate-600" />
-            Time-in-Stage by Job
-          </h2>
+        <AnalyticsPanel className="overflow-hidden p-0">
+          <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+            <AnalyticsSectionHeader
+              title="Time-in-Stage by Job"
+              description="Compare stage timing by role to identify roles that stall more often."
+              icon={Briefcase}
+              eyebrow="Job benchmark"
+              compact
+            />
+          </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="border-b border-slate-200 bg-slate-50/80">
                   <th className="text-left py-3 px-4 font-semibold text-slate-700">Job</th>
                   <th className="text-left py-3 px-4 font-semibold text-slate-700">Transition</th>
                   <th className="text-right py-3 px-4 font-semibold text-slate-700">Avg Days</th>
@@ -944,9 +1041,9 @@ function HistoricalTab({
               </tbody>
             </table>
           </div>
-        </section>
+        </AnalyticsPanel>
       )}
-    </>
+    </div>
   );
 }
 
@@ -958,8 +1055,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
   const { jobs, summary } = performance;
 
   return (
-    <>
-      {/* Summary Cards */}
+    <div className="space-y-6">
       <section>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
           <SummaryCard label="Total Jobs" value={summary.totalJobs} />
@@ -976,20 +1072,24 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
         </div>
       </section>
 
-      {/* Job Performance Table */}
-      <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-          <Eye className="w-5 h-5 text-slate-600" />
-          Job Performance Breakdown
-        </h2>
+      <AnalyticsPanel className="overflow-hidden p-0">
+        <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+          <AnalyticsSectionHeader
+            title="Job Performance Breakdown"
+            description="Review visibility, application lift, and conversion quality role by role."
+            icon={Eye}
+            eyebrow="Job performance"
+            compact
+          />
+        </div>
 
         {jobs.length === 0 ? (
-          <p className="text-center text-slate-500 py-8">No jobs created yet</p>
+          <p className="px-6 py-12 text-center text-slate-500">No jobs created yet</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[920px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="border-b border-slate-200 bg-slate-50/80">
                   <th className="text-left py-3 px-4 font-semibold text-slate-700">Job Title</th>
                   <th className="text-center py-3 px-4 font-semibold text-slate-700">Status</th>
                   <th className="text-right py-3 px-4 font-semibold text-slate-700">Views</th>
@@ -1002,7 +1102,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
               </thead>
               <tbody>
                 {jobs.map((job) => (
-                  <tr key={job.jobId} className="border-b border-slate-100 hover:bg-slate-50">
+                  <tr key={job.jobId} className="border-b border-slate-100 transition hover:bg-sky-50/40">
                     <td className="py-3 px-4 text-slate-900 font-medium max-w-[200px] truncate">{job.title}</td>
                     <td className="text-center py-3 px-4">
                       <span
@@ -1045,15 +1145,16 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
             </table>
           </div>
         )}
-      </section>
+      </AnalyticsPanel>
 
-      {/* AI Insights */}
       {jobs.some((j) => j.insight) && (
-        <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
-            Insights & Recommendations
-          </h2>
+        <AnalyticsPanel>
+          <AnalyticsSectionHeader
+            title="Insights & Recommendations"
+            description="Highlight listings that deserve a title, salary, or positioning adjustment."
+            icon={AlertTriangle}
+            eyebrow="Recommendations"
+          />
           <div className="space-y-3">
             {jobs
               .filter((j) => j.insight)
@@ -1062,8 +1163,8 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
                   key={job.jobId}
                   className={`flex items-start gap-3 p-3 rounded-lg ${
                     job.insight?.includes("Excellent")
-                      ? "bg-green-50 border border-green-200"
-                      : "bg-amber-50 border border-amber-200"
+                      ? "border border-green-200 bg-green-50"
+                      : "border border-amber-200 bg-amber-50"
                   }`}
                 >
                   <div className="flex-1">
@@ -1076,9 +1177,9 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
                 </div>
               ))}
           </div>
-        </section>
+        </AnalyticsPanel>
       )}
-    </>
+    </div>
   );
 }
 
@@ -1089,52 +1190,43 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
 function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
   const { overall, commitment, perJob, distribution } = data;
 
-  const formatHours = (h: number) => {
-    if (h < 1) return "< 1 hour";
-    if (h < 24) return `${Math.round(h)} hours`;
-    const days = Math.round((h / 24) * 10) / 10;
-    return `${days} day${days !== 1 ? "s" : ""}`;
-  };
-
   return (
-    <>
-      {/* Overall Summary */}
+    <div className="space-y-6">
       <section>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-            <p className="text-sm font-medium text-slate-600">Avg Response Time</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{formatHours(overall.avgHours)}</p>
-            <p className="text-xs text-slate-500 mt-1">{overall.avgDays} days average</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-            <p className="text-sm font-medium text-slate-600">Median Response Time</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{formatHours(overall.medianHours)}</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-            <p className="text-sm font-medium text-slate-600">Applications Measured</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{overall.totalMeasured}</p>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-            <p className="text-sm font-medium text-slate-600">Your Commitment</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">
-              {commitment ? `${commitment} day${commitment > 1 ? "s" : ""}` : "Not set"}
-            </p>
-            {commitment && overall.avgDays > commitment && (
-              <p className="text-xs text-red-600 mt-1 font-medium">⚠ Exceeding commitment</p>
-            )}
-            {commitment && overall.avgDays <= commitment && overall.totalMeasured > 0 && (
-              <p className="text-xs text-green-600 mt-1 font-medium">✓ Meeting commitment</p>
-            )}
-          </div>
+          <SummaryCard label="Avg Response Time" value={formatHoursLabel(overall.avgHours)} description={`${overall.avgDays} days average`} color="blue" />
+          <SummaryCard label="Median Response Time" value={formatHoursLabel(overall.medianHours)} description="Typical time to first action" color="indigo" />
+          <SummaryCard label="Applications Measured" value={overall.totalMeasured} description="Rows included in this benchmark" color="purple" />
+          <SummaryCard
+            label="Your Commitment"
+            value={
+                 commitment ? `${commitment} day${commitment > 1 ? "s" : ""}` : "Not set"
+            }
+            description={
+              commitment && overall.avgDays > commitment
+                ? "Exceeding your public response promise"
+                : commitment && overall.avgDays <= commitment && overall.totalMeasured > 0
+                ? "Meeting your public response promise"
+                : "Set a promise to display on public jobs"
+            }
+            color={
+              commitment && overall.avgDays > commitment
+                ? "red"
+                : commitment && overall.avgDays <= commitment && overall.totalMeasured > 0
+                ? "green"
+                : "amber"
+            }
+          />
         </div>
       </section>
 
-      {/* Distribution Chart */}
-      <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-slate-600" />
-          Response Time Distribution
-        </h2>
+      <AnalyticsPanel>
+        <AnalyticsSectionHeader
+          title="Response Time Distribution"
+          description="Understand how quickly employer actions happen across measured applications."
+          icon={Clock}
+          eyebrow="Distribution"
+        />
 
         {distribution.every((d) => d.count === 0) ? (
           <p className="text-center text-slate-500 py-8">No response time data available yet</p>
@@ -1144,25 +1236,29 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} />
               <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} allowDecimals={false} />
-              <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "13px" }} />
+              <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} />
               <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={60} />
             </BarChart>
           </ResponsiveContainer>
         )}
-      </section>
+      </AnalyticsPanel>
 
-      {/* Per-Job Response Time */}
       {perJob.length > 0 && (
-        <section className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-            <Briefcase className="w-5 h-5 text-slate-600" />
-            Response Time by Job
-          </h2>
+        <AnalyticsPanel className="overflow-hidden p-0">
+          <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+            <AnalyticsSectionHeader
+              title="Response Time by Job"
+              description="Spot which listings are moving quickly and which ones need closer follow-up discipline."
+              icon={Briefcase}
+              eyebrow="Job service level"
+              compact
+            />
+          </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
+                <tr className="border-b border-slate-200 bg-slate-50/80">
                   <th className="text-left py-3 px-4 font-semibold text-slate-700">Job Title</th>
                   <th className="text-right py-3 px-4 font-semibold text-slate-700">Avg Response</th>
                   <th className="text-right py-3 px-4 font-semibold text-slate-700">Median</th>
@@ -1171,7 +1267,7 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
               </thead>
               <tbody>
                 {perJob.map((job) => (
-                  <tr key={job.jobId} className="border-b border-slate-100 hover:bg-slate-50">
+                  <tr key={job.jobId} className="border-b border-slate-100 transition hover:bg-sky-50/40">
                     <td className="py-3 px-4 text-slate-900 font-medium max-w-[250px] truncate">{job.title}</td>
                     <td className="text-right py-3 px-4">
                       <span
@@ -1183,47 +1279,138 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
                             : "text-green-600"
                         }`}
                       >
-                        {formatHours(job.avgHours)}
+                        {formatHoursLabel(job.avgHours)}
                       </span>
                     </td>
-                    <td className="text-right py-3 px-4 text-slate-600">{formatHours(job.medianHours)}</td>
+                    <td className="text-right py-3 px-4 text-slate-600">{formatHoursLabel(job.medianHours)}</td>
                     <td className="text-right py-3 px-4 text-slate-500">{job.count}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </section>
+        </AnalyticsPanel>
       )}
-    </>
+    </div>
   );
 }
 
 /* ── Sub-components ── */
 
-const COLOR_MAP: Record<string, { text: string; icon: string }> = {
-  blue: { text: "text-blue-600", icon: "text-blue-400" },
-  indigo: { text: "text-indigo-600", icon: "text-indigo-400" },
-  purple: { text: "text-purple-600", icon: "text-purple-400" },
-  amber: { text: "text-amber-600", icon: "text-amber-400" },
-  green: { text: "text-green-600", icon: "text-green-400" },
-  red: { text: "text-red-600", icon: "text-red-400" },
+const COLOR_MAP: Record<string, { text: string; icon: string; surface: string; border: string }> = {
+  blue: { text: "text-sky-700", icon: "text-sky-600", surface: "bg-sky-50", border: "border-sky-100" },
+  indigo: { text: "text-indigo-700", icon: "text-indigo-600", surface: "bg-indigo-50", border: "border-indigo-100" },
+  purple: { text: "text-violet-700", icon: "text-violet-600", surface: "bg-violet-50", border: "border-violet-100" },
+  amber: { text: "text-amber-700", icon: "text-amber-600", surface: "bg-amber-50", border: "border-amber-100" },
+  green: { text: "text-emerald-700", icon: "text-emerald-600", surface: "bg-emerald-50", border: "border-emerald-100" },
+  red: { text: "text-rose-700", icon: "text-rose-600", surface: "bg-rose-50", border: "border-rose-100" },
 };
 
-function SummaryCard({
+function formatHoursLabel(hours: number) {
+  if (hours < 1) return "< 1 hour";
+  if (hours < 24) return `${Math.round(hours)} hours`;
+  const days = Math.round((hours / 24) * 10) / 10;
+  return `${days} day${days !== 1 ? "s" : ""}`;
+}
+
+function AnalyticsPanel({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] sm:p-6",
+        className
+      )}
+    >
+      {children}
+    </section>
+  );
+}
+
+function AnalyticsSectionHeader({
+  title,
+  description,
+  icon: Icon,
+  eyebrow,
+  compact = false,
+}: {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  eyebrow?: string;
+  compact?: boolean;
+}) {
+  return (
+    <div className={cn("mb-6 flex items-start gap-4", compact && "mb-0")}>
+      <div className="rounded-2xl bg-slate-100 p-3 text-slate-700">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        {eyebrow && (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {eyebrow}
+          </p>
+        )}
+        <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function HeroMetricCard({
   label,
   value,
+  description,
+  icon: Icon,
   color = "blue",
 }: {
   label: string;
   value: string | number;
+  description: string;
+  icon: LucideIcon;
+  color?: string;
+}) {
+  const colors = COLOR_MAP[color] || COLOR_MAP.blue;
+
+  return (
+    <div className={cn("rounded-2xl border bg-white/80 p-4 backdrop-blur", colors.border)}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+          <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
+          <p className="mt-1 text-xs text-slate-500">{description}</p>
+        </div>
+        <div className={cn("rounded-2xl p-2.5", colors.surface, colors.icon)}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  description,
+  color = "blue",
+}: {
+  label: string;
+  value: string | number;
+  description?: string;
   color?: string;
 }) {
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-      <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${colors.text}`}>{value}</p>
+    <div className={cn("rounded-[28px] border bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] p-4 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]", colors.border)}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className={`mt-3 text-3xl font-semibold tracking-tight ${colors.text}`}>{value}</p>
+      {description ? <p className="mt-1 text-xs text-slate-500">{description}</p> : null}
     </div>
   );
 }
@@ -1241,15 +1428,17 @@ function ConversionCard({
 }) {
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-      <div className="flex items-start justify-between">
+    <div className={cn("rounded-[28px] border bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] p-4 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] transition-all hover:-translate-y-0.5", colors.border)}>
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-slate-600">{label}</p>
-          <p className={`text-3xl font-bold mt-2 ${colors.text}`}>{count}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+          <p className={`mt-3 text-3xl font-semibold tracking-tight ${colors.text}`}>{count}</p>
         </div>
-        <TrendingUp className={`w-5 h-5 ${colors.icon}`} />
+        <div className={cn("rounded-2xl p-2.5", colors.surface, colors.icon)}>
+          <TrendingUp className="h-5 w-5" />
+        </div>
       </div>
-      <p className="text-xs text-slate-500 mt-3">{subtitle}</p>
+      <p className="mt-3 text-xs text-slate-500">{subtitle}</p>
     </div>
   );
 }
@@ -1267,8 +1456,8 @@ function RateBadge({
     <span
       className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full ${
         highlight
-          ? "bg-green-100 text-green-800 font-semibold"
-          : "bg-slate-100 text-slate-700"
+          ? "border border-emerald-200 bg-emerald-50 font-semibold text-emerald-800"
+          : "border border-slate-200 bg-white text-slate-700"
       }`}
     >
       {label}: <strong>{value}%</strong>

@@ -7,6 +7,7 @@ import BlogPost from "@/models/BlogPost";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { blogCreateSchema } from "@/lib/validators/cms";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -77,10 +78,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     title: title.trim(),
     titleAr: (titleAr ?? "").trim(),
     slug,
-    excerpt: (excerpt ?? "").trim(),
-    excerptAr: (excerptAr ?? "").trim(),
-    body: postBody,
-    bodyAr: bodyAr ?? "",
+    excerpt: sanitizeHtml(excerpt),
+    excerptAr: sanitizeHtml(excerptAr),
+    body: sanitizeHtml(postBody),
+    bodyAr: sanitizeHtml(bodyAr),
     coverImage: coverImage ?? "",
     author: (author ?? "").trim(),
     tags: tags ?? [],

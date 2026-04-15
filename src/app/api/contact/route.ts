@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import ContactSubmission from "@/models/ContactSubmission";
 import { validateBody } from "@/lib/validators";
 import { contactSchema } from "@/lib/validators/misc";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 /**
  * Public contact form submission — NO AUTH required.
@@ -10,6 +11,13 @@ import { contactSchema } from "@/lib/validators/misc";
  */
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: 5 submissions per 10 minutes per IP
+    const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+    const { allowed } = checkRateLimit(`contact:${ip}`, { limit: 5, windowSec: 600, prefix: "contact" });
+    if (!allowed) {
+      return NextResponse.json({ error: "Too many submissions. Please try again later." }, { status: 429 });
+    }
+
     await connectDB();
     const body = await validateBody(req, contactSchema);
 

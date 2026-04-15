@@ -13,7 +13,6 @@ export const GET = withAuth(async (req: NextRequest) => {
 
   if (search) {
     // Use aggregation pipeline so we can search across the joined User name
-    const matchStage: Record<string, unknown> = {};
     const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const pipeline = [
@@ -25,16 +24,23 @@ export const GET = withAuth(async (req: NextRequest) => {
         $match: {
           $or: [
             { "userId.name": { $regex: escapedSearch, $options: "i" } },
+            { "userId.email": { $regex: escapedSearch, $options: "i" } },
+            { fullName: { $regex: escapedSearch, $options: "i" } },
             { skills: { $regex: escapedSearch, $options: "i" } },
+            { currentLocation: { $regex: escapedSearch, $options: "i" } },
+            { "experience.jobTitle": { $regex: escapedSearch, $options: "i" } },
           ],
         },
       },
       // Project only the fields the frontend needs
       {
         $project: {
-          "userId.name": 1, "userId.email": 1,
+          "userId._id": 1, "userId.name": 1, "userId.email": 1,
+          fullName: 1,
           skills: 1, currentLocation: 1, experience: 1,
           profileCompleteness: 1, availabilityStatus: 1, badges: 1,
+          totalExperienceYears: 1,
+          "cv.originalUrl": 1,
           createdAt: 1,
         },
       },

@@ -6,6 +6,7 @@ import FAQ from "@/models/FAQ";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { faqUpdateSchema } from "@/lib/validators/cms";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -23,9 +24,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const body = await validateBody(req, faqUpdateSchema) as Record<string, unknown>;
   const allowed = ["question", "questionAr", "answer", "answerAr", "category", "sortOrder", "isActive"];
+  const htmlFields = new Set(["answer", "answerAr"]);
   const update: Record<string, unknown> = {};
   for (const k of allowed) {
-    if (body[k] !== undefined) update[k] = body[k];
+    if (body[k] !== undefined) {
+      update[k] = htmlFields.has(k) ? sanitizeHtml(String(body[k])) : body[k];
+    }
   }
 
   Object.assign(item, update);

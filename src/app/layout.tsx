@@ -5,13 +5,13 @@ import "@/app/globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-inter",
   display: "swap",
   preload: true,
 });
 const notoArabic = Noto_Sans_Arabic({
   subsets: ["arabic"],
-  variable: "--font-arabic",
+  variable: "--font-noto-arabic",
   weight: ["400", "500", "600", "700"],
   display: "swap",
   preload: false, // loaded on-demand only for Arabic locale

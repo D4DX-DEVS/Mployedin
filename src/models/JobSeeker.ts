@@ -30,6 +30,7 @@ export interface IJobSeeker extends Document {
   agentId?: mongoose.Types.ObjectId;
   premiumLinkTag?: string;
   // Profile
+  fullName?: string;
   nationality?: string;
   dateOfBirth?: Date;
   gender?: string;
@@ -148,6 +149,7 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
     premiumLinkTag: String,
+    fullName: String,
     nationality: String,
     dateOfBirth: Date,
     gender: String,

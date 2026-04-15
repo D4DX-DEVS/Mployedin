@@ -111,7 +111,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
     : null;
 
   return (
-    <div className="page-container">
+    <div className="page-container space-y-5 sm:space-y-6">
       {/* ── Smart Welcome Header ── */}
       <SmartHeader
         userName={userName}
@@ -122,20 +122,9 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         locale={locale}
       />
 
-      {/* ── Hiring Pipeline (4-stage: Applied / Screening / Interviews / Offers) ── */}
-      <InteractivePipeline
-        totalApplications={totalApplications}
-        newApplications={newApplications}
-        inReview={inReview}
-        interviews={scheduledInterviews}
-        offers={offerCount as number}
-        offersSent={offersSent as number}
-        locale={locale}
-      />
-
       {/* ── Priority Actions + Candidate Quality Chart (side by side) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
-        <div className="lg:col-span-3">
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)] xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.95fr)]">
+        <div>
           <PriorityActions
             activeJobs={activeJobCount}
             newApplications={newApplications}
@@ -145,7 +134,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
             locale={locale}
           />
         </div>
-        <div className="lg:col-span-2">
+        <div>
           <CandidateQualityChart
             avgMatchScore={avgMatchScore}
             highMatchCount={highMatchCount}
@@ -155,8 +144,19 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         </div>
       </div>
 
+      {/* ── Hiring Pipeline (4-stage: Applied / Screening / Interviews / Offers) ── */}
+      <InteractivePipeline
+        totalApplications={totalApplications}
+        newApplications={newApplications}
+        inReview={inReview}
+        interviews={scheduledInterviews}
+        offers={offerCount}
+        offersSent={offersSent}
+        locale={locale}
+      />
+
       {/* ── Stats Row: Current Openings list / stats + Time to Hire ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(280px,1fr)]">
         <CurrentOpeningsList
           activeJobs={activeJobCount}
           totalApplications={totalApplications}

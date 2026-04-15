@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { X, Minus, ChevronRight, CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { X, Minus, ChevronRight, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StepStatus {
@@ -72,29 +72,32 @@ export function SetupGuide() {
   return (
     <div
       className={cn(
-        "fixed bottom-24 right-6 z-50 w-80 rounded-2xl shadow-2xl border border-border bg-background overflow-hidden",
+        "fixed bottom-20 left-4 right-4 z-50 overflow-hidden rounded-[28px] border border-sky-100 bg-white/95 shadow-[0_28px_80px_-48px_rgba(2,132,199,0.45)] backdrop-blur sm:bottom-24 sm:left-auto sm:right-6 sm:w-[22rem]",
         "transition-all duration-300"
       )}
     >
-      {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-primary px-4 py-3 flex items-start gap-3">
+      <div className="bg-[radial-gradient(circle_at_top_left,_rgba(125,211,252,0.35),_transparent_42%),linear-gradient(135deg,_rgba(14,165,233,0.96),_rgba(37,99,235,0.94))] px-5 py-4 flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <h3 className="text-white font-bold text-sm leading-snug">Job Creation Setup Guide</h3>
-          <p className="text-white/70 text-xs mt-0.5 leading-snug">
-            Complete these steps to get started
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/90">
+            <Sparkles className="h-3 w-3" />
+            Setup guide
+          </div>
+          <h3 className="mt-3 text-sm font-bold leading-snug text-white">Job Creation Setup Guide</h3>
+          <p className="mt-1 text-xs leading-snug text-white/75">
+            Complete these steps to open the full employer workflow.
           </p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
           <button
             onClick={() => setMinimized((m) => !m)}
-            className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 text-white transition-colors hover:bg-white/30"
             aria-label={minimized ? "Expand" : "Minimize"}
           >
             <Minus className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={handleDismiss}
-            className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 text-white transition-colors hover:bg-white/30"
             aria-label="Close"
           >
             <X className="h-3.5 w-3.5" />
@@ -104,27 +107,25 @@ export function SetupGuide() {
 
       {!minimized && (
         <>
-          {/* Progress bar */}
-          <div className="px-4 py-3 border-b border-border/60">
+          <div className="border-b border-slate-200/80 px-5 py-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Your progress</span>
-              <span className="text-xs font-bold text-primary">
+              <span className="text-xs font-medium text-slate-500">Your progress</span>
+              <span className="text-xs font-bold text-sky-700">
                 {completedCount} / {steps.length} completed
               </span>
             </div>
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
               <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
+                className="h-full rounded-full bg-sky-600 transition-all duration-500"
                 style={{ width: `${progressPct}%` }}
               />
             </div>
           </div>
 
-          {/* Steps list */}
-          <div className="max-h-72 overflow-y-auto py-1">
+          <div className="max-h-72 overflow-y-auto px-3 py-3">
             {loading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
               </div>
             ) : (
               steps.map((step, idx) => {
@@ -134,15 +135,14 @@ export function SetupGuide() {
                     key={step.id}
                     href={`/${locale}${step.href}`}
                     className={cn(
-                      "flex items-start gap-3 px-4 py-3 transition-colors group",
+                      "group mb-2 flex items-start gap-3 rounded-2xl border px-4 py-3 transition-colors",
                       step.completed
-                        ? "opacity-60"
+                        ? "border-slate-200 bg-slate-50/80 opacity-70"
                         : isCurrent
-                          ? "bg-primary/5 border-l-2 border-primary"
-                          : "hover:bg-muted/40"
+                          ? "border-sky-200 bg-sky-50/80"
+                          : "border-transparent hover:border-slate-200 hover:bg-slate-50/80"
                     )}
                   >
-                    {/* Icon */}
                     <div className="mt-0.5 flex-shrink-0">
                       {step.completed ? (
                         <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -151,8 +151,8 @@ export function SetupGuide() {
                           className={cn(
                             "h-5 w-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold",
                             isCurrent
-                              ? "border-primary text-primary"
-                              : "border-muted-foreground/40 text-muted-foreground/60"
+                              ? "border-sky-600 text-sky-600"
+                              : "border-slate-300 text-slate-500"
                           )}
                         >
                           {idx + 1}
@@ -160,31 +160,29 @@ export function SetupGuide() {
                       )}
                     </div>
 
-                    {/* Text */}
                     <div className="flex-1 min-w-0">
                       <p
                         className={cn(
                           "text-sm font-medium leading-snug",
                           step.completed
-                            ? "line-through text-muted-foreground"
+                            ? "line-through text-slate-500"
                             : isCurrent
-                              ? "text-foreground font-semibold"
-                              : "text-foreground"
+                              ? "font-semibold text-slate-950"
+                              : "text-slate-800"
                         )}
                       >
                         {step.label}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                      <p className="mt-0.5 text-xs leading-snug text-slate-500">
                         {step.description}
                       </p>
                     </div>
 
-                    {/* Arrow for current */}
                     {!step.completed && (
                       <ChevronRight
                         className={cn(
                           "h-4 w-4 flex-shrink-0 mt-0.5 transition-colors",
-                          isCurrent ? "text-primary" : "text-muted-foreground/40 group-hover:text-muted-foreground"
+                          isCurrent ? "text-sky-600" : "text-slate-400 group-hover:text-slate-600"
                         )}
                       />
                     )}
@@ -197,16 +195,15 @@ export function SetupGuide() {
             )}
           </div>
 
-          {/* Footer */}
-          <div className="border-t border-border/60 px-4 py-3">
+          <div className="border-t border-slate-200/80 px-5 py-4">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={doNotShow}
                 onChange={(e) => setDoNotShow(e.target.checked)}
-                className="rounded border-border text-primary focus:ring-primary h-3.5 w-3.5"
+                className="h-3.5 w-3.5 rounded border-slate-300 text-sky-600 focus:ring-sky-600"
               />
-              <span className="text-xs text-muted-foreground">Do not show again</span>
+              <span className="text-xs text-slate-500">Do not show again</span>
             </label>
           </div>
         </>

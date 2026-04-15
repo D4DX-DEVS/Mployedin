@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 // ── Types ──────────────────────────────────────────────────────────
 export interface Candidate {
   _id: string;
+  fullName?: string;
   userId?: { _id: string; name: string; email: string };
   currentLocation?: string;
   experience?: { jobTitle: string; company: string; isCurrent: boolean }[];
@@ -81,6 +82,7 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
       applications?: Array<{
         jobSeekerId?: {
           _id?: unknown;
+          fullName?: string;
           userId?: { _id: string; name: string; email: string };
           skills?: string[];
           currentLocation?: string;
@@ -101,15 +103,16 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
     const candidates: Candidate[] = (data.applications ?? [])
       .filter((app) => app.jobSeekerId?._id)
       .map((app) => ({
-        _id: String(app.jobSeekerId!._id),
-        userId: app.jobSeekerId!.userId,
-        skills: app.jobSeekerId!.skills,
-        currentLocation: app.jobSeekerId!.currentLocation,
-        totalExperienceYears: app.jobSeekerId!.totalExperienceYears,
-        experience: app.jobSeekerId!.experience,
-        availabilityStatus: app.jobSeekerId!.availabilityStatus,
-        profileCompleteness: app.jobSeekerId!.profileCompleteness,
-        cv: app.jobSeekerId!.cv,
+        _id: String(app.jobSeekerId?._id ?? ""),
+        fullName: app.jobSeekerId?.fullName,
+        userId: app.jobSeekerId?.userId,
+        skills: app.jobSeekerId?.skills,
+        currentLocation: app.jobSeekerId?.currentLocation,
+        totalExperienceYears: app.jobSeekerId?.totalExperienceYears,
+        experience: app.jobSeekerId?.experience,
+        availabilityStatus: app.jobSeekerId?.availabilityStatus,
+        profileCompleteness: app.jobSeekerId?.profileCompleteness,
+        cv: app.jobSeekerId?.cv,
         matchScore: app.aiMatchScore,
         matchBreakdown: app.matchBreakdown,
         strengths: app.strengths,

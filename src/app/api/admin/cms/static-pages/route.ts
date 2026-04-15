@@ -7,6 +7,7 @@ import StaticPage from "@/models/StaticPage";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { staticPageCreateSchema } from "@/lib/validators/cms";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -68,8 +69,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     slug,
     title: title.trim(),
     titleAr: (titleAr ?? "").trim(),
-    body: pageBody,
-    bodyAr: bodyAr ?? "",
+    body: sanitizeHtml(pageBody),
+    bodyAr: sanitizeHtml(bodyAr),
     isActive: isActive !== false,
   });
 

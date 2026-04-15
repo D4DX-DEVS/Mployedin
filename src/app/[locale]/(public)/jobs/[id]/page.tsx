@@ -60,6 +60,25 @@ function salaryLabel(salary: { min?: number; max?: number; currency?: string; is
   return null;
 }
 
+function renderJobDescription(text: string) {
+  const parts = text.split(/(?=^## )/m);
+  return parts.map((part, i) => {
+    const headerMatch = part.match(/^## (.+?)\n?([\s\S]*)/);
+    if (headerMatch) {
+      return (
+        <div key={i} className={i > 0 ? "mt-4" : undefined}>
+          <h3 className="text-sm font-semibold text-foreground mb-1.5">{headerMatch[1].trim()}</h3>
+          {headerMatch[2].trim() && (
+            <p className="text-sm leading-relaxed text-muted-foreground text-justify">{headerMatch[2].trim()}</p>
+          )}
+        </div>
+      );
+    }
+    const trimmed = part.trim();
+    return trimmed ? <p key={i} className="text-sm leading-relaxed text-muted-foreground text-justify">{trimmed}</p> : null;
+  });
+}
+
 export default async function JobDetailPage({ params }: PageProps) {
   const { locale, id } = await params;
 
@@ -139,7 +158,7 @@ export default async function JobDetailPage({ params }: PageProps) {
         </div>
 
         <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8 lg:items-start">
             {/* Main content */}
             <div className="lg:col-span-2 space-y-8">
               {/* Header */}
@@ -195,8 +214,8 @@ export default async function JobDetailPage({ params }: PageProps) {
               {/* Description */}
               <div>
                 <h2 className="text-base font-semibold text-foreground mb-3">Job Description</h2>
-                <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {job.description}
+                <div className="space-y-2">
+                  {renderJobDescription(job.description ?? "")}
                 </div>
               </div>
 
@@ -260,9 +279,9 @@ export default async function JobDetailPage({ params }: PageProps) {
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-4">
+            <div className="space-y-4 lg:self-start">
               {/* Apply card */}
-              <div className="bg-card border border-border rounded-xl p-5 sticky top-6">
+              <div className="bg-card border border-border rounded-xl p-5 lg:sticky lg:top-6">
                 <div className="mb-4">
                   <p className="text-sm font-semibold text-foreground">{job.title}</p>
                   <p className="text-xs text-muted-foreground">{employer?.companyName}</p>

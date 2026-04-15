@@ -145,4 +145,25 @@ export const EmailTemplates = {
       </div>
     `,
   }),
+
+  passwordReset: (resetUrl: string) => ({
+    subject: "Reset Your Password – MPLOYEDIN",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+        </div>
+        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p>You requested a password reset for your MPLOYEDIN account.</p>
+          <p>Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${resetUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Reset Password</a>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">If the button doesn't work, copy and paste this link:<br><a href="${resetUrl}">${resetUrl}</a></p>
+          <p style="color: #6b7280; font-size: 14px;">If you did not request a password reset, you can safely ignore this email. Your password will not change.</p>
+          <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
+        </div>
+      </div>
+    `,
+  }),
 };

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import StaticPage from "@/models/StaticPage";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 /**
  * Public static page by slug (privacy-policy, cookie-policy, etc) — NO AUTH required.
  */
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+  const { allowed } = checkRateLimit(`pages:${ip}`, { limit: 30, windowSec: 60, prefix: "pages" });
+  if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
   try {
     const { slug } = await params;
     await connectDB();

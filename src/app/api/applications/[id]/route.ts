@@ -4,10 +4,9 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import Job from "@/models/Job";
 import { validateBody } from "@/lib/validators";
 import { applicationUpdateSchema } from "@/lib/validators/applications";
-import { notify, notifyStatusChange, notifyInterviewSelected } from "@/lib/notifications/trigger";
+import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -18,11 +17,19 @@ interface WorkflowSettings {
   autoRejectBelow?: number;
 }
 
+interface WorkflowStage {
+  id: string;
+  label: string;
+  enabled: boolean;
+  autoProgress: boolean;
+  order: number;
+}
+
 interface EmpLean {
   _id: unknown;
   userId?: unknown;
   companyName?: string;
-  workflow?: { settings?: WorkflowSettings };
+  workflow?: { settings?: WorkflowSettings; stages?: WorkflowStage[] };
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
@@ -33,10 +40,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   // Ownership check for employers — capture emp for automation rules below
   let emp = null as EmpLean | null;
+  const jobDoc = application.jobId as unknown as { employerId: string };
+
   if (ctx.role === "employer") {
     emp = (await Employer.findOne({ userId: ctx.userId }).select("_id userId companyName workflow").lean()) as EmpLean | null;
-    const job = application.jobId as unknown as { employerId: string };
-    if (!emp || String(job.employerId) !== String(emp._id)) {
+    if (!emp || String(jobDoc.employerId) !== String(emp._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   } else if (ctx.role === "job_seeker") {
@@ -46,7 +54,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (!seeker || String(application.jobSeekerId) !== String(seeker._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else if (!["agent", "super_agent", "admin"].includes(ctx.role)) {
+  } else if (["agent", "super_agent", "admin"].includes(ctx.role)) {
+    // Fetch employer so workflow automation (autoProgress, notifications) fires for these roles too
+    if (jobDoc?.employerId) {
+      emp = (await Employer.findOne({ _id: jobDoc.employerId }).select("_id userId companyName workflow").lean()) as EmpLean | null;
+    }
+  } else {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -77,8 +90,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (withdrawalReason !== undefined) application.withdrawalReason = withdrawalReason;
   if (withdrawalNote !== undefined) application.withdrawalNote = withdrawalNote;
 
-  // Automation: auto-reject if aiMatchScore is below threshold (applies when score is in body via future scoring endpoint)
-  // For now, check existing score when a manual status change is attempted
+  // Automation: auto-reject if aiMatchScore is below threshold
   if (
     autoRejectBelow !== undefined &&
     application.aiMatchScore !== undefined &&
@@ -93,6 +105,29 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       changedAt: new Date(),
       note: `Auto-rejected: AI match score ${application.aiMatchScore} < threshold ${autoRejectBelow}`,
     });
+  }
+
+  // AutoProgress: if the current stage has autoProgress enabled, advance to the next enabled stage
+  const workflowStages = emp?.workflow?.stages;
+  if (
+    Array.isArray(workflowStages) &&
+    workflowStages.length > 0 &&
+    application.status !== "rejected" &&
+    application.status !== "withdrawn"
+  ) {
+    const sorted = [...workflowStages].sort((a, b) => a.order - b.order);
+    const currentIdx = sorted.findIndex((s) => s.id === application.status && s.enabled);
+    if (currentIdx >= 0 && sorted[currentIdx].autoProgress) {
+      const next = sorted.slice(currentIdx + 1).find((s) => s.enabled && s.id !== "rejected");
+      if (next) {
+        application.status = next.id;
+        application.statusHistory.push({
+          status: next.id,
+          changedAt: new Date(),
+          note: "Auto-progressed by workflow rule",
+        });
+      }
+    }
   }
 
   await application.save();
@@ -112,8 +147,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       req,
     });
 
-    // Automation: notify employer on stage change if setting enabled
-    if (notifyOnStageChange && emp?.userId) {
+    // Always notify employer about stage changes (internal dashboard notification)
+    if (emp?.userId) {
       const empUserId = String(emp.userId);
       await notify({
         userId: empUserId,
@@ -127,16 +162,20 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
     const JobSeeker = (await import("@/models/JobSeeker")).default;
     const seeker = await JobSeeker.findById(application.jobSeekerId).select("userId").lean() as { userId?: unknown } | null;
-    if (seeker?.userId) {
+    // Candidate notifications — only for meaningful milestones (not shortlisted/screening)
+    if (notifyOnStageChange && seeker?.userId) {
       const seekerUserId = String(seeker.userId);
       const appId = String(application._id);
+      const companyName = emp?.companyName ?? "the employer";
 
       if (effectiveStatus === "interview_scheduled") {
-        const companyName = emp?.companyName ?? "the employer";
         notifyInterviewSelected(seekerUserId, jobTitle, companyName, appId).catch(() => { /* non-blocking */ });
-      } else {
-        notifyStatusChange(seekerUserId, jobTitle, effectiveStatus.replace(/_/g, " "), appId).catch(() => { /* non-blocking */ });
+      } else if (effectiveStatus === "offer" || effectiveStatus === "hired") {
+        notifyOfferMade(seekerUserId, jobTitle, companyName, appId).catch(() => { /* non-blocking */ });
+      } else if (effectiveStatus === "rejected") {
+        notifyRejected(seekerUserId, jobTitle, appId).catch(() => { /* non-blocking */ });
       }
+      // shortlisted, screening, interview, selected, withdrawn — silent
     }
   }
 

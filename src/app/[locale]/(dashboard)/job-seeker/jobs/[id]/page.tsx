@@ -13,6 +13,16 @@ interface PageProps {
   params: Promise<{ locale: string; id: string }>;
 }
 
+interface PopulatedEmployer {
+  _id?: string;
+  companyName?: string;
+  country?: string;
+  industry?: string;
+  city?: string;
+  website?: string;
+  domainVerified?: boolean;
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   await connectDB();
@@ -23,8 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!job) return { title: "Job Not Found | mployedin" };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const employer = job.employerId as any;
+  const employer = job.employerId as PopulatedEmployer | null;
   const title = `${job.title} at ${employer?.companyName ?? "Company"} | mployedin`;
 
   return {
@@ -60,6 +69,25 @@ function salaryLabel(salary: { min?: number; max?: number; currency?: string; is
   return null;
 }
 
+function renderJobDescription(text: string) {
+  const parts = text.split(/(?=^## )/m);
+  return parts.map((part, i) => {
+    const headerMatch = part.match(/^## (.+?)\n?([\s\S]*)/);
+    if (headerMatch) {
+      return (
+        <div key={i} className={i > 0 ? "mt-4" : undefined}>
+          <h3 className="text-sm font-semibold text-foreground mb-1.5">{headerMatch[1].trim()}</h3>
+          {headerMatch[2].trim() && (
+            <p className="text-sm leading-relaxed text-muted-foreground text-justify">{headerMatch[2].trim()}</p>
+          )}
+        </div>
+      );
+    }
+    const trimmed = part.trim();
+    return trimmed ? <p key={i} className="text-sm leading-relaxed text-muted-foreground text-justify">{trimmed}</p> : null;
+  });
+}
+
 export default async function DashboardJobDetailPage({ params }: PageProps) {
   const { locale, id } = await params;
 
@@ -71,8 +99,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
   if (!job || job.status !== "active") notFound();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const employer = job.employerId as any;
+  const employer = job.employerId as PopulatedEmployer | null;
 
   let responseTimeDays: number | null = null;
   if (employer?._id) {
@@ -84,6 +111,10 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
   const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0]) : null;
   const daysLeft = closesInDays(job.expiresAt as Date | null);
+  const locationLabel = job.location?.isRemote
+    ? "Remote"
+    : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || "Location flexible";
+  const employerLocation = [employer?.city, employer?.country].filter(Boolean).join(", ");
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -128,9 +159,8 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
       <TrackJobView jobId={String(job._id)} />
 
       <div className="min-h-screen bg-background">
-        {/* Breadcrumb */}
         <div className="border-b border-border bg-muted/20">
-          <div className="max-w-5xl mx-auto px-4 py-3 text-xs text-muted-foreground flex items-center gap-2">
+          <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
             <Link href={`/${locale}/job-seeker/jobs`} className="hover:text-foreground transition-colors">
               Job Search
             </Link>
@@ -139,161 +169,177 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="max-w-5xl mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main content */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Header */}
+        <div className="mx-auto max-w-6xl px-4 py-8">
+          <section className="overflow-hidden rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-6 py-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-8 sm:py-7">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_320px] xl:items-start">
               <div>
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <h1 className="text-2xl font-semibold text-foreground">{job.title}</h1>
+                <div className="inline-flex rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                  Job detail
+                </div>
+                <div className="mt-4 flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2.25rem]">
+                      {job.title}
+                    </h1>
+                    <p className="mt-2 text-base font-medium text-muted-foreground">{employer?.companyName}</p>
+                  </div>
                   {employer?.domainVerified && (
-                    <span className="shrink-0 text-xs bg-green-500/10 text-green-600 px-2 py-1 rounded-full font-medium">
-                      ✓ Verified
+                    <span className="shrink-0 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600">
+                      Verified employer
                     </span>
                   )}
                 </div>
 
-                <p className="text-base text-muted-foreground font-medium mb-4">{employer?.companyName}</p>
-
-                <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
+                <div className="mt-5 flex flex-wrap gap-2 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
                     <MapPin className="h-4 w-4" />
-                    {job.location?.isRemote ? "Remote" : `${job.location?.city}, ${job.location?.country}`}
+                    {locationLabel}
                   </span>
                   {salary && (
-                    <span className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
                       <span>💰</span>
                       {salary}
                     </span>
                   )}
                   {job.requirements?.experienceMin != null && (
-                    <span className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
                       <Briefcase className="h-4 w-4" />
                       {job.requirements.experienceMin}–{job.requirements.experienceMax ?? "+"} years experience
                     </span>
                   )}
-                  {job.vacancies > 1 && (
-                    <span className="flex items-center gap-1.5">
+                  {(job.vacancies ?? 0) > 1 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
                       <Users className="h-4 w-4" />
                       {job.vacancies} openings
                     </span>
                   )}
-                  <span className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
                     <Clock className="h-4 w-4" />
                     Posted {timeAgo(job.createdAt)}
                   </span>
                   {daysLeft !== null && daysLeft <= 14 && (
                     <span
-                      className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium ${
                         daysLeft <= 7
                           ? "bg-orange-500/10 text-orange-600"
-                          : "bg-yellow-500/10 text-yellow-600"
+                          : "bg-yellow-500/10 text-yellow-700"
                       }`}
                     >
                       Closes in {daysLeft} day{daysLeft === 1 ? "" : "s"}
                     </span>
                   )}
                 </div>
-              </div>
 
-              {/* Description */}
-              <div>
-                <h2 className="text-base font-semibold text-foreground mb-3">Job Description</h2>
-                <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {job.description}
+                <div className="mt-5 max-w-3xl space-y-2">
+                  {renderJobDescription(job.description ?? "")}
                 </div>
               </div>
 
-              {/* Requirements */}
+              <aside className="rounded-[26px] border border-border/70 bg-background/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Quick apply</div>
+                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Apply with the profile you already built.</h2>
+                </div>
+                <div className="mt-4 space-y-2 rounded-[22px] border border-border/60 bg-card px-4 py-4 text-sm text-muted-foreground">
+                  <p>Use your saved profile details and attach your CV automatically when available.</p>
+                  {responseTimeDays ? (
+                    <p className="font-medium text-green-600">
+                      Typically responds within {responseTimeDays} day{responseTimeDays > 1 ? "s" : ""}.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="mt-4">
+                  <EasyApply jobId={String(job._id)} jobTitle={job.title} locale={locale} />
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px]">
+            <div className="space-y-6">
+              <section className="card-base rounded-[28px] p-6">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Overview</div>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What this role covers</h2>
+                <div className="mt-4 space-y-2">
+                  {renderJobDescription(job.description ?? "")}
+                </div>
+              </section>
+
               {job.requirements && (
-                <div className="space-y-4">
-                  <h2 className="text-base font-semibold text-foreground">Requirements</h2>
+                <section className="card-base rounded-[28px] p-6">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Requirements</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What the employer is looking for</h2>
 
-                  {job.requirements.skills?.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium text-foreground mb-2">Skills</p>
-                      <div className="flex flex-wrap gap-2">
-                        {job.requirements.skills.map((s: string) => (
-                          <span key={s} className="text-sm bg-muted px-3 py-1 rounded-lg text-muted-foreground">
-                            {s}
-                          </span>
-                        ))}
+                  <div className="mt-5 space-y-5">
+                    {job.requirements.skills?.length > 0 && (
+                      <div>
+                        <p className="mb-2 text-sm font-medium text-foreground">Skills</p>
+                        <div className="flex flex-wrap gap-2">
+                          {job.requirements.skills.map((s: string) => (
+                            <span key={s} className="rounded-full border border-border/60 bg-muted/20 px-3 py-1 text-sm text-muted-foreground">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {job.requirements.education && (
-                    <div>
-                      <p className="text-sm font-medium text-foreground mb-1">Education</p>
-                      <p className="text-sm text-muted-foreground">{job.requirements.education}</p>
-                    </div>
-                  )}
-
-                  {job.requirements.languages?.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium text-foreground mb-2">Languages</p>
-                      <div className="flex flex-wrap gap-2">
-                        {job.requirements.languages.map((l: string) => (
-                          <span
-                            key={l}
-                            className="text-sm bg-muted px-3 py-1 rounded-lg text-muted-foreground flex items-center gap-1"
-                          >
-                            <Globe className="h-3 w-3" /> {l}
-                          </span>
-                        ))}
+                    {job.requirements.education && (
+                      <div>
+                        <p className="mb-1 text-sm font-medium text-foreground">Education</p>
+                        <p className="text-sm text-muted-foreground">{job.requirements.education}</p>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+
+                    {job.requirements.languages?.length > 0 && (
+                      <div>
+                        <p className="mb-2 text-sm font-medium text-foreground">Languages</p>
+                        <div className="flex flex-wrap gap-2">
+                          {job.requirements.languages.map((l: string) => (
+                            <span
+                              key={l}
+                              className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 px-3 py-1 text-sm text-muted-foreground"
+                            >
+                              <Globe className="h-3 w-3" /> {l}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
               )}
 
-              {/* Tags */}
               {job.tags?.length > 0 && (
-                <div>
-                  <h2 className="text-base font-semibold text-foreground mb-3">Tags</h2>
-                  <div className="flex flex-wrap gap-2">
+                <section className="card-base rounded-[28px] p-6">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Search terms</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">Related tags</h2>
+                  <div className="mt-4 flex flex-wrap gap-2">
                     {job.tags.map((t: string) => (
                       <Link
                         key={t}
                         href={`/${locale}/job-seeker/jobs?search=${encodeURIComponent(t)}`}
-                        className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full hover:bg-primary/20 transition-colors"
+                        className="rounded-full bg-primary/10 px-3 py-1 text-xs text-primary transition-colors hover:bg-primary/20"
                       >
                         {t}
                       </Link>
                     ))}
                   </div>
-                </div>
+                </section>
               )}
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-4">
-              {/* Apply card */}
-              <div className="bg-card border border-border rounded-xl p-5 sticky top-6">
-                <div className="mb-4">
-                  <p className="text-sm font-semibold text-foreground">{job.title}</p>
-                  <p className="text-xs text-muted-foreground">{employer?.companyName}</p>
-                </div>
-
-                <EasyApply jobId={String(job._id)} jobTitle={job.title} locale={locale} />
-
-                <p className="text-xs text-muted-foreground text-center mt-3">
-                  Your profile is auto-attached to the application.
-                </p>
-              </div>
-
-              {/* Employer info */}
-              <div className="bg-card border border-border rounded-xl p-5 space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">About the employer</h3>
-                <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
+              <section className="card-base rounded-[28px] p-5">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Employer profile</div>
+                <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">About the employer</h3>
+                <div className="mt-4 space-y-3 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">{employer?.companyName}</p>
                   {employer?.industry && <p>Industry: {employer.industry}</p>}
-                  {employer?.country && (
+                  {employerLocation && (
                     <p className="flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5" />
-                      {employer.city ? `${employer.city}, ` : ""}
-                      {employer.country}
+                      {employerLocation}
                     </p>
                   )}
                   {employer?.website && (
@@ -306,24 +352,16 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                       <Globe className="h-3.5 w-3.5" /> Website
                     </a>
                   )}
-                  {responseTimeDays && (
-                    <p className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
-                      <Clock className="h-3.5 w-3.5" />
-                      Typically responds within {responseTimeDays} day{responseTimeDays > 1 ? "s" : ""}
-                    </p>
-                  )}
                 </div>
-              </div>
+              </section>
 
-              {/* Back link */}
               <Link
                 href={`/${locale}/job-seeker/jobs`}
-                className="block text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="block rounded-[22px] border border-border/70 bg-background/90 px-4 py-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
               >
-                ← Back to Job Search
+                Back to Job Search
               </Link>
 
-              {/* Similar Jobs */}
               <SimilarJobs jobId={String(job._id)} locale={locale} />
             </div>
           </div>

@@ -4,6 +4,7 @@ import { User } from "@/models/User";
 import crypto from "crypto";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
+import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { z } from "zod";
 
 const schema = z.object({
@@ -44,10 +45,15 @@ export async function POST(req: NextRequest) {
   user.passwordResetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
   await user.save();
 
-  // TODO: Send actual email with reset link containing `resetToken`
-  // For now, log the token in development
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[DEV] Password reset token for ${body.email}: ${resetToken}`);
+  const appUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
+
+  try {
+    const template = EmailTemplates.passwordReset(resetUrl);
+    await sendEmail({ to: user.email as string, ...template });
+  } catch (emailErr) {
+    console.error("[ForgotPassword] Failed to send reset email:", emailErr);
+    // Still return success — don't leak delivery failures to the caller
   }
 
   logActivity({

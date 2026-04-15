@@ -69,8 +69,7 @@ export function StatsGrid({ stats: propStats }: StatsGridProps) {
       value: appCount,
       delta: appDelta,
       icon: FileText,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      tone: "dashboard-tone-primary",
       emptyState: "Send your first application today",
     },
     {
@@ -78,8 +77,7 @@ export function StatsGrid({ stats: propStats }: StatsGridProps) {
       value: intCount,
       delta: intDelta,
       icon: Calendar,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      tone: "dashboard-tone-success",
       emptyState: "Interviews appear after you apply",
     },
     {
@@ -87,8 +85,7 @@ export function StatsGrid({ stats: propStats }: StatsGridProps) {
       value: savedCount,
       delta: savedDelta,
       icon: Bookmark,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      tone: "dashboard-tone-metric",
       emptyState: "Save jobs you like to revisit them",
     },
     {
@@ -96,8 +93,7 @@ export function StatsGrid({ stats: propStats }: StatsGridProps) {
       value: avgScore !== null ? `${avgScore}%` : null,
       delta: 0,
       icon: Sparkles,
-      color: "text-amber-600",
-      bgColor: "bg-amber-50",
+      tone: "dashboard-tone-warning",
       emptyState: "Set preferences to see your score",
     },
   ];
@@ -106,18 +102,18 @@ export function StatsGrid({ stats: propStats }: StatsGridProps) {
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
         <div key={card.label} className="card-base flex items-start gap-4 p-5">
-          <div className={`rounded-lg p-2.5 ${card.bgColor}`}>
-            <card.icon className={`h-5 w-5 ${card.color}`} />
+          <div className={`rounded-lg border p-2.5 ${card.tone}`}>
+            <card.icon className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-muted-foreground">{card.label}</p>
             {card.value !== null ? (
               <div className="flex items-baseline gap-2">
-                <p className={`mt-1 text-2xl font-bold ${card.color}`}>{card.value}</p>
+                <p className={`mt-1 text-2xl font-bold ${card.tone}`}>{card.value}</p>
                 {typeof card.delta === "number" && card.delta !== 0 && (
                   <span
                     className={`text-xs font-medium ${
-                      card.delta > 0 ? "text-green-600" : "text-red-500"
+                      card.delta > 0 ? "dashboard-tone-positive" : "dashboard-tone-negative"
                     }`}
                   >
                     {card.delta > 0 ? (

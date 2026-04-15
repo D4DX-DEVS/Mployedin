@@ -28,7 +28,7 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
       <div className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">Similar Jobs</h2>
         {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse bg-muted rounded-xl h-24" />
+          <div key={i} className="h-24 animate-pulse rounded-[22px] bg-muted" />
         ))}
       </div>
     );
@@ -38,30 +38,36 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
 
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-semibold text-foreground">Similar Jobs</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+      <div>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Keep exploring</div>
+        <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Similar Jobs</h2>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
         {jobs.map((job) => (
           <Link
             key={job._id}
             href={`/${locale}/job-seeker/jobs/${job._id}`}
-            className="block bg-card border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-sm transition-all group"
+            className="group block rounded-[22px] border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)]"
           >
-            <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {job.overlap} matching skill{job.overlap !== 1 ? "s" : ""}
+            </div>
+            <p className="mt-2 line-clamp-2 text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
               {job.title}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="mt-1 text-xs text-muted-foreground">
               {job.employerId?.companyName ?? "Company"}
             </p>
 
-            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
+            <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
+              <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
                 <MapPin className="h-3 w-3" />
                 {job.location?.isRemote
                   ? "Remote"
                   : job.location?.country ?? "—"}
               </span>
               {job.salary?.min && job.salary?.max && (
-                <span>
+                <span className="inline-flex rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
                   {job.salary.currency ?? "AED"}{" "}
                   {job.salary.min.toLocaleString()}–{job.salary.max.toLocaleString()}
                 </span>
@@ -69,11 +75,11 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
             </div>
 
             {job.requirements?.skills && job.requirements.skills.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
+              <div className="mt-3 flex flex-wrap gap-1.5">
                 {job.requirements.skills.slice(0, 4).map((s) => (
                   <span
                     key={s}
-                    className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full"
+                    className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary"
                   >
                     {s}
                   </span>
@@ -86,10 +92,9 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
               </div>
             )}
 
-            <div className="mt-2">
-              <span className="text-[10px] bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded-full font-medium">
-                {job.overlap} matching skill{job.overlap !== 1 ? "s" : ""}
-              </span>
+            <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+              View role
+              <Briefcase className="h-3.5 w-3.5" />
             </div>
           </Link>
         ))}

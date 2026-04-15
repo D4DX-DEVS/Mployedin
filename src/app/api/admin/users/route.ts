@@ -29,7 +29,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
-  if (role) query.role = role;
+  if (role && isValidRole(role)) query.role = role;
   if (isActive !== "") query.isActive = isActive === "true";
   if (search) {
     const safe = escapeRegex(search);

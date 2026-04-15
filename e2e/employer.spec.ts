@@ -18,6 +18,12 @@ type EmployerCredentials = {
   password: string;
 };
 
+type EmployerRegisterResponse = {
+  success?: boolean;
+  message?: string;
+  verificationToken?: string;
+};
+
 let employerCredentials: EmployerCredentials = {
   companyName: "Mployedin Test Company",
   contactName: "Employer Owner",
@@ -49,6 +55,9 @@ async function registerEmployer(request: import("@playwright/test").APIRequestCo
   };
 
   const response = await request.post("/api/auth/employer-register", {
+    headers: {
+      "x-mployedin-e2e": "employer-register",
+    },
     multipart: {
       companyName: employerCredentials.companyName,
       industry: "technology",
@@ -66,6 +75,23 @@ async function registerEmployer(request: import("@playwright/test").APIRequestCo
   });
 
   if (response.ok()) {
+    const data = (await response.json()) as EmployerRegisterResponse;
+    if (!data.verificationToken) {
+      authUnavailableReason = "Employer registration succeeded but no verification token was returned for E2E.";
+      console.error("[Employer E2E] Missing verification token in non-seeded registration flow.");
+      return;
+    }
+
+    const verifyResponse = await request.post("/api/auth/verify-email", {
+      data: { token: data.verificationToken },
+    });
+
+    if (!verifyResponse.ok()) {
+      authUnavailableReason = `Employer verification API returned ${verifyResponse.status()}.`;
+      console.error(`[Employer E2E] Verification API failed with status ${verifyResponse.status()}.`);
+      return;
+    }
+
     authFixtureAvailable = true;
     return;
   }

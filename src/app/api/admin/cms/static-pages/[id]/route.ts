@@ -6,6 +6,7 @@ import StaticPage from "@/models/StaticPage";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { staticPageUpdateSchema } from "@/lib/validators/cms";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -27,10 +28,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const body = await validateBody(req, staticPageUpdateSchema) as Record<string, unknown>;
   const allowed = ["title", "titleAr", "slug", "body", "bodyAr", "isActive"];
+  const htmlFields = new Set(["body", "bodyAr"]);
   const update: Record<string, unknown> = {};
   for (const k of allowed) {
     if (body[k] !== undefined) {
-      update[k] = k === "slug" ? slugify(String(body[k])) : body[k];
+      if (k === "slug") update[k] = slugify(String(body[k]));
+      else if (htmlFields.has(k)) update[k] = sanitizeHtml(String(body[k]));
+      else update[k] = body[k];
     }
   }
 

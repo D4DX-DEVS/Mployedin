@@ -19,6 +19,14 @@ export const aiReportSchema = z.object({
   filters: z.record(z.string(), z.unknown()).optional(),
 });
 
+export const aiJobSearchSchema = z.object({
+  query: z.string().min(1).max(500).trim(),
+});
+
+export const aiCandidateSearchSchema = z.object({
+  query: z.string().min(1).max(500).trim(),
+});
+
 export const aiMatchSchema = z.object({
   jobId: z.string().regex(/^[a-f\d]{24}$/i),
   jobSeekerId: z.string().regex(/^[a-f\d]{24}$/i).optional(),

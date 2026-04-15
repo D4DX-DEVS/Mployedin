@@ -20,8 +20,9 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-arabic: var(--font-noto-arabic);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 /* ═══════════════════════════════════════════════
@@ -30,46 +31,46 @@
    ═══════════════════════════════════════════════ */
 :root {
   /* ── BRAND PALETTE ── */
-  --brand-blue: 211 89% 42%;
-  /* #0D6FD8 — primary */
-  --brand-blue-hover: 211 89% 36%;
+  --brand-blue: 223 58% 37%;
+  /* #284595 — primary from legacy site CTAs */
+  --brand-blue-hover: 223 58% 31%;
   /* darker on hover */
-  --brand-blue-light: 211 89% 55%;
+  --brand-blue-light: 199 74% 58%;
   /* accent/highlights */
-  --brand-blue-pale: 211 89% 96%;
+  --brand-blue-pale: 204 70% 95%;
   /* bg tints, chips */
-  --brand-blue-dark: 217 76% 19%;
-  /* #0C2A5E — sidebar */
-  --brand-cyan: 199 89% 48%;
-  /* #0BBCD4 — globe accent */
+  --brand-blue-dark: 225 57% 27%;
+  /* #1e2f6c — legacy deep navy */
+  --brand-cyan: 198 74% 60%;
+  /* logo accent / secondary highlight */
   --brand-white: 0 0% 100%;
-  --brand-text: 222 47% 11%;
-  /* #0F172A */
-  --brand-muted: 215 16% 47%;
-  /* #64748B */
+  --brand-text: 224 33% 18%;
+  /* #1f2c47 */
+  --brand-muted: 218 15% 46%;
+  /* #667085 */
 
   /* ── SEMANTIC TOKENS (shadcn/ui reads these) ── */
-  --background: 210 40% 98%;
-  /* Soft gray-white #f8fafc */
-  --foreground: 224 71% 4%;
-  /* Off-black #020817 */
+  --background: 210 20% 97%;
+  /* Legacy site page background */
+  --foreground: 224 33% 18%;
+  /* Legacy site text tone */
   --card: 0 0% 100%;
-  --card-foreground: 224 71% 4%;
+  --card-foreground: 224 33% 18%;
   --popover: 0 0% 100%;
-  --popover-foreground: 224 71% 4%;
-  --primary: 211 89% 42%;
+  --popover-foreground: 224 33% 18%;
+  --primary: 223 58% 37%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 224 71% 4%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 224 71% 4%;
+  --secondary: 210 22% 95%;
+  --secondary-foreground: 224 33% 18%;
+  --muted: 210 22% 95%;
+  --muted-foreground: 218 15% 46%;
+  --accent: 204 70% 95%;
+  --accent-foreground: 224 33% 18%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 211 89% 42%;
+  --border: 214 26% 88%;
+  --input: 214 26% 88%;
+  --ring: 223 58% 37%;
   --radius: 1rem;
   /* Rounder corners for modern feel */
 
@@ -78,20 +79,20 @@
   /* White */
   --sidebar-fg: 224 71% 4%;
   /* Dark text */
-  --sidebar-active-bg: 214 32% 91%;
-  /* Soft gray-blue */
-  --sidebar-active-fg: 211 89% 42%;
+  --sidebar-active-bg: 204 70% 95%;
+  /* Soft legacy blue tint */
+  --sidebar-active-fg: 223 58% 37%;
   /* Brand blue */
-  --sidebar-hover-bg: 210 40% 98%;
-  --sidebar-border: 214 32% 91%;
-  --sidebar-icon: 215 16% 47%;
+  --sidebar-hover-bg: 210 20% 97%;
+  --sidebar-border: 214 26% 88%;
+  --sidebar-icon: 218 15% 46%;
   --sidebar-width: 280px;
   /* Slightly wider */
   --sidebar-collapsed: 72px;
 
   /* ── APPLICATION STATUS COLORS ── */
-  --status-applied: 211 89% 42%;
-  --status-applied-bg: 211 89% 96%;
+  --status-applied: 223 58% 37%;
+  --status-applied-bg: 204 70% 95%;
   --status-shortlisted: 38 92% 50%;
   --status-shortlisted-bg: 38 100% 94%;
   --status-interview: 271 81% 56%;
@@ -104,25 +105,25 @@
   --status-pending-bg: 210 40% 96%;
 
   /* ── AI FEATURE TOKENS ── */
-  --ai-gradient-from: 211 89% 42%;
-  --ai-gradient-to: 199 89% 48%;
-  --ai-bubble-bg: 211 89% 96%;
-  --ai-bubble-fg: 211 89% 20%;
-  --ai-sparkle: 211 89% 55%;
+  --ai-gradient-from: 223 58% 37%;
+  --ai-gradient-to: 198 74% 60%;
+  --ai-bubble-bg: 204 70% 95%;
+  --ai-bubble-fg: 223 58% 24%;
+  --ai-sparkle: 199 74% 58%;
   --ai-thinking: 215 16% 80%;
 
   /* ── SURFACE VARIANTS ── */
   --surface-1: 0 0% 100%;
   /* cards */
-  --surface-2: 210 40% 98%;
+  --surface-2: 210 20% 97%;
   /* page bg */
-  --surface-3: 211 89% 96%;
+  --surface-3: 204 70% 95%;
   /* tinted */
   --surface-elevated: 0 0% 100%;
 
   /* ── VERIFICATION BADGE COLORS ── */
   --badge-basic: 215 16% 47%;
-  --badge-company: 211 89% 42%;
+  --badge-company: 223 58% 37%;
   --badge-premium: 45 93% 47%;
   --badge-skilled: 142 71% 45%;
 }
@@ -135,8 +136,12 @@
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.font-arabic {
+  font-family: var(--font-arabic), var(--font-sans), system-ui, sans-serif;
 }
 
 /* ── PORTAL Z-INDEX FIX ── */
@@ -360,6 +365,98 @@ body {
 
   .card-base:hover {
     box-shadow: 0 12px 24px -4px rgb(0 0 0 / 0.08);
+  }
+
+  .dashboard-tone-primary {
+    background-color: hsl(var(--status-applied-bg));
+    border-color: hsl(var(--status-applied) / 0.18);
+    color: hsl(var(--status-applied));
+  }
+
+  .dashboard-tone-success {
+    background-color: hsl(var(--status-selected-bg));
+    border-color: hsl(var(--status-selected) / 0.18);
+    color: hsl(var(--status-selected));
+  }
+
+  .dashboard-tone-warning {
+    background-color: hsl(var(--status-shortlisted-bg));
+    border-color: hsl(var(--status-shortlisted) / 0.18);
+    color: hsl(var(--status-shortlisted));
+  }
+
+  .dashboard-tone-metric {
+    background-color: hsl(var(--status-interview-bg));
+    border-color: hsl(var(--status-interview) / 0.18);
+    color: hsl(var(--status-interview));
+  }
+
+  .dashboard-tone-positive {
+    color: hsl(var(--status-selected));
+  }
+
+  .dashboard-tone-negative {
+    color: hsl(var(--destructive));
+  }
+
+  .dashboard-surface-success {
+    background-color: hsl(var(--status-selected-bg));
+    border-color: hsl(var(--status-selected) / 0.18);
+  }
+
+  .dashboard-shell-employer {
+    background:
+      radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.07), transparent 18%),
+      linear-gradient(180deg, hsl(var(--surface-2)), hsl(var(--secondary) / 0.96));
+  }
+
+  .dashboard-shell-employer .dashboard-topbar-employer {
+    border-bottom-color: hsl(var(--border) / 0.82);
+    background:
+      linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--card) / 0.84));
+    backdrop-filter: blur(18px);
+    box-shadow: 0 22px 60px -46px rgba(15, 23, 42, 0.34);
+  }
+
+  .dashboard-shell-employer .dashboard-main-employer {
+    background:
+      radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.1), transparent 22%),
+      radial-gradient(circle at top right, hsl(var(--brand-blue-light) / 0.08), transparent 18%),
+      linear-gradient(180deg, hsl(var(--surface-2) / 0.96), hsl(var(--secondary) / 0.94));
+  }
+
+  .dashboard-shell-employer .page-container {
+    max-width: 1440px;
+    padding-top: 1.75rem;
+    padding-bottom: 2.5rem;
+    gap: 1.75rem;
+  }
+
+  .dashboard-shell-employer .card-base {
+    border-radius: 1.5rem;
+    border-color: hsl(var(--border) / 0.88);
+    background:
+      linear-gradient(180deg, hsl(var(--card) / 0.97), hsl(var(--surface-2) / 0.94));
+    box-shadow: 0 28px 70px -52px rgba(15, 23, 42, 0.42);
+  }
+
+  .dashboard-shell-employer .card-base:hover {
+    box-shadow: 0 30px 76px -52px hsl(var(--brand-blue) / 0.34);
+  }
+
+  .dashboard-shell-employer .page-header-root {
+    gap: 0.9rem;
+  }
+
+  .dashboard-shell-employer .page-header-title {
+    color: hsl(var(--foreground));
+    font-size: clamp(1.75rem, 2vw, 2.35rem);
+    letter-spacing: -0.04em;
+  }
+
+  .dashboard-shell-employer .page-header-description {
+    max-width: 54rem;
+    color: hsl(var(--muted-foreground) / 0.92);
   }
 }
 

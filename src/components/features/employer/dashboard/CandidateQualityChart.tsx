@@ -60,20 +60,54 @@ export function CandidateQualityChart({
     avgMatchScore >= 50 ? "bg-amber-50 dark:bg-amber-950/20" : "bg-red-50 dark:bg-red-950/20";
 
   const data = generateTrendData(avgMatchScore > 0 ? avgMatchScore : 60);
+  const statCards = [
+    {
+      label: "High match",
+      value: highMatchCount,
+      detail: ">80% fit",
+      valueClass: "text-emerald-600",
+      borderClass: "border-emerald-200",
+      surfaceClass: "bg-emerald-50/60",
+    },
+    {
+      label: "Applications",
+      value: totalApplications,
+      detail: "In this workspace",
+      valueClass: "text-slate-900",
+      borderClass: "border-slate-200",
+      surfaceClass: "bg-slate-50/80",
+    },
+    {
+      label: "Low match",
+      value: lowMatchCount,
+      detail: "<50% fit",
+      valueClass: "text-red-500",
+      borderClass: "border-red-200",
+      surfaceClass: "bg-red-50/60",
+    },
+  ];
 
   return (
-    <div className="card-base p-0 overflow-hidden h-full flex flex-col">
-      <div className="px-5 pt-5 pb-2 sm:px-6 sm:pt-6 flex items-center justify-between">
-        <h2 className="text-base font-semibold text-foreground">Candidate Quality</h2>
+    <section className="flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
+      <div className="border-b border-slate-200/80 px-5 py-5 sm:px-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Quality signal</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Candidate Quality</h2>
+            <p className="mt-1.5 text-sm leading-6 text-slate-600">
+              Match trends show how strong the current applicant pool looks before recruiters move candidates deeper into the funnel.
+            </p>
+          </div>
         {totalApplications > 0 && (
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${qualityBg} ${qualityColor}`}>
+            <span className={`inline-flex shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${qualityBg} ${qualityColor}`}>
             {qualityLabel}
           </span>
         )}
+        </div>
       </div>
 
-      {/* Legend */}
-      <div className="px-5 sm:px-6 pb-2 flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+      <div className="px-4 pt-3 sm:px-6 sm:pt-4">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 rounded-full bg-[#2563EB] inline-block" />
           Excellent
@@ -86,9 +120,10 @@ export function CandidateQualityChart({
           <span className="w-3 h-0.5 rounded-full bg-[#9ca3af] inline-block" />
           Needs Improvement
         </span>
+        </div>
       </div>
 
-      <div className="flex-1 px-2 pb-4" style={{ minHeight: 180 }}>
+      <div className="flex-1 px-1 pb-1 pt-1 sm:px-2 sm:pb-2 sm:pt-2" style={{ minHeight: 176 }}>
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={data} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border/50" />
@@ -149,23 +184,20 @@ export function CandidateQualityChart({
         </ResponsiveContainer>
       </div>
 
-      {/* Quick stats row */}
       {totalApplications > 0 && (
-        <div className="border-t border-border/50 px-5 py-3 sm:px-6 grid grid-cols-3 gap-2 text-center">
-          <div>
-            <p className="text-sm font-bold text-emerald-600">{highMatchCount}</p>
-            <p className="text-[10px] text-muted-foreground">High match (&gt;80%)</p>
-          </div>
-          <div>
-            <p className="text-sm font-bold text-foreground">{totalApplications}</p>
-            <p className="text-[10px] text-muted-foreground">Total</p>
-          </div>
-          <div>
-            <p className="text-sm font-bold text-red-500">{lowMatchCount}</p>
-            <p className="text-[10px] text-muted-foreground">Low match (&lt;50%)</p>
-          </div>
+        <div className="grid grid-cols-3 gap-2 border-t border-slate-200/80 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
+          {statCards.map((stat) => (
+            <div
+              key={stat.label}
+              className={`rounded-2xl border px-2.5 py-2.5 text-center sm:px-3 sm:py-3 ${stat.borderClass} ${stat.surfaceClass}`}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{stat.label}</p>
+              <p className={`mt-1.5 text-lg font-semibold tracking-tight sm:text-xl ${stat.valueClass}`}>{stat.value}</p>
+              <p className="text-[10px] text-slate-500">{stat.detail}</p>
+            </div>
+          ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

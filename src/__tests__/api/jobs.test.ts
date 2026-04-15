@@ -67,6 +67,19 @@ jest.mock("@/models/Application", () => {
   return MockApp;
 });
 
+jest.mock("@/models/Employer", () => ({
+  Employer: {
+    findOne: jest.fn(),
+  },
+}));
+
+jest.mock("@/models/Agent", () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(),
+  },
+}));
+
 // ── Helper ──────────────────────────────────────────────────────────────────
 function makeRequest(url: string, options?: { method?: string; body?: string; headers?: Record<string, string> }): NextRequest {
   return new NextRequest(`http://localhost:3000${url}`, options);
@@ -90,6 +103,43 @@ describe("Jobs API", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(Array.isArray(json.jobs)).toBe(true);
+  });
+
+  it("GET /api/jobs populates employer logo for search cards", async () => {
+    auth.mockResolvedValue({ user: { id: "user_001", role: "employer", locale: "en" } });
+
+    const { GET } = await import("@/app/api/jobs/route");
+    const req = makeRequest("/api/jobs?search=react");
+
+    await GET(req, { params: Promise.resolve({}) });
+
+    expect(chainable.populate).toHaveBeenCalledWith("employerId", "companyName country industry logo");
+  });
+
+  it("GET /api/jobs applies employer filters when myJobs=true", async () => {
+    auth.mockResolvedValue({ user: { id: "user_001", role: "employer", locale: "en" } });
+
+    const { Employer } = require("@/models/Employer");
+    Employer.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ _id: "emp_001" }),
+      }),
+    });
+
+    const Job = require("@/models/Job");
+    const { GET } = await import("@/app/api/jobs/route");
+    const req = makeRequest("/api/jobs?myJobs=true&status=draft&approvalStatus=pending&workMode=remote&location=Dubai&skills=React,Node.js&showSalary=false");
+
+    await GET(req, { params: Promise.resolve({}) });
+
+    const query = Job.find.mock.calls[0][0];
+    expect(query.employerId).toBe("emp_001");
+    expect(query.status).toBe("draft");
+    expect(query["poster.approvalStatus"]).toBe("pending");
+    expect(query.workMode).toBe("remote");
+    expect(query["requirements.skills"]).toEqual({ $all: ["React", "Node.js"] });
+    expect(query.showSalary).toBe(false);
+    expect(Array.isArray(query.$and)).toBe(true);
   });
 
   it("GET /api/jobs returns 401 when unauthenticated", async () => {

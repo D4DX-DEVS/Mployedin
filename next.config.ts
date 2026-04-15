@@ -72,6 +72,23 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
+          {
+            // Restrict form submissions + framing; allow inline scripts/styles
+            // required by Next.js hydration and Tailwind.
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://www.googletagmanager.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' https://fonts.gstatic.com",
+              "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com https://media.licdn.com https://*.digitaloceanspaces.com",
+              "connect-src 'self' https://openrouter.ai https://generativelanguage.googleapis.com https://*.pusher.com wss://*.pusher.com",
+              "frame-src https://www.google.com https://www.youtube.com",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+            ].join("; "),
+          },
         ],
       },
       // Static assets — long-lived immutable cache (production only)

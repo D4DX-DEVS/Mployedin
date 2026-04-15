@@ -10,9 +10,13 @@ import EmployerJobsPage from "@/app/[locale]/(dashboard)/employer/jobs/page";
 const pushMock = jest.fn();
 const confirmMock = jest.fn();
 const useJobsMock = jest.fn();
+const saveAsTemplateMutateAsyncMock = jest.fn();
 const cloneMutateAsyncMock = jest.fn();
 const updateStatusMutateAsyncMock = jest.fn();
 const deleteMutateAsyncMock = jest.fn();
+const mockFetch = jest.fn();
+
+global.fetch = mockFetch as unknown as typeof fetch;
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
@@ -48,6 +52,8 @@ jest.mock("@/hooks/useDebounce", () => ({
 
 jest.mock("@/hooks/useJobs", () => ({
   useJobs: (...args: unknown[]) => useJobsMock(...args),
+  useSaveAsTemplate: () => ({ mutateAsync: saveAsTemplateMutateAsyncMock, isPending: false }),
+  useJobTemplates: () => ({ data: [] }),
   useCloneJob: () => ({ mutateAsync: cloneMutateAsyncMock, isPending: false }),
   useUpdateJobStatus: () => ({ mutateAsync: updateStatusMutateAsyncMock, isPending: false }),
   useDeleteJob: () => ({ mutateAsync: deleteMutateAsyncMock, isPending: false }),
@@ -114,9 +120,11 @@ describe("EmployerJobsPage", () => {
     pushMock.mockReset();
     confirmMock.mockReset();
     useJobsMock.mockReset();
+    saveAsTemplateMutateAsyncMock.mockReset();
     cloneMutateAsyncMock.mockReset();
     updateStatusMutateAsyncMock.mockReset();
     deleteMutateAsyncMock.mockReset();
+    mockFetch.mockReset();
     toastLoadingMock.mockReset();
     toastLoadingMock.mockReturnValue("clone-toast");
     toastSuccessMock.mockReset();
@@ -186,5 +194,67 @@ describe("EmployerJobsPage", () => {
       "Deactivate this job? It will stop accepting new applications, but existing applications stay available."
     ));
     expect(updateStatusMutateAsyncMock).toHaveBeenCalledWith({ jobId: "job-active", status: "closed" });
+  });
+
+  it("passes advanced filter state into useJobs", async () => {
+    const user = userEvent.setup();
+
+    render(<EmployerJobsPage />);
+
+    await user.selectOptions(screen.getByLabelText("All statuses"), "draft");
+    await user.selectOptions(screen.getByLabelText("All approvals"), "pending");
+    await user.selectOptions(screen.getByLabelText("All work modes"), "remote");
+    await user.selectOptions(screen.getByLabelText("All salary visibility"), "hidden");
+    await user.type(screen.getByPlaceholderText("Filter by location"), "Dubai");
+    await user.type(screen.getByPlaceholderText("Skills, comma separated"), "React, Node.js");
+
+    await waitFor(() => expect(useJobsMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      status: "draft",
+      approvalStatus: "pending",
+      workMode: "remote",
+      location: "Dubai",
+      skills: ["React", "Node.js"],
+      showSalary: "false",
+      myJobs: true,
+    })));
+  });
+
+  it("applies AI search results to the jobs filters", async () => {
+    const user = userEvent.setup();
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        summary: "Showing draft React roles in Dubai with hidden salary.",
+        filters: {
+          status: "draft",
+          workMode: "remote",
+          location: "Dubai",
+          skills: ["React"],
+          showSalary: false,
+        },
+      }),
+    });
+
+    render(<EmployerJobsPage />);
+
+    await user.type(
+      screen.getByPlaceholderText("AI search: e.g. draft remote React roles in Dubai with hidden salary"),
+      "draft remote React roles in Dubai with hidden salary"
+    );
+    await user.click(screen.getByRole("button", { name: /apply ai search/i }));
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledWith(
+      "/api/ai/job-search-filters",
+      expect.objectContaining({ method: "POST" })
+    ));
+    await waitFor(() => expect(useJobsMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      status: "draft",
+      workMode: "remote",
+      location: "Dubai",
+      skills: ["React"],
+      showSalary: "false",
+      myJobs: true,
+    })));
+    expect(screen.getByText("Showing draft React roles in Dubai with hidden salary.")).toBeInTheDocument();
   });
 });

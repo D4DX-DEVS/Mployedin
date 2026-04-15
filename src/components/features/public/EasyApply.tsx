@@ -55,12 +55,11 @@ export default function EasyApply({ jobId, jobTitle, locale }: EasyApplyProps) {
       })
       .catch(() => {/* silently ignore */})
       .finally(() => setFetchingProfile(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isJobSeeker]);
+  }, [isJobSeeker, profile, session?.user?.email, session?.user?.name]);
 
   if (status === "loading" || fetchingProfile) {
     return (
-      <Button disabled className="w-full h-12 text-base">
+      <Button disabled className="h-12 w-full rounded-2xl text-base">
         <Loader2 className="h-4 w-4 animate-spin mr-2" />
         Loading…
       </Button>
@@ -70,7 +69,7 @@ export default function EasyApply({ jobId, jobTitle, locale }: EasyApplyProps) {
   if (!session) {
     return (
       <Button
-        className="w-full h-12 text-base font-medium"
+        className="h-12 w-full rounded-2xl text-base font-medium"
         onClick={() =>
           router.push(`/${locale}/login?callbackUrl=/${locale}/jobs/${jobId}`)
         }
@@ -82,7 +81,7 @@ export default function EasyApply({ jobId, jobTitle, locale }: EasyApplyProps) {
 
   if (!isJobSeeker) {
     return (
-      <Button variant="outline" className="w-full h-12 text-base" disabled>
+      <Button variant="outline" className="h-12 w-full rounded-2xl text-base" disabled>
         Job seekers only can apply
       </Button>
     );
@@ -90,9 +89,9 @@ export default function EasyApply({ jobId, jobTitle, locale }: EasyApplyProps) {
 
   if (applied) {
     return (
-      <div className="w-full rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-4 text-center">
-        <p className="text-green-600 font-semibold text-sm">✓ Application submitted!</p>
-        <p className="text-xs text-muted-foreground mt-1">
+      <div className="w-full rounded-[22px] border border-green-500/30 bg-green-500/10 px-4 py-4 text-center">
+        <p className="text-sm font-semibold text-green-600">✓ Application submitted!</p>
+        <p className="mt-1 text-xs text-muted-foreground">
           We&apos;ve sent your profile to the employer.
         </p>
       </div>
@@ -135,11 +134,10 @@ export default function EasyApply({ jobId, jobTitle, locale }: EasyApplyProps) {
   );
 
   return (
-    <div className="space-y-3">
-      {/* Profile preview */}
+    <div className="space-y-4">
       {profile && (
-        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <div className="space-y-2 rounded-[22px] border border-border/70 bg-muted/20 px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Applying as
           </p>
           {profile.name && (
@@ -149,20 +147,20 @@ export default function EasyApply({ jobId, jobTitle, locale }: EasyApplyProps) {
             <p className="text-xs text-muted-foreground">{profile.email}</p>
           )}
           {cvDocument ? (
-            <p className="text-xs text-green-600 flex items-center gap-1">
+            <p className="flex items-center gap-1 text-xs text-green-600">
               <FileText className="h-3 w-3" /> {cvDocument.name} attached
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground/70 flex items-center gap-1">
+            <p className="flex items-center gap-1 text-xs text-muted-foreground/70">
               <FileText className="h-3 w-3" /> No CV on file — profile only
             </p>
           )}
           {profile.skills && profile.skills.length > 0 && (
-            <div className="flex flex-wrap gap-1 pt-0.5">
+            <div className="flex flex-wrap gap-1.5 pt-1">
               {profile.skills.slice(0, 4).map((s) => (
                 <span
                   key={s}
-                  className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full"
+                  className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary"
                 >
                   {s}
                 </span>
@@ -177,12 +175,12 @@ export default function EasyApply({ jobId, jobTitle, locale }: EasyApplyProps) {
         </div>
       )}
 
-      {/* Optional cover letter */}
       <div>
         <button
           type="button"
           onClick={() => setShowCoverLetter((v) => !v)}
-          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+          aria-label={showCoverLetter ? "Hide cover letter" : "Add cover letter"}
+          className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           {showCoverLetter ? (
             <ChevronUp className="h-3 w-3" />
@@ -193,7 +191,7 @@ export default function EasyApply({ jobId, jobTitle, locale }: EasyApplyProps) {
         </button>
         {showCoverLetter && (
           <textarea
-            className="mt-2 w-full rounded-lg border border-border bg-background p-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 resize-y"
+            className="textarea-field mt-2 min-h-[132px] rounded-[22px] border-border/70 bg-background px-4 py-3 text-sm shadow-none"
             rows={4}
             maxLength={2000}
             placeholder={`Why are you a great fit for ${jobTitle}?`}
@@ -211,7 +209,7 @@ export default function EasyApply({ jobId, jobTitle, locale }: EasyApplyProps) {
       <Button
         onClick={handleApply}
         disabled={loading}
-        className="w-full h-12 text-base font-medium gap-2"
+        className="h-12 w-full rounded-2xl text-base font-medium gap-2"
       >
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -222,10 +220,10 @@ export default function EasyApply({ jobId, jobTitle, locale }: EasyApplyProps) {
       </Button>
 
       {error && (
-        <p className="text-xs text-destructive text-center">{error}</p>
+        <p className="text-center text-xs text-destructive">{error}</p>
       )}
 
-      <p className="text-xs text-muted-foreground text-center">
+      <p className="text-center text-xs text-muted-foreground">
         Your profile is auto-attached to the application.
       </p>
     </div>

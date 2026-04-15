@@ -5,11 +5,9 @@ import { Employer } from "@/models/Employer";
 import { uploadFile, deleteFile } from "@/lib/storage/spaces";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
+import { validateUploadedFile } from "@/lib/security/file-validation";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
-
-const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 // POST /api/employers/logo — upload company logo
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
@@ -29,15 +27,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  if (file.size > MAX_LOGO_SIZE) {
-    return NextResponse.json({ error: "File too large. Maximum 2MB." }, { status: 400 });
-  }
-
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return NextResponse.json(
-      { error: `Invalid file type. Allowed: ${ALLOWED_TYPES.join(", ")}` },
-      { status: 400 }
-    );
+  const bytes = await file.arrayBuffer();
+  const validationError = validateUploadedFile(file, "image", bytes);
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
   // Delete old logo if exists

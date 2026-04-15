@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Sidebar, MobileMenuButton } from "@/components/shared/Sidebar";
 import { CommandMenuTrigger } from "@/components/shared/CommandMenu";
@@ -48,17 +50,19 @@ export function DashboardShell({
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isJobSeeker = userRole === "job_seeker";
+  const isEmployer = userRole === "employer";
   // Defer Radix-based components to avoid SSR/client ID mismatch hydration errors
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
   return (
-    <div className={`h-screen overflow-hidden bg-background ${isJobSeeker ? "flex flex-col" : "flex"}`}>
+    <div className={`dashboard-shell h-screen overflow-hidden bg-background ${isEmployer ? "dashboard-shell-employer" : ""} ${isJobSeeker ? "flex flex-col" : "flex"}`}>
       {/* Sidebar (desktop + mobile overlay handled inside) */}
       {!isJobSeeker && (
         <Sidebar
           navGroups={navGroups}
           locale={locale}
+          userRole={userRole}
           mobileOpen={mobileOpen}
           onMobileClose={() => setMobileOpen(false)}
           companyLogo={companyLogo}
@@ -68,14 +72,21 @@ export function DashboardShell({
       {/* Main content area */}
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden min-w-0">
         {/* Topbar */}
-        <header className="h-16 border-b border-border/40 bg-background z-30 sticky top-0 transition-all">
+        <header className={`dashboard-topbar h-16 border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${isEmployer ? "dashboard-topbar-employer" : ""}`}>
           <div className="flex h-full items-center gap-2 sm:gap-3 md:gap-4 px-4 sm:px-6 lg:px-8">
             {!isJobSeeker && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
 
             {isJobSeeker && (
-              <div className="shrink-0 font-semibold text-lg tracking-tight text-primary">
-                Mployedin
-              </div>
+              <Link href={`/${locale}/job-seeker`} className="shrink-0" aria-label="Mployedin home">
+                <Image
+                  src="/logo.png"
+                  alt="Mployedin"
+                  width={140}
+                  height={36}
+                  className="h-9 w-auto object-contain"
+                  priority
+                />
+              </Link>
             )}
 
             {isJobSeeker && <JobSeekerTopNav locale={locale} />}
@@ -105,7 +116,7 @@ export function DashboardShell({
         {isJobSeeker && <JobSeekerTopNavMobile locale={locale} />}
 
         {/* Page content */}
-        <main className="flex-1 min-h-0 h-0 overflow-y-auto bg-background isolate">
+        <main className={`dashboard-main flex-1 min-h-0 h-0 overflow-y-auto bg-background isolate ${isEmployer ? "dashboard-main-employer" : ""}`}>
           {children}
         </main>
       </div>

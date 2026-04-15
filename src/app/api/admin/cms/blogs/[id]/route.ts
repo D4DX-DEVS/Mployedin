@@ -6,6 +6,7 @@ import BlogPost from "@/models/BlogPost";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { blogUpdateSchema } from "@/lib/validators/cms";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -27,10 +28,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const body = await validateBody(req, blogUpdateSchema) as Record<string, unknown>;
   const allowed = ["title", "titleAr", "slug", "excerpt", "excerptAr", "body", "bodyAr", "coverImage", "author", "tags", "status", "isActive"];
+  const htmlFields = new Set(["excerpt", "excerptAr", "body", "bodyAr"]);
   const update: Record<string, unknown> = {};
   for (const k of allowed) {
     if (body[k] !== undefined) {
-      update[k] = k === "slug" ? slugify(String(body[k])) : body[k];
+      if (k === "slug") update[k] = slugify(String(body[k]));
+      else if (htmlFields.has(k)) update[k] = sanitizeHtml(String(body[k]));
+      else update[k] = body[k];
     }
   }
 

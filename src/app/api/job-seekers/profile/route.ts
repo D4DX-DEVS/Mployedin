@@ -113,6 +113,10 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   // Build JobSeeker update object
   const jsUpdate: Record<string, unknown> = { ...seekerData };
 
+  if (name) {
+    jsUpdate.fullName = name;
+  }
+
   if (onboardingComplete === true) {
     jsUpdate.isOnboarded = true;
   }

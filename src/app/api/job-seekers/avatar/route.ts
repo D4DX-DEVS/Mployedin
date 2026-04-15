@@ -4,9 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import { uploadFile, deleteFile } from "@/lib/storage/spaces";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-
-const MAX_SIZE = 2 * 1024 * 1024; // 2MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+import { validateUploadedFile } from "@/lib/security/file-validation";
 
 // POST /api/job-seekers/avatar — upload profile picture
 async function postHandler(req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
@@ -21,14 +19,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
-  if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: "File too large. Maximum 2MB." }, { status: 400 });
-  }
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return NextResponse.json(
-      { error: "Invalid file type. Allowed: JPEG, PNG, WebP." },
-      { status: 400 }
-    );
+
+  const bytes = await file.arrayBuffer();
+  const validationError = validateUploadedFile(file, "image", bytes);
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
   // Remove old avatar if it's a hosted URL

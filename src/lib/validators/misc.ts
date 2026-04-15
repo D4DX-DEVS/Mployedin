@@ -23,8 +23,7 @@ export const workflowUpdateSchema = z.object({
         order: z.number().int().min(0),
       })
     )
-    .max(20)
-    .optional(),
+    .max(20),
   settings: z
     .object({
       aiAutoScreen: z.boolean().optional(),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 /**
  * GET /api/jobs/[id]/similar
@@ -9,9 +10,15 @@ import Job from "@/models/Job";
  * Public endpoint — no auth required so both logged-in and public pages can use it.
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+  const { allowed } = checkRateLimit(`similar:${ip}`, { limit: 60, windowSec: 60, prefix: "similar" });
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const { id } = await params;
   await connectDB();
 

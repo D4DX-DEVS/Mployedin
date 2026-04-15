@@ -152,6 +152,39 @@ export async function notifyInterviewSelected(
   });
 }
 
+export async function notifyOfferMade(
+  jobSeekerId: string,
+  jobTitle: string,
+  companyName: string,
+  applicationId: string
+): Promise<void> {
+  await notify({
+    userId: jobSeekerId,
+    type: "offer_update",
+    title: "Offer Extended!",
+    message: `${companyName} has extended an offer to you for the "${jobTitle}" position. Log in to review the details.`,
+    link: `/en/job-seeker/applications`,
+    sendEmail: true,
+    metadata: { jobTitle, companyName, applicationId },
+  });
+}
+
+export async function notifyRejected(
+  jobSeekerId: string,
+  jobTitle: string,
+  applicationId: string
+): Promise<void> {
+  await notify({
+    userId: jobSeekerId,
+    type: "application_status_update",
+    title: "Application Update",
+    message: `We're sorry to inform you that your application for "${jobTitle}" was not selected at this time. Keep applying — the right opportunity is ahead.`,
+    link: `/en/job-seeker/applications`,
+    sendEmail: true,
+    metadata: { jobTitle, applicationId },
+  });
+}
+
 export async function notifyMention(
   mentionedUserId: string,
   authorName: string,
