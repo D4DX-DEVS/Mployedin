@@ -8,6 +8,7 @@ import Link from "next/link";
 import EasyApply from "@/components/features/public/EasyApply";
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
+import RelativeDate from "@/components/shared/RelativeDate";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -43,15 +44,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-function timeAgo(date: Date): string {
-  const diff = Date.now() - new Date(date).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  return `${Math.floor(days / 30)}mo ago`;
-}
+
 
 function closesInDays(expiresAt?: Date | null): number | null {
   if (!expiresAt) return null;
@@ -215,7 +208,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   )}
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
                     <Clock className="h-4 w-4" />
-                    Posted {timeAgo(job.createdAt)}
+                    <RelativeDate date={job.createdAt} prefix="Posted" />
                   </span>
                   {daysLeft !== null && daysLeft <= 14 && (
                     <span

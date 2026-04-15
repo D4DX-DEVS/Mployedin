@@ -3,6 +3,7 @@ import Job from "@/models/Job";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { MapPin, Briefcase, Clock, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import RelativeDate from "@/components/shared/RelativeDate";
 
 // Revalidate every 60 seconds — fresh job listings without blocking every request
 export const revalidate = 60;
@@ -39,15 +40,7 @@ function salaryLabel(salary: { min?: number; max?: number; currency?: string; is
   return null;
 }
 
-function timeAgo(date: Date): string {
-  const diff = Date.now() - new Date(date).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? "s" : ""} ago`;
-  return `${Math.floor(days / 30)} month${Math.floor(days / 30) > 1 ? "s" : ""} ago`;
-}
+
 
 function closesInDays(expiresAt?: Date | null): number | null {
   if (!expiresAt) return null;
@@ -233,7 +226,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                         )}
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {timeAgo(job.createdAt)}
+                          <RelativeDate date={job.createdAt} />
                         </span>
                       </div>
 

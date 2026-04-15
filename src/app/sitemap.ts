@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.vercel.app";
 const LOCALES = ["en", "ar"] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

@@ -781,7 +781,7 @@ function TableView({
 
   return (
     <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
-      <div className="hidden grid-cols-[minmax(0,1.8fr)_minmax(0,1.3fr)_auto] items-center gap-3 border-b border-slate-200/80 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:grid">
+      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-3 border-b border-slate-200/80 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:grid">
         <span>Candidate</span>
         <span>Role, Match, Skills</span>
         <span className="text-right">Actions</span>
@@ -804,7 +804,7 @@ function TableView({
               data-testid={`applicant-row-${app._id}`}
               aria-label={`Applicant row for ${candidateName}`}
               onClick={() => onOpenDetails?.(app)}
-              className={`grid gap-3 px-4 py-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-300/60 sm:grid-cols-[minmax(0,1.8fr)_minmax(0,1.3fr)_auto] sm:items-center ${
+              className={`grid gap-2 px-4 py-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-300/60 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center ${
                 isSelected ? "bg-sky-50/70" : "bg-white hover:bg-slate-50/80"
               }`}
             >
@@ -823,7 +823,7 @@ function TableView({
                   </button>
                 ) : null}
 
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[16px] bg-sky-50 text-sky-600 shadow-inner">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 shadow-inner">
                   <User className="h-4 w-4" />
                 </div>
 
@@ -847,14 +847,14 @@ function TableView({
               </div>
 
               <div className="min-w-0 sm:px-1">
-                <div className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
-                  <span className="truncate font-medium text-slate-900">{app.jobId?.title ?? currentRole}</span>
+                <div className="flex flex-wrap items-center gap-1.5 text-sm text-slate-700">
+                  <span className="truncate text-[13px] font-medium text-slate-900">{app.jobId?.title ?? currentRole}</span>
                   <span className="hidden text-slate-300 sm:inline">•</span>
-                  <span className="truncate text-xs text-slate-500">{locationExperience}</span>
+                  <span className="truncate text-[11px] text-slate-500">{locationExperience}</span>
                 </div>
 
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  <Badge className={`${getAiMatchBadgeClass(app.aiMatchScore)} rounded-full px-2.5 py-1 text-[11px] font-semibold`}>
+                <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                  <Badge className={`${getAiMatchBadgeClass(app.aiMatchScore)} rounded-full px-2 py-0.5 text-[10px] font-semibold`}>
                     {aiScoreLabel}
                   </Badge>
                   {topSkills.map((skill) => (
@@ -867,7 +867,7 @@ function TableView({
                   ) : null}
                 </div>
 
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                   <span>Applied {appliedDate}</span>
                   {(app.otherApplicationsCount ?? 0) > 0 ? (
                     <span className="inline-flex items-center gap-1 text-sky-700">

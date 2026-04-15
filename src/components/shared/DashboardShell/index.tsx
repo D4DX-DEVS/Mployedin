@@ -72,7 +72,7 @@ export function DashboardShell({
       {/* Main content area */}
       <div className="flex flex-1 min-h-0 flex-col overflow-hidden min-w-0">
         {/* Topbar */}
-        <header className={`dashboard-topbar h-16 border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${isEmployer ? "dashboard-topbar-employer" : ""}`}>
+        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${isEmployer ? "dashboard-topbar-employer h-20" : "h-16"}`}>
           <div className="flex h-full items-center gap-2 sm:gap-3 md:gap-4 px-4 sm:px-6 lg:px-8">
             {!isJobSeeker && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
 

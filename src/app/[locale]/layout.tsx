@@ -5,13 +5,50 @@ import { notFound } from "next/navigation";
 
 const locales = ["en", "ar"];
 
-export const metadata: Metadata = {
-  title: {
-    template: "%s | MPLOYEDIN",
-    default: "MPLOYEDIN — AI-Powered Recruitment",
-  },
-  description: "AI-Powered International Recruitment Platform for the Gulf region",
-};
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.vercel.app";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const url = `${BASE_URL}/${locale}`;
+
+  return {
+    title: {
+      template: "%s | MPLOYEDIN",
+      default: "MPLOYEDIN — AI-Powered Recruitment",
+    },
+    description: "AI-Powered International Recruitment Platform for the Gulf region",
+    metadataBase: new URL(BASE_URL),
+    alternates: {
+      canonical: url,
+      languages: {
+        en: `${BASE_URL}/en`,
+        ar: `${BASE_URL}/ar`,
+        "x-default": `${BASE_URL}/en`,
+      },
+    },
+    openGraph: {
+      siteName: "MPLOYEDIN",
+      locale: locale === "ar" ? "ar_SA" : "en_US",
+      type: "website",
+      images: [
+        {
+          url: "/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: "MPLOYEDIN — AI-Powered Recruitment for the Gulf",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      images: ["/og-image.png"],
+    },
+  };
+}
 
 export default async function LocaleLayout({
   children,

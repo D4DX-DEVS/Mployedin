@@ -66,7 +66,9 @@
       "mcp__code-review-graph__get_review_context_tool",
       "Bash(cp \"C:/Users/moham/Downloads/mployedin-1692608397-927.png\" \"C:/Users/moham/OneDrive/Desktop/Mployedin/mployedin/public/logo.png\")",
       "Bash(cp \"C:/Users/moham/Downloads/favicon.ico\" \"C:/Users/moham/OneDrive/Desktop/Mployedin/mployedin/src/app/favicon.ico\")",
-      "Bash(grep -n \"withAuth\\\\|getServerSession\\\\|auth\\(\\)\\\\|export.*GET\\\\|export.*POST\\\\|export.*PATCH\\\\|export.*DELETE\" src/app/api/jobs/[id]/similar/route.ts src/app/api/jobs/[id]/track-view/route.ts)"
+      "Bash(grep -n \"withAuth\\\\|getServerSession\\\\|auth\\(\\)\\\\|export.*GET\\\\|export.*POST\\\\|export.*PATCH\\\\|export.*DELETE\" src/app/api/jobs/[id]/similar/route.ts src/app/api/jobs/[id]/track-view/route.ts)",
+      "Bash(python \"C:\\\\Users\\\\moham\\\\.claude\\\\skills\\\\seo\\\\scripts\\\\fetch_page.py\" \"https://mployedin.vercel.app/\")",
+      "WebFetch(domain:mployedin.vercel.app)"
     ]
   },
   "enableAllProjectMcpServers": true,

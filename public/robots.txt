@@ -1,0 +1,40 @@
+User-agent: *
+Allow: /en/
+Allow: /ar/
+Disallow: /api/
+Disallow: /en/login
+Disallow: /ar/login
+Disallow: /en/admin
+Disallow: /ar/admin
+Disallow: /en/onboarding
+Disallow: /ar/onboarding
+Disallow: /en/verify-email
+Disallow: /ar/verify-email
+Disallow: /en/reset-password
+Disallow: /ar/reset-password
+Disallow: /en/job-seeker/
+Disallow: /ar/job-seeker/
+Disallow: /en/employer/
+Disallow: /ar/employer/
+Disallow: /en/agent/
+Disallow: /ar/agent/
+Disallow: /en/super-agent/
+Disallow: /ar/super-agent/
+
+User-agent: GPTBot
+Allow: /en/
+Allow: /ar/
+
+User-agent: ClaudeBot
+Allow: /en/
+Allow: /ar/
+
+User-agent: PerplexityBot
+Allow: /en/
+Allow: /ar/
+
+User-agent: Googlebot-Extended
+Allow: /en/
+Allow: /ar/
+
+Sitemap: https://mployedin.vercel.app/sitemap.xml

@@ -1,0 +1,19 @@
+# MPLOYEDIN
+> AI-Powered International Recruitment Platform for the Gulf region
+
+MPLOYEDIN is a dual-sided recruitment marketplace connecting Gulf-region employers
+with international job seekers using AI-powered candidate matching.
+
+## Public Pages
+
+- /en/: Platform homepage
+- /en/jobs: Browse active job listings across UAE, Saudi Arabia, Kuwait, Qatar, Bahrain, Oman
+- /en/blog: Recruitment insights, Gulf job market trends, hiring guides
+- /en/faq: Frequently asked questions about the platform
+- /en/about: About MPLOYEDIN
+- /en/contact: Contact information
+
+## Arabic (RTL) versions available at /ar/
+
+## Contact
+info@mployedin.com
