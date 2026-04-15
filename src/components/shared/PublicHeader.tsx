@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Button } from "@/components/ui/button";
 
 interface PublicHeaderProps {
@@ -44,6 +45,7 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
 
         {/* Auth & Language */}
         <div className="hidden md:flex items-center gap-3">
+          <ThemeToggle />
           <Link href={locale === "en" ? "/ar" : "/en"}>
             <Button variant="ghost" size="sm">
               {locale === "en" ? "العربية" : "English"}
@@ -62,14 +64,16 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
         </div>
 
         {/* Mobile Menu Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden"
-          onClick={() => setMobileOpen(!mobileOpen)}
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
@@ -87,6 +91,13 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
               </Link>
             ))}
             <hr className="my-2" />
+            <Link
+              href={locale === "en" ? "/ar" : "/en"}
+              className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent"
+              onClick={() => setMobileOpen(false)}
+            >
+              {locale === "en" ? "العربية" : "English"}
+            </Link>
             <div className="flex gap-2">
               <Link href={`/${locale}/login`} className="flex-1">
                 <Button variant="outline" size="sm" className="w-full">

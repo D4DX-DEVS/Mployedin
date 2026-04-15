@@ -6,7 +6,10 @@ import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
 import { ActivityEvent, ACTIVITY_PRIORITY } from "@/models/ActivityEvent";
 import Employer from "@/models/Employer";
+import User from "@/models/User";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
+import { sendMail } from "@/lib/email/mailer";
+import { applicationConfirmationEmail, newApplicantAlertEmail } from "@/lib/email/templates";
 
 /**
  * POST /api/jobs/[id]/apply
@@ -26,9 +29,10 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
 
   await connectDB();
 
-  const [job, seeker] = await Promise.all([
+  const [job, seeker, seekerUser] = await Promise.all([
     Job.findById(jobId).select("title employerId status").lean(),
-    JobSeeker.findOne({ userId: ctx.userId }).select("_id profileCompleteness updatedAt").lean(),
+    JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt").lean(),
+    User.findById(ctx.userId).select("email name").lean(),
   ]);
 
   if (!job) {
@@ -47,8 +51,8 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
     return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
   }
 
-  // Resolve employer info for ActivityEvent metadata
-  const employer = await Employer.findById(job.employerId).select("companyName").lean();
+  // Resolve employer info for ActivityEvent metadata and email notification
+  const employer = await Employer.findById(job.employerId).select("companyName userId notificationPrefs").lean();
   const company = employer?.companyName ?? "";
 
   const { signals, score: bScore } = computeBehaviorSignals({
@@ -71,6 +75,37 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
     behaviorSignals: signals,
     behaviorScore: bScore,
   });
+
+  // Send emails (non-blocking — don't fail the response if email errors)
+  const seekerName = (seeker as { fullName?: string }).fullName ?? seekerUser?.name ?? "Applicant";
+  const applicationId = String(application._id);
+
+  // 1. Confirmation to job seeker
+  if (seekerUser?.email) {
+    const { subject, html } = applicationConfirmationEmail({
+      seekerName,
+      jobTitle: job.title,
+      companyName: company,
+      applicationId,
+    });
+    sendMail({ to: seekerUser.email, subject, html }).catch(() => {});
+  }
+
+  // 2. Alert to employer (only if they have emailNewApplicant enabled or pref is unset)
+  const employerPrefs = (employer as { notificationPrefs?: { emailNewApplicant?: boolean } } | null)?.notificationPrefs;
+  const shouldNotifyEmployer = employerPrefs?.emailNewApplicant !== false;
+  if (shouldNotifyEmployer && employer) {
+    const employerUser = await User.findById((employer as { userId: unknown }).userId).select("email name").lean();
+    if (employerUser?.email) {
+      const { subject, html } = newApplicantAlertEmail({
+        employerName: employerUser.name,
+        seekerName,
+        jobTitle: job.title,
+        applicationId,
+      });
+      sendMail({ to: employerUser.email, subject, html }).catch(() => {});
+    }
+  }
 
   // Fire ActivityEvent (non-blocking — don't fail the response if this errors)
   ActivityEvent.create({

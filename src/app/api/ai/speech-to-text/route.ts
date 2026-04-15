@@ -3,11 +3,13 @@ import { auth } from "@/lib/auth/config";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Google Cloud Speech-to-Text REST API (used for manual language selection)
-const SPEECH_API_URL =
-  "https://speech.googleapis.com/v1/speech:recognize";
+// Sonix AI async STT
+const SONIX_API_URL = "https://api.sonix.ai/v1/media";
 
-// Gemini direct — used for auto-detect mode (multilingual audio understanding)
+// Google Cloud Speech-to-Text REST API (fallback)
+const SPEECH_API_URL = "https://speech.googleapis.com/v1/speech:recognize";
+
+// Gemini — used for auto-detect fallback (multilingual audio understanding)
 const geminiAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 
 const SUPPORTED_LANGUAGES: Record<string, string> = {
@@ -28,14 +30,104 @@ const SUPPORTED_LANGUAGES: Record<string, string> = {
   "te-IN": "te-IN",
 };
 
-// Google enhanced models only exist for these language codes (v1 Speech API).
-// For all other languages, useEnhanced silently falls back and can degrade accuracy.
+// Sonix uses shorter locale codes
+const SONIX_LANGUAGE_MAP: Record<string, string> = {
+  "en-US": "en-US",
+  "ar-SA": "ar",
+  "ml-IN": "ml",
+  "hi-IN": "hi",
+  "ur-PK": "ur",
+  "ta-IN": "ta",
+  "te-IN": "te",
+};
+
+// Google enhanced models only exist for these language codes (v1 Speech API)
 const ENHANCED_SUPPORTED = new Set(["en-US", "hi-IN"]);
 
 // All supported language codes (used for auto-detect alternatives)
 const ALL_LANGUAGE_CODES = ["ml-IN", "en-US", "ar-SA", "hi-IN", "ta-IN", "te-IN", "ur-PK"];
 
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024; // 5 MB
+
+// ─── Sonix polling helper ─────────────────────────────────────────────────────
+async function trySonixTranscription(
+  audioFile: File,
+  languageCode: string,
+  isAutoDetect: boolean,
+  sonixKey: string
+): Promise<{ transcript: string; language: string } | null> {
+  const ext = audioFile.type.includes("ogg")
+    ? "ogg"
+    : audioFile.type.includes("mp4") || audioFile.type.includes("m4a")
+      ? "m4a"
+      : "webm";
+
+  const uploadForm = new FormData();
+  uploadForm.append("name", `recording-${Date.now()}.${ext}`);
+
+  // For manual language selection, pass Sonix language code
+  if (!isAutoDetect) {
+    const sonixLang = SONIX_LANGUAGE_MAP[languageCode] ?? languageCode;
+    uploadForm.append("language", sonixLang);
+  }
+
+  uploadForm.append("file", audioFile);
+
+  const uploadRes = await fetch(SONIX_API_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${sonixKey}` },
+    body: uploadForm,
+  });
+
+  if (!uploadRes.ok) {
+    const err = await uploadRes.text();
+    console.error("[Sonix Upload Error]", uploadRes.status, err);
+    return null;
+  }
+
+  const uploadData = await uploadRes.json() as { id: string; status: string; language?: string };
+  const mediaId = uploadData.id;
+
+  // Poll until completed (max 15 seconds, 1.5s intervals)
+  const deadline = Date.now() + 15000;
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1500));
+
+    const statusRes = await fetch(`${SONIX_API_URL}/${mediaId}`, {
+      headers: { Authorization: `Bearer ${sonixKey}` },
+    });
+
+    if (!statusRes.ok) break;
+
+    const statusData = await statusRes.json() as { id: string; status: string; language?: string };
+
+    if (statusData.status === "completed") {
+      const transcriptRes = await fetch(`${SONIX_API_URL}/${mediaId}/transcript.txt`, {
+        headers: { Authorization: `Bearer ${sonixKey}` },
+      });
+
+      if (!transcriptRes.ok) break;
+
+      const rawText = await transcriptRes.text();
+      const transcript = rawText.trim();
+
+      if (!transcript) return null;
+
+      const detectedLang = statusData.language
+        ? (SUPPORTED_LANGUAGES[statusData.language] ?? statusData.language)
+        : isAutoDetect
+          ? "auto"
+          : languageCode;
+
+      return { transcript, language: detectedLang };
+    }
+
+    if (statusData.status === "failed") break;
+  }
+
+  return null;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -82,7 +174,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Reject blobs that are obviously empty (just container headers, no audio frames).
+    // Reject blobs that are obviously empty (just container headers, no audio frames)
     const MIN_AUDIO_BYTES = 500;
     if (audioFile.size < MIN_AUDIO_BYTES) {
       return NextResponse.json(
@@ -91,42 +183,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ─── PRIMARY: Sonix AI ────────────────────────────────────────────────────
+    const sonixKey = process.env.SONIX_API_KEY;
+    if (sonixKey) {
+      try {
+        const result = await trySonixTranscription(audioFile, languageCode, isAutoDetect, sonixKey);
+        if (result) {
+          return NextResponse.json(result, {
+            headers: { "X-RateLimit-Remaining": String(remaining) },
+          });
+        }
+      } catch (sonixErr) {
+        console.error("[Sonix STT Error]", sonixErr);
+        // Fall through to Gemini / Google
+      }
+    }
+
     const audioBuffer = await audioFile.arrayBuffer();
     const audioBase64 = Buffer.from(audioBuffer).toString("base64");
 
-    // ─── AUTO-DETECT MODE: Use Gemini for multilingual audio transcription ───
+    // ─── FALLBACK 1: Gemini (auto-detect mode only) ───────────────────────────
     if (isAutoDetect) {
       const geminiKey = process.env.GEMINI_API_KEY;
-      if (!geminiKey) {
-        return NextResponse.json(
-          { error: "Speech service not configured" },
-          { status: 503 }
-        );
-      }
+      if (geminiKey) {
+        try {
+          const mimeType = audioFile.type || "audio/webm";
+          const geminiMime = mimeType.includes("webm")
+            ? "audio/webm"
+            : mimeType.includes("ogg")
+              ? "audio/ogg"
+              : mimeType.includes("mp4") || mimeType.includes("m4a")
+                ? "audio/mp4"
+                : mimeType;
 
-      try {
-        const mimeType = audioFile.type || "audio/webm";
-        // Gemini supports audio/wav, audio/mp3, audio/aac, audio/ogg, audio/flac
-        // For webm, we pass as-is — Gemini handles it via media processing
-        const geminiMime = mimeType.includes("webm")
-          ? "audio/webm"
-          : mimeType.includes("ogg")
-            ? "audio/ogg"
-            : mimeType.includes("mp4") || mimeType.includes("m4a")
-              ? "audio/mp4"
-              : mimeType;
+          const model = geminiAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        const model = geminiAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-        const result = await model.generateContent([
-          {
-            inlineData: {
-              mimeType: geminiMime,
-              data: audioBase64,
+          const result = await model.generateContent([
+            {
+              inlineData: {
+                mimeType: geminiMime,
+                data: audioBase64,
+              },
             },
-          },
-          {
-            text: `Transcribe this audio exactly as spoken. The speaker may use Malayalam, English, Hindi, Arabic, Tamil, Telugu, Urdu, or any mix of these languages.
+            {
+              text: `Transcribe this audio exactly as spoken. The speaker may use Malayalam, English, Hindi, Arabic, Tamil, Telugu, Urdu, or any mix of these languages.
 
 Rules:
 - Output ONLY the transcription, nothing else
@@ -136,49 +236,47 @@ Rules:
 - Do not add timestamps, labels, or any formatting
 - First line: the detected primary language code (e.g. ml, en, hi, ar, ta, te, ur)
 - Second line: the transcription`,
-          },
-        ]);
+            },
+          ]);
 
-        const responseText = result.response.text().trim();
+          const responseText = result.response.text().trim();
 
-        if (!responseText || responseText === "[EMPTY]") {
+          if (!responseText || responseText === "[EMPTY]") {
+            return NextResponse.json(
+              { transcript: "", language: "auto" },
+              { headers: { "X-RateLimit-Remaining": String(remaining) } }
+            );
+          }
+
+          const lines = responseText.split("\n");
+          let detectedLang = "auto";
+          let transcript = responseText;
+
+          if (lines.length >= 2) {
+            const firstLine = lines[0].trim().toLowerCase();
+            if (/^(ml|en|hi|ar|ta|te|ur)(-[a-z]{2})?$/i.test(firstLine)) {
+              detectedLang = firstLine.replace(/-.*/, "");
+              transcript = lines.slice(1).join("\n").trim();
+            }
+          }
+
+          const langMap: Record<string, string> = {
+            ml: "ml-IN", en: "en-US", hi: "hi-IN", ar: "ar-SA",
+            ta: "ta-IN", te: "te-IN", ur: "ur-PK",
+          };
+
           return NextResponse.json(
-            { transcript: "", language: "auto" },
+            { transcript, language: langMap[detectedLang] ?? "auto" },
             { headers: { "X-RateLimit-Remaining": String(remaining) } }
           );
+        } catch (geminiErr) {
+          console.error("[Gemini Speech Error]", geminiErr);
+          // Fall through to Google Speech API
         }
-
-        // Parse: first line = language code, rest = transcript
-        const lines = responseText.split("\n");
-        let detectedLang = "auto";
-        let transcript = responseText;
-
-        if (lines.length >= 2) {
-          const firstLine = lines[0].trim().toLowerCase();
-          // Check if first line looks like a language code
-          if (/^(ml|en|hi|ar|ta|te|ur)(-[a-z]{2})?$/i.test(firstLine)) {
-            detectedLang = firstLine.replace(/-.*/, ""); // normalize ml-IN → ml
-            transcript = lines.slice(1).join("\n").trim();
-          }
-        }
-
-        // Map short code to BCP-47 for the response
-        const langMap: Record<string, string> = {
-          ml: "ml-IN", en: "en-US", hi: "hi-IN", ar: "ar-SA",
-          ta: "ta-IN", te: "te-IN", ur: "ur-PK",
-        };
-
-        return NextResponse.json(
-          { transcript, language: langMap[detectedLang] ?? "auto" },
-          { headers: { "X-RateLimit-Remaining": String(remaining) } }
-        );
-      } catch (geminiErr) {
-        console.error("[Gemini Speech Error]", geminiErr);
-        // Fall through to Google Speech API as fallback
       }
     }
 
-    // ─── MANUAL MODE (or Gemini fallback): Google Cloud Speech-to-Text ───
+    // ─── FALLBACK 2: Google Cloud Speech-to-Text ──────────────────────────────
     const apiKey = process.env.GOOGLE_CLOUD_SPEECH_KEY;
     if (!apiKey) {
       return NextResponse.json(
@@ -187,7 +285,6 @@ Rules:
       );
     }
 
-    // Determine encoding from MIME type
     const mimeType = audioFile.type || "audio/webm";
     const encoding = mimeType.includes("webm")
       ? "WEBM_OPUS"
@@ -197,11 +294,9 @@ Rules:
           ? "MP4"
           : "LINEAR16";
 
-    // If auto-detect fell through (Gemini failed), use en-US as fallback for Google Speech
     const speechLangCode = languageCode === "auto" ? "en-US" : languageCode;
     const isIndianLanguage = ["ml-IN", "hi-IN", "ta-IN", "te-IN", "ur-PK"].includes(speechLangCode);
-    const model = isAutoDetect ? "default" : isIndianLanguage ? "latest_long" : "latest_short";
-
+    const googleModel = isAutoDetect ? "default" : isIndianLanguage ? "latest_long" : "latest_short";
     const useEnhanced = ENHANCED_SUPPORTED.has(speechLangCode);
 
     const requestBody = {
@@ -217,30 +312,22 @@ Rules:
                 .filter((l) => l !== speechLangCode)
                 .slice(0, 3),
         enableAutomaticPunctuation: true,
-        model,
+        model: googleModel,
         ...(useEnhanced ? { useEnhanced: true } : {}),
-        // Boost recruitment & tech vocabulary recognition accuracy
         speechContexts: [
           {
             phrases: [
-              // Job roles
               "MERN stack", "React developer", "Node.js", "full stack", "backend", "frontend",
               "mobile developer", "Flutter", "React Native", "DevOps", "data scientist",
               "machine learning", "UI UX designer", "product manager", "project manager",
               "HR manager", "sales executive", "digital marketing", "finance manager",
-              // Experience
               "years experience", "year experience", "fresher", "entry level", "senior", "junior",
-              // Education
               "computer science", "CS", "BSc", "MBA", "engineering", "bachelor", "master",
-              // Salary
               "salary", "per month", "CTC", "rupees", "dirhams", "riyals", "dollars",
               "50000", "100000", "lakh", "per annum",
-              // Location
               "Dubai", "Abu Dhabi", "Riyadh", "Bangalore", "Mumbai", "remote", "hybrid",
-              // Languages (for the input itself being mixed)
               "MERN", "MongoDB", "Express", "Angular", "Vue", "Python", "Django", "Laravel",
               "PHP", "Java", "Spring Boot", "AWS", "Docker", "Kubernetes",
-              // Malayalam job-related terms (common in voice input)
               "ജോലി", "ശമ്പളം", "അനുഭവം", "skills", "experience", "salary",
             ],
             boost: 15,
@@ -278,11 +365,7 @@ Rules:
 
     return NextResponse.json(
       { transcript, language: speechLangCode },
-      {
-        headers: {
-          "X-RateLimit-Remaining": String(remaining),
-        },
-      }
+      { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );
   } catch (err) {
     console.error("[Speech-to-Text Error]", err);

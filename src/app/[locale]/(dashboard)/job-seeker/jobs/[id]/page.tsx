@@ -174,7 +174,16 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                     <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2.25rem]">
                       {job.title}
                     </h1>
-                    <p className="mt-2 text-base font-medium text-muted-foreground">{employer?.companyName}</p>
+                    {employer?._id ? (
+                      <Link
+                        href={`/${locale}/job-seeker/companies/${String(employer._id)}`}
+                        className="mt-2 inline-flex text-base font-medium text-muted-foreground transition-colors hover:text-primary"
+                      >
+                        {employer.companyName}
+                      </Link>
+                    ) : (
+                      <p className="mt-2 text-base font-medium text-muted-foreground">{employer?.companyName}</p>
+                    )}
                   </div>
                   {employer?.domainVerified && (
                     <span className="shrink-0 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600">
@@ -327,7 +336,16 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Employer profile</div>
                 <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">About the employer</h3>
                 <div className="mt-4 space-y-3 text-sm text-muted-foreground">
-                  <p className="font-medium text-foreground">{employer?.companyName}</p>
+                  {employer?._id ? (
+                    <Link
+                      href={`/${locale}/job-seeker/companies/${String(employer._id)}`}
+                      className="font-medium text-foreground transition-colors hover:text-primary"
+                    >
+                      {employer.companyName}
+                    </Link>
+                  ) : (
+                    <p className="font-medium text-foreground">{employer?.companyName}</p>
+                  )}
                   {employer?.industry && <p>Industry: {employer.industry}</p>}
                   {employerLocation && (
                     <p className="flex items-center gap-1.5">
@@ -346,6 +364,14 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                     </a>
                   )}
                 </div>
+                {employer?._id ? (
+                  <Link
+                    href={`/${locale}/job-seeker/companies/${String(employer._id)}`}
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
+                  >
+                    View company profile
+                  </Link>
+                ) : null}
               </section>
 
               <Link

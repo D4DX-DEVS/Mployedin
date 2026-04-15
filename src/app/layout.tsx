@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_Arabic } from "next/font/google";
 import { headers } from "next/headers";
+import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import "@/app/globals.css";
+import { getThemeInitializationScript } from "@/lib/theme";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,6 +22,9 @@ const notoArabic = Noto_Sans_Arabic({
 export const metadata: Metadata = {
   title: "MPLOYEDIN",
   description: "AI-Powered International Recruitment Platform",
+  other: {
+    "color-scheme": "light dark",
+  },
 };
 
 export default async function RootLayout({
@@ -39,7 +44,12 @@ export default async function RootLayout({
         className={`${inter.variable} ${notoArabic.variable} font-sans antialiased`}
         {...(nonce ? { "data-nonce": nonce } : {})}
       >
-        {children}
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: getThemeInitializationScript() }}
+        />
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

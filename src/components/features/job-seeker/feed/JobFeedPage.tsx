@@ -7,6 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useState, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import Link from "next/link";
@@ -77,6 +78,7 @@ async function fetchJobs(cursor: string | null, sort: SortMode, minScore?: numbe
 }
 
 const SEARCH_PAGE_SIZE = 20;
+const OBJECT_ID_PATTERN = /^[0-9a-fA-F]{24}$/;
 
 interface SearchResult {
   jobs: FeedJob[];
@@ -94,13 +96,14 @@ interface SearchJobsResponse {
   };
 }
 
-async function fetchSearchJobs(q: string, page: number): Promise<SearchResult> {
+async function fetchSearchJobs(q: string, page: number, employerId?: string): Promise<SearchResult> {
   const params = new URLSearchParams({
-    search: q,
     status: "active",
     limit: String(SEARCH_PAGE_SIZE),
     page: String(page),
   });
+  if (q) params.set("search", q);
+  if (employerId) params.set("employerId", employerId);
   const res = await fetch(`/api/jobs?${params}`);
   if (!res.ok) throw new Error("Search failed");
   const data = (await res.json()) as SearchJobsResponse;
@@ -161,6 +164,9 @@ function CardSkeleton() {
 
 export function JobFeedPage({ locale }: { locale: string }) {
   const qc = useQueryClient();
+  const searchParams = useSearchParams();
+  const employerIdParam = searchParams.get("employerId")?.trim() ?? "";
+  const employerIdFilter = OBJECT_ID_PATTERN.test(employerIdParam) ? employerIdParam : "";
 
   const [tab, setTab] = useState<"profile" | "like">("profile");
   const [sortMode, setSortMode] = useState<SortMode>("match");
@@ -178,15 +184,15 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchPage, setSearchPage] = useState(1);
   const debouncedSearch = useDebounce(searchQuery, 400);
-  const isSearchMode = debouncedSearch.trim().length > 0;
+  const isSearchMode = debouncedSearch.trim().length > 0 || employerIdFilter.length > 0;
 
   const {
     data: searchData,
     isLoading: searchLoading,
     error: searchError,
   } = useQuery({
-    queryKey: ["job-search", debouncedSearch, searchPage],
-    queryFn: () => fetchSearchJobs(debouncedSearch.trim(), searchPage),
+    queryKey: ["job-search", debouncedSearch, searchPage, employerIdFilter],
+    queryFn: () => fetchSearchJobs(debouncedSearch.trim(), searchPage, employerIdFilter || undefined),
     enabled: isSearchMode,
     staleTime: 2 * 60_000,
   });
@@ -536,8 +542,12 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       {searchLoading
                         ? "Searching..."
                         : searchData
-                        ? `${searchData.total} result${searchData.total !== 1 ? "s" : ""} for "${debouncedSearch}"`
-                        : `Results for "${debouncedSearch}"`}
+                        ? debouncedSearch.trim().length > 0
+                          ? `${searchData.total} result${searchData.total !== 1 ? "s" : ""} for "${debouncedSearch}"`
+                          : `${searchData.total} active role${searchData.total !== 1 ? "s" : ""} from this employer`
+                        : debouncedSearch.trim().length > 0
+                          ? `Results for "${debouncedSearch}"`
+                          : "Employer roles"}
                     </span>
                   </div>
                   {searchData && searchData.pages > 1 && (

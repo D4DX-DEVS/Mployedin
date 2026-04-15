@@ -20,6 +20,7 @@ test.describe("Job Seeker Journey", () => {
   test("login page renders correctly", async ({ page }) => {
     await expect(page).toHaveTitle(/MPLOYEDIN|Login/i);
     await expect(page.getByRole("textbox", { name: /email/i })).toBeVisible();
+    await expect(page.getByTestId("site-footer")).toBeVisible();
   });
 
   test("job seeker can login and see dashboard", async ({ page }) => {
@@ -30,6 +31,7 @@ test.describe("Job Seeker Journey", () => {
     await page.waitForURL(/job-seeker|dashboard/, { timeout: 10_000 });
     // Dashboard should have the MPLOYEDIN branding
     await expect(page.locator("body")).not.toContainText("Error");
+    await expect(page.getByTestId("site-footer")).toBeVisible();
   });
 
   test("job seeker can access search page", async ({ page }) => {
@@ -45,5 +47,6 @@ test.describe("Job Seeker Journey", () => {
     await page.waitForLoadState("networkidle");
     const url = page.url();
     expect(url).toMatch(/en|ar|login/);
+    await expect(page.getByTestId("site-footer")).toBeVisible();
   });
 });

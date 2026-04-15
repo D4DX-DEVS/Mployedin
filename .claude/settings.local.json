@@ -69,7 +69,8 @@
       "Bash(grep -n \"withAuth\\\\|getServerSession\\\\|auth\\(\\)\\\\|export.*GET\\\\|export.*POST\\\\|export.*PATCH\\\\|export.*DELETE\" src/app/api/jobs/[id]/similar/route.ts src/app/api/jobs/[id]/track-view/route.ts)",
       "Bash(python \"C:\\\\Users\\\\moham\\\\.claude\\\\skills\\\\seo\\\\scripts\\\\fetch_page.py\" \"https://mployedin.vercel.app/\")",
       "WebFetch(domain:mployedin.vercel.app)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(list\\(d.get\\('dependencies',{}\\).keys\\(\\)\\), indent=2\\)\\)\")"
     ]
   },
   "enableAllProjectMcpServers": true,

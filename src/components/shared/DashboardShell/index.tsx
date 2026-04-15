@@ -23,6 +23,8 @@ const NotificationBell = dynamic(
   { ssr: false }
 );
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import PublicFooter from "@/components/shared/PublicFooter";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
 import { JobSeekerTopNav, JobSeekerTopNavMobile } from "@/components/shared/JobSeekerTopNav";
 import type { NavGroup } from "@/lib/nav/menuConfig";
@@ -56,7 +58,7 @@ export function DashboardShell({
   useEffect(() => { setMounted(true); }, []);
 
   return (
-    <div className={`dashboard-shell h-screen overflow-hidden bg-background ${isEmployer ? "dashboard-shell-employer" : ""} ${isJobSeeker ? "flex flex-col" : "flex"}`}>
+    <div className={`dashboard-shell bg-background ${isEmployer ? "dashboard-shell-employer" : ""} ${isJobSeeker ? "flex min-h-screen flex-col" : "flex h-screen overflow-hidden"}`}>
       {/* Sidebar (desktop + mobile overlay handled inside) */}
       {!isJobSeeker && (
         <Sidebar
@@ -70,9 +72,9 @@ export function DashboardShell({
       )}
 
       {/* Main content area */}
-      <div className="flex flex-1 min-h-0 flex-col overflow-hidden min-w-0">
+      <div className={`flex flex-1 flex-col min-w-0 ${isJobSeeker ? "" : "min-h-0 overflow-hidden"}`}>
         {/* Topbar */}
-        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${isEmployer ? "dashboard-topbar-employer h-20" : "h-16"}`}>
+        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${isEmployer ? "dashboard-topbar-employer h-20" : isJobSeeker ? "h-20" : "h-16"}`}>
           <div className="flex h-full items-center gap-2 sm:gap-3 md:gap-4 px-4 sm:px-6 lg:px-8">
             {!isJobSeeker && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
 
@@ -81,9 +83,10 @@ export function DashboardShell({
                 <Image
                   src="/logo.png"
                   alt="Mployedin"
-                  width={140}
-                  height={36}
-                  className="h-9 w-auto object-contain"
+                  width={176}
+                  height={48}
+                  className="h-12 w-auto object-contain"
+                  style={{ width: "auto" }}
                   priority
                 />
               </Link>
@@ -98,6 +101,7 @@ export function DashboardShell({
             <div className="flex items-center gap-2 sm:gap-3">
               {mounted && (
                 <>
+                  <ThemeToggle />
                   <LanguageSwitcher />
                   <NotificationBell locale={locale} />
                   <UserProfileDropdown
@@ -116,9 +120,25 @@ export function DashboardShell({
         {isJobSeeker && <JobSeekerTopNavMobile locale={locale} />}
 
         {/* Page content */}
-        <main className={`dashboard-main flex-1 min-h-0 h-0 overflow-y-auto bg-background isolate ${isEmployer ? "dashboard-main-employer" : ""}`}>
-          {children}
-        </main>
+        {isJobSeeker ? (
+          <>
+            <main className="dashboard-main isolate flex-1 bg-background">
+              {children}
+            </main>
+            <div className="flex-shrink-0 pt-8">
+              <PublicFooter locale={locale} variant="embedded" />
+            </div>
+          </>
+        ) : (
+          <main className={`dashboard-main isolate min-h-0 flex flex-1 flex-col overflow-y-auto bg-background ${isEmployer ? "dashboard-main-employer" : ""}`}>
+            <div>
+              {children}
+            </div>
+            <div className="pt-8">
+              <PublicFooter locale={locale} variant="embedded" />
+            </div>
+          </main>
+        )}
       </div>
 
       {/* Cmd+K menu */}

@@ -71,7 +71,7 @@ export type InitialHomeData = {
 function formatSalary(job: FeedJob) {
   const salary = job.salary;
   if (!salary?.min || !salary?.max || !salary.currency) return null;
-  return `${salary.min.toLocaleString()}-${salary.max.toLocaleString()} ${salary.currency}`;
+  return `${salary.min.toLocaleString("en-US")}-${salary.max.toLocaleString("en-US")} ${salary.currency}`;
 }
 
 function timeAgo(iso: string) {
@@ -326,7 +326,7 @@ export function JobSeekerHomePage({
   const preferredLocation = profile?.preferredCountries?.slice(0, 2).join(", ") || "Add preferred locations";
   const preferredSalary =
     profile?.preferredSalary?.min && profile?.preferredSalary?.max && profile?.preferredSalary?.currency
-      ? `${profile.preferredSalary.min.toLocaleString()}-${profile.preferredSalary.max.toLocaleString()} ${profile.preferredSalary.currency}`
+      ? `${profile.preferredSalary.min.toLocaleString("en-US")}-${profile.preferredSalary.max.toLocaleString("en-US")} ${profile.preferredSalary.currency}`
       : "Set your salary range";
 
   const suggestions = useMemo(() => buildSuggestions(profile), [profile]);
@@ -763,7 +763,7 @@ export function JobSeekerHomePage({
 
       {guideOpen && (
         <div
-          className="fixed inset-0 top-16 z-[90] flex justify-end bg-foreground/15 backdrop-blur-[2px]"
+          className="fixed inset-0 top-20 z-[90] flex justify-end bg-foreground/15 backdrop-blur-[2px]"
           onClick={(event) => {
             if (event.target === event.currentTarget) {
               closeGuide();

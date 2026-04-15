@@ -1166,16 +1166,6 @@ export default function JobSeekerOnboardingPage() {
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="text-center py-4 text-xs text-gray-400 border-t bg-white">
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          <span className="cursor-pointer hover:text-blue-600">About Us</span>
-          <span className="cursor-pointer hover:text-blue-600">Contact Us</span>
-          <span className="cursor-pointer hover:text-blue-600">Terms and Conditions</span>
-          <span className="cursor-pointer hover:text-blue-600">Privacy Policy</span>
-        </div>
-        <p className="mt-2">All rights reserved &copy; {new Date().getFullYear()} Mployedin</p>
-      </footer>
     </div>
   );
 }

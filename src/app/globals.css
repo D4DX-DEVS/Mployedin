@@ -128,12 +128,78 @@
   --badge-skilled: 142 71% 45%;
 }
 
+.dark {
+  --brand-text: 210 25% 96%;
+  --brand-muted: 215 16% 70%;
+
+  --background: 222 39% 11%;
+  --foreground: 210 20% 96%;
+  --card: 222 31% 14%;
+  --card-foreground: 210 20% 96%;
+  --popover: 222 31% 14%;
+  --popover-foreground: 210 20% 96%;
+  --primary: 199 74% 60%;
+  --primary-foreground: 225 57% 15%;
+  --secondary: 217 25% 18%;
+  --secondary-foreground: 210 20% 96%;
+  --muted: 217 25% 18%;
+  --muted-foreground: 215 16% 70%;
+  --accent: 219 30% 21%;
+  --accent-foreground: 210 20% 96%;
+  --destructive: 0 70% 56%;
+  --destructive-foreground: 210 20% 96%;
+  --border: 217 23% 24%;
+  --input: 217 23% 24%;
+  --ring: 199 74% 60%;
+
+  --sidebar-bg: 222 42% 10%;
+  --sidebar-fg: 210 20% 96%;
+  --sidebar-active-bg: 223 40% 18%;
+  --sidebar-active-fg: 199 74% 72%;
+  --sidebar-hover-bg: 218 29% 16%;
+  --sidebar-border: 217 23% 22%;
+  --sidebar-icon: 215 16% 70%;
+
+  --status-applied: 204 82% 70%;
+  --status-applied-bg: 221 39% 19%;
+  --status-shortlisted: 42 94% 64%;
+  --status-shortlisted-bg: 38 48% 20%;
+  --status-interview: 269 85% 72%;
+  --status-interview-bg: 269 32% 20%;
+  --status-selected: 142 67% 61%;
+  --status-selected-bg: 142 36% 18%;
+  --status-rejected: 0 83% 69%;
+  --status-rejected-bg: 0 33% 20%;
+  --status-pending: 215 18% 71%;
+  --status-pending-bg: 217 22% 19%;
+
+  --ai-gradient-from: 223 58% 46%;
+  --ai-gradient-to: 198 74% 62%;
+  --ai-bubble-bg: 221 35% 18%;
+  --ai-bubble-fg: 210 20% 96%;
+  --ai-thinking: 216 15% 44%;
+
+  --surface-1: 222 31% 14%;
+  --surface-2: 222 39% 11%;
+  --surface-3: 220 30% 18%;
+  --surface-elevated: 220 28% 16%;
+
+  --badge-basic: 215 16% 70%;
+  --badge-company: 204 82% 70%;
+  --badge-premium: 45 94% 64%;
+  --badge-skilled: 142 67% 61%;
+
+  color-scheme: dark;
+}
+
 /* ── BASE STYLES ── */
 * {
   border-color: hsl(var(--border));
 }
 
 body {
+  margin: 0;
+  padding: 0;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans), system-ui, sans-serif;

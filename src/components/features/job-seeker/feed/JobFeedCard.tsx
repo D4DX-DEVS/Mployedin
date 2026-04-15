@@ -138,6 +138,9 @@ export const JobFeedCard = memo(function JobFeedCard({
   showMatchScore = true,
 }: JobCardProps) {
   const company = job.employerId?.companyName ?? "Company";
+  const companyHref = job.employerId?._id
+    ? `/${locale}/job-seeker/companies/${job.employerId._id}`
+    : null;
   const palette = logoPalette(company);
   const logo = initials(company);
   const urgent = isUrgentJob(job.expiresAt);
@@ -180,9 +183,18 @@ export const JobFeedCard = memo(function JobFeedCard({
               >
                 {job.title}
               </Link>
-              <p className="mt-1 text-sm text-muted-foreground truncate">
-                {company}
-              </p>
+              {companyHref ? (
+                <Link
+                  href={companyHref}
+                  className="mt-1 inline-flex max-w-full text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+                >
+                  <span className="truncate">{company}</span>
+                </Link>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground truncate">
+                  {company}
+                </p>
+              )}
             </div>
 
             <div className="flex shrink-0 items-start gap-3">
@@ -194,16 +206,35 @@ export const JobFeedCard = memo(function JobFeedCard({
                 </span>
               )}
 
-              <div
-                className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-semibold shadow-sm ${palette.bg} ${palette.text}`}
-              >
-                {job.employerId?.logo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={job.employerId.logo} alt={`${company} logo`} className="h-full w-full rounded-2xl object-cover" />
-                ) : (
-                  logo
-                )}
-              </div>
+              {companyHref ? (
+                <Link
+                  href={companyHref}
+                  aria-label={`View ${company}`}
+                  className="transition-transform hover:scale-[1.02]"
+                >
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-semibold shadow-sm ${palette.bg} ${palette.text}`}
+                  >
+                    {job.employerId?.logo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={job.employerId.logo} alt={`${company} logo`} className="h-full w-full rounded-2xl object-cover" />
+                    ) : (
+                      logo
+                    )}
+                  </div>
+                </Link>
+              ) : (
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xs font-semibold shadow-sm ${palette.bg} ${palette.text}`}
+                >
+                  {job.employerId?.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={job.employerId.logo} alt={`${company} logo`} className="h-full w-full rounded-2xl object-cover" />
+                  ) : (
+                    logo
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

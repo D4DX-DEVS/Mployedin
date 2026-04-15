@@ -41,6 +41,7 @@ SEO Health Score at start: **32/100**
 
 ## Low Priority (future)
 
+- [x] Set `NEXT_PUBLIC_APP_URL` in Vercel environment variables ✓
 - [ ] Configure custom domain (`mployedin.com`) in Vercel dashboard
 - [ ] Switch root 307 redirect → 301 permanent
 - [ ] Build external brand signals (YouTube, LinkedIn, Reddit)

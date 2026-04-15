@@ -38,6 +38,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const status = searchParams.get("status") ?? "";
   const jobId = searchParams.get("jobId") ?? "";
   const search = searchParams.get("search")?.trim() ?? "";
+  const dateFrom = searchParams.get("dateFrom") ?? "";
+  const dateTo = searchParams.get("dateTo") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -73,9 +75,26 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (status) query.status = status;
   if (jobId) query.jobId = jobId;
 
+  // Date range filter on appliedAt
+  if (dateFrom || dateTo) {
+    const dateFilter: Record<string, Date> = {};
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      if (!isNaN(from.getTime())) dateFilter.$gte = from;
+    }
+    if (dateTo) {
+      const to = new Date(dateTo);
+      if (!isNaN(to.getTime())) {
+        to.setHours(23, 59, 59, 999);
+        dateFilter.$lte = to;
+      }
+    }
+    if (Object.keys(dateFilter).length > 0) query.appliedAt = dateFilter;
+  }
+
   if (search) {
     const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const [matchingUsers, matchingJobs] = await Promise.all([
+    const [matchingUsers, matchingJobs, matchingEmployers] = await Promise.all([
       User.find({
         $or: [
           { name: { $regex: escapedSearch, $options: "i" } },
@@ -85,7 +104,16 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       jobId
         ? Promise.resolve([])
         : Job.find({ title: { $regex: escapedSearch, $options: "i" } }).select("_id").lean(),
+      Employer.find({ companyName: { $regex: escapedSearch, $options: "i" } }).select("_id").lean(),
     ]);
+
+    // Find jobs belonging to matching employers
+    let jobsByEmployer: Array<{ _id: unknown }> = [];
+    if (!jobId && matchingEmployers.length > 0) {
+      jobsByEmployer = await Job.find({
+        employerId: { $in: matchingEmployers.map((e) => e._id) },
+      }).select("_id").lean();
+    }
 
     const seekerClauses: Array<Record<string, unknown>> = [
       { fullName: { $regex: escapedSearch, $options: "i" } },
@@ -109,6 +137,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       searchClauses.push({ jobId: { $in: matchingJobs.map((job) => job._id) } });
     }
 
+    if (!jobId && jobsByEmployer.length > 0) {
+      searchClauses.push({ jobId: { $in: jobsByEmployer.map((j) => j._id) } });
+    }
+
     if (searchClauses.length === 0) {
       return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 } });
     }
@@ -122,7 +154,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .sort({ appliedAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("jobId", "title location salary category employerId")
+      .populate({
+        path: "jobId",
+        select: "title location salary category employerId",
+        populate: { path: "employerId", select: "companyName logo" },
+      })
       .populate({
         path: "jobSeekerId",
         select: "userId fullName skills currentLocation totalExperienceYears experience availabilityStatus profileCompleteness cv.originalUrl",

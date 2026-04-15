@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, useCallback, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { Bot, X, Send, Minimize2, Maximize2, History, Plus, Trash2, UserCheck, Expand, Shrink } from "lucide-react";
+import { Bot, X, Send, Minimize2, Maximize2, History, Plus, Trash2, UserCheck, Expand, Shrink, Mic, MicOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
 
 interface Message {
   role: "user" | "assistant";
@@ -121,6 +122,23 @@ export function ConversationalAI({
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  const {
+    isRecording,
+    isProcessing: isVoiceProcessing,
+    transcript: voiceTranscript,
+    startRecording,
+    stopRecording,
+    clearTranscript,
+  } = useVoiceInput({ language: "auto", mode: "autoSubmitOnStop", maxDurationMs: 60000 });
+
+  // Sync voice transcript into the text input
+  useEffect(() => {
+    if (voiceTranscript) {
+      setInput(voiceTranscript);
+      clearTranscript();
+    }
+  }, [voiceTranscript, clearTranscript]);
+
   useEffect(() => { setMounted(true); }, []);
 
   // Fetch profile summary for context indicator (job seekers only)
@@ -232,7 +250,9 @@ export function ConversationalAI({
         });
       }
 
-      // Persist conversation to DB
+      // Persist conversation to DB (only if AI returned a non-empty response)
+      if (!accumulated.trim()) return;
+
       const newMessages = [
         { role: "user" as const, content: userMsg.content },
         { role: "assistant" as const, content: accumulated },
@@ -479,11 +499,31 @@ export function ConversationalAI({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask me anything…"
+                  placeholder={isRecording ? "Recording…" : isVoiceProcessing ? "Transcribing…" : "Ask me anything…"}
                   className="min-h-[40px] max-h-[120px] resize-none text-sm"
                   rows={1}
-                  disabled={isStreaming}
+                  disabled={isStreaming || isRecording || isVoiceProcessing}
                 />
+                <button
+                  type="button"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={isVoiceProcessing || isStreaming}
+                  className={cn(
+                    "h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors",
+                    isRecording
+                      ? "bg-red-500 hover:bg-red-600 text-white animate-pulse"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40"
+                  )}
+                  title={isRecording ? "Stop recording" : "Voice input"}
+                >
+                  {isVoiceProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isRecording ? (
+                    <MicOff className="h-4 w-4" />
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
+                </button>
                 <Button
                   size="icon"
                   className="h-10 w-10 shrink-0 bg-primary hover:bg-primary/90"
