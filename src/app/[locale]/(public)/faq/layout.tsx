@@ -10,8 +10,8 @@ export async function generateMetadata({
   return {
     title: isAr ? "الأسئلة الشائعة | MPLOYEDIN" : "FAQ – Frequently Asked Questions | MPLOYEDIN",
     description: isAr
-      ? "إجابات على أكثر الأسئلة شيوعاً حول منصة MPLOYEDIN للتوظيف الذكي في الخليج"
-      : "Answers to common questions about MPLOYEDIN — the AI-powered recruitment platform for the Gulf region.",
+      ? "إجابات على أكثر الأسئلة شيوعاً حول منصة MPLOYEDIN للتوظيف الذكي العالمي"
+      : "Answers to common questions about MPLOYEDIN — the AI-powered international recruitment platform.",
   };
 }
 

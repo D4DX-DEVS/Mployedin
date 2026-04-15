@@ -20,7 +20,7 @@ export async function generateMetadata({
       template: "%s | MPLOYEDIN",
       default: "MPLOYEDIN — AI-Powered Recruitment",
     },
-    description: "AI-Powered International Recruitment Platform for the Gulf region",
+    description: "AI-Powered International Recruitment Platform connecting employers and top talent worldwide.",
     metadataBase: new URL(BASE_URL),
     alternates: {
       canonical: url,
@@ -36,16 +36,16 @@ export async function generateMetadata({
       type: "website",
       images: [
         {
-          url: "/og-image.png",
+          url: "/og-image.jpg",
           width: 1200,
           height: 630,
-          alt: "MPLOYEDIN — AI-Powered Recruitment for the Gulf",
+          alt: "MPLOYEDIN — AI-Powered International Recruitment Platform",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      images: ["/og-image.png"],
+      images: ["/og-image.jpg"],
     },
   };
 }

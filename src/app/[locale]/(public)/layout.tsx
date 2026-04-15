@@ -13,8 +13,8 @@ const organizationSchema = {
   url: BASE_URL,
   logo: `${BASE_URL}/logo.png`,
   description:
-    "AI-Powered International Recruitment Platform for the Gulf region",
-  areaServed: ["SA", "AE", "KW", "QA", "BH", "OM"],
+    "AI-Powered International Recruitment Platform connecting employers and top talent worldwide.",
+  areaServed: "Worldwide",
 };
 
 const websiteSchema = {
@@ -36,7 +36,7 @@ const softwareSchema = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:
-    "AI-powered recruitment platform connecting Gulf employers with international candidates",
+    "AI-powered recruitment platform connecting employers with top talent worldwide.",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
 };
 

@@ -10,8 +10,8 @@ export async function generateMetadata({
   return {
     title: isAr ? "تواصل معنا | MPLOYEDIN" : "Contact Us | MPLOYEDIN",
     description: isAr
-      ? "تواصل مع فريق MPLOYEDIN — نحن هنا للمساعدة في احتياجات التوظيف الخاصة بك في الخليج"
-      : "Get in touch with the MPLOYEDIN team. We're here to help with your Gulf region recruitment needs.",
+      ? "تواصل مع فريق MPLOYEDIN — نحن هنا للمساعدة في احتياجات التوظيف الخاصة بك حول العالم"
+      : "Get in touch with the MPLOYEDIN team. We're here to help with your international recruitment needs.",
   };
 }
 

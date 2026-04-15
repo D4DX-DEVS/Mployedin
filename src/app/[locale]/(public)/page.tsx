@@ -13,11 +13,11 @@ export async function generateMetadata({
   const isAr = locale === "ar";
   return {
     title: isAr
-      ? "MPLOYEDIN — منصة التوظيف الذكية للخليج"
-      : "Gulf Recruitment Platform – Hire Top International Talent | MPLOYEDIN",
+      ? "MPLOYEDIN — منصة التوظيف الذكية العالمية"
+      : "AI-Powered International Recruitment Platform – Hire Top Talent Worldwide | MPLOYEDIN",
     description: isAr
-      ? "منصة توظيف دولية مدعومة بالذكاء الاصطناعي لمنطقة الخليج — ابحث عن المواهب واتخذ قرارات توظيف مبنية على البيانات"
-      : "AI-powered international recruitment platform for the Gulf region. Discover top candidates, streamline hiring, and make data-driven decisions.",
+      ? "منصة توظيف دولية مدعومة بالذكاء الاصطناعي — ابحث عن أفضل المواهب حول العالم واتخذ قرارات توظيف مبنية على البيانات"
+      : "AI-powered international recruitment platform connecting employers with top talent worldwide. Discover candidates, streamline hiring, and make data-driven decisions.",
   };
 }
 

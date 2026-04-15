@@ -10,8 +10,8 @@ export async function generateMetadata({
   return {
     title: isAr ? "مدونة MPLOYEDIN — رؤى سوق العمل الخليجي" : "Blog – Gulf Recruitment Insights | MPLOYEDIN",
     description: isAr
-      ? "آخر الرؤى والاتجاهات في سوق العمل الخليجي، ونصائح التوظيف، وأخبار الموارد البشرية"
-      : "Latest Gulf job market trends, recruitment tips, AI hiring insights, and HR news from the MPLOYEDIN team.",
+      ? "آخر الرؤى والاتجاهات في سوق العمل العالمي، ونصائح التوظيف الذكي، وأخبار الموارد البشرية"
+      : "Latest global job market trends, recruitment tips, AI hiring insights, and HR news from the MPLOYEDIN team.",
   };
 }
 

@@ -68,7 +68,8 @@
       "Bash(cp \"C:/Users/moham/Downloads/favicon.ico\" \"C:/Users/moham/OneDrive/Desktop/Mployedin/mployedin/src/app/favicon.ico\")",
       "Bash(grep -n \"withAuth\\\\|getServerSession\\\\|auth\\(\\)\\\\|export.*GET\\\\|export.*POST\\\\|export.*PATCH\\\\|export.*DELETE\" src/app/api/jobs/[id]/similar/route.ts src/app/api/jobs/[id]/track-view/route.ts)",
       "Bash(python \"C:\\\\Users\\\\moham\\\\.claude\\\\skills\\\\seo\\\\scripts\\\\fetch_page.py\" \"https://mployedin.vercel.app/\")",
-      "WebFetch(domain:mployedin.vercel.app)"
+      "WebFetch(domain:mployedin.vercel.app)",
+      "Bash(python3:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
