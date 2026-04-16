@@ -44,6 +44,7 @@ export function SearchableSelect({
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const selectedLabel = options.find((o) => o.value === value)?.label;
+  const triggerLabel = selectedLabel || placeholder;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -55,14 +56,19 @@ export function SearchableSelect({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-lg border border-border/60 bg-background px-3 py-2 text-sm shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-10 w-full items-center gap-2 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",
             className
           )}
         >
-          <span className={cn("line-clamp-1 text-left", !selectedLabel && "text-muted-foreground")}>
-            {selectedLabel ?? placeholder}
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate text-left",
+              !selectedLabel && "text-muted-foreground"
+            )}
+          >
+            {triggerLabel}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-40" />
         </button>
       </PopoverTrigger>
       <PopoverContent

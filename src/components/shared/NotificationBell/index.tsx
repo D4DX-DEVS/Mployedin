@@ -53,7 +53,23 @@ export function NotificationBell({ locale }: NotificationBellProps) {
       setUnreadCount(0);
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {
-      // silent fail  
+      // silent fail
+    }
+  }
+
+  async function markOneRead(id: string) {
+    try {
+      await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [id] }),
+      });
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch {
+      // silent fail
     }
   }
 
@@ -68,9 +84,9 @@ export function NotificationBell({ locale }: NotificationBellProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative h-8 w-8">
-          <Bell className="h-4 w-4" />
+          <Bell className={`h-4 w-4 ${unreadCount > 0 ? "text-brand-blue" : ""}`} />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-blue text-[10px] font-bold text-white">
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -97,15 +113,15 @@ export function NotificationBell({ locale }: NotificationBellProps) {
             notifications.map((n) => (
               <div
                 key={n._id}
-                className={`px-4 py-3 border-b border-border last:border-0 hover:bg-muted/40 cursor-pointer ${
-                  !n.isRead ? "bg-brand-blue/5" : ""
+                onClick={() => !n.isRead && markOneRead(n._id)}
+                className={`relative px-4 py-3 border-b border-border last:border-0 hover:bg-muted/40 cursor-pointer transition-colors ${
+                  !n.isRead ? "bg-blue-50 dark:bg-blue-950/20" : ""
                 }`}
               >
-                <p
-                  className={`text-sm font-medium ${
-                    !n.isRead ? "text-foreground" : "text-muted-foreground"
-                  }`}
-                >
+                {!n.isRead && (
+                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-blue-500" />
+                )}
+                <p className={`text-sm font-medium ${!n.isRead ? "text-foreground" : "text-muted-foreground"}`}>
                   {n.title}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">

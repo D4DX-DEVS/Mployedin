@@ -1,14 +1,20 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Inbox } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { CalendarClock, ShieldCheck, Trophy, Users2 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import {
+  SuperAgentDataTableShell,
+  SuperAgentEmptyState,
+  SuperAgentMetricsGrid,
+  SuperAgentPageIntro,
+  SuperAgentSection,
+} from "@/components/features/super-agent/WorkspacePage";
 
 interface Placement {
   _id: string;
@@ -37,57 +43,118 @@ export default function SuperAgentPlacementsPage() {
       updateTotal(data.total ?? data.totalCount ?? ((data.totalPages ?? 1) * limit));
     }
     setLoading(false);
-  }, [page, limit]);
+  }, [page, limit, updateTotal]);
 
   useEffect(() => { fetchPlacements(); }, [fetchPlacements]);
 
+  const upcomingStarts = useMemo(() => placements.filter((placement) => {
+    if (!placement.startDate) return false;
+    const start = new Date(placement.startDate).getTime();
+    if (Number.isNaN(start)) return false;
+    const now = Date.now();
+    const twoWeeks = 14 * 24 * 60 * 60 * 1000;
+    return start >= now && start <= now + twoWeeks;
+  }).length, [placements]);
+
+  const employerCount = useMemo(
+    () => new Set(placements.map((placement) => placement.employerId?.companyName).filter(Boolean)).size,
+    [placements]
+  );
+
+  const kpis = [
+    {
+      label: "Placements",
+      value: placements.length,
+      helper: "Visible placement records returned for the current page.",
+      icon: <Trophy className="h-5 w-5" />,
+      toneClassName: "bg-sky-50 text-sky-600",
+    },
+    {
+      label: "Upcoming Starts",
+      value: upcomingStarts,
+      helper: "Candidates scheduled to start within the next two weeks.",
+      icon: <CalendarClock className="h-5 w-5" />,
+      toneClassName: "bg-emerald-50 text-emerald-600",
+    },
+    {
+      label: "Active Statuses",
+      value: placements.filter((placement) => placement.status === "active" || placement.status === "placed").length,
+      helper: "Visible placements already marked active or fully placed.",
+      icon: <ShieldCheck className="h-5 w-5" />,
+      toneClassName: "bg-indigo-50 text-indigo-600",
+    },
+    {
+      label: "Employers",
+      value: employerCount,
+      helper: "Distinct employer accounts represented in the current placement list.",
+      icon: <Users2 className="h-5 w-5" />,
+      toneClassName: "bg-amber-50 text-amber-600",
+    },
+  ];
+
   return (
-    <div className="page-container">
-      <PageHeader title="Placements" description="Track successful candidate placements made by your team" />
+    <div className="page-container space-y-6">
+      <SuperAgentPageIntro
+        title="Placements"
+        description="Track successful candidate placements made by your team, monitor start timing, and keep employer delivery visible from one polished review surface."
+        summaryTitle="Placement flow"
+        summaryDescription="This page keeps the existing placements endpoint and pagination logic intact while moving the UI onto the modern workspace pattern."
+      />
 
-      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead>Candidate</TableHead>
-              <TableHead>Job</TableHead>
-              <TableHead>Employer</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Start Date</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  {Array.from({ length: 5 }).map((_, j) => (
-                    <TableCell key={j}><div className="h-4 w-3/4 rounded bg-muted animate-pulse" /></TableCell>
-                  ))}
+      <SuperAgentMetricsGrid items={kpis} />
+
+      <SuperAgentSection
+        eyebrow="Placements"
+        title="Review successful hiring outcomes"
+        description="Use the same data and status badges, now presented in the updated super-agent table shell."
+      >
+        <SuperAgentDataTableShell>
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-slate-200 bg-slate-50/80 hover:bg-slate-50/80">
+                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Candidate</TableHead>
+                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Job</TableHead>
+                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Employer</TableHead>
+                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status</TableHead>
+                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Start Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="border-slate-100">
+                    {Array.from({ length: 5 }).map((_, j) => (
+                      <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" /></TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : placements.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="p-0">
+                    <SuperAgentEmptyState
+                      icon={<Trophy className="h-7 w-7" />}
+                      title="No placements yet"
+                      description="Placements will appear here once your team closes successful hires."
+                    />
+                  </TableCell>
                 </TableRow>
-              ))
-            ) : placements.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="py-12 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <Inbox className="h-8 w-8 text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground">No placements yet</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : placements.map((p) => (
-              <TableRow key={p._id}>
-                <TableCell className="font-medium">{p.jobSeekerId?.fullName ?? "—"}</TableCell>
-                <TableCell className="text-foreground/80">{p.jobId?.title ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{p.employerId?.companyName ?? "—"}</TableCell>
-                <TableCell><StatusBadge status={p.status} /></TableCell>
-                <TableCell className="text-muted-foreground">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+              ) : placements.map((p) => (
+                <TableRow key={p._id} className="border-slate-100 hover:bg-sky-50/30">
+                  <TableCell className="py-4 font-medium text-slate-950">{p.jobSeekerId?.fullName ?? "—"}</TableCell>
+                  <TableCell className="py-4 text-slate-700">{p.jobId?.title ?? "—"}</TableCell>
+                  <TableCell className="py-4 text-slate-500">{p.employerId?.companyName ?? "—"}</TableCell>
+                  <TableCell className="py-4"><StatusBadge status={p.status} /></TableCell>
+                  <TableCell className="py-4 text-slate-500">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </SuperAgentDataTableShell>
 
-      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+        <div className="mt-4">
+          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+        </div>
+      </SuperAgentSection>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import Employer from "@/models/Employer";
 import User from "@/models/User";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import { sendMail } from "@/lib/email/mailer";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import { applicationConfirmationEmail, newApplicantAlertEmail } from "@/lib/email/templates";
 
 /**
@@ -18,14 +19,12 @@ import { applicationConfirmationEmail, newApplicantAlertEmail } from "@/lib/emai
  * Fires an ActivityEvent (priority 1).
  */
 export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const jobId = params?.id;
-  if (!jobId) {
-    return NextResponse.json({ error: "Missing job id" }, { status: 400 });
-  }
+  const jobId = params!.id;
 
   await connectDB();
 

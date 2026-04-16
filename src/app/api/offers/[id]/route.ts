@@ -10,6 +10,7 @@ import { validateBody } from "@/lib/validators";
 import { offerRespondSchema } from "@/lib/validators/offers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -20,6 +21,7 @@ interface AuthCtx {
 
 // GET /api/offers/[id] — get single offer
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
   const offer = await Offer.findById(params?.id).populate("jobId", "title location").lean();
@@ -43,6 +45,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
 // PATCH /api/offers/[id] — job seeker responds to offer
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
   const offer = await Offer.findById(params?.id);
@@ -113,6 +116,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
 // DELETE /api/offers/[id] — employer withdraws offer
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
   const offer = await Offer.findById(params?.id);

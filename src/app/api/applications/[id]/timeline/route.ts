@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import AuditLog from "@/models/AuditLog";
 import { Employer } from "@/models/Employer";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -11,6 +12,7 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
 // GET /api/applications/[id]/timeline
 // Returns audit log entries for the given application, ordered newest-first.
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
   const application = await Application.findById(params?.id).select("employerId jobSeekerId").lean();

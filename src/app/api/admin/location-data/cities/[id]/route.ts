@@ -6,6 +6,7 @@ import type { UserRole } from "@/models/User";
 import City from "@/models/City";
 import { validateBody } from "@/lib/validators";
 import { cityUpdateSchema } from "@/lib/validators/location-data";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 interface AuthCtx {
   userId: string;
@@ -26,6 +27,7 @@ function slugify(str: string): string {
 /* ── GET /api/admin/location-data/cities/[id] ────────────────────────── */
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
   const { id } = params ?? {};
+  if (!isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const item = await City.findById(id)
     .populate({
@@ -41,6 +43,7 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
 /* ── PATCH /api/admin/location-data/cities/[id] ──────────────────────── */
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   const { id } = params ?? {};
+  if (!isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
   const item = await City.findById(id);
@@ -82,6 +85,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 /* ── DELETE /api/admin/location-data/cities/[id] ─────────────────────── */
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   const { id } = params ?? {};
+  if (!isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
   const item = await City.findById(id);

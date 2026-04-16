@@ -5,11 +5,14 @@ import { Employer } from "@/models/Employer";
 import { JobTemplate } from "@/models/JobTemplate";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 // GET /api/employers/job-templates/[id] — get single template by id
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
   if (ctx.role !== "employer") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -36,6 +39,8 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
 // DELETE /api/employers/job-templates/[id] — delete template by id
 async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
   if (ctx.role !== "employer") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

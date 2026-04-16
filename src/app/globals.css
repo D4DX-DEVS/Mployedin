@@ -121,6 +121,8 @@
   --surface-3: 204 70% 95%;
   /* tinted */
   --surface-elevated: 0 0% 100%;
+  --workspace-shadow-hero: 0 24px 60px -36px hsl(var(--brand-blue) / 0.3);
+  --workspace-shadow-panel: 0 24px 60px -46px rgba(15, 23, 42, 0.35);
 
   /* ── VERIFICATION BADGE COLORS ── */
   --badge-basic: 215 16% 47%;
@@ -184,6 +186,8 @@
   --surface-2: 222 39% 11%;
   --surface-3: 220 30% 18%;
   --surface-elevated: 220 28% 16%;
+  --workspace-shadow-hero: 0 28px 80px -44px rgba(8, 47, 73, 0.5);
+  --workspace-shadow-panel: 0 24px 60px -42px rgba(2, 6, 23, 0.68);
 
   --badge-basic: 215 16% 70%;
   --badge-company: 204 82% 70%;
@@ -191,6 +195,71 @@
   --badge-skilled: 142 67% 61%;
 
   color-scheme: dark;
+}
+
+.theme-light {
+  --brand-text: 224 33% 18%;
+  --brand-muted: 218 15% 46%;
+
+  --background: 210 20% 97%;
+  --foreground: 224 33% 18%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 33% 18%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 33% 18%;
+  --primary: 223 58% 37%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 22% 95%;
+  --secondary-foreground: 224 33% 18%;
+  --muted: 210 22% 95%;
+  --muted-foreground: 218 15% 46%;
+  --accent: 204 70% 95%;
+  --accent-foreground: 224 33% 18%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214 26% 88%;
+  --input: 214 26% 88%;
+  --ring: 223 58% 37%;
+
+  --surface-1: 0 0% 100%;
+  --surface-2: 210 20% 97%;
+  --surface-3: 204 70% 95%;
+  --surface-elevated: 0 0% 100%;
+
+  --sidebar-bg: 0 0% 100%;
+  --sidebar-fg: 224 71% 4%;
+  --sidebar-active-bg: 204 70% 95%;
+  --sidebar-active-fg: 223 58% 37%;
+  --sidebar-hover-bg: 210 20% 97%;
+  --sidebar-border: 214 26% 88%;
+  --sidebar-icon: 218 15% 46%;
+
+  --status-applied: 223 58% 37%;
+  --status-applied-bg: 204 70% 95%;
+  --status-shortlisted: 38 92% 50%;
+  --status-shortlisted-bg: 38 100% 94%;
+  --status-interview: 271 81% 56%;
+  --status-interview-bg: 271 100% 96%;
+  --status-selected: 142 71% 45%;
+  --status-selected-bg: 142 76% 94%;
+  --status-rejected: 0 72% 51%;
+  --status-rejected-bg: 0 100% 96%;
+  --status-pending: 215 16% 47%;
+  --status-pending-bg: 210 40% 96%;
+
+  --ai-gradient-from: 223 58% 37%;
+  --ai-gradient-to: 198 74% 60%;
+  --ai-bubble-bg: 204 70% 95%;
+  --ai-bubble-fg: 223 58% 24%;
+  --ai-sparkle: 199 74% 58%;
+  --ai-thinking: 215 16% 80%;
+
+  --badge-basic: 215 16% 47%;
+  --badge-company: 223 58% 37%;
+  --badge-premium: 45 93% 47%;
+  --badge-skilled: 142 71% 45%;
+
+  color-scheme: light;
 }
 
 /* ── BASE STYLES ── */
@@ -475,13 +544,13 @@ body {
     border-color: hsl(var(--status-selected) / 0.18);
   }
 
-  .dashboard-shell-employer {
+  .dashboard-shell-workspace {
     background:
       radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.07), transparent 18%),
       linear-gradient(180deg, hsl(var(--surface-2)), hsl(var(--secondary) / 0.96));
   }
 
-  .dashboard-shell-employer .dashboard-topbar-employer {
+  .dashboard-shell-workspace .dashboard-topbar-workspace {
     border-bottom-color: hsl(var(--border) / 0.82);
     background:
       linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--card) / 0.84));
@@ -489,21 +558,37 @@ body {
     box-shadow: 0 22px 60px -46px rgba(15, 23, 42, 0.34);
   }
 
-  .dashboard-shell-employer .dashboard-main-employer {
+  .dashboard-shell-workspace .dashboard-main-workspace {
     background:
       radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.1), transparent 22%),
       radial-gradient(circle at top right, hsl(var(--brand-blue-light) / 0.08), transparent 18%),
       linear-gradient(180deg, hsl(var(--surface-2) / 0.96), hsl(var(--secondary) / 0.94));
   }
 
-  .dashboard-shell-employer .page-container {
+  .dashboard-shell-workspace .page-container {
     max-width: 1440px;
     padding-top: 1.75rem;
     padding-bottom: 2.5rem;
     gap: 1.75rem;
   }
 
-  .dashboard-shell-employer .card-base {
+  .dashboard-shell-admin .admin-cms-page-container {
+    padding-inline: 1.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .dashboard-shell-admin .admin-cms-page-container {
+      padding-inline: 2.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .dashboard-shell-admin .admin-cms-page-container {
+      padding-inline: 3.25rem;
+    }
+  }
+
+  .dashboard-shell-workspace .card-base {
     border-radius: 1.5rem;
     border-color: hsl(var(--border) / 0.88);
     background:
@@ -511,23 +596,291 @@ body {
     box-shadow: 0 28px 70px -52px rgba(15, 23, 42, 0.42);
   }
 
-  .dashboard-shell-employer .card-base:hover {
+  .dashboard-shell-workspace .card-base:hover {
     box-shadow: 0 30px 76px -52px hsl(var(--brand-blue) / 0.34);
   }
 
-  .dashboard-shell-employer .page-header-root {
+  .dashboard-shell-workspace .page-header-root {
     gap: 0.9rem;
   }
 
-  .dashboard-shell-employer .page-header-title {
+  .dashboard-shell-workspace .page-header-title {
     color: hsl(var(--foreground));
     font-size: clamp(1.75rem, 2vw, 2.35rem);
     letter-spacing: -0.04em;
   }
 
-  .dashboard-shell-employer .page-header-description {
+  .dashboard-shell-workspace .page-header-description {
     max-width: 54rem;
     color: hsl(var(--muted-foreground) / 0.92);
+  }
+
+  .dashboard-shell-admin .page-header-root {
+    padding: 1.4rem 1.5rem;
+    border: 1px solid hsl(var(--border) / 0.82);
+    border-radius: 1.75rem;
+    background:
+      radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.16), transparent 38%),
+      linear-gradient(135deg, hsl(var(--card) / 0.98), hsl(var(--surface-3) / 0.92));
+    box-shadow: 0 24px 60px -40px hsl(var(--brand-blue) / 0.24);
+  }
+
+  .dashboard-shell-admin .page-header-actions {
+    align-self: center;
+  }
+
+  .dashboard-shell-admin .page-header-title {
+    font-size: clamp(1.9rem, 2vw, 2.5rem);
+  }
+
+  .dashboard-shell-admin .page-header-description {
+    max-width: 48rem;
+  }
+
+  .workspace-hero-surface {
+    border: 1px solid hsl(var(--border) / 0.78);
+    background:
+      radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.18), transparent 38%),
+      linear-gradient(135deg, hsl(var(--card) / 0.98), hsl(var(--surface-3) / 0.92));
+    box-shadow: var(--workspace-shadow-hero);
+  }
+
+  .workspace-glass-panel {
+    border: 1px solid hsl(var(--border) / 0.76);
+    background: hsl(var(--card) / 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .workspace-panel-surface {
+    border: 1px solid hsl(var(--border) / 0.84);
+    background: linear-gradient(180deg, hsl(var(--card) / 0.97), hsl(var(--surface-elevated) / 0.94));
+    box-shadow: var(--workspace-shadow-panel);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .workspace-subtle-surface {
+    border: 1px solid hsl(var(--border) / 0.78);
+    background: hsl(var(--secondary) / 0.62);
+  }
+
+  .workspace-muted-pill {
+    border: 1px solid hsl(var(--border) / 0.76);
+    background: hsl(var(--secondary) / 0.64);
+    color: hsl(var(--muted-foreground));
+  }
+
+  .workspace-empty-state {
+    border: 1px dashed hsl(var(--border));
+    background: hsl(var(--secondary) / 0.52);
+  }
+
+  .workspace-tone-sky {
+    background: hsl(var(--status-applied-bg));
+    color: hsl(var(--status-applied));
+  }
+
+  .workspace-tone-emerald {
+    background: hsl(var(--status-selected-bg));
+    color: hsl(var(--status-selected));
+  }
+
+  .workspace-tone-indigo,
+  .workspace-tone-violet {
+    background: hsl(var(--status-interview-bg));
+    color: hsl(var(--status-interview));
+  }
+
+  .workspace-tone-amber {
+    background: hsl(var(--status-shortlisted-bg));
+    color: hsl(var(--status-shortlisted));
+  }
+
+  .workspace-tone-rose {
+    background: hsl(var(--status-rejected-bg));
+    color: hsl(var(--status-rejected));
+  }
+
+  .agent-legacy-hero {
+    border: 1px solid hsl(var(--border) / 0.78);
+    background:
+      radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.18), transparent 38%),
+      linear-gradient(135deg, hsl(var(--card) / 0.98), hsl(var(--surface-3) / 0.92));
+    box-shadow: var(--workspace-shadow-hero);
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-slate-950"] {
+    color: hsl(var(--foreground));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-slate-900"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-slate-800"] {
+    color: hsl(var(--foreground));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-slate-700"] {
+    color: hsl(var(--foreground) / 0.84);
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-slate-600"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-slate-500"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-slate-300"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-slate-400"] {
+    color: hsl(var(--muted-foreground));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="border-slate-200"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="border-slate-300"] {
+    border-color: hsl(var(--border));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="border-sky-100"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="border-sky-200"] {
+    border-color: hsl(var(--border));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="border-white/80"] {
+    border-color: hsl(var(--border) / 0.76);
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-white/95"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-white/90"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-white/80"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-white/70"] {
+    background: hsl(var(--card) / 0.88);
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-white"] {
+    background: hsl(var(--card));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-slate-50/80"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-slate-50/75"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-slate-50/70"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-slate-50"] {
+    background: hsl(var(--secondary) / 0.66);
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-slate-100"] {
+    background: hsl(var(--secondary) / 0.74);
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-sky-50"] {
+    background: hsl(var(--status-applied-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-blue-50"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-blue-100"] {
+    background: hsl(var(--status-applied-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-emerald-50"] {
+    background: hsl(var(--status-selected-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-green-50"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-green-100"] {
+    background: hsl(var(--status-selected-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-indigo-50"] {
+    background: hsl(var(--status-interview-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-amber-50"] {
+    background: hsl(var(--status-shortlisted-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-yellow-50"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-orange-50"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-amber-100"] {
+    background: hsl(var(--status-shortlisted-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-rose-50"] {
+    background: hsl(var(--status-rejected-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-red-50"] {
+    background: hsl(var(--status-rejected-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-red-100"] {
+    background: hsl(var(--status-rejected-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="bg-purple-100"] {
+    background: hsl(var(--status-interview-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-sky-700"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-sky-600"] {
+    color: hsl(var(--status-applied));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-blue-700"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-blue-600"] {
+    color: hsl(var(--status-applied));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-emerald-600"] {
+    color: hsl(var(--status-selected));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-green-700"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-green-600"] {
+    color: hsl(var(--status-selected));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-indigo-600"] {
+    color: hsl(var(--status-interview));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-purple-700"] {
+    color: hsl(var(--status-interview));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-amber-600"] {
+    color: hsl(var(--status-shortlisted));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-amber-700"] {
+    color: hsl(var(--status-shortlisted));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-rose-600"] {
+    color: hsl(var(--status-rejected));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-red-700"],
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="text-red-600"] {
+    color: hsl(var(--status-rejected));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="hover:bg-white"]:hover {
+    background: hsl(var(--card));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="hover:bg-sky-100"]:hover,
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="hover:bg-sky-50"]:hover {
+    background: hsl(var(--status-applied-bg));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="hover:bg-slate-100"]:hover,
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="hover:bg-slate-50"]:hover,
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="hover:bg-slate-50/70"]:hover,
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="hover:bg-slate-50/80"]:hover {
+    background: hsl(var(--secondary) / 0.74);
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="hover:border-slate-300"]:hover,
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="hover:border-sky-200"]:hover {
+    border-color: hsl(var(--border));
+  }
+
+  :is(.agent-legacy-surface, .super-agent-legacy-surface) [class~="hover:text-sky-700"]:hover {
+    color: hsl(var(--status-applied));
   }
 }
 
@@ -563,13 +916,13 @@ body {
 }
 
 .status-withdrawn {
-  background-color: hsl(210 40% 96%);
-  color: hsl(215 16% 47%);
+  background-color: hsl(var(--status-pending-bg));
+  color: hsl(var(--status-pending));
 }
 
 .status-draft {
-  background-color: hsl(210 40% 96%);
-  color: hsl(215 16% 47%);
+  background-color: hsl(var(--status-pending-bg));
+  color: hsl(var(--status-pending));
 }
 
 .status-active {
@@ -578,8 +931,8 @@ body {
 }
 
 .status-closed {
-  background-color: hsl(210 40% 96%);
-  color: hsl(215 16% 47%);
+  background-color: hsl(var(--status-pending-bg));
+  color: hsl(var(--status-pending));
 }
 
 .status-expired {
@@ -593,8 +946,8 @@ body {
 }
 
 .status-premium {
-  background-color: hsl(271 100% 96%);
-  color: hsl(271 81% 56%);
+  background-color: hsl(var(--status-interview-bg));
+  color: hsl(var(--status-interview));
 }
 
 /* ── FORM ELEMENT UTILITY CLASSES ── */

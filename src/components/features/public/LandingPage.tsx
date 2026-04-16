@@ -30,6 +30,7 @@ interface Banner {
   subtitle: string;
   subtitleAr: string;
   image: string;
+  imageMobile?: string;
   linkUrl: string;
   linkText: string;
   linkTextAr: string;
@@ -408,11 +409,16 @@ export default function LandingPage() {
 
                     <div className="mt-6 overflow-hidden rounded-[22px] border border-white/15 bg-white/10">
                       {activeBanner?.image ? (
-                        <img
-                          src={activeBanner.image}
-                          alt={isAr ? activeBanner.titleAr || activeBanner.title : activeBanner.title}
-                          className="h-56 w-full object-cover"
-                        />
+                        <picture data-testid="banner-picture">
+                          {activeBanner.imageMobile ? (
+                            <source media="(max-width: 768px)" srcSet={activeBanner.imageMobile} />
+                          ) : null}
+                          <img
+                            src={activeBanner.image}
+                            alt={isAr ? activeBanner.titleAr || activeBanner.title : activeBanner.title}
+                            className="h-56 w-full object-cover"
+                          />
+                        </picture>
                       ) : (
                         <div className="flex h-56 items-center justify-center bg-white/5 px-6 text-center text-sm text-white/75">
                           {t(

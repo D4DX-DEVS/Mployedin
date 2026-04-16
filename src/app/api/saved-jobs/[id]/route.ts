@@ -3,11 +3,13 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import SavedJob from "@/models/SavedJob";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 /**
  * DELETE /api/saved-jobs/[id] — unsave a job
  */
 export const DELETE = withAuth(async (req: NextRequest, ctx, params) => {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

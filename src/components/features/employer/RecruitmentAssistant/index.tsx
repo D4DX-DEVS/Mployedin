@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, Fragment } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -743,62 +745,51 @@ export function RecruitmentAssistant() {
 }
 
 // ─── Markdown renderer ─────────────────────────────────────────
-function renderInline(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**"))
-      return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
-    if (part.startsWith("*") && part.endsWith("*"))
-      return <em key={i}>{part.slice(1, -1)}</em>;
-    if (part.startsWith("`") && part.endsWith("`"))
-      return <code key={i} className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10">{part.slice(1, -1)}</code>;
-    return part;
-  });
-}
-
 function hasMalayalam(text: string): boolean {
   return /[\u0D00-\u0D7F]/.test(text);
 }
 
-function renderMarkdown(text: string) {
-  const blocks = text.split(/\n{2,}/);
-  return blocks.map((block, bi) => {
-    const indent = bi > 0 ? "mt-2" : "";
-    // Numbered list block
-    if (/^\d+\.\s/m.test(block)) {
-      const items = block.split(/\n/).filter(Boolean);
-      return (
-        <ol key={bi} className={`list-decimal list-inside space-y-0.5 ${indent}`}>
-          {items.map((item, ii) => (
-            <li key={ii}>{renderInline(item.replace(/^\d+\.\s*/, ""))}</li>
-          ))}
-        </ol>
-      );
-    }
-    // Bullet list block
-    if (/^[-•*]\s/m.test(block)) {
-      const items = block.split(/\n/).filter(Boolean);
-      return (
-        <ul key={bi} className={`list-disc list-inside space-y-0.5 ${indent}`}>
-          {items.map((item, ii) => (
-            <li key={ii}>{renderInline(item.replace(/^[-•*]\s*/, ""))}</li>
-          ))}
-        </ul>
-      );
-    }
-    // Normal paragraph with inline \n as <br />
-    const lines = block.split("\n");
-    return (
-      <p key={bi} className={indent}>
-        {lines.map((line, li) => (
-          <Fragment key={li}>
-            {li > 0 && <br />}
-            {renderInline(line)}
-          </Fragment>
-        ))}
-      </p>
-    );
-  });
+function AIMarkdown({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        h1: ({ ...props }) => <h1 className="text-base font-bold mt-3 mb-1" {...props} />,
+        h2: ({ ...props }) => <h2 className="text-sm font-bold mt-3 mb-1" {...props} />,
+        h3: ({ ...props }) => <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-3 mb-1" {...props} />,
+        p: ({ ...props }) => <p className="my-1 leading-relaxed" {...props} />,
+        ul: ({ ...props }) => <ul className="list-disc list-inside space-y-0.5 my-1" {...props} />,
+        ol: ({ ...props }) => <ol className="list-decimal list-inside space-y-0.5 my-1" {...props} />,
+        li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
+        strong: ({ ...props }) => <strong className="font-semibold" {...props} />,
+        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10" {...props} />,
+        a: ({ href, ...props }) => {
+          const isInternal = href?.startsWith("/");
+          return (
+            <a
+              href={href}
+              {...(!isInternal && { target: "_blank", rel: "noopener noreferrer" })}
+              className="text-primary underline underline-offset-2 hover:text-primary/80"
+              {...props}
+            />
+          );
+        },
+        table: ({ ...props }) => (
+          <div className="overflow-x-auto rounded-lg border border-border my-2">
+            <table className="w-full text-xs border-collapse" {...props} />
+          </div>
+        ),
+        thead: ({ ...props }) => <thead className="bg-muted/50" {...props} />,
+        th: ({ ...props }) => <th className="border-b border-border px-2.5 py-1.5 text-left font-semibold" {...props} />,
+        td: ({ ...props }) => <td className="border-t border-border px-2.5 py-1.5" {...props} />,
+        tr: ({ ...props }) => <tr {...props} />,
+        blockquote: ({ ...props }) => <blockquote className="border-l-2 border-primary/40 pl-3 text-muted-foreground my-1" {...props} />,
+        hr: () => <hr className="border-border my-2" />,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }
 
 // ─── Message bubble ──────────────────────────────────────────────
@@ -835,7 +826,7 @@ function MessageBubble({
         {displayContent ? (
           msg.role === "assistant" ? (
             <div className="prose-sm prose-p:my-0 prose-li:my-0">
-              {renderMarkdown(displayContent)}
+              <AIMarkdown content={displayContent} />
               {isLastAssistant && (
                 <span className="inline-block w-0.5 h-4 ml-0.5 bg-current opacity-60 animate-pulse align-middle" />
               )}

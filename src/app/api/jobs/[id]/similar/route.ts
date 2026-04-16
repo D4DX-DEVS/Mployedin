@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 /**
  * GET /api/jobs/[id]/similar
@@ -20,6 +21,7 @@ export async function GET(
   }
 
   const { id } = await params;
+  if (!isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
   const job = await Job.findById(id)

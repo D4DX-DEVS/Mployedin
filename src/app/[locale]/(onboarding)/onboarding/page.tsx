@@ -8,6 +8,7 @@ import { Check, ChevronRight, Loader2, X, Upload, Briefcase, GraduationCap, Spar
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Step0Data {
@@ -391,9 +392,16 @@ export default function JobSeekerOnboardingPage() {
         <div className="flex items-center gap-2">
           <Image src="/logo.png" alt="Mployedin" width={140} height={36} className="h-9 w-auto object-contain" />
         </div>
-        {userName && (
-          <span className="text-sm text-gray-600">Welcome, {userName}</span>
-        )}
+        <div className="flex items-center gap-3">
+          <div className="hidden text-right sm:block">
+            <p className="text-xs font-medium text-gray-600">App theme</p>
+            <p className="text-[11px] text-gray-400">Applies after onboarding</p>
+          </div>
+          <ThemeToggle />
+          {userName && (
+            <span className="text-sm text-gray-600">Welcome, {userName}</span>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-1 max-w-5xl mx-auto w-full px-4 py-10 gap-8">

@@ -55,7 +55,16 @@ export function Sidebar({
   const effectiveRole = userRole ?? sessionRole;
   const pendingApprovals = usePendingApprovalCount(effectiveRole);
   const isRtl = locale === "ar";
-  const isEmployerShell = effectiveRole === "employer";
+  const usesModernWorkspaceShell = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
+  const usesInlineWorkspaceSidebar = usesModernWorkspaceShell;
+  const workspaceLabel = effectiveRole === "super_agent"
+    ? "Super agent workspace"
+    : effectiveRole === "admin"
+      ? "Admin workspace"
+    : effectiveRole === "agent"
+      ? "Agent workspace"
+      : "Employer workspace";
+  const usesLightWorkspaceSidebar = effectiveRole === "employer";
   const userImage = session?.user?.image;
   const displayImage = companyLogo ?? userImage;
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
@@ -171,9 +180,44 @@ export function Sidebar({
     return pathname === href || pathname.startsWith(href + "/");
   }
 
-  function renderSubmenuLink(child: NavItem, variant: "inline" | "panel") {
+  function isActiveChildItem(childHref: string, siblingHrefs: string[]) {
+    if (pathname === childHref) {
+      return true;
+    }
+
+    if (!pathname.startsWith(childHref + "/")) {
+      return false;
+    }
+
+    return !siblingHrefs.some((href) => {
+      if (href === childHref) {
+        return false;
+      }
+
+      return pathname === href || pathname.startsWith(href + "/");
+    });
+  }
+
+  function renderSubmenuLink(child: NavItem, variant: "inline" | "panel", siblingHrefs: string[]) {
     const ChildIcon = getIcon(child.icon);
-    const isChildActive = isActive(child.href);
+    const isChildActive = isActiveChildItem(child.href, siblingHrefs);
+    const focusRingClass = usesLightWorkspaceSidebar
+      ? "focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70"
+      : "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35";
+    const inlineLinkClass = usesLightWorkspaceSidebar
+      ? isChildActive
+        ? "border-sky-100 bg-[linear-gradient(135deg,_rgba(14,165,233,0.14),_rgba(255,255,255,0.96))] text-slate-950 font-semibold shadow-[0_22px_42px_-32px_rgba(2,132,199,0.65)]"
+        : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-white hover:text-slate-900 hover:shadow-[0_18px_36px_-34px_rgba(15,23,42,0.5)] font-medium"
+      : isChildActive
+        ? "border-border bg-card/92 text-foreground font-semibold shadow-[0_22px_42px_-32px_rgba(2,132,199,0.35)]"
+        : "border-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-foreground hover:shadow-[0_18px_36px_-34px_rgba(15,23,42,0.24)] font-medium";
+    const inlineIconClass = usesLightWorkspaceSidebar
+      ? isChildActive
+        ? "text-sky-600"
+        : "text-slate-400 group-hover:text-sky-600"
+      : isChildActive
+        ? "text-primary"
+        : "text-muted-foreground group-hover:text-primary";
 
     return (
       <Link
@@ -183,18 +227,17 @@ export function Sidebar({
         onClick={() => onMobileClose?.()}
         className={cn(
           "flex items-center gap-3 transition-all duration-200 group relative overflow-hidden",
+          focusRingClass,
           variant === "inline"
             ? cn(
                 "rounded-2xl border px-3 py-2.5",
-                isChildActive
-                  ? "border-sky-100 bg-[linear-gradient(135deg,_rgba(14,165,233,0.14),_rgba(255,255,255,0.96))] text-slate-950 font-semibold shadow-[0_22px_42px_-32px_rgba(2,132,199,0.65)]"
-                  : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-white hover:text-slate-900 hover:shadow-[0_18px_36px_-34px_rgba(15,23,42,0.5)] font-medium"
+                inlineLinkClass
               )
             : cn(
                 "rounded-lg px-3 py-2.5",
                 isChildActive
-                  ? "bg-white text-primary font-bold shadow-sm ring-1 ring-border/50"
-                  : "text-sidebar-fg/70 hover:bg-white hover:text-sidebar-fg font-medium hover:shadow-sm hover:ring-1 hover:ring-border/50"
+                  ? "bg-card text-primary font-bold shadow-sm ring-1 ring-border/50"
+                  : "text-sidebar-fg/70 hover:bg-card hover:text-sidebar-fg font-medium hover:shadow-sm hover:ring-1 hover:ring-border/50"
               )
         )}
       >
@@ -210,9 +253,7 @@ export function Sidebar({
           className={cn(
             "h-[18px] w-[18px] shrink-0 transition-colors",
             variant === "inline"
-              ? isChildActive
-                ? "text-sky-600"
-                : "text-slate-400 group-hover:text-sky-600"
+              ? inlineIconClass
               : isChildActive
                 ? "text-primary"
                 : "text-muted-foreground group-hover:text-brand-blue"
@@ -230,27 +271,34 @@ export function Sidebar({
 
   const primarySidebar = (
     <div
+      data-sidebar-tone={usesLightWorkspaceSidebar ? "light" : "theme-aware"}
       className={cn(
         "h-full flex flex-col z-20 shrink-0",
-        isEmployerShell
-          ? "w-[216px] border-r border-sky-100/80 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_52%),linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(239,246,255,0.9))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.55)] backdrop-blur-xl"
+        usesModernWorkspaceShell
+          ? usesLightWorkspaceSidebar
+            ? "w-[216px] border-r border-sky-100/80 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_52%),linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(239,246,255,0.9))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.55)] backdrop-blur-xl"
+            : "w-[216px] border-r border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.18),_transparent_52%),linear-gradient(180deg,_hsl(var(--card)/0.96),_hsl(var(--surface-3)/0.9))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.28)] backdrop-blur-xl"
           : "w-[200px] bg-slate-900 border-r border-slate-800"
       )}
     >
       <div
         className={cn(
           "shrink-0 flex items-center gap-3 px-4",
-          isEmployerShell
-            ? "h-20 border-b border-sky-100/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.6),_rgba(255,255,255,0.22))]"
+          usesModernWorkspaceShell
+            ? usesLightWorkspaceSidebar
+              ? "h-20 border-b border-sky-100/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.6),_rgba(255,255,255,0.22))]"
+              : "h-20 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
             : "h-16 border-b border-slate-800"
         )}
       >
         {displayImage && !imageLoadFailed ? (
           <div
             className={cn(
-              "overflow-hidden bg-white shrink-0",
-              isEmployerShell
-                ? "h-11 w-11 rounded-2xl border border-sky-100 shadow-[0_20px_40px_-28px_rgba(2,132,199,0.55)] ring-4 ring-white/70"
+              "overflow-hidden bg-card shrink-0",
+              usesModernWorkspaceShell
+                ? usesLightWorkspaceSidebar
+                  ? "h-11 w-11 rounded-2xl border border-sky-100 bg-white shadow-[0_20px_40px_-28px_rgba(2,132,199,0.55)] ring-4 ring-white/70"
+                  : "h-11 w-11 rounded-2xl border border-border shadow-[0_20px_40px_-28px_rgba(2,132,199,0.34)] ring-4 ring-background/70"
                 : "w-9 h-9 rounded-xl shadow-lg ring-1 ring-white/20"
             )}
           >
@@ -269,8 +317,10 @@ export function Sidebar({
           <div
             className={cn(
               "animate-pulse shrink-0",
-              isEmployerShell
-                ? "h-11 w-11 rounded-2xl border border-sky-100/80 bg-white/80 ring-4 ring-white/70"
+              usesModernWorkspaceShell
+                ? usesLightWorkspaceSidebar
+                  ? "h-11 w-11 rounded-2xl border border-sky-100/80 bg-white/80 ring-4 ring-white/70"
+                  : "h-11 w-11 rounded-2xl border border-border bg-card/80 ring-4 ring-background/70"
                 : "w-9 h-9 rounded-xl bg-slate-700/70 ring-1 ring-white/20"
             )}
           />
@@ -278,8 +328,10 @@ export function Sidebar({
           <div
             className={cn(
               "flex items-center justify-center font-bold shrink-0",
-              isEmployerShell
-                ? "h-11 w-11 rounded-2xl bg-[linear-gradient(135deg,_rgba(14,165,233,0.98),_rgba(37,99,235,0.94))] text-white shadow-[0_22px_42px_-24px_rgba(37,99,235,0.7)] ring-4 ring-white/70 text-lg"
+              usesModernWorkspaceShell
+                ? usesLightWorkspaceSidebar
+                  ? "h-11 w-11 rounded-2xl bg-[linear-gradient(135deg,_rgba(14,165,233,0.98),_rgba(37,99,235,0.94))] text-white shadow-[0_22px_42px_-24px_rgba(37,99,235,0.7)] ring-4 ring-white/70 text-lg"
+                  : "h-11 w-11 rounded-2xl bg-[linear-gradient(135deg,_rgba(14,165,233,0.98),_rgba(37,99,235,0.94))] text-white shadow-[0_22px_42px_-24px_rgba(37,99,235,0.7)] ring-4 ring-background/70 text-lg"
                 : "w-9 h-9 rounded-xl bg-primary text-primary-foreground shadow-lg text-lg ring-1 ring-white/20"
             )}
           >
@@ -290,14 +342,21 @@ export function Sidebar({
           <span
             className={cn(
               "block truncate font-semibold tracking-tight",
-              isEmployerShell ? "text-[15px] text-slate-950" : "text-sm text-white font-bold tracking-wide"
+              usesModernWorkspaceShell
+                ? usesLightWorkspaceSidebar
+                  ? "text-[15px] text-slate-950"
+                  : "text-[15px] text-foreground"
+                : "text-sm text-white font-bold tracking-wide"
             )}
           >
             Mployedin
           </span>
-          {isEmployerShell && (
-            <span className="mt-0.5 block truncate text-[11px] font-medium uppercase tracking-[0.16em] text-sky-700/70">
-              Employer workspace
+          {usesModernWorkspaceShell && (
+            <span className={cn(
+              "mt-0.5 block truncate text-[11px] font-medium uppercase tracking-[0.16em]",
+              usesLightWorkspaceSidebar ? "text-sky-700/70" : "text-primary/75"
+            )}>
+              {workspaceLabel}
             </span>
           )}
         </div>
@@ -309,13 +368,13 @@ export function Sidebar({
           const isSelected = activeMainTitle === item.title;
           const hasChildren = Boolean(item.children?.length);
           const itemSubmenuId = `sidebar-submenu-${item.title.toLowerCase().replace(/\s+/g, "-")}`;
-          const showInlineChildren = isEmployerShell && hasChildren && isSelected && submenuExpanded;
+          const showInlineChildren = usesInlineWorkspaceSidebar && hasChildren && isSelected && submenuExpanded;
 
           const itemContent = (
             <>
               <Icon className="w-[18px] h-[18px] shrink-0" />
               <span className="truncate text-[13px] font-medium">{locale === "ar" ? item.titleAr : item.title}</span>
-              {isEmployerShell && hasChildren && (
+              {usesInlineWorkspaceSidebar && hasChildren && (
                 <ChevronDown
                   className={cn(
                     "ml-auto h-4 w-4 shrink-0 transition-transform duration-200",
@@ -327,14 +386,18 @@ export function Sidebar({
           );
 
           const itemClass = cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl border transition-all duration-200",
-            isEmployerShell
-              ? isSelected
-                ? "border-sky-100 bg-white text-slate-950 shadow-[0_22px_44px_-30px_rgba(2,132,199,0.58)]"
-                : "border-transparent text-slate-600 hover:border-sky-100/80 hover:bg-white/90 hover:text-slate-950 hover:shadow-[0_18px_32px_-30px_rgba(15,23,42,0.5)]"
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl border transition-all duration-200 focus:outline-none focus-visible:ring-2",
+            usesModernWorkspaceShell
+              ? usesLightWorkspaceSidebar
+                ? isSelected
+                  ? "border-sky-100 bg-white text-slate-950 shadow-[0_22px_44px_-30px_rgba(2,132,199,0.58)] focus-visible:ring-sky-300/70"
+                  : "border-transparent text-slate-600 hover:border-sky-100/80 hover:bg-white/90 hover:text-slate-950 hover:shadow-[0_18px_32px_-30px_rgba(15,23,42,0.5)] focus-visible:ring-sky-300/70"
+                : isSelected
+                  ? "border-border bg-card text-foreground shadow-[0_22px_44px_-30px_rgba(2,132,199,0.38)] focus-visible:ring-primary/35"
+                  : "border-transparent text-muted-foreground hover:border-border hover:bg-card/90 hover:text-foreground hover:shadow-[0_18px_32px_-30px_rgba(15,23,42,0.24)] focus-visible:ring-primary/35"
               : isSelected
-                ? "border-transparent bg-white text-primary shadow-md"
-                : "border-transparent text-white/60 hover:bg-white/10 hover:text-white"
+                ? "border-transparent bg-white text-primary shadow-md focus-visible:ring-white/50"
+                : "border-transparent text-white/60 hover:bg-white/10 hover:text-white focus-visible:ring-white/50"
           );
 
           if (hasChildren) {
@@ -344,7 +407,7 @@ export function Sidebar({
                   id={`${itemSubmenuId}-label`}
                   type="button"
                   onClick={() => {
-                    if (isEmployerShell && isSelected) {
+                    if (usesInlineWorkspaceSidebar && isSelected) {
                       setSubmenuExpanded((previous) => !previous);
                       return;
                     }
@@ -352,8 +415,8 @@ export function Sidebar({
                     setActiveMainTitle(item.title);
                     setSubmenuExpanded(true);
                   }}
-                  aria-controls={isEmployerShell ? itemSubmenuId : undefined}
-                  aria-expanded={isEmployerShell ? showInlineChildren : undefined}
+                  aria-controls={usesInlineWorkspaceSidebar ? itemSubmenuId : undefined}
+                  aria-expanded={usesInlineWorkspaceSidebar ? showInlineChildren : undefined}
                   className={itemClass}
                 >
                   {itemContent}
@@ -364,9 +427,16 @@ export function Sidebar({
                     id={itemSubmenuId}
                     role="region"
                     aria-labelledby={`${itemSubmenuId}-label`}
-                    className="ml-4 space-y-1 border-l border-sky-100/80 pl-3"
+                    className={cn(
+                      "ml-4 space-y-1 border-l pl-3",
+                      usesLightWorkspaceSidebar ? "border-sky-100/80" : "border-border/80"
+                    )}
                   >
-                    {item.children!.map((child) => renderSubmenuLink(child, "inline"))}
+                    {item.children!.map((child) => renderSubmenuLink(
+                      child,
+                      "inline",
+                      item.children!.map((entry) => entry.href)
+                    ))}
                   </div>
                 )}
               </div>
@@ -392,7 +462,7 @@ export function Sidebar({
     </div>
   );
 
-  if (isEmployerShell) {
+  if (usesInlineWorkspaceSidebar) {
     return (
       <>
         <aside className="hidden lg:flex h-full transition-all duration-300 relative z-40 bg-transparent">
@@ -444,7 +514,11 @@ export function Sidebar({
           <nav className="flex-1 overflow-y-auto px-3 py-5 sidebar-scroll">
             <div className="space-y-1">
               <div id={submenuId} className="space-y-1">
-                {activeMainItem.children!.map((child) => renderSubmenuLink(child, "panel"))}
+                {activeMainItem.children!.map((child) => renderSubmenuLink(
+                  child,
+                  "panel",
+                  activeMainItem.children!.map((entry) => entry.href)
+                ))}
               </div>
             </div>
           </nav>
@@ -485,7 +559,7 @@ export function MobileMenuButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 hover:bg-white shadow-[0_18px_36px_-28px_rgba(15,23,42,0.45)] backdrop-blur-sm transition-colors"
+      className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-card/80 hover:bg-card shadow-[0_18px_36px_-28px_rgba(15,23,42,0.24)] backdrop-blur-sm transition-colors"
       aria-label="Open menu"
     >
       <Menu className="h-5 w-5 text-foreground" />

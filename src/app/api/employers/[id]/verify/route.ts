@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -12,6 +13,7 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
  * For companies without standard domain emails (e.g., gmail-based businesses).
  */
 async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 });
   }
@@ -57,6 +59,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
  * DELETE /api/employers/[id]/verify — Admin revokes domain verification
  */
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 });
   }

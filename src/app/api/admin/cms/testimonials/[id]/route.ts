@@ -6,10 +6,12 @@ import Testimonial from "@/models/Testimonial";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { testimonialUpdateSchema } from "@/lib/validators/cms";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const item = await Testimonial.findById(params?.id).lean();
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -17,6 +19,7 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const item = await Testimonial.findById(params?.id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -44,6 +47,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 }
 
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const item = await Testimonial.findById(params?.id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });

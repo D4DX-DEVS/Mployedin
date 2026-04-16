@@ -7,6 +7,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { placementUpdateSchema } from "@/lib/validators/placements";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -38,6 +39,7 @@ async function verifyOwnership(
 }
 
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const placement = await Placement.findById(params?.id)
     .populate("jobId", "title location")
@@ -48,6 +50,7 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   const body = await validateBody(req, placementUpdateSchema);
 
   await connectDB();
@@ -73,6 +76,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 }
 
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const placement = await Placement.findById(params?.id);
   if (!placement) return NextResponse.json({ error: "Placement not found" }, { status: 404 });

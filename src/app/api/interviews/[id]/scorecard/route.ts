@@ -7,12 +7,14 @@ import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { scorecardCreateSchema } from "@/lib/validators/interviews";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 // GET /api/interviews/[id]/scorecard — fetch scorecard for this interview
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
   const interview = await Interview.findById(params?.id).select("employerId jobSeekerId applicationId").lean();
@@ -43,6 +45,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
 // POST /api/interviews/[id]/scorecard — interviewer submits scorecard
 async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   if (!["employer", "agent", "super_agent", "admin"].includes(ctx.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

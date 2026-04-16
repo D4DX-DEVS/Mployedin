@@ -5,6 +5,7 @@ import Employer from "@/models/Employer";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import JobSeeker from "@/models/JobSeeker";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 /**
  * GET /api/employers/candidates/[id]
@@ -15,8 +16,8 @@ import JobSeeker from "@/models/JobSeeker";
  */
 async function handler(req: NextRequest, ctx: { userId: string }, params?: Record<string, string>) {
   const jobSeekerId = params?.id;
-  if (!jobSeekerId) {
-    return NextResponse.json({ error: "Missing candidate id" }, { status: 400 });
+  if (!isValidObjectId(jobSeekerId)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
   await connectDB();

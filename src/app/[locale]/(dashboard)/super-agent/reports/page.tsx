@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { BarChart3, Coins, Target, Users2 } from "lucide-react";
+import {
+  SuperAgentMetricsGrid,
+  SuperAgentPageIntro,
+  SuperAgentSection,
+} from "@/components/features/super-agent/WorkspacePage";
 
 interface Stats {
   totalAgents: number;
@@ -23,35 +28,64 @@ export default function SuperAgentReportsPage() {
   }, []);
 
   const kpis = [
-    { label: "Agents Managed", value: stats?.totalAgents ?? 0, color: "bg-blue-50 text-blue-700" },
-    { label: "Total Leads", value: stats?.totalLeads ?? 0, color: "bg-purple-50 text-purple-700" },
-    { label: "Placements", value: stats?.totalPlacements ?? 0, color: "bg-green-50 text-green-700" },
-    { label: "Commissions ($)", value: `$${(stats?.totalCommissions ?? 0).toLocaleString()}`, color: "bg-amber-50 text-amber-700" },
+    {
+      label: "Agents Managed",
+      value: stats?.totalAgents ?? 0,
+      helper: "Total team members currently falling under your direct reporting view.",
+      icon: <Users2 className="h-5 w-5" />,
+      toneClassName: "bg-sky-50 text-sky-600",
+    },
+    {
+      label: "Total Leads",
+      value: stats?.totalLeads ?? 0,
+      helper: "Combined lead volume generated and worked by your team.",
+      icon: <Target className="h-5 w-5" />,
+      toneClassName: "bg-indigo-50 text-indigo-600",
+    },
+    {
+      label: "Placements",
+      value: stats?.totalPlacements ?? 0,
+      helper: "Successful placements recorded across the current reporting scope.",
+      icon: <BarChart3 className="h-5 w-5" />,
+      toneClassName: "bg-emerald-50 text-emerald-600",
+    },
+    {
+      label: "Commissions",
+      value: `$${(stats?.totalCommissions ?? 0).toLocaleString()}`,
+      helper: "Total commissions currently included in the super-agent report payload.",
+      icon: <Coins className="h-5 w-5" />,
+      toneClassName: "bg-amber-50 text-amber-600",
+    },
   ];
 
   return (
-    <div className="page-container">
-      <PageHeader title="Reports" description="Your team's performance overview and key metrics" />
+    <div className="page-container space-y-6">
+      <SuperAgentPageIntro
+        title="Reports"
+        description="Use the report summary as your regional scorecard for team coverage, lead volume, placements, and commission output."
+        summaryTitle="Reporting surface"
+        summaryDescription="The page still consumes the same `/api/super-agent/reports` payload and only changes the presentation layer."
+      />
 
       {loading ? (
-        <div className="flex items-center justify-center h-48 text-muted-foreground/60">Loading reports…</div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {kpis.map((kpi) => (
-            <div key={kpi.label} className={`rounded-xl p-4 ${kpi.color}`}>
-              <div className="text-2xl font-bold">{kpi.value}</div>
-              <div className="text-sm mt-1 opacity-80">{kpi.label}</div>
-            </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-40 animate-pulse rounded-[24px] border border-slate-200 bg-white/90 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.18)]" />
           ))}
         </div>
+      ) : (
+        <SuperAgentMetricsGrid items={kpis} />
       )}
 
-      <div className="bg-card rounded-xl shadow-sm border p-5">
-        <h3 className="font-semibold text-gray-800 mb-3">Performance Insights</h3>
-        <p className="text-sm text-muted-foreground">
+      <SuperAgentSection
+        eyebrow="Insights"
+        title="Performance insights"
+        description="Detailed charts and month-over-month breakdowns can be added here as your team generates more reporting data."
+      >
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 text-sm leading-6 text-slate-600">
           Detailed charts and month-over-month breakdowns will appear here as your team builds data.
-        </p>
-      </div>
+        </div>
+      </SuperAgentSection>
     </div>
   );
 }

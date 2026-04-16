@@ -52,13 +52,14 @@ export function DashboardShell({
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isJobSeeker = userRole === "job_seeker";
-  const isEmployer = userRole === "employer";
+  const isAdminWorkspace = userRole === "admin";
+  const usesModernWorkspaceShell = userRole === "admin" || userRole === "employer" || userRole === "agent" || userRole === "super_agent";
   // Defer Radix-based components to avoid SSR/client ID mismatch hydration errors
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
   return (
-    <div className={`dashboard-shell bg-background ${isEmployer ? "dashboard-shell-employer" : ""} ${isJobSeeker ? "flex min-h-screen flex-col" : "flex h-screen overflow-hidden"}`}>
+    <div className={`dashboard-shell bg-background ${usesModernWorkspaceShell ? "dashboard-shell-workspace" : ""} ${isAdminWorkspace ? "dashboard-shell-admin" : ""} ${isJobSeeker ? "flex min-h-screen flex-col" : "flex h-screen overflow-hidden"}`}>
       {/* Sidebar (desktop + mobile overlay handled inside) */}
       {!isJobSeeker && (
         <Sidebar
@@ -74,7 +75,7 @@ export function DashboardShell({
       {/* Main content area */}
       <div className={`flex flex-1 flex-col min-w-0 ${isJobSeeker ? "" : "min-h-0 overflow-hidden"}`}>
         {/* Topbar */}
-        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${isEmployer ? "dashboard-topbar-employer h-20" : isJobSeeker ? "h-20" : "h-16"}`}>
+        <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-20" : isJobSeeker ? "h-20" : "h-16"}`}>
           <div className="flex h-full items-center gap-2 sm:gap-3 md:gap-4 px-4 sm:px-6 lg:px-8">
             {!isJobSeeker && <MobileMenuButton onClick={() => setMobileOpen(true)} />}
 
@@ -130,7 +131,7 @@ export function DashboardShell({
             </div>
           </>
         ) : (
-          <main className={`dashboard-main isolate min-h-0 flex flex-1 flex-col overflow-y-auto bg-background ${isEmployer ? "dashboard-main-employer" : ""}`}>
+          <main className={`dashboard-main isolate min-h-0 flex flex-1 flex-col overflow-y-auto bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""}`}>
             <div>
               {children}
             </div>
@@ -142,7 +143,19 @@ export function DashboardShell({
       <CommandMenu navGroups={navGroups} locale={locale} />
 
       {/* Floating AI assistant — employer uses RecruitmentAssistant instead */}
-      {userRole !== "employer" && <ConversationalAI context={userRole === "job_seeker" ? "general_assist" : "agent_assist"} />}
+      {userRole !== "employer" && (
+        <ConversationalAI
+          context={
+            userRole === "admin"
+              ? "admin_assist"
+              : userRole === "super_agent"
+                ? "super_agent_assist"
+                : userRole === "agent"
+                  ? "agent_assist"
+                  : "general_assist"
+          }
+        />
+      )}
     </div>
   );
 }

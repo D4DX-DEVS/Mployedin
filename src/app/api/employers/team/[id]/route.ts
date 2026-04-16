@@ -7,6 +7,7 @@ import { CompanyUser } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { canManageTeam, canModifyRole } from "@/lib/permissions/team";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 /**
  * PATCH /api/employers/team/[id] — update a team member's role/permissions
@@ -21,8 +22,8 @@ async function patchHandler(
   }
 
   const memberId = params?.id;
-  if (!memberId) {
-    return NextResponse.json({ error: "Member ID required" }, { status: 400 });
+  if (!isValidObjectId(memberId)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
   const body = await validateBody(req, teamUpdateSchema);
@@ -99,8 +100,8 @@ async function deleteHandler(
   }
 
   const memberId = params?.id;
-  if (!memberId) {
-    return NextResponse.json({ error: "Member ID required" }, { status: 400 });
+  if (!isValidObjectId(memberId)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
   await connectDB();

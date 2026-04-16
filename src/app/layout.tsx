@@ -48,6 +48,7 @@ export default async function RootLayout({
   return (
     <html suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={`${inter.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
         {...(nonce ? { "data-nonce": nonce } : {})}
       >

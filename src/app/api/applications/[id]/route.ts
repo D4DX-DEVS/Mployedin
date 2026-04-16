@@ -7,6 +7,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { applicationUpdateSchema } from "@/lib/validators/applications";
 import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected } from "@/lib/notifications/trigger";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -33,6 +34,7 @@ interface EmpLean {
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
   const application = await Application.findById(params?.id).populate("jobId", "employerId title");
@@ -183,6 +185,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 }
 
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const application = await Application.findById(params?.id)
     .populate("jobId", "title location salary employerId")

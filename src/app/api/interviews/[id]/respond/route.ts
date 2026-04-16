@@ -7,6 +7,7 @@ import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import { z } from "zod";
 import type { UserRole } from "@/models/User";
 
@@ -31,6 +32,7 @@ const interviewRespondSchema = z
 
 // POST /api/interviews/[id]/respond — candidate confirms/declines/reschedules
 async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Only job seekers can respond to interviews" }, { status: 403 });
   }

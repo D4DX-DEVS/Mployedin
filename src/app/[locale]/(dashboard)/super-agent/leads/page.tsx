@@ -5,11 +5,17 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Search, Inbox } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { Activity, CircleSlash, Handshake, Search, Target } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import {
+  SuperAgentDataTableShell,
+  SuperAgentEmptyState,
+  SuperAgentMetricsGrid,
+  SuperAgentPageIntro,
+  SuperAgentSection,
+} from "@/components/features/super-agent/WorkspacePage";
 
 type LeadStatus = "new" | "contacted" | "interested" | "negotiating" | "converted" | "lost";
 
@@ -45,7 +51,7 @@ export default function SuperAgentLeadsPage() {
       updateTotal(data.total ?? data.items?.length ?? 0);
     }
     setLoading(false);
-  }, [statusFilter, search, page, limit]);
+  }, [statusFilter, search, page, limit, updateTotal]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -54,81 +60,131 @@ export default function SuperAgentLeadsPage() {
     return acc;
   }, {} as Record<LeadStatus, number>);
 
+  const kpis = [
+    {
+      label: "Open Pipeline",
+      value: leads.filter((lead) => !["converted", "lost"].includes(lead.status)).length,
+      helper: "Leads still moving through discovery, contact, or negotiation.",
+      icon: <Target className="h-5 w-5" />,
+      toneClassName: "bg-sky-50 text-sky-600",
+    },
+    {
+      label: "Contacted",
+      value: stageCounts.contacted,
+      helper: "Accounts already touched by your team and in follow-up motion.",
+      icon: <Activity className="h-5 w-5" />,
+      toneClassName: "bg-indigo-50 text-indigo-600",
+    },
+    {
+      label: "Converted",
+      value: stageCounts.converted,
+      helper: "Leads that have already moved into active employer relationships.",
+      icon: <Handshake className="h-5 w-5" />,
+      toneClassName: "bg-emerald-50 text-emerald-600",
+    },
+    {
+      label: "Lost",
+      value: stageCounts.lost,
+      helper: "Dropped opportunities that may need later reactivation or review.",
+      icon: <CircleSlash className="h-5 w-5" />,
+      toneClassName: "bg-rose-50 text-rose-600",
+    },
+  ];
+
   return (
-    <div className="page-container">
-      <PageHeader title="Lead Pipeline" description="All leads across agents in your team" />
+    <div className="page-container space-y-6">
+      <SuperAgentPageIntro
+        title="Lead Pipeline"
+        description="Review every employer lead across your team, switch between stages quickly, and keep regional follow-up work visible from one modern queue."
+        summaryTitle="Coverage"
+        summaryDescription="Use the stage strip to isolate bottlenecks, then search by company or contact without changing the existing API behavior."
+      />
 
-      {/* Stage counters */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        {STAGES.map((s) => (
-          <button key={s}
-            onClick={() => { setStatusFilter(statusFilter === s ? "" : s); resetPage(); }}
-            className={`card-base text-center cursor-pointer transition-all ${statusFilter === s ? "ring-2 ring-primary" : ""}`}
-          >
-            <p className="text-xs text-muted-foreground capitalize">{s}</p>
-            <p className="text-2xl font-bold text-primary mt-1">{stageCounts[s]}</p>
-          </button>
-        ))}
-      </div>
+      <SuperAgentMetricsGrid items={kpis} />
 
-      <div className="flex gap-3">
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-          <Input placeholder="Search company, contact…" value={search} onChange={(e) => { setSearch(e.target.value); resetPage(); }} className="pl-9 h-9" />
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead>Company</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Country</TableHead>
-              <TableHead>Industry</TableHead>
-              <TableHead>Stage</TableHead>
-              <TableHead>Agent</TableHead>
-              <TableHead>Date</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  {Array.from({ length: 7 }).map((_, j) => (
-                    <TableCell key={j}><div className="h-4 w-3/4 rounded bg-muted animate-pulse" /></TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : leads.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="py-12 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <Inbox className="h-8 w-8 text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground">No leads found</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : leads.map((lead) => (
-              <TableRow key={lead._id}>
-                <TableCell className="font-medium">{lead.companyName}</TableCell>
-                <TableCell className="text-muted-foreground">{lead.contactPerson}</TableCell>
-                <TableCell className="text-muted-foreground">{lead.country ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{lead.industry ?? "—"}</TableCell>
-                <TableCell><StatusBadge status={lead.status} /></TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {lead.agentId?.userId?.name ?? "—"}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {new Date(lead.createdAt).toLocaleDateString()}
-                </TableCell>
-              </TableRow>
+      <SuperAgentSection
+        eyebrow="Pipeline"
+        title="Filter and review employer leads"
+        description="Stage toggles and search still drive the same lead query logic; this update only changes the surface and layout."
+      >
+        <div className="flex flex-col gap-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            {STAGES.map((s) => (
+              <button
+                key={s}
+                onClick={() => { setStatusFilter(statusFilter === s ? "" : s); resetPage(); }}
+                className={`rounded-2xl border px-4 py-3 text-left transition-all ${statusFilter === s ? "border-sky-200 bg-sky-50 shadow-[0_20px_42px_-34px_rgba(2,132,199,0.55)]" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"}`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{s}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{stageCounts[s]}</p>
+              </button>
             ))}
-          </TableBody>
-        </Table>
-      </div>
+          </div>
 
-      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+          <div className="relative w-full max-w-xs min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Search company, contact..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+              className="h-11 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm shadow-none"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <SuperAgentDataTableShell>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-slate-200 bg-slate-50/80 hover:bg-slate-50/80">
+                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Company</TableHead>
+                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Contact</TableHead>
+                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Country</TableHead>
+                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Industry</TableHead>
+                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Stage</TableHead>
+                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Agent</TableHead>
+                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i} className="border-slate-100">
+                      {Array.from({ length: 7 }).map((_, j) => (
+                        <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" /></TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : leads.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="p-0">
+                      <SuperAgentEmptyState
+                        icon={<Target className="h-7 w-7" />}
+                        title="No leads found"
+                        description="Try another search or switch stages to widen the pipeline view."
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : leads.map((lead) => (
+                  <TableRow key={lead._id} className="border-slate-100 hover:bg-sky-50/30">
+                    <TableCell className="py-4 font-medium text-slate-950">{lead.companyName}</TableCell>
+                    <TableCell className="py-4 text-slate-600">{lead.contactPerson}</TableCell>
+                    <TableCell className="py-4 text-slate-500">{lead.country ?? "—"}</TableCell>
+                    <TableCell className="py-4 text-slate-500">{lead.industry ?? "—"}</TableCell>
+                    <TableCell className="py-4"><StatusBadge status={lead.status} /></TableCell>
+                    <TableCell className="py-4 text-xs text-slate-500">{lead.agentId?.userId?.name ?? "—"}</TableCell>
+                    <TableCell className="py-4 text-xs text-slate-500">{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </SuperAgentDataTableShell>
+        </div>
+
+        <div className="mt-4">
+          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+        </div>
+      </SuperAgentSection>
     </div>
   );
 }

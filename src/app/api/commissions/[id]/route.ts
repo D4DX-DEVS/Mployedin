@@ -5,11 +5,13 @@ import Commission from "@/models/Commission";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { commissionUpdateSchema } from "@/lib/validators/commissions";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const commission = await Commission.findById(params?.id)
     .populate("agentId", "fullName")
@@ -20,6 +22,7 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const commission = await Commission.findById(params?.id);
   if (!commission) return NextResponse.json({ error: "Commission not found" }, { status: 404 });
@@ -61,6 +64,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 }
 
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const commission = await Commission.findById(params?.id);
   if (!commission) return NextResponse.json({ error: "Commission not found" }, { status: 404 });

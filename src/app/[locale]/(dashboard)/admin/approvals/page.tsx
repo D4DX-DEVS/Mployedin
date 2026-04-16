@@ -17,7 +17,7 @@ interface Job {
   requirements: { skills: string[] };
   employerId?: { companyName?: string; country?: string };
   agentId?: string;
-  "poster.approvalStatus": "pending" | "approved" | "rejected";
+  poster?: { approvalStatus?: "pending" | "approved" | "rejected" };
   status: string;
   createdAt: string;
 }
@@ -32,8 +32,7 @@ export default function AdminApprovalsPage() {
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch all jobs for admin review
-      const params = new URLSearchParams({ limit: "100", myJobs: "true" });
+      const params = new URLSearchParams({ limit: "100" });
       const res = await fetch(`/api/admin/jobs?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -47,20 +46,17 @@ export default function AdminApprovalsPage() {
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
   async function approveJob(jobId: string, approved: boolean) {
-    const res = await fetch(`/api/jobs/${jobId}`, {
-      method: "PATCH",
+    const res = await fetch(`/api/admin/jobs/${jobId}/approve`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        "poster.approvalStatus": approved ? "approved" : "rejected",
-        status: approved ? "active" : "closed",
-      }),
+      body: JSON.stringify({ approved }),
     });
     if (res.ok) fetchJobs();
   }
 
-  const pending = jobs.filter((j) => j["poster.approvalStatus"] === "pending");
-  const approved = jobs.filter((j) => j["poster.approvalStatus"] === "approved");
-  const rejected = jobs.filter((j) => j["poster.approvalStatus"] === "rejected");
+  const pending = jobs.filter((j) => j.poster?.approvalStatus === "pending");
+  const approved = jobs.filter((j) => j.poster?.approvalStatus === "approved");
+  const rejected = jobs.filter((j) => j.poster?.approvalStatus === "rejected");
 
   return (
     <div className="page-container">

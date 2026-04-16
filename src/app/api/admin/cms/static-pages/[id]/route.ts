@@ -7,6 +7,7 @@ import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { staticPageUpdateSchema } from "@/lib/validators/cms";
 import { sanitizeHtml } from "@/lib/security/sanitize-html";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -15,6 +16,7 @@ function slugify(str: string): string {
 }
 
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const item = await StaticPage.findById(params?.id).lean();
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -22,6 +24,7 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const item = await StaticPage.findById(params?.id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -59,6 +62,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 }
 
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const item = await StaticPage.findById(params?.id);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });

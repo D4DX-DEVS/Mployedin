@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
-import { Building2, Briefcase, Search, Loader2, Plus, Edit2, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import { ArrowRight, BriefcaseBusiness, Building2, Edit2, Globe2, Loader2, MapPin, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 
 interface Employer {
@@ -77,84 +78,186 @@ export default function AgentEmployersPage() {
     loadEmployers();
   };
 
-  return (
-    <div className="page-container">
-      {ConfirmDialogNode}
-      <div className="flex items-center justify-between">
-        <PageHeader
-          title="My Employers"
-          description="Manage employer accounts and post jobs on their behalf"
-        />
-        <a href="./jobs/new"
-          className="btn-primary flex items-center gap-2">
-          <Plus className="h-4 w-4" /> Post Job
-        </a>
-      </div>
+  const activeEmployers = employers.filter((employer) => employer.isActive).length;
+  const inactiveEmployers = employers.filter((employer) => !employer.isActive).length;
+  const industriesCount = new Set(employers.map((employer) => employer.industry).filter(Boolean)).size;
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search employers…"
-          className="input-field w-full sm:w-72 pl-9 pr-4"
-        />
-      </div>
+  return (
+    <div className="page-container agent-legacy-surface space-y-6">
+      {ConfirmDialogNode}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Agent workspace
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+              Employer Accounts
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Keep assigned employers organized, search their account details quickly, and jump straight into posting roles on their behalf.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Portfolio</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} employer accounts</p>
+              <p className="text-xs text-muted-foreground">Assigned companies ready for job posting and follow-up.</p>
+            </div>
+            <Link href="./jobs/new">
+              <span className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700">
+                <Plus className="h-4 w-4" />
+                Post Job
+              </span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeEmployers}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Accounts currently available for hiring work.</p>
+              </div>
+              <div className="workspace-tone-emerald rounded-2xl p-2.5">
+                <Building2 className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Inactive</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{inactiveEmployers}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Accounts that may need reactivation or follow-up.</p>
+              </div>
+              <div className="workspace-tone-amber rounded-2xl p-2.5">
+                <BriefcaseBusiness className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Industries</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{industriesCount}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Distinct sectors represented in your employer book.</p>
+              </div>
+              <div className="workspace-tone-indigo rounded-2xl p-2.5">
+                <Globe2 className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Search ready</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{search ? 1 : 0}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Current search state for narrowing employer accounts.</p>
+              </div>
+              <div className="workspace-tone-sky rounded-2xl p-2.5">
+                <Search className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse employers</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Filter the accounts you want to work on next</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Search by company, contact, industry, or location to focus your assigned book.</p>
+          </div>
+        </div>
+
+        <div className="mt-5 max-w-xl">
+          <div className="relative min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search employers"
+              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
+            />
+          </div>
+        </div>
+      </section>
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
         </div>
       ) : employers.length === 0 ? (
-        <div className="card-base text-center py-16">
-          <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">No employer accounts yet</p>
-        </div>
+        <section className="workspace-empty-state rounded-[28px] p-10 text-center">
+          <Building2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/55" />
+          <p className="text-sm font-medium text-foreground">No employer accounts yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">Assigned companies will appear here once they are available to your workspace.</p>
+        </section>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {employers.map((em) => (
-            <div key={em._id} className="card-base hover:shadow-md transition-all space-y-3">
+            <div key={em._id} className="workspace-panel-surface space-y-4 rounded-[28px] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_26px_64px_-42px_rgba(2,132,199,0.32)]">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-primary" />
+                  <div className="workspace-tone-sky flex h-11 w-11 items-center justify-center rounded-2xl">
+                    <Building2 className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm">{em.companyName ?? em.name}</p>
+                    <p className="text-sm font-semibold text-foreground">{em.companyName ?? em.name}</p>
                     <p className="text-xs text-muted-foreground">{em.email}</p>
                   </div>
                 </div>
                 <StatusBadge status={em.isActive ? "active" : "inactive"} />
               </div>
 
-              <div className="text-xs text-muted-foreground space-y-1">
-                {em.industry && <p>Industry: {em.industry}</p>}
-                {em.location && <p>Location: {em.location}</p>}
+              <div className="space-y-2 text-xs text-muted-foreground">
+                {em.industry && <p className="flex items-center gap-2"><Globe2 className="h-3.5 w-3.5 text-muted-foreground" /> Industry: {em.industry}</p>}
+                {em.location && <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /> Location: {em.location}</p>}
               </div>
 
               <div className="flex gap-2 pt-1">
-                <a
+                <Link
                   href={`./jobs/new?employer=${em._id}`}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-all"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
                 >
-                  <Briefcase className="h-3.5 w-3.5" /> Post Job
-                </a>
+                  <BriefcaseBusiness className="h-3.5 w-3.5" /> Post Job
+                </Link>
+                <Link
+                  href={`./jobs?employer=${em._id}`}
+                  className="inline-flex items-center justify-center rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:text-primary"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
                 {can("employers", "update") && (
-                  <button onClick={() => { setEditEmployer(em); setModalOpen(true); }}
-                    className="p-1.5 rounded-lg hover:bg-muted transition-all" title="Edit">
+                  <button
+                    onClick={() => { setEditEmployer(em); setModalOpen(true); }}
+                    className="rounded-xl p-2 transition-colors hover:bg-secondary/80"
+                    title="Edit"
+                    aria-label={`Edit ${em.companyName ?? em.name}`}
+                  >
                     <Edit2 className="h-3.5 w-3.5 text-blue-600" />
                   </button>
                 )}
                 {can("employers", "delete") && (
-                  <button onClick={() => handleDelete(em._id)}
-                    className="p-1.5 rounded-lg hover:bg-muted transition-all" title="Delete">
+                  <button
+                    onClick={() => handleDelete(em._id)}
+                    className="rounded-xl p-2 transition-colors hover:bg-secondary/80"
+                    title="Delete"
+                    aria-label={`Delete ${em.companyName ?? em.name}`}
+                  >
                     <Trash2 className="h-3.5 w-3.5 text-red-600" />
                   </button>
                 )}
               </div>
             </div>
           ))}
-        </div>
+        </section>
       )}
 
       <PaginationControls

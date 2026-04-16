@@ -14,7 +14,10 @@ export default async function OnboardingLayout({
   return (
     <SessionWrapper>
       <CsrfProvider>
-        <div className="flex min-h-screen flex-col bg-background">
+        <div
+          className="theme-light flex min-h-screen flex-col bg-background text-foreground"
+          data-theme-scope="light"
+        >
           <div className="flex-1">{children}</div>
           <PublicFooter locale={locale} variant="embedded" />
         </div>

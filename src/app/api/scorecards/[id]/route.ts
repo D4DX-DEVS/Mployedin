@@ -6,6 +6,7 @@ import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { scorecardUpdateSchema } from "@/lib/validators/scorecards";
 import { logActivity } from "@/lib/audit/log";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -15,6 +16,7 @@ interface AuthCtx {
 }
 
 async function getHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const id = params?.id;
 
@@ -41,6 +43,7 @@ async function patchHandler(
   ctx: AuthCtx,
   params?: Record<string, string>
 ) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   if (ctx.role !== "employer") {
     return NextResponse.json(
       { error: "Only employers can update scorecards" },

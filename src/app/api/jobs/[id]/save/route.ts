@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import SavedJob from "@/models/SavedJob";
 import JobSeeker from "@/models/JobSeeker";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 /**
  * POST /api/jobs/[id]/save
@@ -11,14 +12,12 @@ import JobSeeker from "@/models/JobSeeker";
  * Returns { saved: boolean }
  */
 export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const jobId = params?.id;
-  if (!jobId) {
-    return NextResponse.json({ error: "Missing job id" }, { status: 400 });
-  }
+  const jobId = params!.id;
 
   await connectDB();
 

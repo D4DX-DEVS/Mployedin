@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, Fragment } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { createPortal } from "react-dom";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Bot, X, Send, Minimize2, Maximize2, History, Plus, Trash2, UserCheck, Expand, Shrink, Mic, MicOff, Loader2 } from "lucide-react";
+import { Bot, X, Send, Minimize2, Maximize2, History, Plus, Trash2, UserCheck, Expand, Shrink, Mic, MicOff, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
@@ -33,73 +36,47 @@ function hasMalayalam(text: string): boolean {
   return /[\u0D00-\u0D7F]/.test(text);
 }
 
-function renderInline(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**"))
-      return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
-    if (part.startsWith("*") && part.endsWith("*"))
-      return <em key={i}>{part.slice(1, -1)}</em>;
-    if (part.startsWith("`") && part.endsWith("`"))
-      return <code key={i} className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10">{part.slice(1, -1)}</code>;
-    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (linkMatch) {
-      const [, linkText, url] = linkMatch;
-      const isInternal = url.startsWith("/");
-      return (
-        <a
-          key={i}
-          href={url}
-          {...(!isInternal && { target: "_blank", rel: "noopener noreferrer" })}
-          className="text-primary underline underline-offset-2 hover:text-primary/80"
-        >
-          {linkText}
-        </a>
-      );
-    }
-    return part;
-  });
-}
-
-function renderMarkdown(text: string) {
-  const blocks = text.split(/\n{2,}/);
-  return blocks.map((block, bi) => {
-    const indent = bi > 0 ? "mt-2" : "";
-    // Numbered list block
-    if (/^\d+\.\s/m.test(block)) {
-      const items = block.split(/\n/).filter(Boolean);
-      return (
-        <ol key={bi} className={`list-decimal list-inside space-y-0.5 ${indent}`}>
-          {items.map((item, ii) => (
-            <li key={ii}>{renderInline(item.replace(/^\d+\.\s*/, ""))}</li>
-          ))}
-        </ol>
-      );
-    }
-    // Bullet list block
-    if (/^[-•*]\s/m.test(block)) {
-      const items = block.split(/\n/).filter(Boolean);
-      return (
-        <ul key={bi} className={`list-disc list-inside space-y-0.5 ${indent}`}>
-          {items.map((item, ii) => (
-            <li key={ii}>{renderInline(item.replace(/^[-•*]\s*/, ""))}</li>
-          ))}
-        </ul>
-      );
-    }
-    // Normal paragraph with inline \n as <br />
-    const lines = block.split("\n");
-    return (
-      <p key={bi} className={indent}>
-        {lines.map((line, li) => (
-          <Fragment key={li}>
-            {li > 0 && <br />}
-            {renderInline(line)}
-          </Fragment>
-        ))}
-      </p>
-    );
-  });
+function AIMarkdown({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        h1: ({ ...props }) => <h1 className="text-base font-bold mt-3 mb-1" {...props} />,
+        h2: ({ ...props }) => <h2 className="text-sm font-bold mt-3 mb-1" {...props} />,
+        h3: ({ ...props }) => <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-3 mb-1" {...props} />,
+        p: ({ ...props }) => <p className="my-1 leading-relaxed" {...props} />,
+        ul: ({ ...props }) => <ul className="list-disc list-inside space-y-0.5 my-1" {...props} />,
+        ol: ({ ...props }) => <ol className="list-decimal list-inside space-y-0.5 my-1" {...props} />,
+        li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
+        strong: ({ ...props }) => <strong className="font-semibold" {...props} />,
+        code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10" {...props} />,
+        a: ({ href, ...props }) => {
+          const isInternal = href?.startsWith("/");
+          return (
+            <a
+              href={href}
+              {...(!isInternal && { target: "_blank", rel: "noopener noreferrer" })}
+              className="text-primary underline underline-offset-2 hover:text-primary/80"
+              {...props}
+            />
+          );
+        },
+        table: ({ ...props }) => (
+          <div className="overflow-x-auto rounded-lg border border-border my-2">
+            <table className="w-full text-xs border-collapse" {...props} />
+          </div>
+        ),
+        thead: ({ ...props }) => <thead className="bg-muted/50" {...props} />,
+        th: ({ ...props }) => <th className="border-b border-border px-2.5 py-1.5 text-left font-semibold" {...props} />,
+        td: ({ ...props }) => <td className="border-t border-border px-2.5 py-1.5" {...props} />,
+        tr: ({ ...props }) => <tr {...props} />,
+        blockquote: ({ ...props }) => <blockquote className="border-l-2 border-primary/40 pl-3 text-muted-foreground my-1" {...props} />,
+        hr: () => <hr className="border-border my-2" />,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }
 
 interface ConversationalAIProps {
@@ -107,10 +84,45 @@ interface ConversationalAIProps {
   className?: string;
 }
 
+// ─── AI_ACTION parsing helpers ──────────────────────────────────
+interface AIAction {
+  label: string;
+  path: string;
+}
+
+const ROLE_PATH_PREFIXES: Record<string, string> = {
+  admin_assist: "/admin/",
+  super_agent_assist: "/super-agent/",
+  agent_assist: "/agent/",
+  general_assist: "/job-seeker/",
+};
+
+function parseAIActions(text: string): AIAction[] {
+  const matches = [...text.matchAll(/<AI_ACTION>([\s\S]*?)<\/AI_ACTION>/g)];
+  const actions: AIAction[] = [];
+  for (const m of matches) {
+    try {
+      const parsed = JSON.parse(m[1]);
+      if (parsed.label && parsed.path && typeof parsed.path === "string") {
+        actions.push({ label: String(parsed.label), path: parsed.path });
+      }
+    } catch {
+      // skip malformed actions
+    }
+  }
+  return actions;
+}
+
+function stripAIActions(text: string): string {
+  return text.replace(/<AI_ACTION>[\s\S]*?<\/AI_ACTION>/g, "").trim();
+}
+
 export function ConversationalAI({
   context = "general_assist",
   className,
 }: ConversationalAIProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -234,6 +246,7 @@ export function ConversationalAI({
             content: m.content,
           })),
           context,
+          currentPage: pathname,
         }),
       });
 
@@ -482,10 +495,30 @@ export function ConversationalAI({
                     >
                       {msg.role === "assistant" ? (
                         <div className="prose-sm prose-p:my-0 prose-li:my-0">
-                          {renderMarkdown(msg.content)}
+                          <AIMarkdown content={stripAIActions(msg.content)} />
                           {isStreaming && i === messages.length - 1 && (
                             <span className="inline-block w-0.5 h-4 ml-0.5 bg-current opacity-60 animate-pulse align-middle" />
                           )}
+                          {(() => {
+                            const actions = parseAIActions(msg.content);
+                            const prefix = ROLE_PATH_PREFIXES[context] ?? "/";
+                            const validActions = actions.filter((a) => a.path.startsWith(prefix));
+                            if (validActions.length === 0) return null;
+                            return (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {validActions.map((action, ai) => (
+                                  <button
+                                    key={ai}
+                                    onClick={() => router.push(action.path)}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                    {action.label}
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </div>
                       ) : (
                         <>

@@ -8,6 +8,7 @@ import { CsrfProvider } from "@/components/shared/CsrfProvider";
 import connectDB from "@/lib/db/mongoose";
 import User from "@/models/User";
 import { Employer } from "@/models/Employer";
+import SystemSettings from "@/models/SystemSettings";
 import type { UserRole } from "@/models/User";
 import { DashboardProviders } from "@/components/shared/DashboardProviders";
 import { RecruitmentAssistantLoader } from "@/components/features/employer/RecruitmentAssistantLoader";
@@ -45,6 +46,16 @@ export default async function DashboardLayout({
   }
 
   const role = (session.user as { role: UserRole }).role;
+
+  // Enforce maintenance mode: block non-admin users
+  if (role !== "admin") {
+    await connectDB();
+    const sysSettings = await SystemSettings.findOne().select("maintenanceMode").lean();
+    if (sysSettings?.maintenanceMode) {
+      redirect(`/${paramLocale}/maintenance`);
+    }
+  }
+
   // Always use the URL locale so LanguageSwitcher changes take effect immediately
   const locale = paramLocale;
 

@@ -1,21 +1,67 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+interface SystemSettings {
+  platformName: string;
+  supportEmail: string;
+  maintenanceMode: boolean;
+}
+
 export default function AdminSettingsPage() {
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [platformName, setPlatformName] = useState("MPLOYEDIN");
-  const [supportEmail, setSupportEmail] = useState("support@mployedin.com");
-  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<SystemSettings>({
+    platformName: "MPLOYEDIN",
+    supportEmail: "support@mployedin.com",
+    maintenanceMode: false,
+  });
+
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.settings) {
+          setSettings({
+            platformName: data.settings.platformName ?? "MPLOYEDIN",
+            supportEmail: data.settings.supportEmail ?? "support@mployedin.com",
+            maintenanceMode: data.settings.maintenanceMode ?? false,
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleSave = async () => {
-    // Persist settings via API when endpoint is available
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="page-container">
+        <PageHeader title="Settings" description="Configure platform-wide settings and preferences" />
+        <div className="bg-card rounded-xl border animate-pulse h-48" />
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">
@@ -28,16 +74,16 @@ export default function AdminSettingsPage() {
           <div className="space-y-1">
             <label className="text-sm text-muted-foreground">Platform Name</label>
             <Input
-              value={platformName}
-              onChange={(e) => setPlatformName(e.target.value)}
+              value={settings.platformName}
+              onChange={(e) => setSettings((s) => ({ ...s, platformName: e.target.value }))}
             />
           </div>
           <div className="space-y-1">
             <label className="text-sm text-muted-foreground">Support Email</label>
             <Input
               type="email"
-              value={supportEmail}
-              onChange={(e) => setSupportEmail(e.target.value)}
+              value={settings.supportEmail}
+              onChange={(e) => setSettings((s) => ({ ...s, supportEmail: e.target.value }))}
             />
           </div>
         </div>
@@ -49,14 +95,14 @@ export default function AdminSettingsPage() {
             <div className="text-sm text-muted-foreground">Prevent non-admin users from accessing the platform</div>
           </div>
           <button
-            onClick={() => setMaintenanceMode((v) => !v)}
+            onClick={() => setSettings((s) => ({ ...s, maintenanceMode: !s.maintenanceMode }))}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              maintenanceMode ? "bg-blue-600" : "bg-gray-300"
+              settings.maintenanceMode ? "bg-blue-600" : "bg-gray-300"
             }`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                maintenanceMode ? "translate-x-6" : "translate-x-1"
+                settings.maintenanceMode ? "translate-x-6" : "translate-x-1"
               }`}
             />
           </button>
@@ -73,8 +119,8 @@ export default function AdminSettingsPage() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave}>
-          Save Changes
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? "Saving…" : "Save Changes"}
         </Button>
         {saved && <span className="text-sm text-green-600">✓ Saved</span>}
       </div>

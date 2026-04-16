@@ -33,6 +33,7 @@ const PUBLIC_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
+  "/maintenance",
   "/api/auth",
   "/api/contact",
   "/api/public",

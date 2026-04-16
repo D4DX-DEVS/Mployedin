@@ -6,6 +6,7 @@ import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -23,12 +24,12 @@ async function patchHandler(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await connectDB();
-
   const jobId = params?.id;
-  if (!jobId) {
-    return NextResponse.json({ error: "Job ID required" }, { status: 400 });
+  if (!isValidObjectId(jobId)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
+
+  await connectDB();
 
   const job = await Job.findById(jobId);
   if (!job) {

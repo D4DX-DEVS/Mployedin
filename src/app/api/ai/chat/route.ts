@@ -3,11 +3,25 @@ import { auth } from "@/lib/auth/config";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { GEMINI_MODELS } from "@/lib/ai/gemini";
-import { getAssistantSystemPrompt, type AssistantTab } from "@/lib/ai/assistantPrompts";
+import { getAssistantSystemPrompt, type AssistantContext } from "@/lib/ai/assistantPrompts";
 import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import Job from "@/models/Job";
 import User from "@/models/User";
+import Employer from "@/models/Employer";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
+import Lead from "@/models/Lead";
+import Application from "@/models/Application";
+import Interview from "@/models/Interview";
+import Placement from "@/models/Placement";
+import Commission from "@/models/Commission";
+import BlogPost from "@/models/BlogPost";
+import FAQ from "@/models/FAQ";
+import Banner from "@/models/Banner";
+import ContactSubmission from "@/models/ContactSubmission";
+import Testimonial from "@/models/Testimonial";
+import AuditLog from "@/models/AuditLog";
 import type { UserRole } from "@/types/user";
 
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
@@ -41,6 +55,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const messages = sanitizeChatMessages(body.messages ?? [], 50, 4000);
     const context = body.context ? sanitizeAIInput(String(body.context), 2000) : undefined;
+    const currentPage = body.currentPage ? sanitizeAIInput(String(body.currentPage), 200) : undefined;
 
     if (!messages.length) {
       return NextResponse.json({ error: "messages array required" }, { status: 400 });
@@ -50,6 +65,7 @@ export async function POST(req: NextRequest) {
     const userRole = (session.user as unknown as { role: UserRole }).role;
     let profileContext = "";
     let jobsContext = "";
+    let roleStatsContext = "";
 
     if (userRole === "job_seeker") {
       try {
@@ -145,7 +161,230 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const systemPrompt = getSystemPrompt(context ?? "", profileContext, jobsContext);
+    // ─── Admin stats injection — comprehensive platform data ─────
+    if (userRole === "admin" && context === "admin_assist") {
+      try {
+        await connectDB();
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        // ── People stats ──
+        const [
+          totalUsers, totalEmployers, totalAgents, totalSuperAgents, totalSeekers,
+          newUsersThisMonth, newSeekersThisMonth, newEmployersThisMonth,
+        ] = await Promise.all([
+          User.countDocuments(),
+          Employer.countDocuments(),
+          Agent.countDocuments(),
+          SuperAgent.countDocuments(),
+          JobSeeker.countDocuments(),
+          User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+          JobSeeker.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+          Employer.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+        ]);
+
+        // ── Jobs stats ──
+        const [
+          activeJobs, draftJobs, closedJobs, expiredJobs,
+          pendingApprovalJobs, rejectedJobs,
+          jobsCreatedThisMonth,
+        ] = await Promise.all([
+          Job.countDocuments({ status: "active" }),
+          Job.countDocuments({ status: "draft" }),
+          Job.countDocuments({ status: "closed" }),
+          Job.countDocuments({ status: "expired" }),
+          Job.countDocuments({ "approval.status": "pending" }),
+          Job.countDocuments({ "approval.status": "rejected" }),
+          Job.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+        ]);
+
+        // ── Applications stats ──
+        const [
+          totalApplications, appliedApps, shortlistedApps,
+          interviewApps, hiredApps, rejectedApps,
+          appsThisWeek,
+        ] = await Promise.all([
+          Application.countDocuments(),
+          Application.countDocuments({ status: "applied" }),
+          Application.countDocuments({ status: "shortlisted" }),
+          Application.countDocuments({ status: "interview_scheduled" }),
+          Application.countDocuments({ status: "hired" }),
+          Application.countDocuments({ status: "rejected" }),
+          Application.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
+        ]);
+
+        // ── Hiring pipeline stats ──
+        const [
+          totalInterviews, scheduledInterviews,
+          totalPlacements, placementsThisMonth,
+        ] = await Promise.all([
+          Interview.countDocuments(),
+          Interview.countDocuments({ status: "scheduled" }),
+          Placement.countDocuments(),
+          Placement.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+        ]);
+
+        // ── Finance stats ──
+        const [
+          pendingCommissions, approvedCommissions, paidCommissions,
+        ] = await Promise.all([
+          Commission.countDocuments({ status: "pending" }),
+          Commission.countDocuments({ status: "approved" }),
+          Commission.countDocuments({ status: "paid" }),
+        ]);
+
+        // ── CMS stats ──
+        const [
+          totalBlogs, totalFAQs, totalBanners, totalTestimonials,
+          unreadContacts,
+        ] = await Promise.all([
+          BlogPost.countDocuments(),
+          FAQ.countDocuments(),
+          Banner.countDocuments(),
+          Testimonial.countDocuments(),
+          ContactSubmission.countDocuments({ status: { $in: ["new", "unread"] } }),
+        ]);
+
+        // ── Recent jobs (last 5) for context ──
+        const recentJobs = await Job.find()
+          .select("title status location.country category createdAt")
+          .sort({ createdAt: -1 })
+          .limit(5)
+          .lean();
+        const recentJobLines = recentJobs.map((j) =>
+          `  - "${j.title}" | ${j.status} | ${j.location?.country ?? "?"} | ${j.category ?? "?"} | ${new Date(j.createdAt).toLocaleDateString()}`
+        ).join("\n");
+
+        // ── Top categories ──
+        const topCategories = await Job.aggregate([
+          { $match: { status: "active" } },
+          { $group: { _id: "$category", count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: 5 },
+        ]);
+        const categoryLines = topCategories.map((c: { _id: string; count: number }) => `  - ${c._id}: ${c.count} active`).join("\n");
+
+        roleStatsContext = `
+
+## Platform Data (REAL database data — base ALL answers on this)
+
+### People
+- Total users: ${totalUsers} (new this month: ${newUsersThisMonth})
+- Job seekers: ${totalSeekers} (new this month: ${newSeekersThisMonth})
+- Employers: ${totalEmployers} (new this month: ${newEmployersThisMonth})
+- Agents: ${totalAgents}
+- Super-agents: ${totalSuperAgents}
+
+### Jobs
+- Active: ${activeJobs} | Draft: ${draftJobs} | Closed: ${closedJobs} | Expired: ${expiredJobs}
+- Pending approval: ${pendingApprovalJobs} | Rejected: ${rejectedJobs}
+- Created this month: ${jobsCreatedThisMonth}
+- Top categories:
+${categoryLines || "  (no active jobs)"}
+
+### Applications
+- Total: ${totalApplications} (this week: ${appsThisWeek})
+- Applied: ${appliedApps} | Shortlisted: ${shortlistedApps} | Interview: ${interviewApps} | Hired: ${hiredApps} | Rejected: ${rejectedApps}
+
+### Hiring Pipeline
+- Total interviews: ${totalInterviews} | Scheduled: ${scheduledInterviews}
+- Total placements: ${totalPlacements} (this month: ${placementsThisMonth})
+
+### Finance
+- Commissions — Pending: ${pendingCommissions} | Approved: ${approvedCommissions} | Paid: ${paidCommissions}
+
+### CMS Content
+- Blog posts: ${totalBlogs} | FAQs: ${totalFAQs} | Banners: ${totalBanners} | Testimonials: ${totalTestimonials}
+- Unread contact submissions: ${unreadContacts}
+
+### Recent Jobs
+${recentJobLines || "  (no jobs yet)"}`;
+      } catch (err) {
+        console.error("[AI Chat] Failed to fetch admin stats:", err);
+      }
+    }
+
+    // ─── Super-agent stats injection ────────────────────────────
+    if (userRole === "super_agent" && context === "super_agent_assist") {
+      try {
+        await connectDB();
+        const saProfile = await SuperAgent.findOne({ userId: session.user.id }).select("_id agentIds").lean();
+        if (saProfile) {
+          const agentIds = saProfile.agentIds ?? [];
+          const agentUserIds = agentIds.length > 0
+            ? (await Agent.find({ _id: { $in: agentIds } }).select("userId").lean()).map((a) => a.userId)
+            : [];
+          const [managedAgents, teamLeads, teamPlacements, pendingApprovals, teamJobs] = await Promise.all([
+            Promise.resolve(agentIds.length),
+            Lead.countDocuments({ agentId: { $in: agentIds } }),
+            Placement.countDocuments({ agentId: { $in: agentIds } }),
+            Job.countDocuments({ postedBy: { $in: agentUserIds }, "approval.status": "pending" }),
+            Job.countDocuments({ postedBy: { $in: agentUserIds }, status: "active" }),
+          ]);
+          roleStatsContext = `\n\n## Team Stats (live data — use naturally in responses)\n- Managed agents: ${managedAgents}\n- Team leads: ${teamLeads}\n- Team placements: ${teamPlacements}\n- Pending approvals: ${pendingApprovals}\n- Active team jobs: ${teamJobs}`;
+        }
+      } catch (err) {
+        console.error("[AI Chat] Failed to fetch super-agent stats:", err);
+      }
+    }
+
+    // ─── Agent stats injection ──────────────────────────────────
+    if (userRole === "agent" && context === "agent_assist") {
+      try {
+        await connectDB();
+        const agentProfile = await Agent.findOne({ userId: session.user.id }).select("_id").lean();
+        if (agentProfile) {
+          const [activeJobs, totalApps, openLeads, scheduledInterviews, placements] = await Promise.all([
+            Job.countDocuments({ postedBy: session.user.id, status: "active" }),
+            Application.countDocuments({ agentId: agentProfile._id }),
+            Lead.countDocuments({ agentId: agentProfile._id, status: { $nin: ["converted", "lost"] } }),
+            Interview.countDocuments({ agentId: agentProfile._id, status: "scheduled" }),
+            Placement.countDocuments({ agentId: agentProfile._id }),
+          ]);
+          roleStatsContext = `\n\n## Pipeline Stats (live data — use naturally in responses)\n- Active job postings: ${activeJobs}\n- Total applications: ${totalApps}\n- Open leads: ${openLeads}\n- Scheduled interviews: ${scheduledInterviews}\n- Placements: ${placements}`;
+        }
+      } catch (err) {
+        console.error("[AI Chat] Failed to fetch agent stats:", err);
+      }
+    }
+
+    // ─── Recent activity + page context injection ───────────────
+    let pageContext = "";
+    let recentActivityContext = "";
+
+    if (currentPage && ["admin_assist", "super_agent_assist", "agent_assist"].includes(context ?? "")) {
+      pageContext = `\n\n## Current Page\nThe user is currently viewing: ${currentPage}`;
+    }
+
+    if (["admin_assist", "super_agent_assist", "agent_assist"].includes(context ?? "")) {
+      try {
+        await connectDB();
+        const recentLogs = await AuditLog.find({
+          actorId: session.user.id,
+          action: { $not: /^ai\./ }, // exclude AI chat logs themselves
+        })
+          .select("action resource resourceId meta createdAt")
+          .sort({ createdAt: -1 })
+          .limit(8)
+          .lean();
+
+        if (recentLogs.length > 0) {
+          const activityLines = recentLogs.map((log) => {
+            const time = new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            const action = String(log.action).replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+            const resource = String(log.resource).replace(/[._]/g, " ");
+            const detail = log.meta?.title ?? log.meta?.name ?? log.resourceId ?? "";
+            return `- ${time}: ${action} on ${resource}${detail ? ` "${detail}"` : ""}`;
+          });
+          recentActivityContext = `\n\n## Recent Activity\n${activityLines.join("\n")}`;
+        }
+      } catch (err) {
+        console.error("[AI Chat] Failed to fetch recent activity:", err);
+      }
+    }
+
+    const systemPrompt = getSystemPrompt(context ?? "", profileContext, jobsContext, roleStatsContext + pageContext + recentActivityContext);
 
     // Build OpenAI-compatible messages array
     const openRouterMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
@@ -233,14 +472,19 @@ export async function POST(req: NextRequest) {
   }
 }
 
-function getSystemPrompt(context: string, profileContext: string, jobsContext: string): string {
+function getSystemPrompt(context: string, profileContext: string, jobsContext: string, roleStatsContext: string): string {
   const base =
     "You are an AI assistant for MPLOYEDIN, an AI-powered international recruitment platform for the Gulf region. Be helpful, professional, and concise.";
 
-  // Recruitment assistant tab contexts (employer-only — no profile injection)
-  const assistantContexts: AssistantTab[] = ["job_creator", "interview_ai", "screening_ai"];
-  if (assistantContexts.includes(context as AssistantTab)) {
-    return getAssistantSystemPrompt(context as AssistantTab);
+  // Role-specific assistant contexts — use dedicated prompts with stats injection
+  const assistantContexts: AssistantContext[] = [
+    "job_creator", "interview_ai", "screening_ai",
+    "admin_assist", "super_agent_assist", "agent_assist",
+  ];
+  if (assistantContexts.includes(context as AssistantContext)) {
+    const prompt = getAssistantSystemPrompt(context as AssistantContext);
+    // Append live stats if available (admin/super-agent/agent)
+    return roleStatsContext ? prompt + roleStatsContext : prompt;
   }
 
   const jobRule = `\n\nCRITICAL RULE: NEVER invent, guess, or fabricate job listings. Only recommend real jobs from the "Live Jobs on MPLOYEDIN" section if provided. If no jobs section is provided or it is empty, tell the user to check their job feed.`;
@@ -264,8 +508,6 @@ IMPORTANT: The user's profile is provided below. Use it to give personalized res
       profileAwareBase + "\n\nHelp candidates prepare for interviews with role-specific tips based on their profile and target roles.",
     employer_assist:
       base + " Help employers with job postings, candidate evaluation, and hiring.",
-    agent_assist:
-      base + " Help recruitment agents manage their pipeline, leads, and candidates.",
     general_assist: profileAwareBase,
   };
 

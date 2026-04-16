@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import CompanyProfileView from "@/models/CompanyProfileView";
 import Employer from "@/models/Employer";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 /**
  * POST /api/employers/[id]/profile-view
@@ -11,8 +12,8 @@ import Employer from "@/models/Employer";
  */
 async function handler(_req: NextRequest, ctx: { userId: string }, params?: Record<string, string>) {
   const employerId = params?.id;
-  if (!employerId) {
-    return NextResponse.json({ error: "Missing employer id" }, { status: 400 });
+  if (!isValidObjectId(employerId)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
   await connectDB();

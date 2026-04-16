@@ -4,12 +4,14 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 // POST /api/jobs/[id]/clone — duplicate a job as a new draft
 async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   const allowed: UserRole[] = ["employer", "agent", "admin"];
   if (!allowed.includes(ctx.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

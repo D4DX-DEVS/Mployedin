@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { BarChart3, Loader2, Download, Sparkles } from "lucide-react";
+import { ArrowRight, BarChart3, Download, Loader2, Sparkles } from "lucide-react";
+import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 
 const REPORT_TEMPLATES = [
   { label: "This week's activity summary", query: "Summarize my leads activity and conversions for this week" },
@@ -56,77 +56,82 @@ export default function AgentReportsPage() {
   };
 
   return (
-    <div className="page-container">
-      <PageHeader
-        title="AI Reports"
-        description="Ask questions about your performance or request custom reports"
-      />
+    <div className="page-container agent-legacy-surface space-y-6">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />Agent workspace</div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">AI Reports</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Generate targeted performance reports, follow-up plans, and conversion analysis without leaving the agent workspace.</p>
+          </div>
+          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Reporting</p><p className="mt-1 text-lg font-semibold text-foreground">{result ? "1 latest report" : "Ready on demand"}</p><p className="text-xs text-muted-foreground">Use templates or freeform prompts to generate new summaries.</p></div>
+        </div>
+      </section>
 
-      {/* Quick templates */}
-      <div className="card-base space-y-3">
-        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Quick Reports</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Quick reports</p>
+        <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Start from a prompt template that matches the workday</h2>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {REPORT_TEMPLATES.map((t) => (
             <button
               key={t.label}
               onClick={() => { setQuery(t.query); generateReport(t.query); }}
               disabled={loading}
-              className="text-left p-3 rounded-lg border text-sm hover:bg-muted/40 hover:border-primary/40 transition-all disabled:opacity-50"
+              className="workspace-subtle-surface rounded-2xl p-4 text-left text-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_20px_44px_-36px_rgba(2,132,199,0.45)] disabled:opacity-50"
             >
-              <BarChart3 className="h-3.5 w-3.5 text-primary mb-1" />
-              {t.label}
+              <BarChart3 className="mb-2 h-4 w-4 text-primary" />
+              <div className="font-semibold text-foreground">{t.label}</div>
+              <div className="mt-1 text-xs leading-5 text-muted-foreground">{t.query}</div>
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Custom query */}
-      <div className="card-base space-y-3">
+      <section className="workspace-panel-surface space-y-4 rounded-[28px] p-5 sm:p-6">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">Custom Report</p>
+          <p className="text-sm font-semibold text-foreground">Custom report</p>
         </div>
         <textarea
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           rows={3}
           placeholder="e.g. Show me my top 5 leads by deal value with their contact history…"
-          className="textarea-field w-full"
+          className="w-full rounded-2xl border border-border bg-secondary/65 px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10"
         />
         <button
           onClick={() => generateReport()}
           disabled={!query.trim() || loading}
-          className="btn-primary disabled:opacity-50 flex items-center gap-2"
+          className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {loading ? "Generating…" : "Generate Report"}
         </button>
-      </div>
+      </section>
 
-      {/* Error */}
       {error && (
-        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {/* Result */}
       {result && (
-        <div className="card-base space-y-3">
+        <section className="workspace-panel-surface space-y-4 rounded-[28px] p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-primary">Report Generated at {result.generatedAt}</p>
             <button
               onClick={downloadReport}
-              className="btn-outline flex items-center gap-1.5 px-3 py-1.5 text-xs"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
             >
               <Download className="h-3.5 w-3.5" />
               Export
             </button>
           </div>
-          <div className="bg-muted/30 rounded-lg p-4 text-sm whitespace-pre-wrap leading-relaxed">
-            {result.content}
+          <div className="workspace-subtle-surface rounded-2xl p-4">
+            <MarkdownRenderer content={result.content} />
           </div>
-        </div>
+          <div className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground"><ArrowRight className="h-3.5 w-3.5 text-primary" />Use Export if you need a saved copy for handoff.</div>
+        </section>
       )}
     </div>
   );

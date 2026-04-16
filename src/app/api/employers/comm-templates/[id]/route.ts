@@ -7,6 +7,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { Employer } from "@/models/Employer";
 import CommTemplate from "@/models/CommTemplate";
 import type { UserRole } from "@/models/User";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 interface AuthCtx {
   userId: string;
@@ -15,12 +16,12 @@ interface AuthCtx {
 }
 
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
-  await connectDB();
-
   const templateId = params?.id;
-  if (!templateId) {
-    return NextResponse.json({ error: "Template ID required" }, { status: 400 });
+  if (!isValidObjectId(templateId)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
+
+  await connectDB();
 
   // Get employer for this user
   const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
@@ -48,12 +49,12 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
-  await connectDB();
-
   const templateId = params?.id;
-  if (!templateId) {
-    return NextResponse.json({ error: "Template ID required" }, { status: 400 });
+  if (!isValidObjectId(templateId)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
+
+  await connectDB();
 
   // Get employer for this user
   const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
@@ -105,12 +106,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 }
 
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
-  await connectDB();
-
   const templateId = params?.id;
-  if (!templateId) {
-    return NextResponse.json({ error: "Template ID required" }, { status: 400 });
+  if (!isValidObjectId(templateId)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
+
+  await connectDB();
 
   // Get employer for this user
   const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();

@@ -55,6 +55,16 @@ export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
 }
 
 /**
+ * Validate that a string is a valid MongoDB ObjectId (24 hex chars).
+ * Use this before passing path params to Mongoose queries to prevent
+ * CastError exceptions and potential injection via malformed IDs.
+ */
+export function isValidObjectId(id: string | undefined | null): boolean {
+  if (!id) return false;
+  return /^[a-f\d]{24}$/i.test(id);
+}
+
+/**
  * Pick only the listed keys from an object — prevents mass-assignment.
  */
 export function pick<T extends Record<string, unknown>, K extends keyof T>(

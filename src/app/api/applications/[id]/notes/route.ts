@@ -8,14 +8,15 @@ import { validateBody } from "@/lib/validators";
 import { noteCreateSchema } from "@/lib/validators/applications";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notifyMention } from "@/lib/notifications/trigger";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
-  const applicationId = params?.id;
-  if (!applicationId) return NextResponse.json({ error: "Missing application ID" }, { status: 400 });
+  const applicationId = params!.id;
 
   const application = await Application.findById(applicationId).populate("jobSeekerId", "name").lean();
   if (!application) return NextResponse.json({ error: "Application not found" }, { status: 404 });

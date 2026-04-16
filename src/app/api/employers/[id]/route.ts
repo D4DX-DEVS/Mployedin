@@ -5,11 +5,13 @@ import User from "@/models/User";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { employerAdminUpdateSchema } from "@/lib/validators/employers";
+import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const user = await User.findById(params?.id).select("-passwordHash").lean();
   if (!user) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
@@ -17,6 +19,7 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const user = await User.findById(params?.id);
   if (!user) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
@@ -52,6 +55,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 }
 
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
+  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const user = await User.findById(params?.id);
   if (!user) return NextResponse.json({ error: "Employer not found" }, { status: 404 });

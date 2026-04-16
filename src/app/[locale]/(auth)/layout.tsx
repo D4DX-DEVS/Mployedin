@@ -1,12 +1,11 @@
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
+
 export default async function AuthLayout({
   children,
-  params,
 }: {
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
-
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <div className="flex flex-1 bg-background">
@@ -40,9 +39,15 @@ export default async function AuthLayout({
         </div>
 
         {/* Right pane - Form */}
-        <div className="flex flex-1 flex-col justify-center bg-background px-4 py-12 sm:px-6 lg:w-[520px] lg:flex-none xl:w-[600px]">
-          <div className="mx-auto w-full max-w-sm lg:max-w-md">
-            {children}
+        <div className="flex flex-1 flex-col bg-background px-4 py-6 sm:px-6 sm:py-8 lg:w-[520px] lg:flex-none xl:w-[600px]">
+          <div className="flex justify-end">
+            <ThemeToggle />
+          </div>
+
+          <div className="mx-auto flex w-full max-w-sm flex-1 items-center lg:max-w-md">
+            <div className="w-full">
+              {children}
+            </div>
           </div>
         </div>
       </div>

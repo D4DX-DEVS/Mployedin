@@ -5,6 +5,7 @@ import mongoose, { Model, Document } from "mongoose";
 import { validateBody } from "@/lib/validators";
 import { trainingUpdateSchema } from "@/lib/validators/misc";
 import { logActivity } from "@/lib/audit/log";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 interface ITrainingItem extends Document {
   employerUserId: string;
@@ -21,9 +22,10 @@ async function PATCH(
   ctx: { userId: string },
   params?: Record<string, string>
 ) {
-  await connectDB();
   const id = params?.id;
-  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  if (!isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  await connectDB();
 
   const body = await validateBody(req, trainingUpdateSchema);
 
@@ -54,9 +56,10 @@ async function DELETE(
   ctx: { userId: string },
   params?: Record<string, string>
 ) {
-  await connectDB();
   const id = params?.id;
-  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  if (!isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  await connectDB();
 
   const TrainingItem = getTrainingModel();
   await TrainingItem.findOneAndDelete({ _id: id, employerUserId: ctx.userId });

@@ -100,10 +100,21 @@ export const impersonateSchema = z
 export const communicationSchema = z.object({
   title: z.string().min(1).max(200).trim(),
   message: z.string().min(1).max(5000).trim(),
-  targetRole: z.enum(VALID_ROLES).optional(),
+  targetRoles: z.array(z.enum(VALID_ROLES)).max(10).optional(),
   targetAll: z.boolean().optional(),
-  channel: z.enum(["in_app", "email", "whatsapp"]).default("in_app"),
+  channels: z.array(z.enum(["in_app", "email", "whatsapp"])).min(1).default(["in_app"]),
 });
+
+/** POST /api/admin/comm-templates */
+export const broadcastTemplateSchema = z.object({
+  name: z.string().min(1).max(100).trim(),
+  type: z.enum(["onboarding", "transactional", "marketing", "system"]),
+  subject: z.string().min(1).max(200).trim(),
+  body: z.string().min(1).max(5000).trim(),
+});
+
+/** PATCH /api/admin/comm-templates/[id] */
+export const broadcastTemplatePatchSchema = broadcastTemplateSchema.partial();
 
 /** PATCH /api/admin/users — handles both single and bulk */
 export const adminUserPatchSchema = z.union([
