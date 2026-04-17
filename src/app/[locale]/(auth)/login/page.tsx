@@ -1,15 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { signInWithPopup } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+
+const REMEMBER_ME_KEY = "mployedin_remember_email";
+const ROLE_REDIRECTS: Record<string, string> = {
+  admin: "admin",
+  employer: "employer",
+  job_seeker: "job-seeker",
+  agent: "agent",
+  super_agent: "super-agent",
+};
+
+function getPostSignInPath(locale: string, role: string, isOnboarded: boolean): string {
+  if (role === "job_seeker" && !isOnboarded) {
+    return `/${locale}/onboarding`;
+  }
+
+  return `/${locale}/${ROLE_REDIRECTS[role] ?? "job-seeker"}`;
+}
 
 export default function LoginPage() {
   const { locale } = useParams<{ locale: string }>();
@@ -20,6 +39,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem(REMEMBER_ME_KEY);
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   async function handleGoogleSignIn() {
     setError("");
@@ -38,18 +66,7 @@ export default function LoginPage() {
       const session = await sessionRes.json();
       const role = (session?.user?.role as string) ?? "job_seeker";
       const isOnboarded = (session?.user?.isOnboarded as boolean) ?? true;
-      if (role === "job_seeker" && !isOnboarded) {
-        router.push(`/${locale}/onboarding`);
-        return;
-      }
-      const dashMap: Record<string, string> = {
-        admin: "admin",
-        employer: "employer",
-        job_seeker: "job-seeker",
-        agent: "agent",
-        super_agent: "super-agent",
-      };
-      router.push(`/${locale}/${dashMap[role] ?? "job-seeker"}`);
+      router.push(getPostSignInPath(locale, role, isOnboarded));
     } catch {
       setError("Google sign-in failed. Please try again.");
     } finally {
@@ -62,9 +79,16 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
+    if (rememberMe) {
+      localStorage.setItem(REMEMBER_ME_KEY, email);
+    } else {
+      localStorage.removeItem(REMEMBER_ME_KEY);
+    }
+
     const result = await signIn("credentials", {
       email,
       password,
+      rememberMe: rememberMe ? "true" : "false",
       redirect: false,
     });
 
@@ -78,40 +102,26 @@ export default function LoginPage() {
       const session = await sessionRes.json();
       const role = (session?.user?.role as string) ?? "job_seeker";
       const isOnboarded = (session?.user?.isOnboarded as boolean) ?? true;
-      if (role === "job_seeker" && !isOnboarded) {
-        router.push(`/${locale}/onboarding`);
-        return;
-      }
-      const dashMap: Record<string, string> = {
-        admin: "admin",
-        employer: "employer",
-        job_seeker: "job-seeker",
-        agent: "agent",
-        super_agent: "super-agent",
-      };
-      router.push(`/${locale}/${dashMap[role] ?? "job-seeker"}`);
+      router.push(getPostSignInPath(locale, role, isOnboarded));
     }
   }
 
   return (
     <div className="w-full flex flex-col gap-8">
-      {/* Mobile Logo & Header */}
-      <div className="lg:hidden flex flex-col gap-2">
-        <div className="inline-flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
-            <span className="font-bold text-base">M</span>
-          </div>
-          <span className="text-xl font-bold text-foreground tracking-tight">
-            mployedin
-          </span>
-        </div>
+      <div className="lg:hidden flex flex-col gap-4">
+        <Link
+          href={`/${locale}`}
+          className="inline-flex w-fit items-center"
+        >
+          <Image src="/logo.png" alt="Mployedin" width={156} height={40} className="h-9 w-auto object-contain" priority />
+        </Link>
       </div>
 
-      <div className="space-y-1.5">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+      <div className="space-y-3">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2.2rem]">
           Welcome back
         </h1>
-        <p className="text-base text-muted-foreground font-light">
+        <p className="max-w-md text-base leading-7 text-muted-foreground font-light">
           Please enter your credentials to access your account.
         </p>
       </div>
@@ -127,7 +137,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            className="h-11 px-4 bg-transparent transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 rounded-lg"
+            className="h-12 rounded-xl border-border/70 bg-background/70 px-4 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
           />
         </div>
 
@@ -150,7 +160,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              className="h-11 px-4 pr-11 bg-transparent transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 rounded-lg"
+              className="h-12 rounded-xl border-border/70 bg-background/70 px-4 pr-11 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
             />
             <button
               type="button"
@@ -163,6 +173,17 @@ export default function LoginPage() {
           </div>
         </div>
 
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="remember-me"
+            checked={rememberMe}
+            onCheckedChange={(checked) => setRememberMe(checked === true)}
+          />
+          <Label htmlFor="remember-me" className="text-sm font-normal text-muted-foreground cursor-pointer select-none">
+            Remember my email
+          </Label>
+        </div>
+
         {error && (
           <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
             <p className="text-sm text-destructive text-center font-medium">{error}</p>
@@ -171,7 +192,7 @@ export default function LoginPage() {
 
         <Button
           type="submit"
-          className="w-full h-11 text-base font-medium shadow-sm transition-all rounded-lg"
+          className="h-12 w-full rounded-xl text-base font-medium shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
           disabled={loading}
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -191,7 +212,8 @@ export default function LoginPage() {
       <div className="grid grid-cols-2 gap-3">
         <Button
           variant="outline"
-          className="h-11 bg-transparent hover:bg-muted/50 border-border font-medium transition-colors"
+          type="button"
+          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
           onClick={handleGoogleSignIn}
           disabled={googleLoading}
         >
@@ -209,7 +231,8 @@ export default function LoginPage() {
         </Button>
         <Button
           variant="outline"
-          className="h-11 bg-transparent hover:bg-muted/50 border-border font-medium transition-colors"
+          type="button"
+          className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
           onClick={() => signIn("linkedin", { callbackUrl: `/${locale}/login` })}
         >
           <svg className="w-5 h-5 mr-0.5 fill-[#0A66C2]" viewBox="0 0 24 24">

@@ -139,16 +139,16 @@ export function PriorityActions({
   if (shown.length === 0) return null;
 
   return (
-    <section className="h-full overflow-hidden rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
-      <div className="border-b border-slate-200/80 px-5 py-5 sm:px-6">
-        <div className="inline-flex items-center gap-2 rounded-full border border-amber-100 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+    <section className="workspace-panel-surface h-full overflow-hidden rounded-[28px]">
+      <div className="border-b border-border/60 px-5 py-5 sm:px-6">
+        <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
           <Flame className="h-3.5 w-3.5" />
           Priority actions
         </div>
-        <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+        <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
           Focus the next recruiter move where it matters most.
         </h2>
-        <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600">
+        <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">
           Recruiter actions stay tied to live activity, so the dashboard stays useful instead of decorative.
         </p>
       </div>
@@ -167,7 +167,7 @@ export function PriorityActions({
                 "flex flex-col gap-3.5 rounded-[22px] border p-3.5 transition-all sm:flex-row sm:items-center sm:gap-3 sm:p-4",
                 isUrgent && idx === 0
                   ? "border-red-200 bg-[linear-gradient(135deg,_rgba(254,242,242,0.96),_rgba(255,255,255,0.98))]"
-                  : "border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] hover:-translate-y-0.5 hover:border-sky-200"
+                  : "border-border bg-background/80 hover:-translate-y-0.5 hover:border-sky-500/25"
               )}
             >
               <div className="flex flex-1 items-start gap-3">
@@ -182,16 +182,16 @@ export function PriorityActions({
 
                 <div className={cn(
                   "rounded-2xl p-2.5 shrink-0",
-                  isUrgent ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-600"
+                  isUrgent ? "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"
                 )}>
                   <Icon className="h-4 w-4" />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {idx === 0 ? "Recommended next" : "Keep momentum"}
                   </p>
-                  <span className="mt-1.5 block text-sm leading-5 text-slate-700">
+                  <span className="mt-1.5 block text-sm leading-5 text-foreground/85">
                     {action.text}
                   </span>
                 </div>
@@ -203,7 +203,7 @@ export function PriorityActions({
                   "inline-flex shrink-0 items-center justify-center gap-1 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors",
                   isUrgent
                     ? "bg-sky-600 text-white hover:bg-sky-700"
-                    : "border border-slate-200 bg-white text-slate-700 hover:border-sky-200 hover:text-sky-700"
+                    : "border border-border bg-background/80 text-foreground/85 hover:border-sky-500/25 hover:text-sky-700 dark:hover:text-sky-300"
                 )}
               >
                 {action.actionLabel}

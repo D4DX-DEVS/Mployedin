@@ -820,54 +820,7 @@ function CompanySettingsPage() {
 
             {/* ── Notifications Tab ────────────────────────────────────── */}
             {activeTab === "notifications" && (
-              <>
-                <SectionCard>
-                  <SectionHeader icon={Mail} title="Email Notifications" description="Choose which events send you email notifications" />
-                  <div className="p-2">
-                    <NotificationRow
-                      icon={Users}
-                      label="New Applicant"
-                      description="When a candidate applies to one of your jobs"
-                      checked={form.emailNewApplicant}
-                      onChange={(v) => setField("emailNewApplicant", v)}
-                    />
-                    <NotificationRow
-                      icon={Calendar}
-                      label="Interview Scheduled"
-                      description="When an interview is confirmed or rescheduled"
-                      checked={form.emailInterviewScheduled}
-                      onChange={(v) => setField("emailInterviewScheduled", v)}
-                    />
-                    <NotificationRow
-                      icon={FileText}
-                      label="Offer Response"
-                      description="When a candidate accepts, rejects, or negotiates an offer"
-                      checked={form.emailOfferResponse}
-                      onChange={(v) => setField("emailOfferResponse", v)}
-                    />
-                    <NotificationRow
-                      icon={Briefcase}
-                      label="Weekly Digest"
-                      description="Summary of pipeline activity and pending actions"
-                      checked={form.emailWeeklyDigest}
-                      onChange={(v) => setField("emailWeeklyDigest", v)}
-                    />
-                  </div>
-                </SectionCard>
-
-                <SectionCard>
-                  <SectionHeader icon={Bell} title="In-App Notifications" description="Control notifications shown in the bell menu" />
-                  <div className="p-2">
-                    <NotificationRow
-                      icon={Bell}
-                      label="All In-App Notifications"
-                      description="Show real-time notifications in the bell icon menu"
-                      checked={form.inAppAll}
-                      onChange={(v) => setField("inAppAll", v)}
-                    />
-                  </div>
-                </SectionCard>
-              </>
+              <EmployerNotificationsTab />
             )}
 
             {/* ── Account Tab ──────────────────────────────────────────── */}
@@ -1066,5 +1019,213 @@ function CompanySettingsPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+// ─── Employer Notifications Tab (API-connected) ──────────────────────────────
+
+type Channel = "in_app" | "email" | "whatsapp";
+type CategoryKey = "applications" | "interviews" | "offers" | "jobs" | "system";
+type EmailFrequency = "instant" | "daily" | "weekly" | "none";
+
+interface CategoryPref { enabled: boolean; channels: Channel[] }
+
+interface NotifPrefs {
+  emailFrequency: EmailFrequency;
+  categories: Record<CategoryKey, CategoryPref>;
+  unsubscribedAll: boolean;
+}
+
+const EMPLOYER_CATEGORIES: { key: CategoryKey; icon: typeof Bell; label: string; desc: string }[] = [
+  { key: "applications", icon: Users, label: "New Applicants", desc: "When a candidate applies to your jobs" },
+  { key: "interviews", icon: Calendar, label: "Interview Updates", desc: "Scheduling, confirmations, and candidate responses" },
+  { key: "offers", icon: FileText, label: "Offer Responses", desc: "Candidate accepts, rejects, or negotiates offers" },
+  { key: "jobs", icon: Briefcase, label: "Job Updates", desc: "Approval status, expiry, and applicant limits" },
+  { key: "system", icon: Shield, label: "System & Security", desc: "Login alerts, team changes, and platform notices" },
+];
+
+const FREQ_OPTIONS: { value: EmailFrequency; label: string; desc: string }[] = [
+  { value: "instant", label: "Instant", desc: "As events happen" },
+  { value: "daily", label: "Daily", desc: "One email/day at 9 AM" },
+  { value: "weekly", label: "Weekly", desc: "Sunday summary" },
+  { value: "none", label: "Off", desc: "In-app only" },
+];
+
+const CH_LABELS: Record<Channel, { label: string; Icon: typeof Bell }> = {
+  in_app: { label: "In-App", Icon: Bell },
+  email: { label: "Email", Icon: Mail },
+  whatsapp: { label: "WhatsApp", Icon: Phone },
+};
+
+function EmployerNotificationsTab() {
+  const [prefs, setPrefs] = useState<NotifPrefs>({
+    emailFrequency: "daily",
+    categories: {
+      applications: { enabled: true, channels: ["in_app", "email"] },
+      interviews: { enabled: true, channels: ["in_app", "email"] },
+      offers: { enabled: true, channels: ["in_app", "email"] },
+      jobs: { enabled: true, channels: ["in_app", "email"] },
+      system: { enabled: true, channels: ["in_app", "email"] },
+    },
+    unsubscribedAll: false,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [serverSnap, setServerSnap] = useState("");
+  const hasChanges = serverSnap ? JSON.stringify(prefs) !== serverSnap : false;
+
+  useEffect(() => {
+    fetch("/api/user/notification-preferences")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.data) {
+          const d = res.data;
+          const loaded: NotifPrefs = {
+            emailFrequency: d.emailFrequency ?? "daily",
+            categories: {
+              applications: d.categories?.applications ?? { enabled: true, channels: ["in_app", "email"] },
+              interviews: d.categories?.interviews ?? { enabled: true, channels: ["in_app", "email"] },
+              offers: d.categories?.offers ?? { enabled: true, channels: ["in_app", "email"] },
+              jobs: d.categories?.jobs ?? { enabled: true, channels: ["in_app", "email"] },
+              system: d.categories?.system ?? { enabled: true, channels: ["in_app", "email"] },
+            },
+            unsubscribedAll: d.unsubscribedAll ?? false,
+          };
+          setPrefs(loaded);
+          setServerSnap(JSON.stringify(loaded));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/user/notification-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(prefs),
+      });
+      if (res.ok) {
+        setServerSnap(JSON.stringify(prefs));
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="h-64 animate-pulse rounded-xl bg-muted/30" />;
+  }
+
+  return (
+    <>
+      {/* Frequency selector */}
+      <SectionCard>
+        <SectionHeader icon={Clock} title="Email Frequency" description="How often to receive email notifications" />
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {FREQ_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setPrefs((p) => ({ ...p, emailFrequency: opt.value }))}
+              className={`p-3 rounded-lg border-2 text-left transition-all ${
+                prefs.emailFrequency === opt.value
+                  ? "border-primary bg-primary/5"
+                  : "border-border/50 hover:border-border"
+              }`}
+            >
+              <div className="text-sm font-medium">{opt.label}</div>
+              <div className="text-[11px] text-muted-foreground mt-1">{opt.desc}</div>
+            </button>
+          ))}
+        </div>
+      </SectionCard>
+
+      {/* Categories */}
+      <SectionCard>
+        <SectionHeader icon={Bell} title="Notification Categories" description="Toggle categories and choose delivery channels" />
+        <div className="divide-y divide-border/30">
+          {EMPLOYER_CATEGORIES.map((cat) => {
+            const pref = prefs.categories[cat.key];
+            return (
+              <div key={cat.key} className="px-4 py-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted/60 mt-0.5 shrink-0">
+                      <cat.icon className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{cat.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{cat.desc}</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={pref.enabled}
+                    onCheckedChange={() =>
+                      setPrefs((p) => ({
+                        ...p,
+                        categories: {
+                          ...p.categories,
+                          [cat.key]: { ...pref, enabled: !pref.enabled },
+                        },
+                      }))
+                    }
+                  />
+                </div>
+                {pref.enabled && (
+                  <div className="flex items-center gap-2 mt-3 ml-11">
+                    {(Object.keys(CH_LABELS) as Channel[]).map((ch) => {
+                      const { label, Icon: ChIcon } = CH_LABELS[ch];
+                      const active = pref.channels.includes(ch);
+                      return (
+                        <button
+                          key={ch}
+                          type="button"
+                          onClick={() => {
+                            const channels = active
+                              ? pref.channels.filter((c) => c !== ch)
+                              : [...pref.channels, ch];
+                            setPrefs((p) => ({
+                              ...p,
+                              categories: { ...p.categories, [cat.key]: { ...pref, channels } },
+                            }));
+                          }}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                            active
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-border/50 bg-muted/30 text-muted-foreground hover:border-border"
+                          }`}
+                        >
+                          <ChIcon className="w-3 h-3" />
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </SectionCard>
+
+      {/* Save */}
+      <div className="flex items-center gap-3">
+        <Button type="button" onClick={handleSave} disabled={saving || !hasChanges} size="sm" className="gap-2">
+          <Save className="w-4 h-4" />
+          {saving ? "Saving…" : "Save Notification Settings"}
+        </Button>
+        {saved && (
+          <span className="text-sm text-green-600 flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+          </span>
+        )}
+      </div>
+    </>
   );
 }

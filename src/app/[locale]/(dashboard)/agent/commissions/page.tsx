@@ -59,9 +59,9 @@ export default function AgentCommissionsPage() {
   useEffect(() => { pagination.resetPage(); }, [filter]);
 
   const statusColor = (status: string) => {
-    if (status === "paid") return "text-green-600";
-    if (status === "approved") return "text-blue-600";
-    return "text-amber-600";
+    if (status === "paid") return "text-[hsl(var(--status-selected))]";
+    if (status === "approved") return "text-[hsl(var(--status-applied))]";
+    return "text-[hsl(var(--status-shortlisted))]";
   };
 
   return (
@@ -69,31 +69,31 @@ export default function AgentCommissionsPage() {
       <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur"><Sparkles className="h-3.5 w-3.5" />Agent workspace</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">My Commissions</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">Track the earnings created by successful placements and quickly separate pending payouts from already paid commission lines.</p>
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />Agent workspace</div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">My Commissions</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Track the earnings created by successful placements and quickly separate pending payouts from already paid commission lines.</p>
           </div>
-          <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-left backdrop-blur sm:min-w-[260px]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Ledger</p><p className="mt-1 text-lg font-semibold text-slate-950">{pagination.total} commission records</p><p className="text-xs text-slate-500">Financial activity tied to your placement outcomes.</p></div>
+          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ledger</p><p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} commission records</p><p className="text-xs text-muted-foreground">Financial activity tied to your placement outcomes.</p></div>
         </div>
         {summary && (
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {[
-              { label: "Pending", value: summary.pending, color: "text-amber-600", tone: "bg-amber-50", icon: Clock },
-              { label: "Approved", value: summary.approved, color: "text-blue-600", tone: "bg-sky-50", icon: TrendingUp },
-              { label: "Paid", value: summary.paid, color: "text-green-600", tone: "bg-emerald-50", icon: DollarSign },
+              { label: "Pending", value: summary.pending, color: "text-amber-600", tone: "workspace-tone-amber", icon: Clock },
+              { label: "Approved", value: summary.approved, color: "text-blue-600", tone: "workspace-tone-sky", icon: TrendingUp },
+              { label: "Paid", value: summary.paid, color: "text-green-600", tone: "workspace-tone-emerald", icon: DollarSign },
             ].map(({ label, value, color, tone, icon: Icon }) => (
-              <div key={label} className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-                <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p><p className={`mt-3 text-2xl font-semibold tracking-tight ${color}`}>{summary.currency} {value.toLocaleString()}</p><p className="mt-1 text-xs text-slate-500">Current {label.toLowerCase()} commission value.</p></div><div className={`rounded-2xl p-2.5 ${tone} ${color}`}><Icon className="h-5 w-5" /></div></div>
+              <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+                <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p><p className={`mt-3 text-2xl font-semibold tracking-tight ${color}`}>{summary.currency} {value.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">Current {label.toLowerCase()} commission value.</p></div><div className={`rounded-2xl p-2.5 ${tone}`}><Icon className="h-5 w-5" /></div></div>
               </div>
             ))}
           </div>
         )}
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white/95 p-4 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Filter ledger</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Switch between payout states without leaving the page</h2>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter ledger</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Switch between payout states without leaving the page</h2>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
           {["all", "pending", "approved", "paid"].map((status) => {
@@ -103,10 +103,11 @@ export default function AgentCommissionsPage() {
                 key={status}
                 onClick={() => setFilter(status)}
                 size="sm"
+                aria-pressed={isSelected}
                 variant="outline"
                 className={isSelected
-                  ? "h-10 rounded-xl border-sky-200 bg-sky-50 px-4 text-sky-700 hover:bg-sky-100 capitalize"
-                  : "h-10 rounded-xl border-slate-200 bg-slate-50 px-4 text-slate-600 hover:bg-white capitalize"
+                  ? "workspace-tone-sky h-10 rounded-xl border-transparent px-4 capitalize hover:opacity-90"
+                  : "workspace-muted-pill h-10 rounded-xl px-4 capitalize hover:bg-card"
                 }
               >
                 {status}
@@ -116,12 +117,12 @@ export default function AgentCommissionsPage() {
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white/95 p-4 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Current results</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Review each commission line and its payment state</h2></div><div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600"><ArrowRight className="h-3.5 w-3.5 text-sky-600" />{pagination.total} commissions across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}</div></div>
-        <div className="mt-5 overflow-hidden rounded-[24px] border border-slate-200 bg-white">
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Review each commission line and its payment state</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{pagination.total} commissions across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}</div></div>
+        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
         <Table>
           <TableHeader>
-            <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+            <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
               <TableHead>Placement</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Amount</TableHead>
@@ -143,26 +144,26 @@ export default function AgentCommissionsPage() {
             ) : commissions.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-slate-500">
-                    <Inbox className="h-8 w-8 text-slate-300" />
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Inbox className="h-8 w-8 text-muted-foreground" />
                     <span className="text-sm">No commissions yet</span>
                   </div>
                 </TableCell>
               </TableRow>
             ) : commissions.map((c) => (
-              <TableRow key={c._id} className="hover:bg-slate-50/70">
+              <TableRow key={c._id} className="hover:bg-secondary/50">
                 <TableCell>
-                  <p className="font-medium text-slate-950">{c.placementId?.jobTitle ?? "Placement"}</p>
+                  <p className="font-medium text-foreground">{c.placementId?.jobTitle ?? "Placement"}</p>
                   {c.placementId?.candidateName && (
-                    <p className="text-xs text-slate-500">{c.placementId.candidateName}</p>
+                    <p className="text-xs text-muted-foreground">{c.placementId.candidateName}</p>
                   )}
                 </TableCell>
-                <TableCell className="capitalize text-slate-500">{c.type?.replace("_", " ")}</TableCell>
+                <TableCell className="capitalize text-muted-foreground">{c.type?.replace("_", " ")}</TableCell>
                 <TableCell className={`font-bold ${statusColor(c.status)}`}>
                   {c.currency} {c.amount.toLocaleString()}
                 </TableCell>
                 <TableCell><StatusBadge status={c.status} /></TableCell>
-                <TableCell className="text-xs text-slate-500">
+                <TableCell className="text-xs text-muted-foreground">
                   {new Date(c.paidAt ?? c.createdAt).toLocaleDateString()}
                 </TableCell>
               </TableRow>

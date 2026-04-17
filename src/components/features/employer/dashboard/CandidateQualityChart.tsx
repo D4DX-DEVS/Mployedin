@@ -73,9 +73,9 @@ export function CandidateQualityChart({
       label: "Applications",
       value: totalApplications,
       detail: "In this workspace",
-      valueClass: "text-slate-900",
-      borderClass: "border-slate-200",
-      surfaceClass: "bg-slate-50/80",
+      valueClass: "text-foreground",
+      borderClass: "border-slate-200 dark:border-slate-700",
+      surfaceClass: "bg-slate-50/80 dark:bg-slate-800/70",
     },
     {
       label: "Low match",
@@ -88,13 +88,13 @@ export function CandidateQualityChart({
   ];
 
   return (
-    <section className="flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
-      <div className="border-b border-slate-200/80 px-5 py-5 sm:px-6">
+    <section className="workspace-panel-surface flex h-full flex-col overflow-hidden rounded-[28px]">
+      <div className="border-b border-border/60 px-5 py-5 sm:px-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Quality signal</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Candidate Quality</h2>
-            <p className="mt-1.5 text-sm leading-6 text-slate-600">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Quality signal</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Candidate Quality</h2>
+            <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
               Match trends show how strong the current applicant pool looks before recruiters move candidates deeper into the funnel.
             </p>
           </div>
@@ -107,7 +107,7 @@ export function CandidateQualityChart({
       </div>
 
       <div className="px-4 pt-3 sm:px-6 sm:pt-4">
-        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 rounded-full bg-[#2563EB] inline-block" />
           Excellent
@@ -185,15 +185,15 @@ export function CandidateQualityChart({
       </div>
 
       {totalApplications > 0 && (
-        <div className="grid grid-cols-3 gap-2 border-t border-slate-200/80 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
+        <div className="grid grid-cols-3 gap-2 border-t border-border/60 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4">
           {statCards.map((stat) => (
             <div
               key={stat.label}
               className={`rounded-2xl border px-2.5 py-2.5 text-center sm:px-3 sm:py-3 ${stat.borderClass} ${stat.surfaceClass}`}
             >
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{stat.label}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{stat.label}</p>
               <p className={`mt-1.5 text-lg font-semibold tracking-tight sm:text-xl ${stat.valueClass}`}>{stat.value}</p>
-              <p className="text-[10px] text-slate-500">{stat.detail}</p>
+              <p className="text-[10px] text-muted-foreground">{stat.detail}</p>
             </div>
           ))}
         </div>

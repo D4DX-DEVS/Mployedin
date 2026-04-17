@@ -83,73 +83,73 @@ export default function EmployerMatchingWeightsPage() {
   const saveStateLabel = saveWeights.isPending ? "Saving changes" : saved ? "Weights saved" : "Ready to update";
 
   if (loading) return (
-    <div className="page-container space-y-4">
-      <div className="h-40 animate-pulse rounded-[28px] border border-slate-200 bg-slate-100" />
+    <div className="page-container employer-legacy-surface space-y-4">
+      <div className="h-40 animate-pulse rounded-[28px] border border-border bg-background/70" />
       <div className="grid gap-4 lg:grid-cols-[1.35fr,0.65fr]">
-        <div className="h-[28rem] animate-pulse rounded-[28px] border border-slate-200 bg-slate-100" />
-        <div className="h-[28rem] animate-pulse rounded-[28px] border border-slate-200 bg-slate-100" />
+        <div className="h-[28rem] animate-pulse rounded-[28px] border border-border bg-background/70" />
+        <div className="h-[28rem] animate-pulse rounded-[28px] border border-border bg-background/70" />
       </div>
     </div>
   );
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container employer-legacy-surface space-y-6">
       <PageHeader
         title="AI Matching Weights"
         description="Customise how candidates are scored and ranked for your roles"
       />
 
       {error && (
-        <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700 shadow-[0_18px_40px_-34px_rgba(220,38,38,0.5)]">
+        <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600">✕</button>
+          <button onClick={() => setError(null)} className="font-medium text-red-400 hover:text-red-600 dark:text-red-300 dark:hover:text-red-200">✕</button>
         </div>
       )}
 
-      <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_42%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-7 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)]">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7">
         <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
           <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-sky-700">
+            <div className="flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-sky-300">
               <Sparkles className="h-4 w-4" />
               Ranking controls
             </div>
-            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-slate-950">
+            <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground">
               Tune how the platform prioritises skills, experience, and fit before recruiters review each shortlist.
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Adjust the scoring mix for every employer role, keep the total balanced at 100%, and preview the weight distribution before saving.
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-                <Scale className="h-5 w-5 text-sky-600" />
-                <p className="mt-3 text-sm font-semibold text-slate-900">Total at {total}%</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">The scoring model must total exactly 100% before it can be saved.</p>
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <Scale className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+                <p className="mt-3 text-sm font-semibold text-foreground">Total at {total}%</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">The scoring model must total exactly 100% before it can be saved.</p>
               </div>
-              <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-                <Target className="h-5 w-5 text-sky-600" />
-                <p className="mt-3 text-sm font-semibold text-slate-900">Top priority: {WEIGHT_LABELS[topPriority]}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">Current strongest influence in ranking is set to {weights[topPriority]}%.</p>
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <Target className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+                <p className="mt-3 text-sm font-semibold text-foreground">Top priority: {WEIGHT_LABELS[topPriority]}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">Current strongest influence in ranking is set to {weights[topPriority]}%.</p>
               </div>
-              <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-                <BarChart3 className="h-5 w-5 text-sky-600" />
-                <p className="mt-3 text-sm font-semibold text-slate-900">{saveStateLabel}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">Recruiter scoring updates only after you save the final distribution.</p>
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <BarChart3 className="h-5 w-5 text-sky-600 dark:text-sky-300" />
+                <p className="mt-3 text-sm font-semibold text-foreground">{saveStateLabel}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">Recruiter scoring updates only after you save the final distribution.</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-white/80 bg-white/85 p-5 backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Scoring preview</p>
-            <p className="mt-2 text-sm text-slate-600">High-weight criteria have the most impact when candidates are ranked inside your workflow.</p>
+          <div className="workspace-glass-panel rounded-[24px] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scoring preview</p>
+            <p className="mt-2 text-sm text-muted-foreground">High-weight criteria have the most impact when candidates are ranked inside your workflow.</p>
             <div className="mt-5 space-y-3">
               {weightKeys.slice().sort((a, b) => weights[b] - weights[a]).slice(0, 4).map((key) => (
-                <div key={key} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="flex items-center justify-between gap-3 text-sm font-medium text-slate-900">
+                <div key={key} className="rounded-2xl border border-border bg-background/60 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3 text-sm font-medium text-foreground">
                     <span>{WEIGHT_LABELS[key]}</span>
                     <span>{weights[key]}%</span>
                   </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted/50">
                     <div className="h-full rounded-full bg-sky-600 transition-all duration-300" style={{ width: `${weights[key]}%` }} />
                   </div>
                 </div>
@@ -161,26 +161,26 @@ export default function EmployerMatchingWeightsPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr,0.65fr]">
         {/* Sliders */}
-        <section className="space-y-5 rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
+        <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Weight builder</p>
-              <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-slate-950">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Weight builder</p>
+              <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
                 <Sliders className="h-4 w-4 text-sky-600" /> Weight configuration
               </h3>
-              <p className="mt-1 text-sm text-slate-600">Adjust percentages for each scoring signal. The total must stay at 100%.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Adjust percentages for each scoring signal. The total must stay at 100%.</p>
             </div>
-            <span className={`rounded-full px-3 py-1 text-sm font-semibold ${isTotalValid ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+            <span className={`rounded-full px-3 py-1 text-sm font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-600 dark:text-red-300"}`}>
               Total: {total}% {isTotalValid ? "✓" : "Need 100%"}
             </span>
           </div>
 
           {weightKeys.map((key) => (
-            <div key={key} className="rounded-[22px] border border-slate-200 bg-slate-50/80 p-4">
+            <div key={key} className="rounded-[22px] border border-border bg-background/60 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="max-w-2xl">
-                  <label className="text-sm font-semibold text-slate-900">{WEIGHT_LABELS[key]}</label>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">{WEIGHT_DESCRIPTIONS[key]}</p>
+                  <label className="text-sm font-semibold text-foreground">{WEIGHT_LABELS[key]}</label>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{WEIGHT_DESCRIPTIONS[key]}</p>
                 </div>
                 <div className="flex items-center gap-2 self-start">
                   <Input
@@ -189,9 +189,9 @@ export default function EmployerMatchingWeightsPage() {
                     max={100}
                     value={weights[key]}
                     onChange={(e) => updateWeight(key, parseInt(e.target.value) || 0)}
-                    className="h-10 w-20 border-slate-200 bg-white text-center text-sm"
+                    className="h-10 w-20 border-border bg-background/80 text-center text-sm"
                   />
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">%</span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">%</span>
                 </div>
               </div>
               <input
@@ -206,7 +206,7 @@ export default function EmployerMatchingWeightsPage() {
             </div>
           ))}
 
-          <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-2">
+          <div className="flex flex-wrap items-center gap-3 border-t border-border/60 pt-2">
             <Button
               onClick={handleSave}
               disabled={saveWeights.isPending || !isTotalValid}
@@ -218,29 +218,29 @@ export default function EmployerMatchingWeightsPage() {
             <Button
               variant="outline"
               onClick={() => setWeights(DEFAULT_WEIGHTS)}
-              className="gap-2 rounded-xl border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+              className="gap-2 rounded-xl border-border bg-background/80 hover:bg-background"
             >
               <RotateCcw className="h-4 w-4" /> Reset Defaults
             </Button>
-            <p className="text-sm text-slate-500">Keep the strongest weights for the signals recruiters trust most.</p>
+            <p className="text-sm text-muted-foreground">Keep the strongest weights for the signals recruiters trust most.</p>
           </div>
         </section>
 
         {/* Visualization */}
         <div className="space-y-5">
-          <section className="space-y-4 rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
+          <section className="workspace-panel-surface space-y-4 rounded-[28px] p-6">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Distribution</p>
-              <h3 className="mt-2 text-lg font-semibold text-slate-950">Weight overview</h3>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Distribution</p>
+              <h3 className="mt-2 text-lg font-semibold text-foreground">Weight overview</h3>
             </div>
             <div className="space-y-3">
               {weightKeys.map((key) => (
                 <div key={key} className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">{WEIGHT_LABELS[key]}</span>
-                    <span className="font-medium text-slate-900">{weights[key]}%</span>
+                    <span className="text-muted-foreground">{WEIGHT_LABELS[key]}</span>
+                    <span className="font-medium text-foreground">{weights[key]}%</span>
                   </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                  <div className="h-2 overflow-hidden rounded-full bg-muted/50">
                     <div
                       className="h-full rounded-full bg-sky-600 transition-all duration-300"
                       style={{ width: `${weights[key]}%` }}
@@ -251,8 +251,8 @@ export default function EmployerMatchingWeightsPage() {
             </div>
 
             <div className={`mt-4 rounded-2xl p-4 text-sm ${isTotalValid
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-amber-50 text-amber-700"
+              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
             }`}>
               {isTotalValid
                 ? "✓ Weights are balanced correctly. Candidates will be ranked by these priorities."
@@ -260,10 +260,10 @@ export default function EmployerMatchingWeightsPage() {
             </div>
           </section>
 
-          <section className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(248,250,252,0.9),_rgba(255,255,255,1))] p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Tuning guidance</p>
-            <h3 className="mt-2 text-lg font-semibold text-slate-950">Start with recruiter intent, not a perfect formula.</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
+          <section className="rounded-[28px] border border-border bg-background/60 p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tuning guidance</p>
+            <h3 className="mt-2 text-lg font-semibold text-foreground">Start with recruiter intent, not a perfect formula.</h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Increase skills and experience for technical hiring, raise behavior signals for client-facing roles, and keep salary or location lighter unless they are strict filters.
             </p>
           </section>

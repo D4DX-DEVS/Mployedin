@@ -6,7 +6,7 @@ import User from "@/models/User";
 import { logActivity } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { communicationSchema } from "@/lib/validators/admin";
-import { sendMail } from "@/lib/email/mailer";
+import { sendEmail } from "@/lib/communications/email";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -74,7 +74,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     if (needsEmail) {
       const emailPromises = users.map((u) => {
         if (!u.email) return Promise.resolve();
-        return sendMail({
+        return sendEmail({
           to: u.email,
           subject: title,
           html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#fff;border-radius:8px;border:1px solid #e5e7eb;">

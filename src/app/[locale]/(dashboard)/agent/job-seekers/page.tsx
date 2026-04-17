@@ -77,66 +77,66 @@ export default function AgentJobSeekersPage() {
       <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               Agent workspace
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">Job Seekers</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Job Seekers</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Review candidate profiles, gauge profile readiness, and update key details before matching them into active roles.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-left backdrop-blur sm:min-w-[260px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Talent pool</p>
-            <p className="mt-1 text-lg font-semibold text-slate-950">{pagination.total} profiles</p>
-            <p className="text-xs text-slate-500">Candidate accounts currently available in your pipeline scope.</p>
+          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Talent pool</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} profiles</p>
+            <p className="text-xs text-muted-foreground">Candidate accounts currently available in your pipeline scope.</p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Complete</p><p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{completeProfiles}</p><p className="mt-1 text-xs text-slate-500">Profiles at 80% completeness or above.</p></div><div className="rounded-2xl bg-emerald-50 p-2.5 text-emerald-600"><UserRoundSearch className="h-5 w-5" /></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Complete</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completeProfiles}</p><p className="mt-1 text-xs text-muted-foreground">Profiles at 80% completeness or above.</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><UserRoundSearch className="h-5 w-5" /></div></div>
           </div>
-          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Avg. profile</p><p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{averageCompleteness}%</p><p className="mt-1 text-xs text-slate-500">Average readiness across current results.</p></div><div className="rounded-2xl bg-sky-50 p-2.5 text-sky-600"><ArrowRight className="h-5 w-5" /></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Avg. profile</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{averageCompleteness}%</p><p className="mt-1 text-xs text-muted-foreground">Average readiness across current results.</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div>
           </div>
-          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">With titles</p><p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{withTitles}</p><p className="mt-1 text-xs text-slate-500">Profiles that already include current job titles.</p></div><div className="rounded-2xl bg-indigo-50 p-2.5 text-indigo-600"><BriefcaseBusiness className="h-5 w-5" /></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">With titles</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{withTitles}</p><p className="mt-1 text-xs text-muted-foreground">Profiles that already include current job titles.</p></div><div className="workspace-tone-indigo rounded-2xl p-2.5"><BriefcaseBusiness className="h-5 w-5" /></div></div>
           </div>
-          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Search state</p><p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{search ? 1 : 0}</p><p className="mt-1 text-xs text-slate-500">Whether the job seeker list is currently filtered.</p></div><div className="rounded-2xl bg-amber-50 p-2.5 text-amber-600"><Search className="h-5 w-5" /></div></div>
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Search state</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{search ? 1 : 0}</p><p className="mt-1 text-xs text-muted-foreground">Whether the job seeker list is currently filtered.</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><Search className="h-5 w-5" /></div></div>
           </div>
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white/95 p-4 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Browse profiles</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Search by candidate details or skill context</h2>
-          <p className="mt-1 text-sm text-slate-500">Find the right subset of job seekers before making profile updates or shortlisting them for roles.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse profiles</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Search by candidate details or skill context</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Find the right subset of job seekers before making profile updates or shortlisting them for roles.</p>
         </div>
         <div className="mt-5 max-w-md">
           <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input placeholder="Search by name, email or skill" value={search} onChange={(e) => setSearch(e.target.value)} className="h-11 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm shadow-none" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Search by name, email or skill" value={search} onChange={(e) => setSearch(e.target.value)} className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none" />
           </div>
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white/95 p-4 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Current results</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Review profile strength before the next match</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Review profile strength before the next match</h2>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600"><ArrowRight className="h-3.5 w-3.5 text-sky-600" />{pagination.total} profiles across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}</div>
+          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{pagination.total} profiles across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}</div>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-[24px] border border-slate-200 bg-white">
+        <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
         <Table>
           <TableHeader>
-            <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+            <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Title</TableHead>
@@ -161,30 +161,30 @@ export default function AgentJobSeekersPage() {
             ) : seekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={8} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-slate-500">
-                    <Inbox className="h-8 w-8 text-slate-300" />
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Inbox className="h-8 w-8 text-muted-foreground" />
                     <span className="text-sm">No job seekers found</span>
                   </div>
                 </TableCell>
               </TableRow>
             ) : seekers.map((s) => (
-              <TableRow key={s._id} className="hover:bg-slate-50/70">
-                <TableCell className="font-medium text-slate-950">{s.userId?.name ?? "—"}</TableCell>
-                <TableCell className="text-xs text-slate-500">{s.userId?.email ?? "—"}</TableCell>
-                <TableCell className="text-slate-500">{s.currentJobTitle ?? "—"}</TableCell>
-                <TableCell className="text-slate-500">
+              <TableRow key={s._id} className="hover:bg-secondary/50">
+                <TableCell className="font-medium text-foreground">{s.userId?.name ?? "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{s.userId?.email ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{s.currentJobTitle ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                     {s.location ?? "—"}
                   </span>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {(s.skills ?? []).slice(0, 3).map((skill) => (
-                      <span key={skill} className="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-700">{skill}</span>
+                      <span key={skill} className="workspace-tone-sky rounded-full px-2 py-0.5 text-xs">{skill}</span>
                     ))}
                     {(s.skills ?? []).length > 3 && (
-                      <span className="text-xs text-slate-500">+{s.skills.length - 3}</span>
+                      <span className="text-xs text-muted-foreground">+{s.skills.length - 3}</span>
                     )}
                   </div>
                 </TableCell>
@@ -199,13 +199,13 @@ export default function AgentJobSeekersPage() {
                     <span className="text-xs text-muted-foreground">{s.profileCompleteness ?? 0}%</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-xs text-slate-500">
+                <TableCell className="text-xs text-muted-foreground">
                   {new Date(s.createdAt).toLocaleDateString()}
                 </TableCell>
                 {can("job_seekers", "update") && (
                   <TableCell>
                     <Button variant="ghost" size="xs" onClick={() => { setEditSeeker(s); setModalOpen(true); }} title="Edit" aria-label={`Edit ${s.userId?.name ?? "job seeker"}`}>
-                      <Edit2 className="h-3.5 w-3.5 text-blue-600" />
+                      <Edit2 className="h-3.5 w-3.5 text-primary" />
                     </Button>
                   </TableCell>
                 )}

@@ -25,12 +25,12 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 
 function getStatusColor(status: OfferStatus): string {
   switch (status) {
-    case "pending": return "bg-amber-100 text-amber-700 border-amber-300";
-    case "accepted": return "bg-emerald-100 text-emerald-700 border-emerald-300";
-    case "declined": return "bg-red-100 text-red-700 border-red-300";
-    case "expired": return "bg-gray-100 text-gray-600 border-gray-300";
-    case "withdrawn": return "bg-orange-100 text-orange-700 border-orange-300";
-    default: return "bg-gray-100 text-gray-600 border-gray-300";
+    case "pending": return "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30";
+    case "accepted": return "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30";
+    case "declined": return "bg-red-100 text-red-700 border-red-300 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30";
+    case "expired": return "bg-gray-100 text-gray-600 border-gray-300 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700";
+    case "withdrawn": return "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/30";
+    default: return "bg-gray-100 text-gray-600 border-gray-300 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700";
   }
 }
 
@@ -92,27 +92,27 @@ export default function EmployerOffersPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_38%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
+    <div className="page-container employer-legacy-surface space-y-6">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
               Offer workspace
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               Manage candidate offers with a cleaner decision view.
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Track open packages, watch expiring decisions, and revisit accepted or withdrawn offers from one polished workspace.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-left backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Current results</p>
-              <p className="mt-1 text-lg font-semibold text-slate-950">{total} tracked offers</p>
-              <p className="text-xs text-slate-500">Pending, accepted, expired, and withdrawn decisions in one place.</p>
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{total} tracked offers</p>
+              <p className="text-xs text-muted-foreground">Pending, accepted, expired, and withdrawn decisions in one place.</p>
             </div>
             <Button
               asChild
@@ -161,28 +161,28 @@ export default function EmployerOffersPage() {
               chip: "bg-violet-50",
             },
           ].map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">{value}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
                 </div>
                 <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
                   <Icon className={`h-5 w-5 ${tone}`} />
                 </span>
               </div>
-              <p className="mt-3 text-sm leading-5 text-slate-500">{note}</p>
+              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)] sm:p-6">
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Filter decisions</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Focus on the offers that need action now.</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter decisions</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Focus on the offers that need action now.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               Status is the only server-backed filter on this page, so the view stays honest while still giving you a sharper workspace.
             </p>
           </div>
@@ -200,12 +200,12 @@ export default function EmployerOffersPage() {
       </section>
 
       {error ? (
-        <section className="rounded-[28px] border border-red-200 bg-white p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.22)]">
+        <section className="workspace-panel-surface rounded-[28px] border border-red-500/20 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">Offer list</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Unable to load offers right now</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Unable to load offers right now</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {error instanceof Error ? error.message : "The offer workspace could not load. Try again in a moment."}
               </p>
             </div>
@@ -215,27 +215,27 @@ export default function EmployerOffersPage() {
           </div>
         </section>
       ) : loading ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.22)] sm:p-6">
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Offer list</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Loading offers</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Offer list</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Loading offers</h2>
             </div>
           </div>
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl border border-slate-200 bg-slate-50" />
+              <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/60" />
             ))}
           </div>
         </section>
       ) : offers.length === 0 ? (
-        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.22)]">
+        <section className="workspace-panel-surface rounded-[28px] p-6">
           <div className="flex flex-col items-center py-14 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
               <DollarSign className="h-7 w-7" />
             </div>
-            <h2 className="mt-5 text-2xl font-semibold tracking-tight text-slate-950">No offers in this view yet</h2>
-            <p className="mt-3 max-w-md text-sm leading-6 text-slate-600">
+            <h2 className="mt-5 text-2xl font-semibold tracking-tight text-foreground">No offers in this view yet</h2>
+            <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
               As soon as offers are sent from your hiring pipeline, they will land here with status tracking, expiry visibility, and candidate context.
             </p>
             <Button asChild className="mt-6 h-11 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
@@ -244,22 +244,22 @@ export default function EmployerOffersPage() {
           </div>
         </section>
       ) : (
-        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.22)] sm:p-6">
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Offer list</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Review each package before it ages out.</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Offer list</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Review each package before it ages out.</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Candidate, role, compensation, and expiry details stay together so follow-up decisions are quicker.
               </p>
             </div>
-            <p className="text-sm text-slate-500">{offers.length} offers on this page</p>
+            <p className="text-sm text-muted-foreground">{offers.length} offers on this page</p>
           </div>
 
-          <div className="mt-5 overflow-x-auto rounded-3xl border border-slate-100">
+          <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                <TableRow className="bg-background/60 hover:bg-background/60">
                   <TableHead className="min-w-[220px]">Candidate</TableHead>
                   <TableHead className="min-w-[180px]">Role</TableHead>
                   <TableHead>Salary</TableHead>
@@ -271,35 +271,35 @@ export default function EmployerOffersPage() {
               </TableHeader>
               <TableBody>
                 {offers.map((offer) => (
-                  <TableRow key={offer._id} className={isExpiring(offer) ? "bg-amber-50/60" : "bg-white"}>
+                  <TableRow key={offer._id} className={isExpiring(offer) ? "bg-amber-500/10" : "bg-transparent"}>
                     <TableCell>
                       <div className="space-y-1">
-                        <p className="font-semibold text-slate-900">
+                        <p className="font-semibold text-foreground">
                           {offer.jobSeekerId?.name || `Candidate #${offer._id.slice(-4)}`}
                         </p>
-                        <p className="text-xs text-slate-500">Offer created {formatDate(offer.createdAt)}</p>
+                        <p className="text-xs text-muted-foreground">Offer created {formatDate(offer.createdAt)}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <p className="font-medium text-slate-900">{offer.jobId?.title || "Untitled role"}</p>
+                        <p className="font-medium text-foreground">{offer.jobId?.title || "Untitled role"}</p>
                         {offer.jobId?.location ? (
-                          <p className="text-xs text-slate-500">{offer.jobId.location}</p>
+                          <p className="text-xs text-muted-foreground">{offer.jobId.location}</p>
                         ) : null}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <p className="font-medium text-slate-900">{formatSalary(offer)}</p>
-                      <p className="text-xs text-slate-500">/{offer.salary.period === "monthly" ? "mo" : "yr"}</p>
+                      <p className="font-medium text-foreground">{formatSalary(offer)}</p>
+                      <p className="text-xs text-muted-foreground">/{offer.salary.period === "monthly" ? "mo" : "yr"}</p>
                     </TableCell>
-                    <TableCell className="text-sm text-slate-600">{formatDate(offer.startDate)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(offer.startDate)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={getStatusColor(offer.status)}>
                         {isExpired(offer) ? "Expired" : offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm text-slate-600">
+                      <div className="text-sm text-muted-foreground">
                         {formatDate(offer.expiresAt)}
                         {isExpiring(offer) ? (
                           <span className="mt-1 block text-xs font-semibold text-amber-600">Expiring soon</span>
@@ -342,11 +342,11 @@ export default function EmployerOffersPage() {
 
       {withdrawingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
-            <div className="border-b border-slate-100 px-6 py-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Offer action</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Withdraw this offer?</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+          <div className="w-full max-w-md overflow-hidden rounded-[28px] border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
+            <div className="border-b border-border/60 px-6 py-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Offer action</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Withdraw this offer?</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 Are you sure? The candidate will be notified.
               </p>
             </div>
@@ -362,12 +362,12 @@ export default function EmployerOffersPage() {
 
       {detailOffer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-border bg-background shadow-[0_30px_90px_-36px_rgba(15,23,42,0.5)]">
+            <div className="flex items-start justify-between gap-4 border-b border-border/60 px-6 py-5">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Offer detail</p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{detailOffer.jobId?.title}</h2>
-                <p className="mt-1 text-sm text-slate-500">Review package terms, notes, and candidate response details.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Offer detail</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{detailOffer.jobId?.title}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Review package terms, notes, and candidate response details.</p>
               </div>
               <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full p-0" onClick={() => setDetailOffer(null)}>
                 <X className="w-4 h-4" />
@@ -376,52 +376,52 @@ export default function EmployerOffersPage() {
             <div className="space-y-5 px-6 py-6">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Candidate</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-950">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Candidate</p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
                     {detailOffer.jobSeekerId?.name || `#${detailOffer._id.slice(-4)}`}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Status</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Status</p>
                   <Badge variant="outline" className={`mt-2 ${getStatusColor(detailOffer.status)}`}>
                     {detailOffer.status.charAt(0).toUpperCase() + detailOffer.status.slice(1)}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Salary</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-950">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Salary</p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">
                     {detailOffer.salary.currency} {detailOffer.salary.amount.toLocaleString()} / {detailOffer.salary.period}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Start date</p>
-                  <p className="mt-2 text-sm text-slate-700">{formatDate(detailOffer.startDate)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Start date</p>
+                  <p className="mt-2 text-sm text-foreground/85">{formatDate(detailOffer.startDate)}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sent on</p>
-                  <p className="mt-2 text-sm text-slate-700">{formatDate(detailOffer.createdAt)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Sent on</p>
+                  <p className="mt-2 text-sm text-foreground/85">{formatDate(detailOffer.createdAt)}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Expires</p>
-                  <p className="mt-2 text-sm text-slate-700">{formatDate(detailOffer.expiresAt)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Expires</p>
+                  <p className="mt-2 text-sm text-foreground/85">{formatDate(detailOffer.expiresAt)}</p>
                 </div>
               </div>
               {detailOffer.benefits && (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Benefits</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">{detailOffer.benefits}</p>
+                <div className="rounded-2xl border border-border bg-background/60 px-4 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Benefits</p>
+                  <p className="mt-2 text-sm leading-6 text-foreground/85">{detailOffer.benefits}</p>
                 </div>
               )}
               {detailOffer.notes && (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Notes</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">{detailOffer.notes}</p>
+                <div className="rounded-2xl border border-border bg-background/60 px-4 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Notes</p>
+                  <p className="mt-2 text-sm leading-6 text-foreground/85">{detailOffer.notes}</p>
                 </div>
               )}
               {detailOffer.respondedAt && (
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Responded</p>
-                  <p className="mt-2 text-sm text-slate-700">{formatDate(detailOffer.respondedAt)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Responded</p>
+                  <p className="mt-2 text-sm text-foreground/85">{formatDate(detailOffer.respondedAt)}</p>
                 </div>
               )}
               {detailOffer.declineReason && (

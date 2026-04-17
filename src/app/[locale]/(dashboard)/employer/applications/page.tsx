@@ -90,18 +90,18 @@ const pipelineStages = [
 
 function getAiMatchBadgeClass(score?: number): string {
   if (score == null) {
-    return "border border-slate-200 bg-slate-100 text-slate-600";
+    return "border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
   }
   if (score >= 80) {
-    return "border border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
   }
   if (score >= 70) {
-    return "border border-sky-200 bg-sky-50 text-sky-700";
+    return "border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300";
   }
   if (score >= 50) {
-    return "border border-amber-200 bg-amber-50 text-amber-700";
+    return "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
   }
-  return "border border-rose-200 bg-rose-50 text-rose-600";
+  return "border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
 }
 
 function getCurrentRole(app: Applicant): string {
@@ -453,19 +453,19 @@ export default function EmployerApplicationsPage() {
   }
 
   return (
-    <div className="page-container space-y-4">
-      <section className="overflow-hidden rounded-[22px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_30%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] px-4 py-3 shadow-[0_20px_48px_-40px_rgba(2,132,199,0.35)] sm:px-5">
+    <div className="page-container employer-legacy-surface space-y-4">
+      <section className="workspace-hero-surface overflow-hidden rounded-[22px] px-4 py-3 sm:px-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <h1 className="text-[1.45rem] font-semibold tracking-tight text-slate-950">Applications</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              <span className="font-medium text-slate-950">{filteredApplications.length}</span> Applicants
-              <span className="px-2 text-slate-300">•</span>
-              <span className="font-medium text-slate-950">{highMatchCount}</span> High Match
-              <span className="px-2 text-slate-300">•</span>
-              <span className="font-medium text-slate-950">{interviewCount}</span> Interviews
-              <span className="px-2 text-slate-300">•</span>
-              <span className="font-medium text-slate-950">{selectedStageCount}</span> Selected
+            <h1 className="text-[1.45rem] font-semibold tracking-tight text-foreground">Applications</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{filteredApplications.length}</span> Applicants
+              <span className="px-2 text-border">•</span>
+              <span className="font-medium text-foreground">{highMatchCount}</span> High Match
+              <span className="px-2 text-border">•</span>
+              <span className="font-medium text-foreground">{interviewCount}</span> Interviews
+              <span className="px-2 text-border">•</span>
+              <span className="font-medium text-foreground">{selectedStageCount}</span> Selected
             </p>
           </div>
 
@@ -474,17 +474,17 @@ export default function EmployerApplicationsPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-9 rounded-xl border-slate-200 bg-white px-3 text-xs font-medium"
+                className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs font-medium"
                 onClick={toggleAll}
                 disabled={!filteredApplications.length}
               >
-                {allVisibleSelected ? <CheckSquare className="mr-2 h-3.5 w-3.5 text-sky-600" /> : <Square className="mr-2 h-3.5 w-3.5 text-slate-400" />}
+                {allVisibleSelected ? <CheckSquare className="mr-2 h-3.5 w-3.5 text-sky-600 dark:text-sky-300" /> : <Square className="mr-2 h-3.5 w-3.5 text-muted-foreground" />}
                 {allVisibleSelected ? "Clear Visible" : "Select Visible"}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-9 rounded-xl border-slate-200 bg-white px-3 text-xs"
+                className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs"
                 disabled={bulkAiMatch.isPending || applications.every((a) => a.aiMatchScore != null)}
                 onClick={handleBulkAiMatch}
               >
@@ -507,21 +507,21 @@ export default function EmployerApplicationsPage() {
         </div>
       </section>
 
-      <section className="rounded-[22px] border border-slate-200 bg-white/95 p-3 shadow-[0_20px_48px_-42px_rgba(15,23,42,0.28)] backdrop-blur sm:p-4">
+      <section className="workspace-panel-surface rounded-[22px] p-3 sm:p-4">
 
           <div className="grid gap-2 xl:grid-cols-[minmax(0,1.8fr)_minmax(180px,1fr)_auto_auto]">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search applicants, jobs, skills, or location"
-                className="h-10 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm shadow-none"
+                className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
               />
             </div>
 
               <SearchableSelect
-                className="h-10 w-full rounded-xl border-slate-200 bg-slate-50"
+                className="h-10 w-full rounded-xl border-border bg-background/70"
                 options={[
                   { value: "all", label: "All statuses" },
                   ...pipelineStages.map((s) => ({ value: s.value, label: s.label })),
@@ -530,7 +530,7 @@ export default function EmployerApplicationsPage() {
                 onValueChange={setStatusFilter}
                 placeholder="All statuses"
               />
-              <Button size="sm" variant="outline" onClick={() => setShowFilters(!showFilters)} className="h-10 rounded-xl border-slate-200 bg-white px-3 text-sm">
+              <Button size="sm" variant="outline" onClick={() => setShowFilters(!showFilters)} className="h-10 rounded-xl border-border bg-background/80 px-3 text-sm">
                 <Filter className="mr-2 h-3.5 w-3.5" />
                 Filters
                 {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter) && (
@@ -540,7 +540,7 @@ export default function EmployerApplicationsPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className={scoreRange[0] === 70 && scoreRange[1] === 100 ? "h-10 rounded-xl border-emerald-200 bg-emerald-50 px-3 text-sm text-emerald-700 hover:bg-emerald-50" : "h-10 rounded-xl border-slate-200 bg-white px-3 text-sm"}
+                className={scoreRange[0] === 70 && scoreRange[1] === 100 ? "h-10 rounded-xl border-emerald-200 bg-emerald-50 px-3 text-sm text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/20" : "h-10 rounded-xl border-border bg-background/80 px-3 text-sm"}
                 onClick={() => setScoreRange(scoreRange[0] === 70 && scoreRange[1] === 100 ? [0, 100] : [70, 100])}
               >
                 <span className="mr-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
@@ -549,24 +549,24 @@ export default function EmployerApplicationsPage() {
           </div>
 
       {showFilters && (
-        <div className="mt-3 flex flex-wrap gap-4 rounded-[20px] border border-slate-200 bg-slate-50/80 p-3">
+        <div className="mt-3 flex flex-wrap gap-4 rounded-[20px] border border-border/60 bg-background/60 p-3">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">AI Score Range</label>
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">AI Score Range</label>
             <div className="flex items-center gap-2">
               <input type="number" min={0} max={100} value={scoreRange[0]}
                 onChange={(e) => setScoreRange([Math.max(0, +e.target.value), scoreRange[1]])}
-                className="h-9 w-20 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700" />
-              <span className="text-xs text-slate-500">to</span>
+                className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
+              <span className="text-xs text-muted-foreground">to</span>
               <input type="number" min={0} max={100} value={scoreRange[1]}
                 onChange={(e) => setScoreRange([scoreRange[0], Math.min(100, +e.target.value)])}
-                className="h-9 w-20 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700" />
-              <span className="text-xs text-slate-500">%</span>
+                className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
+              <span className="text-xs text-muted-foreground">%</span>
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Days in Pipeline</label>
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Days in Pipeline</label>
             <SearchableSelect
-              className="h-9 w-40 rounded-xl border-slate-200 bg-white text-sm"
+              className="h-9 w-40 rounded-xl border-border bg-background/80 text-sm"
               options={[
                 { value: "any", label: "Any" },
                 { value: "3", label: "3+ days" },
@@ -579,7 +579,7 @@ export default function EmployerApplicationsPage() {
             />
           </div>
           <div className="flex items-end">
-            <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4 text-sm text-slate-600"
+            <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4 text-sm text-muted-foreground"
               onClick={() => { setScoreRange([0, 100]); setDaysFilter(null); }}>
               Reset
             </Button>
@@ -589,30 +589,30 @@ export default function EmployerApplicationsPage() {
       </section>
 
       {canUpdate && selected.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-[24px] border border-sky-200 bg-[linear-gradient(135deg,_rgba(239,246,255,0.9),_rgba(255,255,255,0.95))] p-4 shadow-[0_16px_40px_-36px_rgba(2,132,199,0.45)]">
-          <span className="text-sm font-semibold text-sky-700">{selected.length} selected for bulk review</span>
+        <div className="flex flex-wrap items-center gap-3 rounded-[24px] border border-sky-500/20 bg-sky-500/10 p-4 text-sky-800 dark:text-sky-200">
+          <span className="text-sm font-semibold">{selected.length} selected for bulk review</span>
           <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm"
+            <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm"
               onClick={() => handleBulkAction("move_stage", "shortlisted")} disabled={bulkAction.isPending}>
               Shortlist Selected
             </Button>
-            <Button size="sm" variant="outline" className="h-10 rounded-xl border-destructive/30 bg-white px-4 text-sm text-destructive hover:bg-destructive/10"
+            <Button size="sm" variant="outline" className="h-10 rounded-xl border-destructive/30 bg-background/80 px-4 text-sm text-destructive hover:bg-destructive/10"
               onClick={() => setShowRejectPrompt(true)} disabled={bulkAction.isPending}>
               Reject All
             </Button>
           </div>
-          <Button size="sm" variant="ghost" className="ml-auto h-10 w-10 rounded-xl p-0 text-slate-500 hover:bg-white" onClick={() => setSelected([])}>
+          <Button size="sm" variant="ghost" className="ml-auto h-10 w-10 rounded-xl p-0 text-muted-foreground hover:bg-background/70" onClick={() => setSelected([])}>
             <X className="h-4 w-4" />
           </Button>
         </div>
       )}
 
       {showRejectPrompt && (
-        <div className="flex flex-col gap-3 rounded-[24px] border border-destructive/30 bg-[linear-gradient(135deg,_rgba(254,242,242,0.95),_rgba(255,255,255,0.98))] p-4 shadow-[0_16px_40px_-36px_rgba(220,38,38,0.45)]">
+        <div className="flex flex-col gap-3 rounded-[24px] border border-destructive/30 bg-destructive/5 p-4">
           <p className="text-sm font-semibold text-destructive">Rejection reason is required before bulk reject.</p>
           <div className="flex gap-2">
             <input
-              className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-destructive/40"
+              className="h-11 flex-1 rounded-xl border border-border bg-background/80 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-destructive/40"
               placeholder="e.g. Skills don't match requirements"
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
@@ -630,7 +630,7 @@ export default function EmployerApplicationsPage() {
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-[20px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_18px_40px_-40px_rgba(15,23,42,0.22)]" />
+            <div key={i} className="h-20 animate-pulse rounded-[20px] border border-border/60 bg-background/70" />
           ))}
         </div>
       ) : (
@@ -763,14 +763,14 @@ function TableView({
 
   if (!applications.length) {
     return (
-      <div className="rounded-[24px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] px-6 py-16 text-center shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-sky-50 text-sky-600">
+      <div className="workspace-panel-surface rounded-[24px] px-6 py-16 text-center">
+        <div className="workspace-tone-sky mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
           <Inbox className="h-7 w-7" />
         </div>
-        <h3 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
+        <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
           {hasActiveRefinement ? "No applications match the current filters." : "No applications yet"}
         </h3>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
           {hasActiveRefinement
             ? "Try widening the score range, status, or search terms to bring more applicants back into view."
             : "Applications will appear here once candidates apply and move through your hiring pipeline."}
@@ -780,14 +780,14 @@ function TableView({
   }
 
   return (
-    <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
-      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-3 border-b border-slate-200/80 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:grid">
+    <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
+      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
         <span>Candidate</span>
         <span>Role, Match, Skills</span>
         <span className="text-right">Actions</span>
       </div>
 
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-border/60">
         {applications.map((app) => {
           const isSelected = selected.includes(app._id);
           const candidateName = getCandidateName(app);
@@ -805,7 +805,7 @@ function TableView({
               aria-label={`Applicant row for ${candidateName}`}
               onClick={() => onOpenDetails?.(app)}
               className={`grid gap-2 px-4 py-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-300/60 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center ${
-                isSelected ? "bg-sky-50/70" : "bg-white hover:bg-slate-50/80"
+                isSelected ? "bg-sky-500/10" : "bg-transparent hover:bg-background/70"
               }`}
             >
               <div className="flex min-w-0 items-center gap-3">
@@ -817,13 +817,13 @@ function TableView({
                       event.stopPropagation();
                       onToggle(app._id);
                     }}
-                    className="shrink-0 text-slate-400 transition hover:text-slate-700"
+                    className="shrink-0 text-muted-foreground transition hover:text-foreground"
                   >
-                    {isSelected ? <CheckSquare className="h-5 w-5 text-sky-600" /> : <Square className="h-5 w-5" />}
+                    {isSelected ? <CheckSquare className="h-5 w-5 text-sky-600 dark:text-sky-300" /> : <Square className="h-5 w-5" />}
                   </button>
                 ) : null}
 
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 shadow-inner">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 shadow-inner dark:text-sky-300">
                   <User className="h-4 w-4" />
                 </div>
 
@@ -831,7 +831,7 @@ function TableView({
                   <div className="flex flex-wrap items-center gap-2">
                     <a
                       href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
-                      className="truncate text-sm font-semibold tracking-tight text-slate-950 hover:text-sky-700 hover:underline sm:text-base"
+                      className="truncate text-sm font-semibold tracking-tight text-foreground hover:text-sky-700 hover:underline dark:hover:text-sky-300 sm:text-base"
                       onClick={(event) => event.stopPropagation()}
                     >
                       {candidateName}
@@ -847,10 +847,10 @@ function TableView({
               </div>
 
               <div className="min-w-0 sm:px-1">
-                <div className="flex flex-wrap items-center gap-1.5 text-sm text-slate-700">
-                  <span className="truncate text-[13px] font-medium text-slate-900">{app.jobId?.title ?? currentRole}</span>
-                  <span className="hidden text-slate-300 sm:inline">•</span>
-                  <span className="truncate text-[11px] text-slate-500">{locationExperience}</span>
+                <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                  <span className="truncate text-[13px] font-medium text-foreground">{app.jobId?.title ?? currentRole}</span>
+                  <span className="hidden text-border sm:inline">•</span>
+                  <span className="truncate text-[11px] text-muted-foreground">{locationExperience}</span>
                 </div>
 
                 <div className="mt-0.5 flex flex-wrap items-center gap-1">
@@ -858,19 +858,19 @@ function TableView({
                     {aiScoreLabel}
                   </Badge>
                   {topSkills.map((skill) => (
-                    <span key={skill} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">
+                    <span key={skill} className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground">
                       {skill}
                     </span>
                   ))}
                   {!topSkills.length ? (
-                    <span className="text-[11px] text-slate-400">{currentRole}</span>
+                    <span className="text-[11px] text-muted-foreground">{currentRole}</span>
                   ) : null}
                 </div>
 
-                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                   <span>Applied {appliedDate}</span>
                   {(app.otherApplicationsCount ?? 0) > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-sky-700">
+                    <span className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-300">
                       <Users className="h-3 w-3" />
                       +{app.otherApplicationsCount} other role{app.otherApplicationsCount! > 1 ? "s" : ""}
                     </span>
@@ -883,7 +883,7 @@ function TableView({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-lg border-slate-200 bg-white px-3 text-xs"
+                    className="h-8 rounded-lg border-border bg-background/80 px-3 text-xs"
                     onClick={(event) => {
                       event.stopPropagation();
                       onOpenDetails?.(app, event.currentTarget);
@@ -896,7 +896,7 @@ function TableView({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 w-8 rounded-lg border-slate-200 bg-white p-0"
+                    className="h-8 w-8 rounded-lg border-border bg-background/80 p-0"
                     onClick={(event) => {
                       event.stopPropagation();
                       onViewCv(app);
@@ -910,7 +910,7 @@ function TableView({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 rounded-lg px-2.5 text-[11px] text-sky-700 hover:bg-sky-50"
+                    className="h-8 rounded-lg px-2.5 text-[11px] text-sky-700 hover:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/15"
                     disabled={aiMatchPendingId === app._id}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -1054,22 +1054,22 @@ function ApplicationDetailsPanel({
         role="dialog"
         aria-modal="true"
         aria-label={`Candidate details for ${candidateName}`}
-        className="absolute inset-y-0 right-0 flex h-screen min-h-0 w-[96vw] max-w-[760px] flex-col overflow-hidden border-l border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.97))] shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in slide-in-from-right duration-300"
+        className="absolute inset-y-0 right-0 flex h-screen min-h-0 w-[96vw] max-w-[760px] flex-col overflow-hidden border-l border-border bg-background shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in slide-in-from-right duration-300"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 shrink-0 border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_34%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] px-5 py-5 sm:px-6">
+        <div className="sticky top-0 z-10 shrink-0 border-b border-border bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_34%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] px-5 py-5 dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_34%),linear-gradient(135deg,_rgba(2,6,23,0.96),_rgba(15,23,42,0.92))] sm:px-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-sky-50 text-sky-600 shadow-inner">
+                <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-sky-500/10 text-sky-600 shadow-inner dark:text-sky-300">
                   <User className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700/80">Candidate Detailed View</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700/80 dark:text-sky-300/80">Candidate Detailed View</p>
                   <div className="flex flex-wrap items-center gap-2">
                     <a
                       href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
-                      className="truncate text-xl font-semibold tracking-tight text-slate-950 hover:text-sky-700 hover:underline"
+                      className="truncate text-xl font-semibold tracking-tight text-foreground hover:text-sky-700 hover:underline dark:hover:text-sky-300"
                     >
                       {candidateName}
                     </a>
@@ -1078,7 +1078,7 @@ function ApplicationDetailsPanel({
                       {app.aiMatchScore != null ? `${app.aiMatchScore}% match` : "AI score pending"}
                     </Badge>
                   </div>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {currentRole}
                     {app.jobSeekerId?.currentLocation ? ` • ${app.jobSeekerId.currentLocation}` : ""}
                     {app.jobSeekerId?.totalExperienceYears != null ? ` • ${app.jobSeekerId.totalExperienceYears}+ years experience` : ""}
@@ -1087,24 +1087,24 @@ function ApplicationDetailsPanel({
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <div className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs text-slate-500 shadow-sm">
-                  <span className="font-semibold text-slate-900">Applied</span>
+                <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                  <span className="font-semibold text-foreground">Applied</span>
                   <span className="ml-1.5">{new Date(app.appliedAt).toLocaleDateString()}</span>
                 </div>
-                <div className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs text-slate-500 shadow-sm">
-                  <span className="font-semibold text-slate-900">Role</span>
+                <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                  <span className="font-semibold text-foreground">Role</span>
                   <span className="ml-1.5">{app.jobId?.title ?? "Unassigned"}</span>
                 </div>
                 {(app.otherApplicationsCount ?? 0) > 0 ? (
-                  <div className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs text-slate-500 shadow-sm">
-                    <span className="font-semibold text-slate-900">Other roles</span>
+                  <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
+                    <span className="font-semibold text-foreground">Other roles</span>
                     <span className="ml-1.5">{app.otherApplicationsCount}</span>
                   </div>
                 ) : null}
               </div>
             </div>
 
-            <Button ref={closeButtonRef} variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0 text-slate-600 hover:bg-rose-50 hover:text-rose-600" onClick={onClose} aria-label="Close candidate details">
+            <Button ref={closeButtonRef} variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 dark:hover:text-rose-300" onClick={onClose} aria-label="Close candidate details">
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -1112,21 +1112,21 @@ function ApplicationDetailsPanel({
 
         <div className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_28%),linear-gradient(to_bottom,rgba(148,163,184,0.08),transparent_28%)] px-4 py-4 sm:px-6 sm:py-5">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Current Role</p>
-              <p className="mt-2 text-sm font-semibold text-slate-950">{currentRole}</p>
+            <div className="workspace-glass-panel rounded-2xl p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current Role</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{currentRole}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Location</p>
-              <p className="mt-2 text-sm font-semibold text-slate-950">{app.jobSeekerId?.currentLocation ?? "Not specified"}</p>
+            <div className="workspace-glass-panel rounded-2xl p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Location</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{app.jobSeekerId?.currentLocation ?? "Not specified"}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Experience</p>
-              <p className="mt-2 text-sm font-semibold text-slate-950">{app.jobSeekerId?.totalExperienceYears != null ? `${app.jobSeekerId.totalExperienceYears}+ years` : "Pending"}</p>
+            <div className="workspace-glass-panel rounded-2xl p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Experience</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{app.jobSeekerId?.totalExperienceYears != null ? `${app.jobSeekerId.totalExperienceYears}+ years` : "Pending"}</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Scorecard</p>
-              <p className={`mt-2 text-sm font-semibold ${scorecard ? scorecard.overallScore >= 4 ? "text-emerald-600" : scorecard.overallScore >= 3 ? "text-amber-600" : "text-rose-500" : "text-slate-500"}`}>
+            <div className="workspace-glass-panel rounded-2xl p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scorecard</p>
+              <p className={`mt-2 text-sm font-semibold ${scorecard ? scorecard.overallScore >= 4 ? "text-emerald-600 dark:text-emerald-300" : scorecard.overallScore >= 3 ? "text-amber-600 dark:text-amber-300" : "text-rose-500 dark:text-rose-300" : "text-muted-foreground"}`}>
                 {scorecard ? `${scorecard.overallScore.toFixed(1)}/5 overall` : "Not added yet"}
               </p>
             </div>
@@ -1134,29 +1134,29 @@ function ApplicationDetailsPanel({
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(280px,0.92fr)]">
             <div className="space-y-4">
-              <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Application Overview</p>
-                <div className="mt-3 space-y-3 text-sm text-slate-600">
+              <div className="workspace-glass-panel rounded-[24px] p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Application Overview</p>
+                <div className="mt-3 space-y-3 text-sm text-muted-foreground">
                   <div>
-                    <p className="font-semibold text-slate-950">{app.jobId?.title ?? "Untitled role"}</p>
-                    <p className="mt-1 text-xs text-slate-500">Applied on {new Date(app.appliedAt).toLocaleDateString()} and currently in the {app.status.replace(/_/g, " ")} stage.</p>
+                    <p className="font-semibold text-foreground">{app.jobId?.title ?? "Untitled role"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Applied on {new Date(app.appliedAt).toLocaleDateString()} and currently in the {app.status.replace(/_/g, " ")} stage.</p>
                   </div>
                   {(app.otherApplicationsCount ?? 0) > 0 ? (
-                    <p className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                    <p className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-xs text-muted-foreground">
                       This candidate also applied to {app.otherApplicationsCount} other role{app.otherApplicationsCount! > 1 ? "s" : ""}.
                     </p>
                   ) : null}
                 </div>
               </div>
 
-              <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+              <div className="workspace-glass-panel rounded-[24px] p-5">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Review Signals</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Review Signals</p>
                   {app.aiMatchScore == null && onGenerateAiMatch ? (
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 rounded-xl px-3 text-xs text-sky-700 hover:bg-sky-50"
+                      className="h-8 rounded-xl px-3 text-xs text-sky-700 hover:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/15"
                       disabled={aiMatchPendingId === app._id}
                       onClick={() => onGenerateAiMatch(app)}
                     >
@@ -1168,46 +1168,46 @@ function ApplicationDetailsPanel({
 
                 {app.aiMatchScore != null ? (
                   <div className="mt-3 space-y-3">
-                    <div className="rounded-2xl bg-slate-50 px-3.5 py-3">
-                      <p className="text-[11px] font-medium text-slate-500">AI match</p>
-                      <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{app.aiMatchScore}%</p>
+                    <div className="rounded-2xl bg-background/70 px-3.5 py-3">
+                      <p className="text-[11px] font-medium text-muted-foreground">AI match</p>
+                      <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{app.aiMatchScore}%</p>
                     </div>
 
                     {matchItems.length ? (
                       <div className="space-y-2">
                         {matchItems.map((item) => (
                           <div key={item.label} className="flex items-center gap-2">
-                            <span className="w-20 text-[11px] text-slate-500">{item.label}</span>
-                            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                            <span className="w-20 text-[11px] text-muted-foreground">{item.label}</span>
+                            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/50">
                               <div
                                 className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-rose-400"}`}
                                 style={{ width: `${item.value}%` }}
                               />
                             </div>
-                            <span className="w-10 text-right text-[11px] font-medium text-slate-600">{item.value}%</span>
+                            <span className="w-10 text-right text-[11px] font-medium text-foreground/80">{item.value}%</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-500">Detailed AI category scores are not available for this application yet.</p>
+                      <p className="text-sm text-muted-foreground">Detailed AI category scores are not available for this application yet.</p>
                     )}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm leading-6 text-slate-500">Generate an AI match score to inspect how this candidate aligns with the role requirements.</p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">Generate an AI match score to inspect how this candidate aligns with the role requirements.</p>
                 )}
               </div>
 
               {app.coverLetter ? (
-                <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Cover Letter</p>
-                  <p className="mt-3 text-sm leading-7 text-slate-600">{app.coverLetter}</p>
+                <div className="workspace-glass-panel rounded-[24px] p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Cover Letter</p>
+                  <p className="mt-3 text-sm leading-7 text-muted-foreground">{app.coverLetter}</p>
                 </div>
               ) : null}
 
               {app.matchStrengths?.length ? (
-                <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/60 p-5">
-                  <p className="text-sm font-semibold text-emerald-700">Strengths</p>
-                  <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/10 p-5">
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Strengths</p>
+                  <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                     {app.matchStrengths.map((strength) => (
                       <li key={strength} className="flex gap-2">
                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
@@ -1219,9 +1219,9 @@ function ApplicationDetailsPanel({
               ) : null}
 
               {app.matchGaps?.length ? (
-                <div className="rounded-[24px] border border-amber-200 bg-amber-50/60 p-5">
-                  <p className="text-sm font-semibold text-amber-700">Watchouts</p>
-                  <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/10 p-5">
+                  <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Watchouts</p>
+                  <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                     {app.matchGaps.map((gap) => (
                       <li key={gap} className="flex gap-2">
                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
@@ -1234,72 +1234,72 @@ function ApplicationDetailsPanel({
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Key Skills</p>
+              <div className="workspace-glass-panel rounded-[24px] p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Key Skills</p>
                 {app.jobSeekerId?.skills?.length ? (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {app.jobSeekerId.skills.map((skill) => (
-                      <span key={skill} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                      <span key={skill} className="rounded-full border border-border bg-background/70 px-2.5 py-1 text-xs font-medium text-muted-foreground">
                         {skill}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-slate-500">No skills are attached to this profile yet.</p>
+                  <p className="mt-3 text-sm text-muted-foreground">No skills are attached to this profile yet.</p>
                 )}
               </div>
 
-              <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Quick Actions</p>
+              <div className="workspace-glass-panel rounded-[24px] p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Quick Actions</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {app.jobSeekerId?.cv?.originalUrl && onViewCv ? (
-                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm" onClick={() => onViewCv(app)}>
+                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onViewCv(app)}>
                       <FileText className="mr-2 h-3.5 w-3.5" /> View CV
                     </Button>
                   ) : null}
                   {onOpenTimeline ? (
-                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm" onClick={() => onOpenTimeline(app._id, candidateName)}>
+                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenTimeline(app._id, candidateName)}>
                       <History className="mr-2 h-3.5 w-3.5" /> Activity
                     </Button>
                   ) : null}
                   {onOpenScorecard && ["interview_scheduled", "selected"].includes(app.status) ? (
-                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm" onClick={() => onOpenScorecard({ applicationId: app._id })}>
+                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenScorecard({ applicationId: app._id })}>
                       <Award className="mr-2 h-3.5 w-3.5" /> {scorecard ? "View Scorecard" : "Add Scorecard"}
                     </Button>
                   ) : null}
                   {app.status === "shortlisted" && onScheduleInterview ? (
-                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-violet-50 px-4 text-sm text-violet-700 hover:bg-violet-100" onClick={() => onScheduleInterview(app)}>
+                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-violet-500/10 px-4 text-sm text-violet-700 hover:bg-violet-500/15 dark:text-violet-300" onClick={() => onScheduleInterview(app)}>
                       <Calendar className="mr-2 h-3.5 w-3.5" /> Schedule Interview
                     </Button>
                   ) : null}
                   {app.status === "selected" && onCreateOffer ? (
-                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-cyan-50 px-4 text-sm text-cyan-700 hover:bg-cyan-100" onClick={() => onCreateOffer(app)}>
+                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-cyan-500/10 px-4 text-sm text-cyan-700 hover:bg-cyan-500/15 dark:text-cyan-300" onClick={() => onCreateOffer(app)}>
                       <DollarSign className="mr-2 h-3.5 w-3.5" /> Create Offer
                     </Button>
                   ) : null}
                   {app.status === "applied" && onChangeStatus ? (
-                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-sky-50 px-4 text-sm text-sky-700 hover:bg-sky-100" disabled={statusPending} onClick={() => handleQuickStageChange("shortlisted")}>
+                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-sky-500/10 px-4 text-sm text-sky-700 hover:bg-sky-500/15 dark:text-sky-300" disabled={statusPending} onClick={() => handleQuickStageChange("shortlisted")}>
                       Shortlist
                     </Button>
                   ) : null}
                   {app.status === "interview_scheduled" && onChangeStatus ? (
-                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-emerald-50 px-4 text-sm text-emerald-700 hover:bg-emerald-100" disabled={statusPending} onClick={() => handleQuickStageChange("selected")}>
+                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-emerald-500/10 px-4 text-sm text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300" disabled={statusPending} onClick={() => handleQuickStageChange("selected")}>
                       Mark Selected
                     </Button>
                   ) : null}
                   {!(["rejected", "offer"]).includes(app.status) && onChangeStatus ? (
-                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-rose-50 px-4 text-sm text-rose-600 hover:bg-rose-100" onClick={() => setNextStage("rejected")}>
+                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-rose-500/10 px-4 text-sm text-rose-600 hover:bg-rose-500/15 dark:text-rose-300" onClick={() => setNextStage("rejected")}>
                       Reject
                     </Button>
                   ) : null}
                 </div>
 
                 {onChangeStatus ? (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Stage Management</p>
+                  <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Stage Management</p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                       <SearchableSelect
-                        className="h-10 w-full rounded-xl border-slate-200 bg-white"
+                        className="h-10 w-full rounded-xl border-border bg-background/80"
                         options={[{ value: "", label: "Move to stage" }, ...stageOptions]}
                         value={nextStage}
                         onValueChange={setNextStage}
@@ -1315,7 +1315,7 @@ function ApplicationDetailsPanel({
                         onChange={(event) => setRejectReason(event.target.value)}
                         placeholder="Rejection reason is required"
                         maxLength={500}
-                        className="mt-3 h-20 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                        className="mt-3 h-20 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-rose-300"
                       />
                     ) : null}
                   </div>

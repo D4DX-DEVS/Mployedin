@@ -95,7 +95,7 @@ export default function EmployerInterviewsPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container employer-legacy-surface space-y-6">
       {aiTarget && (
         <AIInterviewQuestionsPanel
           jobTitle={aiTarget.jobTitle}
@@ -105,26 +105,26 @@ export default function EmployerInterviewsPage() {
           onClose={() => setAiTarget(null)}
         />
       )}
-      <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_38%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               Interview workspace
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               Keep interview momentum visible across every candidate touchpoint.
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Review upcoming sessions, reschedules, and completions in one cleaner operations view without losing the quick scheduling flow.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-left backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Current results</p>
-              <p className="mt-1 text-lg font-semibold text-slate-950">{total} interview records</p>
-              <p className="text-xs text-slate-500">Scheduled, confirmed, completed, and changed sessions together.</p>
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{total} interview records</p>
+              <p className="text-xs text-muted-foreground">Scheduled, confirmed, completed, and changed sessions together.</p>
             </div>
             {can("interviews", "create") ? (
               <Button
@@ -175,28 +175,28 @@ export default function EmployerInterviewsPage() {
               chip: "bg-violet-50",
             },
           ].map(({ label, value, note, icon: Icon, tone, chip }) => (
-            <div key={label} className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">{value}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
                 </div>
                 <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
                   <Icon className={`h-5 w-5 ${tone}`} />
                 </span>
               </div>
-              <p className="mt-3 text-sm leading-5 text-slate-500">{note}</p>
+              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)] sm:p-6">
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Filter schedule</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Focus the calendar on the interview status you need.</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter schedule</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Focus the calendar on the interview status you need.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               This page stays tied to the existing interview API, so status remains the one supported filter while the workspace becomes easier to scan.
             </p>
           </div>
@@ -219,12 +219,12 @@ export default function EmployerInterviewsPage() {
       </section>
 
       {error ? (
-        <section className="rounded-[28px] border border-red-200 bg-white p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.22)]">
+        <section className="workspace-panel-surface rounded-[28px] border border-destructive/30 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">Interview list</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Unable to load interviews right now</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Unable to load interviews right now</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {error instanceof Error ? error.message : "The interview workspace could not load. Try again in a moment."}
               </p>
             </div>
@@ -234,22 +234,22 @@ export default function EmployerInterviewsPage() {
           </div>
         </section>
       ) : (
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.22)] sm:p-6">
-        <div className="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Interview list</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Track who is meeting, when, and what needs attention next.</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Interview list</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Track who is meeting, when, and what needs attention next.</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Candidate context, role detail, schedule timing, and AI question generation stay inside one consistent workspace.
             </p>
           </div>
-          <p className="text-sm text-slate-500">{interviews.length} interviews on this page</p>
+          <p className="text-sm text-muted-foreground">{interviews.length} interviews on this page</p>
         </div>
 
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-slate-100">
+        <div className="workspace-subtle-surface mt-5 overflow-x-auto rounded-3xl border border-border">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+              <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
                 <TableHead className="min-w-[220px]">Candidate</TableHead>
                 <TableHead className="min-w-[260px]">Role</TableHead>
                 <TableHead>Type</TableHead>
@@ -264,7 +264,7 @@ export default function EmployerInterviewsPage() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     {Array.from({ length: can("interviews", "update") ? 7 : 6 }).map((_, j) => (
-                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" /></TableCell>
+                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted" /></TableCell>
                     ))}
                   </TableRow>
                 ))
@@ -272,12 +272,12 @@ export default function EmployerInterviewsPage() {
                 <TableRow>
                   <TableCell colSpan={can("interviews", "update") ? 7 : 6} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+                      <div className="workspace-tone-sky flex h-14 w-14 items-center justify-center rounded-3xl">
                         <Inbox className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-slate-950">No interviews scheduled yet</p>
-                        <p className="mt-1 text-sm text-slate-500">Once candidates move into interview stages, they will appear here for tracking and follow-up.</p>
+                        <p className="text-base font-semibold text-foreground">No interviews scheduled yet</p>
+                        <p className="mt-1 text-sm text-muted-foreground">Once candidates move into interview stages, they will appear here for tracking and follow-up.</p>
                       </div>
                     </div>
                   </TableCell>
@@ -287,20 +287,20 @@ export default function EmployerInterviewsPage() {
                 const skills = getInterviewSkills(iv);
 
                 return (
-                  <TableRow key={iv._id} className="bg-white">
+                  <TableRow key={iv._id} className="hover:bg-secondary/50">
                     <TableCell>
                       <div className="space-y-1">
-                        <p className="font-semibold text-slate-900">{iv.jobSeekerId?.fullName ?? "Candidate"}</p>
-                        <p className="text-xs text-slate-500">{iv.jobSeekerId?.email ?? "No email available"}</p>
+                        <p className="font-semibold text-foreground">{iv.jobSeekerId?.fullName ?? "Candidate"}</p>
+                        <p className="text-xs text-muted-foreground">{iv.jobSeekerId?.email ?? "No email available"}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-2">
-                        <p className="font-medium text-slate-900">{iv.jobId?.title ?? "Untitled role"}</p>
+                        <p className="font-medium text-foreground">{iv.jobId?.title ?? "Untitled role"}</p>
                         {skills.length ? (
                           <div className="flex flex-wrap gap-2">
                             {skills.map((skill) => (
-                              <span key={skill} className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                              <span key={skill} className="workspace-muted-pill rounded-full px-2.5 py-1 text-[11px] font-medium">
                                 {skill}
                               </span>
                             ))}
@@ -308,11 +308,11 @@ export default function EmployerInterviewsPage() {
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell className="capitalize text-slate-600">{iv.type ?? "in-person"}</TableCell>
+                    <TableCell className="capitalize text-muted-foreground">{iv.type ?? "in-person"}</TableCell>
                     <TableCell>
-                      <div className="space-y-1 text-sm text-slate-600">
+                      <div className="space-y-1 text-sm text-muted-foreground">
                         <p>{scheduled.date}</p>
-                        <p className="text-xs text-slate-500">{scheduled.time}</p>
+                        <p className="text-xs text-muted-foreground">{scheduled.time}</p>
                       </div>
                     </TableCell>
                     <TableCell><StatusBadge status={iv.status} /></TableCell>

@@ -16,6 +16,7 @@ import logger from "@/lib/logger";
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
+  rememberMe: z.string().optional(),
 });
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -118,6 +119,7 @@ export const authConfig: NextAuthConfig = {
           locale: user.locale,
           isEmailVerified: user.isEmailVerified ?? false,
           isOnboarded: jobSeeker?.isOnboarded ?? false,
+          rememberMe: parsed.data.rememberMe === "true",
         };
         } catch (err) {
           logger.error({ err }, "Credentials authorize error");
@@ -222,8 +224,8 @@ export const authConfig: NextAuthConfig = {
   ],
   session: {
     strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60,    // 7 days absolute lifetime
-    updateAge: 60 * 60,           // silently refresh token if > 1 hour old (sliding window)
+    maxAge: 3 * 24 * 60 * 60,    // 3 days max (remember-me sessions)
+    updateAge: 15 * 60,           // re-check DB every 15 min — aligns with reset token window
   },
   pages: {
     signIn: "/en/login",
@@ -248,6 +250,30 @@ export const authConfig: NextAuthConfig = {
         token.isOnboarded = ((user as unknown) as { isOnboarded?: boolean }).isOnboarded ?? false;
         token.permissionMode = ((user as unknown) as { permissionMode?: string }).permissionMode ?? "role_default";
         token.customPermissions = ((user as unknown) as { customPermissions?: Record<string, string[]> }).customPermissions ?? undefined;
+        // Set JWT expiry based on rememberMe: 30 days if checked, 1 day otherwise
+        const rememberMe = ((user as unknown) as { rememberMe?: boolean }).rememberMe ?? false;
+        const ttlSeconds = rememberMe ? 3 * 24 * 60 * 60 : 24 * 60 * 60;
+        token.exp = Math.floor(Date.now() / 1000) + ttlSeconds;
+        // Cache passwordChangedAt in token (seconds) for session invalidation checks
+        const pca = ((user as unknown) as { passwordChangedAt?: Date }).passwordChangedAt;
+        token.pca = pca ? Math.floor(new Date(pca).getTime() / 1000) : null;
+      }
+
+      // Token refresh path — verify password hasn't changed since this token was issued
+      if (token.id && !user) {
+        await connectDB();
+        const dbUser = await User.findById(token.id)
+          .select("passwordChangedAt isActive")
+          .lean() as { passwordChangedAt?: Date; isActive?: boolean } | null;
+
+        if (!dbUser?.isActive) return null;
+
+        if (dbUser.passwordChangedAt) {
+          const changedAt = Math.floor(
+            new Date(dbUser.passwordChangedAt).getTime() / 1000
+          );
+          if ((token.iat as number) < changedAt) return null;
+        }
       }
       // OAuth sign-in: create/find user in DB
       if (account && account.provider !== "credentials") {

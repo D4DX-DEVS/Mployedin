@@ -52,26 +52,26 @@ export function SmartHeader({
     : "Fresh workspace";
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_40%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-5 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-6">
+    <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-5 sm:p-6">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="max-w-3xl min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
             {eyebrow}
           </div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
             Welcome back, {userName}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             {subtitle}
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/80 px-3 py-1 backdrop-blur">
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/80 px-3 py-1 backdrop-blur">
               <Clock className="h-3.5 w-3.5 text-sky-600" />
               {activityLabel}
             </span>
             {newApplications > 0 ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/90 px-3 py-1 text-amber-700">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/90 px-3 py-1 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
                 <FileText className="h-3.5 w-3.5" />
                 Review queue is live
               </span>
@@ -83,7 +83,7 @@ export function SmartHeader({
           {activeJobCount > 0 ? (
             <Link
               href={viewJobsHref}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-4 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-white"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background/80 px-4 text-sm font-semibold text-foreground transition hover:bg-background"
             >
               View Jobs
               <ArrowRight className="h-4 w-4" />
@@ -100,12 +100,12 @@ export function SmartHeader({
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+        <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Active roles</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{activeJobCount}</p>
-              <p className="mt-1 text-xs text-slate-500">Open positions currently collecting candidates.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active roles</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeJobCount}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Open positions currently collecting candidates.</p>
             </div>
             <div className="rounded-2xl bg-emerald-50 p-2.5 text-emerald-600">
               <BriefcaseBusiness className="h-5 w-5" />
@@ -113,12 +113,12 @@ export function SmartHeader({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+        <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Needs review</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{newApplications}</p>
-              <p className="mt-1 text-xs text-slate-500">Fresh applicants waiting for a recruiter decision.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Needs review</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{newApplications}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Fresh applicants waiting for a recruiter decision.</p>
             </div>
             <div className="rounded-2xl bg-amber-50 p-2.5 text-amber-600">
               <FileText className="h-5 w-5" />
@@ -126,12 +126,12 @@ export function SmartHeader({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+        <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Interviews set</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{scheduledInterviews}</p>
-              <p className="mt-1 text-xs text-slate-500">Upcoming conversations already booked with candidates.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Interviews set</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{scheduledInterviews}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Upcoming conversations already booked with candidates.</p>
             </div>
             <div className="rounded-2xl bg-sky-50 p-2.5 text-sky-600">
               <CalendarDays className="h-5 w-5" />

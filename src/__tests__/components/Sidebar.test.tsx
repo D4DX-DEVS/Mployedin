@@ -117,7 +117,7 @@ describe("Sidebar", () => {
     expect(screen.getByText("Agent workspace")).toHaveClass("text-primary/75");
   });
 
-  it("keeps the employer workspace on the same light modern sidebar tone", async () => {
+  it("keeps the employer workspace on the theme-aware modern sidebar tone", async () => {
     pathnameMock = "/en/employer/jobs";
 
     const { container } = render(
@@ -135,9 +135,9 @@ describe("Sidebar", () => {
     });
 
     const workspaceSurface = container.querySelector("aside > div");
-    expect(workspaceSurface).toHaveAttribute("data-sidebar-tone", "light");
-    expect(workspaceSurface?.className).toContain("border-sky-100/80");
-    expect(screen.getByText("Employer workspace").className).toContain("text-sky-700/70");
+    expect(workspaceSurface).toHaveAttribute("data-sidebar-tone", "theme-aware");
+    expect(workspaceSurface).toHaveClass("border-r", "border-border/80");
+    expect(screen.getByText("Employer workspace")).toHaveClass("text-primary/75");
   });
 
   it("expands tools children inside the primary sidebar for agent workspace", async () => {

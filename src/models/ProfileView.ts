@@ -7,6 +7,7 @@ export interface IProfileView extends Document {
   viewerRole: "employer" | "agent" | "super_agent";
   source?: "search" | "application" | "direct";
   viewedAt: Date;
+  notifiedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +26,7 @@ const ProfileViewSchema = new Schema<IProfileView>(
       enum: ["search", "application", "direct"],
     },
     viewedAt: { type: Date, default: Date.now },
+    notifiedAt: { type: Date },
   },
   { timestamps: true }
 );

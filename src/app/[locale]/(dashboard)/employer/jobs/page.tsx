@@ -281,29 +281,29 @@ export default function EmployerJobsPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container employer-legacy-surface space-y-6">
       {ConfirmDialogNode}
-      <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_36%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               Hiring workspace
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               My Job Postings
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Review live roles, keep draft jobs moving, and jump into applications from the same polished workspace used in job creation.
             </p>
           </div>
 
           {can("jobs", "create") ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-left backdrop-blur">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Portfolio</p>
-                <p className="mt-1 text-lg font-semibold text-slate-950">{total} total jobs</p>
-                <p className="text-xs text-slate-500">Active, draft, and archived roles in one place.</p>
+              <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Portfolio</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{total} total jobs</p>
+                <p className="text-xs text-muted-foreground">Active, draft, and archived roles in one place.</p>
               </div>
               <Button
                 onClick={() => router.push(`/${locale}/employer/jobs/new`)}
@@ -317,50 +317,50 @@ export default function EmployerJobsPage() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+          <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Active</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{activeJobs}</p>
-                <p className="mt-1 text-xs text-slate-500">Roles currently accepting candidates.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeJobs}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Roles currently accepting candidates.</p>
               </div>
-              <div className="rounded-2xl bg-emerald-50 p-2.5 text-emerald-600">
+              <div className="workspace-tone-emerald rounded-2xl p-2.5">
                 <ShieldCheck className="h-5 w-5" />
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+          <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Drafts</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{draftJobs}</p>
-                <p className="mt-1 text-xs text-slate-500">Roles waiting for a final review or activation.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Drafts</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{draftJobs}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Roles waiting for a final review or activation.</p>
               </div>
-              <div className="rounded-2xl bg-amber-50 p-2.5 text-amber-600">
+              <div className="workspace-tone-amber rounded-2xl p-2.5">
               <BriefcaseBusiness className="h-5 w-5" />
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+          <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Salary Hidden</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{hiddenSalaryJobs}</p>
-                <p className="mt-1 text-xs text-slate-500">Jobs using private compensation details.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Salary Hidden</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{hiddenSalaryJobs}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Jobs using private compensation details.</p>
               </div>
-              <div className="rounded-2xl bg-slate-100 p-2.5 text-slate-600">
+              <div className="workspace-muted-pill rounded-2xl p-2.5">
               <Banknote className="h-5 w-5" />
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
+          <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Openings</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{totalOpenings}</p>
-                <p className="mt-1 text-xs text-slate-500">Combined vacancies across the current results.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Openings</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalOpenings}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Combined vacancies across the current results.</p>
               </div>
-              <div className="rounded-2xl bg-blue-50 p-2.5 text-blue-600">
+              <div className="workspace-tone-sky rounded-2xl p-2.5">
               <Users className="h-5 w-5" />
               </div>
             </div>
@@ -368,27 +368,27 @@ export default function EmployerJobsPage() {
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-slate-200 bg-white/95 p-4 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-5">
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Browse roles</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Filter the jobs you want to act on next</h2>
-            <p className="mt-1 text-sm text-slate-500">Search by keyword, layer on structured filters, or describe the jobs you need in plain English.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse roles</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Filter the jobs you want to act on next</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Search by keyword, layer on structured filters, or describe the jobs you need in plain English.</p>
           </div>
         </div>
 
         <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
           <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search jobs"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-11 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm shadow-none"
+              className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
             />
           </div>
           <SearchableSelect
-            className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"
+            className="h-11 w-full rounded-xl border-border bg-background/70"
             options={[
               { value: "all", label: "All statuses" },
               { value: "active", label: "Active" },
@@ -401,7 +401,7 @@ export default function EmployerJobsPage() {
             placeholder="All statuses"
           />
           <SearchableSelect
-            className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"
+            className="h-11 w-full rounded-xl border-border bg-background/70"
             options={[
               { value: "all", label: "All approvals" },
               { value: "pending", label: "Pending approval" },
@@ -416,7 +416,7 @@ export default function EmployerJobsPage() {
 
         <div className="mt-3 grid gap-3 xl:grid-cols-[220px_220px_220px_minmax(0,1fr)_minmax(0,1fr)_150px]">
           <SearchableSelect
-            className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"
+            className="h-11 w-full rounded-xl border-border bg-background/70"
             options={[
               { value: "all", label: "All work modes" },
               { value: "onsite", label: "On-site" },
@@ -428,7 +428,7 @@ export default function EmployerJobsPage() {
             placeholder="All work modes"
           />
           <SearchableSelect
-            className="h-11 w-full rounded-xl border-slate-200 bg-slate-50"
+            className="h-11 w-full rounded-xl border-border bg-background/70"
             options={[
               { value: "all", label: "All salary visibility" },
               { value: "shown", label: "Salary shown" },
@@ -443,7 +443,7 @@ export default function EmployerJobsPage() {
               placeholder="Filter by location"
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
-              className="h-11 rounded-xl border-slate-200 bg-slate-50 text-sm shadow-none"
+              className="h-11 rounded-xl border-border bg-background/70 text-sm shadow-none"
             />
           </div>
           <div className="relative min-w-0">
@@ -451,7 +451,7 @@ export default function EmployerJobsPage() {
               placeholder="Skills, comma separated"
               value={skillsFilter}
               onChange={(e) => setSkillsFilter(e.target.value)}
-              className="h-11 rounded-xl border-slate-200 bg-slate-50 text-sm shadow-none"
+              className="h-11 rounded-xl border-border bg-background/70 text-sm shadow-none"
             />
           </div>
           <div className="relative min-w-0 xl:col-span-2">
@@ -466,23 +466,23 @@ export default function EmployerJobsPage() {
                   void handleApplyAiSearch();
                 }
               }}
-              className="h-11 rounded-xl border-sky-100 bg-sky-50/60 pl-9 text-sm shadow-none"
+              className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
             />
           </div>
         </div>
 
-        <div className="mt-3 flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="workspace-subtle-surface mt-3 flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-900">Need a faster cut?</p>
-            <p className="text-sm text-slate-500">Describe the roles you want, and AI will apply the matching filters for you.</p>
-            {aiSummary ? <p className="mt-2 text-sm text-sky-700">{aiSummary}</p> : null}
+            <p className="text-sm font-medium text-foreground">Need a faster cut?</p>
+            <p className="text-sm text-muted-foreground">Describe the roles you want, and AI will apply the matching filters for you.</p>
+            {aiSummary ? <p className="mt-2 text-sm text-primary">{aiSummary}</p> : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               onClick={() => { void handleApplyAiSearch(); }}
               disabled={!aiQuery.trim() || isApplyingAiSearch}
-              className="h-11 gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               <Sparkles className="h-4 w-4" />
               {isApplyingAiSearch ? "Applying AI search…" : "Apply AI Search"}
@@ -492,7 +492,7 @@ export default function EmployerJobsPage() {
               variant="outline"
               onClick={resetFilters}
               disabled={!hasActiveFilters && !aiQuery && !aiSummary}
-              className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm"
+              className="h-11 rounded-xl border-border bg-background/70 px-4 text-sm"
             >
               Clear filters
             </Button>
@@ -505,20 +505,20 @@ export default function EmployerJobsPage() {
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="h-40 animate-pulse rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]"
+              className="workspace-panel-surface h-40 animate-pulse rounded-[28px]"
             />
           ))}
         </div>
       ) : jobs.length === 0 ? (
-        <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] px-6 py-16 text-center shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-sky-50 text-sky-600">
+        <div className="workspace-panel-surface rounded-[28px] px-6 py-16 text-center">
+          <div className="workspace-tone-sky mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
             <FileText className="h-7 w-7" />
           </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{hasActiveFilters ? "No matching roles" : "No roles yet"}</p>
-          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{hasActiveFilters ? "No matching roles" : "No roles yet"}</p>
+          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
             {hasActiveFilters ? "No jobs match the current search." : "Start your employer hiring workflow here."}
           </h3>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-500">
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
             {hasActiveFilters
               ? "Adjust the filters, remove a keyword, or try the AI search box to broaden the results."
               : "Post your first role, invite the right applicants, and manage every next step from a consistent employer dashboard."}
@@ -527,7 +527,7 @@ export default function EmployerJobsPage() {
             <Button
               onClick={resetFilters}
               variant="outline"
-              className="mt-6 h-11 rounded-xl border-slate-200 bg-white px-4 text-sm"
+              className="mt-6 h-11 rounded-xl border-border bg-background/70 px-4 text-sm"
             >
               Clear filters
             </Button>
@@ -555,7 +555,7 @@ export default function EmployerJobsPage() {
             return (
               <article
                 key={job._id}
-                className="rounded-[28px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] p-3.5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] transition-all hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_28px_70px_-44px_rgba(2,132,199,0.28)] sm:p-4"
+                className="workspace-panel-surface rounded-[28px] p-3.5 transition-all hover:-translate-y-0.5 hover:border-border sm:p-4"
               >
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
                   <div className="min-w-0 flex-1">
@@ -599,28 +599,28 @@ export default function EmployerJobsPage() {
                     ) : null}
 
                     <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
-                      <div className="rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Views</p>
-                        <p className="mt-0.5 text-sm font-semibold text-slate-950 sm:text-base">{job.views?.toLocaleString() ?? 0}</p>
+                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Views</p>
+                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{job.views?.toLocaleString() ?? 0}</p>
                       </div>
-                      <div className="rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Applicants</p>
-                        <p className="mt-0.5 text-sm font-semibold text-slate-950 sm:text-base">{getFilledSlots(job)}</p>
+                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Applicants</p>
+                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{getFilledSlots(job)}</p>
                       </div>
-                      <div className="rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Capacity</p>
-                        <p className="mt-0.5 text-sm font-semibold text-slate-950 sm:text-base">{job.maxApplicants ?? "Open"}</p>
+                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Capacity</p>
+                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{job.maxApplicants ?? "Open"}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div aria-label={`Actions for ${job.title}`} role="group" className="flex flex-col gap-2 rounded-[20px] border border-slate-200/90 bg-white/92 p-2.5 backdrop-blur xl:self-start">
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/85 px-3 py-2">
+                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-2 rounded-[20px] border border-border p-2.5 xl:self-start">
+                    <div className="workspace-muted-pill flex items-center justify-between gap-3 rounded-2xl border border-border px-3 py-2">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Next actions</p>
-                        <p className="mt-0.5 text-xs text-slate-500">Manage this role in one place.</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next actions</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Manage this role in one place.</p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-slate-300" />
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">

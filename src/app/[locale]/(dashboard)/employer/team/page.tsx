@@ -29,16 +29,16 @@ const ROLE_LABELS: Record<CompanyRole, string> = {
 };
 
 const ROLE_COLORS: Record<CompanyRole, string> = {
-  owner: "bg-purple-100 text-purple-700 border-purple-200",
-  admin: "bg-blue-100 text-blue-700 border-blue-200",
-  hiring_manager: "bg-amber-100 text-amber-700 border-amber-200",
-  viewer: "bg-gray-100 text-gray-600 border-gray-200",
+  owner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30",
+  admin: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30",
+  hiring_manager: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30",
+  viewer: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700",
 };
 
 const STATUS_COLORS: Record<MemberStatus, string> = {
-  active: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  deactivated: "bg-red-100 text-red-700 border-red-200",
+  active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30",
+  pending: "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-500/15 dark:text-yellow-300 dark:border-yellow-500/30",
+  deactivated: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30",
 };
 
 const ROLE_ICONS: Record<CompanyRole, React.ReactNode> = {
@@ -100,7 +100,7 @@ export default function TeamManagementPage() {
   ];
 
   return (
-    <div className="page-container">
+    <div className="page-container employer-legacy-surface">
       {ConfirmDialogNode}
       {/* Header */}
       <PageHeader
@@ -120,7 +120,7 @@ export default function TeamManagementPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {stats.map((s) => (
             <div key={s.label} className={`card-base p-4 flex sm:flex-col gap-3 sm:gap-2 border ${s.bg}`}>
-              <div className={`p-2.5 rounded-xl border bg-white/80 shrink-0 self-start sm:self-auto w-fit`} style={{ borderColor: 'inherit' }}>
+              <div className={`p-2.5 rounded-xl border bg-background/80 shrink-0 self-start sm:self-auto w-fit`} style={{ borderColor: 'inherit' }}>
                 <s.icon className={`h-5 w-5 ${s.color}`} />
               </div>
               <div className="flex sm:flex-col items-center sm:items-start justify-between sm:justify-start gap-1 flex-1 min-w-0">
@@ -229,7 +229,7 @@ export default function TeamManagementPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeactivate(member._id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-500/10 h-8 w-8 p-0 dark:hover:text-red-300"
                           title="Deactivate member"
                         >
                           <UserX className="h-4 w-4" />
@@ -266,7 +266,7 @@ export default function TeamManagementPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeactivate(member._id)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0 shrink-0"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-500/10 h-8 w-8 p-0 shrink-0 dark:hover:text-red-300"
                       title="Deactivate member"
                     >
                       <UserX className="h-4 w-4" />
@@ -352,7 +352,7 @@ export default function TeamManagementPage() {
             </div>
 
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-md">
+              <div className="text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-md dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/30">
                 {error}
               </div>
             )}

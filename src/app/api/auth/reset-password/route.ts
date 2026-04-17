@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     passwordResetToken: hashedToken,
     passwordResetExpiry: { $gt: new Date() },
     isActive: true,
-  }).select("+passwordResetToken +passwordResetExpiry");
+  }).select("+passwordResetToken +passwordResetExpiry +passwordResetAttempts");
 
   if (!user) {
     return NextResponse.json(
@@ -48,11 +48,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Per-token brute-force protection — check attempts before proceeding
+  if ((user.passwordResetAttempts ?? 0) >= 5) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpiry = undefined;
+    await user.save();
+    return NextResponse.json(
+      { error: "Invalid or expired reset token" },
+      { status: 400 }
+    );
+  }
+  await User.findByIdAndUpdate(user._id, { $inc: { passwordResetAttempts: 1 } });
+
   // Hash new password and save
   const salt = await bcrypt.genSalt(12);
   user.passwordHash = await bcrypt.hash(body.password, salt);
   user.passwordResetToken = undefined;
   user.passwordResetExpiry = undefined;
+  user.passwordResetAttempts = 0;
+  user.passwordChangedAt = new Date();
   user.failedLoginAttempts = 0;
   user.lockUntil = undefined;
   await user.save();

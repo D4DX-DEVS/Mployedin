@@ -132,9 +132,7 @@ export function DashboardShell({
           </>
         ) : (
           <main className={`dashboard-main isolate min-h-0 flex flex-1 flex-col overflow-y-auto bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""}`}>
-            <div>
-              {children}
-            </div>
+            <div>{children}</div>
           </main>
         )}
       </div>

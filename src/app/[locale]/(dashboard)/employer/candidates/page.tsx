@@ -159,36 +159,36 @@ function safeSerializeCandidateMatchSessionState(state: { selectedJobId: string;
 }
 
 const scoreBadgeClass = (score?: number) => {
-  if (score == null) return "border border-slate-200 bg-white text-slate-600 shadow-sm";
-  if (score >= 80) return "border border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm";
-  if (score >= 60) return "border border-amber-300 bg-amber-50 text-amber-800 shadow-sm";
-  return "border border-rose-300 bg-rose-50 text-rose-700 shadow-sm";
+  if (score == null) return "border border-slate-200 bg-white text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
+  if (score >= 80) return "border border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
+  if (score >= 60) return "border border-amber-300 bg-amber-50 text-amber-800 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
+  return "border border-rose-300 bg-rose-50 text-rose-700 shadow-sm dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
 };
 
 const cardSurfaceClass = (score?: number, savedForReview?: boolean) => {
   if (savedForReview) {
-    return "border-sky-200 bg-[linear-gradient(180deg,_rgba(240,249,255,0.96),_rgba(255,255,255,0.98))] shadow-[0_24px_60px_-44px_rgba(14,165,233,0.45)]";
+    return "border-sky-200 bg-[linear-gradient(180deg,_rgba(240,249,255,0.96),_rgba(255,255,255,0.98))] shadow-[0_24px_60px_-44px_rgba(14,165,233,0.45)] dark:border-sky-500/30 dark:bg-[linear-gradient(180deg,_rgba(8,47,73,0.92),_rgba(15,23,42,0.96))]";
   }
 
   if (score != null && score >= 80) {
-    return "border-emerald-200 bg-[linear-gradient(180deg,_rgba(236,253,245,0.96),_rgba(255,255,255,0.98))] shadow-[0_24px_60px_-44px_rgba(16,185,129,0.35)]";
+    return "border-emerald-200 bg-[linear-gradient(180deg,_rgba(236,253,245,0.96),_rgba(255,255,255,0.98))] shadow-[0_24px_60px_-44px_rgba(16,185,129,0.35)] dark:border-emerald-500/25 dark:bg-[linear-gradient(180deg,_rgba(6,78,59,0.88),_rgba(15,23,42,0.96))]";
   }
 
-  return "border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]";
+  return "border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] dark:border-slate-700 dark:bg-[linear-gradient(180deg,_rgba(15,23,42,0.96),_rgba(2,6,23,0.98))]";
 };
 
 const availabilityTone = (status?: string) => {
   switch (status) {
     case "immediately":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300";
     case "within_month":
-      return "border-sky-200 bg-sky-50 text-sky-700";
+      return "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300";
     case "within_3_months":
-      return "border-amber-200 bg-amber-50 text-amber-700";
+      return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
     case "not_available":
-      return "border-rose-200 bg-rose-50 text-rose-700";
+      return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
     default:
-      return "border-slate-200 bg-slate-100 text-slate-600";
+      return "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300";
   }
 };
 
@@ -290,38 +290,38 @@ function CandidateMatchCard({
     >
       <div className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] sm:items-center sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold ${isInReviewList ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-700"}`}>
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold ${isInReviewList ? "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300"}`}>
             {(candidateDisplayName[0] ?? "?").toUpperCase()}
           </div>
           <div className="min-w-0 space-y-1">
             <div className="flex min-w-0 items-center gap-2">
-              <h3 className="truncate text-sm font-semibold text-slate-950 sm:text-[15px]">{candidateDisplayName}</h3>
+              <h3 className="truncate text-sm font-semibold text-foreground sm:text-[15px]">{candidateDisplayName}</h3>
               {rank ? (
-                <span className="hidden items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500 lg:inline-flex">
+                <span className="hidden items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground lg:inline-flex">
                   <Trophy className="h-3 w-3 text-amber-500" />
                   #{rank}
                 </span>
               ) : null}
               {isInReviewList ? (
-                <span className="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 lg:inline-flex">
+                <span className="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300 lg:inline-flex">
                   Saved
                 </span>
               ) : null}
             </div>
-            <p className="truncate text-sm text-slate-600">{currentRole ?? "Role not specified"}</p>
+            <p className="truncate text-sm text-muted-foreground">{currentRole ?? "Role not specified"}</p>
           </div>
         </div>
 
         <div className="min-w-0 space-y-1">
-          <p className="truncate text-xs font-medium text-slate-700">{primaryMeta || "Location and experience not specified"}</p>
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-slate-500">
+          <p className="truncate text-xs font-medium text-foreground/85">{primaryMeta || "Location and experience not specified"}</p>
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {visibleSkills.map((skill) => {
               const isRequired = requiredSkills.some((requiredSkill) => normalizeText(requiredSkill) === normalizeText(skill));
 
               return (
                 <span
                   key={skill}
-                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${isRequired ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-600"}`}
+                  className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 font-medium ${isRequired ? "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300"}`}
                 >
                   <span className="truncate">{skill}</span>
                 </span>
@@ -329,7 +329,7 @@ function CandidateMatchCard({
             })}
             {overflowSkillCount > 0 ? <span>+{overflowSkillCount} more</span> : null}
             {selectedJobData && matchedSkills.length === 0 && missingSkills.length > 0 ? (
-              <span className="text-amber-700">{missingSkills.length} gap{missingSkills.length === 1 ? "" : "s"}</span>
+              <span className="text-amber-700 dark:text-amber-300">{missingSkills.length} gap{missingSkills.length === 1 ? "" : "s"}</span>
             ) : null}
           </div>
         </div>
@@ -358,7 +358,7 @@ function CandidateMatchCard({
             size="sm"
             variant={isInReviewList ? "default" : "outline"}
             aria-label={isInReviewList ? "Saved for review" : "Save for review"}
-            className={isInReviewList ? "h-8 rounded-lg bg-sky-600 px-2.5 text-xs font-semibold text-white hover:bg-sky-700" : "h-8 rounded-lg border-slate-200 bg-white px-2.5 text-xs"}
+            className={isInReviewList ? "h-8 rounded-lg bg-sky-600 px-2.5 text-xs font-semibold text-white hover:bg-sky-700" : "h-8 rounded-lg border-border bg-background/80 px-2.5 text-xs"}
             onClick={(event) => {
               stopRowClick(event);
               onToggleReviewList(candidate._id);
@@ -375,13 +375,13 @@ function CandidateMatchCard({
                   variant="outline"
                   aria-label={`More actions for ${candidateDisplayName}`}
                   onClick={stopRowClick}
-                  className="h-8 rounded-lg border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700"
+                  className="h-8 rounded-lg border-border bg-background/80 px-2.5 text-xs font-medium text-foreground/85"
                 >
                   <MoreHorizontal className="h-4 w-4" />
                   <span className="sr-only">More</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 rounded-2xl border-slate-200 p-1.5">
+              <DropdownMenuContent align="end" className="w-52 rounded-2xl border-border bg-popover p-1.5">
                 {candidate.cv?.originalUrl ? (
                   <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenCv(candidate)}>
                     <FileText className="mr-2 h-4 w-4" />
@@ -440,16 +440,16 @@ function CandidateInsightsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] max-w-5xl overflow-hidden rounded-[32px] border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.98))] p-0 shadow-[0_40px_120px_-48px_rgba(15,23,42,0.5)]">
+      <DialogContent className="max-h-[88vh] max-w-5xl overflow-hidden rounded-[32px] border-border bg-background p-0 shadow-[0_40px_120px_-48px_rgba(15,23,42,0.5)]">
         <div className="max-h-[88vh] overflow-y-auto">
-          <div className="border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_34%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] px-6 py-6 sm:px-8">
+          <div className="border-b border-border bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_34%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] px-6 py-6 dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_34%),linear-gradient(135deg,_rgba(2,6,23,0.96),_rgba(15,23,42,0.92))] sm:px-8">
             <DialogHeader className="gap-3 text-left">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <DialogTitle className="text-2xl font-semibold tracking-tight text-slate-950">{getCandidateDisplayName(candidate)}</DialogTitle>
+                    <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">{getCandidateDisplayName(candidate)}</DialogTitle>
                     {isInReviewList ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-700">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-background/80 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:border-sky-500/30 dark:text-sky-300">
                         <CheckCircle2 className="h-3 w-3" />
                         Review list
                       </span>
@@ -460,7 +460,7 @@ function CandidateInsightsDialog({
                       </span>
                     ) : null}
                   </div>
-                  <DialogDescription className="mt-1 text-sm text-slate-500">
+                  <DialogDescription className="mt-1 text-sm text-muted-foreground">
                     {currentRole ?? "Role not specified"}
                     {candidate.currentLocation ? ` • ${candidate.currentLocation}` : ""}
                     {candidate.totalExperienceYears != null ? ` • ${candidate.totalExperienceYears}+ years experience` : ""}
@@ -468,18 +468,18 @@ function CandidateInsightsDialog({
                 </div>
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   {candidate.cv?.originalUrl ? (
-                    <Button size="sm" variant="outline" className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm" onClick={() => onOpenCv(candidate)}>
+                    <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenCv(candidate)}>
                       <FileText className="mr-2 h-3.5 w-3.5" />
                       View CV
                     </Button>
                   ) : null}
                   {candidate.userId?._id ? (
-                    <Button size="sm" variant="outline" className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm" onClick={() => onStartMessage(candidate.userId!._id)}>
+                    <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onStartMessage(candidate.userId!._id)}>
                       <MessageSquare className="mr-2 h-3.5 w-3.5" />
                       Message
                     </Button>
                   ) : null}
-                  <Button size="sm" variant="outline" className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm" onClick={() => onOpenProfile(candidate._id)}>
+                  <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenProfile(candidate._id)}>
                     <Eye className="mr-2 h-3.5 w-3.5" />
                     Open profile
                   </Button>
@@ -490,9 +490,9 @@ function CandidateInsightsDialog({
 
           <div className="space-y-5 px-6 py-6 sm:px-8">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Availability</p>
-                <p className="mt-2 text-sm font-semibold text-slate-950">
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Availability</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">
                   {candidate.availabilityStatus === "immediately"
                     ? "Available now"
                     : candidate.availabilityStatus === "within_month"
@@ -504,43 +504,43 @@ function CandidateInsightsDialog({
                           : "Unknown"}
                 </p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Profile quality</p>
-                <p className="mt-2 text-sm font-semibold text-slate-950">{candidate.profileCompleteness != null ? `${candidate.profileCompleteness}% complete` : "Awaiting signals"}</p>
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Profile quality</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">{candidate.profileCompleteness != null ? `${candidate.profileCompleteness}% complete` : "Awaiting signals"}</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Matched skills</p>
-                <p className="mt-2 text-sm font-semibold text-slate-950">{matchedSkills.length}</p>
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Matched skills</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">{matchedSkills.length}</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Missing signals</p>
-                <p className="mt-2 text-sm font-semibold text-slate-950">{missingSkills.length}</p>
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Missing signals</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">{missingSkills.length}</p>
               </div>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
               <div className="space-y-4">
                 {candidate.matchSummary ? (
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">AI summary</p>
-                    <p className="mt-3 text-sm leading-7 text-slate-600">{candidate.matchSummary}</p>
+                  <div className="workspace-glass-panel rounded-[24px] p-5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">AI summary</p>
+                    <p className="mt-3 text-sm leading-7 text-muted-foreground">{candidate.matchSummary}</p>
                   </div>
                 ) : null}
 
                 {candidate.matchBreakdown ? (
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
+                  <div className="workspace-glass-panel rounded-[24px] p-5">
                     <div className="mb-4 flex items-center gap-2">
                       <BarChart3 className="h-4 w-4 text-sky-600" />
-                      <p className="text-sm font-semibold text-slate-950">Score breakdown</p>
+                      <p className="text-sm font-semibold text-foreground">Score breakdown</p>
                     </div>
                     <div className="space-y-3">
                       {(Object.entries(candidate.matchBreakdown) as Array<[string, number]>).map(([key, value]) => (
                         <div key={key} className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                             <span className="capitalize">{key}</span>
-                            <span className="font-semibold text-slate-700">{value}%</span>
+                            <span className="font-semibold text-foreground/85">{value}%</span>
                           </div>
-                          <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                          <div className="h-2.5 overflow-hidden rounded-full bg-muted/50">
                             <div
                               className={`h-full rounded-full ${value >= 80 ? "bg-emerald-500" : value >= 60 ? "bg-amber-500" : "bg-rose-400"}`}
                               style={{ width: `${value}%` }}
@@ -1030,7 +1030,7 @@ export default function EmployerCandidatesPage() {
   }
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container employer-legacy-surface space-y-4">
       {viewingCv && (
         <ResumeViewerModal
           url={viewingCv.url}
@@ -1060,21 +1060,21 @@ export default function EmployerCandidatesPage() {
         onToggleReviewList={toggleReviewList}
       />
 
-      <section className="overflow-hidden rounded-[24px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_30%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] px-4 py-4 shadow-[0_20px_48px_-40px_rgba(2,132,199,0.35)] sm:px-5">
+      <section className="workspace-hero-surface overflow-hidden rounded-[24px] px-4 py-4 sm:px-5">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-[1.7rem] font-semibold tracking-tight text-slate-950">Candidate Matching</h1>
-              <span className="rounded-full border border-white/80 bg-white/80 px-2.5 py-1 text-[11px] font-medium text-slate-600 backdrop-blur">
+              <h1 className="text-[1.7rem] font-semibold tracking-tight text-foreground">Candidate Matching</h1>
+              <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur">
                 {selectedJobData ? `Benchmark: ${selectedJobData.title}` : "Talent pool view"}
               </span>
               {isRefreshingCandidates ? (
-                <span className="rounded-full border border-sky-100 bg-white/85 px-2.5 py-1 text-[11px] font-medium text-sky-700 backdrop-blur">
+                <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-700 backdrop-blur dark:text-sky-300">
                   Refreshing
                 </span>
               ) : null}
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               {[
                 { label: "Candidates", value: total },
                 { label: "Scored", value: scoredCount },
@@ -1082,7 +1082,7 @@ export default function EmployerCandidatesPage() {
                 { label: "Available", value: readyNowCount },
               ].map((stat) => (
                   <span key={stat.label} aria-label={`${stat.value} ${stat.label}`} className="inline-flex items-center gap-1.5">
-                  <span className="font-semibold text-slate-950">{stat.value}</span>
+                  <span className="font-semibold text-foreground">{stat.value}</span>
                   <span>{stat.label}</span>
                 </span>
               ))}
@@ -1119,7 +1119,7 @@ export default function EmployerCandidatesPage() {
           <Button
             size="sm"
             variant="outline"
-              className="h-10 shrink-0 rounded-xl border-slate-200 bg-white px-4 text-sm"
+              className="h-10 shrink-0 rounded-xl border-border bg-background/80 px-4 text-sm"
             onClick={() => {
               void refetchJobs();
               void refetchCandidates();
@@ -1132,27 +1132,27 @@ export default function EmployerCandidatesPage() {
       )}
 
       {!jobsLoading && !hasJobsError && jobs.length === 0 && (
-          <div className="rounded-[24px] border border-amber-200 bg-amber-50/70 p-4 text-amber-900 shadow-[0_16px_40px_-36px_rgba(245,158,11,0.45)]">
+          <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/10 p-4 text-amber-900 shadow-[0_16px_40px_-36px_rgba(245,158,11,0.45)] dark:text-amber-100">
             <div className="flex items-start gap-3">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <div className="space-y-1">
             <p className="text-sm font-semibold">No published jobs available yet</p>
-            <p className="text-sm text-amber-800/90">Publish a job first so this page has a role to compare candidates against.</p>
+              <p className="text-sm text-amber-800/90 dark:text-amber-100/80">Publish a job first so this page has a role to compare candidates against.</p>
           </div>
             </div>
         </div>
       )}
 
-        <section className="rounded-[24px] border border-slate-200 bg-white/95 p-4 shadow-[0_20px_48px_-42px_rgba(15,23,42,0.28)] backdrop-blur">
+          <section className="workspace-panel-surface rounded-[24px] p-4 backdrop-blur">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Filter and act</p>
-              <p className="mt-1 text-sm text-slate-600">Search, compare against a role, then open the best profiles quickly.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter and act</p>
+                <p className="mt-1 text-sm text-muted-foreground">Search, compare against a role, then open the best profiles quickly.</p>
             </div>
             <Button
               size="sm"
               variant="outline"
-              className="h-9 rounded-xl border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700"
+                className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs font-semibold text-foreground/85"
               onClick={() => setShowAdvancedFilters((current) => !current)}
             >
               <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />
@@ -1162,18 +1162,18 @@ export default function EmployerCandidatesPage() {
 
           <div className="mt-3 grid gap-2 xl:grid-cols-[minmax(0,1.8fr)_minmax(220px,1fr)_minmax(160px,0.7fr)_minmax(170px,0.7fr)]">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search candidates, skills, role, or company"
-                className="h-10 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm shadow-none"
+                className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
               />
             </div>
 
             <div>
               <SearchableSelect
-                className="h-10 w-full rounded-xl border-slate-200 bg-slate-50"
+                className="h-10 w-full rounded-xl border-border bg-background/70"
                 options={[
                   { value: "none", label: "No job selected" },
                   ...jobs.map((job) => ({ value: job._id, label: job.title })),
@@ -1190,13 +1190,13 @@ export default function EmployerCandidatesPage() {
                 value={locationFilter}
                 onChange={(event) => setLocationFilter(event.target.value)}
                 placeholder="Filter by location"
-                className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm shadow-none"
+                className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none"
               />
             </div>
 
             <div>
               <SearchableSelect
-                className="h-10 w-full rounded-xl border-slate-200 bg-slate-50"
+                className="h-10 w-full rounded-xl border-border bg-background/70"
                 options={AVAILABILITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
                 value={availabilityFilter}
                 onValueChange={setAvailabilityFilter}
@@ -1207,12 +1207,12 @@ export default function EmployerCandidatesPage() {
 
           <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
             <div className="relative">
-              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={aiQuery}
                 onChange={(event) => setAiQuery(event.target.value)}
                 placeholder="AI search: e.g. high match React candidates in Dubai ready now"
-                className="h-10 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm shadow-none"
+                className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
@@ -1235,7 +1235,7 @@ export default function EmployerCandidatesPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm"
+                className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm"
                 onClick={saveTopMatches}
                 disabled={!hasAnyScore || structuredCandidates.length === 0}
               >
@@ -1246,7 +1246,7 @@ export default function EmployerCandidatesPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm"
+                  className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm"
                   onClick={() => router.push(`/${locale}/employer/applications?jobId=${selectedJob}`)}
                 >
                   <Target className="mr-2 h-3.5 w-3.5" />
@@ -1257,25 +1257,25 @@ export default function EmployerCandidatesPage() {
 
           </div>
 
-            <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-slate-500">{workflowState.title}</span>
+                <span className="text-xs font-medium text-muted-foreground">{workflowState.title}</span>
                 {reviewCount > 0 ? (
-                  <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-medium text-sky-700">
+                  <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-700 dark:text-sky-300">
                     {reviewCount} saved
                   </span>
                 ) : null}
                 {activeFilterChips.map((chip) => (
-                  <span key={chip.key} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                  <span key={chip.key} className="rounded-full border border-border bg-background/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
                     {chip.label}
                   </span>
                 ))}
               </div>
-              <p className="text-xs text-slate-500">{matchHelperText}</p>
+              <p className="text-xs text-muted-foreground">{matchHelperText}</p>
             </div>
 
             {aiSummary ? (
-              <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">{aiSummary}</div>
+              <div className="mt-3 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sm text-sky-800 dark:text-sky-200">{aiSummary}</div>
             ) : null}
 
             {hasAnyScore ? (
@@ -1285,7 +1285,7 @@ export default function EmployerCandidatesPage() {
                     key={tab}
                     type="button"
                     onClick={() => setScoreFilter(tab)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${scoreFilter === tab ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"}`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${scoreFilter === tab ? "border-slate-950 bg-slate-950 text-white dark:border-sky-400 dark:bg-sky-500/20 dark:text-sky-100" : "border-border bg-background/80 text-muted-foreground hover:border-border hover:bg-background"}`}
                   >
                     {SCORE_FILTER_LABELS[tab]}
                     <span className="ml-1.5 opacity-70">({scoreCounts[tab]})</span>
@@ -1295,33 +1295,33 @@ export default function EmployerCandidatesPage() {
             ) : null}
 
             {showAdvancedFilters ? (
-              <div className="mt-3 space-y-3 rounded-[20px] border border-slate-200 bg-slate-50/80 p-3">
+              <div className="mt-3 space-y-3 rounded-[20px] border border-border bg-background/60 p-3">
                 <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
                   <Input
                     value={skillsFilter}
                     onChange={(event) => setSkillsFilter(event.target.value)}
                     placeholder="Skills, comma separated"
-                    className="h-10 rounded-xl border-slate-200 bg-white text-sm shadow-none"
+                    className="h-10 rounded-xl border-border bg-background/80 text-sm shadow-none"
                   />
                   <Button
                     size="sm"
                     variant={savedOnly ? "default" : "outline"}
-                    className={savedOnly ? "h-10 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700" : "h-10 rounded-xl border-slate-200 bg-white px-4 text-sm"}
+                    className={savedOnly ? "h-10 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700" : "h-10 rounded-xl border-border bg-background/80 px-4 text-sm"}
                     onClick={() => setSavedOnly((current) => !current)}
                   >
                     <Star className={`mr-2 h-3.5 w-3.5 ${savedOnly ? "fill-current" : ""}`} />
                     Saved
                   </Button>
-                  <Button size="sm" variant="outline" className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm" onClick={resetFilters} disabled={!hasSearchRefinements && !aiSummary}>
+                  <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={resetFilters} disabled={!hasSearchRefinements && !aiSummary}>
                     Reset filters
                   </Button>
                 </div>
 
-                <div className="flex flex-col gap-2 text-xs text-slate-500 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 text-xs text-muted-foreground lg:flex-row lg:items-center lg:justify-between">
                   <div className="min-w-0">
                     {selectedJobData ? (
                       <span>
-                        Benchmarking against <span className="font-semibold text-slate-700">{selectedJobData.title}</span>
+                        Benchmarking against <span className="font-semibold text-foreground/85">{selectedJobData.title}</span>
                         {selectedJobData.requirements?.skills?.length ? ` with ${selectedJobData.requirements.skills.length} tracked skill requirement${selectedJobData.requirements.skills.length === 1 ? "" : "s"}.` : "."}
                       </span>
                     ) : (
@@ -1332,7 +1332,7 @@ export default function EmployerCandidatesPage() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 rounded-lg px-3 text-xs text-slate-600 hover:bg-slate-100"
+                      className="h-8 rounded-lg px-3 text-xs text-muted-foreground hover:bg-background/80"
                       onClick={() => setReviewListIds(new Set())}
                     >
                       Clear review list
@@ -1345,7 +1345,7 @@ export default function EmployerCandidatesPage() {
                     <button
                       key={suggestion}
                       type="button"
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-sky-200 hover:text-sky-700"
+                      className="rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground transition hover:border-sky-500/20 hover:text-sky-700 dark:hover:text-sky-300"
                       onClick={() => setAiQuery(suggestion)}
                     >
                       {suggestion}
@@ -1359,10 +1359,10 @@ export default function EmployerCandidatesPage() {
             <div
               className={`mt-3 rounded-2xl border px-4 py-3 text-sm ${
                 matchFeedback.type === "error"
-                  ? "border-destructive/20 bg-destructive/5 text-slate-950"
+                  ? "border-destructive/20 bg-destructive/5 text-foreground"
                   : matchFeedback.type === "success"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                    : "border-slate-200 bg-slate-50 text-slate-700"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200"
+                    : "border-border bg-background/60 text-foreground/85"
               }`}
             >
               {matchFeedback.message}
@@ -1371,13 +1371,13 @@ export default function EmployerCandidatesPage() {
 
           {matchProgress ? (
             <div className="mt-3 space-y-2" aria-live="polite" aria-atomic="true">
-              <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted/50">
                 <div
                   className="h-full rounded-full bg-sky-600 transition-all duration-300"
                   style={{ width: `${(matchProgress.done / matchProgress.total) * 100}%` }}
                 />
               </div>
-              <p className="text-[11px] text-slate-500">Scoring candidate {matchProgress.done} of {matchProgress.total} on the current page...</p>
+              <p className="text-[11px] text-muted-foreground">Scoring candidate {matchProgress.done} of {matchProgress.total} on the current page...</p>
             </div>
           ) : null}
         </section>

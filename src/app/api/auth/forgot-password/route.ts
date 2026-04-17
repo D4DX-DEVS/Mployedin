@@ -42,11 +42,13 @@ export async function POST(req: NextRequest) {
   const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
 
   user.passwordResetToken = hashedToken;
-  user.passwordResetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  user.passwordResetExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  user.passwordResetAttempts = 0;
   await user.save();
 
   const appUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
+  const userLocale = (user.locale as string) ?? "en";
+  const resetUrl = `${appUrl}/${userLocale}/reset-password?token=${encodeURIComponent(resetToken)}`;
 
   try {
     const template = EmailTemplates.passwordReset(resetUrl);

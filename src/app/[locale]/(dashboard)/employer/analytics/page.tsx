@@ -178,16 +178,16 @@ export default function EmployerAnalyticsPage() {
 
   if (isLoading) {
     return (
-      <div className="page-container space-y-6">
-        <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_36%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+      <div className="page-container employer-legacy-surface space-y-6">
+        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
             Analytics workspace
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
             Analytics
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
             Pipeline funnel, trends, performance, and response-time insights in the same modern employer workspace.
           </p>
         </section>
@@ -208,33 +208,33 @@ export default function EmployerAnalyticsPage() {
 
   if (error) {
     return (
-      <div className="page-container space-y-6">
-        <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_36%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+      <div className="page-container employer-legacy-surface space-y-6">
+        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
             Analytics workspace
           </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
             Analytics
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
             Pipeline funnel, trends, performance, and response-time insights in the same modern employer workspace.
           </p>
         </section>
 
-        <AnalyticsPanel className="border-red-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(254,242,242,0.96))]">
+        <AnalyticsPanel className="border-red-500/20 bg-red-500/5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
                 Unable to load analytics
               </p>
-              <p className="mt-2 text-sm leading-6 text-red-700">
+              <p className="mt-2 text-sm leading-6 text-red-700 dark:text-red-200">
                 Error: {error instanceof Error ? error.message : String(error)}
               </p>
             </div>
             <button
               onClick={handleRefresh}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-background/80 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-500/10 dark:text-red-200"
             >
               <RefreshCw className="h-4 w-4" />
               Retry
@@ -246,43 +246,43 @@ export default function EmployerAnalyticsPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_36%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
+    <div className="page-container employer-legacy-surface space-y-6">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
               <activeTabMeta.icon className="h-3.5 w-3.5" />
               {activeTabMeta.label}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
               Analytics Command Center
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Review funnel health, hiring velocity, job-level performance, and response commitments from one cleaner employer workspace.
             </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 View Focus
               </p>
-              <p className="mt-1 text-lg font-semibold text-slate-950">{activeTabMeta.label}</p>
-              <p className="text-xs text-slate-500">{activeTabMeta.description}</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{activeTabMeta.label}</p>
+                <p className="text-xs text-muted-foreground">{activeTabMeta.description}</p>
             </div>
-            <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 backdrop-blur">
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Last Refresh
                   </p>
-                  <p className="mt-1 text-lg font-semibold text-slate-950">
+                  <p className="mt-1 text-lg font-semibold text-foreground">
                     {lastRefresh.toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {activeTab === "pipeline"
                       ? `Live pipeline checks auto-refresh every ${AUTO_REFRESH_MS / 1000} seconds.`
                       : "Manual refresh keeps this view current on demand."}
@@ -291,7 +291,7 @@ export default function EmployerAnalyticsPage() {
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-sky-200 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-sky-700 dark:hover:text-sky-300 disabled:cursor-not-allowed disabled:opacity-60"
                   title="Refresh now"
                 >
                   <RefreshCw
@@ -382,7 +382,7 @@ export default function EmployerAnalyticsPage() {
       )}
 
       {activeTab === "pipeline" && (
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-xs text-muted-foreground">
           Live pipeline analytics refresh automatically every {AUTO_REFRESH_MS / 1000} seconds.
         </p>
       )}
@@ -467,7 +467,7 @@ function PipelineTab({
               <select
                 value={selectedJobId}
                 onChange={(e) => setSelectedJobId(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
+                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-500/20"
               >
                 <option value="">All Jobs</option>
                 {jobOptions.map((j) => (
@@ -568,7 +568,7 @@ function PipelineTab({
 
       {pipeline.perJob.length > 0 && (
         <AnalyticsPanel className="overflow-hidden p-0">
-          <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+          <div className="border-b border-border/60 px-5 py-5 sm:px-6">
             <AnalyticsSectionHeader
               title="Per-Job Pipeline Breakdown"
               description="Compare each role across the main funnel stages without leaving analytics."
@@ -581,35 +581,35 @@ function PipelineTab({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80">
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Job Title</th>
-                  <th className="px-4 py-3 text-center font-semibold text-slate-700">Total</th>
+                <tr className="border-b border-border/60 bg-background/60">
+                  <th className="px-4 py-3 text-left font-semibold text-foreground/85">Job Title</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground/85">Total</th>
                   {FUNNEL_STAGES.map((s) => (
-                    <th key={s} className="px-4 py-3 text-center font-semibold text-slate-700">{STAGE_NAMES[s]}</th>
+                    <th key={s} className="px-4 py-3 text-center font-semibold text-foreground/85">{STAGE_NAMES[s]}</th>
                   ))}
-                  <th className="px-4 py-3 text-center font-semibold text-slate-700">Rejected</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground/85">Rejected</th>
                 </tr>
               </thead>
               <tbody>
                 {pipeline.perJob.map((job) => (
-                  <tr key={job.jobId} className="border-b border-slate-100 transition hover:bg-sky-50/40">
-                    <td className="max-w-[240px] truncate px-4 py-3 font-medium text-slate-900">{job.title}</td>
-                    <td className="px-4 py-3 text-center text-base font-bold text-slate-800">{job.total}</td>
+                  <tr key={job.jobId} className="border-b border-border/40 transition hover:bg-background/60">
+                    <td className="max-w-[240px] truncate px-4 py-3 font-medium text-foreground">{job.title}</td>
+                    <td className="px-4 py-3 text-center text-base font-bold text-foreground">{job.total}</td>
                     {FUNNEL_STAGES.map((stage) => {
                       const stageCount = job.stages.find((s) => s.status === stage)?.count ?? 0;
                       return (
-                        <td key={stage} className="px-4 py-3 text-center text-slate-600">
+                        <td key={stage} className="px-4 py-3 text-center text-muted-foreground">
                           {stageCount > 0 ? (
                             <span className="inline-flex min-w-[30px] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: STAGE_COLORS[stage] }}>
                               {stageCount}
                             </span>
                           ) : (
-                            <span className="text-slate-300">0</span>
+                            <span className="text-muted-foreground/60">0</span>
                           )}
                         </td>
                       );
                     })}
-                    <td className="px-4 py-3 text-center text-slate-600">
+                    <td className="px-4 py-3 text-center text-muted-foreground">
                       {(() => {
                         const count = job.stages.find((s) => s.status === "rejected")?.count ?? 0;
                         return count > 0 ? (
@@ -617,7 +617,7 @@ function PipelineTab({
                             {count}
                           </span>
                         ) : (
-                          <span className="text-slate-300">0</span>
+                          <span className="text-muted-foreground/60">0</span>
                         );
                       })()}
                     </td>
@@ -630,7 +630,7 @@ function PipelineTab({
       )}
 
       <AnalyticsPanel className="overflow-hidden p-0">
-        <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
+        <div className="border-b border-border/60 px-5 py-5 sm:px-6">
           <AnalyticsSectionHeader
             title="Top Jobs by Applications"
             description="Identify which roles currently attract the highest candidate attention."
@@ -646,20 +646,20 @@ function PipelineTab({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80">
-                  <th className="px-4 py-3 text-left font-semibold text-slate-700">Job Title</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-700">Applications</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-700">% of Total</th>
+                <tr className="border-b border-border/60 bg-background/60">
+                  <th className="px-4 py-3 text-left font-semibold text-foreground/85">Job Title</th>
+                  <th className="px-4 py-3 text-right font-semibold text-foreground/85">Applications</th>
+                  <th className="px-4 py-3 text-right font-semibold text-foreground/85">% of Total</th>
                 </tr>
               </thead>
               <tbody>
                 {data.topJobs.map((job, idx) => {
                   const percentage = totalApplications > 0 ? ((job.count / totalApplications) * 100).toFixed(1) : "0";
                   return (
-                    <tr key={idx} className="border-b border-slate-100 transition hover:bg-sky-50/40">
-                      <td className="px-4 py-3 font-medium text-slate-900">{job.title}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-slate-700">{job.count}</td>
-                      <td className="px-4 py-3 text-right text-slate-600">{percentage}%</td>
+                    <tr key={idx} className="border-b border-border/40 transition hover:bg-background/60">
+                      <td className="px-4 py-3 font-medium text-foreground">{job.title}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground/85">{job.count}</td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">{percentage}%</td>
                     </tr>
                   );
                 })}
@@ -1323,7 +1323,7 @@ function AnalyticsPanel({
   return (
     <section
       className={cn(
-        "rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] sm:p-6",
+        "workspace-panel-surface rounded-[28px] p-5 sm:p-6",
         className
       )}
     >
@@ -1347,17 +1347,17 @@ function AnalyticsSectionHeader({
 }) {
   return (
     <div className={cn("mb-6 flex items-start gap-4", compact && "mb-0")}>
-      <div className="rounded-2xl bg-slate-100 p-3 text-slate-700">
+      <div className="rounded-2xl bg-background/70 p-3 text-foreground/85">
         <Icon className="h-5 w-5" />
       </div>
       <div>
         {eyebrow && (
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {eyebrow}
           </p>
         )}
-        <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">{title}</h2>
-        <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+        <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
     </div>
   );
@@ -1379,12 +1379,12 @@ function HeroMetricCard({
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
 
   return (
-    <div className={cn("rounded-2xl border bg-white/80 p-4 backdrop-blur", colors.border)}>
+    <div className={cn("workspace-glass-panel rounded-2xl border p-4", colors.border)}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-          <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
-          <p className="mt-1 text-xs text-slate-500">{description}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+          <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         </div>
         <div className={cn("rounded-2xl p-2.5", colors.surface, colors.icon)}>
           <Icon className="h-5 w-5" />
@@ -1407,10 +1407,10 @@ function SummaryCard({
 }) {
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
   return (
-    <div className={cn("rounded-[28px] border bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] p-4 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]", colors.border)}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+    <div className={cn("workspace-panel-surface rounded-[28px] border p-4", colors.border)}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className={`mt-3 text-3xl font-semibold tracking-tight ${colors.text}`}>{value}</p>
-      {description ? <p className="mt-1 text-xs text-slate-500">{description}</p> : null}
+      {description ? <p className="mt-1 text-xs text-muted-foreground">{description}</p> : null}
     </div>
   );
 }
@@ -1428,17 +1428,17 @@ function ConversionCard({
 }) {
   const colors = COLOR_MAP[color] || COLOR_MAP.blue;
   return (
-    <div className={cn("rounded-[28px] border bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] p-4 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] transition-all hover:-translate-y-0.5", colors.border)}>
+    <div className={cn("workspace-panel-surface rounded-[28px] border p-4 transition-all hover:-translate-y-0.5", colors.border)}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
           <p className={`mt-3 text-3xl font-semibold tracking-tight ${colors.text}`}>{count}</p>
         </div>
         <div className={cn("rounded-2xl p-2.5", colors.surface, colors.icon)}>
           <TrendingUp className="h-5 w-5" />
         </div>
       </div>
-      <p className="mt-3 text-xs text-slate-500">{subtitle}</p>
+      <p className="mt-3 text-xs text-muted-foreground">{subtitle}</p>
     </div>
   );
 }
@@ -1456,8 +1456,8 @@ function RateBadge({
     <span
       className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full ${
         highlight
-          ? "border border-emerald-200 bg-emerald-50 font-semibold text-emerald-800"
-          : "border border-slate-200 bg-white text-slate-700"
+          ? "border border-emerald-200 bg-emerald-50 font-semibold text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300"
+          : "border border-border bg-background/80 text-foreground/85"
       }`}
     >
       {label}: <strong>{value}%</strong>

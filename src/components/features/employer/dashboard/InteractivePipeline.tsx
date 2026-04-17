@@ -49,8 +49,8 @@ export function InteractivePipeline({
       subLabel: "New",
       icon: FileText,
       href: `/${locale}/employer/applications?status=applied`,
-      iconClass: "text-sky-600 bg-sky-50",
-      borderClass: "border-sky-200 hover:border-sky-300",
+      iconClass: "text-sky-600 bg-sky-50 dark:text-sky-300 dark:bg-sky-500/15",
+      borderClass: "border-sky-200 hover:border-sky-300 dark:border-sky-500/30",
     },
     {
       label: "Screening",
@@ -59,8 +59,8 @@ export function InteractivePipeline({
       subLabel: "In Review",
       icon: ClipboardCheck,
       href: `/${locale}/employer/applications?status=shortlisted`,
-      iconClass: "text-violet-600 bg-violet-50",
-      borderClass: "border-violet-200 hover:border-violet-300",
+      iconClass: "text-violet-600 bg-violet-50 dark:text-violet-300 dark:bg-violet-500/15",
+      borderClass: "border-violet-200 hover:border-violet-300 dark:border-violet-500/30",
     },
     {
       label: "Interviews",
@@ -69,8 +69,8 @@ export function InteractivePipeline({
       subLabel: "Scheduled",
       icon: Calendar,
       href: `/${locale}/employer/interviews`,
-      iconClass: "text-amber-600 bg-amber-50",
-      borderClass: "border-amber-200 hover:border-amber-300",
+      iconClass: "text-amber-600 bg-amber-50 dark:text-amber-300 dark:bg-amber-500/15",
+      borderClass: "border-amber-200 hover:border-amber-300 dark:border-amber-500/30",
     },
     {
       label: "Offers",
@@ -79,27 +79,27 @@ export function InteractivePipeline({
       subLabel: "Sent",
       icon: Gift,
       href: `/${locale}/employer/offers`,
-      iconClass: "text-emerald-600 bg-emerald-50",
-      borderClass: "border-emerald-200 hover:border-emerald-300",
+      iconClass: "text-emerald-600 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-500/15",
+      borderClass: "border-emerald-200 hover:border-emerald-300 dark:border-emerald-500/30",
     },
   ];
   const peakValue = Math.max(...stages.map((stage) => stage.value), 1);
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
-      <div className="border-b border-slate-200/80 px-5 py-5 sm:px-6">
+    <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+      <div className="border-b border-border/60 px-5 py-5 sm:px-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
               Hiring pipeline
             </div>
-            <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+            <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
               Track candidate movement across the funnel.
             </h2>
           </div>
 
-          <p className="max-w-xl text-sm leading-6 text-slate-600 md:text-right">
+          <p className="max-w-xl text-sm leading-6 text-muted-foreground md:text-right">
             Each stage links into the live employer workflow for quick review and follow-up.
           </p>
         </div>
@@ -115,14 +115,14 @@ export function InteractivePipeline({
               <Link
                 key={stage.label}
                 href={stage.href}
-                className={`group rounded-[24px] border bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] p-4 shadow-[0_20px_50px_-42px_rgba(15,23,42,0.42)] transition-all hover:-translate-y-0.5 hover:shadow-[0_28px_65px_-42px_rgba(2,132,199,0.24)] sm:p-5 ${stage.borderClass}`}
+                className={`group rounded-[24px] border bg-background/80 p-4 shadow-[0_20px_50px_-42px_rgba(15,23,42,0.42)] transition-all hover:-translate-y-0.5 hover:shadow-[0_28px_65px_-42px_rgba(2,132,199,0.24)] sm:p-5 ${stage.borderClass}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       Stage {idx + 1}
                     </p>
-                    <p className="mt-2 text-lg font-semibold text-slate-950">
+                    <p className="mt-2 text-lg font-semibold text-foreground">
                       {stage.label}
                     </p>
                   </div>
@@ -137,28 +137,28 @@ export function InteractivePipeline({
                     <div className="flex items-baseline gap-2">
                       <AnimatedNumber
                         value={stage.value}
-                        className="text-3xl font-semibold tracking-tight text-slate-950"
+                        className="text-3xl font-semibold tracking-tight text-foreground"
                       />
-                      <span className="text-xs font-medium text-slate-500">
+                      <span className="text-xs font-medium text-muted-foreground">
                         candidates
                       </span>
                     </div>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {stage.subCount} {stage.subLabel.toLowerCase()}
                     </p>
                   </div>
 
-                  <ArrowRight className="h-4 w-4 text-slate-400 transition group-hover:text-sky-600" />
+                  <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:text-sky-600 dark:group-hover:text-sky-300" />
                 </div>
 
-                <div className="mt-4 h-2 rounded-full bg-slate-100">
+                <div className="mt-4 h-2 rounded-full bg-muted/50">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-sky-500 to-sky-300 transition-all duration-700 ease-out"
                     style={{ width: `${barWidth}%` }}
                   />
                 </div>
 
-                <p className="mt-3 text-xs leading-5 text-slate-500">
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">
                   Open the {stage.label.toLowerCase()} queue to review candidates and keep momentum moving.
                 </p>
               </Link>

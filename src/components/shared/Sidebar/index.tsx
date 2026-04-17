@@ -64,7 +64,7 @@ export function Sidebar({
     : effectiveRole === "agent"
       ? "Agent workspace"
       : "Employer workspace";
-  const usesLightWorkspaceSidebar = effectiveRole === "employer";
+  const usesLightWorkspaceSidebar = false;
   const userImage = session?.user?.image;
   const displayImage = companyLogo ?? userImage;
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
@@ -245,7 +245,11 @@ export function Sidebar({
           <div
             className={cn(
               "absolute left-0 top-1/2 h-1/2 w-1 -translate-y-1/2 rounded-r-full",
-              variant === "inline" ? "bg-sky-500" : "bg-primary"
+              variant === "inline"
+                ? usesLightWorkspaceSidebar
+                  ? "bg-sky-500"
+                  : "bg-primary"
+                : "bg-primary"
             )}
           />
         )}
@@ -297,16 +301,16 @@ export function Sidebar({
               "overflow-hidden bg-card shrink-0",
               usesModernWorkspaceShell
                 ? usesLightWorkspaceSidebar
-                  ? "h-11 w-11 rounded-2xl border border-sky-100 bg-white shadow-[0_20px_40px_-28px_rgba(2,132,199,0.55)] ring-4 ring-white/70"
-                  : "h-11 w-11 rounded-2xl border border-border shadow-[0_20px_40px_-28px_rgba(2,132,199,0.34)] ring-4 ring-background/70"
+                  ? "h-12 w-12 rounded-2xl border border-sky-100 bg-white shadow-[0_20px_40px_-28px_rgba(2,132,199,0.55)] ring-4 ring-white/70"
+                  : "h-12 w-12 rounded-2xl border border-border shadow-[0_20px_40px_-28px_rgba(2,132,199,0.34)] ring-4 ring-background/70"
                 : "w-9 h-9 rounded-xl shadow-lg ring-1 ring-white/20"
             )}
           >
             <Image
               src={displayImage}
               alt={companyLogo ? "Company logo" : "Profile image"}
-              width={36}
-              height={36}
+              width={40}
+              height={40}
               className={cn("w-full h-full", companyLogo ? "object-contain" : "object-cover")}
               onError={() => setImageLoadFailed(true)}
               unoptimized
@@ -319,8 +323,8 @@ export function Sidebar({
               "animate-pulse shrink-0",
               usesModernWorkspaceShell
                 ? usesLightWorkspaceSidebar
-                  ? "h-11 w-11 rounded-2xl border border-sky-100/80 bg-white/80 ring-4 ring-white/70"
-                  : "h-11 w-11 rounded-2xl border border-border bg-card/80 ring-4 ring-background/70"
+                  ? "h-12 w-12 rounded-2xl border border-sky-100/80 bg-white/80 ring-4 ring-white/70"
+                  : "h-12 w-12 rounded-2xl border border-border bg-card/80 ring-4 ring-background/70"
                 : "w-9 h-9 rounded-xl bg-slate-700/70 ring-1 ring-white/20"
             )}
           />
@@ -330,8 +334,8 @@ export function Sidebar({
               "flex items-center justify-center font-bold shrink-0",
               usesModernWorkspaceShell
                 ? usesLightWorkspaceSidebar
-                  ? "h-11 w-11 rounded-2xl bg-[linear-gradient(135deg,_rgba(14,165,233,0.98),_rgba(37,99,235,0.94))] text-white shadow-[0_22px_42px_-24px_rgba(37,99,235,0.7)] ring-4 ring-white/70 text-lg"
-                  : "h-11 w-11 rounded-2xl bg-[linear-gradient(135deg,_rgba(14,165,233,0.98),_rgba(37,99,235,0.94))] text-white shadow-[0_22px_42px_-24px_rgba(37,99,235,0.7)] ring-4 ring-background/70 text-lg"
+                  ? "h-12 w-12 rounded-2xl bg-[linear-gradient(135deg,_rgba(14,165,233,0.98),_rgba(37,99,235,0.94))] text-white shadow-[0_22px_42px_-24px_rgba(37,99,235,0.7)] ring-4 ring-white/70 text-xl"
+                  : "h-12 w-12 rounded-2xl bg-[linear-gradient(135deg,_rgba(14,165,233,0.98),_rgba(37,99,235,0.94))] text-white shadow-[0_22px_42px_-24px_rgba(37,99,235,0.7)] ring-4 ring-background/70 text-xl"
                 : "w-9 h-9 rounded-xl bg-primary text-primary-foreground shadow-lg text-lg ring-1 ring-white/20"
             )}
           >
@@ -344,8 +348,8 @@ export function Sidebar({
               "block truncate font-semibold tracking-tight",
               usesModernWorkspaceShell
                 ? usesLightWorkspaceSidebar
-                  ? "text-[15px] text-slate-950"
-                  : "text-[15px] text-foreground"
+                  ? "text-base text-slate-950"
+                  : "text-base text-foreground"
                 : "text-sm text-white font-bold tracking-wide"
             )}
           >
@@ -378,7 +382,13 @@ export function Sidebar({
                 <ChevronDown
                   className={cn(
                     "ml-auto h-4 w-4 shrink-0 transition-transform duration-200",
-                    showInlineChildren ? "rotate-180 text-sky-600" : "text-slate-400"
+                    showInlineChildren
+                      ? usesLightWorkspaceSidebar
+                        ? "rotate-180 text-sky-600"
+                        : "rotate-180 text-primary"
+                      : usesLightWorkspaceSidebar
+                        ? "text-slate-400"
+                        : "text-muted-foreground"
                   )}
                 />
               )}

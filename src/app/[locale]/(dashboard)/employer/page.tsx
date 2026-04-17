@@ -111,7 +111,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
     : null;
 
   return (
-    <div className="page-container space-y-5 sm:space-y-6">
+    <div className="page-container employer-legacy-surface space-y-5 sm:space-y-6">
       {/* ── Smart Welcome Header ── */}
       <SmartHeader
         userName={userName}

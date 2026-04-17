@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ChevronLeft, Circle, Hash, Loader2, Send, Sparkles, Users } from "lucide-react";
 
 interface Message {
@@ -21,10 +21,10 @@ const CHANNELS = [
 ];
 
 const ROLE_COLORS: Record<string, string> = {
-  agent: "bg-blue-100 text-blue-700",
-  super_agent: "bg-purple-100 text-purple-700",
-  employer: "bg-amber-100 text-amber-700",
-  admin: "bg-red-100 text-red-700",
+  agent: "workspace-tone-sky",
+  super_agent: "workspace-tone-violet",
+  employer: "workspace-tone-amber",
+  admin: "workspace-tone-rose",
 };
 
 function formatTime(iso: string) {
@@ -49,24 +49,29 @@ export default function AgentChatPage() {
         const data = await res.json();
         setMessages(data.messages ?? []);
       }
-    } catch { /* silent */ }
+    } catch {
+      // Keep the current view stable if polling fails.
+    }
   };
 
   useEffect(() => {
     setLoading(true);
     fetchMessages().finally(() => setLoading(false));
-    // Poll every 5 seconds
     pollRef.current = setInterval(fetchMessages, 5000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, [activeChannel]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const send = async (e: FormEvent) => {
-    e.preventDefault();
+  const send = async (event: FormEvent) => {
+    event.preventDefault();
     if (!text.trim() || sending) return;
+
     setSending(true);
     try {
       await fetch("/api/messages", {
@@ -86,97 +91,116 @@ export default function AgentChatPage() {
       <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur"><Sparkles className="h-3.5 w-3.5" />Agent workspace</div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">Team Channels</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">Coordinate with agents, employers, and supervisors from the same modern workspace while keeping each conversation in its own channel.</p>
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Agent workspace
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Team Channels</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Coordinate with agents, employers, and supervisors from the same modern workspace while keeping each conversation in its own channel.
+            </p>
           </div>
-          <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-left backdrop-blur sm:min-w-[260px]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Presence</p><p className="mt-1 text-lg font-semibold text-slate-950">{online} online</p><p className="text-xs text-slate-500">Live channel members currently visible in your workspace.</p></div>
+
+          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Presence</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{online} online</p>
+            <p className="text-xs text-muted-foreground">Live channel members currently visible in your workspace.</p>
+          </div>
         </div>
       </section>
 
-      <div className="flex h-[calc(100vh-240px)] min-h-96 gap-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur">
-        {/* Sidebar – full-screen on mobile, side panel on sm+ */}
-        <aside className={`${showChannels ? "flex" : "hidden"} sm:flex w-full sm:w-60 shrink-0 flex-col border-r border-slate-200 bg-slate-50/80`}>
-          <div className="border-b border-slate-200 p-4">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Channels</p>
+      <div className="workspace-panel-surface flex h-[calc(100vh-240px)] min-h-96 gap-0 overflow-hidden rounded-[28px]">
+        <aside className={`${showChannels ? "flex" : "hidden"} workspace-subtle-surface sm:flex w-full sm:w-60 shrink-0 flex-col border-r border-border`}>
+          <div className="border-b border-border p-4">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Channels</p>
           </div>
-          <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-            {CHANNELS.map(ch => (
-              <button key={ch.id} onClick={() => { setActiveChannel(ch.id); setShowChannels(false); }}
+
+          <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
+            {CHANNELS.map((channel) => (
+              <button
+                key={channel.id}
+                onClick={() => {
+                  setActiveChannel(channel.id);
+                  setShowChannels(false);
+                }}
                 className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors ${
-                  activeChannel === ch.id
-                    ? "bg-sky-600 text-white"
-                    : "text-slate-700 hover:bg-white"
-                }`}>
+                  activeChannel === channel.id
+                    ? "workspace-tone-sky"
+                    : "text-foreground/80 hover:bg-background/80"
+                }`}
+              >
                 <Hash className="h-3.5 w-3.5 shrink-0" />
-                {ch.id}
+                {channel.id}
               </button>
             ))}
           </nav>
-          <div className="border-t border-slate-200 p-4">
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <Circle className="h-2 w-2 fill-emerald-500 text-emerald-500" /> {online} online
+
+          <div className="border-t border-border p-4">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Circle className="h-2 w-2 fill-emerald-500 text-emerald-500" />
+              {online} online
             </div>
           </div>
         </aside>
 
-        {/* Main – hidden on mobile when channels panel shown */}
-        <div className={`${!showChannels ? "flex" : "hidden"} sm:flex flex-1 flex-col min-w-0`}>
-          {/* Channel Header */}
-          <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
-            <button onClick={() => setShowChannels(true)} className="-ml-1 rounded-md p-1 hover:bg-slate-100 sm:hidden">
+        <div className={`${!showChannels ? "flex" : "hidden"} sm:flex min-w-0 flex-1 flex-col`}>
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+            <button onClick={() => setShowChannels(true)} className="-ml-1 rounded-md p-1 hover:bg-secondary sm:hidden">
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <Hash className="h-4 w-4 text-slate-400" />
-            <span className="text-sm font-semibold text-slate-950">{activeChannel}</span>
-            <span className="hidden text-xs text-slate-500 sm:inline">—</span>
-            <span className="hidden text-xs text-slate-500 sm:inline">
-              {CHANNELS.find(c => c.id === activeChannel)?.description}
+            <Hash className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold text-foreground">{activeChannel}</span>
+            <span className="hidden text-xs text-muted-foreground sm:inline">-</span>
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              {CHANNELS.find((channel) => channel.id === activeChannel)?.description}
             </span>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
             {loading ? (
-              <div className="flex justify-center py-8 text-slate-500">
+              <div className="flex justify-center py-8 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
               </div>
             ) : messages.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-500">
+              <p className="workspace-empty-state rounded-2xl py-8 text-center text-sm text-muted-foreground">
                 No messages yet. Start the conversation!
               </p>
             ) : (
-              messages.map(msg => (
-                <div key={msg._id} className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-50 text-xs font-bold text-sky-700">
-                    {msg.senderName?.[0]?.toUpperCase() ?? "?"}
+              messages.map((message) => (
+                <div key={message._id} className="flex items-start gap-3">
+                  <div className="workspace-tone-sky flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+                    {message.senderName?.[0]?.toUpperCase() ?? "?"}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-slate-950">{msg.senderName}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${ROLE_COLORS[msg.senderRole] ?? "bg-muted/50 text-muted-foreground"}`}>
-                        {msg.senderRole?.replace("_", " ")}
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="text-sm font-semibold text-foreground">{message.senderName}</span>
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${ROLE_COLORS[message.senderRole] ?? "bg-muted/50 text-muted-foreground"}`}>
+                        {message.senderRole?.replace("_", " ")}
                       </span>
-                      <span className="text-xs text-slate-500">{formatTime(msg.createdAt)}</span>
+                      <span className="text-xs text-muted-foreground">{formatTime(message.createdAt)}</span>
                     </div>
-                    <p className="mt-0.5 break-words text-sm text-slate-700">{msg.content}</p>
+                    <p className="mt-0.5 break-words text-sm text-foreground/85">{message.content}</p>
                   </div>
                 </div>
               ))
             )}
+
             <div ref={bottomRef} />
           </div>
 
-          {/* Input */}
-          <form onSubmit={send} className="flex gap-2 border-t border-slate-200 px-4 py-3">
+          <form onSubmit={send} className="flex gap-2 border-t border-border px-4 py-3">
             <input
               value={text}
-              onChange={e => setText(e.target.value)}
-              placeholder={`Message #${activeChannel}…`}
-              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
+              onChange={(event) => setText(event.target.value)}
+              placeholder={`Message #${activeChannel}...`}
+              className="flex-1 rounded-xl border border-border bg-background/80 px-4 py-2.5 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
             />
-            <button type="submit" disabled={!text.trim() || sending}
-              className="shrink-0 rounded-xl bg-sky-600 px-3 text-white transition-colors hover:bg-sky-700 disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={!text.trim() || sending}
+              className="shrink-0 rounded-xl bg-primary px-3 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
           </form>

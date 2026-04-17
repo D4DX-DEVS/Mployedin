@@ -8,9 +8,8 @@ import { ActivityEvent, ACTIVITY_PRIORITY } from "@/models/ActivityEvent";
 import Employer from "@/models/Employer";
 import User from "@/models/User";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
-import { sendMail } from "@/lib/email/mailer";
+import { sendEmail } from "@/lib/communications/email";
 import { isValidObjectId } from "@/lib/security/sanitize";
-import { applicationConfirmationEmail, newApplicantAlertEmail } from "@/lib/email/templates";
 
 /**
  * POST /api/jobs/[id]/apply
@@ -81,13 +80,19 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
 
   // 1. Confirmation to job seeker
   if (seekerUser?.email) {
-    const { subject, html } = applicationConfirmationEmail({
-      seekerName,
-      jobTitle: job.title,
-      companyName: company,
-      applicationId,
-    });
-    sendMail({ to: seekerUser.email, subject, html }).catch(() => {});
+    sendEmail({
+      to: seekerUser.email,
+      subject: `Application received — ${job.title} at ${company}`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+        <div style="background:#0a2a6e;padding:20px 24px;text-align:center"><h1 style="color:#fff;margin:0;font-size:20px">MPLOYEDIN</h1></div>
+        <div style="padding:24px">
+          <p>Hi ${seekerName},</p>
+          <p>Your application for <strong>${job.title}</strong> at <strong>${company}</strong> has been received.</p>
+          <p style="color:#6b7280;font-size:13px">Application ID: ${applicationId}</p>
+        </div>
+      </div>`,
+      userId: ctx.userId,
+    }).catch(() => {});
   }
 
   // 2. Alert to employer (only if they have emailNewApplicant enabled or pref is unset)
@@ -96,13 +101,19 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
   if (shouldNotifyEmployer && employer) {
     const employerUser = await User.findById((employer as { userId: unknown }).userId).select("email name").lean();
     if (employerUser?.email) {
-      const { subject, html } = newApplicantAlertEmail({
-        employerName: employerUser.name,
-        seekerName,
-        jobTitle: job.title,
-        applicationId,
-      });
-      sendMail({ to: employerUser.email, subject, html }).catch(() => {});
+      sendEmail({
+        to: employerUser.email,
+        subject: `New applicant for ${job.title} — ${seekerName}`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+          <div style="background:#0a2a6e;padding:20px 24px;text-align:center"><h1 style="color:#fff;margin:0;font-size:20px">MPLOYEDIN</h1></div>
+          <div style="padding:24px">
+            <p>Hi ${employerUser.name},</p>
+            <p><strong>${seekerName}</strong> has applied for: <strong>${job.title}</strong>.</p>
+            <p style="color:#6b7280;font-size:13px">Manage notifications from your employer dashboard settings.</p>
+          </div>
+        </div>`,
+        userId: String((employer as { userId: unknown }).userId),
+      }).catch(() => {});
     }
   }
 
