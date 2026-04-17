@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Align Tailwind v4 dark: variant with class-based ThemeProvider (.dark on <html>) */
+@variant dark (&:is(.dark *));
+
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
