@@ -37,12 +37,25 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // Get lead stats per agent
   const userIds = users.map((u) => u._id);
   const leads = await Lead.find({ agentId: { $in: userIds } })
-    .select("agentId status convertedAt")
+    .select("agentId status convertedAt activityLog createdAt")
     .lean();
 
   const items = users.map((u) => {
     const agentLeads = leads.filter((l) => l.agentId?.toString() === u._id.toString());
     const converted = agentLeads.filter((l) => l.status === "converted").length;
+
+    // Compute average response time (hours) from lead creation to first activity
+    const responseTimes = agentLeads
+      .filter((l) => l.activityLog && l.activityLog.length > 0)
+      .map((l) => {
+        const first = l.activityLog![0];
+        return (new Date(first.timestamp).getTime() - new Date(l.createdAt).getTime()) / (1000 * 60 * 60);
+      })
+      .filter((h) => h > 0 && h < 720);
+    const avgResponseHours = responseTimes.length > 0
+      ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+      : -1;
+
     return {
       _id: u._id,
       name: u.name,
@@ -51,6 +64,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       conversions: converted,
       placements: 0, // would come from Placement model
       conversionRate: agentLeads.length > 0 ? Math.round((converted / agentLeads.length) * 100) : 0,
+      avgResponseHours,
     };
   });
 

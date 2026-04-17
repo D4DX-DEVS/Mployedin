@@ -67,28 +67,28 @@ export default function SuperAgentPlacementsPage() {
       value: placements.length,
       helper: "Visible placement records returned for the current page.",
       icon: <Trophy className="h-5 w-5" />,
-      toneClassName: "bg-sky-50 text-sky-600",
+      toneClassName: "workspace-tone-sky",
     },
     {
       label: "Upcoming Starts",
       value: upcomingStarts,
       helper: "Candidates scheduled to start within the next two weeks.",
       icon: <CalendarClock className="h-5 w-5" />,
-      toneClassName: "bg-emerald-50 text-emerald-600",
+      toneClassName: "workspace-tone-emerald",
     },
     {
       label: "Active Statuses",
       value: placements.filter((placement) => placement.status === "active" || placement.status === "placed").length,
       helper: "Visible placements already marked active or fully placed.",
       icon: <ShieldCheck className="h-5 w-5" />,
-      toneClassName: "bg-indigo-50 text-indigo-600",
+      toneClassName: "workspace-tone-indigo",
     },
     {
       label: "Employers",
       value: employerCount,
       helper: "Distinct employer accounts represented in the current placement list.",
       icon: <Users2 className="h-5 w-5" />,
-      toneClassName: "bg-amber-50 text-amber-600",
+      toneClassName: "workspace-tone-amber",
     },
   ];
 
@@ -111,20 +111,20 @@ export default function SuperAgentPlacementsPage() {
         <SuperAgentDataTableShell>
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-slate-200 bg-slate-50/80 hover:bg-slate-50/80">
-                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Candidate</TableHead>
-                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Job</TableHead>
-                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Employer</TableHead>
-                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status</TableHead>
-                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Start Date</TableHead>
+              <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
+                <TableHead className="py-4 text-muted-foreground/80">Candidate</TableHead>
+                <TableHead className="py-4 text-muted-foreground/80">Job</TableHead>
+                <TableHead className="py-4 text-muted-foreground/80">Employer</TableHead>
+                <TableHead className="py-4 text-muted-foreground/80">Status</TableHead>
+                <TableHead className="py-4 text-muted-foreground/80">Start Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="border-slate-100">
+                  <TableRow key={i} className="border-border/50">
                     {Array.from({ length: 5 }).map((_, j) => (
-                      <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" /></TableCell>
+                      <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
                     ))}
                   </TableRow>
                 ))
@@ -139,12 +139,12 @@ export default function SuperAgentPlacementsPage() {
                   </TableCell>
                 </TableRow>
               ) : placements.map((p) => (
-                <TableRow key={p._id} className="border-slate-100 hover:bg-sky-50/30">
-                  <TableCell className="py-4 font-medium text-slate-950">{p.jobSeekerId?.fullName ?? "—"}</TableCell>
-                  <TableCell className="py-4 text-slate-700">{p.jobId?.title ?? "—"}</TableCell>
-                  <TableCell className="py-4 text-slate-500">{p.employerId?.companyName ?? "—"}</TableCell>
+                <TableRow key={p._id} className="border-border/50 hover:bg-accent/25">
+                  <TableCell className="py-4 font-medium text-foreground">{p.jobSeekerId?.fullName ?? "—"}</TableCell>
+                  <TableCell className="py-4 text-foreground/85">{p.jobId?.title ?? "—"}</TableCell>
+                  <TableCell className="py-4 text-muted-foreground">{p.employerId?.companyName ?? "—"}</TableCell>
                   <TableCell className="py-4"><StatusBadge status={p.status} /></TableCell>
-                  <TableCell className="py-4 text-slate-500">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell className="py-4 text-muted-foreground">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

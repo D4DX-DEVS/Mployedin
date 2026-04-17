@@ -33,28 +33,28 @@ export default function SuperAgentReportsPage() {
       value: stats?.totalAgents ?? 0,
       helper: "Total team members currently falling under your direct reporting view.",
       icon: <Users2 className="h-5 w-5" />,
-      toneClassName: "bg-sky-50 text-sky-600",
+      toneClassName: "workspace-tone-sky",
     },
     {
       label: "Total Leads",
       value: stats?.totalLeads ?? 0,
       helper: "Combined lead volume generated and worked by your team.",
       icon: <Target className="h-5 w-5" />,
-      toneClassName: "bg-indigo-50 text-indigo-600",
+      toneClassName: "workspace-tone-indigo",
     },
     {
       label: "Placements",
       value: stats?.totalPlacements ?? 0,
       helper: "Successful placements recorded across the current reporting scope.",
       icon: <BarChart3 className="h-5 w-5" />,
-      toneClassName: "bg-emerald-50 text-emerald-600",
+      toneClassName: "workspace-tone-emerald",
     },
     {
       label: "Commissions",
       value: `$${(stats?.totalCommissions ?? 0).toLocaleString()}`,
       helper: "Total commissions currently included in the super-agent report payload.",
       icon: <Coins className="h-5 w-5" />,
-      toneClassName: "bg-amber-50 text-amber-600",
+      toneClassName: "workspace-tone-amber",
     },
   ];
 
@@ -70,7 +70,7 @@ export default function SuperAgentReportsPage() {
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-40 animate-pulse rounded-[24px] border border-slate-200 bg-white/90 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.18)]" />
+            <div key={index} className="h-40 animate-pulse rounded-[24px] border border-border/70 bg-card/90 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.18)]" />
           ))}
         </div>
       ) : (
@@ -82,7 +82,7 @@ export default function SuperAgentReportsPage() {
         title="Performance insights"
         description="Detailed charts and month-over-month breakdowns can be added here as your team generates more reporting data."
       >
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 text-sm leading-6 text-slate-600">
+        <div className="rounded-2xl border border-border/70 bg-secondary/50 p-5 text-sm leading-6 text-muted-foreground">
           Detailed charts and month-over-month breakdowns will appear here as your team builds data.
         </div>
       </SuperAgentSection>

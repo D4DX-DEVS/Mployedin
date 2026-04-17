@@ -45,7 +45,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     offers: ["create", "read", "update", "delete"],
   },
   super_agent: {
-    jobs: ["read", "export"],
+    jobs: ["read", "approve", "export"],
     applications: ["read", "export"],
     interviews: ["read"],
     placements: ["read", "export"],

@@ -11,11 +11,17 @@ import {
 
 const QUICK_QUERIES = [
   "What are the top 5 most in-demand job categories in UAE right now?",
-  "What is the average salary range for software engineers in KSA?",
+  "What is the average salary range for software engineers in India?",
   "Which nationalities are most sought-after for hospitality roles in Qatar?",
-  "What is the current visa processing time trend for employment visas?",
+  "What is the current visa processing time trend for employment visas in KSA?",
   "Which sectors are showing the highest growth in Gulf recruitment?",
   "What skills have the highest demand-supply gap in GCC?",
+  "What are the top hiring industries in India right now?",
+  "What is the average salary for a project manager in the Philippines?",
+  "Which countries supply the most construction workers to UAE?",
+  "What are the most in-demand IT skills across Asia?",
+  "What is the nursing salary range in the UK vs KSA?",
+  "Which African countries are growing as recruitment source markets?",
 ];
 
 interface Insight {
@@ -52,7 +58,7 @@ export default function MarketIntelligencePage() {
         body: JSON.stringify({
           query: text,
           scope: "market",
-          context: "Gulf region recruitment market — UAE, KSA, Qatar, Oman, Kuwait, Bahrain",
+          context: "Global recruitment market covering Gulf (UAE, KSA, Qatar, Oman, Kuwait, Bahrain), South Asia (India, Pakistan, Bangladesh, Sri Lanka, Nepal), Southeast Asia (Philippines, Indonesia, Malaysia), and other international labour markets",
         }),
       });
 
@@ -62,7 +68,11 @@ export default function MarketIntelligencePage() {
       try {
         const cleaned = raw.replace(/```json\n?|```\n?/g, "").trim();
         const parsed = JSON.parse(cleaned);
-        setReport(parsed);
+        setReport({
+          ...parsed,
+          insights: Array.isArray(parsed.insights) ? parsed.insights : [],
+          recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+        });
       } catch {
         setReport({
           summary: raw.slice(0, 600),
@@ -82,30 +92,31 @@ export default function MarketIntelligencePage() {
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
         title="AI Market Intelligence"
-        description="Ask for live Gulf recruitment insight, capture demand signals, and translate the result into regional operating decisions from the same modern workspace."
+        description="Ask about any country or region — Gulf, India, Philippines, UK, or anywhere else. Get demand signals, salary benchmarks, and hiring trends to drive your recruitment decisions."
         summaryTitle="AI scope"
-        summaryDescription="Queries still flow through the same market report endpoint with the existing Gulf-region context."
+        summaryDescription="Ask about any country worldwide. Gulf, India, Southeast Asia, and beyond."
       />
 
       <SuperAgentSection
         eyebrow="Ask AI"
-        title="Search the Gulf recruitment market in plain language"
-        description="Use a direct question or tap a quick prompt to generate a market summary, insight cards, and recommendations."
+        title="Search any recruitment market in plain language"
+        description="Ask about any country or region to generate a market summary, insight cards, and recommendations."
       >
         <div className="space-y-4">
-          <label className="text-sm font-medium text-slate-800">Ask anything about the Gulf recruitment market</label>
+          <label htmlFor="market-query" className="text-sm font-medium text-foreground">Ask anything about any recruitment market worldwide</label>
           <div className="flex flex-col gap-2 lg:flex-row">
             <div className="relative min-w-0 flex-1">
-              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
+              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
               <Input
+                id="market-query"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && runQuery("")}
-                placeholder="e.g. Which skills are in shortage for construction roles in UAE?"
-                className="h-11 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm shadow-none"
+                placeholder="e.g. What are the top hiring industries in India right now?"
+                className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
               />
             </div>
-            <Button onClick={() => runQuery("")} disabled={loading || !query.trim()} className="h-11 gap-2 rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800 disabled:opacity-60">
+            <Button onClick={() => runQuery("")} disabled={loading || !query.trim()} className="h-11 gap-2 rounded-xl px-4 disabled:opacity-60">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Analyse
             </Button>
@@ -116,7 +127,7 @@ export default function MarketIntelligencePage() {
               <button
                 key={i}
                 onClick={() => { setQuery(q); runQuery(q); }}
-                className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 transition-colors hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                className="rounded-full border border-border/70 bg-background/85 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground"
               >
                 {q.length > 58 ? `${q.slice(0, 58)}...` : q}
               </button>
@@ -126,14 +137,14 @@ export default function MarketIntelligencePage() {
       </SuperAgentSection>
 
       {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{error}</div>
       ) : null}
 
       {loading ? (
-        <div className="rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
-          <div className="flex items-center gap-3 text-slate-500">
-            <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
-            <span className="text-sm">Analysing Gulf market data...</span>
+        <div className="rounded-[28px] border border-border/70 bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)]">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm">Analysing market data...</span>
           </div>
         </div>
       ) : null}
@@ -141,19 +152,19 @@ export default function MarketIntelligencePage() {
       {report ? (
         <div className="space-y-6">
           <SuperAgentSection eyebrow="Summary" title="Market summary" description="A concise output from the AI report service for the question you asked.">
-            <div className="space-y-3 text-sm leading-6 text-slate-600">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                <BarChart3 className="h-4 w-4 text-sky-600" />
+            <div className="space-y-3 text-sm leading-6 text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <BarChart3 className="h-4 w-4 text-primary" />
                 Market Summary
               </div>
               <p>{report.summary}</p>
-              {report.generatedAt ? <p className="text-xs text-slate-500">Generated: {new Date(report.generatedAt).toLocaleString("en-AE")}</p> : null}
+              {report.generatedAt ? <p className="text-xs text-muted-foreground">Generated: {new Date(report.generatedAt).toLocaleString("en-AE")}</p> : null}
             </div>
           </SuperAgentSection>
 
-          {report.insights.length > 0 ? (
+          {(report.insights ?? []).length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {report.insights.map((insight, i) => {
+              {(report.insights ?? []).map((insight, i) => {
                 const icons: Record<string, React.ReactNode> = {
                   salary: <DollarSign className="h-4 w-4" />,
                   demand: <Users className="h-4 w-4" />,
@@ -161,26 +172,26 @@ export default function MarketIntelligencePage() {
                 };
 
                 return (
-                  <div key={i} className="rounded-[24px] border border-slate-200 bg-white/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.24)]">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <div key={i} className="rounded-[24px] border border-border/70 bg-card/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.24)]">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       {icons[insight.category] ?? <TrendingUp className="h-4 w-4" />}
                       <span className="capitalize">{insight.category}</span>
                     </div>
-                    <p className="mt-4 text-sm font-semibold text-slate-950">{insight.title}</p>
-                    <p className="mt-2 text-2xl font-semibold tracking-tight text-sky-700">{insight.value}</p>
-                    {insight.trend ? <p className="mt-2 text-xs text-slate-500">{insight.trend}</p> : null}
+                    <p className="mt-4 text-sm font-semibold text-foreground">{insight.title}</p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-primary">{insight.value}</p>
+                    {insight.trend ? <p className="mt-2 text-xs text-muted-foreground">{insight.trend}</p> : null}
                   </div>
                 );
               })}
             </div>
           ) : null}
 
-          {report.recommendations.length > 0 ? (
+          {(report.recommendations ?? []).length > 0 ? (
             <SuperAgentSection eyebrow="Recommendations" title="Strategic recommendations" description="Use these AI suggestions as prompts for regional hiring and market planning.">
               <ul className="space-y-3">
-                {report.recommendations.map((rec, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm leading-6 text-slate-600">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">{i + 1}</span>
+                {(report.recommendations ?? []).map((rec, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/12 text-xs font-semibold text-primary">{i + 1}</span>
                     {rec}
                   </li>
                 ))}

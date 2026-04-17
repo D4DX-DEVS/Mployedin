@@ -15,6 +15,9 @@ import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
+import { SuperAgentInsightsPanel } from "@/components/features/super-agent/InsightsPanel";
+import { AIExplainButton } from "@/components/shared/AIExplainButton";
+import { cn } from "@/lib/utils";
 
 interface AgentRow {
   _id: string;
@@ -24,6 +27,7 @@ interface AgentRow {
   conversions: number;
   placements: number;
   conversionRate: number;
+  avgResponseHours: number;
 }
 
 export default function SuperAgentAgentsPage() {
@@ -47,34 +51,50 @@ export default function SuperAgentAgentsPage() {
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
 
+  /* ── Performance badge logic ── */
+  function getPerformanceBadge(agent: AgentRow) {
+    const badges: { label: string; className: string }[] = [];
+    if (agent.leadsCount === 0) {
+      badges.push({ label: "No Activity", className: "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-300" });
+    } else if (agent.conversionRate >= 50) {
+      badges.push({ label: "High Performer", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" });
+    } else if (agent.conversionRate < 15 && agent.leadsCount > 0) {
+      badges.push({ label: "Needs Attention", className: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300" });
+    }
+    if (agent.avgResponseHours > 48 && agent.leadsCount > 0) {
+      badges.push({ label: "Slow Response", className: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300" });
+    }
+    return badges;
+  }
+
   const kpis = [
     {
       label: "Total Agents",
       value: agents.length,
       helper: "Live team members currently visible in your reporting scope.",
       icon: <Users2 className="h-5 w-5" />,
-      toneClassName: "bg-sky-50 text-sky-600",
+      toneClassName: "workspace-tone-sky",
     },
     {
       label: "Total Leads",
       value: agents.reduce((a, b) => a + (b.leadsCount ?? 0), 0),
       helper: "Combined employer opportunities being worked across the team.",
       icon: <Target className="h-5 w-5" />,
-      toneClassName: "bg-emerald-50 text-emerald-600",
+      toneClassName: "workspace-tone-emerald",
     },
     {
       label: "Conversions",
       value: agents.reduce((a, b) => a + (b.conversions ?? 0), 0),
       helper: "Leads converted into active hiring relationships or outcomes.",
       icon: <Activity className="h-5 w-5" />,
-      toneClassName: "bg-indigo-50 text-indigo-600",
+      toneClassName: "workspace-tone-indigo",
     },
     {
       label: "Placements",
       value: agents.reduce((a, b) => a + (b.placements ?? 0), 0),
       helper: "Confirmed placements credited to your supervised team.",
       icon: <BriefcaseBusiness className="h-5 w-5" />,
-      toneClassName: "bg-amber-50 text-amber-600",
+      toneClassName: "workspace-tone-amber",
     },
   ];
 
@@ -83,13 +103,12 @@ export default function SuperAgentAgentsPage() {
       <SuperAgentPageIntro
         title="Agent Performance"
         description="Monitor agent activity, lead conversion, and placement momentum across your team from one clean review surface."
-        summaryTitle="Review mode"
-        summaryDescription="Search agents quickly, compare conversion efficiency, and spot who needs support before pipeline velocity slows down."
       >
-        <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 text-left backdrop-blur sm:min-w-[180px]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Roster</p>
-          <p className="mt-1 text-lg font-semibold text-slate-950">{total} visible rows</p>
-          <p className="text-xs text-slate-500">Current page and search results stay in sync with pagination.</p>
+        <SuperAgentInsightsPanel />
+        <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[180px]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Roster</p>
+          <p className="mt-1 text-lg font-semibold text-foreground">{total} visible rows</p>
+          <p className="text-xs text-muted-foreground">Current page and search results stay in sync with pagination.</p>
         </div>
       </SuperAgentPageIntro>
 
@@ -102,12 +121,13 @@ export default function SuperAgentAgentsPage() {
       >
         <div className="mb-4 flex gap-3">
           <div className="relative w-full max-w-xs min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
             <Input
+              aria-label="Search agents"
               placeholder="Search agents..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="h-11 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm shadow-none"
+              className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
             />
           </div>
         </div>
@@ -115,28 +135,29 @@ export default function SuperAgentAgentsPage() {
         <SuperAgentDataTableShell>
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-slate-200 bg-slate-50/80 hover:bg-slate-50/80">
-                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Agent</TableHead>
-                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Email</TableHead>
-                <TableHead className="py-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Leads</TableHead>
-                <TableHead className="py-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Conversions</TableHead>
-                <TableHead className="py-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Placements</TableHead>
-                <TableHead className="py-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Conv. Rate</TableHead>
-                <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Progress</TableHead>
+              <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
+                <TableHead className="py-4 text-muted-foreground/80">Agent</TableHead>
+                <TableHead className="py-4 text-muted-foreground/80">Email</TableHead>
+                <TableHead className="py-4 text-right text-muted-foreground/80">Leads</TableHead>
+                <TableHead className="py-4 text-right text-muted-foreground/80">Conversions</TableHead>
+                <TableHead className="py-4 text-right text-muted-foreground/80">Placements</TableHead>
+                <TableHead className="py-4 text-right text-muted-foreground/80">Conv. Rate</TableHead>
+                <TableHead className="py-4 text-muted-foreground/80">Progress</TableHead>
+                <TableHead className="py-4 w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="border-slate-100">
-                    {Array.from({ length: 7 }).map((_, j) => (
-                      <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" /></TableCell>
+                  <TableRow key={i} className="border-border/50">
+                    {Array.from({ length: 8 }).map((_, j) => (
+                      <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : agents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-0">
+                  <TableCell colSpan={8} className="p-0">
                     <SuperAgentEmptyState
                       icon={<Users2 className="h-7 w-7" />}
                       title="No agents found"
@@ -144,28 +165,58 @@ export default function SuperAgentAgentsPage() {
                     />
                   </TableCell>
                 </TableRow>
-              ) : agents.map((a) => (
-                <TableRow key={a._id} className="border-slate-100 hover:bg-sky-50/30">
-                  <TableCell className="py-4 font-medium text-slate-950">{a.name}</TableCell>
-                  <TableCell className="py-4 text-xs text-slate-500">{a.email}</TableCell>
-                  <TableCell className="py-4 text-right text-slate-700">{a.leadsCount ?? 0}</TableCell>
+              ) : agents.map((a) => {
+                const badges = getPerformanceBadge(a);
+                return (
+                <TableRow key={a._id} className="border-border/50 hover:bg-accent/25">
+                  <TableCell className="py-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-medium text-foreground">{a.name}</span>
+                      {badges.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {badges.map((b) => (
+                            <span key={b.label} className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full", b.className)}>
+                              {b.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4 text-xs text-muted-foreground">{a.email}</TableCell>
+                  <TableCell className="py-4 text-right text-foreground/85">{a.leadsCount ?? 0}</TableCell>
                   <TableCell className="py-4 text-right font-medium text-emerald-600">{a.conversions ?? 0}</TableCell>
-                  <TableCell className="py-4 text-right font-medium text-sky-700">{a.placements ?? 0}</TableCell>
-                  <TableCell className="py-4 text-right text-slate-700">
+                  <TableCell className="py-4 text-right font-medium text-primary">{a.placements ?? 0}</TableCell>
+                  <TableCell className="py-4 text-right text-foreground/85">
                     {a.leadsCount > 0
                       ? `${Math.round((a.conversions / a.leadsCount) * 100)}%`
                       : "—"}
                   </TableCell>
                   <TableCell className="py-4">
-                    <div className="h-2 w-32 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-2 w-32 overflow-hidden rounded-full bg-muted/75">
                       <div
-                        className="h-full rounded-full bg-sky-600"
+                        className="h-full rounded-full bg-primary"
                         style={{ width: `${Math.min(100, a.leadsCount > 0 ? (a.conversions / a.leadsCount) * 100 : 0)}%` }}
                       />
                     </div>
                   </TableCell>
+                  <TableCell className="py-4">
+                    <AIExplainButton
+                      rowData={{
+                        name: a.name,
+                        leads: a.leadsCount,
+                        conversions: a.conversions,
+                        placements: a.placements,
+                        conversionRate: a.conversionRate,
+                        avgResponseHours: a.avgResponseHours,
+                      }}
+                      entityLabel="Agent Performance"
+                      context="Analyze this agent's performance metrics. Identify strengths and weaknesses. If conversion is low relative to leads, explain possible causes (slow response, poor follow-up). Suggest 2-3 specific improvement actions."
+                    />
+                  </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </SuperAgentDataTableShell>

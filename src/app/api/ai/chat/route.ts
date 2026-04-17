@@ -305,24 +305,113 @@ ${recentJobLines || "  (no jobs yet)"}`;
       }
     }
 
-    // ─── Super-agent stats injection ────────────────────────────
+    // ─── Super-agent stats injection (enriched with per-agent KPIs) ─
     if (userRole === "super_agent" && context === "super_agent_assist") {
       try {
         await connectDB();
         const saProfile = await SuperAgent.findOne({ userId: session.user.id }).select("_id agentIds").lean();
         if (saProfile) {
           const agentIds = saProfile.agentIds ?? [];
-          const agentUserIds = agentIds.length > 0
-            ? (await Agent.find({ _id: { $in: agentIds } }).select("userId").lean()).map((a) => a.userId)
+          const agentDocs = agentIds.length > 0
+            ? await Agent.find({ _id: { $in: agentIds } }).select("userId activityLog assignedEmployerIds").lean()
             : [];
-          const [managedAgents, teamLeads, teamPlacements, pendingApprovals, teamJobs] = await Promise.all([
-            Promise.resolve(agentIds.length),
-            Lead.countDocuments({ agentId: { $in: agentIds } }),
-            Placement.countDocuments({ agentId: { $in: agentIds } }),
-            Job.countDocuments({ postedBy: { $in: agentUserIds }, "approval.status": "pending" }),
+          const agentUserIds = agentDocs.map((a) => a.userId);
+          const agentUserIdStrs = agentUserIds.map((id) => id.toString());
+          const employerIds = agentDocs.flatMap((a) => (a as unknown as { assignedEmployerIds?: unknown[] }).assignedEmployerIds ?? []);
+
+          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+          // Pending approvals: match the same scoping as /api/super-agent/approvals
+          // When no agents assigned, super-agent sees ALL pending jobs (no scope filter)
+          const pendingApprovalFilter: Record<string, unknown> = {
+            "poster.approvalStatus": "pending",
+          };
+          if (agentIds.length > 0) {
+            pendingApprovalFilter.$or = [
+              { agentId: { $in: agentIds } },
+              ...(employerIds.length > 0 ? [{ employerId: { $in: employerIds } }] : []),
+            ];
+          } else if (employerIds.length > 0) {
+            pendingApprovalFilter.employerId = { $in: employerIds };
+          }
+
+          const [users, allLeads, teamPlacementCount, pendingApprovals, teamJobs] = await Promise.all([
+            User.find({ _id: { $in: agentUserIds } }).select("name email").lean(),
+            Lead.find({ agentId: { $in: agentUserIdStrs } })
+              .select("agentId status createdAt convertedAt followUpAt activityLog")
+              .lean(),
+            Placement.countDocuments({ agentId: { $in: agentUserIdStrs } }),
+            Job.countDocuments(pendingApprovalFilter),
             Job.countDocuments({ postedBy: { $in: agentUserIds }, status: "active" }),
           ]);
-          roleStatsContext = `\n\n## Team Stats (live data — use naturally in responses)\n- Managed agents: ${managedAgents}\n- Team leads: ${teamLeads}\n- Team placements: ${teamPlacements}\n- Pending approvals: ${pendingApprovals}\n- Active team jobs: ${teamJobs}`;
+
+          const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+
+          // Per-agent breakdown for AI context
+          const agentLines = agentUserIdStrs.map((uid) => {
+            const user = userMap.get(uid);
+            const agentLeads = allLeads.filter((l) => l.agentId?.toString() === uid);
+            const converted = agentLeads.filter((l) => l.status === "converted").length;
+            const rate = agentLeads.length > 0 ? Math.round((converted / agentLeads.length) * 100) : 0;
+            const overdue = agentLeads.filter(
+              (l) => l.followUpAt && new Date(l.followUpAt) < new Date() && l.status !== "converted" && l.status !== "lost"
+            ).length;
+            const stale = agentLeads.filter((l) => {
+              if (l.status !== "contacted" && l.status !== "interested") return false;
+              const lastAct = l.activityLog?.length
+                ? new Date(l.activityLog[l.activityLog.length - 1].timestamp)
+                : new Date(l.createdAt);
+              return (Date.now() - lastAct.getTime()) / (1000 * 60 * 60 * 24) > 7;
+            }).length;
+            // Avg response time
+            const responseTimes = agentLeads
+              .filter((l) => l.activityLog && l.activityLog.length > 0)
+              .map((l) => (new Date(l.activityLog![0].timestamp).getTime() - new Date(l.createdAt).getTime()) / (1000 * 60 * 60))
+              .filter((h) => h > 0 && h < 720);
+            const avgResp = responseTimes.length > 0
+              ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+              : null;
+
+            return `  - ${user?.name ?? "Unknown"} (${user?.email ?? "?"}): ${agentLeads.length} leads, ${converted} conversions (${rate}%), ${overdue} overdue follow-ups, ${stale} stale leads${avgResp !== null ? `, avg response ${avgResp}h` : ""}`;
+          });
+
+          // Pipeline summary
+          const pipelineCounts: Record<string, number> = {};
+          for (const l of allLeads) {
+            pipelineCounts[l.status] = (pipelineCounts[l.status] ?? 0) + 1;
+          }
+          const pipelineLines = Object.entries(pipelineCounts).map(([s, c]) => `${s}: ${c}`).join(" | ");
+
+          // Conversions this week vs last week
+          const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+          const convThisWeek = allLeads.filter(
+            (l) => l.status === "converted" && l.convertedAt && new Date(l.convertedAt) >= sevenDaysAgo
+          ).length;
+          const convLastWeek = allLeads.filter((l) => {
+            if (l.status !== "converted" || !l.convertedAt) return false;
+            const d = new Date(l.convertedAt);
+            return d >= fourteenDaysAgo && d < sevenDaysAgo;
+          }).length;
+
+          roleStatsContext = `
+
+## Team Stats (live data — use naturally, reference agents by name)
+- Managed agents: ${agentUserIdStrs.length}
+- Total team leads: ${allLeads.length}
+- Total team placements: ${teamPlacementCount}
+- Pending approvals: ${pendingApprovals}
+- Active team jobs: ${teamJobs}
+
+### Lead Pipeline
+${pipelineLines || "(no leads)"}
+
+### Conversion Trend
+- This week: ${convThisWeek} | Last week: ${convLastWeek}${convLastWeek > 0 ? ` (${convThisWeek >= convLastWeek ? "+" : ""}${Math.round(((convThisWeek - convLastWeek) / convLastWeek) * 100)}%)` : ""}
+
+### Per-Agent Performance
+${agentLines.join("\n")}
+
+Use this data to answer questions about team performance, identify underperformers, suggest lead redistribution, and provide actionable advice. Always cite specific agent names and numbers.`;
         }
       } catch (err) {
         console.error("[AI Chat] Failed to fetch super-agent stats:", err);
@@ -496,7 +585,21 @@ IMPORTANT: The user's profile is provided below. Use it to give personalized res
 - When the user asks for job suggestions, ONLY recommend jobs from the "Live Jobs on MPLOYEDIN" list below.
 - Do NOT ask for information that is already in their profile.
 - If profile data is incomplete for a specific question, ask only for the missing piece.
-- Reference their profile naturally (e.g., "Based on your React and Node.js experience…").${profileContext}${jobsContext}`
+- Reference their profile naturally (e.g., "Based on your React and Node.js experience…").
+
+## How to recommend jobs
+
+1. **Explain WHY it matches** — For each recommended job, explain which profile attributes align (e.g., "This matches because you have React + 3 years experience + preferred UAE location"). Never just list a job without a reason.
+
+2. **Skill gap hints** — If a recommended job requires skills the user doesn't have, mention them helpfully: "You're a strong fit, but this role also asks for Docker — adding it could open more doors." Only mention 1–2 missing skills max per job — don't overwhelm.
+
+3. **Match confidence** — Rate each recommendation:
+   - **Strong match** when 3+ of the user's skills overlap AND location/experience align
+   - **Good match** when 2+ skills overlap OR experience level fits well
+   - **Worth exploring** when only 1 skill overlaps but the role aligns with their career direction
+   Present this naturally (e.g., "Strong match — your TypeScript and Node.js experience directly align with this role").
+
+4. **General skill advice** — When the user asks about career growth or improving their profile, compare their skills against the live jobs list and suggest the most commonly required skills they're missing.${profileContext}${jobsContext}`
     : base + jobRule;
 
   const contextPrompts: Record<string, string> = {

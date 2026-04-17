@@ -36,40 +36,49 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
  * Body: { threadId?: string, context: string, messages: [{role, content}], title?: string }
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  await connectDB();
-  const { threadId, context, messages, title } = await validateBody(req, chatHistoryCreateSchema) as {
-    threadId?: string;
-    context: ConversationContext;
-    messages: { role: "user" | "assistant"; content: string }[];
-    title?: string;
-  };
+  try {
+    await connectDB();
+    const { threadId, context, messages, title } = await validateBody(req, chatHistoryCreateSchema) as {
+      threadId?: string | null;
+      context: ConversationContext;
+      messages: { role: "user" | "assistant"; content: string }[];
+      title?: string | null;
+    };
 
-  if (threadId) {
-    // Append to existing thread
-    const thread = await ConversationThread.findOneAndUpdate(
-      { _id: threadId, userId: ctx.userId },
-      {
-        $push: { messages: { $each: messages.map((m) => ({ ...m, timestamp: new Date() })) } },
-        ...(title && { title }),
-      },
-      { new: true }
-    );
-    if (!thread) return NextResponse.json({ error: "Thread not found" }, { status: 404 });
-    await logActivity({ ...actorFromCtx(ctx), action: "ai.chat_append", resource: "conversation_threads", resourceId: threadId, req });
-    return NextResponse.json({ threadId: thread._id });
+    console.log("[chat-history] POST", { threadId, context, userId: ctx.userId, msgCount: messages.length });
+
+    if (threadId) {
+      // Append to existing thread
+      const thread = await ConversationThread.findOneAndUpdate(
+        { _id: threadId, userId: ctx.userId },
+        {
+          $push: { messages: { $each: messages.map((m) => ({ ...m, timestamp: new Date() })) } },
+          ...(title && { title }),
+        },
+        { new: true }
+      );
+      if (!thread) return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+      await logActivity({ ...actorFromCtx(ctx), action: "ai.chat_append", resource: "conversation_threads", resourceId: threadId, req });
+      return NextResponse.json({ threadId: thread._id });
+    }
+
+    // Create new thread
+    const thread = await ConversationThread.create({
+      userId: ctx.userId,
+      context: context ?? "general_assist",
+      title: title ?? "New conversation",
+      messages: messages.map((m) => ({ ...m, timestamp: new Date() })),
+    });
+
+    console.log("[chat-history] Created thread", String(thread._id));
+
+    await logActivity({ ...actorFromCtx(ctx), action: "ai.chat_create", resource: "conversation_threads", resourceId: String(thread._id), meta: { context }, req });
+
+    return NextResponse.json({ threadId: thread._id }, { status: 201 });
+  } catch (err) {
+    console.error("[chat-history] POST error:", err);
+    return NextResponse.json({ error: "Failed to save chat" }, { status: 500 });
   }
-
-  // Create new thread
-  const thread = await ConversationThread.create({
-    userId: ctx.userId,
-    context: context ?? "general_assist",
-    title: title ?? "New conversation",
-    messages: messages.map((m) => ({ ...m, timestamp: new Date() })),
-  });
-
-  await logActivity({ ...actorFromCtx(ctx), action: "ai.chat_create", resource: "conversation_threads", resourceId: String(thread._id), meta: { context }, req });
-
-  return NextResponse.json({ threadId: thread._id }, { status: 201 });
 });
 
 /**

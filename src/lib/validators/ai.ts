@@ -16,6 +16,8 @@ export const aiChatSchema = z.object({
 export const aiReportSchema = z.object({
   query: z.string().min(1).max(500).trim(),
   reportType: z.string().max(100).optional(),
+  scope: z.enum(["market", "platform"]).optional(),
+  context: z.string().max(300).optional(),
   filters: z.record(z.string(), z.unknown()).optional(),
 });
 

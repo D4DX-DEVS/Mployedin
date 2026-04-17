@@ -66,28 +66,28 @@ export default function SuperAgentLeadsPage() {
       value: leads.filter((lead) => !["converted", "lost"].includes(lead.status)).length,
       helper: "Leads still moving through discovery, contact, or negotiation.",
       icon: <Target className="h-5 w-5" />,
-      toneClassName: "bg-sky-50 text-sky-600",
+      toneClassName: "workspace-tone-sky",
     },
     {
       label: "Contacted",
       value: stageCounts.contacted,
       helper: "Accounts already touched by your team and in follow-up motion.",
       icon: <Activity className="h-5 w-5" />,
-      toneClassName: "bg-indigo-50 text-indigo-600",
+      toneClassName: "workspace-tone-indigo",
     },
     {
       label: "Converted",
       value: stageCounts.converted,
       helper: "Leads that have already moved into active employer relationships.",
       icon: <Handshake className="h-5 w-5" />,
-      toneClassName: "bg-emerald-50 text-emerald-600",
+      toneClassName: "workspace-tone-emerald",
     },
     {
       label: "Lost",
       value: stageCounts.lost,
       helper: "Dropped opportunities that may need later reactivation or review.",
       icon: <CircleSlash className="h-5 w-5" />,
-      toneClassName: "bg-rose-50 text-rose-600",
+      toneClassName: "workspace-tone-rose",
     },
   ];
 
@@ -112,22 +112,25 @@ export default function SuperAgentLeadsPage() {
             {STAGES.map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => { setStatusFilter(statusFilter === s ? "" : s); resetPage(); }}
-                className={`rounded-2xl border px-4 py-3 text-left transition-all ${statusFilter === s ? "border-sky-200 bg-sky-50 shadow-[0_20px_42px_-34px_rgba(2,132,199,0.55)]" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"}`}
+                aria-pressed={statusFilter === s}
+                className={`rounded-2xl border px-4 py-3 text-left transition-all ${statusFilter === s ? "border-primary/35 bg-primary/10 shadow-sm shadow-primary/15" : "border-border/70 bg-background/85 hover:border-border hover:bg-secondary/80"}`}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{s}</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{stageCounts[s]}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{s}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{stageCounts[s]}</p>
               </button>
             ))}
           </div>
 
           <div className="relative w-full max-w-xs min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
             <Input
+              aria-label="Search leads"
               placeholder="Search company, contact..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="h-11 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm shadow-none"
+              className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
             />
           </div>
         </div>
@@ -136,22 +139,22 @@ export default function SuperAgentLeadsPage() {
           <SuperAgentDataTableShell>
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-slate-200 bg-slate-50/80 hover:bg-slate-50/80">
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Company</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Contact</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Country</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Industry</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Stage</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Agent</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Date</TableHead>
+                <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
+                  <TableHead className="py-4 text-muted-foreground/80">Company</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Contact</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Country</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Industry</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Stage</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Agent</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i} className="border-slate-100">
+                    <TableRow key={i} className="border-border/50">
                       {Array.from({ length: 7 }).map((_, j) => (
-                        <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" /></TableCell>
+                        <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
                       ))}
                     </TableRow>
                   ))
@@ -166,14 +169,14 @@ export default function SuperAgentLeadsPage() {
                     </TableCell>
                   </TableRow>
                 ) : leads.map((lead) => (
-                  <TableRow key={lead._id} className="border-slate-100 hover:bg-sky-50/30">
-                    <TableCell className="py-4 font-medium text-slate-950">{lead.companyName}</TableCell>
-                    <TableCell className="py-4 text-slate-600">{lead.contactPerson}</TableCell>
-                    <TableCell className="py-4 text-slate-500">{lead.country ?? "—"}</TableCell>
-                    <TableCell className="py-4 text-slate-500">{lead.industry ?? "—"}</TableCell>
+                  <TableRow key={lead._id} className="border-border/50 hover:bg-accent/25">
+                    <TableCell className="py-4 font-medium text-foreground">{lead.companyName}</TableCell>
+                    <TableCell className="py-4 text-foreground/85">{lead.contactPerson}</TableCell>
+                    <TableCell className="py-4 text-muted-foreground">{lead.country ?? "—"}</TableCell>
+                    <TableCell className="py-4 text-muted-foreground">{lead.industry ?? "—"}</TableCell>
                     <TableCell className="py-4"><StatusBadge status={lead.status} /></TableCell>
-                    <TableCell className="py-4 text-xs text-slate-500">{lead.agentId?.userId?.name ?? "—"}</TableCell>
-                    <TableCell className="py-4 text-xs text-slate-500">{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="py-4 text-xs text-muted-foreground">{lead.agentId?.userId?.name ?? "—"}</TableCell>
+                    <TableCell className="py-4 text-xs text-muted-foreground">{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

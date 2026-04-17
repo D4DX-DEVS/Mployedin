@@ -38,47 +38,51 @@ async function patchHandler(
 
   // Ownership validation: job must be under this super agent's agents
   if (ctx.role === "super_agent") {
-    const saProfile = await SuperAgent.findOne({ userId: ctx.userId })
+    // Auto-create profile if it doesn't exist yet (e.g. onboarding gap)
+    const saProfile = await SuperAgent.findOneAndUpdate(
+      { userId: ctx.userId },
+      { $setOnInsert: { userId: ctx.userId, agentIds: [], assignedCityIds: [], assignedStateIds: [] } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    )
       .select("agentIds")
       .lean();
-    if (!saProfile) {
-      return NextResponse.json(
-        { error: "Super agent profile not found" },
-        { status: 404 }
-      );
-    }
 
     const agentIds = (saProfile.agentIds ?? []).map(String);
-    let isOwnedJob = false;
 
-    if (job.agentId && agentIds.includes(String(job.agentId))) {
-      isOwnedJob = true;
-    }
+    // If the super-agent has assigned agents, enforce ownership
+    if (agentIds.length > 0) {
+      let isOwnedJob = false;
 
-    if (!isOwnedJob) {
-      const managedAgents = await Agent.find({
-        _id: { $in: saProfile.agentIds ?? [] },
-      })
-        .select("assignedEmployerIds")
-        .lean();
-      const managedEmployerIds = managedAgents
-        .flatMap((a) => a.assignedEmployerIds ?? [])
-        .map(String);
-
-      if (
-        job.employerId &&
-        managedEmployerIds.includes(String(job.employerId))
-      ) {
+      if (job.agentId && agentIds.includes(String(job.agentId))) {
         isOwnedJob = true;
       }
-    }
 
-    if (!isOwnedJob) {
-      return NextResponse.json(
-        { error: "Forbidden — this job is not under your agents" },
-        { status: 403 }
-      );
+      if (!isOwnedJob) {
+        const managedAgents = await Agent.find({
+          _id: { $in: saProfile.agentIds ?? [] },
+        })
+          .select("assignedEmployerIds")
+          .lean();
+        const managedEmployerIds = managedAgents
+          .flatMap((a) => a.assignedEmployerIds ?? [])
+          .map(String);
+
+        if (
+          job.employerId &&
+          managedEmployerIds.includes(String(job.employerId))
+        ) {
+          isOwnedJob = true;
+        }
+      }
+
+      if (!isOwnedJob) {
+        return NextResponse.json(
+          { error: "Forbidden — this job is not under your agents" },
+          { status: 403 }
+        );
+      }
     }
+    // If agentIds is empty, allow action (matches GET route scoping behavior)
   }
 
   let body: { status?: string; reason?: string };
@@ -160,5 +164,5 @@ async function patchHandler(
 
 export const PATCH = withAuth(patchHandler, {
   resource: "jobs",
-  action: "update",
+  action: "approve",
 });

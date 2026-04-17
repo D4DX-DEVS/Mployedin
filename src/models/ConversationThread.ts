@@ -7,7 +7,9 @@ export type ConversationContext =
   | "general_assist"
   | "interview_prep"
   | "employer_assist"
-  | "agent_assist";
+  | "agent_assist"
+  | "super_agent_assist"
+  | "admin_assist";
 
 export interface IMessage {
   role: MessageRole;
@@ -52,6 +54,8 @@ const ConversationThreadSchema = new Schema<IConversationThread>(
         "interview_prep",
         "employer_assist",
         "agent_assist",
+        "super_agent_assist",
+        "admin_assist",
       ],
       required: true,
     },
@@ -67,10 +71,13 @@ ConversationThreadSchema.index({ userId: 1 });
 ConversationThreadSchema.index({ context: 1 });
 ConversationThreadSchema.index({ createdAt: -1 });
 
-export const ConversationThread =
-  mongoose.models.ConversationThread ||
-  mongoose.model<IConversationThread>(
-    "ConversationThread",
-    ConversationThreadSchema
-  );
+// Force schema refresh in dev (Turbopack HMR caches the old model)
+if (mongoose.models.ConversationThread) {
+  delete (mongoose.models as Record<string, unknown>).ConversationThread;
+}
+
+export const ConversationThread = mongoose.model<IConversationThread>(
+  "ConversationThread",
+  ConversationThreadSchema
+);
 export default ConversationThread;

@@ -106,28 +106,28 @@ export default function SuperAgentCommissionsPage() {
       value: totalAmount > 0 ? `AED ${totalAmount.toLocaleString()}` : "—",
       helper: "Commission amount represented in the current results page.",
       icon: <Coins className="h-5 w-5" />,
-      toneClassName: "bg-sky-50 text-sky-600",
+      toneClassName: "workspace-tone-sky",
     },
     {
       label: "Pending",
       value: commissions.filter((commission) => commission.status === "pending").length,
       helper: "Commission entries still waiting for approval review.",
       icon: <ReceiptText className="h-5 w-5" />,
-      toneClassName: "bg-amber-50 text-amber-600",
+      toneClassName: "workspace-tone-amber",
     },
     {
       label: "Approved",
       value: commissions.filter((commission) => commission.status === "approved").length,
       helper: "Approved entries ready to move into payout confirmation.",
       icon: <CheckCircle2 className="h-5 w-5" />,
-      toneClassName: "bg-emerald-50 text-emerald-600",
+      toneClassName: "workspace-tone-emerald",
     },
     {
       label: "Override Rate",
       value: `${overrideRate || 0}%`,
       helper: "Current regional override rate pulled from the super-agent profile.",
       icon: <Wallet className="h-5 w-5" />,
-      toneClassName: "bg-indigo-50 text-indigo-600",
+      toneClassName: "workspace-tone-indigo",
     },
   ];
 
@@ -148,10 +148,10 @@ export default function SuperAgentCommissionsPage() {
         description="Adjust the commission override rate and move between payout states without changing the current backend behavior."
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+          <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/70 bg-secondary/50 p-4">
             <div className="flex items-center gap-2">
-              <Settings2 className="h-4 w-4 text-slate-500" />
-              <Label htmlFor="overrideRate" className="whitespace-nowrap text-sm font-medium text-slate-700">
+              <Settings2 className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="overrideRate" className="whitespace-nowrap text-sm font-medium text-foreground">
                 Commission Override Rate (%)
               </Label>
             </div>
@@ -163,12 +163,12 @@ export default function SuperAgentCommissionsPage() {
               step={0.5}
               value={overrideRate}
               onChange={(e) => setOverrideRate(Number(e.target.value))}
-              className="h-11 w-28 rounded-xl border-slate-200 bg-white text-sm shadow-none"
+              className="h-11 w-28 rounded-xl bg-background/85 text-foreground shadow-none"
             />
-            <Button size="sm" onClick={saveOverrideRate} disabled={savingRate} className="h-11 rounded-xl bg-slate-950 px-4 text-white hover:bg-slate-800">
+            <Button size="sm" onClick={saveOverrideRate} disabled={savingRate} className="h-11 rounded-xl px-4">
               {savingRate ? "Saving..." : "Save"}
             </Button>
-            {rateMessage ? <span className="text-xs text-slate-500">{rateMessage}</span> : null}
+            {rateMessage ? <span className="text-xs text-muted-foreground">{rateMessage}</span> : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -176,9 +176,10 @@ export default function SuperAgentCommissionsPage() {
               <Button
                 key={s}
                 onClick={() => { setStatusFilter(s); resetPage(); }}
+                aria-pressed={statusFilter === s}
                 variant={statusFilter === s ? "default" : "outline"}
                 size="sm"
-                className={statusFilter === s ? "bg-slate-950 text-white hover:bg-slate-800" : "border-slate-200 bg-white hover:bg-slate-50"}
+                className={statusFilter === s ? "rounded-xl" : "rounded-xl border-border/70 bg-background/85 text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}
               >
                 {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
               </Button>
@@ -190,22 +191,22 @@ export default function SuperAgentCommissionsPage() {
           <SuperAgentDataTableShell>
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-slate-200 bg-slate-50/80 hover:bg-slate-50/80">
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Agent</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Type</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Notes</TableHead>
-                  <TableHead className="py-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Amount</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Status</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Date</TableHead>
-                  <TableHead className="py-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Actions</TableHead>
+                <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
+                  <TableHead className="py-4 text-muted-foreground/80">Agent</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Type</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Notes</TableHead>
+                  <TableHead className="py-4 text-right text-muted-foreground/80">Amount</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Status</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Date</TableHead>
+                  <TableHead className="py-4 text-muted-foreground/80">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i} className="border-slate-100">
+                    <TableRow key={i} className="border-border/50">
                       {Array.from({ length: 7 }).map((_, j) => (
-                        <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-slate-200" /></TableCell>
+                        <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
                       ))}
                     </TableRow>
                   ))
@@ -220,16 +221,16 @@ export default function SuperAgentCommissionsPage() {
                     </TableCell>
                   </TableRow>
                 ) : commissions.map((c) => (
-                  <TableRow key={c._id} className="border-slate-100 hover:bg-sky-50/30">
+                    <TableRow key={c._id} className="border-border/50 hover:bg-accent/25">
                     <TableCell className="py-4">
-                      <div className="font-medium text-slate-950">{c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—"}</div>
-                      <div className="text-xs text-slate-500">{c.agentId?.userId?.email ?? ""}</div>
+                        <div className="font-medium text-foreground">{c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—"}</div>
+                        <div className="text-xs text-muted-foreground">{c.agentId?.userId?.email ?? ""}</div>
                     </TableCell>
-                    <TableCell className="py-4 capitalize text-slate-500">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
-                    <TableCell className="max-w-xs truncate py-4 text-xs text-slate-500">{c.notes ?? "—"}</TableCell>
-                    <TableCell className="py-4 text-right font-semibold text-slate-900">{c.currency ?? "AED"} {c.amount.toLocaleString()}</TableCell>
+                      <TableCell className="py-4 capitalize text-muted-foreground">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
+                      <TableCell className="max-w-xs truncate py-4 text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
+                      <TableCell className="py-4 text-right font-semibold text-foreground">{c.currency ?? "AED"} {c.amount.toLocaleString()}</TableCell>
                     <TableCell className="py-4"><StatusBadge status={c.status} /></TableCell>
-                    <TableCell className="py-4 text-xs text-slate-500">{new Date(c.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="py-4 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="py-4">
                       {c.status === "pending" && (
                         <Button variant="ghost" size="sm" className="h-7 text-xs text-green-700" onClick={() => updateStatus(c._id, "approved")}>
@@ -241,7 +242,7 @@ export default function SuperAgentCommissionsPage() {
                           Mark Paid
                         </Button>
                       )}
-                      {c.status === "paid" && <span className="text-xs text-slate-500">Paid ✓</span>}
+                      {c.status === "paid" && <span className="text-xs text-muted-foreground">Paid ✓</span>}
                     </TableCell>
                   </TableRow>
                 ))}

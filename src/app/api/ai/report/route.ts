@@ -93,8 +93,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   await connectDB();
-  const { query } = await validateBody(req, aiReportSchema);
+  const { query, scope, context } = await validateBody(req, aiReportSchema);
   const safeQuery = sanitizeAIInput(String(query), 500);
+  const safeContext = context ? sanitizeAIInput(String(context), 300) : "Gulf region — UAE, KSA, Qatar, Oman, Kuwait, Bahrain";
 
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -322,7 +323,33 @@ ${seekersByNationality.map((n: {_id: string; count: number}) => `  • ${n._id}:
 
 === END OF PLATFORM DATA ===`;
 
-  const systemContext = `You are an analytics AI for MPLOYEDIN, a Gulf-region recruitment platform. You have been given the exact figures pulled live from the platform database right now.
+  const systemContext = scope === "market"
+    ? `You are a recruitment market analyst for MPLOYEDIN, specialising in the following region: ${safeContext}.
+
+CRITICAL RULES:
+- Only use the numbers in the LIVE PLATFORM DATA block below when answering data questions.
+- If a metric is not in the data, say "Data not available" — do NOT estimate or invent platform figures.
+- You MAY use your knowledge of the specified region (${safeContext}) for salary benchmarks, visa trends, nationality demand, and sector insights when the query goes beyond platform data.
+- Always answer specifically about the country or region the user asks about — do NOT default to UAE only.
+
+${dataBlock}
+
+USER QUERY: "${safeQuery}"
+
+Respond ONLY with a single valid JSON object — no markdown fences, no prose before or after.
+Use this exact shape:
+{
+  "summary": "<2–4 sentence direct answer to the query>",
+  "insights": [
+    { "title": "<metric label>", "value": "<key figure or range>", "trend": "<optional short trend note>", "category": "<salary|demand|jobs|placements|nationality>" }
+  ],
+  "recommendations": ["<actionable recommendation 1>", "<actionable recommendation 2>"],
+  "generatedAt": "${now.toISOString()}"
+}
+- Include 2–5 insight objects relevant to the query.
+- Include 2–4 recommendation strings.
+- Start the output with { and end with } — nothing else.`
+    : `You are an analytics AI for MPLOYEDIN, a Gulf-region recruitment platform. You have been given the exact figures pulled live from the platform database right now.
 
 CRITICAL RULES:
 - Only use the numbers shown in the LIVE PLATFORM DATA block above.
@@ -347,7 +374,18 @@ Formatting rules:
 - If a section has no supporting data, state "Data not available" or "No immediate action items from current data." instead of inventing details.
 - Keep the report detailed enough for an admin briefing, but only use the live data provided above.`;
 
-  const report = normalizeReportOutput(redactPII(await routeGenerate(systemContext, "report")));
+  const aiOutput = await routeGenerate(systemContext, "report");
+
+  if (scope === "market") {
+    // Return raw AI text so the market page's JSON.parse can handle the structured output
+    const cleaned = normalizeReportOutput(redactPII(aiOutput));
+    return new NextResponse(cleaned, {
+      status: 200,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  const report = normalizeReportOutput(redactPII(aiOutput));
 
   return NextResponse.json({
     query: safeQuery,

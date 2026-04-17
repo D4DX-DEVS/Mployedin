@@ -3,6 +3,8 @@ import { getMessages } from "next-intl/server";
 import PublicHeader from "@/components/shared/PublicHeader";
 import PublicFooter from "@/components/shared/PublicFooter";
 import CookieConsent from "@/components/shared/CookieConsent";
+import { SessionWrapper } from "@/components/shared/SessionWrapper";
+import { DashboardProviders } from "@/components/shared/DashboardProviders";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.vercel.app";
 
@@ -64,12 +66,16 @@ export default async function PublicLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
       />
-      <div className="flex min-h-screen flex-col">
-        <PublicHeader locale={locale} />
-        <main className="flex-1">{children}</main>
-        <PublicFooter locale={locale} />
-        <CookieConsent locale={locale} />
-      </div>
+      <SessionWrapper>
+        <DashboardProviders>
+          <div className="flex min-h-screen flex-col">
+            <PublicHeader locale={locale} />
+            <main className="flex-1">{children}</main>
+            <PublicFooter locale={locale} />
+            <CookieConsent locale={locale} />
+          </div>
+        </DashboardProviders>
+      </SessionWrapper>
     </NextIntlClientProvider>
   );
 }

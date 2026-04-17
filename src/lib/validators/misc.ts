@@ -75,7 +75,7 @@ export const localeSchema = z.object({
 
 /** POST /api/ai/chat-history */
 export const chatHistoryCreateSchema = z.object({
-  threadId: commonSchemas.objectId.optional(),
+  threadId: commonSchemas.objectId.nullish(),
   context: z.string().min(1).max(100),
   messages: z
     .array(
@@ -86,5 +86,5 @@ export const chatHistoryCreateSchema = z.object({
     )
     .min(1)
     .max(100),
-  title: z.string().max(200).trim().optional(),
+  title: z.string().max(200).trim().nullish(),
 });

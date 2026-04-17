@@ -27,11 +27,30 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "20");
   const skip = (page - 1) * limit;
+  const search = searchParams.get("search")?.trim();
+  const dateFrom = searchParams.get("dateFrom");
+  const dateTo = searchParams.get("dateTo");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {
     "poster.approvalStatus": status,
   };
+
+  // Text search on title
+  if (search) {
+    query.title = { $regex: search, $options: "i" };
+  }
+
+  // Date range filter
+  if (dateFrom || dateTo) {
+    query.createdAt = {};
+    if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+    if (dateTo) {
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59, 999);
+      query.createdAt.$lte = to;
+    }
+  }
 
   // Scope to agents managed by this super agent (via agentId on jobs)
   if (agentDocIds.length > 0) {
@@ -43,7 +62,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     query.employerId = { $in: employerIds };
   }
 
-  const [jobs, total] = await Promise.all([
+  // Build a scope filter (without status) for cross-status counts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const scopeFilter: Record<string, any> = { ...query };
+  delete scopeFilter["poster.approvalStatus"];
+
+  const [jobs, total, pendingCount, approvedCount, rejectedCount] = await Promise.all([
     Job.find(query)
       .populate("employerId", "companyName")
       .populate("agentId", "userId")
@@ -52,10 +76,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       .limit(limit)
       .lean(),
     Job.countDocuments(query),
+    Job.countDocuments({ ...scopeFilter, "poster.approvalStatus": "pending" }),
+    Job.countDocuments({ ...scopeFilter, "poster.approvalStatus": "approved" }),
+    Job.countDocuments({ ...scopeFilter, "poster.approvalStatus": "rejected" }),
   ]);
 
   return NextResponse.json({
     jobs,
+    counts: { pending: pendingCount, approved: approvedCount, rejected: rejectedCount },
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   });
 }

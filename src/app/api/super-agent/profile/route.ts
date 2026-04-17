@@ -21,7 +21,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     .lean();
 
   if (!profile) {
-    return NextResponse.json({ error: "Super agent profile not found" }, { status: 404 });
+    return NextResponse.json({
+      profile: { overrideRate: 0, commissions: { total: 0, pending: 0, paid: 0 } },
+    });
   }
 
   return NextResponse.json({ profile });
