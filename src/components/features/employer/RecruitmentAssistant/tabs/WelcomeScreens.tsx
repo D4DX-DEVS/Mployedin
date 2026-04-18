@@ -12,9 +12,10 @@ interface QuickAction {
 
 interface TabWelcomeProps {
   onAction: (prompt: string) => void;
+  onStartBlank: () => void;
 }
 
-export function JobCreatorWelcome({ onAction }: TabWelcomeProps) {
+export function JobCreatorWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
   const actions: QuickAction[] = [
     {
       icon: <Briefcase className="h-5 w-5" />,
@@ -50,14 +51,15 @@ export function JobCreatorWelcome({ onAction }: TabWelcomeProps) {
         </div>
       }
       title="What job do you want to create today?"
-      subtitle="Describe the role in natural language or use voice — I'll build the full job posting for you."
+      subtitle="Choose a starting point first. You can open a blank chat if you already know what to ask."
       actions={actions}
       onAction={onAction}
+      onStartBlank={onStartBlank}
     />
   );
 }
 
-export function InterviewWelcome({ onAction }: TabWelcomeProps) {
+export function InterviewWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
   const actions: QuickAction[] = [
     {
       icon: (
@@ -111,14 +113,15 @@ export function InterviewWelcome({ onAction }: TabWelcomeProps) {
         </div>
       }
       title="How can I help with your interviews?"
-      subtitle="Generate questions, prep briefs, or structure interview sessions for any role."
+      subtitle="Pick the interview task first, or open a blank chat to ask in your own words."
       actions={actions}
       onAction={onAction}
+      onStartBlank={onStartBlank}
     />
   );
 }
 
-export function ScreeningWelcome({ onAction }: TabWelcomeProps) {
+export function ScreeningWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
   const actions: QuickAction[] = [
     {
       icon: (
@@ -172,9 +175,10 @@ export function ScreeningWelcome({ onAction }: TabWelcomeProps) {
         </div>
       }
       title="What would you like to screen or analyze?"
-      subtitle="Rank applicants, identify skill gaps, or generate shortlists using AI."
+      subtitle="Choose the screening workflow first, or open a blank chat for a custom request."
       actions={actions}
       onAction={onAction}
+      onStartBlank={onStartBlank}
     />
   );
 }
@@ -188,9 +192,10 @@ interface WelcomeScreenProps {
   subtitle: string;
   actions: QuickAction[];
   onAction: (prompt: string) => void;
+  onStartBlank: () => void;
 }
 
-function WelcomeScreen({ icon, title, subtitle, actions, onAction }: WelcomeScreenProps) {
+function WelcomeScreen({ icon, title, subtitle, actions, onAction, onStartBlank }: WelcomeScreenProps) {
   return (
     <div className="flex flex-col items-center px-4 py-6 gap-5">
       {icon}
@@ -219,6 +224,13 @@ function WelcomeScreen({ icon, title, subtitle, actions, onAction }: WelcomeScre
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        onClick={onStartBlank}
+        className="inline-flex items-center justify-center rounded-full border border-border px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+      >
+        Open blank chat
+      </button>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
   LogOut,
   KeyRound,
@@ -11,6 +12,7 @@ import {
   Clock,
   Eye,
   EyeOff,
+  Settings,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -69,6 +71,7 @@ export function UserProfileDropdown({
 
   const { data: session } = useSession();
   const userImage = session?.user?.image;
+  const router = useRouter();
 
   const isAr = locale === "ar";
   const roleBadge = ROLE_LABELS[userRole] ?? { en: userRole, ar: userRole };
@@ -137,6 +140,7 @@ export function UserProfileDropdown({
   };
 
   const handleLogout = () => {
+    router.refresh(); // Bust Next.js router cache so back-navigation re-runs the server auth check
     signOut({ callbackUrl: `/${locale}/login` });
   };
 
@@ -171,7 +175,14 @@ export function UserProfileDropdown({
         >
           {/* User info header */}
           <DropdownMenuLabel className="font-normal">
-            <div className="flex items-start gap-3 py-1">
+            <button
+              type="button"
+              onClick={() => {
+                const profilePath = userRole === "job_seeker" ? `/${locale}/job-seeker/profile` : userRole === "employer" ? `/${locale}/employer/profile` : null;
+                if (profilePath) router.push(profilePath);
+              }}
+              className="flex items-start gap-3 py-1 w-full text-left hover:opacity-80 transition-opacity cursor-pointer"
+            >
               <div className="flex h-10 w-10 items-center justify-center rounded-full brand-gradient text-white text-sm font-semibold shrink-0 overflow-hidden">
                 {companyLogo ? (
                   <Image src={companyLogo} alt="Company logo" width={40} height={40} className="w-full h-full object-contain" unoptimized />
@@ -189,7 +200,7 @@ export function UserProfileDropdown({
                   {userEmail}
                 </p>
               </div>
-            </div>
+            </button>
           </DropdownMenuLabel>
 
           <DropdownMenuSeparator />
@@ -217,6 +228,20 @@ export function UserProfileDropdown({
           </div>
 
           <DropdownMenuSeparator />
+
+          {/* Settings */}
+          {(userRole === "job_seeker" || userRole === "employer") && (
+            <DropdownMenuItem
+              className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+              onSelect={() => {
+                const settingsPath = userRole === "job_seeker" ? `/${locale}/job-seeker/settings` : `/${locale}/employer/settings`;
+                router.push(settingsPath);
+              }}
+            >
+              <Settings className="h-4 w-4" />
+              <span className="font-medium text-sm">{isAr ? "الإعدادات" : "Settings"}</span>
+            </DropdownMenuItem>
+          )}
 
           {/* Reset Password */}
           <DropdownMenuItem

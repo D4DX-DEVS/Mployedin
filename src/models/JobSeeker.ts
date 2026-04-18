@@ -22,6 +22,50 @@ export interface IEducation {
 export interface ILanguageSkill {
   language: string;
   proficiency: "basic" | "conversational" | "professional" | "native";
+  canRead?: boolean;
+  canWrite?: boolean;
+  canSpeak?: boolean;
+}
+
+export interface IProject {
+  title: string;
+  description?: string;
+  techStack: string[];
+  projectUrl?: string;
+  repoUrl?: string;
+  startDate?: Date;
+  endDate?: Date;
+  isCurrent?: boolean;
+}
+
+export interface ISocialLink {
+  label: string;
+  url: string;
+}
+
+export interface IAccomplishment {
+  type: "online_profile" | "work_sample" | "publication" | "presentation" | "patent" | "certification";
+  title: string;
+  url?: string;
+  description?: string;
+  date?: Date;
+}
+
+export interface ICareerProfile {
+  currentIndustry?: string;
+  department?: string;
+  roleCategory?: string;
+  jobRole?: string;
+  desiredJobType?: string[];       // contractual, permanent, freelance
+  desiredEmploymentType?: string[]; // full_time, part_time, internship
+  preferredShift?: string;          // day, night, flexible, rotational
+}
+
+export interface IDiversityInclusion {
+  hasDisability?: boolean;
+  disabilityDetails?: string;
+  veteranStatus?: boolean;
+  careerBreak?: { hasBreak: boolean; reason?: string; startDate?: Date; endDate?: Date };
 }
 
 export interface IJobSeeker extends Document {
@@ -60,6 +104,17 @@ export interface IJobSeeker extends Document {
   education: IEducation[];
   languages: ILanguageSkill[];
   certifications: string[];
+  // Projects & Accomplishments
+  projects: IProject[];
+  accomplishments: IAccomplishment[];
+  // Social / Portfolio Links
+  socialLinks: ISocialLink[];
+  // Career Profile
+  careerProfile?: ICareerProfile;
+  // Diversity & Inclusion
+  diversityInclusion?: IDiversityInclusion;
+  // Profile Visibility
+  profileVisibility: "visible" | "hidden"; // employers can/can't find you
   // Documents
   documents: {
     id: string;
@@ -142,7 +197,55 @@ const LanguageSchema = new Schema<ILanguageSkill>({
     enum: ["basic", "conversational", "professional", "native"],
     default: "conversational",
   },
+  canRead: { type: Boolean, default: true },
+  canWrite: { type: Boolean, default: true },
+  canSpeak: { type: Boolean, default: true },
 });
+
+const ProjectSchema = new Schema<IProject>({
+  title: { type: String, required: true },
+  description: String,
+  techStack: [String],
+  projectUrl: String,
+  repoUrl: String,
+  startDate: Date,
+  endDate: Date,
+  isCurrent: { type: Boolean, default: false },
+});
+
+const AccomplishmentSchema = new Schema<IAccomplishment>({
+  type: {
+    type: String,
+    enum: ["online_profile", "work_sample", "publication", "presentation", "patent", "certification"],
+    required: true,
+  },
+  title: { type: String, required: true },
+  url: String,
+  description: String,
+  date: Date,
+});
+
+const CareerProfileSchema = new Schema<ICareerProfile>({
+  currentIndustry: String,
+  department: String,
+  roleCategory: String,
+  jobRole: String,
+  desiredJobType: [String],
+  desiredEmploymentType: [String],
+  preferredShift: String,
+}, { _id: false });
+
+const DiversityInclusionSchema = new Schema<IDiversityInclusion>({
+  hasDisability: Boolean,
+  disabilityDetails: String,
+  veteranStatus: Boolean,
+  careerBreak: {
+    hasBreak: { type: Boolean, default: false },
+    reason: String,
+    startDate: Date,
+    endDate: Date,
+  },
+}, { _id: false });
 
 const JobSeekerSchema = new Schema<IJobSeeker>(
   {
@@ -176,6 +279,16 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     education: [EducationSchema],
     languages: [LanguageSchema],
     certifications: [String],
+    projects: [ProjectSchema],
+    accomplishments: [AccomplishmentSchema],
+    socialLinks: [{
+      label: { type: String, required: true },
+      url: { type: String, required: true },
+      _id: false,
+    }],
+    careerProfile: CareerProfileSchema,
+    diversityInclusion: DiversityInclusionSchema,
+    profileVisibility: { type: String, enum: ["visible", "hidden"], default: "visible" },
     documents: [{
       id: { type: String, required: true },
       name: { type: String, required: true },

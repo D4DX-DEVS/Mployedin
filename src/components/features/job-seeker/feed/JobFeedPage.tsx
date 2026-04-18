@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight, ArrowUp } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -26,6 +26,9 @@ interface JobPage {
   jobs: FeedJob[];
   nextCursor: string | null;
   total: number;
+  poolPage: number;
+  totalPoolPages: number;
+  totalJobs: number;
 }
 
 const SORT_LABELS: Record<SortMode, string> = {
@@ -68,8 +71,8 @@ function passesFilters(job: FeedJob, filters: FeedFilters): boolean {
 
 // ── Fetcher ───────────────────────────────────────────────────────────────────
 
-async function fetchJobs(cursor: string | null, sort: SortMode, minScore?: number): Promise<JobPage> {
-  const params = new URLSearchParams({ limit: "10", sort });
+async function fetchJobs(cursor: string | null, sort: SortMode, minScore?: number, poolPage = 1): Promise<JobPage> {
+  const params = new URLSearchParams({ limit: "10", sort, pool_page: String(poolPage) });
   if (cursor) params.set("cursor", cursor);
   if (minScore !== undefined) params.set("min_score", String(minScore));
   const res = await fetch(`/api/jobs/recommended?${params}`);
@@ -174,6 +177,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+  const [poolPage, setPoolPage] = useState(1);
   const [filters, setFilters] = useState<FeedFilters>({
     workTypes: [],
     matchRanges: [],
@@ -210,8 +214,8 @@ export function JobFeedPage({ locale }: { locale: string }) {
     fetchNextPage,
     error,
   } = useInfiniteQuery({
-    queryKey: ["recommended-jobs", effectiveSort, effectiveMinScore],
-    queryFn: ({ pageParam }) => fetchJobs(pageParam as string | null, effectiveSort, effectiveMinScore),
+    queryKey: ["recommended-jobs", effectiveSort, effectiveMinScore, poolPage],
+    queryFn: ({ pageParam }) => fetchJobs(pageParam as string | null, effectiveSort, effectiveMinScore, poolPage),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     staleTime: 5 * 60_000,
@@ -223,11 +227,14 @@ export function JobFeedPage({ locale }: { locale: string }) {
     (node: HTMLDivElement | null) => {
       if (observerRef.current) observerRef.current.disconnect();
       if (!node) return;
-      observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      });
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        },
+        { rootMargin: "0px 0px 300px 0px" },
+      );
       observerRef.current.observe(node);
     },
     [hasNextPage, isFetchingNextPage, fetchNextPage],
@@ -335,6 +342,9 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   const allJobs = data?.pages.flatMap((p) => p.jobs) ?? [];
   const total = data?.pages[0]?.total ?? 0;
+  const totalPoolPages = data?.pages[0]?.totalPoolPages ?? 1;
+  const totalJobs = data?.pages[0]?.totalJobs ?? 0;
+  const hasMorePoolPages = poolPage < totalPoolPages;
   const activeFilterCount =
     filters.workTypes.length + filters.matchRanges.length + filters.dateRanges.length;
 
@@ -370,7 +380,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   Live matches
                 </div>
                 <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                  {isSearchMode ? searchData?.total ?? 0 : total}
+                  {isSearchMode ? searchData?.total ?? 0 : totalJobs}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {isSearchMode ? "jobs returned for this search" : "jobs aligned to your profile"}
@@ -495,6 +505,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
             const t = v as "profile" | "like";
             setTab(t);
             setSortMode(t === "like" ? "latest" : "match");
+            setPoolPage(1);
           }}
         >
           <div className="flex flex-col gap-3 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
@@ -643,7 +654,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       {(["match", "latest", "salary"] as SortMode[]).map((mode) => (
                         <button
                           key={mode}
-                          onClick={() => setSortMode(mode)}
+                          onClick={() => { setSortMode(mode); setPoolPage(1); }}
                           className={`rounded-full px-3.5 py-2 text-xs font-medium transition-all ${
                             sortMode === mode
                               ? "bg-primary text-primary-foreground shadow-sm"
@@ -656,7 +667,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     </div>
                   </div>
                   <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {visibleJobs.length} of {total} jobs
+                    {visibleJobs.length} of {totalJobs} jobs{totalPoolPages > 1 ? ` · Page ${poolPage}/${totalPoolPages}` : ""}
                   </span>
                 </div>
               </div>
@@ -716,15 +727,67 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
               <div ref={sentinelRef} className="h-1" />
               {isFetchingNextPage && (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary/60" />
+                <div className="space-y-3">
+                  <CardSkeleton />
+                  <CardSkeleton />
                 </div>
               )}
 
+              {/* Pool page navigation — shown when infinite scroll within pool is exhausted */}
               {!hasNextPage && visibleJobs.length > 0 && !isLoading && (
-                <p className="py-4 text-center text-xs text-muted-foreground">
-                  You&apos;ve seen all recommendations
-                </p>
+                <div className="rounded-[24px] border border-border/60 bg-card px-4 py-5 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:px-5">
+                  {hasMorePoolPages ? (
+                    <div className="space-y-4">
+                      <p className="text-center text-sm text-muted-foreground">
+                        Showing page {poolPage} of {totalPoolPages} ({visibleJobs.length} of {totalJobs} jobs)
+                      </p>
+                      <div className="flex items-center justify-center gap-3">
+                        {poolPage > 1 && (
+                          <button
+                            onClick={() => {
+                              setPoolPage((p) => p - 1);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-border/70 bg-secondary/80 px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            Previous page
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setPoolPage((p) => p + 1);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
+                        >
+                          Next page
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-center text-sm text-muted-foreground">
+                        You&apos;ve seen all {totalJobs} recommendations
+                      </p>
+                      {poolPage > 1 && (
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => {
+                              setPoolPage(1);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-border/70 bg-secondary/80 px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          >
+                            <ArrowUp className="h-4 w-4" />
+                            Back to page 1
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </>
           )}

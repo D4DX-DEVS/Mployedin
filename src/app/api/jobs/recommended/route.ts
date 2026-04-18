@@ -10,14 +10,18 @@ import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, getMatche
  * GET /api/jobs/recommended
  *
  * Returns job recommendations using the shared matchScore algorithm.
- * Supports cursor-based pagination and 3 sort modes.
+ * Supports hybrid pagination: cursor-based infinite scroll within pool pages.
  *
  * Query params:
- *   cursor  — last job _id from previous page
- *   limit   — default 10, max 20
- *   sort    — "match" (default) | "latest" | "salary"
- *   min_score — minimum match score filter (default 50)
+ *   cursor     — last job _id from previous page (within current pool)
+ *   limit      — items per infinite-scroll batch, default 10, max 20
+ *   sort       — "match" (default) | "latest" | "salary"
+ *   min_score  — minimum match score filter (default 30)
+ *   pool_page  — macro page number (1-based), each pool holds up to POOL_SIZE jobs
  */
+
+const POOL_SIZE = 200;
+
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -31,6 +35,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(20, Math.round(limitParam))) : 10;
   const sort = sp.get("sort") ?? "match";
   const minScore = Number(sp.get("min_score") ?? "30");
+  const poolPageParam = Number(sp.get("pool_page") ?? "1");
+  const poolPage = Number.isFinite(poolPageParam) ? Math.max(1, Math.round(poolPageParam)) : 1;
 
   const seeker = await JobSeeker.findOne({ userId: ctx.userId })
     .select("skills preferredCountries preferredRoles preferredSalary preferredJobType experience")
@@ -70,15 +76,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   jobQuery.$and = andConditions;
 
-  // Candidate pool — larger pool so we can score then paginate
+  // Total matching jobs count (for pool page calculation)
+  const totalMatchingJobs = await Job.countDocuments(jobQuery);
+
+  // Candidate pool — fetch the current pool page slice
+  const poolSkip = (poolPage - 1) * POOL_SIZE;
   const candidateJobs = await Job.find(jobQuery)
     .sort({ createdAt: -1 })
-    .limit(200)
+    .skip(poolSkip)
+    .limit(POOL_SIZE)
     .select("title description requirements salary location employerId tags createdAt expiresAt views uniqueViews")
     .populate("employerId", "companyName logo")
     .lean();
 
-  // Score all candidates
+  // Score all candidates in this pool
   const scored = candidateJobs
     .map((job) => ({
       ...job,
@@ -87,7 +98,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }))
     .filter((j) => j.matchScore >= minScore);
 
-  // Sort
+  // Sort within pool
   if (sort === "latest") {
     scored.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } else if (sort === "salary") {
@@ -96,9 +107,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     scored.sort((a, b) => b.matchScore - a.matchScore);
   }
 
-  const total = scored.length;
+  const poolTotal = scored.length;
+  const totalPoolPages = Math.max(1, Math.ceil(totalMatchingJobs / POOL_SIZE));
 
-  // Cursor-based pagination — find cursor position
+  // Cursor-based pagination within the pool
   let startIndex = 0;
   if (cursor) {
     const idx = scored.findIndex((j) => String(j._id) === cursor);
@@ -107,7 +119,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   const page = scored.slice(startIndex, startIndex + limit);
   const nextCursor =
-    startIndex + limit < total ? String(page[page.length - 1]._id) : null;
+    startIndex + limit < poolTotal ? String(page[page.length - 1]._id) : null;
 
-  return NextResponse.json({ jobs: page, nextCursor, total });
+  return NextResponse.json({
+    jobs: page,
+    nextCursor,
+    total: poolTotal,
+    poolPage,
+    totalPoolPages,
+    totalJobs: totalMatchingJobs,
+  });
 });

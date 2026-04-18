@@ -13,13 +13,19 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
 type Params = { id: string };
 
 // GET /api/jobs/[id]
-async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
+async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const job = await Job.findById(params?.id)
     .populate("employerId", "companyName country industry verificationLevel")
     .lean();
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+
+  // Job seekers may only view active jobs; owners and privileged roles can view any status
+  if (ctx.role === "job_seeker" && job.status !== "active") {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+
   return NextResponse.json({ job });
 }
 

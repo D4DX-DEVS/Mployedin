@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
-import type { UserRole } from "@/models/User";
+import User, { type UserRole } from "@/models/User";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import { validateUploadedFile } from "@/lib/security/file-validation";
@@ -70,8 +70,8 @@ Return a JSON object with EXACTLY this structure (no extra fields, no markdown):
   "education": [{"degree": "string", "field": "string", "institution": "string", "country": "string", "from": "YYYY", "to": "YYYY", "grade": "string"}],
   "languages": [{"language": "string", "level": "basic|intermediate|fluent|native"}],
   "certifications": ["string"],
-  "linkedin": "string",
-  "portfolio": "string"
+  "projects": [{"title": "string", "description": "string", "techStack": ["string"], "projectUrl": "string", "repoUrl": "string"}],
+  "socialLinks": [{"label": "string (e.g. LinkedIn, GitHub, Portfolio, Website, Behance)", "url": "string"}]
 }
 
 Rules:
@@ -80,6 +80,7 @@ Rules:
 - Use empty array for missing array fields
 - For dates, use "present" if the position is current
 - Normalize skill names (e.g., "JS" → "JavaScript")
+- For socialLinks, extract ALL links/URLs found in the CV with appropriate labels
 - Return ONLY valid JSON, no markdown code blocks`;
 
     let text = "";
@@ -169,12 +170,43 @@ Rules:
     const mappedLanguages = extracted.languages?.length
       ? extracted.languages.map((l: { language?: string; level?: string }) => ({
           language: l.language ?? "",
-          proficiency: (l.level ?? "conversational") as
-            "basic" | "conversational" | "professional" | "native",
+          proficiency: (
+            l.level === "native" ? "native"
+            : l.level === "fluent" ? "professional"
+            : l.level === "intermediate" ? "conversational"
+            : "basic"
+          ) as "basic" | "conversational" | "professional" | "native",
         }))
       : [];
 
+    const mappedProjects = extracted.projects?.length
+      ? extracted.projects.map((p: {
+          title?: string; description?: string; techStack?: string[];
+          projectUrl?: string; repoUrl?: string;
+        }) => ({
+          title: p.title ?? "",
+          description: p.description ?? "",
+          techStack: p.techStack ?? [],
+          projectUrl: p.projectUrl ?? "",
+          repoUrl: p.repoUrl ?? "",
+        }))
+      : [];
+
+    const mappedSocialLinks: { label: string; url: string }[] = [];
+    // Map legacy linkedin/portfolio fields if present
+    if (extracted.linkedin) mappedSocialLinks.push({ label: "LinkedIn", url: extracted.linkedin });
+    if (extracted.portfolio) mappedSocialLinks.push({ label: "Portfolio", url: extracted.portfolio });
+    // Map new socialLinks array
+    if (extracted.socialLinks?.length) {
+      for (const link of extracted.socialLinks as { label?: string; url?: string }[]) {
+        if (link.url && !mappedSocialLinks.some((s) => s.url === link.url)) {
+          mappedSocialLinks.push({ label: link.label ?? "Link", url: link.url });
+        }
+      }
+    }
+
     const updateData = {
+      ...(extracted.fullName && { fullName: extracted.fullName }),
       ...(extracted.headline && { summary: extracted.headline }),
       ...(extracted.nationality && { nationality: extracted.nationality }),
       ...(extracted.currentLocation && { currentLocation: extracted.currentLocation }),
@@ -183,11 +215,16 @@ Rules:
       ...(mappedEducation.length && { education: mappedEducation }),
       ...(mappedLanguages.length && { languages: mappedLanguages }),
       ...(extracted.certifications?.length && { certifications: extracted.certifications }),
-      ...(extracted.linkedin && { linkedin: extracted.linkedin }),
-      ...(extracted.portfolio && { portfolio: extracted.portfolio }),
+      ...(mappedProjects.length && { projects: mappedProjects }),
+      ...(mappedSocialLinks.length && { socialLinks: mappedSocialLinks }),
       cvExtractedAt: new Date(),
       cvExtractedByAI: true,
     };
+
+    // Also update User.name if fullName was extracted
+    if (extracted.fullName) {
+      await User.findByIdAndUpdate(userId, { name: extracted.fullName }, { runValidators: true });
+    }
 
     // Upload CV file to Spaces and store real URL
     try {

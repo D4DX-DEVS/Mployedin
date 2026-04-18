@@ -73,6 +73,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     if (empDoc) query.employerId = empDoc._id;
   } else if (!myJobs) {
     query.status = "active";
+    query["poster.approvalStatus"] = "approved";
     query.$or = [{ expiresAt: { $exists: false } }, { expiresAt: { $gte: new Date() } }];
   }
 

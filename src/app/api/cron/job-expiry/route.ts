@@ -6,6 +6,8 @@ import { Employer } from "@/models/Employer";
 import User from "@/models/User";
 import { verifyCronRequest } from "@/lib/security/cron-auth";
 
+const defaultLocale = "en";
+
 // Called by cron scheduler (e.g. Vercel Cron)
 // Closes all active jobs whose expiresAt has passed
 
@@ -63,7 +65,7 @@ export async function GET(req: NextRequest) {
         type: "system",
         title: "Job listing expired",
         message: `Your job posting "${job.title}" has expired and been closed automatically. Repost it to receive new applications.`,
-        link: `/employer/jobs`,
+        link: `/${defaultLocale}/employer/jobs`,
       });
     } catch (err) {
       errors.push(`Job ${job._id}: ${err instanceof Error ? err.message : "Unknown"}`);

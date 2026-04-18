@@ -47,6 +47,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     query.country = new RegExp(escapeRegex(country.trim()), "i");
   }
 
+  // Filter by experience range using totalExperienceYears field
+  if (experienceMin > 0 || experienceMax < 50) {
+    query.totalExperienceYears = {};
+    if (experienceMin > 0) query.totalExperienceYears.$gte = experienceMin;
+    if (experienceMax < 50) query.totalExperienceYears.$lte = experienceMax;
+  }
+
   const [count, topSeekers] = await Promise.all([
     JobSeeker.countDocuments(query),
     JobSeeker.find(query)

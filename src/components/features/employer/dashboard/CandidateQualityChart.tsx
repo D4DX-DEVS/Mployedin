@@ -65,9 +65,9 @@ export function CandidateQualityChart({
       label: "High match",
       value: highMatchCount,
       detail: ">80% fit",
-      valueClass: "text-emerald-600",
-      borderClass: "border-emerald-200",
-      surfaceClass: "bg-emerald-50/60",
+      valueClass: "text-emerald-600 dark:text-emerald-400",
+      borderClass: "border-emerald-200 dark:border-emerald-800",
+      surfaceClass: "bg-emerald-50/60 dark:bg-emerald-950/30",
     },
     {
       label: "Applications",
@@ -81,9 +81,9 @@ export function CandidateQualityChart({
       label: "Low match",
       value: lowMatchCount,
       detail: "<50% fit",
-      valueClass: "text-red-500",
-      borderClass: "border-red-200",
-      surfaceClass: "bg-red-50/60",
+      valueClass: "text-red-500 dark:text-red-400",
+      borderClass: "border-red-200 dark:border-red-800",
+      surfaceClass: "bg-red-50/60 dark:bg-red-950/30",
     },
   ];
 

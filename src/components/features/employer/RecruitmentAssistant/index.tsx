@@ -19,7 +19,6 @@ import {
   Loader2,
   Sparkles,
   ChevronRight,
-  Paperclip,
   Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -199,6 +198,11 @@ export function RecruitmentAssistant() {
   const [minimized, setMinimized] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("job_creator");
   const [showHistory, setShowHistory] = useState(false);
+  const [tabStarted, setTabStarted] = useState<Record<TabId, boolean>>({
+    job_creator: false,
+    interview_ai: false,
+    screening_ai: false,
+  });
 
   // Per-tab state
   const [tabMessages, setTabMessages] = useState<Record<TabId, Message[]>>({
@@ -234,6 +238,12 @@ export function RecruitmentAssistant() {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (!showHistory && tabStarted[activeTab] && messages.length === 0 && !isStreaming) {
+      textareaRef.current?.focus();
+    }
+  }, [activeTab, isStreaming, messages.length, showHistory, tabStarted]);
 
   // Voice input — language is user-selectable (not just URL locale)
   const {
@@ -312,8 +322,17 @@ export function RecruitmentAssistant() {
   const newConversation = () => {
     setTabMessages((prev) => ({ ...prev, [activeTab]: [] }));
     setThreadIds((prev) => ({ ...prev, [activeTab]: null }));
+    setTabStarted((prev) => ({ ...prev, [activeTab]: false }));
     setExtractedJob(null);
     setJobCreatedMsg("");
+    setShowHistory(false);
+    setInput("");
+    clearTranscript();
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+  };
+
+  const startBlankConversation = () => {
+    setTabStarted((prev) => ({ ...prev, [activeTab]: true }));
     setShowHistory(false);
   };
 
@@ -467,7 +486,7 @@ export function RecruitmentAssistant() {
     }
   };
 
-  const showWelcome = messages.length === 0 && !isStreaming;
+  const showWelcome = !tabStarted[activeTab] && messages.length === 0 && !isStreaming;
 
   if (!mounted) return null;
 
@@ -555,6 +574,7 @@ export function RecruitmentAssistant() {
                 onClick={newConversation}
                 className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
                 title="New conversation"
+                aria-label="New conversation"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -667,11 +687,20 @@ export function RecruitmentAssistant() {
                       {showWelcome ? (
                         /* Welcome screen */
                         activeTab === "job_creator" ? (
-                          <JobCreatorWelcome onAction={(p) => sendMessage(p)} />
+                          <JobCreatorWelcome
+                            onAction={(p) => sendMessage(p)}
+                            onStartBlank={startBlankConversation}
+                          />
                         ) : activeTab === "interview_ai" ? (
-                          <InterviewWelcome onAction={(p) => sendMessage(p)} />
+                          <InterviewWelcome
+                            onAction={(p) => sendMessage(p)}
+                            onStartBlank={startBlankConversation}
+                          />
                         ) : (
-                          <ScreeningWelcome onAction={(p) => sendMessage(p)} />
+                          <ScreeningWelcome
+                            onAction={(p) => sendMessage(p)}
+                            onStartBlank={startBlankConversation}
+                          />
                         )
                       ) : (
                         /* Message list */
@@ -706,33 +735,33 @@ export function RecruitmentAssistant() {
                         </div>
                       )}
                     </div>
-
-                    {/* ── Input bar ── */}
-                    <InputBar
-                      value={input}
-                      onChange={(nextValue) => {
-                        if (detectedLanguage) {
-                          clearTranscript();
-                        }
-                        setInput(nextValue);
-                      }}
-                      onSend={() => sendMessage()}
-                      onKeyDown={handleKeyDown}
-                      isStreaming={isStreaming}
-                      voiceState={voiceState}
-                      tabId={activeTab}
-                      textareaRef={textareaRef}
-                      voiceError={voiceError}
-                      detectedLanguage={detectedLanguage}
-                      durationMs={durationMs}
-                      durationLabel={durationLabel}
-                      voiceLanguage={voiceLanguage}
-                      onVoiceLanguageChange={setVoiceLanguage}
-                      onStartVoice={() => void startRecording()}
-                      onCancelVoice={cancelRecording}
-                      onSubmitVoice={submitRecording}
-                      isCompact={!expanded}
-                    />
+                    {!showWelcome && (
+                      <InputBar
+                        value={input}
+                        onChange={(nextValue) => {
+                          if (detectedLanguage) {
+                            clearTranscript();
+                          }
+                          setInput(nextValue);
+                        }}
+                        onSend={() => sendMessage()}
+                        onKeyDown={handleKeyDown}
+                        isStreaming={isStreaming}
+                        voiceState={voiceState}
+                        tabId={activeTab}
+                        textareaRef={textareaRef}
+                        voiceError={voiceError}
+                        detectedLanguage={detectedLanguage}
+                        durationMs={durationMs}
+                        durationLabel={durationLabel}
+                        voiceLanguage={voiceLanguage}
+                        onVoiceLanguageChange={setVoiceLanguage}
+                        onStartVoice={() => void startRecording()}
+                        onCancelVoice={cancelRecording}
+                        onSubmitVoice={submitRecording}
+                        isCompact={!expanded}
+                      />
+                    )}
                   </>
                 )}
           </div>
@@ -982,9 +1011,9 @@ interface InputBarProps {
 
 const INPUT_PLACEHOLDERS: Record<TabId, string> = {
   job_creator:
-    'e.g. "MERN developer, 5 yrs exp, salary 50000 Rs" or use voice',
-  interview_ai: "Describe a role or ask for interview questions…",
-  screening_ai: "Describe a job or paste candidate details to screen…",
+    "Describe the role, location, skills, salary, or openings…",
+  interview_ai: "Ask for interview questions, briefs, or scheduling help…",
+  screening_ai: "Paste job or candidate details for screening and ranking…",
 };
 
 function InputBar({
@@ -1012,27 +1041,104 @@ function InputBar({
   const isRecording = voiceState === "recording";
   const isVoiceProcessing = voiceState === "processing";
   const detectedLanguageLabel = getDetectedLanguageLabel(detectedLanguage);
+  const isIdle = voiceState === "idle";
+  const voiceTriggerLabel = currentLang.code === "auto"
+    ? "AUTO"
+    : `${currentLang.flag} ${currentLang.code.toUpperCase()}`;
 
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
   }, [textareaRef]);
+
+  useEffect(() => {
+    autoResize();
+  }, [autoResize, value]);
 
   return (
     <div className="border-t border-border/70 bg-background/95 p-3 shrink-0">
       <div className="space-y-3">
-        <Textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => { onChange(e.target.value); autoResize(); }}
-          onKeyDown={onKeyDown}
-          placeholder={INPUT_PLACEHOLDERS[tabId]}
-          className="min-h-[40px] max-h-[160px] resize-none text-sm flex-1 bg-muted/30 border-border/50 focus:border-primary/50 rounded-xl overflow-y-auto transition-[height] duration-100"
-          rows={1}
-          disabled={isStreaming || isRecording || isVoiceProcessing}
-        />
+        <div className="rounded-2xl border border-border/60 bg-background shadow-sm shadow-black/[0.04] p-2.5">
+          <Textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => { onChange(e.target.value); autoResize(); }}
+            onKeyDown={onKeyDown}
+            placeholder={INPUT_PLACEHOLDERS[tabId]}
+            className={cn(
+              "resize-none text-sm flex-1 overflow-y-auto transition-[height] duration-100",
+              isIdle
+                ? "min-h-[56px] max-h-[220px] border-0 bg-transparent px-1.5 py-1 shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                : "min-h-[44px] max-h-[220px] rounded-xl border-border/60 bg-muted/20"
+            )}
+            rows={1}
+            disabled={isStreaming || isRecording || isVoiceProcessing}
+          />
+
+          {isIdle && (
+            <div className={cn(
+              "mt-2 flex gap-2 border-t border-border/50 pt-2",
+              isCompact ? "flex-wrap items-end" : "items-center"
+            )}>
+              <div className="relative">
+                <button
+                  onClick={() => setShowLangPicker((v) => !v)}
+                  disabled={isStreaming || isVoiceProcessing}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted/70 px-3 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                  title="Voice language"
+                >
+                  <Globe className="h-3 w-3" />
+                  <span>{voiceTriggerLabel}</span>
+                </button>
+                {showLangPicker && !isRecording && !isVoiceProcessing && (
+                  <div className="absolute bottom-full left-0 mb-2 z-50 w-36 rounded-xl border border-border bg-popover shadow-lg overflow-hidden">
+                    {VOICE_LANGUAGES.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => { onVoiceLanguageChange(lang.code); setShowLangPicker(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted transition-colors",
+                          lang.code === voiceLanguage && "bg-primary/10 text-primary font-medium"
+                        )}
+                      >
+                        <span>{lang.flag}</span>
+                        <span>{lang.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={onStartVoice}
+                  disabled={isStreaming || isVoiceProcessing}
+                  className={cn(
+                    "h-10 w-10 rounded-xl border flex items-center justify-center transition-all duration-150",
+                    "border-border/60 bg-background text-muted-foreground shadow-sm shadow-black/[0.04] hover:bg-primary/10 hover:text-primary",
+                    (isStreaming || isVoiceProcessing) && "opacity-50 cursor-not-allowed"
+                  )}
+                  title={`Start voice input (${currentLang.label})`}
+                  aria-label="Start voice input"
+                >
+                  <Mic className="h-4 w-4" />
+                </button>
+
+                <Button
+                  size="icon"
+                  onClick={onSend}
+                  disabled={!value.trim() || isStreaming || isVoiceProcessing}
+                  className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 shadow-sm"
+                  aria-label="Send message"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {voiceState === "recording" ? (
           <div className={cn("gap-2", isCompact ? "flex flex-col" : "flex items-center") }>
@@ -1108,74 +1214,7 @@ function InputBar({
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="font-medium">Processing voice...</span>
           </div>
-        ) : (
-          <div className="flex gap-2 items-end justify-end">
-            {!isCompact && (
-              <button
-                className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted flex-shrink-0 mb-0.5"
-                title="Attach file (coming soon)"
-                disabled
-              >
-                <Paperclip className="h-4 w-4" />
-              </button>
-            )}
-
-            <div className="flex-shrink-0 flex flex-col items-center gap-0.5 relative">
-              <div className="relative">
-                <button
-                  onClick={() => setShowLangPicker((v) => !v)}
-                  disabled={isStreaming || isVoiceProcessing}
-                  className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-muted disabled:opacity-40"
-                  title="Voice language"
-                >
-                  <Globe className="h-2.5 w-2.5" />
-                  <span>{currentLang.flag} {currentLang.code.toUpperCase()}</span>
-                </button>
-                {showLangPicker && !isRecording && !isVoiceProcessing && (
-                  <div className="absolute bottom-full right-0 mb-1 z-50 w-36 rounded-xl border border-border bg-popover shadow-lg overflow-hidden">
-                    {VOICE_LANGUAGES.map((lang) => (
-                      <button
-                        key={lang.code}
-                        onClick={() => { onVoiceLanguageChange(lang.code); setShowLangPicker(false); }}
-                        className={cn(
-                          "w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted transition-colors",
-                          lang.code === voiceLanguage && "bg-primary/10 text-primary font-medium"
-                        )}
-                      >
-                        <span>{lang.flag}</span>
-                        <span>{lang.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={onStartVoice}
-                disabled={isStreaming || isVoiceProcessing}
-                className={cn(
-                  "w-9 h-9 rounded-xl border flex items-center justify-center transition-all duration-150",
-                  "border-border/60 bg-background text-muted-foreground shadow-sm shadow-black/[0.04] hover:bg-primary/10 hover:text-primary",
-                  (isStreaming || isVoiceProcessing) && "opacity-50 cursor-not-allowed"
-                )}
-                title={`Start voice input (${currentLang.label})`}
-                aria-label="Start voice input"
-              >
-                <Mic className="h-4 w-4" />
-              </button>
-            </div>
-
-            <Button
-              size="icon"
-              onClick={onSend}
-              disabled={!value.trim() || isStreaming || isVoiceProcessing}
-              className="flex-shrink-0 w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 shadow-sm self-end"
-              aria-label="Send message"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        ) : null}
       </div>
 
       <div className="mt-2 min-h-5" aria-live="polite" aria-atomic="true">

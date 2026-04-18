@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
+import Job from "@/models/Job";
 import SavedJob from "@/models/SavedJob";
 import JobSeeker from "@/models/JobSeeker";
 import { isValidObjectId } from "@/lib/security/sanitize";
@@ -28,9 +29,19 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
 
   const existing = await SavedJob.findOne({ jobSeekerId: seeker._id, jobId }).lean();
 
+  // Allow unsave regardless of job status (seeker may have saved before job closed)
   if (existing) {
     await SavedJob.deleteOne({ _id: existing._id });
     return NextResponse.json({ saved: false });
+  }
+
+  // Only allow saving active, approved jobs
+  const job = await Job.findById(jobId).select("status poster.approvalStatus").lean();
+  if (!job) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+  if (job.status !== "active" || job.poster?.approvalStatus !== "approved") {
+    return NextResponse.json({ error: "Job is not available" }, { status: 400 });
   }
 
   await SavedJob.create({ jobSeekerId: seeker._id, jobId, savedAt: new Date() });

@@ -3,8 +3,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { Check, ChevronRight, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import { Check, ChevronRight, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -187,7 +187,7 @@ const NOTICE_PERIOD_DAYS: Record<string, number> = {
 export default function JobSeekerOnboardingPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
-  const { data: session, update: updateSession } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -195,8 +195,12 @@ export default function JobSeekerOnboardingPage() {
   const [industryOpen, setIndustryOpen] = useState(false);
   const [industrySearch, setIndustrySearch] = useState("");
   const industryRef = useRef<HTMLDivElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
 
   const userName = (session?.user?.name as string | undefined) ?? "";
+  const isLinkedIn = (session?.user as unknown as { provider?: string })?.provider === "linkedin";
+  const [linkedInPrefilled, setLinkedInPrefilled] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   const [step0, setStep0] = useState<Step0Data>({
     name: userName,
@@ -207,13 +211,56 @@ export default function JobSeekerOnboardingPage() {
     marketingConsent: false,
   });
 
-  // Keep name in sync once session loads
+  // Guard: redirect already-onboarded users away from this page
   useEffect(() => {
+    if (status !== "authenticated") return;
+    if ((session?.user as unknown as { isOnboarded?: boolean })?.isOnboarded === true) {
+      router.replace(`/${locale ?? "en"}/job-seeker`);
+    }
+  }, [status, session, locale, router]);
+
+  // Pre-fill from session name + fetch existing profile for OAuth users
+  useEffect(() => {
+    if (!session?.user) return;
+
+    // Always sync session name
     if (userName && !step0.name) {
       setStep0((p) => ({ ...p, name: userName }));
     }
+
+    // Fetch existing profile (created during OAuth sign-in) to pre-fill
+    if (!profileLoaded) {
+      setProfileLoaded(true);
+      fetch("/api/job-seekers/profile")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!data?.profile) return;
+          const p = data.profile;
+
+          // Pre-fill step0
+          setStep0((prev) => ({
+            ...prev,
+            name: p.fullName || prev.name || userName,
+            phone: p.phone ?? prev.phone,
+            workStatus: p.workStatus || prev.workStatus,
+            marketingConsent: p.marketingConsent ?? prev.marketingConsent,
+          }));
+
+          if (isLinkedIn && (p.fullName || userName)) {
+            setLinkedInPrefilled(true);
+          }
+
+          // Auto-focus phone if name is already filled
+          if ((p.fullName || userName) && !p.phone) {
+            setTimeout(() => phoneRef.current?.focus(), 300);
+          }
+        })
+        .catch(() => {
+          // Profile not found — that's fine for credentials users
+        });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userName]);
+  }, [session, userName]);
 
   const [step1, setStep1] = useState<Step1Data>({
     isCurrentlyEmployed: null,
@@ -401,6 +448,20 @@ export default function JobSeekerOnboardingPage() {
           {userName && (
             <span className="text-sm text-gray-600">Welcome, {userName}</span>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => signOut({ callbackUrl: `/${locale}/login` })}
+            className="group ml-1 h-10 rounded-full border-slate-200/80 bg-white/90 px-3.5 text-slate-600 shadow-sm shadow-slate-200/60 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-slate-950/60 dark:hover:border-red-900 dark:hover:bg-red-950/60 dark:hover:text-red-300"
+            title="Sign out"
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-red-100 group-hover:text-red-500 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-red-950 dark:group-hover:text-red-300">
+              <LogOut className="h-3.5 w-3.5" />
+            </span>
+            <span className="hidden sm:inline">Sign out</span>
+            <span className="sr-only sm:hidden">Sign out</span>
+          </Button>
         </div>
       </div>
 
@@ -451,6 +512,12 @@ export default function JobSeekerOnboardingPage() {
               <div className="space-y-6">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">Welcome, {step0.name.split(" ")[0] || "there"} !</h2>
+                  {linkedInPrefilled && (
+                    <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800">
+                      <Linkedin className="w-4 h-4 text-[#0A66C2] shrink-0" />
+                      We imported your info from LinkedIn. Please verify and complete the remaining fields.
+                    </div>
+                  )}
                   <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
                     <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
                     Your account is created successfully. Let&rsquo;s get started!
@@ -460,7 +527,14 @@ export default function JobSeekerOnboardingPage() {
 
                 {/* Full name */}
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-gray-800">Full name <span className="text-red-500">*</span></Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-medium text-gray-800">Full name <span className="text-red-500">*</span></Label>
+                    {linkedInPrefilled && step0.name.trim() && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
+                        <Linkedin className="w-3 h-3" /> From LinkedIn
+                      </span>
+                    )}
+                  </div>
                   <div className="relative">
                     <Input
                       value={step0.name}
@@ -489,6 +563,7 @@ export default function JobSeekerOnboardingPage() {
                     </select>
                     <div className="relative flex-1">
                       <Input
+                        ref={phoneRef}
                         type="tel"
                         value={step0.phone}
                         onChange={(e) => setStep0((p) => ({ ...p, phone: e.target.value.replace(/\D/g, "") }))}

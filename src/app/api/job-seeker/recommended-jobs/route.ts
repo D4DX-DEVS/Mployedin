@@ -30,7 +30,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 
   // Get IDs of jobs already applied to
-  const appliedJobIds = await Application.find({ jobSeekerId: ctx.userId })
+  const appliedJobIds = await Application.find({ jobSeekerId: seeker._id })
     .select("jobId")
     .lean()
     .then((apps) => apps.map((a) => a.jobId));

@@ -147,6 +147,14 @@ export default auth(async function middleware(req: NextRequest) {
         NextResponse.redirect(new URL(`/${urlLocale}/onboarding`, req.url))
       );
     }
+    // Redirect already-onboarded job seekers away from /onboarding to the dashboard
+    const isOnboardingPage = stripped.startsWith("/onboarding");
+    if (isOnboardingPage && session.user.role === "job_seeker" && session.user.isOnboarded === true) {
+      const urlLocale = pathname.split("/")[1] || defaultLocale;
+      return withSecurityHeaders(
+        NextResponse.redirect(new URL(`/${urlLocale}/job-seeker`, req.url))
+      );
+    }
   }
 
   // Redirect authenticated users away from auth pages only (not all public pages)

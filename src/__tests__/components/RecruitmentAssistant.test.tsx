@@ -13,14 +13,39 @@ jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
 }));
 
+jest.mock("react-markdown", () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock("remark-gfm", () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
 jest.mock("@/hooks/useVoiceInput", () => ({
   useVoiceInput: (...args: unknown[]) => useVoiceInputMock(...args),
 }));
 
 jest.mock("@/components/features/employer/RecruitmentAssistant/tabs/WelcomeScreens", () => ({
-  JobCreatorWelcome: () => <div>Job creator welcome</div>,
-  InterviewWelcome: () => <div>Interview welcome</div>,
-  ScreeningWelcome: () => <div>Screening welcome</div>,
+  JobCreatorWelcome: ({ onStartBlank }: { onStartBlank: () => void }) => (
+    <div>
+      <div>Job creator welcome</div>
+      <button type="button" onClick={onStartBlank}>Open blank chat</button>
+    </div>
+  ),
+  InterviewWelcome: ({ onStartBlank }: { onStartBlank: () => void }) => (
+    <div>
+      <div>Interview welcome</div>
+      <button type="button" onClick={onStartBlank}>Open blank chat</button>
+    </div>
+  ),
+  ScreeningWelcome: ({ onStartBlank }: { onStartBlank: () => void }) => (
+    <div>
+      <div>Screening welcome</div>
+      <button type="button" onClick={onStartBlank}>Open blank chat</button>
+    </div>
+  ),
 }));
 
 const baseVoiceInputState = {
@@ -45,6 +70,11 @@ async function openAssistant() {
   fireEvent.click(openButton);
 }
 
+async function openBlankChat() {
+  await openAssistant();
+  fireEvent.click(screen.getByRole("button", { name: "Open blank chat" }));
+}
+
 describe("RecruitmentAssistant", () => {
   beforeEach(() => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
@@ -66,7 +96,65 @@ describe("RecruitmentAssistant", () => {
 
     expect(options.language).toBe("auto");
     expect(options.mode).toBe("explicitSend");
-    expect(options.maxDurationMs).toBe(15000);
+    expect(options.maxDurationMs).toBe(60000);
+  });
+
+  it("shows a guided welcome state before rendering the composer", async () => {
+    render(<RecruitmentAssistant />);
+
+    await openAssistant();
+
+    expect(screen.getByText("Job creator welcome")).toBeVisible();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("reveals the composer after starting a blank chat", async () => {
+    render(<RecruitmentAssistant />);
+
+    await openAssistant();
+    fireEvent.click(screen.getByRole("button", { name: "Open blank chat" }));
+
+    expect(screen.getByRole("textbox")).toBeVisible();
+    expect(screen.getByRole("textbox")).toHaveFocus();
+  });
+
+  it("keeps the idle auto, mic, and send controls visible in the composer", async () => {
+    render(<RecruitmentAssistant />);
+
+    await openBlankChat();
+
+    expect(screen.getByText("AUTO")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Start voice input" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Send message" })).toBeVisible();
+  });
+
+  it("expands the textarea height for longer chat input", async () => {
+    render(<RecruitmentAssistant />);
+
+    await openBlankChat();
+
+    const textbox = screen.getByRole("textbox") as HTMLTextAreaElement;
+    Object.defineProperty(textbox, "scrollHeight", {
+      configurable: true,
+      value: 280,
+    });
+
+    fireEvent.change(textbox, {
+      target: { value: "Need a senior MERN developer with React, Node.js, MongoDB, hiring in Kochi, hybrid, salary flexible, two openings, immediate joiners preferred." },
+    });
+
+    expect(textbox.style.height).toBe("220px");
+  });
+
+  it("returns to the guided welcome state after starting a new conversation", async () => {
+    render(<RecruitmentAssistant />);
+
+    await openAssistant();
+    fireEvent.click(screen.getByRole("button", { name: "Open blank chat" }));
+    fireEvent.click(screen.getByRole("button", { name: "New conversation" }));
+
+    expect(screen.getByText("Job creator welcome")).toBeVisible();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
   it("shows cancel, live recording state, and send controls while recording", async () => {
@@ -79,7 +167,7 @@ describe("RecruitmentAssistant", () => {
     });
 
     render(<RecruitmentAssistant />);
-    await openAssistant();
+    await openBlankChat();
 
     expect(screen.getByRole("status")).toHaveTextContent("Listening...");
     expect(screen.getByRole("status")).toHaveTextContent("Tap send when ready.");
@@ -98,7 +186,7 @@ describe("RecruitmentAssistant", () => {
     });
 
     render(<RecruitmentAssistant />);
-    await openAssistant();
+    await openBlankChat();
 
     expect(screen.getByRole("status")).toHaveTextContent("Processing voice...");
     expect(screen.queryByRole("button", { name: "Start voice input" })).not.toBeInTheDocument();
@@ -113,7 +201,7 @@ describe("RecruitmentAssistant", () => {
     });
 
     render(<RecruitmentAssistant />);
-    await openAssistant();
+    await openBlankChat();
 
     expect(screen.getByRole("alert")).toHaveTextContent("Didn't catch that. Try again.");
     expect(screen.queryByText("Detected language: English")).not.toBeInTheDocument();

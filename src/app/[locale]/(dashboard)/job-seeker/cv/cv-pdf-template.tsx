@@ -26,6 +26,19 @@ interface LanguageSkill {
   proficiency: string;
 }
 
+interface Project {
+  title: string;
+  description: string;
+  techStack: string[];
+  projectUrl: string;
+  repoUrl: string;
+}
+
+interface SocialLink {
+  label: string;
+  url: string;
+}
+
 interface CVData {
   fullName: string;
   email: string;
@@ -35,11 +48,13 @@ interface CVData {
   headline: string;
   linkedin: string;
   portfolio: string;
+  additionalLinks: SocialLink[];
   skills: string[];
   experience: WorkExperience[];
   education: Education[];
   languages: LanguageSkill[];
   certifications: string[];
+  projects: Project[];
 }
 
 /* ── Styles ── */
@@ -170,6 +185,33 @@ const styles = StyleSheet.create({
     color: "#374151",
     marginBottom: 2,
   },
+  projItem: {
+    marginBottom: 8,
+  },
+  projTitle: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    color: "#111827",
+  },
+  projDesc: {
+    fontSize: 9,
+    color: "#4b5563",
+    marginTop: 2,
+  },
+  projTechRow: {
+    flexDirection: "row" as const,
+    flexWrap: "wrap" as const,
+    gap: 4,
+    marginTop: 3,
+  },
+  projTechBadge: {
+    backgroundColor: "#eff6ff",
+    borderRadius: 3,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    fontSize: 8,
+    color: "#1d4ed8",
+  },
 });
 
 /* ── Document ── */
@@ -188,10 +230,13 @@ export function CVDocument({ data }: { data: CVData }) {
             {data.currentLocation ? <Text>{data.currentLocation}</Text> : null}
             {data.nationality ? <Text>{data.nationality}</Text> : null}
           </View>
-          {(data.linkedin || data.portfolio) && (
+          {(data.linkedin || data.portfolio || data.additionalLinks?.length > 0) && (
             <View style={styles.linkRow}>
               {data.linkedin ? <Text>{data.linkedin}</Text> : null}
               {data.portfolio ? <Text>{data.portfolio}</Text> : null}
+              {data.additionalLinks?.map((link, i) => (
+                <Text key={i}>{link.label}: {link.url}</Text>
+              ))}
             </View>
           )}
         </View>
@@ -251,6 +296,28 @@ export function CVDocument({ data }: { data: CVData }) {
                 <Text key={i} style={styles.skillBadge}>{s}</Text>
               ))}
             </View>
+          </View>
+        )}
+
+        {/* Projects */}
+        {data.projects?.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Projects</Text>
+            {data.projects.map((proj, i) => (
+              <View key={i} style={styles.projItem}>
+                <Text style={styles.projTitle}>{proj.title}</Text>
+                {proj.description ? (
+                  <Text style={styles.projDesc}>{proj.description}</Text>
+                ) : null}
+                {proj.techStack?.length > 0 && (
+                  <View style={styles.projTechRow}>
+                    {proj.techStack.map((t, j) => (
+                      <Text key={j} style={styles.projTechBadge}>{t}</Text>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ))}
           </View>
         )}
 

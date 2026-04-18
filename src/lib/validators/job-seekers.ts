@@ -9,9 +9,11 @@ export const jobSeekerProfileUpdateSchema = z
   .object({
     name: z.string().min(1).max(200).trim().optional(),
     fullName: z.string().min(1).max(200).trim().optional(),
+    headline: z.string().max(200).trim().optional(),
     summary: z.string().max(5000).trim().optional(),
     nationality: z.string().max(100).trim().optional(),
     currentLocation: z.string().max(200).trim().optional(),
+    profileVisibility: z.enum(["visible", "hidden"]).optional(),
     skills: z
       .array(z.string().max(100).trim())
       .max(50)

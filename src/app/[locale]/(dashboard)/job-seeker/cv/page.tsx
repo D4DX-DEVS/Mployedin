@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Upload, FileText, CheckCircle, AlertCircle, Sparkles,
+  Upload, CheckCircle, AlertCircle, Sparkles,
   X, Plus, Pencil, Save, Download, ArrowRight, Loader2,
   Trash2, Eye, Briefcase, GraduationCap,
-  Globe, Award, User as UserIcon,
+  Globe, Award, User as UserIcon, FolderKanban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -43,6 +43,19 @@ interface LanguageSkill {
   proficiency: "basic" | "conversational" | "professional" | "native";
 }
 
+interface Project {
+  title: string;
+  description: string;
+  techStack: string[];
+  projectUrl: string;
+  repoUrl: string;
+}
+
+interface SocialLink {
+  label: string;
+  url: string;
+}
+
 interface CVForm {
   fullName: string;
   email: string;
@@ -52,11 +65,13 @@ interface CVForm {
   headline: string;
   linkedin: string;
   portfolio: string;
+  additionalLinks: SocialLink[];
   skills: string[];
   experience: WorkExperience[];
   education: Education[];
   languages: LanguageSkill[];
   certifications: string[];
+  projects: Project[];
 }
 
 type Step = "edit" | "preview" | "download";
@@ -68,6 +83,21 @@ const EMPTY_EDUCATION: Education = {
   degree: "", institution: "", field: "", graduationDate: "", grade: "",
 };
 const EMPTY_LANGUAGE: LanguageSkill = { language: "", proficiency: "conversational" };
+const EMPTY_PROJECT: Project = { title: "", description: "", techStack: [], projectUrl: "", repoUrl: "" };
+const EMPTY_LINK: SocialLink = { label: "", url: "" };
+
+/** Normalize a date string to YYYY-MM format for <input type="month"> */
+function toMonthInput(val: string | undefined): string {
+  if (!val) return "";
+  // Already YYYY-MM
+  if (/^\d{4}-\d{2}$/.test(val)) return val;
+  // ISO datetime → slice
+  if (/^\d{4}-\d{2}-\d{2}/.test(val)) return val.slice(0, 7);
+  // Year only → assume July (common graduation month)
+  if (/^\d{4}$/.test(val)) return `${val}-07`;
+  // "present" or invalid
+  return "";
+}
 
 const PROFICIENCY_OPTIONS = [
   { value: "basic", label: "Basic" },
@@ -92,8 +122,8 @@ export default function CVBuilderPage() {
 
   const [form, setForm] = useState<CVForm>({
     fullName: "", email: "", phone: "", nationality: "", currentLocation: "",
-    headline: "", linkedin: "", portfolio: "",
-    skills: [], experience: [], education: [], languages: [], certifications: [],
+    headline: "", linkedin: "", portfolio: "", additionalLinks: [],
+    skills: [], experience: [], education: [], languages: [], certifications: [], projects: [],
   });
 
   useEffect(() => {
@@ -112,8 +142,28 @@ export default function CVBuilderPage() {
           nationality: profile.nationality ?? prev.nationality,
           currentLocation: profile.currentLocation ?? prev.currentLocation,
           headline: profile.summary ?? prev.headline,
-          linkedin: profile.linkedin ?? prev.linkedin,
-          portfolio: profile.portfolio ?? prev.portfolio,
+          linkedin: (() => {
+            const linked = profile.socialLinks?.find((l: Record<string, unknown>) =>
+              ((l.label as string) ?? "").toLowerCase() === "linkedin"
+            );
+            return (linked?.url as string) ?? prev.linkedin;
+          })(),
+          portfolio: (() => {
+            const port = profile.socialLinks?.find((l: Record<string, unknown>) =>
+              ["portfolio", "website"].includes(((l.label as string) ?? "").toLowerCase())
+            );
+            return (port?.url as string) ?? prev.portfolio;
+          })(),
+          additionalLinks: profile.socialLinks?.length
+            ? profile.socialLinks
+                .filter((l: Record<string, unknown>) =>
+                  !["linkedin", "portfolio", "website"].includes(((l.label as string) ?? "").toLowerCase())
+                )
+                .map((l: Record<string, unknown>) => ({
+                  label: (l.label as string) ?? "",
+                  url: (l.url as string) ?? "",
+                }))
+            : prev.additionalLinks,
           skills: profile.skills?.length ? profile.skills : prev.skills,
           experience: profile.experience?.length
             ? profile.experience.map((e: Record<string, unknown>) => ({
@@ -142,6 +192,15 @@ export default function CVBuilderPage() {
               }))
             : prev.languages,
           certifications: profile.certifications?.length ? profile.certifications : prev.certifications,
+          projects: profile.projects?.length
+            ? profile.projects.map((p: Record<string, unknown>) => ({
+                title: (p.title as string) ?? "",
+                description: (p.description as string) ?? "",
+                techStack: Array.isArray(p.techStack) ? p.techStack as string[] : [],
+                projectUrl: (p.projectUrl as string) ?? "",
+                repoUrl: (p.repoUrl as string) ?? "",
+              }))
+            : prev.projects,
         }));
       }
       const sessionRes = await fetch("/api/auth/session");
@@ -198,12 +257,28 @@ export default function CVBuilderPage() {
       setForm((prev) => ({
         ...prev,
         fullName: ext.fullName || prev.fullName,
+        email: ext.email || prev.email,
         phone: ext.phone || prev.phone,
         nationality: ext.nationality || prev.nationality,
         currentLocation: ext.currentLocation || prev.currentLocation,
         headline: ext.headline || prev.headline,
-        linkedin: ext.linkedin || prev.linkedin,
-        portfolio: ext.portfolio || prev.portfolio,
+        linkedin: ext.linkedin
+          || ext.socialLinks?.find((l: { label?: string }) => (l.label ?? "").toLowerCase() === "linkedin")?.url
+          || prev.linkedin,
+        portfolio: ext.portfolio
+          || ext.socialLinks?.find((l: { label?: string }) => ["portfolio", "website"].includes((l.label ?? "").toLowerCase()))?.url
+          || prev.portfolio,
+        additionalLinks: (() => {
+          const links: SocialLink[] = [];
+          if (ext.socialLinks?.length) {
+            for (const l of ext.socialLinks as { label?: string; url?: string }[]) {
+              if (l.url && !["linkedin", "portfolio", "website"].includes((l.label ?? "").toLowerCase())) {
+                links.push({ label: l.label ?? "Link", url: l.url });
+              }
+            }
+          }
+          return links.length ? links : prev.additionalLinks;
+        })(),
         skills: ext.skills?.length
           ? ext.skills.map((s: { name?: string } | string) => typeof s === "string" ? s : s.name ?? "").filter(Boolean)
           : prev.skills,
@@ -212,8 +287,8 @@ export default function CVBuilderPage() {
               jobTitle: (e.jobTitle as string) ?? "",
               company: (e.company as string) ?? "",
               country: (e.location as string) ?? "",
-              startDate: (e.from as string) ?? "",
-              endDate: e.to !== "present" ? (e.to as string) ?? "" : "",
+              startDate: toMonthInput(e.from as string),
+              endDate: e.to !== "present" ? toMonthInput(e.to as string) : "",
               isCurrent: (e.current as boolean) || e.to === "present",
               description: (e.description as string) ?? "",
             }))
@@ -223,7 +298,7 @@ export default function CVBuilderPage() {
               degree: (e.degree as string) ?? "",
               institution: (e.institution as string) ?? "",
               field: (e.field as string) ?? "",
-              graduationDate: (e.to as string) ?? "",
+              graduationDate: toMonthInput(e.to as string),
               grade: (e.grade as string) ?? "",
             }))
           : prev.education,
@@ -237,6 +312,15 @@ export default function CVBuilderPage() {
             }))
           : prev.languages,
         certifications: ext.certifications?.length ? ext.certifications : prev.certifications,
+        projects: ext.projects?.length
+          ? ext.projects.map((p: Record<string, unknown>) => ({
+              title: (p.title as string) ?? "",
+              description: (p.description as string) ?? "",
+              techStack: Array.isArray(p.techStack) ? p.techStack as string[] : [],
+              projectUrl: (p.projectUrl as string) ?? "",
+              repoUrl: (p.repoUrl as string) ?? "",
+            }))
+          : prev.projects,
       }));
       setSuccessMsg("CV imported successfully! Review and edit the fields below.");
       setTimeout(() => setSuccessMsg(""), 5000);
@@ -247,6 +331,23 @@ export default function CVBuilderPage() {
       setImporting(false);
       setImportProgress(0);
     }
+  }
+
+  /* ── Additional Links ── */
+
+  function addLink() {
+    setForm((f) => ({ ...f, additionalLinks: [...f.additionalLinks, { ...EMPTY_LINK }] }));
+  }
+
+  function updateLink(index: number, field: keyof SocialLink, value: string) {
+    setForm((f) => ({
+      ...f,
+      additionalLinks: f.additionalLinks.map((l, i) => (i === index ? { ...l, [field]: value } : l)),
+    }));
+  }
+
+  function removeLink(index: number) {
+    setForm((f) => ({ ...f, additionalLinks: f.additionalLinks.filter((_, i) => i !== index) }));
   }
 
   /* ── Skills ── */
@@ -311,6 +412,23 @@ export default function CVBuilderPage() {
     setForm((f) => ({ ...f, education: f.education.filter((_, i) => i !== index) }));
   }
 
+  /* ── Projects ── */
+
+  function addProject() {
+    setForm((f) => ({ ...f, projects: [...f.projects, { ...EMPTY_PROJECT }] }));
+  }
+
+  function updateProject(index: number, field: keyof Project, value: string | string[]) {
+    setForm((f) => ({
+      ...f,
+      projects: f.projects.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
+    }));
+  }
+
+  function removeProject(index: number) {
+    setForm((f) => ({ ...f, projects: f.projects.filter((_, i) => i !== index) }));
+  }
+
   /* ── Languages ── */
 
   function addLanguage() {
@@ -335,6 +453,7 @@ export default function CVBuilderPage() {
     setError("");
     try {
       const body = {
+        fullName: form.fullName,
         summary: form.headline,
         phone: form.phone,
         nationality: form.nationality,
@@ -361,6 +480,18 @@ export default function CVBuilderPage() {
           proficiency: l.proficiency,
         })),
         certifications: form.certifications,
+        projects: form.projects.map((p) => ({
+          title: p.title,
+          description: p.description,
+          techStack: p.techStack,
+          projectUrl: p.projectUrl || undefined,
+          repoUrl: p.repoUrl || undefined,
+        })),
+        socialLinks: [
+          ...(form.linkedin.trim() ? [{ label: "LinkedIn", url: form.linkedin.trim() }] : []),
+          ...(form.portfolio.trim() ? [{ label: "Portfolio", url: form.portfolio.trim() }] : []),
+          ...form.additionalLinks.filter((l) => l.url.trim()),
+        ],
       };
       const res = await fetch("/api/job-seeker/profile", {
         method: "PATCH",
@@ -369,6 +500,7 @@ export default function CVBuilderPage() {
       });
       if (!res.ok) throw new Error("Failed to save profile");
       toast.success("Profile saved successfully!");
+      router.push("./profile");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save");
     } finally {
@@ -519,6 +651,25 @@ export default function CVBuilderPage() {
                 onChange={(v) => setForm((f) => ({ ...f, linkedin: v }))} placeholder="https://linkedin.com/in/..." />
               <FormField label="Portfolio / Website" value={form.portfolio}
                 onChange={(v) => setForm((f) => ({ ...f, portfolio: v }))} placeholder="https://..." />
+              {form.additionalLinks.map((link, i) => (
+                <div key={i} className="md:col-span-2 grid grid-cols-[1fr_2fr_auto] items-end gap-3 group">
+                  <FormField label="Title" value={link.label}
+                    onChange={(v) => updateLink(i, "label", v)} placeholder="e.g. GitHub" />
+                  <FormField label="URL" value={link.url}
+                    onChange={(v) => updateLink(i, "url", v)} placeholder="https://..." />
+                  <button
+                    onClick={() => removeLink(i)}
+                    className="mb-[5px] text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <div className="md:col-span-2">
+                <Button variant="ghost" size="sm" onClick={addLink} className="gap-1 h-7 text-xs text-muted-foreground hover:text-foreground">
+                  <Plus className="w-3.5 h-3.5" /> Add another link (GitHub, Behance, etc.)
+                </Button>
+              </div>
             </div>
           </SectionCard>
 
@@ -623,6 +774,62 @@ export default function CVBuilderPage() {
                       onChange={(v) => updateEducation(i, "graduationDate", v)} />
                     <FormField label="Grade / GPA" value={edu.grade}
                       onChange={(v) => updateEducation(i, "grade", v)} placeholder="e.g. 3.8 / 4.0" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
+          {/* Projects */}
+          <SectionCard
+            title={`Projects (${form.projects.length})`}
+            icon={<FolderKanban className="w-4 h-4" />}
+            action={<Button variant="outline" size="sm" onClick={addProject} className="gap-1 h-7 text-xs">
+              <Plus className="w-3.5 h-3.5" /> Add
+            </Button>}
+          >
+            {form.projects.length === 0 && (
+              <p className="text-xs text-muted-foreground py-4 text-center">
+                No projects added yet. Click &quot;Add&quot; to start.
+              </p>
+            )}
+            <div className="space-y-4">
+              {form.projects.map((proj, i) => (
+                <div key={i} className="p-4 rounded-lg border bg-muted/20 space-y-3 relative group">
+                  <button
+                    onClick={() => removeProject(i)}
+                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="md:col-span-2">
+                      <FormField label="Project Title" value={proj.title}
+                        onChange={(v) => updateProject(i, "title", v)} placeholder="e.g. E-Commerce Platform" />
+                    </div>
+                    <div className="md:col-span-2 space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Description</Label>
+                      <Textarea
+                        value={proj.description}
+                        onChange={(e) => updateProject(i, "description", e.target.value)}
+                        placeholder="Brief project description..."
+                        rows={2}
+                        className="resize-none text-sm"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Tech Stack</Label>
+                      <Input
+                        value={proj.techStack.join(", ")}
+                        onChange={(e) => updateProject(i, "techStack", e.target.value.split(",").map((t) => t.trim()).filter(Boolean))}
+                        placeholder="React, Node.js, MongoDB (comma-separated)"
+                        className="text-sm"
+                      />
+                    </div>
+                    <FormField label="Project URL" value={proj.projectUrl}
+                      onChange={(v) => updateProject(i, "projectUrl", v)} placeholder="https://..." />
+                    <FormField label="Repository URL" value={proj.repoUrl}
+                      onChange={(v) => updateProject(i, "repoUrl", v)} placeholder="https://github.com/..." />
                   </div>
                 </div>
               ))}
@@ -890,6 +1097,9 @@ function CVPreview({ data }: { data: CVForm }) {
         <div className="flex flex-wrap gap-x-4 mt-1 text-xs text-blue-600">
           {data.linkedin && <span>{data.linkedin}</span>}
           {data.portfolio && <span>{data.portfolio}</span>}
+          {data.additionalLinks?.map((link, i) => (
+            <span key={i}>{link.label}: {link.url}</span>
+          ))}
         </div>
       </div>
 
@@ -948,6 +1158,34 @@ function CVPreview({ data }: { data: CVForm }) {
           <div className="flex flex-wrap gap-1.5">
             {data.skills.map((s, i) => (
               <span key={i} className="px-2 py-0.5 rounded bg-gray-100 text-xs text-gray-700">{s}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Projects */}
+      {data.projects.length > 0 && (
+        <div>
+          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b pb-1 mb-3">Projects</h2>
+          <div className="space-y-3">
+            {data.projects.map((proj, i) => (
+              <div key={i}>
+                <p className="font-semibold text-sm text-gray-900">{proj.title}</p>
+                {proj.description && (
+                  <p className="text-xs text-gray-600 mt-0.5">{proj.description}</p>
+                )}
+                {proj.techStack.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {proj.techStack.map((t, j) => (
+                      <span key={j} className="px-1.5 py-0.5 rounded bg-blue-50 text-xs text-blue-700">{t}</span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-3 mt-1 text-xs text-blue-600">
+                  {proj.projectUrl && <span>{proj.projectUrl}</span>}
+                  {proj.repoUrl && <span>{proj.repoUrl}</span>}
+                </div>
+              </div>
             ))}
           </div>
         </div>

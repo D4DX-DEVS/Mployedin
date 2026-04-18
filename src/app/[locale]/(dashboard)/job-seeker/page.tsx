@@ -40,7 +40,8 @@ export default async function JobSeekerPage({
   const seekerId = seeker._id;
   const now = new Date();
 
-  const [appCount, interviewCount, savedCount, viewCount, recentJobs] = await Promise.all([
+  // Fetch applied job IDs and snippets in parallel with other counts
+  const [appCount, interviewCount, savedCount, viewCount, recentJobs, appliedApps] = await Promise.all([
     Application.countDocuments({ jobSeekerId: seekerId }),
     Interview.countDocuments({
       jobSeekerId: seekerId,
@@ -61,12 +62,27 @@ export default async function JobSeekerPage({
       .select("title salary location employerId tags createdAt requirements")
       .populate("employerId", "companyName logo")
       .lean(),
+    Application.find({ jobSeekerId: seekerId })
+      .select("jobId status")
+      .populate({ path: "jobId", select: "title employerId", populate: { path: "employerId", select: "companyName logo" } })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean(),
   ]);
 
-  // Score and rank recommended jobs server-side
+  // Build a Set of applied job IDs for fast exclusion
+  const appliedJobIdSet = new Set(
+    (appliedApps as Array<{ jobId?: { _id?: unknown } | unknown }>).map((a) => {
+      const jid = (a.jobId as { _id?: unknown } | null)?._id ?? a.jobId;
+      return String(jid);
+    })
+  );
+
+  // Score and rank recommended jobs server-side, excluding already-applied ones
   // Fully serialize to plain primitives — populated subdocs still carry Mongoose ObjectIds
   const seekerProfile = seekerProfileFromDoc(seeker);
   const scoredJobs = (recentJobs as Array<Record<string, unknown>>)
+    .filter((job) => !appliedJobIdSet.has(String(job._id)))
     .map((job) => {
       const emp = job.employerId as { companyName?: string; logo?: string } | null;
       const loc = job.location as { city?: string; country?: string; isRemote?: boolean } | null;
@@ -101,6 +117,17 @@ export default async function JobSeekerPage({
       recruiterViews: { total: viewCount },
     },
     jobs: scoredJobs,
+    appliedJobs: (appliedApps as Array<Record<string, unknown>>).map((app) => {
+      const job = app.jobId as Record<string, unknown> | null;
+      const emp = job?.employerId as { companyName?: string; logo?: string } | null;
+      return {
+        _id: String(job?._id ?? ""),
+        title: String(job?.title ?? ""),
+        companyName: emp?.companyName ?? undefined,
+        companyLogo: emp?.logo ?? undefined,
+        status: String(app.status ?? "applied"),
+      };
+    }).filter((a) => a._id),
   };
 
   return <JobSeekerHomePage locale={locale} initialData={initialData} />;

@@ -156,6 +156,10 @@ JobSchema.index({ "location.country": 1 });
 JobSchema.index({ "requirements.skills": 1 });
 JobSchema.index({ createdAt: -1 });
 JobSchema.index({ title: "text", description: "text", tags: "text" });
+JobSchema.index(
+  { status: 1, "poster.approvalStatus": 1, createdAt: -1 },
+  { partialFilterExpression: { status: "active" } }
+);
 
 export const Job =
   mongoose.models.Job || mongoose.model<IJob>("Job", JobSchema);

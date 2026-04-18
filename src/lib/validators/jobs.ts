@@ -17,12 +17,23 @@ const salarySchema = z
   })
   .refine((s) => s.max >= s.min, { message: "max salary must be >= min" });
 
-const requirementsSchema = z.object({
-  skills: z.array(z.string().max(100)).max(50).optional(),
-  preferredSkills: z.array(z.string().max(100)).max(30).optional(),
-  experienceMin: z.number().int().min(0).max(50).optional(),
-  experienceMax: z.number().int().min(0).max(50).optional(),
-});
+const requirementsSchema = z
+  .object({
+    skills: z.array(z.string().max(100)).max(50).optional(),
+    preferredSkills: z.array(z.string().max(100)).max(30).optional(),
+    experienceMin: z.number().int().min(0).max(50).optional(),
+    experienceMax: z.number().int().min(0).max(50).optional(),
+    education: z.string().max(200).optional(),
+    languages: z.array(z.string().max(100)).max(20).optional(),
+    nationality: z.array(z.string().max(100)).max(50).optional(),
+  })
+  .refine(
+    (r) =>
+      r.experienceMin === undefined ||
+      r.experienceMax === undefined ||
+      r.experienceMax >= r.experienceMin,
+    { message: "experienceMax must be >= experienceMin" }
+  );
 
 export const jobCreateSchema = z.object({
   title: z.string().min(5).max(200).trim(),

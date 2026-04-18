@@ -220,6 +220,17 @@ export const authConfig: NextAuthConfig = {
     LinkedIn({
       clientId: process.env.LINKEDIN_CLIENT_ID!,
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
+      authorization: {
+        params: { scope: "openid profile email" },
+      },
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture ?? null,
+        };
+      },
     }),
   ],
   session: {
@@ -239,6 +250,8 @@ export const authConfig: NextAuthConfig = {
         if (data.isOnboarded !== undefined) token.isOnboarded = data.isOnboarded;
         if (data.role !== undefined) token.role = data.role;
         if (data.locale !== undefined) token.locale = data.locale;
+        if (typeof data.name === "string") token.name = data.name;
+        if (data.image !== undefined) token.picture = data.image as string | null;
         return token;
       }
       if (user) {
@@ -275,8 +288,8 @@ export const authConfig: NextAuthConfig = {
           if ((token.iat as number) < changedAt) return null;
         }
       }
-      // OAuth sign-in: create/find user in DB
-      if (account && account.provider !== "credentials") {
+      // OAuth sign-in: create/find user in DB (LinkedIn OAuth — Firebase handles its own flow in authorize())
+      if (account && account.provider !== "credentials" && account.provider !== "firebase") {
         await connectDB();
         let dbUser = await User.findOne({ email: token.email });
         const isNewUser = !dbUser;
@@ -287,12 +300,43 @@ export const authConfig: NextAuthConfig = {
             avatar: token.picture,
             role: "job_seeker",
             isEmailVerified: true,
+            authProvider: account.provider === "linkedin" ? "linkedin" : "google",
+            linkedinSub: account.provider === "linkedin" ? account.providerAccountId : undefined,
             locale: "en",
           });
+        } else if (account.provider === "linkedin" && !dbUser.linkedinSub) {
+          // Link LinkedIn to existing account (auto-link — both sides verify email)
+          await User.findByIdAndUpdate(dbUser._id, {
+            linkedinSub: account.providerAccountId,
+            ...(!dbUser.avatar && token.picture ? { avatar: token.picture } : {}),
+          });
         }
+
+        // Ensure JobSeeker profile exists for OAuth users (needed for onboarding pre-fill)
+        if (dbUser.role === "job_seeker") {
+          const existingJS = await JobSeeker.findOne({ userId: dbUser._id }).select("isOnboarded").lean();
+          if (!existingJS) {
+            await JobSeeker.create({
+              userId: dbUser._id,
+              fullName: dbUser.name,
+              isOnboarded: false,
+              skills: [],
+              experience: [],
+              education: [],
+              languages: [],
+              certifications: [],
+              preferredCountries: [],
+              preferredRoles: [],
+              preferredLocations: [],
+            });
+          }
+          token.isOnboarded = existingJS?.isOnboarded ?? false;
+        }
+
         token.id = dbUser._id.toString();
         token.role = dbUser.role;
         token.locale = dbUser.locale;
+        token.provider = account.provider;
         token.permissionMode = dbUser.permissionMode ?? "role_default";
         token.customPermissions = dbUser.customPermissions ?? undefined;
 
@@ -337,6 +381,7 @@ export const authConfig: NextAuthConfig = {
         (session.user as unknown as { permissionMode: string }).permissionMode = (token.permissionMode as string) ?? "role_default";
         (session.user as unknown as { customPermissions?: Record<string, string[]> }).customPermissions = token.customPermissions as Record<string, string[]> | undefined;
         (session.user as unknown as { isOnboarded: boolean }).isOnboarded = (token.isOnboarded as boolean) ?? false;
+        (session.user as unknown as { provider?: string }).provider = (token.provider as string) ?? undefined;
         if (token.companyUserRole) {
           (session.user as unknown as { companyUserRole: CompanyRole }).companyUserRole = token.companyUserRole as CompanyRole;
         }

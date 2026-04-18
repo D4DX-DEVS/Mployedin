@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Bot, X, Send, Minimize2, Maximize2, History, Plus, Trash2, UserCheck, Expand, Shrink, Mic, MicOff, Loader2, ExternalLink, Users2, TrendingUp, BarChart3, MessageSquare, Briefcase, Zap } from "lucide-react";
+import { Bot, X, Send, Minimize2, Maximize2, History, Plus, Trash2, UserCheck, Expand, Shrink, Mic, Loader2, ExternalLink, Users2, TrendingUp, BarChart3, MessageSquare, Briefcase, Zap, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
@@ -176,15 +176,27 @@ export function ConversationalAI({
   const [profileSummary, setProfileSummary] = useState<ProfileSummary | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const {
+    state: voiceState,
     isRecording,
     isProcessing: isVoiceProcessing,
     transcript: voiceTranscript,
+    durationLabel,
     startRecording,
-    stopRecording,
+    cancelRecording,
+    submitRecording,
     clearTranscript,
-  } = useVoiceInput({ language: "auto", mode: "autoSubmitOnStop", maxDurationMs: 60000 });
+    error: voiceError,
+  } = useVoiceInput({ language: "auto", mode: "explicitSend", maxDurationMs: 60000 });
+
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+  }, []);
 
   // Sync voice transcript into the text input
   useEffect(() => {
@@ -193,6 +205,26 @@ export function ConversationalAI({
       clearTranscript();
     }
   }, [voiceTranscript, clearTranscript]);
+
+  useEffect(() => {
+    autoResize();
+  }, [autoResize, input]);
+
+  useEffect(() => {
+    if (!isRecording) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        cancelRecording();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [cancelRecording, isRecording]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -404,6 +436,8 @@ export function ConversationalAI({
       sendMessage();
     }
   }
+
+  const isIdle = voiceState === "idle";
 
   if (!mounted) return null;
 
@@ -652,44 +686,129 @@ export function ConversationalAI({
               </div>
 
               {/* Input */}
-              <div className="border-t border-border p-3 flex gap-2 items-end">
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={isRecording ? "Recording…" : isVoiceProcessing ? "Transcribing…" : "Ask me anything…"}
-                  className="min-h-[40px] max-h-[120px] resize-none text-sm"
-                  rows={1}
-                  disabled={isStreaming || isRecording || isVoiceProcessing}
-                />
-                <button
-                  type="button"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  disabled={isVoiceProcessing || isStreaming}
-                  className={cn(
-                    "h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors",
-                    isRecording
-                      ? "bg-red-500 hover:bg-red-600 text-white animate-pulse"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40"
-                  )}
-                  title={isRecording ? "Stop recording" : "Voice input"}
-                >
-                  {isVoiceProcessing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : isRecording ? (
-                    <MicOff className="h-4 w-4" />
+              <div className="border-t border-border/70 bg-background/95 p-3 shrink-0">
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-border/60 bg-background p-2.5 shadow-sm shadow-black/[0.04]">
+                    <Textarea
+                      ref={textareaRef}
+                      value={input}
+                      onChange={(e) => {
+                        setInput(e.target.value);
+                        autoResize();
+                      }}
+                      onKeyDown={handleKeyDown}
+                      placeholder={isRecording ? "Recording…" : isVoiceProcessing ? "Transcribing…" : "Ask me anything…"}
+                      className={cn(
+                        "resize-none text-sm overflow-y-auto transition-[height] duration-100",
+                        isIdle
+                          ? "min-h-[56px] max-h-[220px] border-0 bg-transparent px-1.5 py-1 shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                          : "min-h-[44px] max-h-[220px] rounded-xl border-border/60 bg-muted/20"
+                      )}
+                      rows={1}
+                      disabled={isStreaming || isRecording || isVoiceProcessing}
+                    />
+
+                    {isRecording ? (
+                      <div className="mt-2 flex flex-col gap-2">
+                        <div
+                          role="status"
+                          aria-live="polite"
+                          aria-atomic="true"
+                          className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700"
+                        >
+                          <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium leading-none">Listening...</p>
+                            <p className="mt-1 text-xs text-red-700/80">Tap send when ready.</p>
+                          </div>
+                          <span className="font-mono text-sm tabular-nums">{durationLabel}</span>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={cancelRecording}
+                            className="h-10 flex-1 rounded-xl border-border/60 text-muted-foreground hover:text-foreground"
+                            aria-label="Cancel voice input"
+                          >
+                            <X className="mr-1.5 h-4 w-4" /> Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={submitRecording}
+                            className="h-10 flex-1 rounded-xl"
+                            aria-label="Send voice input"
+                          >
+                            <Send className="mr-1.5 h-4 w-4" /> Send
+                          </Button>
+                        </div>
+                      </div>
+                    ) : isVoiceProcessing ? (
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
+                        className="mt-2 flex items-center justify-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
+                      >
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="font-medium">Processing voice...</span>
+                      </div>
+                    ) : (
+                      <div className="mt-2 flex items-center gap-2 border-t border-border/50 pt-2">
+                        <button
+                          type="button"
+                          disabled
+                          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted/70 px-3 text-[11px] font-medium text-muted-foreground"
+                          aria-label="Voice language: AUTO"
+                          title="Voice language: AUTO"
+                        >
+                          <Globe className="h-3 w-3" />
+                          <span>AUTO</span>
+                        </button>
+
+                        <div className="ml-auto flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={startRecording}
+                            disabled={isStreaming || isVoiceProcessing}
+                            className={cn(
+                              "flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-background text-muted-foreground shadow-sm shadow-black/[0.04] transition-all duration-150 hover:bg-primary/10 hover:text-primary",
+                              (isStreaming || isVoiceProcessing) && "cursor-not-allowed opacity-50"
+                            )}
+                            aria-label="Start voice input"
+                            title="Start voice input"
+                          >
+                            <Mic className="h-4 w-4" />
+                          </button>
+
+                          <Button
+                            size="icon"
+                            className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 shadow-sm hover:from-primary/90 hover:to-indigo-600/90"
+                            onClick={() => sendMessage()}
+                            disabled={!input.trim() || isStreaming || isVoiceProcessing}
+                            aria-label="Send message"
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {voiceError ? (
+                    <p role="alert" className="text-[11px] text-destructive">
+                      {voiceError}
+                    </p>
                   ) : (
-                    <Mic className="h-4 w-4" />
+                    <p className="text-[11px] text-muted-foreground/70">
+                      AI can make mistakes. Check important info.
+                    </p>
                   )}
-                </button>
-                <Button
-                  size="icon"
-                  className="h-10 w-10 shrink-0 bg-primary hover:bg-primary/90"
-                  onClick={() => sendMessage()}
-                  disabled={!input.trim() || isStreaming}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+                </div>
               </div>
             </>
           )}

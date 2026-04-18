@@ -70,7 +70,8 @@
       "Bash(python \"C:\\\\Users\\\\moham\\\\.claude\\\\skills\\\\seo\\\\scripts\\\\fetch_page.py\" \"https://mployedin.vercel.app/\")",
       "WebFetch(domain:mployedin.vercel.app)",
       "Bash(python3:*)",
-      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(list\\(d.get\\('dependencies',{}\\).keys\\(\\)\\), indent=2\\)\\)\")"
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(list\\(d.get\\('dependencies',{}\\).keys\\(\\)\\), indent=2\\)\\)\")",
+      "mcp__code-review-graph__get_architecture_overview_tool"
     ]
   },
   "enableAllProjectMcpServers": true,

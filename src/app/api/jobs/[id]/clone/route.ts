@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
+import Agent from "@/models/Agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
@@ -24,17 +25,30 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  // Ownership check
+  // Resolve effective agent and approval status (mirrors POST /api/jobs logic)
+  let effectiveAgentId = source.agentId ?? null;
+  let approvalStatus: "pending" | "approved";
+
   if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id agentId").lean();
     if (!emp || String(source.employerId) !== String(emp._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+    // Use current employer agent if source had none
+    effectiveAgentId = source.agentId ?? emp.agentId ?? null;
+    approvalStatus = effectiveAgentId ? "pending" : "approved";
+  } else if (ctx.role === "agent") {
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (agent) effectiveAgentId = agent._id;
+    approvalStatus = "pending";
+  } else {
+    // admin — always approved
+    approvalStatus = "approved";
   }
 
   const clone = await Job.create({
     employerId: source.employerId,
-    agentId: source.agentId,
+    agentId: effectiveAgentId,
     title: `${source.title} (Copy)`,
     description: source.description,
     requirements: source.requirements,
@@ -44,7 +58,7 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     vacancies: source.vacancies,
     workflowMode: source.workflowMode,
     status: "draft",
-    poster: { approvalStatus: "pending" },
+    poster: { approvalStatus },
   });
 
   await logActivity({

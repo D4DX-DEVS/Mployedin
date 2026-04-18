@@ -1,0 +1,55 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+describe("SearchableSelect", () => {
+  beforeAll(() => {
+    Object.defineProperty(window, "ResizeObserver", {
+      writable: true,
+      configurable: true,
+      value: ResizeObserverMock,
+    });
+
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      writable: true,
+      configurable: true,
+      value: jest.fn(),
+    });
+  });
+
+  it("allows the dropdown to grow beyond the trigger width for long labels", async () => {
+    const longLabel = "Resume_Backend_Architecture_Senior.pdf";
+
+    render(
+      <SearchableSelect
+        options={[
+          { value: "resume-v2", label: "Resume_v2.pdf" },
+          { value: "resume-backend", label: longLabel },
+        ]}
+        value="resume-v2"
+        onValueChange={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("combobox"));
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Search…")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(longLabel)).toBeVisible();
+
+    const content = screen.getByTestId("searchable-select-content");
+
+    expect(content).toHaveStyle({
+      width: "max-content",
+      minWidth: "var(--radix-popover-trigger-width)",
+      maxWidth: "min(24rem, calc(100vw - 2rem))",
+    });
+  });
+});
