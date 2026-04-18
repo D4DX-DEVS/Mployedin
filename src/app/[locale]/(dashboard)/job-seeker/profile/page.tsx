@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
   DialogFooter, DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -1071,6 +1071,7 @@ export default function JobSeekerProfilePage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Name</DialogTitle>
+            <DialogDescription className="sr-only">Update your display name</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveName(); }} className="space-y-3 py-2">
             <div>
@@ -1102,6 +1103,7 @@ export default function JobSeekerProfilePage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Headline</DialogTitle>
+            <DialogDescription className="sr-only">Update your professional headline</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveHeadline(); }} className="space-y-3 py-2">
             <div>
@@ -1134,6 +1136,7 @@ export default function JobSeekerProfilePage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Professional Summary</DialogTitle>
+            <DialogDescription className="sr-only">Update your professional summary</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div>
@@ -1167,6 +1170,7 @@ export default function JobSeekerProfilePage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Profile Settings</DialogTitle>
+            <DialogDescription className="sr-only">Manage your profile visibility settings</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <button

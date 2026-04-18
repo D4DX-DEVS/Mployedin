@@ -437,7 +437,7 @@ export default function JobSeekerOnboardingPage() {
       {/* Top bar */}
       <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="Mployedin" width={140} height={36} className="h-9 w-auto object-contain" />
+          <Image src="/logo.png" alt="Mployedin" width={140} height={36} className="h-9 w-auto object-contain" style={{ width: "auto" }} />
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden text-right sm:block">

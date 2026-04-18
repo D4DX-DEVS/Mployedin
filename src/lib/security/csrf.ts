@@ -93,6 +93,7 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/cron/",
   "/api/filters",
   "/api/ai/", // AI routes use session auth + rate limiting; CSRF adds friction on streaming/audio
+  "/api/pusher/auth", // Pusher JS client sends POST without CSRF header; session auth suffices
 ];
 
 /**

@@ -139,6 +139,12 @@ Rules:
         ).filter(Boolean)
       : [];
 
+    const safeDate = (v?: string): Date | undefined => {
+      if (!v || v === "present") return undefined;
+      const d = new Date(v.length === 7 ? `${v}-01` : v);
+      return isNaN(d.getTime()) ? undefined : d;
+    };
+
     const mappedExperience = extracted.experience?.length
       ? extracted.experience.map((e: {
           jobTitle?: string; company?: string; location?: string;
@@ -147,8 +153,8 @@ Rules:
           jobTitle: e.jobTitle ?? "",
           company: e.company ?? "",
           country: e.location ?? "",
-          startDate: e.from ? new Date(e.from) : undefined,
-          endDate: e.to && e.to !== "present" ? new Date(e.to) : undefined,
+          startDate: safeDate(e.from),
+          endDate: safeDate(e.to),
           isCurrent: e.current ?? e.to === "present",
           description: e.description ?? "",
         }))
@@ -162,7 +168,7 @@ Rules:
           degree: e.degree ?? "",
           institution: e.institution ?? "",
           field: e.field ?? "",
-          graduationDate: e.to ? new Date(e.to) : undefined,
+          graduationDate: safeDate(e.to),
           grade: e.grade ?? "",
         }))
       : [];
