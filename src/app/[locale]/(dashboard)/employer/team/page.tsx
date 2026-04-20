@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock } from "lucide-react";
+import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock, Pencil, Activity } from "lucide-react";
+import Link from "next/link";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,9 @@ import {
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { useTeam, useInviteTeamMember, useUpdateTeamMember, useRemoveTeamMember } from "@/hooks/useTeam";
-import type { CompanyRole, MemberStatus } from "@/hooks/useTeam";
+import type { CompanyRole, MemberStatus, TeamMember } from "@/hooks/useTeam";
+import { useJobs } from "@/hooks/useJobs";
+import { FormMultiSelect } from "@/components/shared/AppForm";
 
 const ROLE_LABELS: Record<CompanyRole, string> = {
   owner: "Owner",
@@ -49,16 +52,29 @@ const ROLE_ICONS: Record<CompanyRole, React.ReactNode> = {
 };
 
 export default function TeamManagementPage() {
-  useParams<{ locale: string }>();
+  const { locale } = useParams<{ locale: string }>();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const { data: members = [], isLoading: loading } = useTeam();
   const inviteMutation = useInviteTeamMember();
   const updateMutation = useUpdateTeamMember();
   const removeMutation = useRemoveTeamMember();
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteData, setInviteData] = useState({ email: "", companyRole: "hiring_manager" as CompanyRole });
+  const [inviteData, setInviteData] = useState({ email: "", companyRole: "hiring_manager" as CompanyRole, jobAccess: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Job access edit modal
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [editJobAccess, setEditJobAccess] = useState<string[]>([]);
+
+  // Fetch employer's jobs for job assignment selector
+  const { data: jobsData } = useJobs({ page: 1, limit: 200, myJobs: true });
+  const jobOptions = (jobsData?.jobs ?? []).map((j) => ({
+    value: j._id,
+    label: `${j.title}${typeof j.location === "string" ? ` — ${j.location}` : j.location?.city ? ` — ${j.location.city}` : ""}`,
+  }));
+
+  const showJobAccess = (role: CompanyRole) => role === "hiring_manager" || role === "viewer";
 
   useEffect(() => {
     document.title = "Team Management · MPLOYEDIN";
@@ -69,9 +85,17 @@ export default function TeamManagementPage() {
     setSaving(true);
     setError("");
     try {
-      await inviteMutation.mutateAsync(inviteData);
+      const payload: { email: string; companyRole: CompanyRole; jobAccess?: string[] } = {
+        email: inviteData.email,
+        companyRole: inviteData.companyRole,
+      };
+      // Only send jobAccess for restricted roles
+      if (showJobAccess(inviteData.companyRole) && inviteData.jobAccess.length > 0) {
+        payload.jobAccess = inviteData.jobAccess;
+      }
+      await inviteMutation.mutateAsync(payload);
       setShowInviteModal(false);
-      setInviteData({ email: "", companyRole: "hiring_manager" });
+      setInviteData({ email: "", companyRole: "hiring_manager", jobAccess: [] });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to send invite");
     } finally {
@@ -87,6 +111,24 @@ export default function TeamManagementPage() {
 
   async function handleRoleChange(memberId: string, newRole: CompanyRole) {
     await updateMutation.mutateAsync({ memberId, companyRole: newRole });
+  }
+
+  function openJobAccessEditor(member: TeamMember) {
+    setEditingMember(member);
+    setEditJobAccess(member.jobAccess ?? []);
+  }
+
+  async function handleSaveJobAccess() {
+    if (!editingMember) return;
+    await updateMutation.mutateAsync({ memberId: editingMember._id, jobAccess: editJobAccess });
+    setEditingMember(null);
+    setEditJobAccess([]);
+  }
+
+  function getJobAccessLabel(member: TeamMember): string {
+    if (member.companyRole === "owner" || member.companyRole === "admin") return "All Jobs";
+    if (!member.jobAccess || member.jobAccess.length === 0) return "All Jobs";
+    return `${member.jobAccess.length} Job${member.jobAccess.length !== 1 ? "s" : ""}`;
   }
 
   const activeCount = members.filter((m) => m.status === "active").length;
@@ -107,11 +149,20 @@ export default function TeamManagementPage() {
         title="Team Management"
         description={`${activeCount} active member${activeCount !== 1 ? "s" : ""}${pendingCount > 0 ? ` · ${pendingCount} pending invite${pendingCount !== 1 ? "s" : ""}` : ""}`}
         actions={
-          <Button onClick={() => setShowInviteModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Invite Member</span>
-            <span className="sm:hidden">Invite</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href={`/${locale}/employer/team/activity-logs`}>
+              <Button variant="outline" size="sm">
+                <Activity className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Activity Logs</span>
+                <span className="sm:hidden">Logs</span>
+              </Button>
+            </Link>
+            <Button onClick={() => setShowInviteModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Invite Member</span>
+              <span className="sm:hidden">Invite</span>
+            </Button>
+          </div>
         }
       />
 
@@ -164,6 +215,7 @@ export default function TeamManagementPage() {
                 <tr className="border-b border-border/60 bg-muted/40">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Member</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Job Access</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Joined</th>
                   <th className="px-4 py-3" />
@@ -209,6 +261,24 @@ export default function TeamManagementPage() {
                           {ROLE_LABELS[member.companyRole]}
                         </Badge>
                       )}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-xs whitespace-nowrap">
+                          {getJobAccessLabel(member)}
+                        </Badge>
+                        {showJobAccess(member.companyRole) && member.status !== "deactivated" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openJobAccessEditor(member)}
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+                            title="Edit job access"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3.5">
                       <Badge variant="outline" className={`gap-1 ${STATUS_COLORS[member.status]}`}>
@@ -297,6 +367,22 @@ export default function TeamManagementPage() {
                       onValueChange={(val) => handleRoleChange(member._id, val as CompanyRole)}
                     />
                   )}
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-xs">
+                      {getJobAccessLabel(member)}
+                    </Badge>
+                    {showJobAccess(member.companyRole) && member.status !== "deactivated" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openJobAccessEditor(member)}
+                        className="h-5 w-5 p-0 text-muted-foreground hover:text-primary"
+                        title="Edit job access"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                   <span className="text-xs text-muted-foreground ml-auto">
                     {member.acceptedAt
                       ? new Date(member.acceptedAt).toLocaleDateString()
@@ -347,9 +433,26 @@ export default function TeamManagementPage() {
                   { value: "viewer", label: "Viewer — Read-only access" },
                 ]}
                 value={inviteData.companyRole}
-                onValueChange={(val) => setInviteData({ ...inviteData, companyRole: val as CompanyRole })}
+                onValueChange={(val) => setInviteData({ ...inviteData, companyRole: val as CompanyRole, jobAccess: [] })}
               />
             </div>
+
+            {showJobAccess(inviteData.companyRole) && (
+              <div className="space-y-2">
+                <Label>Job Access</Label>
+                <p className="text-xs text-muted-foreground">
+                  Select specific jobs this member can access. Leave empty for access to all jobs.
+                </p>
+                <FormMultiSelect
+                  placeholder="All Jobs (no restriction)"
+                  options={jobOptions}
+                  value={inviteData.jobAccess}
+                  onChange={(val) => setInviteData({ ...inviteData, jobAccess: val })}
+                  maxSelections={50}
+                  searchable
+                />
+              </div>
+            )}
 
             {error && (
               <div className="text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-md dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/30">
@@ -376,6 +479,52 @@ export default function TeamManagementPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Job Access Edit Modal */}
+      <Dialog open={!!editingMember} onOpenChange={(open) => { if (!open) { setEditingMember(null); setEditJobAccess([]); } }}>
+        <DialogContent className="w-full max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Briefcase className="h-4 w-4 text-primary" />
+              </div>
+              Edit Job Access
+            </DialogTitle>
+            <DialogDescription>
+              {editingMember?.user?.name ?? editingMember?.email} — {editingMember ? ROLE_LABELS[editingMember.companyRole] : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            <div className="space-y-2">
+              <Label>Assigned Jobs</Label>
+              <p className="text-xs text-muted-foreground">
+                Select the jobs this member can access. Leave empty to grant access to all jobs.
+              </p>
+              <FormMultiSelect
+                placeholder="All Jobs (no restriction)"
+                options={jobOptions}
+                value={editJobAccess}
+                onChange={setEditJobAccess}
+                maxSelections={50}
+                searchable
+              />
+            </div>
+            <DialogFooter className="gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={() => { setEditingMember(null); setEditJobAccess([]); }} className="flex-1 sm:flex-none">
+                Cancel
+              </Button>
+              <Button onClick={handleSaveJobAccess} disabled={updateMutation.isPending} className="flex-1 sm:flex-none">
+                {updateMutation.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    Saving…
+                  </span>
+                ) : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

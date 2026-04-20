@@ -194,6 +194,30 @@ export const EmailTemplates = {
     `,
   }),
 
+  employerWelcome: (contactName: string, email: string, password: string, agentName: string, loginUrl: string) => ({
+    subject: "Welcome to MPLOYEDIN – Your Account is Ready",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+        </div>
+        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p>Dear <strong>${contactName}</strong>,</p>
+          <p>Your employer account has been created by <strong>${agentName}</strong>. You can now start posting jobs and managing candidates on MPLOYEDIN.</p>
+          <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 4px 0;"><strong>Email:</strong> ${email}</p>
+            <p style="margin: 4px 0;"><strong>Temporary Password:</strong> ${password}</p>
+          </div>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${loginUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Log In Now</a>
+          </div>
+          <p style="color: #ef4444; font-size: 14px; font-weight: 600;">Please change your password after your first login.</p>
+          <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
+        </div>
+      </div>
+    `,
+  }),
+
   passwordReset: (resetUrl: string) => ({
     subject: "Reset Your Password – MPLOYEDIN",
     html: `

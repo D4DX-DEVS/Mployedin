@@ -233,6 +233,7 @@ export const authConfig: NextAuthConfig = {
       },
     }),
   ],
+  trustHost: true,
   session: {
     strategy: "jwt",
     maxAge: 3 * 24 * 60 * 60,    // 3 days max (remember-me sessions)

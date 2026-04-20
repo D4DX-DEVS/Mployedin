@@ -3,7 +3,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Conversation from "@/models/Conversation";
 import DirectMessage from "@/models/DirectMessage";
-import { triggerDMEvent } from "@/lib/pusher";
+import { triggerRealtimeEvent } from "@/lib/realtime";
 import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import mongoose from "mongoose";
 
@@ -48,7 +48,7 @@ async function getHandler(req: NextRequest, ctx: { userId: string }, params?: Re
 
 /**
  * POST /api/dm/[conversationId]/messages
- * Sends a message. Persists to DB + triggers Pusher event on recipient's channel.
+ * Sends a message. Persists to DB + triggers real-time event to recipient.
  */
 async function postHandler(req: NextRequest, ctx: { userId: string }, params?: Record<string, string>) {
   await connectDB();
@@ -88,7 +88,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string }, params?: R
   const senderDetail = conv.participantDetails?.find((d) => d.userId.toString() === ctx.userId);
 
   if (recipientId) {
-    await triggerDMEvent(recipientId, "new-message", {
+    await triggerRealtimeEvent(recipientId, "new-message", {
       _id: msg._id.toString(),
       conversationId,
       senderId: ctx.userId,

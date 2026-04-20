@@ -5,15 +5,18 @@ import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Briefcase, Building2, Calendar, CheckCircle, Eye, Globe, Loader2,
-  MapPin, Search, ShieldCheck, XCircle, XOctagon, DollarSign, GraduationCap,
-  Clock, Users, X,
+  Briefcase, Building2, Calendar, Eye, Globe, Loader2,
+  MapPin, Search, DollarSign, GraduationCap,
+  Clock, Users, X, FileText, Activity,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -27,12 +30,14 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 
-interface JobApproval {
+type JobStatus = "all" | "active" | "draft" | "closed" | "expired";
+
+interface RegionalJob {
   _id: string;
   title: string;
+  status: string;
   location: string | { isRemote?: boolean; city?: string; country?: string };
   category: string;
-  poster?: { approvalStatus?: string };
   createdAt: string;
   employerId?: { name?: string; companyName?: string };
   agentId?: { userId?: string };
@@ -43,6 +48,7 @@ interface JobDetail {
   _id: string;
   title: string;
   description: string;
+  status?: string;
   category?: string;
   location: { isRemote?: boolean; city?: string; country?: string } | string;
   salary: { min?: number; max?: number; currency?: string; isNegotiable?: boolean; period?: string };
@@ -54,29 +60,36 @@ interface JobDetail {
   benefits?: string[];
   vacancies?: number;
   tags?: string[];
-  poster?: { approvalStatus?: string };
   employerId?: { companyName?: string; country?: string; industry?: string };
   createdAt: string;
   expiresAt?: string;
   views?: number;
 }
 
+interface JobCounts {
+  total: number;
+  active: number;
+  draft: number;
+  closed: number;
+  expired: number;
+  employers: number;
+}
+
 export default function SuperAgentApprovalsPage() {
   const params = useParams();
   const locale = (params?.locale as string) ?? "en";
-  const [jobs, setJobs] = useState<JobApproval[]>([]);
+  const [jobs, setJobs] = useState<RegionalJob[]>([]);
   const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState<string | null>(null);
-  const [filter, setFilter] = useState("pending");
-
-  // Counts from API (cross-status)
-  const [counts, setCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
 
   // Filters
+  const [jobStatus, setJobStatus] = useState<JobStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Counts from API
+  const [counts, setCounts] = useState<JobCounts>({ total: 0, active: 0, draft: 0, closed: 0, expired: 0, employers: 0 });
 
   // Pagination
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination(20);
@@ -89,7 +102,8 @@ export default function SuperAgentApprovalsPage() {
   const loadJobs = useCallback(async (search?: string) => {
     setLoading(true);
     try {
-      const p = new URLSearchParams({ status: filter });
+      const p = new URLSearchParams();
+      if (jobStatus !== "all") p.set("status", jobStatus);
       p.set("page", String(page));
       p.set("limit", String(limit));
       const q = search ?? searchQuery;
@@ -107,7 +121,7 @@ export default function SuperAgentApprovalsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, searchQuery, dateFrom, dateTo, page, limit, updateTotal]);
+  }, [jobStatus, searchQuery, dateFrom, dateTo, page, limit, updateTotal]);
 
   useEffect(() => { loadJobs(); }, [loadJobs]);
 
@@ -121,12 +135,13 @@ export default function SuperAgentApprovalsPage() {
 
   const clearFilters = () => {
     setSearchQuery("");
+    setJobStatus("all");
     setDateFrom("");
     setDateTo("");
     resetPage();
   };
 
-  const hasFilters = searchQuery || dateFrom || dateTo;
+  const hasFilters = searchQuery || dateFrom || dateTo || jobStatus !== "all";
 
   const openDetail = async (jobId: string) => {
     setDetailLoading(true);
@@ -143,95 +158,64 @@ export default function SuperAgentApprovalsPage() {
     }
   };
 
-  const handleAction = async (id: string, action: "approved" | "rejected", reason?: string) => {
-    setProcessingId(id);
-    try {
-      const res = await fetch(`/api/super-agent/approvals/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: action, reason }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        console.error("Approval action failed:", data.error ?? res.statusText);
-      }
-      setDetailOpen(false);
-      setSelectedJob(null);
-      await loadJobs();
-    } finally {
-      setProcessingId(null);
-    }
+  const formatLocation = (loc: string | { isRemote?: boolean; city?: string; country?: string } | undefined) => {
+    if (!loc) return "—";
+    if (typeof loc === "string") return loc || "—";
+    if (loc.isRemote) return "Remote";
+    return [loc.city, loc.country].filter(Boolean).join(", ") || "—";
   };
-
-  const employerCount = new Set(jobs.map((job) => job.employerId?.companyName ?? job.employerId?.name).filter(Boolean)).size;
 
   const kpis = [
     {
-      label: "Pending",
-      value: counts.pending,
-      helper: "Jobs awaiting your review.",
-      icon: <ShieldCheck className="h-5 w-5" />,
+      label: "Total Jobs",
+      value: counts.total,
+      helper: "All jobs in your region.",
+      icon: <Briefcase className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
     {
-      label: "Approved",
-      value: counts.approved,
-      helper: "Jobs approved and live.",
-      icon: <CheckCircle className="h-5 w-5" />,
+      label: "Active",
+      value: counts.active,
+      helper: "Live jobs visible to seekers.",
+      icon: <Activity className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
     },
     {
-      label: "Rejected",
-      value: counts.rejected,
-      helper: "Jobs declined and may need revision.",
-      icon: <XOctagon className="h-5 w-5" />,
-      toneClassName: "workspace-tone-rose",
+      label: "Draft",
+      value: counts.draft,
+      helper: "Jobs not yet published.",
+      icon: <FileText className="h-5 w-5" />,
+      toneClassName: "workspace-tone-amber",
     },
     {
       label: "Employers",
-      value: employerCount,
-      helper: "Distinct employers in the current view.",
-      icon: <Eye className="h-5 w-5" />,
+      value: counts.employers,
+      helper: "Distinct employers in your region.",
+      icon: <Building2 className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
   ];
 
+  const tableHeaders = ["Job Title", "Employer", "Posted By", "Location", "Status", "Date", ""];
+
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Regional Job Approvals"
-        description="Review job postings inside your region before they go live, and clear approval decisions from the same oversight workspace used elsewhere in the super-agent flow."
-        summaryTitle="Decision lane"
-        summaryDescription="The status tabs and action buttons still call the same approval endpoints; this pass only modernizes the operating surface."
+        title="Regional Jobs"
+        description="View and monitor all job postings from agents and employers in your region. Inspect details, filter by status, and track activity."
+        summaryTitle="Overview"
+        summaryDescription="This is a read-only view of all jobs under your managed agents and their employers."
       />
 
       <SuperAgentMetricsGrid items={kpis} />
 
       <SuperAgentSection
-        eyebrow="Approvals"
-        title="Process the regional approval queue"
-        description="Switch between statuses, inspect who posted each job, and approve or reject pending items without changing route structure or mutation behavior."
+        eyebrow="Jobs"
+        title="Regional job listings"
+        description="Browse all jobs in your region. Use filters to narrow down by status, date, or keyword."
       >
-        {/* Status tabs + filter controls */}
+        {/* Filter controls */}
         <div className="mb-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {(["pending", "approved", "rejected"] as const).map((s) => (
-              <Button
-                key={s}
-                onClick={() => { setFilter(s); resetPage(); }}
-                aria-pressed={filter === s}
-                variant={filter === s ? "default" : "outline"}
-                size="sm"
-                className={`rounded-xl capitalize ${filter === s ? "" : "border-border/70 bg-background/85 text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}`}
-              >
-                {s}
-                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
-                  {counts[s]}
-                </Badge>
-              </Button>
-            ))}
-          </div>
-
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px] max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -242,6 +226,21 @@ export default function SuperAgentApprovalsPage() {
                 className="pl-9 h-9 text-sm"
               />
             </div>
+            <Select value={jobStatus} onValueChange={(v) => { setJobStatus(v as JobStatus); resetPage(); }}>
+              <SelectTrigger className="h-9 w-[140px] text-sm">
+                <SelectValue placeholder="Job Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+                <SelectItem value="expired">Expired</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5">
               <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
               <Input
@@ -262,7 +261,7 @@ export default function SuperAgentApprovalsPage() {
             </div>
             {hasFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs text-muted-foreground">
-                <X className="h-3.5 w-3.5 mr-1" /> Clear
+                <X className="h-3.5 w-3.5 mr-1" /> Clear filters
               </Button>
             )}
           </div>
@@ -273,19 +272,15 @@ export default function SuperAgentApprovalsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
-                  <TableHead className="py-4 text-muted-foreground/80">Job Title</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Employer</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Posted By</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Location</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Status</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Date</TableHead>
-                  <TableHead className="py-4 text-right text-muted-foreground/80">Actions</TableHead>
+                  {tableHeaders.map((h, i) => (
+                    <TableHead key={i} className={`py-4 text-muted-foreground/80 ${i === tableHeaders.length - 1 ? "text-right" : ""}`}>{h}</TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="border-border/50">
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {tableHeaders.map((_, j) => (
                       <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
                     ))}
                   </TableRow>
@@ -294,9 +289,9 @@ export default function SuperAgentApprovalsPage() {
             </Table>
           ) : jobs.length === 0 ? (
             <SuperAgentEmptyState
-              icon={<ShieldCheck className="h-7 w-7" />}
-              title={`No ${filter} approvals in your region`}
-              description="Switch filters or wait for new job approvals to enter the queue."
+              icon={<Briefcase className="h-7 w-7" />}
+              title="No jobs found"
+              description="No jobs match your current filters. Try adjusting the filters or check back later."
             />
           ) : (
             <Table>
@@ -308,7 +303,7 @@ export default function SuperAgentApprovalsPage() {
                   <TableHead className="py-4 text-muted-foreground/80">Location</TableHead>
                   <TableHead className="py-4 text-muted-foreground/80">Status</TableHead>
                   <TableHead className="py-4 text-muted-foreground/80">Date</TableHead>
-                  <TableHead className="py-4 text-right text-muted-foreground/80">Actions</TableHead>
+                  <TableHead className="py-4 text-right text-muted-foreground/80" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -317,11 +312,11 @@ export default function SuperAgentApprovalsPage() {
                     <TableCell className="py-4 font-medium text-foreground">{job.title}</TableCell>
                     <TableCell className="py-4 text-muted-foreground">{job.employerId?.companyName ?? job.employerId?.name ?? "—"}</TableCell>
                     <TableCell className="py-4 text-muted-foreground">{job.postedByAgent?.name ?? "Employer"}</TableCell>
-                    <TableCell className="py-4 text-muted-foreground">{typeof job.location === "object" && job.location ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", ") || "—") : (job.location ?? "—")}</TableCell>
-                    <TableCell className="py-4"><StatusBadge status={job.poster?.approvalStatus ?? "pending"} /></TableCell>
+                    <TableCell className="py-4 text-muted-foreground">{formatLocation(job.location)}</TableCell>
+                    <TableCell className="py-4"><StatusBadge status={job.status ?? "draft"} /></TableCell>
                     <TableCell className="py-4 text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="py-4">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -331,30 +326,6 @@ export default function SuperAgentApprovalsPage() {
                         >
                           <Eye className="h-4 w-4 text-muted-foreground" />
                         </Button>
-                        {filter === "pending" && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
-                              onClick={() => handleAction(job._id, "approved")}
-                              disabled={processingId === job._id}
-                              title="Approve"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
-                              onClick={() => handleAction(job._id, "rejected")}
-                              disabled={processingId === job._id}
-                              title="Reject"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -396,7 +367,7 @@ export default function SuperAgentApprovalsPage() {
               <DialogHeader className="space-y-2 pr-8">
                 <div className="flex items-start justify-between gap-3">
                   <DialogTitle className="text-xl font-semibold leading-tight">{selectedJob.title}</DialogTitle>
-                  <StatusBadge status={selectedJob.poster?.approvalStatus ?? "pending"} />
+                  <StatusBadge status={selectedJob.status ?? "draft"} />
                 </div>
                 <DialogDescription asChild>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -421,13 +392,7 @@ export default function SuperAgentApprovalsPage() {
                   <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
                     <p className="text-xs text-muted-foreground">Location</p>
-                    <p className="font-medium text-foreground">
-                      {typeof selectedJob.location === "object" && selectedJob.location
-                        ? selectedJob.location.isRemote
-                          ? "Remote"
-                          : [selectedJob.location.city, selectedJob.location.country].filter(Boolean).join(", ") || "—"
-                        : (selectedJob.location ?? "—")}
-                    </p>
+                    <p className="font-medium text-foreground">{formatLocation(selectedJob.location)}</p>
                   </div>
                 </div>
                 {/* Salary */}
@@ -541,37 +506,6 @@ export default function SuperAgentApprovalsPage() {
                   <ul className="list-disc pl-5 space-y-0.5 text-sm text-muted-foreground">
                     {selectedJob.benefits!.map((b, i) => <li key={i}>{b}</li>)}
                   </ul>
-                </div>
-              )}
-
-              {/* Action buttons (only when pending) */}
-              {selectedJob.poster?.approvalStatus === "pending" && (
-                <div className="sticky bottom-0 -mx-6 -mb-6 flex items-center gap-3 border-t border-border/60 bg-background px-6 py-4">
-                  <Button
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => handleAction(selectedJob._id, "approved")}
-                    disabled={processingId === selectedJob._id}
-                  >
-                    {processingId === selectedJob._id ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                    )}
-                    Approve
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="flex-1"
-                    onClick={() => handleAction(selectedJob._id, "rejected")}
-                    disabled={processingId === selectedJob._id}
-                  >
-                    {processingId === selectedJob._id ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <XCircle className="h-4 w-4 mr-2" />
-                    )}
-                    Reject
-                  </Button>
                 </div>
               )}
             </>

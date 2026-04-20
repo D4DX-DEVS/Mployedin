@@ -147,7 +147,8 @@ export async function POST(req: NextRequest) {
                 ? ` | ${j.salary.currency} ${j.salary.min.toLocaleString()}–${j.salary.max.toLocaleString()} ${j.salary.period ?? ""}`
                 : j.salary?.isNegotiable ? " | Salary negotiable" : "";
               const skills = j.requirements?.skills?.slice(0, 5).join(", ") ?? "";
-              const link = `/en/job-seeker/jobs/${j._id}`;
+              const locale = currentPage?.match(/^\/(en|ar)\//)?.[1] ?? "en";
+              const link = `/${locale}/job-seeker/jobs/${j._id}`;
               return `- [${j.title}](${link}) | ${loc}${sal} | Skills: ${skills}`;
             });
             jobsContext = `\n\n## Live Jobs on MPLOYEDIN (ONLY reference these — never invent jobs)\n${jobLines.join("\n")}\n\nFormat EVERY job recommendation as a markdown link exactly like: [Job Title](URL). Never show raw IDs. Always use the link format from the list above so users can click to view the job. Tell the user they can click the job title to view and apply. Do NOT mention any job not in this list.`;
@@ -194,8 +195,8 @@ export async function POST(req: NextRequest) {
           Job.countDocuments({ status: "draft" }),
           Job.countDocuments({ status: "closed" }),
           Job.countDocuments({ status: "expired" }),
-          Job.countDocuments({ "approval.status": "pending" }),
-          Job.countDocuments({ "approval.status": "rejected" }),
+          Job.countDocuments({ "poster.approvalStatus": "pending" }),
+          Job.countDocuments({ "poster.approvalStatus": "rejected" }),
           Job.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
         ]);
 

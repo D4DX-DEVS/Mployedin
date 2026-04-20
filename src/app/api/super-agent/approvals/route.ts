@@ -14,7 +14,7 @@ interface AuthCtx {
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
-  // Find the super agent's managed agents to scope job approvals
+  // Find the super agent's managed agents to scope jobs
   const saProfile = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
   const agentDocIds = saProfile?.agentIds ?? [];
   const agentDocs = agentDocIds.length > 0
@@ -23,7 +23,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const employerIds = agentDocs.flatMap((a) => a.assignedEmployerIds ?? []);
 
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status") ?? "pending";
+  const status = searchParams.get("status"); // job status (active, draft, closed, expired) — optional
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "20");
   const skip = (page - 1) * limit;
@@ -32,9 +32,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const dateTo = searchParams.get("dateTo");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const query: Record<string, any> = {
-    "poster.approvalStatus": status,
-  };
+  const query: Record<string, any> = {};
+
+  // Optional job status filter
+  if (status && ["active", "draft", "closed", "expired", "pending_approval"].includes(status)) {
+    query.status = status;
+  }
 
   // Text search on title
   if (search) {
@@ -62,28 +65,40 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     query.employerId = { $in: employerIds };
   }
 
-  // Build a scope filter (without status) for cross-status counts
+  // Build a scope filter (without status filter) for cross-status counts
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scopeFilter: Record<string, any> = { ...query };
-  delete scopeFilter["poster.approvalStatus"];
+  delete scopeFilter.status;
 
-  const [jobs, total, pendingCount, approvedCount, rejectedCount] = await Promise.all([
+  const [jobs, total, activeCount, draftCount, closedCount, expiredCount, employerAgg] = await Promise.all([
     Job.find(query)
-      .populate("employerId", "companyName")
+      .populate("employerId", "companyName name")
       .populate("agentId", "userId")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
+      .select("title status location category createdAt employerId agentId")
       .lean(),
     Job.countDocuments(query),
-    Job.countDocuments({ ...scopeFilter, "poster.approvalStatus": "pending" }),
-    Job.countDocuments({ ...scopeFilter, "poster.approvalStatus": "approved" }),
-    Job.countDocuments({ ...scopeFilter, "poster.approvalStatus": "rejected" }),
+    Job.countDocuments({ ...scopeFilter, status: "active" }),
+    Job.countDocuments({ ...scopeFilter, status: "draft" }),
+    Job.countDocuments({ ...scopeFilter, status: "closed" }),
+    Job.countDocuments({ ...scopeFilter, status: "expired" }),
+    Job.distinct("employerId", scopeFilter),
   ]);
+
+  const totalAll = activeCount + draftCount + closedCount + expiredCount;
 
   return NextResponse.json({
     jobs,
-    counts: { pending: pendingCount, approved: approvedCount, rejected: rejectedCount },
+    counts: {
+      total: totalAll,
+      active: activeCount,
+      draft: draftCount,
+      closed: closedCount,
+      expired: expiredCount,
+      employers: employerAgg.length,
+    },
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   });
 }

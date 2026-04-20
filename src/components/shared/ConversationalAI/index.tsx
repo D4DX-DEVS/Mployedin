@@ -37,6 +37,7 @@ function hasMalayalam(text: string): boolean {
 }
 
 function AIMarkdown({ content }: { content: string }) {
+  const router = useRouter();
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -57,6 +58,11 @@ function AIMarkdown({ content }: { content: string }) {
               href={href}
               {...(!isInternal && { target: "_blank", rel: "noopener noreferrer" })}
               className="text-primary underline underline-offset-2 hover:text-primary/80"
+              onClick={isInternal ? (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (href) router.push(href);
+              } : undefined}
               {...props}
             />
           );

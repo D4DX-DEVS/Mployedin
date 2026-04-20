@@ -10,9 +10,8 @@ import {
   User as UserIcon,
   Shield,
   Clock,
-  Eye,
-  EyeOff,
   Settings,
+  Mail,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,8 +30,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 const ROLE_LABELS: Record<string, { en: string; ar: string }> = {
   admin: { en: "Admin", ar: "مدير" },
@@ -60,14 +57,8 @@ export function UserProfileDropdown({
   companyLogo,
 }: UserProfileDropdownProps) {
   const [resetOpen, setResetOpen] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [resetStatus, setResetStatus] = useState<"idle" | "success" | "error">("idle");
 
   const { data: session } = useSession();
   const userImage = session?.user?.image;
@@ -92,48 +83,21 @@ export function UserProfileDropdown({
   );
 
   const handleResetPassword = async () => {
-    setError("");
-    if (!currentPassword || !newPassword) {
-      setError(isAr ? "جميع الحقول مطلوبة" : "All fields are required");
-      return;
-    }
-    if (newPassword.length < 8) {
-      setError(
-        isAr
-          ? "كلمة المرور يجب أن تكون 8 أحرف على الأقل"
-          : "Password must be at least 8 characters"
-      );
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError(
-        isAr ? "كلمات المرور غير متطابقة" : "Passwords do not match"
-      );
-      return;
-    }
-
     setLoading(true);
+    setResetStatus("idle");
     try {
-      const res = await fetch("/api/users/change-password", {
+      const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ email: userEmail }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? (isAr ? "حدث خطأ" : "Something went wrong"));
-        return;
+      if (res.ok) {
+        setResetStatus("success");
+      } else {
+        setResetStatus("error");
       }
-      setSuccess(true);
-      setTimeout(() => {
-        setResetOpen(false);
-        setSuccess(false);
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-      }, 1500);
     } catch {
-      setError(isAr ? "خطأ في الاتصال" : "Network error");
+      setResetStatus("error");
     } finally {
       setLoading(false);
     }
@@ -246,10 +210,10 @@ export function UserProfileDropdown({
           {/* Reset Password */}
           <DropdownMenuItem
             className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
-            onSelect={() => setResetOpen(true)}
+            onSelect={() => { setResetOpen(true); setResetStatus("idle"); }}
           >
             <KeyRound className="h-4 w-4" />
-            <span className="font-medium text-sm">{isAr ? "تغيير كلمة المرور" : "Change Password"}</span>
+            <span className="font-medium text-sm">{isAr ? "إعادة تعيين كلمة المرور" : "Reset Password"}</span>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
@@ -265,92 +229,36 @@ export function UserProfileDropdown({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Change Password Dialog */}
+      {/* Reset Password Dialog */}
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {isAr ? "تغيير كلمة المرور" : "Change Password"}
+              {isAr ? "إعادة تعيين كلمة المرور" : "Reset Password"}
             </DialogTitle>
             <DialogDescription>
               {isAr
-                ? "أدخل كلمة المرور الحالية والجديدة"
-                : "Enter your current password and choose a new one"}
+                ? "سيتم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني"
+                : "A password reset link will be sent to your email address"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Current Password */}
-            <div className="space-y-2">
-              <Label>{isAr ? "كلمة المرور الحالية" : "Current Password"}</Label>
-              <div className="relative">
-                <Input
-                  type={showCurrent ? "text" : "password"}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrent(!showCurrent)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showCurrent ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
+            <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+              <Mail className="h-5 w-5 text-muted-foreground shrink-0" />
+              <p className="text-sm text-foreground truncate">{userEmail}</p>
             </div>
 
-            {/* New Password */}
-            <div className="space-y-2">
-              <Label>{isAr ? "كلمة المرور الجديدة" : "New Password"}</Label>
-              <div className="relative">
-                <Input
-                  type={showNew ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNew(!showNew)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showNew ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Confirm Password */}
-            <div className="space-y-2">
-              <Label>
-                {isAr ? "تأكيد كلمة المرور" : "Confirm Password"}
-              </Label>
-              <Input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-            </div>
-
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
-            {success && (
+            {resetStatus === "success" && (
               <p className="text-sm text-green-600">
                 {isAr
-                  ? "تم تغيير كلمة المرور بنجاح!"
-                  : "Password changed successfully!"}
+                  ? "تم إرسال رابط إعادة التعيين! تحقق من بريدك الإلكتروني."
+                  : "Reset link sent! Check your email."}
+              </p>
+            )}
+            {resetStatus === "error" && (
+              <p className="text-sm text-destructive">
+                {isAr ? "حدث خطأ. حاول مرة أخرى." : "Something went wrong. Please try again."}
               </p>
             )}
           </div>
@@ -361,17 +269,19 @@ export function UserProfileDropdown({
               onClick={() => setResetOpen(false)}
               disabled={loading}
             >
-              {isAr ? "إلغاء" : "Cancel"}
+              {resetStatus === "success" ? (isAr ? "إغلاق" : "Close") : (isAr ? "إلغاء" : "Cancel")}
             </Button>
-            <Button onClick={handleResetPassword} disabled={loading}>
-              {loading
-                ? isAr
-                  ? "جاري التغيير..."
-                  : "Changing..."
-                : isAr
-                  ? "تغيير كلمة المرور"
-                  : "Change Password"}
-            </Button>
+            {resetStatus !== "success" && (
+              <Button onClick={handleResetPassword} disabled={loading}>
+                {loading
+                  ? isAr
+                    ? "جاري الإرسال..."
+                    : "Sending..."
+                  : isAr
+                    ? "إرسال رابط إعادة التعيين"
+                    : "Send Reset Link"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

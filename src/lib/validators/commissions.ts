@@ -2,7 +2,7 @@ import { z } from "zod";
 import { commonSchemas } from "./index";
 
 export const commissionCreateSchema = z.object({
-  type: z.string().min(1).max(50),
+  type: z.enum(["placement", "override", "bonus"]),
   amount: z.number().min(0),
   currency: z.string().length(3).default("AED"),
   rate: z.number().min(0).max(100).optional(),
@@ -13,11 +13,11 @@ export const commissionCreateSchema = z.object({
 });
 
 export const commissionUpdateSchema = z.object({
-  type: z.string().min(1).max(50).optional(),
+  type: z.enum(["placement", "override", "bonus"]).optional(),
   amount: z.number().min(0).optional(),
   currency: z.string().length(3).optional(),
   rate: z.number().min(0).max(100).optional(),
-  status: z.enum(["pending", "approved", "paid"]).optional(),
+  status: z.enum(["pending", "approved", "paid", "disputed"]).optional(),
   notes: z.string().max(2000).trim().optional(),
   paymentRef: z.string().max(200).optional(),
 });

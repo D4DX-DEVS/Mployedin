@@ -37,6 +37,8 @@ export default function AuditLogsPage() {
   const [resource, setResource] = useState("all");
   const [action, setAction] = useState("");
   const [country, setCountry] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   useEffect(() => { document.title = "Audit Logs · MPLOYEDIN"; }, []);
@@ -48,6 +50,8 @@ export default function AuditLogsPage() {
       if (resource && resource !== "all") params.set("resource", resource);
       if (action) params.set("action", action);
       if (country) params.set("country", country);
+      if (fromDate) params.set("from", fromDate);
+      if (toDate) params.set("to", toDate);
       const res = await fetch(`/api/admin/audit-logs?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -57,7 +61,7 @@ export default function AuditLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [resource, action, country, page, limit]);
+  }, [resource, action, country, fromDate, toDate, page, limit]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
@@ -99,6 +103,20 @@ export default function AuditLogsPage() {
             maxLength={2}
           />
         </div>
+        <Input
+          type="date"
+          value={fromDate}
+          onChange={(e) => { setFromDate(e.target.value); resetPage(); }}
+          className="w-40"
+          placeholder="From"
+        />
+        <Input
+          type="date"
+          value={toDate}
+          onChange={(e) => { setToDate(e.target.value); resetPage(); }}
+          className="w-40"
+          placeholder="To"
+        />
       </div>
 
       {/* Logs table */}

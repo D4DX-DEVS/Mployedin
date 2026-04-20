@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, Search, SlidersHorizontal, Building2 } from "lucide-react";
+import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, Search, SlidersHorizontal, Building2, Video, DollarSign, Briefcase, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -23,6 +23,36 @@ interface ApplicationJob {
   employerId?: string | { _id: string; companyName?: string; logo?: string };
 }
 
+interface LatestInterview {
+  _id: string;
+  type: "video" | "offline" | "hybrid";
+  scheduledAt: string;
+  duration: number;
+  location?: string;
+  meetLink?: string;
+  status: string;
+  candidateResponse?: string;
+  outcome?: string;
+  instructions?: string;
+}
+
+interface LatestOffer {
+  _id: string;
+  salary?: { amount: number; currency: string; period: string };
+  startDate?: string;
+  benefits?: string;
+  status: string;
+  expiresAt?: string;
+}
+
+interface PlacementInfo {
+  _id: string;
+  placedAt?: string;
+  startDate?: string;
+  salary?: number;
+  currency?: string;
+}
+
 interface Application {
   _id: string;
   jobId: ApplicationJob;
@@ -31,13 +61,19 @@ interface Application {
   appliedAt: string;
   coverLetter?: string;
   statusHistory: Array<{ status: string; changedAt: string; note?: string }>;
+  latestInterview?: LatestInterview;
+  latestOffer?: LatestOffer;
+  placement?: PlacementInfo;
 }
 
 const STATUS_TABS = [
   { value: "all", label: "All" },
   { value: "applied", label: "Applied" },
+  { value: "shortlisted", label: "Shortlisted" },
   { value: "interview_scheduled", label: "Interview" },
   { value: "selected", label: "Selected" },
+  { value: "offer", label: "Offer" },
+  { value: "hired", label: "Hired" },
   { value: "rejected", label: "Rejected" },
 ];
 
@@ -363,7 +399,7 @@ function ApplicationCard({
   const salaryLabel = formatApplicationSalary(job?.salary);
   const latestStatusEntry = app.statusHistory?.[app.statusHistory.length - 1];
   const recentStatuses = app.statusHistory?.slice(-3) ?? [];
-  const hasExpandableDetails = recentStatuses.length > 0 || !!latestStatusEntry?.note || !!app.coverLetter;
+  const hasExpandableDetails = recentStatuses.length > 0 || !!latestStatusEntry?.note || !!app.coverLetter || !!app.latestInterview || !!app.latestOffer || !!app.placement;
 
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState("");
@@ -529,6 +565,129 @@ function ApplicationCard({
               <div className="flex items-center gap-1.5 rounded-[18px] border border-border/60 bg-background/80 px-3 py-2 text-xs text-muted-foreground">
                 <Clock className="h-3.5 w-3.5 flex-shrink-0" />
                 {latestStatusEntry.note}
+              </div>
+            )}
+
+            {/* Interview Details */}
+            {app.latestInterview && (
+              <div className="rounded-[14px] border border-primary/20 bg-primary/5 px-3 py-2.5 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                  <Video className="h-3.5 w-3.5" />
+                  Interview Details
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3 shrink-0" />
+                    {new Date(app.latestInterview.scheduledAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    {new Date(app.latestInterview.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · {app.latestInterview.duration} min
+                  </span>
+                  <span className="inline-flex items-center gap-1 capitalize rounded-full border border-border/60 px-2 py-0.5 text-[11px] font-medium">
+                    {app.latestInterview.type === "video" ? <Video className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
+                    {app.latestInterview.type}
+                  </span>
+                </div>
+                {(app.latestInterview.location || app.latestInterview.meetLink) && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    {app.latestInterview.type !== "offline" && app.latestInterview.meetLink ? (
+                      <a href={app.latestInterview.meetLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                        Join Meeting <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span>{app.latestInterview.location}</span>
+                    )}
+                    {app.latestInterview.type === "hybrid" && app.latestInterview.location && app.latestInterview.meetLink && (
+                      <>
+                        <span className="text-muted-foreground/60">|</span>
+                        <span>{app.latestInterview.location}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                {app.latestInterview.instructions && (
+                  <p className="text-xs text-muted-foreground italic">{app.latestInterview.instructions}</p>
+                )}
+                {app.latestInterview.candidateResponse && app.latestInterview.candidateResponse !== "pending" && (
+                  <div className={cn(
+                    "text-xs font-medium",
+                    app.latestInterview.candidateResponse === "confirmed" && "text-emerald-600",
+                    app.latestInterview.candidateResponse === "declined" && "text-red-600",
+                    app.latestInterview.candidateResponse === "reschedule_requested" && "text-amber-600"
+                  )}>
+                    Your response: {app.latestInterview.candidateResponse === "confirmed" ? "Confirmed" : app.latestInterview.candidateResponse === "declined" ? "Declined" : "Reschedule Requested"}
+                  </div>
+                )}
+                {app.latestInterview.outcome && (
+                  <div className="text-xs text-muted-foreground">
+                    Outcome: <span className="capitalize font-medium">{app.latestInterview.outcome}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Offer Details */}
+            {app.latestOffer && (
+              <div className="rounded-[14px] border border-emerald-200 bg-emerald-50/50 px-3 py-2.5 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                  <DollarSign className="h-3.5 w-3.5" />
+                  Offer Details
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {app.latestOffer.salary && (
+                    <span className="font-medium text-foreground">
+                      {new Intl.NumberFormat("en-US", { style: "currency", currency: app.latestOffer.salary.currency, maximumFractionDigits: 0 }).format(app.latestOffer.salary.amount)} / {app.latestOffer.salary.period}
+                    </span>
+                  )}
+                  {app.latestOffer.startDate && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3 shrink-0" />
+                      Start: {new Date(app.latestOffer.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </span>
+                  )}
+                  <span className={cn(
+                    "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium border",
+                    app.latestOffer.status === "pending" && "border-amber-200 bg-amber-50 text-amber-700",
+                    app.latestOffer.status === "accepted" && "border-emerald-200 bg-emerald-50 text-emerald-700",
+                    app.latestOffer.status === "declined" && "border-red-200 bg-red-50 text-red-700",
+                    app.latestOffer.status === "expired" && "border-gray-200 bg-gray-50 text-gray-600",
+                  )}>
+                    {app.latestOffer.status.charAt(0).toUpperCase() + app.latestOffer.status.slice(1)}
+                  </span>
+                </div>
+                {app.latestOffer.benefits && (
+                  <p className="text-xs text-muted-foreground">{app.latestOffer.benefits}</p>
+                )}
+                {app.latestOffer.expiresAt && app.latestOffer.status === "pending" && (
+                  <p className="text-[11px] text-amber-600">
+                    Expires: {new Date(app.latestOffer.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Placement Details */}
+            {app.placement && (
+              <div className="rounded-[14px] border border-blue-200 bg-blue-50/50 px-3 py-2.5 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700">
+                  <Briefcase className="h-3.5 w-3.5" />
+                  Placement Confirmed
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {app.placement.startDate && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3 shrink-0" />
+                      Start: {new Date(app.placement.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </span>
+                  )}
+                  {app.placement.salary && (
+                    <span className="font-medium text-foreground">
+                      {new Intl.NumberFormat("en-US", { style: "currency", currency: app.placement.currency ?? "AED", maximumFractionDigits: 0 }).format(app.placement.salary)} / month
+                    </span>
+                  )}
+                </div>
               </div>
             )}
 

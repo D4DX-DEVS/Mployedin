@@ -73,7 +73,7 @@ export function RecentActivity({ items }: RecentActivityProps) {
               statusLabels[item.status ?? "applied"] ?? "Updated";
 
             return (
-              <div key={i} className="flex items-start gap-3">
+              <div key={i} className="flex items-start gap-3 rounded-lg p-2 -mx-2 transition-colors hover:bg-muted/50">
                 <div className="mt-0.5 rounded-lg bg-primary/10 p-1.5">
                   <Icon className="h-3.5 w-3.5 text-primary" />
                 </div>
@@ -93,7 +93,7 @@ export function RecentActivity({ items }: RecentActivityProps) {
           }
 
           return (
-            <div key={i} className="flex items-start gap-3">
+            <div key={i} className="flex items-start gap-3 rounded-lg p-2 -mx-2 transition-colors hover:bg-muted/50">
               <div className="mt-0.5 rounded-lg bg-muted p-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
               </div>

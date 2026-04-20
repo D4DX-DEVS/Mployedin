@@ -179,7 +179,7 @@ export default function RegisterPage() {
           variant="outline"
           type="button"
           className="h-11 bg-transparent hover:bg-muted/50 border-border font-medium transition-colors"
-          onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: `/${locale}/onboarding` }); }}
+          onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: "/api/auth/post-login-redirect" }); }}
           disabled={linkedInLoading}
         >
           {linkedInLoading ? (

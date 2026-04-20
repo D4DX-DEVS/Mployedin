@@ -77,7 +77,7 @@ export default async function JobDetailPage({ params }: PageProps) {
 
   await connectDB();
   const job = await Job.findById(id)
-    .populate("employerId", "companyName country industry city website domainVerified")
+    .populate("employerId", "companyName country industry city website domainVerified isAgentVerified")
     .lean()
     .catch(() => null);
 
@@ -158,7 +158,7 @@ export default async function JobDetailPage({ params }: PageProps) {
               <div>
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <h1 className="text-2xl font-semibold text-foreground">{job.title}</h1>
-                  {employer?.domainVerified && (
+                  {(employer?.domainVerified || employer?.isAgentVerified) && (
                     <span className="shrink-0 text-xs bg-green-500/10 text-green-600 px-2 py-1 rounded-full font-medium">✓ Verified</span>
                   )}
                 </div>

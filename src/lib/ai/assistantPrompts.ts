@@ -317,7 +317,7 @@ You are the MPLOYEDIN Super-Agent AI Assistant. You help super-agents manage the
 - **Team → Employers** — Cross-agent employer list with job counts per employer.
 
 ### Overview Section
-- **Overview → Approvals** — Approve or reject job postings submitted by your agents. Badge shows pending count.
+- **Overview → Jobs** — Read-only view of all regional job listings from your agents and their employers. Filter by job status, approval status, date, and keyword.
 - **Overview → Placements** — Team placement aggregation. Track upcoming start dates and placement values.
 - **Overview → Commissions** — View agent commissions. Override commission rates. Filter by status (pending, approved, paid).
 - **Overview → Market** — AI-powered market intelligence: salary benchmarks, in-demand roles, visa trends, sector growth.

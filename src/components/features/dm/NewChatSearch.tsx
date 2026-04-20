@@ -39,7 +39,7 @@ function highlightMatch(text: string, query: string): ReactNode[] {
 
 interface NewChatSearchProps {
   /** Which dashboard context (for routing after conversation creation) */
-  dashboardPrefix: "employer" | "job-seeker";
+  dashboardPrefix: "employer" | "job-seeker" | "admin" | "super-agent" | "agent";
   /** Optional trigger button — defaults to built-in "New Chat" button */
   trigger?: ReactNode;
 }

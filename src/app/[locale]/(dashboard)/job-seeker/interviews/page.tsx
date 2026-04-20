@@ -184,6 +184,24 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
             </span>
           </div>
 
+          {/* Location for in-person / hybrid */}
+          {iv.location && (iv.type === "offline" || iv.type === "hybrid") && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1.5">
+              <MapPin className="w-3 h-3 shrink-0 text-primary/70" />
+              <span>{iv.location}</span>
+            </div>
+          )}
+
+          {/* Meet link for video / hybrid */}
+          {iv.meetLink && (iv.type === "video" || iv.type === "hybrid") && (
+            <div className="flex items-center gap-1.5 text-xs mt-1.5">
+              <Video className="w-3 h-3 shrink-0 text-primary/70" />
+              <a href={iv.meetLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                Meeting Link <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          )}
+
           {/* Countdown for today */}
           {upcoming && isToday && minutesUntil > 0 && minutesUntil < 60 && (
             <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 font-medium">

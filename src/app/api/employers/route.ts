@@ -3,11 +3,14 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import Employer from "@/models/Employer";
+import Agent from "@/models/Agent";
+import { CompanyUser, getDefaultPermissions } from "@/models/CompanyUser";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
 import { employerAdminCreateSchema } from "@/lib/validators/employers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import bcrypt from "bcryptjs";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
@@ -48,7 +51,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Attach verificationDocs and domainVerified from Employer model
   const userIds = users.map((u) => u._id);
   const employerProfiles = await Employer.find({ userId: { $in: userIds } })
-    .select("userId verificationDocs domainVerified verificationLevel")
+    .select("userId verificationDocs domainVerified verificationLevel isAgentVerified")
     .lean();
 
   const profileMap = new Map(
@@ -62,6 +65,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       verificationDocs: profile?.verificationDocs ?? [],
       domainVerified: profile?.domainVerified ?? false,
       verificationLevel: profile?.verificationLevel,
+      isAgentVerified: profile?.isAgentVerified ?? false,
     };
   });
 
@@ -93,22 +97,83 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     email,
     passwordHash,
     role: "employer",
-    companyName,
-    industry,
-    location,
-    phone,
     isActive: true,
+    isEmailVerified: true,
   });
+
+  // Resolve agentId — for agents, use their own Agent doc; for super_agents, leave null
+  let agentId: string | undefined;
+  if (ctx.role === "agent") {
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    agentId = agentDoc?._id?.toString();
+  }
+
+  // Create Employer profile (matching employer-register flow)
+  const employer = await Employer.create({
+    userId: user._id,
+    companyName: companyName || name,
+    companyEmail: email,
+    phone: phone || "",
+    industry,
+    ...(agentId ? { agentId } : {}),
+    verificationLevel: "basic",
+    isAgentVerified: !!(ctx.role === "agent" || ctx.role === "super_agent"),
+    verifiedByAgentId: ctx.role === "agent" || ctx.role === "super_agent" ? ctx.userId : undefined,
+  });
+
+  // Create CompanyUser entry (owner)
+  await CompanyUser.create({
+    companyId: employer._id,
+    userId: user._id,
+    email,
+    companyRole: "owner",
+    permissions: getDefaultPermissions("owner"),
+    invitedBy: user._id,
+    invitedAt: new Date(),
+    acceptedAt: new Date(),
+    status: "active",
+  });
+
+  // Link employer to agent's assignedEmployerIds
+  if (agentId) {
+    await Agent.findByIdAndUpdate(agentId, {
+      $addToSet: { assignedEmployerIds: employer._id },
+      $inc: { "performance.employersCreated": 1 },
+    });
+  }
+
+  // Send welcome email (fire-and-forget)
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
+  const loginUrl = `${baseUrl}/login`;
+  const creatorName = ctx.role === "agent" || ctx.role === "super_agent" ? "Your MPLOYEDIN Agent" : "MPLOYEDIN Admin";
+  sendEmail({
+    to: email,
+    ...EmailTemplates.employerWelcome(name, email, password, creatorName, loginUrl),
+    userId: user._id.toString(),
+    source: "employer-onboard",
+    category: "onboarding",
+  }).catch(() => {});
 
   await logActivity({
     ...actorFromCtx(ctx),
     action: "employer.create",
     resource: "employers",
     resourceId: String(user._id),
+    meta: { companyName: companyName || name, email, createdBy: ctx.role },
     req,
   });
 
-  return NextResponse.json({ employer: user }, { status: 201 });
+  return NextResponse.json({
+    employer: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      companyName: employer.companyName,
+      industry: employer.industry,
+      isActive: true,
+      isAgentVerified: employer.isAgentVerified ?? false,
+    },
+  }, { status: 201 });
 }
 
 export const GET = withAuth(handler, { resource: "employers", action: "read" });

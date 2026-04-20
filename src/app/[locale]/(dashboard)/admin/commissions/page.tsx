@@ -8,9 +8,10 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Plus, Pencil, Trash2, Sparkles, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw, Search, CalendarDays } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -46,7 +47,14 @@ const STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
   { value: "paid", label: "Paid" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "disputed", label: "Disputed" },
+];
+
+const TYPE_OPTIONS = [
+  { value: "all", label: "All types" },
+  { value: "placement", label: "Placement" },
+  { value: "override", label: "Override" },
+  { value: "bonus", label: "Bonus" },
 ];
 
 export default function AdminCommissionsPage() {
@@ -56,6 +64,11 @@ export default function AdminCommissionsPage() {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [summary, setSummary] = useState<{ pending: number; approved: number; paid: number; currency: string }>({ pending: 0, approved: 0, paid: 0, currency: "AED" });
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Commission | null>(null);
@@ -67,6 +80,10 @@ export default function AdminCommissionsPage() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (status) params.set("status", status);
+      if (typeFilter) params.set("type", typeFilter);
+      if (searchTerm.trim()) params.set("search", searchTerm.trim());
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
 
       const res = await fetch(`/api/commissions?${params}`);
       if (!res.ok) {
@@ -76,6 +93,7 @@ export default function AdminCommissionsPage() {
       const data = await res.json();
       setCommissions(data.items ?? data.commissions ?? []);
       updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
+      if (data.summary) setSummary(data.summary);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to load commissions. Please try again.";
       setErrorMessage(message);
@@ -83,7 +101,7 @@ export default function AdminCommissionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [status, page, limit, updateTotal]);
+  }, [status, typeFilter, searchTerm, dateFrom, dateTo, page, limit, updateTotal]);
 
   useEffect(() => { fetchCommissions(); }, [fetchCommissions]);
 
@@ -155,10 +173,11 @@ export default function AdminCommissionsPage() {
   };
 
   const visibleCommissions = commissions.length;
-  const pendingCommissions = commissions.filter((commission) => commission.status === "pending").length;
-  const approvedCommissions = commissions.filter((commission) => commission.status === "approved").length;
-  const paidCommissions = commissions.filter((commission) => commission.status === "paid").length;
-  const hasActiveFilters = Boolean(status);
+  const pendingAmount = summary.pending;
+  const approvedAmount = summary.approved;
+  const paidAmount = summary.paid;
+  const summaryCurrency = summary.currency;
+  const hasActiveFilters = Boolean(status || typeFilter || searchTerm || dateFrom || dateTo);
 
   return (
     <div className="page-container space-y-6">
@@ -214,8 +233,8 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pending review</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-amber-500 dark:text-amber-300">{pendingCommissions}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Items waiting for approval before payout.</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-amber-500 dark:text-amber-300">{summaryCurrency} {pendingAmount.toLocaleString()}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Total amount waiting for approval.</p>
               </div>
               <div className="workspace-tone-amber rounded-2xl p-2.5">
                 <Clock3 className="h-5 w-5" />
@@ -226,8 +245,8 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Approved</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-300">{approvedCommissions}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Records ready to move into the paid state.</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-300">{summaryCurrency} {approvedAmount.toLocaleString()}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Total approved amount ready for payout.</p>
               </div>
               <div className="workspace-tone-emerald rounded-2xl p-2.5">
                 <CheckCircle2 className="h-5 w-5" />
@@ -238,8 +257,8 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Paid out</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-violet-600 dark:text-violet-300">{paidCommissions}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Completed commissions visible in this view.</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-violet-600 dark:text-violet-300">{summaryCurrency} {paidAmount.toLocaleString()}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Total paid commission amount.</p>
               </div>
               <div className="workspace-tone-violet rounded-2xl p-2.5">
                 <ReceiptText className="h-5 w-5" />
@@ -254,12 +273,26 @@ export default function AdminCommissionsPage() {
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse records</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Filter the commissions you want to review next</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Use the status filter to narrow approvals, payouts, and completed records without leaving the finance workspace.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Use filters to narrow approvals, payouts, and completed records without leaving the finance workspace.</p>
           </div>
         </div>
 
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="w-full sm:max-w-[240px]">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <label htmlFor="admin-commissions-search" className="sr-only">Search by agent name</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="admin-commissions-search"
+                className="h-11 rounded-xl border-border bg-secondary/65 pl-9"
+                placeholder="Search agent…"
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); resetPage(); }}
+              />
+            </div>
+          </div>
+
+          <div>
             <label htmlFor="admin-commissions-status-filter" className="sr-only">Filter commissions by status</label>
             <SearchableSelect
               id="admin-commissions-status-filter"
@@ -274,11 +307,55 @@ export default function AdminCommissionsPage() {
             />
           </div>
 
+          <div>
+            <label htmlFor="admin-commissions-type-filter" className="sr-only">Filter commissions by type</label>
+            <SearchableSelect
+              id="admin-commissions-type-filter"
+              className="h-11 w-full rounded-xl border-border bg-secondary/65"
+              options={TYPE_OPTIONS}
+              value={typeFilter || "all"}
+              onValueChange={(value) => {
+                setTypeFilter(value === "all" ? "" : value);
+                resetPage();
+              }}
+              placeholder="All types"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="date"
+                className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
+                aria-label="Date from"
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">to</span>
+            <div className="relative flex-1">
+              <Input
+                type="date"
+                className="h-11 rounded-xl border-border bg-secondary/65 text-sm"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
+                aria-label="Date to"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-end">
           <Button
             type="button"
             variant="outline"
             onClick={() => {
               setStatus("");
+              setTypeFilter("");
+              setSearchTerm("");
+              setDateFrom("");
+              setDateTo("");
               resetPage();
             }}
             disabled={!hasActiveFilters}
@@ -337,7 +414,7 @@ export default function AdminCommissionsPage() {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-foreground">No commissions found</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Adjust the status filter or create a new commission record to populate this ledger.</p>
+                        <p className="mt-1 text-sm text-muted-foreground">Adjust filters or create a new commission record to populate this ledger.</p>
                       </div>
                     </div>
                   </TableCell>

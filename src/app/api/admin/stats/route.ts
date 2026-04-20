@@ -27,7 +27,7 @@ export const GET = withAuth(async (_req: NextRequest) => {
     User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
     Job.countDocuments(),
     Job.countDocuments({ status: "active" }),
-    Job.countDocuments({ approvalStatus: "pending" }),
+    Job.countDocuments({ "poster.approvalStatus": "pending" }),
     Application.countDocuments(),
     Application.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
     Interview.countDocuments(),

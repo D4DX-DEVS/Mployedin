@@ -2,10 +2,18 @@
  * @jest-environment jsdom
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { getNavGroups } from "@/lib/nav/menuConfig";
 
 let pathnameMock = "/en/super-agent";
+
+function createWrapper() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  );
+}
 
 jest.mock("next/image", () => ({
   __esModule: true,
@@ -28,16 +36,8 @@ jest.mock("next-auth/react", () => ({
 }));
 
 describe("Sidebar", () => {
-  const fetchMock = jest.fn();
-
   beforeEach(() => {
     pathnameMock = "/en/super-agent";
-    fetchMock.mockReset();
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({ count: 4 }),
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
   });
 
   it("renders the super-agent workspace with inline children for active child routes", async () => {
@@ -48,21 +48,18 @@ describe("Sidebar", () => {
         navGroups={getNavGroups("super_agent", "en")}
         locale="en"
         userRole="super_agent"
-      />
+      />,
+      { wrapper: createWrapper() }
     );
 
     expect(screen.getByText("Super agent workspace")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Overview" })).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: /approvals/i })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /^jobs$/i })).toBeInTheDocument();
     });
 
     expect(screen.getByRole("link", { name: /placements/i })).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getByText("4")).toBeInTheDocument();
-    });
 
     const workspaceSurface = container.querySelector("aside > div");
     expect(workspaceSurface).toHaveClass("border-r", "border-border/80");
@@ -76,12 +73,9 @@ describe("Sidebar", () => {
         navGroups={getNavGroups("super_agent", "en")}
         locale="en"
         userRole="super_agent"
-      />
+      />,
+      { wrapper: createWrapper() }
     );
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/super-agent/approvals/count");
-    });
 
     fireEvent.click(screen.getByRole("button", { name: /team/i }));
 
@@ -98,7 +92,8 @@ describe("Sidebar", () => {
         navGroups={getNavGroups("agent", "en")}
         locale="en"
         userRole="agent"
-      />
+      />,
+      { wrapper: createWrapper() }
     );
 
     expect(screen.getByText("Agent workspace")).toBeInTheDocument();
@@ -125,7 +120,8 @@ describe("Sidebar", () => {
         navGroups={getNavGroups("employer", "en")}
         locale="en"
         userRole="employer"
-      />
+      />,
+      { wrapper: createWrapper() }
     );
 
     expect(screen.getByText("Employer workspace")).toBeInTheDocument();
@@ -134,10 +130,28 @@ describe("Sidebar", () => {
       expect(screen.getByRole("link", { name: /^jobs$/i })).toBeInTheDocument();
     });
 
+    const hiringButton = screen.getByRole("button", { name: /hiring/i });
+    const jobsLink = screen.getByRole("link", { name: /^jobs$/i });
+    const hiringLabel = screen.getByText("Hiring");
+    const jobsLabel = screen.getByText("Jobs");
+
     const workspaceSurface = container.querySelector("aside > div");
     expect(workspaceSurface).toHaveAttribute("data-sidebar-tone", "theme-aware");
     expect(workspaceSurface).toHaveClass("border-r", "border-border/80");
+    expect(workspaceSurface).toHaveClass("w-[196px]");
     expect(screen.getByText("Employer workspace")).toHaveClass("text-primary/75");
+    expect(hiringButton.className).not.toContain("rounded-2xl");
+    expect(hiringButton.className).not.toContain(" border ");
+    expect(hiringButton.className).toContain("items-start");
+    expect(jobsLink.className).not.toContain("rounded-2xl");
+    expect(jobsLink.className).not.toContain(" border ");
+    expect(jobsLink.className).toContain("items-start");
+    expect(jobsLink.className).toContain("rounded-lg");
+    expect(jobsLink.className).toContain("text-[12px]");
+    expect(hiringLabel.className).toContain("whitespace-normal");
+    expect(hiringLabel.className).toContain("text-[11px]");
+    expect(jobsLabel.className).toContain("whitespace-normal");
+    expect(jobsLabel.className).toContain("text-[10px]");
   });
 
   it("expands tools children inside the primary sidebar for agent workspace", async () => {
@@ -146,7 +160,8 @@ describe("Sidebar", () => {
         navGroups={getNavGroups("agent", "en")}
         locale="en"
         userRole="agent"
-      />
+      />,
+      { wrapper: createWrapper() }
     );
 
     fireEvent.click(screen.getByRole("button", { name: /tools/i }));
@@ -165,7 +180,8 @@ describe("Sidebar", () => {
         navGroups={getNavGroups("agent", "en")}
         locale="en"
         userRole="agent"
-      />
+      />,
+      { wrapper: createWrapper() }
     );
 
     const toolsButton = screen.getByRole("button", { name: /tools/i });
@@ -194,7 +210,8 @@ describe("Sidebar", () => {
         navGroups={getNavGroups("agent", "en")}
         locale="en"
         userRole="agent"
-      />
+      />,
+      { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
@@ -212,7 +229,8 @@ describe("Sidebar", () => {
         navGroups={getNavGroups("admin", "en")}
         locale="en"
         userRole="admin"
-      />
+      />,
+      { wrapper: createWrapper() }
     );
 
     expect(screen.getByText("Admin workspace")).toBeInTheDocument();
@@ -240,7 +258,8 @@ describe("Sidebar", () => {
         navGroups={getNavGroups("admin", "en")}
         locale="en"
         userRole="admin"
-      />
+      />,
+      { wrapper: createWrapper() }
     );
 
     const cmsButton = screen.getByRole("button", { name: /cms \/ landing page/i });
@@ -265,7 +284,8 @@ describe("Sidebar", () => {
         navGroups={getNavGroups("admin", "en")}
         locale="en"
         userRole="admin"
-      />
+      />,
+      { wrapper: createWrapper() }
     );
 
     await waitFor(() => {

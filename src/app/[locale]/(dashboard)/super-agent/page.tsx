@@ -1,11 +1,23 @@
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { connectDB } from "@/lib/db/mongoose";
+import SuperAgent from "@/models/SuperAgent";
+import Agent from "@/models/Agent";
+import User from "@/models/User";
+import Employer from "@/models/Employer";
+import Job from "@/models/Job";
+import Application from "@/models/Application";
+import Placement from "@/models/Placement";
+import Lead from "@/models/Lead";
 import {
   ArrowRight,
+  BriefcaseBusiness,
   Building2,
   CheckCircle2,
+  ClipboardList,
   DollarSign,
+  FileText,
   MapPinned,
   ShieldCheck,
   Sparkles,
@@ -18,35 +30,95 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
   const { locale } = await params;
   if (!session?.user) redirect(`/${locale}/login`);
 
+  await connectDB();
+
+  // Load live data
+  const saProfile = await SuperAgent.findOne({ userId: session.user.id })
+    .select("agentIds assignedCityIds assignedStateIds commissions overrideRate")
+    .lean();
+
+  const agentDocIds = saProfile?.agentIds ?? [];
+  const agentDocs = await Agent.find({ _id: { $in: agentDocIds } })
+    .select("userId assignedEmployerIds performance")
+    .lean();
+  const agentUserIds = agentDocs.map((a) => a.userId);
+
+  const activeAgents = await User.countDocuments({
+    _id: { $in: agentUserIds },
+    isActive: true,
+  });
+
+  const allEmployerIds = agentDocs.flatMap((a) => a.assignedEmployerIds ?? []);
+  const uniqueEmployerIds = [...new Set(allEmployerIds.map(String))];
+  const totalEmployers = uniqueEmployerIds.length;
+
+  const jobFilter: Record<string, unknown> = {
+    $or: [
+      { agentId: { $in: agentDocIds } },
+      ...(uniqueEmployerIds.length > 0
+        ? [{ employerId: { $in: uniqueEmployerIds } }]
+        : []),
+    ],
+  };
+  const [totalJobs, activeJobs] = await Promise.all([
+    Job.countDocuments(jobFilter),
+    Job.countDocuments({ ...jobFilter, status: "active" }),
+  ]);
+
+  const jobIds = await Job.find(jobFilter).select("_id").lean();
+  const jobIdList = jobIds.map((j) => j._id);
+  const totalApplications = jobIdList.length > 0
+    ? await Application.countDocuments({ jobId: { $in: jobIdList } })
+    : 0;
+
+  const totalPlacements = await Placement.countDocuments({
+    $or: [
+      { agentId: { $in: agentUserIds } },
+      { superAgentId: session.user.id },
+    ],
+  });
+
+  const totalLeads = await Lead.countDocuments({
+    agentId: { $in: agentUserIds },
+  });
+
+  const commissions = saProfile?.commissions ?? { total: 0, pending: 0, paid: 0 };
+
   const kpis = [
     {
-      label: "Region Coverage",
-      value: "—",
-      helper: "Coverage, employer mix, and agent spread across your assigned region.",
-      icon: MapPinned,
-      iconClassName: "border border-sky-200 bg-sky-100 text-sky-700 shadow-sm dark:border-sky-800/70 dark:bg-sky-950/70 dark:text-sky-200",
-    },
-    {
       label: "Active Agents",
-      value: "—",
+      value: String(activeAgents),
       helper: "Your live team roster with current delivery ownership.",
       icon: Users2,
       iconClassName: "border border-emerald-200 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-800/70 dark:bg-emerald-950/70 dark:text-emerald-200",
     },
     {
+      label: "Total Employers",
+      value: String(totalEmployers),
+      helper: "Employer accounts under your agents' management.",
+      icon: Building2,
+      iconClassName: "border border-sky-200 bg-sky-100 text-sky-700 shadow-sm dark:border-sky-800/70 dark:bg-sky-950/70 dark:text-sky-200",
+    },
+    {
       label: "Total Placements",
-      value: "—",
+      value: String(totalPlacements),
       helper: "Confirmed hires and closed outcomes flowing through your team.",
       icon: ShieldCheck,
       iconClassName: "border border-indigo-200 bg-indigo-100 text-indigo-700 shadow-sm dark:border-indigo-800/70 dark:bg-indigo-950/70 dark:text-indigo-200",
     },
     {
       label: "Commissions Earned",
-      value: "—",
+      value: commissions.total > 0 ? `AED ${commissions.total.toLocaleString()}` : "AED 0",
       helper: "Commission performance and payout visibility for your portfolio.",
       icon: DollarSign,
       iconClassName: "border border-amber-200 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-800/70 dark:bg-amber-950/70 dark:text-amber-200",
     },
+  ];
+
+  const secondaryKpis = [
+    { label: "Jobs Posted", value: totalJobs, sub: `${activeJobs} active` },
+    { label: "CVs Received", value: totalApplications, sub: "Total applications" },
+    { label: "Leads Generated", value: totalLeads, sub: "Across all agents" },
   ];
   const actions = [
     {
@@ -143,6 +215,16 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {secondaryKpis.map((sk) => (
+            <div key={sk.label} className="workspace-glass-panel rounded-2xl p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{sk.label}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{sk.value}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{sk.sub}</p>
+            </div>
+          ))}
         </div>
       </section>
 

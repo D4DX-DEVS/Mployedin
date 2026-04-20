@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Edit2, Copy, CheckCircle, XCircle, Clock, MapPin,
   Briefcase, DollarSign, Users, Eye, Calendar, Tag, Trash2,
+  GitBranch, SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { JobWorkflowTab } from "@/components/features/employer/jobs/JobWorkflowTab";
+import { JobMatchingWeightsTab } from "@/components/features/employer/jobs/JobMatchingWeightsTab";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useJobDetail, useUpdateJobStatus, useCloneJob, useDeleteJob } from "@/hooks/useJobs";
@@ -49,6 +53,8 @@ const STATUS_COLORS: Record<string, string> = {
 export default function JobDetailPage() {
   const router = useRouter();
   const { locale, id } = useParams<{ locale: string; id: string }>();
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") ?? "overview";
   const { can } = usePermissions();
   const { data: job, isLoading: loading } = useJobDetail(id);
   const updateStatusMutation = useUpdateJobStatus();
@@ -224,6 +230,21 @@ export default function JobDetailPage() {
         </div>
       </div>
 
+      {/* Tabs: Overview / Workflow / Matching Weights */}
+      <Tabs defaultValue={initialTab} className="space-y-5">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="overview" className="gap-1.5">
+            <Briefcase className="w-3.5 h-3.5" /> Overview
+          </TabsTrigger>
+          <TabsTrigger value="workflow" className="gap-1.5">
+            <GitBranch className="w-3.5 h-3.5" /> Workflow
+          </TabsTrigger>
+          <TabsTrigger value="matching-weights" className="gap-1.5">
+            <SlidersHorizontal className="w-3.5 h-3.5" /> Matching Weights
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-5">
       {/* Description */}
       <div className="card-base p-5 sm:p-6">
         <h2 className="text-base font-semibold text-foreground mb-3">Job Description</h2>
@@ -286,6 +307,16 @@ export default function JobDetailPage() {
           </div>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="workflow">
+          <JobWorkflowTab jobId={id} />
+        </TabsContent>
+
+        <TabsContent value="matching-weights">
+          <JobMatchingWeightsTab jobId={id} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

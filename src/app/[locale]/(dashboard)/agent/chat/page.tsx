@@ -57,7 +57,7 @@ export default function AgentChatPage() {
   useEffect(() => {
     setLoading(true);
     fetchMessages().finally(() => setLoading(false));
-    pollRef.current = setInterval(fetchMessages, 5000);
+    pollRef.current = setInterval(fetchMessages, 30_000);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);

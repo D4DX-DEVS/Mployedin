@@ -61,7 +61,7 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
 
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
               <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
-                <MapPin className="h-3 w-3" />
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                 {job.location?.isRemote
                   ? "Remote"
                   : job.location?.country ?? "—"}

@@ -84,7 +84,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
       .sort(search ? { score: { $meta: "textScore" } } : { createdAt: -1 })
       .skip(skip)
       .limit(PAGE_SIZE)
-      .populate("employerId", "companyName country industry domainVerified")
+      .populate("employerId", "companyName country industry domainVerified isAgentVerified")
       .lean(),
     Job.countDocuments(query),
   ]);
@@ -189,7 +189,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                         <h2 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors truncate">
                           {job.title}
                         </h2>
-                        {employer?.domainVerified && (
+                        {(employer?.domainVerified || employer?.isAgentVerified) && (
                           <span className="shrink-0 text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ Verified</span>
                         )}
                         {daysLeft !== null && daysLeft <= 14 && (

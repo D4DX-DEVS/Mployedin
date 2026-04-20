@@ -1,13 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useSession } from "next-auth/react";
 import { Send, Loader2, MessageSquare, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { getPusherClient } from "@/lib/pusherClient";
-import type { Channel } from "pusher-js";
 
 interface DMMessage {
   _id: string;
@@ -39,32 +36,35 @@ interface Props {
   currentUserId: string;
 }
 
+const POLL_INTERVAL = 5000; // 5 seconds
+
 export function DirectMessageChat({ conversation, currentUserId }: Props) {
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const [pusherReady, setPusherReady] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<Channel | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const otherParticipant = conversation.participantDetails.find(
     (p) => p.userId !== currentUserId
   );
 
   // Load message history
-  const loadMessages = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const loadMessages = useCallback(async (isInitial = false) => {
+    if (isInitial) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const res = await fetch(`/api/dm/${conversation._id}/messages`);
       if (res.ok) {
         const data = await res.json();
         const fetched: DMMessage[] = data.messages ?? [];
-        // Merge with any optimistic messages already in state to avoid losing them
         setMessages((prev) => {
+          // Merge with any optimistic messages already in state
           const optimistic = prev.filter((m) => m._id.startsWith("opt-"));
           const fetchedIds = new Set(fetched.map((m) => m._id));
           const kept = optimistic.filter((m) => !fetchedIds.has(m._id));
@@ -72,85 +72,34 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
         });
         // Mark as read
         fetch(`/api/dm/${conversation._id}/read`, { method: "PATCH" }).catch(() => {});
-      } else {
+      } else if (isInitial) {
         setError("Failed to load messages.");
       }
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   }, [conversation._id]);
 
+  // Initial load
   useEffect(() => {
-    loadMessages();
+    loadMessages(true);
+  }, [loadMessages]);
+
+  // Poll for new messages every 5 seconds
+  useEffect(() => {
+    pollingRef.current = setInterval(() => {
+      loadMessages(false);
+    }, POLL_INTERVAL);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
   }, [loadMessages]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // Pusher real-time subscription
-  useEffect(() => {
-    const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    if (!pusherKey || !currentUserId) return; // gracefully skip if not configured or user not ready
-
-    try {
-      const pusher = getPusherClient();
-      const channelName = `private-dm-${currentUserId}`;
-
-      // Reuse existing channel when the channel name hasn't changed (e.g. switching conversations).
-      // Avoid unnecessary unsubscribe/resubscribe which triggers a new Pusher auth request.
-      let channel: Channel;
-      if (channelRef.current && channelRef.current.name === channelName) {
-        channelRef.current.unbind_all();
-        channel = channelRef.current;
-      } else {
-        if (channelRef.current) {
-          channelRef.current.unbind_all();
-          pusher.unsubscribe(channelRef.current.name);
-        }
-        channel = pusher.subscribe(channelName);
-        channelRef.current = channel;
-      }
-
-      channel.bind("pusher:subscription_succeeded", () => setPusherReady(true));
-      channel.bind("pusher:subscription_error", () => setPusherReady(false));
-
-      channel.bind("new-message", (data: DMMessage) => {
-        if (data.conversationId === conversation._id) {
-          setMessages((prev) => {
-            // Deduplicate by _id
-            if (prev.some((m) => m._id === data._id)) return prev;
-            return [...prev, data];
-          });
-          // Mark as read since we're actively viewing
-          fetch(`/api/dm/${conversation._id}/read`, { method: "PATCH" }).catch(() => {});
-        }
-      });
-
-      // When recipient reads messages, mark our sent messages as read
-      channel.bind("messages-read", (data: { conversationId: string }) => {
-        if (data.conversationId === conversation._id) {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.senderId === currentUserId && !m.readAt
-                ? { ...m, readAt: new Date().toISOString() }
-                : m
-            )
-          );
-        }
-      });
-
-      return () => {
-        // Only unbind handlers — do NOT unsubscribe. The channel is shared with
-        // useConversations (same user) and must stay alive across conversation switches.
-        channel.unbind_all();
-        setPusherReady(false);
-      };
-    } catch {
-      // Pusher not configured — chat works via HTTP only (no real-time)
-    }
-  }, [currentUserId, conversation._id]);
 
   const sendMessage = useCallback(async () => {
     const content = input.trim();
@@ -178,12 +127,10 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
 
       if (res.ok) {
         const data = await res.json();
-        // Replace optimistic message with real one
         setMessages((prev) =>
           prev.map((m) => (m._id === optimistic._id ? { ...data.message, createdAt: data.message.createdAt } : m))
         );
       } else {
-        // Remove optimistic message on failure
         setMessages((prev) => prev.filter((m) => m._id !== optimistic._id));
         setError("Failed to send message.");
       }
@@ -216,12 +163,6 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
           <p className="font-semibold text-sm truncate">{otherParticipant?.name ?? "Unknown"}</p>
           <p className="text-xs text-muted-foreground capitalize">{otherParticipant?.role?.replace("_", " ") ?? ""}</p>
         </div>
-        {pusherReady && (
-          <span className="flex items-center gap-1 text-[10px] text-emerald-600">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Live
-          </span>
-        )}
       </div>
 
       {/* Messages */}

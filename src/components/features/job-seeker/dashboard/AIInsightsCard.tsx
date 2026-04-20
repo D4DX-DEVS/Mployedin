@@ -66,7 +66,7 @@ export function AIInsightsCard() {
         <button
           onClick={loadInsights}
           disabled={loading}
-          className="flex items-center gap-1 text-xs text-primary hover:underline"
+          className="flex items-center gap-1 text-xs text-primary transition-colors hover:text-primary/70 disabled:opacity-50"
         >
           <RefreshCw className="h-3 w-3" />
           Refresh
@@ -81,7 +81,7 @@ export function AIInsightsCard() {
           return (
             <div
               key={i}
-              className={`rounded-lg border p-4 ${config.tone}`}
+              className={`rounded-lg border p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm ${config.tone}`}
             >
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 rounded-lg border border-border/40 bg-background/80 p-1.5">

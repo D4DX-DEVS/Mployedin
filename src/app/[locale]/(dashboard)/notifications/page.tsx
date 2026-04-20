@@ -1,57 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Bell, CheckCheck, Loader2, X } from "lucide-react";
+import { Bell, CheckCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-interface Notification {
-  _id: string;
-  type: string;
-  title: string;
-  body: string;
-  isRead: boolean;
-  createdAt: string;
-  actionUrl?: string;
-}
+import { usePageNotifications, useMarkAllRead, useMarkOneRead } from "@/hooks/useNotifications";
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unread">("all");
-
-  const loadNotifications = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/notifications?unreadOnly=${filter === "unread"}&limit=50`);
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data.notifications ?? []);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [filter]);
-
-  useEffect(() => { loadNotifications(); }, [loadNotifications]);
-
-  const markAllRead = async () => {
-    await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ markAllRead: true }),
-    });
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  };
-
-  const markRead = async (id: string) => {
-    await fetch("/api/notifications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: [id] }),
-    });
-    setNotifications((prev) => prev.map((n) => n._id === id ? { ...n, isRead: true } : n));
-  };
+  const { data: notifications = [], isLoading: loading } = usePageNotifications(filter);
+  const markAllReadMutation = useMarkAllRead();
+  const markOneReadMutation = useMarkOneRead();
 
   const typeIcon = (type: string) => {
     const colors: Record<string, string> = {
@@ -73,7 +32,7 @@ export default function NotificationsPage() {
           description="Stay up to date with your applications, interviews and alerts"
         />
         {unreadCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={markAllRead}
+          <Button variant="ghost" size="sm" onClick={() => markAllReadMutation.mutate()}
             className="flex items-center gap-1.5 text-xs text-primary hover:bg-primary/10 font-medium">
             <CheckCheck className="h-3.5 w-3.5" /> Mark all read
           </Button>
@@ -103,12 +62,12 @@ export default function NotificationsPage() {
           {notifications.map((n) => (
             <div
               key={n._id}
-              onClick={() => { if (!n.isRead) markRead(n._id); if (n.actionUrl) window.location.href = n.actionUrl; }}
+              onClick={() => { if (!n.isRead) markOneReadMutation.mutate(n._id); if (n.actionUrl) window.location.href = n.actionUrl; }}
               className={`flex gap-3 p-4 rounded-xl border cursor-pointer transition-all hover:shadow-sm ${
                 n.isRead ? "opacity-70 bg-background" : "bg-primary/5 border-primary/20"
               }`}
             >
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${typeIcon(n.type)}`}>
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${typeIcon(n.type ?? "system")}`}>
                 <Bell className="h-4 w-4" />
               </div>
               <div className="flex-1 min-w-0">

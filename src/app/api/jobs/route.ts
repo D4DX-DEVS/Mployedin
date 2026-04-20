@@ -6,6 +6,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { Employer } from "@/models/Employer";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import { CompanyUser } from "@/models/CompanyUser";
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
@@ -70,7 +71,26 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   } else if (myJobs && ctx.role === "employer") {
     // Employer fetching their own jobs — scope to their employerId, no status filter
     const empDoc = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (empDoc) query.employerId = empDoc._id;
+    if (empDoc) {
+      query.employerId = empDoc._id;
+
+      // Enforce job-level access for team members (hiring_manager / viewer)
+      const teamMember = await CompanyUser.findOne({
+        companyId: empDoc._id,
+        userId: ctx.userId,
+        status: "active",
+      }).select("companyRole jobAccess").lean();
+
+      if (
+        teamMember &&
+        teamMember.companyRole !== "owner" &&
+        teamMember.companyRole !== "admin" &&
+        teamMember.jobAccess &&
+        teamMember.jobAccess.length > 0
+      ) {
+        query._id = { $in: teamMember.jobAccess };
+      }
+    }
   } else if (!myJobs) {
     query.status = "active";
     query["poster.approvalStatus"] = "approved";
@@ -253,6 +273,12 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     changes: { after: { title, category, location } },
     req,
   });
+
+  // Increment agent performance counter
+  if (agentId) {
+    const { incrementAgentCounter } = await import("@/lib/agentPerformance");
+    incrementAgentCounter(String(agentId), "vacanciesPosted");
+  }
 
   // 8C.3: Notify super agent when job needs approval
   if (approvalStatus === "pending" && agentId) {

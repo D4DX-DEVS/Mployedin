@@ -11,6 +11,7 @@ import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import { sendEmail } from "@/lib/communications/email";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { inngest } from "@/lib/inngest/client";
+import { logActivity } from "@/lib/audit/log";
 
 /**
  * POST /api/jobs/[id]/apply
@@ -142,6 +143,17 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
       companyName: company,
     },
   }).catch(() => {});
+
+  // Audit log
+  logActivity({
+    actorId: ctx.userId,
+    actorRole: ctx.role,
+    action: "application.create",
+    resource: "applications",
+    resourceId: String(application._id),
+    meta: { jobId, jobTitle: job.title, company },
+    req: _req,
+  });
 
   return NextResponse.json({ success: true, applicationId: String(application._id) }, { status: 201 });
 });

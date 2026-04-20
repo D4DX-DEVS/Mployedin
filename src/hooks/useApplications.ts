@@ -7,6 +7,13 @@ export interface ApplicationsFilters {
   limit: number;
   status?: string;
   jobId?: string;
+  search?: string;
+  scoreMin?: number;
+  scoreMax?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  skills?: string[];
+  fetchJobs?: boolean;
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────
@@ -30,11 +37,18 @@ export function useApplications(filters: ApplicationsFilters) {
       params.set("limit", String(filters.limit));
       if (filters.status && filters.status !== "all") params.set("status", filters.status);
       if (filters.jobId) params.set("jobId", filters.jobId);
+      if (filters.search) params.set("search", filters.search);
+      if (filters.scoreMin != null && filters.scoreMin > 0) params.set("scoreMin", String(filters.scoreMin));
+      if (filters.scoreMax != null && filters.scoreMax < 100) params.set("scoreMax", String(filters.scoreMax));
+      if (filters.experienceMin != null) params.set("experienceMin", String(filters.experienceMin));
+      if (filters.experienceMax != null) params.set("experienceMax", String(filters.experienceMax));
+      if (filters.skills?.length) params.set("skills", filters.skills.join(","));
+      if (filters.fetchJobs) params.set("fetchJobs", "true");
       const res = await fetch(`/api/applications?${params}`);
       if (!res.ok) throw new Error("Failed to fetch applications");
       return res.json();
     },
-    staleTime: 10 * 1000,
+    staleTime: 60 * 1000,
     placeholderData: (prev: unknown) => prev,
   });
 }

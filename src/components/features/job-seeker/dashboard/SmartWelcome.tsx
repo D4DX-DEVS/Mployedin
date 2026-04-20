@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Upload } from "lucide-react";
+import { CheckCircle2, Circle, Upload, Loader2 } from "lucide-react";
 // TODO: Re-add Zap, ZapOff when auto-apply feature is ready
 import { toast } from "sonner";
 import { useRef } from "react";
@@ -202,8 +202,12 @@ export function SmartWelcome({
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadResume.isPending}
           >
-            <Upload className="mr-1 h-3 w-3" />
-            Upload Resume
+            {uploadResume.isPending ? (
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+            ) : (
+              <Upload className="mr-1 h-3 w-3" />
+            )}
+            {uploadResume.isPending ? "Uploading…" : "Upload Resume"}
           </Button>
         </div>
       )}

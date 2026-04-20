@@ -85,6 +85,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     notes,
   });
 
+  // Increment agent performance counter
+  if (body.agentId) {
+    const { incrementAgentCounter } = await import("@/lib/agentPerformance");
+    incrementAgentCounter(String(body.agentId), "placementsCompleted");
+  }
+
   await logActivity({
     ...actorFromCtx(ctx),
     action: "placement.create",

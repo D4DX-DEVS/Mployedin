@@ -23,6 +23,7 @@ interface PopulatedEmployer {
   city?: string;
   website?: string;
   domainVerified?: boolean;
+  isAgentVerified?: boolean;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -87,7 +88,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
   await connectDB();
   const job = await Job.findById(id)
-    .populate("employerId", "companyName country industry city website domainVerified")
+    .populate("employerId", "companyName country industry city website domainVerified isAgentVerified")
     .lean()
     .catch(() => null);
 
@@ -186,7 +187,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                       <p className="mt-2 text-base font-medium text-muted-foreground">{employer?.companyName}</p>
                     )}
                   </div>
-                  {employer?.domainVerified && (
+                  {(employer?.domainVerified || employer?.isAgentVerified) && (
                     <span className="shrink-0 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600">
                       Verified employer
                     </span>

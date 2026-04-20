@@ -213,6 +213,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     rescheduleCount: 0,
   });
 
+  // Increment agent performance counter
+  if (body.agentId) {
+    const { incrementAgentCounter } = await import("@/lib/agentPerformance");
+    incrementAgentCounter(String(body.agentId), "interviewsScheduled");
+  }
+
   await Application.findByIdAndUpdate(applicationId, {
     $set: { status: "interview_scheduled" },
     $addToSet: { interviewIds: interview._id },

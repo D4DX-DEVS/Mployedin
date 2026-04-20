@@ -101,7 +101,7 @@ export function StatsGrid({ stats: propStats }: StatsGridProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
-        <div key={card.label} className="card-base flex items-start gap-4 p-5">
+        <div key={card.label} className="card-base flex items-start gap-4 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
           <div className={`rounded-lg border p-2.5 ${card.tone}`}>
             <card.icon className="h-5 w-5" />
           </div>
@@ -174,7 +174,7 @@ export function CareerInsights({
         {insights.map((insight) => (
           <div
             key={insight.label}
-            className="flex items-start gap-3 rounded-lg border border-border p-4"
+            className="flex items-start gap-3 rounded-lg border border-border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md"
           >
             <div className="rounded-lg bg-primary/10 p-2">
               <insight.icon className="h-4 w-4 text-primary" />

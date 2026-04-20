@@ -62,6 +62,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     status: "new",
   });
 
+  // Increment agent performance counter
+  const { incrementAgentCounter } = await import("@/lib/agentPerformance");
+  incrementAgentCounter(ctx.userId, "leadsGenerated", { byUserId: true });
+
   await logActivity({
     ...actorFromCtx(ctx),
     action: "lead.create",

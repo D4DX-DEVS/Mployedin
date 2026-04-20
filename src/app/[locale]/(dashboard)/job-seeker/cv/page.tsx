@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { getSession } from "next-auth/react";
 import {
   Upload, CheckCircle, AlertCircle, Sparkles,
   X, Plus, Pencil, Save, Download, ArrowRight, Loader2,
@@ -203,16 +204,13 @@ export default function CVBuilderPage() {
             : prev.projects,
         }));
       }
-      const sessionRes = await fetch("/api/auth/session");
-      if (sessionRes.ok) {
-        const session = await sessionRes.json();
-        if (session?.user) {
-          setForm((prev) => ({
-            ...prev,
-            fullName: prev.fullName || session.user.name || "",
-            email: prev.email || session.user.email || "",
-          }));
-        }
+      const session = await getSession();
+      if (session?.user) {
+        setForm((prev) => ({
+          ...prev,
+          fullName: prev.fullName || session.user?.name || "",
+          email: prev.email || session.user?.email || "",
+        }));
       }
     } catch {
       // Non-blocking — user can fill manually

@@ -10,28 +10,6 @@ import { cn } from "@/lib/utils";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
 
-function usePendingApprovalCount(role: string | undefined) {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (role !== "super_agent") return;
-    let cancelled = false;
-
-    fetch("/api/super-agent/approvals/count")
-      .then((response) => response.ok ? response.json() : { count: 0 })
-      .then((data: { count?: number }) => {
-        if (!cancelled) setCount(data.count ?? 0);
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, [role]);
-
-  return count;
-}
-
 interface SidebarProps {
   navGroups: NavGroup[];
   locale: string;
@@ -53,8 +31,9 @@ export function Sidebar({
   const { data: session, status } = useSession();
   const sessionRole = (session?.user as { role?: string } | undefined)?.role;
   const effectiveRole = userRole ?? sessionRole;
-  const pendingApprovals = usePendingApprovalCount(effectiveRole);
   const isRtl = locale === "ar";
+  const usesSimpleEmployerMenu = effectiveRole === "employer";
+  const isSuperAgent = effectiveRole === "super_agent";
   const usesModernWorkspaceShell = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
   const usesInlineWorkspaceSidebar = usesModernWorkspaceShell;
   const workspaceLabel = effectiveRole === "super_agent"
@@ -226,7 +205,10 @@ export function Sidebar({
         prefetch={false}
         onClick={() => onMobileClose?.()}
         className={cn(
-          "flex items-center gap-3 transition-all duration-200 group relative overflow-hidden",
+          "flex transition-all duration-200 group relative overflow-hidden",
+          usesSimpleEmployerMenu && variant === "panel"
+            ? "items-start gap-2.5"
+            : "items-center gap-3",
           focusRingClass,
           variant === "inline"
             ? cn(
@@ -234,9 +216,11 @@ export function Sidebar({
                 inlineLinkClass
               )
             : cn(
-                "rounded-lg px-3 py-2.5",
+                usesSimpleEmployerMenu ? "rounded-lg px-2.5 py-2.5 text-[12px]" : "rounded-lg px-3 py-2.5",
                 isChildActive
-                  ? "bg-card text-primary font-bold shadow-sm ring-1 ring-border/50"
+                  ? usesSimpleEmployerMenu
+                    ? "bg-card text-primary font-semibold shadow-sm ring-1 ring-border/50"
+                    : "bg-card text-primary font-bold shadow-sm ring-1 ring-border/50"
                   : "text-sidebar-fg/70 hover:bg-card hover:text-sidebar-fg font-medium hover:shadow-sm hover:ring-1 hover:ring-border/50"
               )
         )}
@@ -256,6 +240,7 @@ export function Sidebar({
         <ChildIcon
           className={cn(
             "h-[18px] w-[18px] shrink-0 transition-colors",
+            usesSimpleEmployerMenu && variant === "panel" ? "mt-0.5 h-4 w-4" : "",
             variant === "inline"
               ? inlineIconClass
               : isChildActive
@@ -263,12 +248,17 @@ export function Sidebar({
                 : "text-muted-foreground group-hover:text-brand-blue"
           )}
         />
-        <span className="truncate">{locale === "ar" ? child.titleAr : child.title}</span>
-        {child.title === "Approvals" && pendingApprovals > 0 && (
-          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-            {pendingApprovals > 99 ? "99+" : pendingApprovals}
-          </span>
-        )}
+        <span
+          className={cn(
+            "min-w-0 flex-1",
+            usesModernWorkspaceShell ? "text-[10px]" : "",
+            usesSimpleEmployerMenu && variant === "panel"
+              ? "whitespace-normal break-words text-left text-[10px] leading-5"
+              : "truncate"
+          )}
+        >
+          {locale === "ar" ? child.titleAr : child.title}
+        </span>
       </Link>
     );
   }
@@ -279,7 +269,9 @@ export function Sidebar({
       className={cn(
         "h-full flex flex-col z-20 shrink-0",
         usesModernWorkspaceShell
-          ? usesLightWorkspaceSidebar
+          ? usesSimpleEmployerMenu
+            ? "w-[196px] border-r border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.14),_transparent_50%),linear-gradient(180deg,_hsl(var(--card)/0.97),_hsl(var(--surface-3)/0.92))] shadow-[0_24px_64px_-52px_rgba(2,132,199,0.24)] backdrop-blur-xl"
+            : usesLightWorkspaceSidebar
             ? "w-[216px] border-r border-sky-100/80 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_52%),linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(239,246,255,0.9))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.55)] backdrop-blur-xl"
             : "w-[216px] border-r border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.18),_transparent_52%),linear-gradient(180deg,_hsl(var(--card)/0.96),_hsl(var(--surface-3)/0.9))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.28)] backdrop-blur-xl"
           : "w-[200px] bg-slate-900 border-r border-slate-800"
@@ -373,15 +365,27 @@ export function Sidebar({
           const hasChildren = Boolean(item.children?.length);
           const itemSubmenuId = `sidebar-submenu-${item.title.toLowerCase().replace(/\s+/g, "-")}`;
           const showInlineChildren = usesInlineWorkspaceSidebar && hasChildren && isSelected && submenuExpanded;
+          const submenuVariant = usesSimpleEmployerMenu ? "panel" : "inline";
 
           const itemContent = (
             <>
-              <Icon className="w-[18px] h-[18px] shrink-0" />
-              <span className="truncate text-[13px] font-medium">{locale === "ar" ? item.titleAr : item.title}</span>
+              <Icon className={cn("w-[18px] h-[18px] shrink-0", usesSimpleEmployerMenu ? "mt-0.5" : "")} />
+              <span
+                className={cn(
+                  "min-w-0 font-medium",
+                  usesModernWorkspaceShell ? "text-[11px]" : "text-[13px]",
+                  usesSimpleEmployerMenu
+                    ? "flex-1 whitespace-normal break-words text-left leading-5"
+                    : "truncate"
+                )}
+              >
+                {locale === "ar" ? item.titleAr : item.title}
+              </span>
               {usesInlineWorkspaceSidebar && hasChildren && (
                 <ChevronDown
                   className={cn(
                     "ml-auto h-4 w-4 shrink-0 transition-transform duration-200",
+                    usesSimpleEmployerMenu ? "mt-0.5" : "",
                     showInlineChildren
                       ? usesLightWorkspaceSidebar
                         ? "rotate-180 text-sky-600"
@@ -396,18 +400,23 @@ export function Sidebar({
           );
 
           const itemClass = cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl border transition-all duration-200 focus:outline-none focus-visible:ring-2",
+            "w-full flex transition-all duration-200 focus:outline-none focus-visible:ring-2",
+            usesSimpleEmployerMenu ? "items-start gap-2.5 px-2.5 py-2.5" : "items-center gap-3 px-3 py-2.5",
             usesModernWorkspaceShell
-              ? usesLightWorkspaceSidebar
+              ? usesSimpleEmployerMenu
                 ? isSelected
-                  ? "border-sky-100 bg-white text-slate-950 shadow-[0_22px_44px_-30px_rgba(2,132,199,0.58)] focus-visible:ring-sky-300/70"
-                  : "border-transparent text-slate-600 hover:border-sky-100/80 hover:bg-white/90 hover:text-slate-950 hover:shadow-[0_18px_32px_-30px_rgba(15,23,42,0.5)] focus-visible:ring-sky-300/70"
+                  ? "rounded-lg bg-card/92 text-foreground shadow-sm ring-1 ring-border/60 focus-visible:ring-primary/35"
+                  : "rounded-lg text-muted-foreground hover:bg-card/72 hover:text-foreground focus-visible:ring-primary/35"
+                : usesLightWorkspaceSidebar
+                ? isSelected
+                  ? "rounded-2xl border border-sky-100 bg-white text-slate-950 shadow-[0_22px_44px_-30px_rgba(2,132,199,0.58)] focus-visible:ring-sky-300/70"
+                  : "rounded-2xl border border-transparent text-slate-600 hover:border-sky-100/80 hover:bg-white/90 hover:text-slate-950 hover:shadow-[0_18px_32px_-30px_rgba(15,23,42,0.5)] focus-visible:ring-sky-300/70"
                 : isSelected
-                  ? "border-border bg-card text-foreground shadow-[0_22px_44px_-30px_rgba(2,132,199,0.38)] focus-visible:ring-primary/35"
-                  : "border-transparent text-muted-foreground hover:border-border hover:bg-card/90 hover:text-foreground hover:shadow-[0_18px_32px_-30px_rgba(15,23,42,0.24)] focus-visible:ring-primary/35"
+                  ? "rounded-2xl border border-border bg-card text-foreground shadow-[0_22px_44px_-30px_rgba(2,132,199,0.38)] focus-visible:ring-primary/35"
+                  : "rounded-2xl border border-transparent text-muted-foreground hover:border-border hover:bg-card/90 hover:text-foreground hover:shadow-[0_18px_32px_-30px_rgba(15,23,42,0.24)] focus-visible:ring-primary/35"
               : isSelected
-                ? "border-transparent bg-white text-primary shadow-md focus-visible:ring-white/50"
-                : "border-transparent text-white/60 hover:bg-white/10 hover:text-white focus-visible:ring-white/50"
+                ? "rounded-2xl border border-transparent bg-white text-primary shadow-md focus-visible:ring-white/50"
+                : "rounded-2xl border border-transparent text-white/60 hover:bg-white/10 hover:text-white focus-visible:ring-white/50"
           );
 
           if (hasChildren) {
@@ -444,7 +453,7 @@ export function Sidebar({
                   >
                     {item.children!.map((child) => renderSubmenuLink(
                       child,
-                      "inline",
+                      submenuVariant,
                       item.children!.map((entry) => entry.href)
                     ))}
                   </div>

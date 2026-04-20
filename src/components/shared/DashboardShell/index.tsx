@@ -26,7 +26,7 @@ import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import PublicFooter from "@/components/shared/PublicFooter";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
-import { JobSeekerTopNav, JobSeekerTopNavMobile } from "@/components/shared/JobSeekerTopNav";
+import { JobSeekerTopNav, JobSeekerBottomNav } from "@/components/shared/JobSeekerTopNav";
 import type { NavGroup } from "@/lib/nav/menuConfig";
 
 interface DashboardShellProps {
@@ -96,14 +96,16 @@ export function DashboardShell({
             {isJobSeeker && <JobSeekerTopNav locale={locale} />}
 
             <div className="flex-1 min-w-0">
-              <CommandMenuTrigger locale={locale} />
+              <div className="hidden md:block">
+                <CommandMenuTrigger locale={locale} />
+              </div>
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
               {mounted && (
                 <>
                   <ThemeToggle />
-                  <LanguageSwitcher />
+                  {userRole === "employer" && <LanguageSwitcher />}
                   <NotificationBell locale={locale} />
                   <UserProfileDropdown
                     userName={userName ?? "User"}
@@ -118,17 +120,16 @@ export function DashboardShell({
             </div>
           </div>
         </header>
-        {isJobSeeker && <JobSeekerTopNavMobile locale={locale} />}
-
         {/* Page content */}
         {isJobSeeker ? (
           <>
             <main className="dashboard-main isolate flex-1 bg-background">
               {children}
             </main>
-            <div className="flex-shrink-0 pt-8">
+            <div className="flex-shrink-0 pt-8 pb-16 lg:pb-0">
               <PublicFooter locale={locale} variant="embedded" />
             </div>
+            <JobSeekerBottomNav locale={locale} />
           </>
         ) : (
           <main className={`dashboard-main isolate min-h-0 flex flex-1 flex-col overflow-y-auto bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""}`}>

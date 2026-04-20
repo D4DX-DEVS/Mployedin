@@ -4,9 +4,11 @@
     "tagline": "AI-Powered Recruitment Platform"
   },
   "nav": {
+    "home": "Home",
     "dashboard": "Dashboard",
-    "jobs": "Jobs",
+    "jobs": "AI Matches",
     "applications": "Applications",
+    "messages": "Messages",
     "interviews": "Interviews",
     "placements": "Placements",
     "employers": "Employers",
@@ -25,7 +27,9 @@
     "profile": "Profile",
     "cvBuilder": "CV Builder",
     "courses": "Courses",
-    "jobSearch": "Job Search"
+    "jobSearch": "Job Search",
+    "support": "Support",
+    "customerCare": "Customer Care"
   },
   "auth": {
     "login": "Login",
@@ -136,6 +140,163 @@
     "experience": "Experience",
     "education": "Education",
     "languages": "Languages"
+  },
+  "jobSeekerHome": {
+    "common": {
+      "cancel": "Cancel"
+    },
+    "defaults": {
+      "jobSeekerName": "Job Seeker"
+    },
+    "messages": {
+      "genericError": "Something went wrong.",
+      "networkError": "Network error. Please try again.",
+      "homeDataError": "We couldn't refresh your latest dashboard data. Try again in a moment.",
+      "aiInsightsUnavailable": "AI insights are temporarily unavailable."
+    },
+    "announcements": {
+      "guideOpened": "AI suggestions panel opened."
+    },
+    "time": {
+      "justNow": "Just now",
+      "hoursAgo": "{value}h ago",
+      "daysAgo": "{value}d ago",
+      "weeksAgo": "{value}w ago"
+    },
+    "hero": {
+      "addTargetRole": "Add your target role",
+      "alsoExploringSingle": "Also exploring {roles}",
+      "alsoExploringList": "Also exploring {roles}",
+      "alsoExploringMore": "Also exploring {roles} +{count} more",
+      "addPreferredLocations": "Add preferred locations",
+      "setSalaryRange": "Set your salary range",
+      "browseMatchingJobs": "Browse AI Matches",
+      "refine": "Refine",
+      "aiSuggestions": "AI suggestions"
+    },
+    "summary": {
+      "activeMatches": "{count, plural, =0 {0 active matches} one {# active match} other {# active matches}}",
+      "applications": "applications",
+      "savedJobs": "saved jobs",
+      "interviews": "interviews",
+      "profileViews": "profile views",
+      "nextStepsQueued": "{count, plural, =0 {0 next steps queued} one {# next step queued} other {# next steps queued}}"
+    },
+    "recommendedJobs": {
+      "eyebrow": "Recommended jobs",
+      "title": "Best-fit roles from your live profile signal",
+      "viewAll": "View all jobs",
+      "companyFallback": "Company",
+      "remote": "Remote",
+      "locationFlexible": "Location flexible",
+      "new": "New",
+      "posted": "Posted {time}",
+      "suggestedForProfile": "Suggested for your profile",
+      "matchScore": "Match score",
+      "matchScoreAria": "Match score: {score} percent",
+      "viewDetails": "View details",
+      "emptyTitle": "No recommendations yet",
+      "emptyBody": "Finish your profile and preferences to unlock stronger job suggestions.",
+      "emptyCta": "Set preferences"
+    },
+    "appliedJobs": {
+      "eyebrow": "Already applied",
+      "viewAll": "View all →"
+    },
+    "priorityActions": {
+      "eyebrow": "Priority actions",
+      "title": "Improve your profile-to-job fit in the next few minutes",
+      "description": "Clear, ranked updates that help you improve visibility and match quality without turning the page into a checklist wall.",
+      "openAiSuggestions": "Open AI suggestions",
+      "highImpact": "High impact",
+      "completeTitle": "Your home setup already looks strong.",
+      "completeBody": "Browse fresh roles now, or keep refining your profile if you want even tighter recommendations."
+    },
+    "profileCard": {
+      "summaryFallback": "Complete your profile to unlock stronger matches and recruiter attention.",
+      "profileCompleteness": "Profile completeness",
+      "profileCompletenessAria": "Profile completeness: {completion} percent",
+      "topSkills": "Top skills in your profile",
+      "updateProfile": "Update profile",
+      "updatePreferences": "Update preferences"
+    },
+    "quickAccess": {
+      "eyebrow": "Quick access",
+      "title": "Stay close to your pipeline",
+      "applications": "Applications",
+      "interviews": "Interviews",
+      "preferences": "Preferences",
+      "edit": "Edit"
+    },
+    "insights": {
+      "title": "AI Daily Insights",
+      "description": "Short, high-signal nudges based on your profile quality and job-market activity.",
+      "refresh": "Refresh insights",
+      "empty": "Complete your profile to unlock AI insights."
+    },
+    "statuses": {
+      "selected": "Selected",
+      "interview": "Interview",
+      "rejected": "Rejected",
+      "applied": "Applied"
+    },
+    "drawer": {
+      "eyebrow": "AI suggestions",
+      "title": "Let's improve your job matches",
+      "close": "Close suggestions panel",
+      "intro": "Hi {name}, recruiters respond better when your profile, preferences, and resume all point in the same direction.",
+      "aiWorking": "AI is working...",
+      "fillWithAi": "Fill with AI",
+      "letAiFill": "Let AI fill this",
+      "completeState": "Your home setup already looks good. You can browse jobs directly or keep refining your profile for even better recommendations.",
+      "personalizedInsights": "Personalized AI insights",
+      "howThisHelpsTitle": "How this helps",
+      "howThisHelpsBody": "Suggestions open in a full side panel so guidance feels clear and actionable while you stay on the main page.",
+      "browseJobs": "Browse jobs",
+      "notNow": "Not now"
+    },
+    "suggestions": {
+      "resume": {
+        "title": "Upload your resume",
+        "body": "Recruiters shortlist complete profiles faster. Add your CV so we can improve job matching.",
+        "cta": "Upload resume"
+      },
+      "summary": {
+        "title": "Add a professional summary",
+        "body": "A strong summary helps recruiters understand your value instantly. Tell AI about yourself and it will write one for you.",
+        "cta": "Write manually",
+        "placeholder": "e.g. I'm a React developer with 3 years of experience building e-commerce apps..."
+      },
+      "preferences": {
+        "title": "Sharpen your job preferences",
+        "body": "Add role and location preferences to make recommendations much closer to what you want.",
+        "cta": "Set preferences"
+      },
+      "skills": {
+        "title": "Add a few more skills",
+        "body": "Skills are one of the strongest ranking signals. Tell AI your skills and it will add them to your profile.",
+        "cta": "Update manually",
+        "placeholder": "e.g. React, Node.js, TypeScript, MongoDB, AWS, Docker..."
+      },
+      "experience": {
+        "title": "Complete your work history",
+        "body": "Experience helps us surface better roles. Describe your past jobs and AI will structure them for you.",
+        "cta": "Add manually",
+        "placeholder": "e.g. I worked at Google as a Software Engineer from 2022 to 2024, building search APIs..."
+      },
+      "education": {
+        "title": "Add your education",
+        "body": "Education boosts your profile score. Tell AI about your degrees and it will format them.",
+        "cta": "Add manually",
+        "placeholder": "e.g. B.Tech in Computer Science from XYZ University, graduated 2022..."
+      },
+      "languages": {
+        "title": "Add your languages",
+        "body": "Language skills matter in the Gulf market. Tell AI your languages and proficiency levels.",
+        "cta": "Add manually",
+        "placeholder": "e.g. English fluent, Arabic intermediate, Hindi native..."
+      }
+    }
   },
   "ai": {
     "assistant": "AI Assistant",

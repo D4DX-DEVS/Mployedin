@@ -25,6 +25,7 @@ import {
   Star,
   SlidersHorizontal,
   Globe,
+  Activity,
   // New: unique icons for sub-menus
   Clock,
   Building,
@@ -54,6 +55,7 @@ import {
   CheckCircle,
   GitBranch,
   FolderOpen,
+  Headset,
   type LucideProps,
 } from "lucide-react";
 import type { FC } from "react";
@@ -107,7 +109,9 @@ export type IconName =
   | "PanelsTopLeft"
   | "CheckCircle"
   | "GitBranch"
-  | "FolderOpen";
+  | "FolderOpen"
+  | "Headset"
+  | "Activity";
 
 const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   LayoutDashboard,
@@ -159,6 +163,8 @@ const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   CheckCircle,
   GitBranch,
   FolderOpen,
+  Headset,
+  Activity,
 };
 
 /** Resolve an icon name to its Lucide component. Falls back to a square placeholder. */

@@ -11,13 +11,15 @@ const originalFetch = global.fetch;
 const originalCreateObjectURL = URL.createObjectURL;
 const originalRevokeObjectURL = URL.revokeObjectURL;
 const originalCreateElement = document.createElement.bind(document);
-const workbookWriteMock = jest.fn(() => new ArrayBuffer(16));
-const workbookAppendSheetMock = jest.fn();
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const workbookWriteMock = jest.fn((..._args: any[]) => new ArrayBuffer(16));
+const workbookAppendSheetMock = jest.fn((..._args: any[]) => {});
 const workbookNewMock = jest.fn(() => ({}));
-const worksheetFromAoaMock = jest.fn(() => ({}));
-const pdfSaveMock = jest.fn();
+const worksheetFromAoaMock = jest.fn((..._args: any[]) => ({}));
+const pdfSaveMock = jest.fn((..._args: any[]) => {});
 const autoTableMock = jest.fn();
-const toastErrorMock = jest.fn();
+const toastErrorMock = jest.fn((..._args: any[]) => {});
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 jest.mock("sonner", () => ({
   toast: {

@@ -33,7 +33,7 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com",
       "media-src 'self' data:",
-      "connect-src 'self' https://*.pusher.com wss://*.pusher.com https://generativelanguage.googleapis.com https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com",
+      "connect-src 'self' https://generativelanguage.googleapis.com https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com",
       "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
       "frame-ancestors 'none'",
     ].join("; "),
@@ -44,7 +44,7 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
 /** Static headers for API routes (no inline scripts, no nonce needed). */
 export const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' https://*.pusher.com wss://*.pusher.com https://generativelanguage.googleapis.com https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; frame-ancestors 'none'",
   ...SHARED_HEADERS,
 };
 

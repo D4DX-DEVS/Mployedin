@@ -20,8 +20,7 @@ export interface IActivityLog {
 export interface IAgent extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
-  superAgentId?: mongoose.Types.ObjectId;
-  assignedCityIds: mongoose.Types.ObjectId[];
+  superAgentId?: mongoose.Types.ObjectId;  referralCode: string;  assignedCityIds: mongoose.Types.ObjectId[];
   assignedStateIds: mongoose.Types.ObjectId[];
   assignedEmployerIds: mongoose.Types.ObjectId[];
   assignedJobSeekerIds: mongoose.Types.ObjectId[];
@@ -47,6 +46,7 @@ const AgentSchema = new Schema<IAgent>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     superAgentId: { type: Schema.Types.ObjectId, ref: "SuperAgent" },
+    referralCode: { type: String, unique: true, sparse: true },
     assignedCityIds: [{ type: Schema.Types.ObjectId, ref: "City" }],
     assignedStateIds: [{ type: Schema.Types.ObjectId, ref: "State" }],
     assignedEmployerIds: [{ type: Schema.Types.ObjectId, ref: "Employer" }],

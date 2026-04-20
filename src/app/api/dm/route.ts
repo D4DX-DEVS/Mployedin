@@ -9,35 +9,34 @@ import Agent from "@/models/Agent";
 import Application from "@/models/Application";
 import mongoose from "mongoose";
 import type { UserRole } from "@/models/User";
-import { triggerDMEvent } from "@/lib/pusher";
+import { triggerRealtimeEvent } from "@/lib/realtime";
 
 interface AuthCtx { userId: string; role: UserRole; }
 
 /**
- * Industry-standard role-based messaging permission matrix.
- * Mirrors LinkedIn/Naukri model: only cross-role pairs that make business sense.
+ * Role-based messaging permission matrix.
  *
- *   job_seeker  → employer          ✅ (apply / follow-up)
- *   employer    → job_seeker        ✅ (recruiter outreach)
- *   employer    → agent             ✅ (hire through recruiter)
- *   agent       → employer          ✅ (recruiter reaching client)
  *   admin       → anyone            ✅
- *   super_agent → anyone            ✅
- *   same role   → same role         ❌ (prevents peer spam)
+ *   super_agent → admin, agent, employer  ✅
+ *   agent       → super_agent, employer   ✅
+ *   employer    → agent, super_agent      ✅
  *   agent       ↔ job_seeker        ⚠️  (conditional — requires assignment or active application)
+ *   job_seeker  → (customer care only — use /api/dm/customer-care)
+ *   same role   → same role         ❌ (prevents peer spam)
  */
 function canRolesMessage(from: UserRole, to: UserRole): "yes" | "no" | "conditional" {
-  if (from === "admin" || from === "super_agent") return "yes";
+  if (from === "admin") return "yes";
 
-  // agent ↔ job_seeker requires context check (not a blanket yes or no)
-  if ((from === "agent" && to === "job_seeker") || (from === "job_seeker" && to === "agent")) {
-    return "conditional";
-  }
+  // Job seekers use customer care only — no direct DMs
+  if (from === "job_seeker") return "no";
+  // Nobody can directly DM a job seeker except via customer care (admin can via customer care system)
+  if (to === "job_seeker") return "no";
+
+  if (from === "super_agent") return to !== "super_agent" ? "yes" : "no";
 
   const allowed: Partial<Record<UserRole, UserRole[]>> = {
-    job_seeker: ["employer"],
-    employer: ["job_seeker", "agent"],
-    agent: ["employer"],
+    employer: ["agent", "super_agent"],
+    agent: ["employer", "super_agent"],
   };
   return allowed[from]?.includes(to) ? "yes" : "no";
 }
@@ -106,13 +105,14 @@ async function checkAgentJobSeekerContext(
 }
 
 /**
- * GET /api/dm — list all conversations for the current user, sorted by latest message
+ * GET /api/dm — list all DM conversations for the current user (excludes customer care)
  */
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const conversations = await Conversation.find({
     participants: new mongoose.Types.ObjectId(ctx.userId),
+    type: { $ne: "customer_care" },
   })
     .sort({ lastMessageAt: -1, updatedAt: -1 })
     .lean();
@@ -216,7 +216,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     const conv = conversation as unknown as { _id: { toString(): string }; participants: { toString(): string }[] };
     const recipientObjectId = conv.participants.find((p) => p.toString() !== ctx.userId);
     if (recipientObjectId) {
-      await triggerDMEvent(recipientObjectId.toString(), "new-conversation", { conversation }).catch(() => {});
+      await triggerRealtimeEvent(recipientObjectId.toString(), "new-conversation", { conversation }).catch(() => {});
     }
   }
 

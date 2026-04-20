@@ -44,6 +44,7 @@ import {
   useFetchInterviewForApp,
   useUpdateApplicationStatus,
 } from "@/hooks/useApplications";
+import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useScorecardsByApplicationIds } from "@/hooks/useScorecards";
 import type { Scorecard } from "@/hooks/useScorecards";
@@ -125,7 +126,7 @@ function getApplicantTags(app: Applicant): string[] {
 export default function EmployerApplicationsPage() {
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
-  const jobId = searchParams.get("jobId") ?? searchParams.get("job") ?? "";
+  const initialJobId = searchParams.get("jobId") ?? searchParams.get("job") ?? "";
   const { can } = usePermissions();
 
   const [page, setPage] = useState(1);
@@ -155,11 +156,41 @@ export default function EmployerApplicationsPage() {
   } | null>(null);
   const [bulkMatchProgress, setBulkMatchProgress] = useState<{ done: number; total: number } | null>(null);
 
+  // ── New filter state ──────────────────────────────────────────────
+  const [jobFilter, setJobFilter] = useState(initialJobId);
+  const [experienceRange, setExperienceRange] = useState<[number | null, number | null]>([null, null]);
+  const [skillsFilter, setSkillsFilter] = useState<string[]>([]);
+  const [jobsLoaded, setJobsLoaded] = useState(false);
+
+  interface EmployerJob {
+    _id: string;
+    title: string;
+    requirements: { skills: string[]; experienceMin: number; experienceMax: number; education?: string; languages?: string[] };
+    salary: { min: number; max: number; currency: string; period?: string };
+    location: { country: string; city: string; isRemote: boolean };
+    employmentType?: string;
+    workMode?: string;
+    status: string;
+  }
+  const [employerJobs, setEmployerJobs] = useState<EmployerJob[]>([]);
+
+  // Debounce user inputs to avoid excessive API calls
+  const debouncedSearch = useDebounce(searchQuery, 350);
+  const debouncedScoreRange = useDebounce(scoreRange, 500);
+  const debouncedExperienceRange = useDebounce(experienceRange, 500);
+
   const applicationsQuery = useApplications({
     page,
     limit,
     status: statusFilter !== "all" ? statusFilter : undefined,
-    jobId: jobId || undefined,
+    jobId: jobFilter || undefined,
+    search: debouncedSearch.trim() || undefined,
+    scoreMin: debouncedScoreRange[0] > 0 ? debouncedScoreRange[0] : undefined,
+    scoreMax: debouncedScoreRange[1] < 100 ? debouncedScoreRange[1] : undefined,
+    experienceMin: debouncedExperienceRange[0] ?? undefined,
+    experienceMax: debouncedExperienceRange[1] ?? undefined,
+    skills: skillsFilter.length > 0 ? skillsFilter : undefined,
+    fetchJobs: !jobsLoaded,
   });
   const updateStatus = useUpdateApplicationStatus();
   const bulkAction = useBulkAction();
@@ -179,16 +210,29 @@ export default function EmployerApplicationsPage() {
   const timelineData: TimelineEntry[] = timelineQuery.data?.timeline ?? [];
   const timelineLoading = timelineQuery.isLoading;
 
+  // Store employer jobs from the first successful fetch
+  useEffect(() => {
+    if (applicationsQuery.data?.employerJobs && !jobsLoaded) {
+      setEmployerJobs(applicationsQuery.data.employerJobs);
+      setJobsLoaded(true);
+    }
+  }, [applicationsQuery.data?.employerJobs, jobsLoaded]);
+
+  // Selected job's details (for dynamic filter hints)
+  const selectedJob = employerJobs.find((j) => j._id === jobFilter) ?? null;
+
   // Fetch scorecards for all visible applications in one batched request
   const applicationIds = applications.map((a) => a._id);
   const scorecardsQuery = useScorecardsByApplicationIds(applicationIds);
   const scorecardMap: Record<string, Scorecard> = scorecardsQuery.data ?? {};
 
   useEffect(() => {
-    document.title = "Applications · MPLOYEDIN";
-  }, []);
+    document.title = selectedJob
+      ? `${selectedJob.title} — Applications · MPLOYEDIN`
+      : "Applications · MPLOYEDIN";
+  }, [selectedJob]);
 
-  useEffect(() => { setPage(1); setSelected([]); }, [statusFilter, scoreRange, daysFilter, searchQuery, jobId]);
+  useEffect(() => { setPage(1); setSelected([]); }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter]);
 
   function updateApplicationStatus(id: string, status: string, reason?: string) {
     return updateStatus.mutateAsync({ id, status, rejectionReason: reason });
@@ -375,27 +419,12 @@ export default function EmployerApplicationsPage() {
     });
   }
 
-  // Filter applications by score range and days-in-stage
+  // Filter applications — most filtering is now server-side; only days-in-pipeline remains client-side
   const filteredApplications = applications.filter((app) => {
-    const score = app.aiMatchScore ?? 0;
-    if (score < scoreRange[0] || score > scoreRange[1]) return false;
     if (daysFilter) {
       const days = Math.floor((Date.now() - new Date(app.appliedAt).getTime()) / 86400000);
       if (days < daysFilter) return false;
     }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim().toLowerCase();
-      const candidateName = getCandidateName(app).toLowerCase();
-      const jobTitle = app.jobId?.title?.toLowerCase() ?? "";
-      const location = app.jobSeekerId?.currentLocation?.toLowerCase() ?? "";
-      const skills = (app.jobSeekerId?.skills ?? []).join(" ").toLowerCase();
-
-      if (!candidateName.includes(query) && !jobTitle.includes(query) && !location.includes(query) && !skills.includes(query)) {
-        return false;
-      }
-    }
-
     return true;
   });
 
@@ -403,7 +432,7 @@ export default function EmployerApplicationsPage() {
   const interviewCount = filteredApplications.filter((app) => app.status === "interview_scheduled").length;
   const selectedStageCount = filteredApplications.filter((app) => app.status === "selected").length;
   const allVisibleSelected = filteredApplications.length > 0 && filteredApplications.every((app) => selected.includes(app._id));
-  const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0;
+  const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0 || !!jobFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0;
 
   async function handleBulkAction(action: "reject" | "move_stage", targetStage?: string) {
     if (!selected.length) return;
@@ -457,7 +486,9 @@ export default function EmployerApplicationsPage() {
       <section className="workspace-hero-surface overflow-hidden rounded-[22px] px-4 py-3 sm:px-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <h1 className="text-[1.45rem] font-semibold tracking-tight text-foreground">Applications</h1>
+            <h1 className="text-[1.45rem] font-semibold tracking-tight text-foreground">
+              {selectedJob ? `${selectedJob.title} — Applications` : "Applications"}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{filteredApplications.length}</span> Applicants
               <span className="px-2 text-border">•</span>
@@ -509,13 +540,28 @@ export default function EmployerApplicationsPage() {
 
       <section className="workspace-panel-surface rounded-[22px] p-3 sm:p-4">
 
-          <div className="grid gap-2 xl:grid-cols-[minmax(0,1.8fr)_minmax(180px,1fr)_auto_auto]">
+          {/* Primary filter row: Job selector + search + status + toggle */}
+          <div className="grid gap-2 xl:grid-cols-[minmax(180px,1fr)_minmax(0,1.8fr)_minmax(160px,0.7fr)_auto_auto]">
+            <SearchableSelect
+              className="h-10 w-full rounded-xl border-sky-200 bg-sky-50/50 dark:border-sky-500/30 dark:bg-sky-500/10"
+              options={[
+                { value: "", label: "All Jobs" },
+                ...employerJobs.map((j) => ({ value: j._id, label: j.title })),
+              ]}
+              value={jobFilter}
+              onValueChange={(v) => {
+                setJobFilter(v);
+                setExperienceRange([null, null]);
+                setSkillsFilter([]);
+              }}
+              placeholder="Select a Job"
+            />
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search applicants, jobs, skills, or location"
+                placeholder="Search applicants, skills, or location"
                 className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
               />
             </div>
@@ -533,7 +579,7 @@ export default function EmployerApplicationsPage() {
               <Button size="sm" variant="outline" onClick={() => setShowFilters(!showFilters)} className="h-10 rounded-xl border-border bg-background/80 px-3 text-sm">
                 <Filter className="mr-2 h-3.5 w-3.5" />
                 Filters
-                {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter) && (
+                {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0) && (
                   <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[10px]">Active</Badge>
                 )}
               </Button>
@@ -548,8 +594,51 @@ export default function EmployerApplicationsPage() {
               </Button>
           </div>
 
+          {/* Selected job info strip */}
+          {selectedJob && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-sky-200/60 bg-sky-50/40 px-3 py-2 text-xs text-muted-foreground dark:border-sky-500/20 dark:bg-sky-500/5">
+              <BriefcaseBusiness className="h-3.5 w-3.5 text-sky-600 dark:text-sky-300" />
+              <span className="font-semibold text-foreground">{selectedJob.title}</span>
+              <span className="text-border">•</span>
+              <span>{selectedJob.location.city}, {selectedJob.location.country}</span>
+              {selectedJob.requirements.experienceMin > 0 || selectedJob.requirements.experienceMax < 30 ? (
+                <>
+                  <span className="text-border">•</span>
+                  <span>{selectedJob.requirements.experienceMin}–{selectedJob.requirements.experienceMax} yrs exp</span>
+                </>
+              ) : null}
+              {selectedJob.salary.min > 0 ? (
+                <>
+                  <span className="text-border">•</span>
+                  <span>{selectedJob.salary.currency} {selectedJob.salary.min.toLocaleString()}–{selectedJob.salary.max.toLocaleString()}/{selectedJob.salary.period ?? "monthly"}</span>
+                </>
+              ) : null}
+              {selectedJob.workMode ? (
+                <>
+                  <span className="text-border">•</span>
+                  <span className="capitalize">{selectedJob.workMode.replace("_", " ")}</span>
+                </>
+              ) : null}
+              {selectedJob.employmentType ? (
+                <>
+                  <span className="text-border">•</span>
+                  <span className="capitalize">{selectedJob.employmentType.replace(/_/g, " ")}</span>
+                </>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-6 rounded-lg px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                onClick={() => { setJobFilter(""); setExperienceRange([null, null]); setSkillsFilter([]); }}
+              >
+                <X className="mr-1 h-3 w-3" /> Clear Job
+              </Button>
+            </div>
+          )}
+
       {showFilters && (
-        <div className="mt-3 flex flex-wrap gap-4 rounded-[20px] border border-border/60 bg-background/60 p-3">
+        <div className="mt-3 grid gap-4 rounded-[20px] border border-border/60 bg-background/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* AI Score Range */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">AI Score Range</label>
             <div className="flex items-center gap-2">
@@ -563,6 +652,34 @@ export default function EmployerApplicationsPage() {
               <span className="text-xs text-muted-foreground">%</span>
             </div>
           </div>
+
+          {/* Experience Range */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Experience (Years)
+              {selectedJob && (selectedJob.requirements.experienceMin > 0 || selectedJob.requirements.experienceMax < 30) ? (
+                <span className="ml-1 font-normal normal-case text-sky-600 dark:text-sky-300">
+                  Job requires {selectedJob.requirements.experienceMin}–{selectedJob.requirements.experienceMax}
+                </span>
+              ) : null}
+            </label>
+            <div className="flex items-center gap-2">
+              <input type="number" min={0} max={50}
+                value={experienceRange[0] ?? ""}
+                placeholder={selectedJob ? String(selectedJob.requirements.experienceMin) : "Min"}
+                onChange={(e) => setExperienceRange([e.target.value ? +e.target.value : null, experienceRange[1]])}
+                className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
+              <span className="text-xs text-muted-foreground">to</span>
+              <input type="number" min={0} max={50}
+                value={experienceRange[1] ?? ""}
+                placeholder={selectedJob ? String(selectedJob.requirements.experienceMax) : "Max"}
+                onChange={(e) => setExperienceRange([experienceRange[0], e.target.value ? +e.target.value : null])}
+                className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
+              <span className="text-xs text-muted-foreground">yrs</span>
+            </div>
+          </div>
+
+          {/* Days in Pipeline */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Days in Pipeline</label>
             <SearchableSelect
@@ -578,12 +695,93 @@ export default function EmployerApplicationsPage() {
               onValueChange={(v) => setDaysFilter(v === "any" ? null : +v)}
             />
           </div>
-          <div className="flex items-end">
-            <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4 text-sm text-muted-foreground"
-              onClick={() => { setScoreRange([0, 100]); setDaysFilter(null); }}>
-              Reset
-            </Button>
+
+          {/* Skills Filter */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Skills
+              {selectedJob && selectedJob.requirements.skills.length > 0 ? (
+                <span className="ml-1 font-normal normal-case text-sky-600 dark:text-sky-300">
+                  ({selectedJob.requirements.skills.length} required)
+                </span>
+              ) : null}
+            </label>
+            {selectedJob && selectedJob.requirements.skills.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedJob.requirements.skills.map((skill) => {
+                  const isActive = skillsFilter.includes(skill);
+                  return (
+                    <button
+                      key={skill}
+                      type="button"
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        isActive
+                          ? "border-sky-300 bg-sky-100 text-sky-800 dark:border-sky-500/40 dark:bg-sky-500/20 dark:text-sky-200"
+                          : "border-border bg-background/70 text-muted-foreground hover:border-sky-200 hover:bg-sky-50 dark:hover:border-sky-500/30 dark:hover:bg-sky-500/10"
+                      }`}
+                      onClick={() =>
+                        setSkillsFilter((prev) =>
+                          isActive ? prev.filter((s) => s !== skill) : [...prev, skill]
+                        )
+                      }
+                    >
+                      {skill}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">Select a job to see required skills</p>
+            )}
           </div>
+
+          {/* Quick-fill from job requirements */}
+          {selectedJob && (
+            <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
+              <span className="text-xs font-medium text-muted-foreground">Quick fill:</span>
+              {(selectedJob.requirements.experienceMin > 0 || selectedJob.requirements.experienceMax < 30) && experienceRange[0] === null && experienceRange[1] === null ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 rounded-lg border-border bg-background/80 px-2.5 text-[11px]"
+                  onClick={() => setExperienceRange([selectedJob.requirements.experienceMin, selectedJob.requirements.experienceMax])}
+                >
+                  <Clock className="mr-1 h-3 w-3" />
+                  Experience {selectedJob.requirements.experienceMin}–{selectedJob.requirements.experienceMax} yrs
+                </Button>
+              ) : null}
+              {selectedJob.requirements.skills.length > 0 && skillsFilter.length === 0 ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 rounded-lg border-border bg-background/80 px-2.5 text-[11px]"
+                  onClick={() => setSkillsFilter([...selectedJob.requirements.skills])}
+                >
+                  <Sparkles className="mr-1 h-3 w-3" />
+                  All required skills
+                </Button>
+              ) : null}
+              <div className="ml-auto">
+                <Button size="sm" variant="ghost" className="h-7 rounded-lg px-3 text-[11px] text-muted-foreground"
+                  onClick={() => {
+                    setScoreRange([0, 100]);
+                    setDaysFilter(null);
+                    setExperienceRange([null, null]);
+                    setSkillsFilter([]);
+                  }}>
+                  Reset All Filters
+                </Button>
+              </div>
+            </div>
+          )}
+          {!selectedJob && (
+            <div className="flex items-end">
+              <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4 text-sm text-muted-foreground"
+                onClick={() => { setScoreRange([0, 100]); setDaysFilter(null); setExperienceRange([null, null]); setSkillsFilter([]); }}>
+                Reset
+              </Button>
+            </div>
+          )}
         </div>
       )}
       </section>

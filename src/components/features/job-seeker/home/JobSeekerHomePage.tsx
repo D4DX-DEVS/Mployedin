@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -89,102 +90,18 @@ function formatSalary(job: FeedJob) {
   return `${salary.min.toLocaleString("en-US")}-${salary.max.toLocaleString("en-US")} ${salary.currency}`;
 }
 
-function timeAgo(iso: string) {
+function timeAgo(iso: string, locale: string): string {
+  const isAr = locale === "ar";
   const diff = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(diff / 3_600_000);
-  if (hours < 1) return "Just now";
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 1) return isAr ? "الآن" : "Just now";
+  if (hours < 24) return isAr ? `منذ ${hours} س` : `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return isAr ? `منذ ${days} ي` : `${days}d ago`;
   const weeks = Math.floor(days / 7);
-  return `${weeks}w ago`;
+  return isAr ? `منذ ${weeks} أ` : `${weeks}w ago`;
 }
 
-function buildSuggestions(profile: ProfileData | null) {
-  const suggestions: SuggestionItem[] = [];
-
-  if (!profile?.cvFileUrl && !profile?.cv?.originalUrl) {
-    suggestions.push({
-      id: "resume",
-      title: "Upload your resume",
-      body: "Recruiters shortlist complete profiles faster. Add your CV so we can improve job matching.",
-      href: "cv",
-      cta: "Upload resume",
-    });
-  }
-
-  if (!profile?.summary) {
-    suggestions.push({
-      id: "summary",
-      title: "Add a professional summary",
-      body: "A strong summary helps recruiters understand your value instantly. Tell AI about yourself and it will write one for you.",
-      href: "profile#summary",
-      cta: "Write manually",
-      section: "summary",
-      placeholder: "e.g. I'm a React developer with 3 years of experience building e-commerce apps...",
-    });
-  }
-
-  if ((profile?.preferredRoles?.length ?? 0) === 0 || (profile?.preferredCountries?.length ?? 0) === 0) {
-    suggestions.push({
-      id: "preferences",
-      title: "Sharpen your job preferences",
-      body: "Add role and location preferences to make recommendations much closer to what you want.",
-      href: "preferences",
-      cta: "Set preferences",
-    });
-  }
-
-  if ((profile?.skills?.length ?? 0) < 5) {
-    suggestions.push({
-      id: "skills",
-      title: "Add a few more skills",
-      body: "Skills are one of the strongest ranking signals. Tell AI your skills and it will add them to your profile.",
-      href: "profile#skills",
-      cta: "Update manually",
-      section: "skills",
-      placeholder: "e.g. React, Node.js, TypeScript, MongoDB, AWS, Docker...",
-    });
-  }
-
-  if ((profile?.experience?.length ?? 0) === 0) {
-    suggestions.push({
-      id: "experience",
-      title: "Complete your work history",
-      body: "Experience helps us surface better roles. Describe your past jobs and AI will structure them for you.",
-      href: "profile#experience",
-      cta: "Add manually",
-      section: "experience",
-      placeholder: "e.g. I worked at Google as a Software Engineer from 2022 to 2024, building search APIs...",
-    });
-  }
-
-  if ((profile?.education?.length ?? 0) === 0) {
-    suggestions.push({
-      id: "education",
-      title: "Add your education",
-      body: "Education boosts your profile score. Tell AI about your degrees and it will format them.",
-      href: "profile#education",
-      cta: "Add manually",
-      section: "education",
-      placeholder: "e.g. B.Tech in Computer Science from XYZ University, graduated 2022...",
-    });
-  }
-
-  if ((profile?.languages?.length ?? 0) === 0) {
-    suggestions.push({
-      id: "languages",
-      title: "Add your languages",
-      body: "Language skills matter in the Gulf market. Tell AI your languages and proficiency levels.",
-      href: "profile#languages",
-      cta: "Add manually",
-      section: "languages",
-      placeholder: "e.g. English fluent, Arabic intermediate, Hindi native...",
-    });
-  }
-
-  return suggestions.slice(0, 5);
-}
 
 export function JobSeekerHomePage({
   locale,
@@ -211,6 +128,9 @@ export function JobSeekerHomePage({
   const [aiInsightsError, setAiInsightsError] = useState<string | null>(null);
   const [guideAnnouncement, setGuideAnnouncement] = useState("");
   const [aiFillActive, setAiFillActive] = useState<string | null>(null); // suggestion id currently being auto-filled
+
+  const t = useTranslations("jobSeekerHome");
+  const isAr = locale === "ar";
 
   const completion = profile?.profileCompleteness ?? 0;
   const [aiFillInput, setAiFillInput] = useState("");
@@ -245,7 +165,7 @@ export function JobSeekerHomePage({
       });
       const data = await res.json();
       if (!res.ok) {
-        setAiFillResult({ section: item.section, message: data.error || "Something went wrong." });
+        setAiFillResult({ section: item.section, message: data.error || t("messages.genericError") });
         return;
       }
       setAiFillResult({ section: item.section, message: data.message });
@@ -258,7 +178,7 @@ export function JobSeekerHomePage({
       setAiFillInput("");
       setAiFillActive(null);
     } catch {
-      setAiFillResult({ section: item.section ?? "", message: "Network error. Please try again." });
+      setAiFillResult({ section: item.section ?? "", message: t("messages.networkError") });
     } finally {
       setAiFillLoading(false);
     }
@@ -309,7 +229,7 @@ export function JobSeekerHomePage({
         );
       } catch {
         if (!active) return;
-        setHomeDataError("We couldn't refresh your latest dashboard data. Try again in a moment.");
+        setHomeDataError(t("messages.homeDataError"));
       } finally {
         if (active) setLoading(false);
       }
@@ -320,12 +240,12 @@ export function JobSeekerHomePage({
     try {
       const seen = window.sessionStorage.getItem("job-seeker-home-guide-seen");
       if (!seen) {
-        setGuideAnnouncement("AI suggestions panel opened.");
+        setGuideAnnouncement(t("announcements.guideOpened"));
         setGuideOpen(true);
         window.sessionStorage.setItem("job-seeker-home-guide-seen", "1");
       }
     } catch {
-      setGuideAnnouncement("AI suggestions panel opened.");
+      setGuideAnnouncement(t("announcements.guideOpened"));
       setGuideOpen(true);
     }
 
@@ -364,7 +284,7 @@ export function JobSeekerHomePage({
         }
       } catch {
         if (!active) return;
-        setAiInsightsError("AI insights are temporarily unavailable.");
+        setAiInsightsError(t("messages.aiInsightsUnavailable"));
       } finally {
         if (active) setAiInsightsLoading(false);
       }
@@ -426,7 +346,7 @@ export function JobSeekerHomePage({
     return () => window.removeEventListener("keydown", handleKeyboard);
   }, [guideOpen]);
 
-  const name = userName ?? "Job Seeker";
+  const name = userName ?? t("defaults.jobSeekerName");
   const image = userImage ?? "";
   const initials = name
     .split(" ")
@@ -438,7 +358,7 @@ export function JobSeekerHomePage({
   // Pick the most relevant role — the one matching the most recommended job titles
   const { primaryRole, otherRolesLabel } = useMemo(() => {
     const roles = profile?.preferredRoles ?? [];
-    if (roles.length === 0) return { primaryRole: "Add your target role", otherRolesLabel: "" };
+    if (roles.length === 0) return { primaryRole: t("hero.addTargetRole"), otherRolesLabel: "" };
     if (roles.length === 1) return { primaryRole: roles[0], otherRolesLabel: "" };
 
     // Count how many recommended jobs each role appears in
@@ -453,52 +373,136 @@ export function JobSeekerHomePage({
 
     let label = "";
     if (others.length === 1) {
-      label = `Also exploring ${others[0]}`;
+      label = t("hero.alsoExploringSingle", { roles: others[0] });
     } else if (others.length === 2) {
-      label = `Also exploring ${others[0]}, ${others[1]}`;
+      label = t("hero.alsoExploringList", { roles: `${others[0]}, ${others[1]}` });
     } else if (others.length > 2) {
-      label = `Also exploring ${others[0]}, ${others[1]} +${others.length - 2} more`;
+      label = t("hero.alsoExploringMore", { roles: `${others[0]}, ${others[1]}`, count: others.length - 2 });
     }
     return { primaryRole: primary, otherRolesLabel: label };
-  }, [profile?.preferredRoles, jobs]);
+  }, [profile?.preferredRoles, jobs, t]);
 
-  const preferredLocation = profile?.preferredCountries?.slice(0, 2).join(", ") || "Add preferred locations";
+  const preferredLocation = profile?.preferredCountries?.slice(0, 2).join(", ") || t("hero.addPreferredLocations");
   const preferredSalary =
     profile?.preferredSalary?.min && profile?.preferredSalary?.max && profile?.preferredSalary?.currency
       ? `${profile.preferredSalary.min.toLocaleString("en-US")}-${profile.preferredSalary.max.toLocaleString("en-US")} ${profile.preferredSalary.currency}`
-      : "Set your salary range";
+      : t("hero.setSalaryRange");
 
-  const suggestions = useMemo(() => buildSuggestions(profile), [profile]);
+  const suggestions = useMemo(() => {
+    const items: SuggestionItem[] = [];
+
+    if (!profile?.cvFileUrl && !profile?.cv?.originalUrl) {
+      items.push({
+        id: "resume",
+        title: t("suggestions.resume.title"),
+        body: t("suggestions.resume.body"),
+        href: "cv",
+        cta: t("suggestions.resume.cta"),
+      });
+    }
+
+    if (!profile?.summary) {
+      items.push({
+        id: "summary",
+        title: t("suggestions.summary.title"),
+        body: t("suggestions.summary.body"),
+        href: "profile#summary",
+        cta: t("suggestions.summary.cta"),
+        section: "summary",
+        placeholder: t("suggestions.summary.placeholder"),
+      });
+    }
+
+    if ((profile?.preferredRoles?.length ?? 0) === 0 || (profile?.preferredCountries?.length ?? 0) === 0) {
+      items.push({
+        id: "preferences",
+        title: t("suggestions.preferences.title"),
+        body: t("suggestions.preferences.body"),
+        href: "preferences",
+        cta: t("suggestions.preferences.cta"),
+      });
+    }
+
+    if ((profile?.skills?.length ?? 0) < 5) {
+      items.push({
+        id: "skills",
+        title: t("suggestions.skills.title"),
+        body: t("suggestions.skills.body"),
+        href: "profile#skills",
+        cta: t("suggestions.skills.cta"),
+        section: "skills",
+        placeholder: t("suggestions.skills.placeholder"),
+      });
+    }
+
+    if ((profile?.experience?.length ?? 0) === 0) {
+      items.push({
+        id: "experience",
+        title: t("suggestions.experience.title"),
+        body: t("suggestions.experience.body"),
+        href: "profile#experience",
+        cta: t("suggestions.experience.cta"),
+        section: "experience",
+        placeholder: t("suggestions.experience.placeholder"),
+      });
+    }
+
+    if ((profile?.education?.length ?? 0) === 0) {
+      items.push({
+        id: "education",
+        title: t("suggestions.education.title"),
+        body: t("suggestions.education.body"),
+        href: "profile#education",
+        cta: t("suggestions.education.cta"),
+        section: "education",
+        placeholder: t("suggestions.education.placeholder"),
+      });
+    }
+
+    if ((profile?.languages?.length ?? 0) === 0) {
+      items.push({
+        id: "languages",
+        title: t("suggestions.languages.title"),
+        body: t("suggestions.languages.body"),
+        href: "profile#languages",
+        cta: t("suggestions.languages.cta"),
+        section: "languages",
+        placeholder: t("suggestions.languages.placeholder"),
+      });
+    }
+
+    return items.slice(0, 5);
+  }, [profile, t]);
   const applicationCount = stats?.applicationsSent?.count ?? 0;
   const savedJobsCount = stats?.savedJobs?.count ?? 0;
   const interviewCount = stats?.upcomingInterviews?.count ?? 0;
   const profileViewCount = stats?.recruiterViews?.total ?? 0;
   const quickLinks = [
     {
-      label: "Applications",
+      label: t("quickAccess.applications"),
       href: `/${locale}/job-seeker/applications`,
       icon: FileText,
       value: String(stats?.applicationsSent?.count ?? 0),
     },
     {
-      label: "Interviews",
+      label: t("quickAccess.interviews"),
       href: `/${locale}/job-seeker/interviews`,
       icon: CalendarDays,
       value: String(stats?.upcomingInterviews?.count ?? 0),
     },
     {
-      label: "Preferences",
+      label: t("quickAccess.preferences"),
       href: `/${locale}/job-seeker/preferences`,
       icon: Target,
-      value: "Edit",
+      value: t("quickAccess.edit"),
     },
   ];
   const topSkills = (profile?.skills ?? [])
     .map((skill) => (typeof skill === "string" ? skill.trim() : skill.name?.trim()))
     .filter((skill): skill is string => Boolean(skill))
     .slice(0, 3);
-  const activeMatchesCountLabel = jobs.length === 1 ? "1 active match" : `${jobs.length} active matches`;
-  const nextStepsLabel = suggestions.length === 1 ? "1 next step queued" : `${suggestions.length} next steps queued`;
+  const activeMatchesCountLabel = t("summary.activeMatches", { count: jobs.length });
+  const nextStepsLabel = t("summary.nextStepsQueued", { count: suggestions.length });
 
   return (
     <>
@@ -521,14 +525,14 @@ export function JobSeekerHomePage({
               <div className="flex flex-wrap items-center gap-2">
                 <Button asChild className="h-11 rounded-full px-5">
                   <Link href={`/${locale}/job-seeker/jobs`}>
-                    <Search className="mr-2 h-4 w-4" />
-                    Browse matching jobs
+                    <Search className={`${isAr ? "ml-2" : "mr-2"} h-4 w-4`} />
+                    {t("hero.browseMatchingJobs")}
                   </Link>
                 </Button>
                 <Button asChild variant="outline" className="h-11 rounded-full px-5">
                   <Link href={`/${locale}/job-seeker/preferences`}>
-                    <SlidersHorizontal className="mr-2 h-4 w-4" />
-                    Refine
+                    <SlidersHorizontal className={`${isAr ? "ml-2" : "mr-2"} h-4 w-4`} />
+                    {t("hero.refine")}
                   </Link>
                 </Button>
                 <button
@@ -537,7 +541,7 @@ export function JobSeekerHomePage({
                   className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <Sparkles className="h-4 w-4" />
-                  AI suggestions
+                  {t("hero.aiSuggestions")}
                 </button>
               </div>
             </div>
@@ -545,16 +549,16 @@ export function JobSeekerHomePage({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-3 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{activeMatchesCountLabel}</span>
               <span>
-                <span className="font-semibold text-foreground">{applicationCount}</span> applications
+                <span className="font-semibold text-foreground">{applicationCount}</span> {t("summary.applications")}
               </span>
               <span>
-                <span className="font-semibold text-foreground">{savedJobsCount}</span> saved jobs
+                <span className="font-semibold text-foreground">{savedJobsCount}</span> {t("summary.savedJobs")}
               </span>
               <span>
-                <span className="font-semibold text-foreground">{interviewCount}</span> interviews
+                <span className="font-semibold text-foreground">{interviewCount}</span> {t("summary.interviews")}
               </span>
               <span>
-                <span className="font-semibold text-foreground">{profileViewCount}</span> profile views
+                <span className="font-semibold text-foreground">{profileViewCount}</span> {t("summary.profileViews")}
               </span>
               {suggestions.length > 0 && (
                 <button type="button" onClick={openGuide} className="inline-flex items-center gap-1 font-medium text-primary transition-colors hover:text-primary/80">
@@ -571,11 +575,11 @@ export function JobSeekerHomePage({
             <section className="card-base rounded-[28px] p-5 sm:p-6">
               <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Recommended jobs</div>
-                  <h2 className="mt-1 text-2xl font-semibold tracking-tight">Best-fit roles from your live profile signal</h2>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("recommendedJobs.eyebrow")}</div>
+                  <h2 className="mt-1 text-2xl font-semibold tracking-tight">{t("recommendedJobs.title")}</h2>
                 </div>
                 <Link href={`/${locale}/job-seeker/jobs`} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
-                  View all jobs
+                  {t("recommendedJobs.viewAll")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -595,7 +599,7 @@ export function JobSeekerHomePage({
               ) : jobs.length > 0 ? (
                 <div className="space-y-3">
                   {jobs.map((job) => {
-                    const companyName = job.employerId?.companyName ?? "Company";
+                    const companyName = job.employerId?.companyName ?? t("recommendedJobs.companyFallback");
                     const companyInitials = companyName
                       .trim()
                       .split(" ")
@@ -605,8 +609,8 @@ export function JobSeekerHomePage({
                       .slice(0, 2)
                       .toUpperCase();
                     const remoteLabel = job.location?.isRemote
-                      ? "Remote"
-                      : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || "Location flexible";
+                      ? t("recommendedJobs.remote")
+                      : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || t("recommendedJobs.locationFlexible");
                     const fresh = Date.now() - new Date(job.createdAt).getTime() < 3 * 24 * 60 * 60 * 1000;
 
                     return (
@@ -628,15 +632,15 @@ export function JobSeekerHomePage({
                               <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                                 {fresh && (
                                   <span className="rounded-full border border-primary/15 bg-primary/[0.07] px-2.5 py-1 text-primary">
-                                    New
+                                    {t("recommendedJobs.new")}
                                   </span>
                                 )}
                                 {job.location?.isRemote && (
                                   <span className="rounded-full border border-border/60 bg-muted/30 px-2.5 py-1">
-                                    Remote
+                                    {t("recommendedJobs.remote")}
                                   </span>
                                 )}
-                                <span>Posted {timeAgo(job.createdAt)}</span>
+                                <span>{t("recommendedJobs.posted", { time: timeAgo(job.createdAt, locale) })}</span>
                               </div>
 
                               <div className="mt-3">
@@ -659,19 +663,19 @@ export function JobSeekerHomePage({
                                 )}
                                 <span className="inline-flex items-center gap-1.5 font-medium text-primary">
                                   <Sparkles className="h-3.5 w-3.5" />
-                                  Suggested for your profile
+                                  {t("recommendedJobs.suggestedForProfile")}
                                 </span>
                               </div>
                             </div>
                           </div>
 
                           <div className="flex items-center justify-between gap-4 border-t border-border/50 pt-4 lg:min-w-[156px] lg:flex-col lg:items-stretch lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-                            <div className="rounded-[18px] border border-border/60 bg-muted/20 px-4 py-3 text-left" aria-label={`Match score: ${job.matchScore} percent`}>
-                              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Match score</div>
+                            <div className="rounded-[18px] border border-border/60 bg-muted/20 px-4 py-3 text-left" aria-label={t("recommendedJobs.matchScoreAria", { score: job.matchScore })}>
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("recommendedJobs.matchScore")}</div>
                               <div className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{job.matchScore}%</div>
                             </div>
                             <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-all group-hover:gap-2 lg:justify-end">
-                              View details
+                              {t("recommendedJobs.viewDetails")}
                               <ArrowRight className="h-4 w-4" />
                             </span>
                           </div>
@@ -682,12 +686,12 @@ export function JobSeekerHomePage({
                 </div>
               ) : (
                 <div className="rounded-[26px] border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
-                  <div className="text-lg font-semibold">No recommendations yet</div>
+                  <div className="text-lg font-semibold">{t("recommendedJobs.emptyTitle")}</div>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Finish your profile and preferences to unlock stronger job suggestions.
+                    {t("recommendedJobs.emptyBody")}
                   </p>
                   <Link href={`/${locale}/job-seeker/preferences`} className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">
-                    Set preferences
+                    {t("recommendedJobs.emptyCta")}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
@@ -699,10 +703,10 @@ export function JobSeekerHomePage({
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       <CheckCircle2 className="h-3.5 w-3.5 text-[hsl(var(--status-selected))]" />
-                      Already applied
+                      {t("appliedJobs.eyebrow")}
                     </div>
                     <Link href={`/${locale}/job-seeker/applications`} className="text-xs font-semibold text-primary hover:underline">
-                      View all →
+                      {t("appliedJobs.viewAll")}
                     </Link>
                   </div>
                   <div className="space-y-2">
@@ -717,12 +721,12 @@ export function JobSeekerHomePage({
                         .toUpperCase();
                       const statusLabel =
                         app.status === "selected"
-                          ? "Selected"
+                          ? t("statuses.selected")
                           : app.status === "interview"
-                          ? "Interview"
+                          ? t("statuses.interview")
                           : app.status === "rejected"
-                          ? "Rejected"
-                          : "Applied";
+                          ? t("statuses.rejected")
+                          : t("statuses.applied");
                       const statusClass =
                         app.status === "selected"
                           ? "text-[hsl(var(--status-selected))] bg-[hsl(var(--status-selected-bg))] border-[hsl(var(--status-selected)/0.2)]"
@@ -763,15 +767,15 @@ export function JobSeekerHomePage({
             <section className="card-base rounded-[28px] p-5 sm:p-6">
               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Priority actions</div>
-                  <h2 className="mt-1 text-2xl font-semibold tracking-tight">Improve your profile-to-job fit in the next few minutes</h2>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("priorityActions.eyebrow")}</div>
+                  <h2 className="mt-1 text-2xl font-semibold tracking-tight">{t("priorityActions.title")}</h2>
                   <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-                    Clear, ranked updates that help you improve visibility and match quality without turning the page into a checklist wall.
+                    {t("priorityActions.description")}
                   </p>
                 </div>
                 <Button type="button" variant="outline" className="h-11 rounded-full px-5" onClick={openGuide}>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Open AI suggestions
+                  <Sparkles className={`${isAr ? "ml-2" : "mr-2"} h-4 w-4`} />
+                  {t("priorityActions.openAiSuggestions")}
                 </Button>
               </div>
 
@@ -791,7 +795,7 @@ export function JobSeekerHomePage({
                           <div className="flex flex-wrap items-center gap-2">
                             <div className="text-[15px] font-semibold text-foreground">{item.title}</div>
                             <Badge className="rounded-full border border-border/60 bg-muted/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:bg-muted/20">
-                              High impact
+                              {t("priorityActions.highImpact")}
                             </Badge>
                           </div>
                           <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{item.body}</p>
@@ -809,9 +813,9 @@ export function JobSeekerHomePage({
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="mt-0.5 h-5 w-5 text-[hsl(var(--status-selected))]" />
                     <div>
-                      <div className="text-base font-semibold">Your home setup already looks strong.</div>
+                      <div className="text-base font-semibold">{t("priorityActions.completeTitle")}</div>
                       <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                        Browse fresh roles now, or keep refining your profile if you want even tighter recommendations.
+                        {t("priorityActions.completeBody")}
                       </p>
                     </div>
                   </div>
@@ -836,22 +840,22 @@ export function JobSeekerHomePage({
                     {completion >= 80 && <CheckCircle2 className="h-4 w-4 text-[hsl(var(--status-selected))]" />}
                   </div>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {profile?.summary?.slice(0, 118) || "Complete your profile to unlock stronger matches and recruiter attention."}
+                    {profile?.summary?.slice(0, 118) || t("profileCard.summaryFallback")}
                   </p>
                 </div>
               </div>
 
               <div className="mt-5">
                 <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Profile completeness</span>
+                  <span>{t("profileCard.profileCompleteness")}</span>
                   <span className="font-semibold text-foreground">{completion}%</span>
                 </div>
-                <Progress value={completion} aria-label={`Profile completeness: ${completion} percent`} />
+                <Progress value={completion} aria-label={t("profileCard.profileCompletenessAria", { completion })} />
               </div>
 
               {topSkills.length > 0 && (
                 <div className="mt-5">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Top skills in your profile</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("profileCard.topSkills")}</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {topSkills.map((skill) => (
                       <Badge key={skill} className="rounded-full border border-border/60 bg-background px-3 py-1 text-xs font-medium text-foreground hover:bg-background">
@@ -866,14 +870,14 @@ export function JobSeekerHomePage({
                 <Link href={`/${locale}/job-seeker/profile`} className="flex items-center justify-between rounded-[20px] border border-border/60 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/40">
                   <span className="flex items-center gap-2">
                     <UserCircle className="h-4 w-4 text-primary" />
-                    Update profile
+                    {t("profileCard.updateProfile")}
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
                 <Link href={`/${locale}/job-seeker/preferences`} className="flex items-center justify-between rounded-[20px] border border-border/60 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/40">
                   <span className="flex items-center gap-2">
                     <Target className="h-4 w-4 text-primary" />
-                    Update preferences
+                    {t("profileCard.updatePreferences")}
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
@@ -883,8 +887,8 @@ export function JobSeekerHomePage({
             <section className="card-base rounded-[28px] p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Quick access</div>
-                  <h3 className="mt-1 text-lg font-semibold tracking-tight">Stay close to your pipeline</h3>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("quickAccess.eyebrow")}</div>
+                  <h3 className="mt-1 text-lg font-semibold tracking-tight">{t("quickAccess.title")}</h3>
                 </div>
                 <CalendarDays className="h-4 w-4 text-primary" />
               </div>
@@ -910,9 +914,9 @@ export function JobSeekerHomePage({
                 <div>
                   <div className="flex items-center gap-2 text-primary">
                     <Sparkles className="h-4 w-4" />
-                    <span className="text-sm font-semibold">AI Daily Insights</span>
+                    <span className="text-sm font-semibold">{t("insights.title")}</span>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">Short, high-signal nudges based on your profile quality and job-market activity.</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("insights.description")}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -926,6 +930,7 @@ export function JobSeekerHomePage({
                     setAiInsightsKey((k) => k + 1);
                   }}
                   title="Refresh insights"
+                  aria-label={t("insights.refresh")}
                   className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-primary/10"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
@@ -941,7 +946,7 @@ export function JobSeekerHomePage({
               )}
 
               {!aiInsightsLoading && aiInsights.length === 0 && (
-                <p className="text-xs leading-5 text-muted-foreground">Complete your profile to unlock AI insights.</p>
+                <p className="text-xs leading-5 text-muted-foreground">{t("insights.empty")}</p>
               )}
 
               {aiInsightsError && !aiInsightsLoading && (
@@ -988,13 +993,13 @@ export function JobSeekerHomePage({
           >
             <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">AI suggestions</div>
-                <h2 id="ai-guide-title" className="mt-1 text-2xl font-semibold tracking-tight">Let&apos;s improve your job matches</h2>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">{t("drawer.eyebrow")}</div>
+                <h2 id="ai-guide-title" className="mt-1 text-2xl font-semibold tracking-tight">{t("drawer.title")}</h2>
               </div>
               <button
                 onClick={closeGuide}
                 className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Close suggestions panel"
+                aria-label={t("drawer.close")}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1003,7 +1008,7 @@ export function JobSeekerHomePage({
             <div className="space-y-4 px-6 py-6">
               <div className="rounded-3xl bg-primary/[0.05] p-5">
                 <p className="text-base font-medium leading-7">
-                  Hi {name.split(" ")[0]}, recruiters respond better when your profile, preferences, and resume all point in the same direction.
+                  {t("drawer.intro", { name: name.split(" ")[0] })}
                 </p>
               </div>
 
@@ -1043,9 +1048,9 @@ export function JobSeekerHomePage({
                             className="h-9 rounded-full px-4"
                           >
                             {aiFillLoading ? (
-                              <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> AI is working...</>
+                              <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> {t("drawer.aiWorking")}</>
                             ) : (
-                              <><Wand2 className="mr-2 h-3.5 w-3.5" /> Fill with AI</>
+                              <><Wand2 className="mr-2 h-3.5 w-3.5" /> {t("drawer.fillWithAi")}</>
                             )}
                           </Button>
                           <Button
@@ -1056,7 +1061,7 @@ export function JobSeekerHomePage({
                             onClick={() => { setAiFillActive(null); setAiFillInput(""); }}
                             className="h-9 rounded-full px-3 text-muted-foreground"
                           >
-                            Cancel
+                            {t("common.cancel")}
                           </Button>
                         </div>
                       </div>
@@ -1070,7 +1075,7 @@ export function JobSeekerHomePage({
                           className="inline-flex items-center gap-1.5 rounded-full bg-primary/[0.08] px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/[0.14]"
                         >
                           <Wand2 className="h-3.5 w-3.5" />
-                          Let AI fill this
+                          {t("drawer.letAiFill")}
                         </button>
                       )}
                       <Link
@@ -1085,7 +1090,7 @@ export function JobSeekerHomePage({
                   </div>
                 )) : (
                   <div className="dashboard-surface-success rounded-3xl border px-5 py-4 text-sm text-foreground">
-                    Your home setup already looks good. You can browse jobs directly or keep refining your profile for even better recommendations.
+                    {t("drawer.completeState")}
                   </div>
                 )}
               </div>
@@ -1095,7 +1100,7 @@ export function JobSeekerHomePage({
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-primary">
                     <Sparkles className="h-4 w-4" />
-                    <span className="text-sm font-semibold">Personalized AI insights</span>
+                    <span className="text-sm font-semibold">{t("drawer.personalizedInsights")}</span>
                   </div>
                   {aiInsights.map((insight, idx) => (
                     <div key={`${insight.type}-${insight.title}-${idx}`} className="rounded-3xl border border-border/60 px-5 py-4">
@@ -1110,20 +1115,20 @@ export function JobSeekerHomePage({
               )}
 
               <div className="rounded-3xl border border-border/60 bg-muted/20 p-5">
-                <div className="text-sm font-semibold">How this helps</div>
+                <div className="text-sm font-semibold">{t("drawer.howThisHelpsTitle")}</div>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Suggestions open in a full side panel so guidance feels clear and actionable while you stay on the main page.
+                  {t("drawer.howThisHelpsBody")}
                 </p>
               </div>
 
               <div className="flex gap-3 pt-2">
                 <Button asChild className="h-11 rounded-full px-5">
                   <Link href={`/${locale}/job-seeker/jobs`} onClick={closeGuide}>
-                    Browse jobs
+                    {t("drawer.browseJobs")}
                   </Link>
                 </Button>
                 <Button type="button" variant="outline" className="h-11 rounded-full px-5" onClick={closeGuide}>
-                  Not now
+                  {t("drawer.notNow")}
                 </Button>
               </div>
             </div>

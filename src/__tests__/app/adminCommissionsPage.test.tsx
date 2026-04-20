@@ -44,6 +44,12 @@ jest.mock("@/components/shared/PaginationControls", () => ({
   PaginationControls: () => <div data-testid="pagination-controls" />,
 }));
 
+jest.mock("@/components/ui/input", () => ({
+  Input: React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+    (props, ref) => <input ref={ref} {...props} />
+  ),
+}));
+
 jest.mock("@/components/ui/searchable-select", () => ({
   SearchableSelect: ({
     id,
@@ -102,6 +108,7 @@ describe("AdminCommissionsPage", () => {
             createdAt: "2026-04-10T00:00:00.000Z",
           },
         ],
+        summary: { pending: 25000, approved: 18000, paid: 9500, currency: "AED" },
         total: 1,
         totalPages: 1,
       }),
@@ -129,10 +136,21 @@ describe("AdminCommissionsPage", () => {
     expect(screen.getByText(/12% rate/i)).toBeInTheDocument();
     expect(screen.getByTestId("pagination-controls")).toBeInTheDocument();
 
+    // KPI summary cards show totals from API summary
+    expect(screen.getByText("AED 25,000")).toBeInTheDocument();
+    expect(screen.getByText("AED 18,000")).toBeInTheDocument();
+    expect(screen.getByText("AED 9,500")).toBeInTheDocument();
+
     expect(screen.getByRole("heading", { level: 1, name: "Commissions" }).closest("section")).toHaveClass("workspace-hero-surface");
     expect(screen.getByRole("heading", { name: /filter the commissions you want to review next/i }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(screen.getByRole("heading", { name: /review and action agent payouts/i }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(paginationState.updateTotal).toHaveBeenCalledWith(1);
+
+    // All filter controls are present
+    expect(screen.getByPlaceholderText("Search agent…")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date from")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date to")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /clear filters/i })).toBeInTheDocument();
   });
 
   it("shows an error banner when the commissions request fails", async () => {

@@ -57,7 +57,7 @@ export function useInterviews(filters: InterviewsFilters) {
   return useQuery({
     queryKey: interviewKeys.list(filters),
     queryFn: () => fetchInterviews(filters),
-    staleTime: 10 * 1000,
+    staleTime: 60 * 1000,
     placeholderData: (prev) => prev,
   });
 }

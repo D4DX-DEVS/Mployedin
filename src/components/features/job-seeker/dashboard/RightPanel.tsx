@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { TrendingUp, TrendingDown, Sparkles, CheckCircle, Clock, ExternalLink } from "lucide-react";
+import { TrendingUp, TrendingDown, Sparkles, CheckCircle2, Clock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ function RecruiterViews({ stats }: { stats?: DashboardStats }) {
         {views.daily.map((val, i) => (
           <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
             <div
-              className="w-full rounded-sm bg-primary/70 transition-all"
+              className="w-full rounded-sm bg-primary/70 transition-all duration-300 hover:bg-primary"
               style={{ height: `${(val / max) * 100}%`, minHeight: val > 0 ? "3px" : "0" }}
             />
             <span className="text-[8px] text-muted-foreground">
@@ -114,14 +114,14 @@ function AICoach() {
   return (
     <div className="card-base p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+        <Sparkles className="h-4 w-4 text-violet-500" />
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           AI Coach
         </h4>
       </div>
       <div className="space-y-3">
         {AI_COACH_ITEMS.map((item) => (
-          <div key={item.action} className="rounded-lg bg-violet-50 border border-violet-100 p-3">
+          <div key={item.action} className="rounded-lg bg-violet-50 border border-violet-100 p-3 transition-all duration-150 hover:border-violet-200 hover:shadow-sm">
             <p className="text-xs text-violet-900">{item.suggestion}</p>
             <Link
               href={item.href}
@@ -212,9 +212,9 @@ function ActivityFeed({ events }: { events?: ActivityEvent[] }) {
       </h4>
       <div className="space-y-3">
         {events.slice(0, 5).map((ev) => (
-          <div key={ev.id} className="flex items-start gap-2">
+          <div key={ev.id} className="flex items-start gap-2 rounded-lg p-1.5 -mx-1.5 transition-colors hover:bg-muted/50">
             <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10">
-              <CheckCircle className="h-3 w-3 text-primary" />
+              <CheckCircle2 className="h-3 w-3 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs text-foreground leading-snug">{ev.message}</p>

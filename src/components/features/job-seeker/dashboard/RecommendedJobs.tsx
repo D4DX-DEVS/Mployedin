@@ -233,7 +233,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
           return (
             <div
               key={job._id}
-              className="flex items-start justify-between gap-4 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30"
+              className="flex items-start justify-between gap-4 rounded-lg border border-border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md hover:bg-accent/30"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

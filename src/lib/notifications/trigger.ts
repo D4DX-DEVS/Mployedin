@@ -128,7 +128,6 @@ export async function notifyInterviewScheduled(
     message: `Your interview for "${jobTitle}" is scheduled for ${dateStr} at ${location}.`,
     link: `/en/job-seeker/interviews`,
     sendEmail: true,
-    sendWhatsApp: true,
     metadata: { jobTitle, scheduledAt, location, interviewId },
   });
 }

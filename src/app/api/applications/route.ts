@@ -3,6 +3,9 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
+import Interview from "@/models/Interview";
+import Offer from "@/models/Offer";
+import Placement from "@/models/Placement";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
@@ -40,6 +43,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const search = searchParams.get("search")?.trim() ?? "";
   const dateFrom = searchParams.get("dateFrom") ?? "";
   const dateTo = searchParams.get("dateTo") ?? "";
+  const experienceMin = searchParams.get("experienceMin") ?? "";
+  const experienceMax = searchParams.get("experienceMax") ?? "";
+  const skills = searchParams.get("skills") ?? "";
+  const scoreMin = searchParams.get("scoreMin") ?? "";
+  const scoreMax = searchParams.get("scoreMax") ?? "";
+  const fetchJobs = searchParams.get("fetchJobs") === "true";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -51,9 +60,29 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   } else if (ctx.role === "employer") {
     // Get all jobs for this employer then filter
     const { Employer } = await import("@/models/Employer");
+    const { CompanyUser } = await import("@/models/CompanyUser");
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!emp) return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 } });
-    const jobs = await Job.find({ employerId: emp._id }).select("_id").lean();
+
+    // Check job-level access for team members
+    const teamMember = await CompanyUser.findOne({
+      companyId: emp._id,
+      userId: ctx.userId,
+      status: "active",
+    }).select("companyRole jobAccess").lean();
+
+    let jobQuery: Record<string, unknown> = { employerId: emp._id };
+    if (
+      teamMember &&
+      teamMember.companyRole !== "owner" &&
+      teamMember.companyRole !== "admin" &&
+      teamMember.jobAccess &&
+      teamMember.jobAccess.length > 0
+    ) {
+      jobQuery = { employerId: emp._id, _id: { $in: teamMember.jobAccess } };
+    }
+
+    const jobs = await Job.find(jobQuery).select("_id").lean();
     query.jobId = { $in: jobs.map((j) => j._id) };
   } else if (ctx.role === "agent") {
     // Agent sees applications for their jobs + jobs from assigned employers
@@ -90,6 +119,62 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       }
     }
     if (Object.keys(dateFilter).length > 0) query.appliedAt = dateFilter;
+  }
+
+  // AI score range filter
+  if (scoreMin || scoreMax) {
+    const scoreFilter: Record<string, number> = {};
+    const parsedMin = parseInt(scoreMin);
+    const parsedMax = parseInt(scoreMax);
+    if (!isNaN(parsedMin) && parsedMin > 0) scoreFilter.$gte = parsedMin;
+    if (!isNaN(parsedMax) && parsedMax < 100) scoreFilter.$lte = parsedMax;
+    if (Object.keys(scoreFilter).length > 0) query.aiMatchScore = scoreFilter;
+  }
+
+  // Experience filter — filter by jobSeeker's totalExperienceYears
+  let experienceFilterSeekerIds: unknown[] | null = null;
+  if (experienceMin || experienceMax) {
+    const expFilter: Record<string, number> = {};
+    const parsedExpMin = parseInt(experienceMin);
+    const parsedExpMax = parseInt(experienceMax);
+    if (!isNaN(parsedExpMin)) expFilter.$gte = parsedExpMin;
+    if (!isNaN(parsedExpMax)) expFilter.$lte = parsedExpMax;
+    if (Object.keys(expFilter).length > 0) {
+      const seekers = await JobSeeker.find({ totalExperienceYears: expFilter }).select("_id").lean();
+      experienceFilterSeekerIds = seekers.map((s) => s._id);
+    }
+  }
+
+  // Skills filter — filter by jobSeeker's skills containing any of the requested
+  let skillsFilterSeekerIds: unknown[] | null = null;
+  if (skills) {
+    const skillsList = skills.split(",").map((s) => s.trim()).filter(Boolean);
+    if (skillsList.length > 0) {
+      const escapedSkills = skillsList.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      const seekers = await JobSeeker.find({
+        skills: { $in: escapedSkills.map((s) => new RegExp(s, "i")) },
+      }).select("_id").lean();
+      skillsFilterSeekerIds = seekers.map((s) => s._id);
+    }
+  }
+
+  // Combine experience + skills seeker filters
+  if (experienceFilterSeekerIds || skillsFilterSeekerIds) {
+    const combined = experienceFilterSeekerIds && skillsFilterSeekerIds
+      ? experienceFilterSeekerIds.filter((id) =>
+          skillsFilterSeekerIds!.some((sid) => String(sid) === String(id))
+        )
+      : experienceFilterSeekerIds ?? skillsFilterSeekerIds!;
+
+    if (combined.length === 0) {
+      return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });
+    }
+
+    if (query.jobSeekerId) {
+      query.$and = [...(query.$and ?? []), { jobSeekerId: { $in: combined } }];
+    } else {
+      query.jobSeekerId = { $in: combined };
+    }
   }
 
   if (search) {
@@ -142,7 +227,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     }
 
     if (searchClauses.length === 0) {
-      return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 } });
+      return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });
     }
 
     query.$and = [...(query.$and ?? []), { $or: searchClauses }];
@@ -179,12 +264,81 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     crossAppCounts = Object.fromEntries(counts.map((c) => [String(c._id), c.count]));
   }
 
+  // Optionally return employer's jobs list for the job filter dropdown
+  let employerJobs: Array<{ _id: string; title: string; requirements: { skills: string[]; experienceMin: number; experienceMax: number; education?: string; languages?: string[] }; salary: { min: number; max: number; currency: string; period?: string }; location: { country: string; city: string; isRemote: boolean }; employmentType?: string; workMode?: string; status: string }> = [];
+  if (fetchJobs && (ctx.role === "employer" || ctx.role === "agent" || ctx.role === "super_agent" || ctx.role === "admin")) {
+    const jobQuery: Record<string, unknown> = {};
+    if (ctx.role === "employer") {
+      const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+      if (emp) jobQuery.employerId = emp._id;
+    } else if (ctx.role === "agent") {
+      const { Agent } = await import("@/models/Agent");
+      const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+      if (agentDoc) {
+        jobQuery.$or = [
+          { agentId: agentDoc._id },
+          ...(agentDoc.assignedEmployerIds?.length ? [{ employerId: { $in: agentDoc.assignedEmployerIds } }] : []),
+        ];
+      }
+    }
+    employerJobs = await Job.find({ ...jobQuery, status: { $in: ["active", "closed"] } })
+      .select("title requirements salary location employmentType workMode status")
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+  }
+
+  // For job_seeker: enrich applications with latest interview, offer, and placement data
+  let interviewMap: Record<string, unknown> = {};
+  let offerMap: Record<string, unknown> = {};
+  let placementMap: Record<string, unknown> = {};
+
+  if (ctx.role === "job_seeker" && applications.length > 0) {
+    const appIds = applications.map((a) => a._id);
+
+    const [interviews, offers, placements] = await Promise.all([
+      Interview.find({
+        applicationId: { $in: appIds },
+        status: { $nin: ["cancelled"] },
+      })
+        .select("applicationId type scheduledAt duration location meetLink status candidateResponse outcome instructions")
+        .sort({ scheduledAt: -1 })
+        .lean(),
+      Offer.find({ applicationId: { $in: appIds } })
+        .select("applicationId salary startDate benefits status expiresAt")
+        .sort({ createdAt: -1 })
+        .lean(),
+      Placement.find({ applicationId: { $in: appIds } })
+        .select("applicationId placedAt startDate salary currency")
+        .lean(),
+    ]);
+
+    // Map latest interview per application
+    for (const iv of interviews) {
+      const key = String(iv.applicationId);
+      if (!interviewMap[key]) interviewMap[key] = iv;
+    }
+    // Map latest offer per application
+    for (const offer of offers) {
+      const key = String(offer.applicationId);
+      if (!offerMap[key]) offerMap[key] = offer;
+    }
+    // Map placement per application
+    for (const pl of placements) {
+      placementMap[String(pl.applicationId)] = pl;
+    }
+  }
+
   return NextResponse.json({
     applications: applications.map((app) => ({
       ...app,
       otherApplicationsCount: Math.max(0, (crossAppCounts[String(app.jobSeekerId?._id)] ?? 1) - 1),
+      ...(interviewMap[String(app._id)] ? { latestInterview: interviewMap[String(app._id)] } : {}),
+      ...(offerMap[String(app._id)] ? { latestOffer: offerMap[String(app._id)] } : {}),
+      ...(placementMap[String(app._id)] ? { placement: placementMap[String(app._id)] } : {}),
     })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    ...(fetchJobs ? { employerJobs } : {}),
   });
 }
 

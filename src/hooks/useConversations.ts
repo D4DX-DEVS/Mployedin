@@ -1,9 +1,7 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
-import { getPusherClient } from "@/lib/pusherClient";
 
 export interface Participant {
   userId: string;
@@ -45,35 +43,13 @@ async function fetchConversations(): Promise<Conversation[]> {
 
 export function useConversations() {
   const { data: session } = useSession();
-  const queryClient = useQueryClient();
   const currentUserId = (session?.user as unknown as { id?: string })?.id ?? "";
-
-  // Invalidate conversation list when a new conversation is created by someone else
-  useEffect(() => {
-    if (!currentUserId || !process.env.NEXT_PUBLIC_PUSHER_KEY) return;
-    try {
-      const pusher = getPusherClient();
-      const channel = pusher.subscribe(`private-dm-${currentUserId}`);
-      channel.bind("new-conversation", () => {
-        queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
-      });
-      // Also refresh on incoming messages so unread counts update
-      channel.bind("new-message", () => {
-        queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
-      });
-      return () => {
-        channel.unbind("new-conversation");
-        channel.unbind("new-message");
-      };
-    } catch {
-      // Pusher not configured — polling will handle updates
-    }
-  }, [currentUserId, queryClient]);
 
   return useQuery({
     queryKey: conversationKeys.lists(),
     queryFn: fetchConversations,
-    staleTime: 10 * 1000,
-    refetchInterval: 60000, // fallback polling every 60s (Pusher handles real-time)
+    enabled: !!currentUserId,
+    staleTime: 30 * 1000,
+    refetchInterval: 30_000, // Poll every 30s (balanced between freshness and load)
   });
 }

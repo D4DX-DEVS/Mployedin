@@ -60,8 +60,6 @@
     "nodemailer": "^7.0.7",
     "pdf-parse": "^2.4.5",
     "pino": "^10.3.1",
-    "pusher": "^5.3.3",
-    "pusher-js": "^8.5.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-dropzone": "^15.0.0",

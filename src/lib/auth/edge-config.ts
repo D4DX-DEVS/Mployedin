@@ -13,6 +13,7 @@ const edgeAuthConfig: NextAuthConfig = {
    * Node.js runtime via the full config in lib/auth/config.ts.
    */
   providers: [],
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/en/login",

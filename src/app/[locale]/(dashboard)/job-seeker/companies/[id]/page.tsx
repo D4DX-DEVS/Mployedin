@@ -28,6 +28,7 @@ interface EmployerProfile {
   country?: string;
   address?: string;
   domainVerified?: boolean;
+  isAgentVerified?: boolean;
   verificationLevel?: "basic" | "company" | "premium";
   responseTimeCommitment?: number;
   socialLinks?: {
@@ -97,7 +98,7 @@ const getEmployerProfile = cache(async (id: string) => {
 
   const employer = await Employer.findById(id)
     .select(
-      "companyName logo description website industry companySize foundedYear city country address domainVerified verificationLevel responseTimeCommitment socialLinks"
+      "companyName logo description website industry companySize foundedYear city country address domainVerified isAgentVerified verificationLevel responseTimeCommitment socialLinks"
     )
     .lean()
     .catch(() => null);
@@ -329,7 +330,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                   <div className="rounded-[20px] border border-border/60 bg-muted/20 px-4 py-3">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Verification</div>
                     <p className="mt-1 font-medium text-foreground">
-                      {employer.domainVerified ? "Verified employer" : `Verification level: ${employer.verificationLevel ?? "basic"}`}
+                      {(employer.domainVerified || employer.isAgentVerified) ? "Verified employer" : `Verification level: ${employer.verificationLevel ?? "basic"}`}
                     </p>
                   </div>
                   {employer.responseTimeCommitment ? (

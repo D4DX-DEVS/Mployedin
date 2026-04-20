@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 const locales = ["en", "ar"];
@@ -62,6 +62,8 @@ export default async function LocaleLayout({
   if (!locales.includes(locale)) {
     notFound();
   }
+
+  setRequestLocale(locale);
 
   const messages = await getMessages();
   const dir = locale === "ar" ? "rtl" : "ltr";

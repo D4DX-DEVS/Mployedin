@@ -54,7 +54,7 @@ export function useTeam() {
 export function useInviteTeamMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (inviteData: { email: string; companyRole: CompanyRole }) => {
+    mutationFn: async (inviteData: { email: string; companyRole: CompanyRole; jobAccess?: string[] }) => {
       const res = await fetch("/api/employers/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -72,17 +72,18 @@ export function useInviteTeamMember() {
   });
 }
 
-/** Update a team member's role */
+/** Update a team member's role and/or job access */
 export function useUpdateTeamMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ memberId, companyRole }: { memberId: string; companyRole: CompanyRole }) => {
+    mutationFn: async (payload: { memberId: string; companyRole?: CompanyRole; jobAccess?: string[] }) => {
+      const { memberId, ...body } = payload;
       const res = await fetch(`/api/employers/team/${memberId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyRole }),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error("Failed to update team member role");
+      if (!res.ok) throw new Error("Failed to update team member");
       return res.json();
     },
     onSuccess: () => {

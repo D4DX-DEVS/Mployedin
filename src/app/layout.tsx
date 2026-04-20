@@ -52,6 +52,10 @@ export default async function RootLayout({
         className={`${inter.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
         {...(nonce ? { "data-nonce": nonce } : {})}
       >
+        {/* Raw <script> is correct here – this is a Server Component so the
+            script is emitted in the initial HTML and executes immediately.
+            suppressHydrationWarning prevents the nonce-mismatch warning
+            (browsers clear the nonce attribute after use for security). */}
         <script
           nonce={nonce}
           suppressHydrationWarning

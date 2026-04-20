@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote, BookTemplate, Search, Sparkles, ArrowRight } from "lucide-react";
+import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -641,6 +641,18 @@ export default function EmployerJobsPage() {
                         <Button size="sm" variant="outline" title="Edit" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
                           onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/edit`)}>
                           <Edit2 className="h-4 w-4" /> Edit
+                        </Button>
+                      )}
+                      {can("jobs", "update") && (
+                        <Button size="sm" variant="outline" title="Job Workflow" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
+                          onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=workflow`)}>
+                          <GitBranch className="h-4 w-4" /> Workflow
+                        </Button>
+                      )}
+                      {can("jobs", "update") && (
+                        <Button size="sm" variant="outline" title="Matching Weights" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
+                          onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=matching-weights`)}>
+                          <SlidersHorizontal className="h-4 w-4" /> Weights
                         </Button>
                       )}
                       {can("jobs", "create") && (

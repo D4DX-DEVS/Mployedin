@@ -43,6 +43,36 @@ export interface IJobPoster {
   uploadedAt?: Date;
 }
 
+export interface IWorkflowStage {
+  id: string;
+  label: string;
+  enabled: boolean;
+  autoProgress: boolean;
+  order: number;
+}
+
+export interface IWorkflowSettings {
+  aiAutoScreen: boolean;
+  notifyOnStageChange: boolean;
+  autoRejectBelow: number;
+}
+
+export interface IJobWorkflow {
+  stages?: IWorkflowStage[];
+  settings?: IWorkflowSettings;
+}
+
+export interface IMatchingWeights {
+  skills: number;
+  experience: number;
+  education: number;
+  location: number;
+  salary: number;
+  languages: number;
+  availability: number;
+  behaviorSignals: number;
+}
+
 export interface IJob extends Document {
   _id: mongoose.Types.ObjectId;
   employerId: mongoose.Types.ObjectId;
@@ -61,6 +91,8 @@ export interface IJob extends Document {
   learningOutcomes?: string[];
   status: JobStatus;
   workflowMode: WorkflowMode;
+  workflow?: IJobWorkflow;
+  matchingWeights?: IMatchingWeights;
   vacancies?: number;
   applicantIds: mongoose.Types.ObjectId[];
   poster: IJobPoster;
@@ -124,6 +156,30 @@ const JobSchema = new Schema<IJob>(
       default: "draft",
     },
     workflowMode: { type: String, enum: ["auto", "manual"], default: "manual" },
+    workflow: {
+      stages: [{
+        id: String,
+        label: String,
+        enabled: { type: Boolean, default: true },
+        autoProgress: { type: Boolean, default: false },
+        order: Number,
+      }],
+      settings: {
+        aiAutoScreen: { type: Boolean, default: true },
+        notifyOnStageChange: { type: Boolean, default: true },
+        autoRejectBelow: { type: Number, default: 40 },
+      },
+    },
+    matchingWeights: {
+      skills: Number,
+      experience: Number,
+      education: Number,
+      location: Number,
+      salary: Number,
+      languages: Number,
+      availability: Number,
+      behaviorSignals: Number,
+    },
     vacancies: { type: Number, min: 1 },
     applicantIds: [{ type: Schema.Types.ObjectId, ref: "JobSeeker" }],
     poster: {

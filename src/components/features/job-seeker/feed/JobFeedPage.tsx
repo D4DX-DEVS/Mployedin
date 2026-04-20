@@ -362,14 +362,14 @@ export function JobFeedPage({ locale }: { locale: string }) {
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
-                Job search workspace
+                AI Job Matching
               </div>
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                  Search jobs with a faster, denser board view.
+                  Browse AI-matched jobs faster.
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
-                  Browse profile-based matches, switch into discovery mode, and apply in bulk without losing the cleaner Mployedin dashboard feel.
+                  AI scores every role against your profile. Switch to discovery mode and apply in bulk without leaving the dashboard.
                 </p>
               </div>
             </div>
@@ -455,7 +455,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                  Search smarter
+                  AI-powered search
                 </div>
                 <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
                   Keep the list relevant.
@@ -511,11 +511,11 @@ export function JobFeedPage({ locale }: { locale: string }) {
           <div className="flex flex-col gap-3 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                Browse mode
+                AI Matching
               </div>
               <TabsList className="mt-3 h-auto rounded-full border border-border/60 bg-muted/30 p-1">
                 <TabsTrigger value="profile" className="rounded-full px-4 py-2 text-xs sm:text-sm">
-                  Profile match
+                  AI Profile Match
                   {total > 0 && (
                     <Badge variant="secondary" className="ml-1.5 rounded-full px-1.5 py-0 text-[10px]">
                       {total}

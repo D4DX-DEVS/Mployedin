@@ -20,6 +20,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const action = searchParams.get("action") ?? "";
   const actorId = searchParams.get("actorId") ?? "";
   const country = searchParams.get("country") ?? "";
+  const from = searchParams.get("from") ?? "";
+  const to = searchParams.get("to") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -27,6 +29,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   if (action) query.action = new RegExp(escapeRegex(action), "i");
   if (actorId) query.actorId = actorId;
   if (country) query.country = country.toUpperCase();
+  if (from || to) {
+    query.createdAt = {};
+    if (from) query.createdAt.$gte = new Date(from);
+    if (to) query.createdAt.$lte = new Date(to + "T23:59:59.999Z");
+  }
 
   const [logs, total] = await Promise.all([
     AuditLog.find(query)

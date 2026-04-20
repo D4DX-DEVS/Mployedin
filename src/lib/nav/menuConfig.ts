@@ -477,6 +477,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             ],
           },
           {
+            title: "Messages",
+            titleAr: "الرسائل",
+            href: p("/admin/messages"),
+            icon: "MessageSquare",
+            description: "Messages & support tickets",
+            descriptionAr: "الرسائل وتذاكر الدعم",
+          },
+          {
             title: "Notifications",
             titleAr: "الإشعارات",
             href: p("/notifications"),
@@ -542,12 +550,12 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "الأداء والمالية",
             children: [
               {
-                title: "Approvals",
-                titleAr: "الموافقات",
+                title: "Jobs",
+                titleAr: "الوظائف",
                 href: p("/super-agent/approvals"),
-                icon: "CheckCircle",
-                description: "Pending approval requests",
-                descriptionAr: "طلبات الموافقة المعلقة",
+                icon: "Briefcase",
+                description: "Regional job listings",
+                descriptionAr: "قوائم الوظائف الإقليمية",
               },
               {
                 title: "Placements",
@@ -582,6 +590,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تقارير الأداء",
               },
             ],
+          },
+          {
+            title: "Messages",
+            titleAr: "الرسائل",
+            href: p("/super-agent/messages"),
+            icon: "MessageSquare",
+            description: "Messages with agents & employers",
+            descriptionAr: "الرسائل مع الوكلاء وأصحاب العمل",
           },
           {
             title: "Notifications",
@@ -701,10 +717,10 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
           {
             title: "Messages",
             titleAr: "الرسائل",
-            href: p("/agent/chat"),
+            href: p("/agent/messages"),
             icon: "MessageSquare",
-            description: "Messages & conversations",
-            descriptionAr: "الرسائل والمحادثات",
+            description: "Messages with employers & super agents",
+            descriptionAr: "الرسائل مع أصحاب العمل والوكلاء الكبار",
           },
           {
             title: "Notifications",
@@ -744,14 +760,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Briefcase",
                 description: "Post & manage job listings",
                 descriptionAr: "نشر وإدارة الوظائف",
-              },
-              {
-                title: "Applications",
-                titleAr: "الطلبات",
-                href: p("/employer/applications"),
-                icon: "FileText",
-                description: "Review candidate applications",
-                descriptionAr: "مراجعة طلبات المرشحين",
               },
               {
                 title: "Candidates",
@@ -796,20 +804,20 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "أدوات التوظيف والأتمتة",
             children: [
               {
-                title: "Workflow",
-                titleAr: "سير العمل",
+                title: "Default Workflow",
+                titleAr: "سير العمل الافتراضي",
                 href: p("/employer/workflow"),
                 icon: "GitBranch",
-                description: "Custom hiring workflows",
-                descriptionAr: "مسارات التوظيف المخصصة",
+                description: "Default pipeline for new jobs (override per job)",
+                descriptionAr: "المسار الافتراضي للوظائف الجديدة (يمكن تخصيصه لكل وظيفة)",
               },
               {
-                title: "Matching Weights",
-                titleAr: "أوزان المطابقة",
+                title: "Default Matching Weights",
+                titleAr: "أوزان المطابقة الافتراضية",
                 href: p("/employer/matching-weights"),
                 icon: "SlidersHorizontal",
-                description: "AI matching preferences",
-                descriptionAr: "إعدادات المطابقة الذكية",
+                description: "Default AI scoring for new jobs (override per job)",
+                descriptionAr: "الأوزان الافتراضية للمطابقة الذكية (يمكن تخصيصها لكل وظيفة)",
               },
               {
                 title: "Communication Templates",
@@ -860,6 +868,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             icon: "Users",
             description: "Manage team members & roles",
             descriptionAr: "إدارة أعضاء الفريق والأدوار",
+          },
+          {
+            title: "Team Activity Logs",
+            titleAr: "سجل نشاط الفريق",
+            href: p("/employer/team/activity-logs"),
+            icon: "Activity",
+            description: "View all team member activities",
+            descriptionAr: "عرض جميع أنشطة أعضاء الفريق",
           },
           {
             title: "Company Settings",
@@ -995,8 +1011,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             titleAr: "الرسائل",
             href: p("/job-seeker/messages"),
             icon: "MessageSquare",
-            description: "Messages from employers",
-            descriptionAr: "الرسائل من أصحاب العمل",
+            description: "Chat with employers & support",
+            descriptionAr: "الدردشة مع أصحاب العمل والدعم",
           },
           {
             title: "Settings",

@@ -71,19 +71,8 @@ export const notificationOrchestrator = inngest.createFunction(
       return { skipped: true, reason: "duplicate within 5 min window" };
     }
 
-    // 2. Create in-app notification (always — fast, no preference check needed)
-    await step.run("create-in-app", async () => {
-      await Notification.create({
-        userId,
-        type,
-        title,
-        body: message,
-        actionUrl: link,
-        meta: metadata,
-        channels: ["in_app"],
-        isRead: false,
-      });
-    });
+    // In-app notification is already created synchronously in notify() (trigger.ts).
+    // The orchestrator only handles async delivery: email & whatsapp.
 
     // 3. Check user preferences
     const prefs = await step.run("load-preferences", () =>
@@ -114,6 +103,9 @@ export const notificationOrchestrator = inngest.createFunction(
           to: user.email,
           subject: title,
           html: buildNotificationEmailHtml(title, message, link),
+          userId,
+          source: "orchestrator",
+          category,
         });
       });
       deliveredChannels.push("email");

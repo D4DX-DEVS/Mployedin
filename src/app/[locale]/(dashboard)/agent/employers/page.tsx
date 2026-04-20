@@ -8,7 +8,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, BriefcaseBusiness, Building2, Edit2, Globe2, Loader2, MapPin, Plus, Search, Sparkles, Trash2 } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Building2, Check, Copy, Edit2, Globe2, Link2, Loader2, MapPin, Plus, Search, Sparkles, Trash2, UserPlus } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 
 interface Employer {
@@ -19,12 +19,22 @@ interface Employer {
   industry?: string;
   location?: string;
   isActive: boolean;
+  isAgentVerified?: boolean;
 }
 
 const EMPLOYER_FIELDS: CrudField[] = [
   { name: "companyName", label: "Company Name", type: "text", required: true },
   { name: "industry", label: "Industry", type: "text" },
   { name: "location", label: "Location", type: "text" },
+];
+
+const ONBOARD_FIELDS: CrudField[] = [
+  { name: "name", label: "Contact Name", type: "text", required: true },
+  { name: "email", label: "Email", type: "text", required: true },
+  { name: "password", label: "Temporary Password", type: "text", required: true },
+  { name: "companyName", label: "Company Name", type: "text", required: true },
+  { name: "industry", label: "Industry", type: "text" },
+  { name: "phone", label: "Phone", type: "text" },
 ];
 
 export default function AgentEmployersPage() {
@@ -36,6 +46,9 @@ export default function AgentEmployersPage() {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editEmployer, setEditEmployer] = useState<Employer | null>(null);
+  const [onboardOpen, setOnboardOpen] = useState(false);
+  const [referralLink, setReferralLink] = useState("");
+  const [referralCopied, setReferralCopied] = useState(false);
 
   const loadEmployers = useCallback(async () => {
     setLoading(true);
@@ -78,6 +91,34 @@ export default function AgentEmployersPage() {
     loadEmployers();
   };
 
+  const handleOnboard = async (values: Record<string, string>) => {
+    const res = await fetch("/api/employers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Failed to onboard employer");
+    }
+    setOnboardOpen(false);
+    loadEmployers();
+  };
+
+  const handleGetReferralLink = async () => {
+    const res = await fetch("/api/referral");
+    if (res.ok) {
+      const data = await res.json();
+      setReferralLink(data.referralLink);
+    }
+  };
+
+  const handleCopyReferral = () => {
+    navigator.clipboard.writeText(referralLink);
+    setReferralCopied(true);
+    setTimeout(() => setReferralCopied(false), 2000);
+  };
+
   const activeEmployers = employers.filter((employer) => employer.isActive).length;
   const inactiveEmployers = employers.filter((employer) => !employer.isActive).length;
   const industriesCount = new Set(employers.map((employer) => employer.industry).filter(Boolean)).size;
@@ -106,12 +147,22 @@ export default function AgentEmployersPage() {
               <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} employer accounts</p>
               <p className="text-xs text-muted-foreground">Assigned companies ready for job posting and follow-up.</p>
             </div>
-            <Link href="./jobs/new">
-              <span className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700">
-                <Plus className="h-4 w-4" />
-                Post Job
-              </span>
-            </Link>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setOnboardOpen(true)}
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700"
+              >
+                <UserPlus className="h-4 w-4" />
+                Onboard Employer
+              </button>
+              <button
+                onClick={handleGetReferralLink}
+                className="inline-flex h-9 items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                Get Referral Link
+              </button>
+            </div>
           </div>
         </div>
 
@@ -213,7 +264,12 @@ export default function AgentEmployersPage() {
                     <p className="text-xs text-muted-foreground">{em.email}</p>
                   </div>
                 </div>
-                <StatusBadge status={em.isActive ? "active" : "inactive"} />
+                <div className="flex items-center gap-1.5">
+                  {em.isAgentVerified && (
+                    <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ Verified</span>
+                  )}
+                  <StatusBadge status={em.isActive ? "active" : "inactive"} />
+                </div>
               </div>
 
               <div className="space-y-2 text-xs text-muted-foreground">
@@ -281,6 +337,33 @@ export default function AgentEmployersPage() {
         } : undefined}
         onSubmit={handleSave}
       />
+
+      <CrudModal
+        open={onboardOpen}
+        onClose={() => setOnboardOpen(false)}
+        title="Onboard New Employer"
+        fields={ONBOARD_FIELDS}
+        onSubmit={handleOnboard}
+      />
+
+      {referralLink && (
+        <section className="workspace-panel-surface rounded-[28px] p-5">
+          <div className="flex items-center gap-3">
+            <Link2 className="h-5 w-5 text-sky-600" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-foreground">Your Referral Link</p>
+              <p className="mt-1 text-xs text-muted-foreground break-all">{referralLink}</p>
+            </div>
+            <button
+              onClick={handleCopyReferral}
+              className="inline-flex h-9 items-center gap-2 rounded-xl bg-sky-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-sky-700"
+            >
+              {referralCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {referralCopied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

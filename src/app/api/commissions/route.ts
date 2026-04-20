@@ -13,6 +13,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
+  const type = searchParams.get("type");
+  const search = searchParams.get("search");
+  const dateFrom = searchParams.get("dateFrom");
+  const dateTo = searchParams.get("dateTo");
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "10");
   const skip = (page - 1) * limit;
@@ -27,9 +31,37 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   if (status && status !== "all") {
     query.status = status;
   }
+  if (type && type !== "all") {
+    query.type = type;
+  }
+  if (dateFrom || dateTo) {
+    const dateFilter: Record<string, Date> = {};
+    if (dateFrom) dateFilter.$gte = new Date(dateFrom);
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.$lte = end;
+    }
+    query.createdAt = dateFilter;
+  }
+
+  // Agent name search — need to resolve matching agent IDs first
+  let agentIdFilter: unknown[] | undefined;
+  if (search && search.trim()) {
+    const Agent = (await import("@/models/Agent")).default;
+    const matchingAgents = await Agent.find(
+      { fullName: { $regex: search.trim(), $options: "i" } },
+      { _id: 1 }
+    ).lean();
+    agentIdFilter = matchingAgents.map((a: { _id: unknown }) => a._id);
+    query.agentId = ctx.role === "agent"
+      ? ctx.userId // agent can only see own, ignore search
+      : { $in: agentIdFilter };
+  }
 
   const [commissions, total] = await Promise.all([
     Commission.find(query)
+      .populate("agentId", "fullName")
       .populate("placementId", "jobTitle candidateName")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -50,10 +82,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     },
   ]);
 
-  const summary = { pending: 0, approved: 0, paid: 0, currency: "AED" };
+  const summary = { pending: 0, approved: 0, paid: 0, disputed: 0, currency: "AED" };
   for (const row of summaryAgg) {
     const s = row._id as string;
-    if (s === "pending" || s === "approved" || s === "paid") {
+    if (s === "pending" || s === "approved" || s === "paid" || s === "disputed") {
       summary[s] = row.total;
       summary.currency = row.currency ?? "AED";
     }

@@ -70,7 +70,7 @@ const NotificationPreferenceSchema = new Schema<INotificationPreference>(
       },
       interviews: {
         type: CategoryPreferenceSchema,
-        default: () => ({ enabled: true, channels: [...DEFAULT_CHANNELS, "whatsapp"] }),
+        default: () => ({ enabled: true, channels: DEFAULT_CHANNELS }),
       },
       offers: {
         type: CategoryPreferenceSchema,

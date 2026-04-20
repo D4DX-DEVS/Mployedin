@@ -53,16 +53,34 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const safe = escapeRegex(normalized);
   const currentUserId = new mongoose.Types.ObjectId(ctx.userId);
 
-  // Determine which roles the current user can search for
-  // Employers search job seekers; job seekers search employers; admins/agents search all
+  // Determine which roles the current user can search for.
+  // Aligned with DM permission matrix in /api/dm — only show users
+  // the searcher is actually allowed to start a conversation with.
   const searchableRoles: string[] = [];
-  if (ctx.role === "employer") {
-    searchableRoles.push("job_seeker");
-  } else if (ctx.role === "job_seeker") {
-    searchableRoles.push("employer");
-  } else {
-    // admin, agent, super_agent can search everyone
-    searchableRoles.push("employer", "job_seeker");
+  switch (ctx.role) {
+    case "admin":
+      // Admin can DM anyone
+      searchableRoles.push("super_agent", "agent", "employer", "job_seeker");
+      break;
+    case "super_agent":
+      searchableRoles.push("admin", "agent", "employer");
+      break;
+    case "agent":
+      searchableRoles.push("super_agent", "employer");
+      break;
+    case "employer":
+      // Employers can message job seekers (recruiter outreach) + agents/super agents
+      searchableRoles.push("job_seeker", "agent", "super_agent");
+      break;
+    case "job_seeker":
+      // Job seekers can DM employers (apply / follow-up)
+      searchableRoles.push("employer");
+      break;
+  }
+
+  // No searchable roles means the caller has no DM permissions (e.g. job_seeker)
+  if (searchableRoles.length === 0) {
+    return NextResponse.json({ users: [] });
   }
 
   const pipeline: mongoose.PipelineStage[] = [

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,76 +9,19 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { formatRelativeTime } from "@/lib/utils";
-
-interface NotificationItem {
-  _id: string;
-  title: string;
-  body: string;
-  isRead: boolean;
-  createdAt: string;
-  actionUrl?: string;
-}
+import { useBellNotifications, useMarkAllRead, useMarkOneRead } from "@/hooks/useNotifications";
 
 interface NotificationBellProps {
   locale: string;
 }
 
 export function NotificationBell({ locale }: NotificationBellProps) {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
-
-  async function fetchNotifications() {
-    try {
-      const res = await fetch(
-        `/api/notifications?limit=10&locale=${locale}`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data.notifications ?? []);
-        setUnreadCount(data.unreadCount ?? 0);
-      }
-    } catch {
-      // silent fail
-    }
-  }
-
-  async function markAllRead() {
-    try {
-      await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markAllRead: true }),
-      });
-      setUnreadCount(0);
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch {
-      // silent fail
-    }
-  }
-
-  async function markOneRead(id: string) {
-    try {
-      await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [id] }),
-      });
-      setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
-      );
-      setUnreadCount((c) => Math.max(0, c - 1));
-    } catch {
-      // silent fail
-    }
-  }
-
-  useEffect(() => {
-    fetchNotifications();
-    // Poll every 60s
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  const { data } = useBellNotifications(locale);
+  const notifications = data?.notifications ?? [];
+  const unreadCount = data?.unreadCount ?? 0;
+  const markAllRead = useMarkAllRead();
+  const markOneRead = useMarkOneRead();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -97,7 +40,7 @@ export function NotificationBell({ locale }: NotificationBellProps) {
           <h4 className="text-sm font-semibold">Notifications</h4>
           {unreadCount > 0 && (
             <button
-              onClick={markAllRead}
+              onClick={() => markAllRead.mutate()}
               className="text-xs text-brand-blue hover:underline"
             >
               Mark all read
@@ -113,7 +56,7 @@ export function NotificationBell({ locale }: NotificationBellProps) {
             notifications.map((n) => (
               <div
                 key={n._id}
-                onClick={() => !n.isRead && markOneRead(n._id)}
+                onClick={() => !n.isRead && markOneRead.mutate(n._id)}
                 className={`relative px-4 py-3 border-b border-border last:border-0 hover:bg-muted/40 cursor-pointer transition-colors ${
                   !n.isRead ? "bg-blue-50 dark:bg-blue-950/20" : ""
                 }`}

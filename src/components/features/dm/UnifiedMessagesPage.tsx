@@ -1,0 +1,371 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
+import { MessageSquare, Search, Inbox, Loader2, ChevronLeft, Headset, Shield, Users, Building2, Star } from "lucide-react";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { DirectMessageChat } from "@/components/features/dm/DirectMessageChat";
+import { NewChatSearch } from "@/components/features/dm/NewChatSearch";
+import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { useConversations } from "@/hooks/useConversations";
+import type { Conversation } from "@/hooks/useConversations";
+
+const ROLE_ICONS: Record<string, React.ReactNode> = {
+  admin: <Shield className="h-3 w-3" />,
+  super_agent: <Star className="h-3 w-3" />,
+  agent: <Users className="h-3 w-3" />,
+  employer: <Building2 className="h-3 w-3" />,
+  job_seeker: <Headset className="h-3 w-3" />,
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  super_agent: "Super Agent",
+  agent: "Agent",
+  employer: "Employer",
+  job_seeker: "Job Seeker",
+};
+
+interface UnifiedMessagesPageProps {
+  /** The current role's dashboard prefix for routing */
+  dashboardPrefix: string;
+  /** Page title */
+  title?: string;
+  /** Page description */
+  description?: string;
+  /** Whether to show the "New Chat" button */
+  showNewChat?: boolean;
+  /** Whether to show customer care tab (admin only) */
+  showCustomerCare?: boolean;
+}
+
+export function UnifiedMessagesPage({
+  dashboardPrefix,
+  title = "Messages",
+  description = "Direct messages & conversations",
+  showNewChat = true,
+  showCustomerCare = false,
+}: UnifiedMessagesPageProps) {
+  const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { locale } = useParams<{ locale: string }>();
+
+  const { data: conversations = [], isLoading: loading } = useConversations();
+  const { data: customerCareConvs = [], isLoading: customerCareLoading } = useQuery({
+    queryKey: ["customerCareConversations"],
+    queryFn: async () => {
+      const res = await fetch("/api/dm/customer-care?limit=50");
+      if (!res.ok) throw new Error("Failed to fetch customer care conversations");
+      const data = await res.json();
+      return (data.conversations ?? []) as Conversation[];
+    },
+    enabled: showCustomerCare,
+    staleTime: 15 * 1000,
+    refetchInterval: showCustomerCare ? 15_000 : false,
+  });
+  const [search, setSearch] = useState("");
+  const [activeConvId, setActiveConvId] = useState<string | null>(
+    searchParams.get("conv")
+  );
+  const [activeTab, setActiveTab] = useState<"dm" | "support">(
+    searchParams.get("tab") === "support" ? "support" : "dm"
+  );
+
+  const currentUserId = (session?.user as unknown as { id?: string })?.id ?? "";
+
+  // Sync active conv with URL param
+  useEffect(() => {
+    const conv = searchParams.get("conv");
+    if (conv) setActiveConvId(conv);
+  }, [searchParams]);
+
+  function selectConversation(id: string) {
+    setActiveConvId(id);
+    const tabParam = activeTab === "support" ? "&tab=support" : "";
+    router.replace(`/${locale}/${dashboardPrefix}/messages?conv=${id}${tabParam}`, {
+      scroll: false,
+    });
+  }
+
+  function clearConversation() {
+    setActiveConvId(null);
+    const tabParam = activeTab === "support" ? "?tab=support" : "";
+    router.replace(`/${locale}/${dashboardPrefix}/messages${tabParam}`, {
+      scroll: false,
+    });
+  }
+
+  // Enhanced search: name + headline + companyName
+  function filterConversations(convs: Conversation[]) {
+    if (!search) return convs;
+    const q = search.toLowerCase();
+    return convs.filter((c) => {
+      const other = c.participantDetails.find((p) => p.userId !== currentUserId);
+      if (!other) return false;
+      return (
+        other.name.toLowerCase().includes(q) ||
+        (other.headline?.toLowerCase().includes(q) ?? false) ||
+        (other.companyName?.toLowerCase().includes(q) ?? false) ||
+        (other.role?.toLowerCase().includes(q) ?? false)
+      );
+    });
+  }
+
+  const displayConversations = activeTab === "support" ? customerCareConvs : conversations;
+  const filtered = filterConversations(displayConversations);
+  const isLoadingConvs = activeTab === "support" ? customerCareLoading : loading;
+
+  // Find active conversation across both lists
+  const activeConversation =
+    conversations.find((c) => c._id === activeConvId) ||
+    customerCareConvs.find((c) => c._id === activeConvId);
+
+  const dmUnreadTotal = conversations.reduce(
+    (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
+    0
+  );
+  const ccUnreadTotal = customerCareConvs.reduce(
+    (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
+    0
+  );
+
+  return (
+    <div className="page-container">
+      <PageHeader
+        title={title}
+        description={description}
+        actions={
+          showNewChat && activeTab === "dm" ? (
+            <NewChatSearch dashboardPrefix={dashboardPrefix as "employer" | "job-seeker"} />
+          ) : undefined
+        }
+      />
+
+      <div className="flex gap-0 rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm min-h-[600px]">
+        {/* Conversation list — responsive sidebar */}
+        <div
+          className={cn(
+            "w-full md:w-80 shrink-0 border-r flex flex-col",
+            activeConvId ? "hidden md:flex" : "flex"
+          )}
+        >
+          {/* Tab switcher for admin */}
+          {showCustomerCare && (
+            <div className="flex border-b">
+              <button
+                onClick={() => { setActiveTab("dm"); setActiveConvId(null); }}
+                className={cn(
+                  "flex-1 px-3 py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5",
+                  activeTab === "dm"
+                    ? "text-primary border-b-2 border-primary bg-primary/5"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Messages
+                {dmUnreadTotal > 0 && (
+                  <Badge variant="destructive" className="h-4 px-1 text-[10px]">
+                    {dmUnreadTotal > 99 ? "99+" : dmUnreadTotal}
+                  </Badge>
+                )}
+              </button>
+              <button
+                onClick={() => { setActiveTab("support"); setActiveConvId(null); }}
+                className={cn(
+                  "flex-1 px-3 py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5",
+                  activeTab === "support"
+                    ? "text-primary border-b-2 border-primary bg-primary/5"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Headset className="h-3.5 w-3.5" />
+                Support
+                {ccUnreadTotal > 0 && (
+                  <Badge variant="destructive" className="h-4 px-1 text-[10px]">
+                    {ccUnreadTotal > 99 ? "99+" : ccUnreadTotal}
+                  </Badge>
+                )}
+              </button>
+            </div>
+          )}
+
+          <div className="p-3 border-b">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search conversations…"
+                className="pl-8 h-8 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {isLoadingConvs ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-12 text-center px-4">
+                <Inbox className="h-6 w-6 text-muted-foreground/30" />
+                <p className="text-xs text-muted-foreground">
+                  {search
+                    ? "No conversations match your search."
+                    : activeTab === "support"
+                    ? "No support tickets yet."
+                    : 'No conversations yet. Start one with the "New Chat" button above.'}
+                </p>
+              </div>
+            ) : (
+              filtered.map((conv) => {
+                const other = conv.participantDetails.find(
+                  (p) => p.userId !== currentUserId
+                );
+                const unread = conv.unreadCounts?.[currentUserId] ?? 0;
+                const isActive = conv._id === activeConvId;
+                const subtitle = other?.headline ?? other?.companyName;
+                const customerCare = (conv as unknown as Record<string, unknown>).customerCare as
+                  | { status?: string; priority?: string; category?: string }
+                  | undefined;
+
+                return (
+                  <button
+                    key={conv._id}
+                    onClick={() => selectConversation(conv._id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-3 text-left transition-colors border-b border-border/40",
+                      isActive
+                        ? "bg-primary/5 border-l-2 border-l-primary"
+                        : "hover:bg-muted/40"
+                    )}
+                  >
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-sm font-bold text-primary">
+                        {other?.name?.[0]?.toUpperCase() ?? "?"}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {other?.name ?? "Unknown"}
+                          </p>
+                          {other?.role && (
+                            <span className="shrink-0 text-muted-foreground/60">
+                              {ROLE_ICONS[other.role]}
+                            </span>
+                          )}
+                        </div>
+                        {unread > 0 && (
+                          <span className="shrink-0 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                            {unread > 9 ? "9+" : unread}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {other?.role && (
+                          <span className="text-[10px] text-muted-foreground/60 capitalize">
+                            {ROLE_LABELS[other.role] ?? other.role.replace("_", " ")}
+                          </span>
+                        )}
+                        {subtitle && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground/30">·</span>
+                            <span className="text-[10px] text-muted-foreground/60 truncate">
+                              {subtitle}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {/* Customer care status badges */}
+                      {customerCare && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Badge
+                            variant={
+                              customerCare.status === "open"
+                                ? "destructive"
+                                : customerCare.status === "assigned"
+                                ? "default"
+                                : "secondary"
+                            }
+                            className="h-4 px-1 text-[9px]"
+                          >
+                            {customerCare.status}
+                          </Badge>
+                          {customerCare.priority === "urgent" && (
+                            <Badge variant="destructive" className="h-4 px-1 text-[9px]">
+                              urgent
+                            </Badge>
+                          )}
+                          {customerCare.category && (
+                            <Badge variant="outline" className="h-4 px-1 text-[9px]">
+                              {customerCare.category}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {conv.lastMessage ?? "Start a conversation"}
+                      </p>
+                      {conv.lastMessageAt && (
+                        <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                          {new Date(conv.lastMessageAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Chat window */}
+        <div
+          className={cn(
+            "flex-1 flex flex-col",
+            !activeConvId ? "hidden md:flex" : "flex"
+          )}
+        >
+          {activeConversation && currentUserId ? (
+            <>
+              {/* Mobile back button */}
+              <button
+                onClick={clearConversation}
+                className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-border/40 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </button>
+              <DirectMessageChat
+                key={activeConversation._id}
+                conversation={activeConversation}
+                currentUserId={currentUserId}
+              />
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
+              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+                <MessageSquare className="h-8 w-8 text-muted-foreground/40" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">Select a conversation</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {activeTab === "support"
+                    ? "Select a support ticket from the left to respond."
+                    : "Choose a conversation from the left, or start a new chat."}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

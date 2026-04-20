@@ -2,8 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export interface ISuperAgent extends Document {
   _id: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
-  assignedCityIds: mongoose.Types.ObjectId[];
+  userId: mongoose.Types.ObjectId;  referralCode: string;  assignedCityIds: mongoose.Types.ObjectId[];
   assignedStateIds: mongoose.Types.ObjectId[];
   agentIds: mongoose.Types.ObjectId[];
   commissions: {
@@ -19,6 +18,7 @@ export interface ISuperAgent extends Document {
 const SuperAgentSchema = new Schema<ISuperAgent>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
+    referralCode: { type: String, unique: true, sparse: true },
     assignedCityIds: [{ type: Schema.Types.ObjectId, ref: "City" }],
     assignedStateIds: [{ type: Schema.Types.ObjectId, ref: "State" }],
     agentIds: [{ type: Schema.Types.ObjectId, ref: "Agent" }],

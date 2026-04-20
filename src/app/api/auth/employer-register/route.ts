@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import Employer from "@/models/Employer";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
 import { CompanyUser, getDefaultPermissions } from "@/models/CompanyUser";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -79,6 +81,26 @@ export async function POST(req: NextRequest) {
     });
 
     // Create employer profile
+    const referralCode = get("referralCode");
+    let referrerAgentId: string | undefined;
+    let isAgentVerified = false;
+    let verifiedByAgentId: string | undefined;
+
+    if (referralCode) {
+      const agentRef = await Agent.findOne({ referralCode }).select("_id userId").lean();
+      if (agentRef) {
+        referrerAgentId = agentRef._id.toString();
+        isAgentVerified = true;
+        verifiedByAgentId = agentRef.userId.toString();
+      } else {
+        const saRef = await SuperAgent.findOne({ referralCode }).select("userId").lean();
+        if (saRef) {
+          isAgentVerified = true;
+          verifiedByAgentId = saRef.userId.toString();
+        }
+      }
+    }
+
     const employer = await Employer.create({
       userId: user._id,
       companyName,
@@ -92,7 +114,18 @@ export async function POST(req: NextRequest) {
       designation: contactTitle,
       verificationLevel,
       verificationStatus: verificationLevel === "basic" ? "verified" : "pending",
+      ...(referrerAgentId ? { agentId: referrerAgentId } : {}),
+      isAgentVerified,
+      ...(verifiedByAgentId ? { verifiedByAgentId } : {}),
     });
+
+    // Link employer to referring agent
+    if (referrerAgentId) {
+      await Agent.findByIdAndUpdate(referrerAgentId, {
+        $addToSet: { assignedEmployerIds: employer._id },
+        $inc: { "performance.employersCreated": 1 },
+      });
+    }
 
     // Auto-create CompanyUser with owner role
     await CompanyUser.create({

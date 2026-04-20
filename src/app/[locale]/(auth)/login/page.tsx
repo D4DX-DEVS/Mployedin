@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { signInWithPopup } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
 import { useRouter, useParams } from "next/navigation";
@@ -72,10 +72,9 @@ export default function LoginPage() {
         return;
       }
 
-      const sessionRes = await fetch("/api/auth/session");
-      const session = await sessionRes.json();
-      const role = (session?.user?.role as string) ?? "job_seeker";
-      const isOnboarded = (session?.user?.isOnboarded as boolean) ?? true;
+      const session = await getSession();
+      const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
+      const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
       router.push(getPostSignInPath(locale, role, isOnboarded));
     } catch {
       setError("Google sign-in failed. Please try again.");
@@ -107,11 +106,9 @@ export default function LoginPage() {
     if (result?.error) {
       setError("Invalid email or password. Please try again.");
     } else {
-      // Get session to determine role-based redirect
-      const sessionRes = await fetch("/api/auth/session");
-      const session = await sessionRes.json();
-      const role = (session?.user?.role as string) ?? "job_seeker";
-      const isOnboarded = (session?.user?.isOnboarded as boolean) ?? true;
+      const session = await getSession();
+      const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
+      const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
       router.push(getPostSignInPath(locale, role, isOnboarded));
     }
   }
@@ -243,7 +240,7 @@ export default function LoginPage() {
           variant="outline"
           type="button"
           className="h-12 rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: `/${locale}/onboarding` }); }}
+          onClick={() => { setLinkedInLoading(true); setError(""); signIn("linkedin", { callbackUrl: "/api/auth/post-login-redirect" }); }}
           disabled={linkedInLoading}
         >
           {linkedInLoading ? (

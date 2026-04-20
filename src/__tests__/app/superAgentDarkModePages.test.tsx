@@ -377,7 +377,7 @@ describe("SuperAgent dark-mode page surfaces", () => {
 
     expect(within(approvalsSection as HTMLElement).getByRole("button", { name: /pending/i })).toHaveAttribute("aria-pressed", "true");
 
-    approvalsView.unmount();
+    approvalsView!.unmount();
 
     const commissionsView = await renderPage(<SuperAgentCommissionsPage />);
     await screen.findByText("Sahar Ali");
@@ -386,7 +386,7 @@ describe("SuperAgent dark-mode page surfaces", () => {
 
     expect(within(commissionsSection as HTMLElement).getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
 
-    commissionsView.unmount();
+    commissionsView!.unmount();
 
     await renderPage(<SuperAgentLeadsPage />);
 
