@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -9,6 +8,7 @@ import {
   CheckCircle2,
   ChevronRight,
   FileText,
+  Loader2,
   MapPin,
   RefreshCw,
   Search,
@@ -16,6 +16,7 @@ import {
   Sparkles,
   Target,
   UserCircle,
+  Wand2,
   X,
 } from "lucide-react";
 
@@ -55,8 +56,10 @@ type ProfileData = {
   preferredRoles?: string[];
   preferredCountries?: string[];
   preferredSalary?: { min?: number; max?: number; currency?: string };
-  skills?: Array<{ name?: string }>;
+  skills?: Array<string | { name?: string }>;
   experience?: Array<unknown>;
+  education?: Array<unknown>;
+  languages?: Array<unknown>;
   cvFileUrl?: string;
   cv?: { originalUrl?: string };
 };
@@ -67,6 +70,9 @@ type SuggestionItem = {
   body: string;
   href: string;
   cta: string;
+  /** AI-fillable section id — when set, the suggestion can be auto-filled by AI */
+  section?: "summary" | "skills" | "experience" | "education" | "languages";
+  placeholder?: string;
 };
 
 /** Typed bundle passed from the server component for zero-waterfall hydration. */
@@ -107,6 +113,18 @@ function buildSuggestions(profile: ProfileData | null) {
     });
   }
 
+  if (!profile?.summary) {
+    suggestions.push({
+      id: "summary",
+      title: "Add a professional summary",
+      body: "A strong summary helps recruiters understand your value instantly. Tell AI about yourself and it will write one for you.",
+      href: "profile#summary",
+      cta: "Write manually",
+      section: "summary",
+      placeholder: "e.g. I'm a React developer with 3 years of experience building e-commerce apps...",
+    });
+  }
+
   if ((profile?.preferredRoles?.length ?? 0) === 0 || (profile?.preferredCountries?.length ?? 0) === 0) {
     suggestions.push({
       id: "preferences",
@@ -121,9 +139,11 @@ function buildSuggestions(profile: ProfileData | null) {
     suggestions.push({
       id: "skills",
       title: "Add a few more skills",
-      body: "Skills are one of the strongest ranking signals for matches and recruiter discovery.",
-      href: "skills",
-      cta: "Update skills",
+      body: "Skills are one of the strongest ranking signals. Tell AI your skills and it will add them to your profile.",
+      href: "profile#skills",
+      cta: "Update manually",
+      section: "skills",
+      placeholder: "e.g. React, Node.js, TypeScript, MongoDB, AWS, Docker...",
     });
   }
 
@@ -131,23 +151,52 @@ function buildSuggestions(profile: ProfileData | null) {
     suggestions.push({
       id: "experience",
       title: "Complete your work history",
-      body: "Experience helps us surface better roles and makes your profile stronger for employers.",
-      href: "profile",
-      cta: "Complete profile",
+      body: "Experience helps us surface better roles. Describe your past jobs and AI will structure them for you.",
+      href: "profile#experience",
+      cta: "Add manually",
+      section: "experience",
+      placeholder: "e.g. I worked at Google as a Software Engineer from 2022 to 2024, building search APIs...",
     });
   }
 
-  return suggestions.slice(0, 3);
+  if ((profile?.education?.length ?? 0) === 0) {
+    suggestions.push({
+      id: "education",
+      title: "Add your education",
+      body: "Education boosts your profile score. Tell AI about your degrees and it will format them.",
+      href: "profile#education",
+      cta: "Add manually",
+      section: "education",
+      placeholder: "e.g. B.Tech in Computer Science from XYZ University, graduated 2022...",
+    });
+  }
+
+  if ((profile?.languages?.length ?? 0) === 0) {
+    suggestions.push({
+      id: "languages",
+      title: "Add your languages",
+      body: "Language skills matter in the Gulf market. Tell AI your languages and proficiency levels.",
+      href: "profile#languages",
+      cta: "Add manually",
+      section: "languages",
+      placeholder: "e.g. English fluent, Arabic intermediate, Hindi native...",
+    });
+  }
+
+  return suggestions.slice(0, 5);
 }
 
 export function JobSeekerHomePage({
   locale,
   initialData,
+  userName,
+  userImage,
 }: {
   locale: string;
   initialData?: InitialHomeData;
+  userName?: string;
+  userImage?: string;
 }) {
-  const { data: session } = useSession();
   const [profile, setProfile] = useState<ProfileData | null>(initialData?.profile ?? null);
   const [stats, setStats] = useState<DashboardStats | null>(initialData?.stats ?? null);
   const [jobs, setJobs] = useState<FeedJob[]>(initialData?.jobs ?? []);
@@ -161,6 +210,12 @@ export function JobSeekerHomePage({
   const [homeDataError, setHomeDataError] = useState<string | null>(null);
   const [aiInsightsError, setAiInsightsError] = useState<string | null>(null);
   const [guideAnnouncement, setGuideAnnouncement] = useState("");
+  const [aiFillActive, setAiFillActive] = useState<string | null>(null); // suggestion id currently being auto-filled
+
+  const completion = profile?.profileCompleteness ?? 0;
+  const [aiFillInput, setAiFillInput] = useState("");
+  const [aiFillLoading, setAiFillLoading] = useState(false);
+  const [aiFillResult, setAiFillResult] = useState<{ section: string; message: string } | null>(null);
   const guidePanelRef = useRef<HTMLDivElement | null>(null);
   const guideTriggerRef = useRef<HTMLElement | null>(null);
 
@@ -173,6 +228,40 @@ export function JobSeekerHomePage({
 
   const closeGuide = () => {
     setGuideOpen(false);
+    setAiFillActive(null);
+    setAiFillInput("");
+    setAiFillResult(null);
+  };
+
+  const handleAiFill = async (item: SuggestionItem) => {
+    if (!item.section || !aiFillInput.trim()) return;
+    setAiFillLoading(true);
+    setAiFillResult(null);
+    try {
+      const res = await fetch("/api/ai/profile-fill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section: item.section, input: aiFillInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAiFillResult({ section: item.section, message: data.error || "Something went wrong." });
+        return;
+      }
+      setAiFillResult({ section: item.section, message: data.message });
+      // Refresh profile data to update completeness + suggestions
+      const profileRes = await fetch("/api/job-seeker/profile");
+      if (profileRes.ok) {
+        const freshProfile = await profileRes.json();
+        setProfile(freshProfile);
+      }
+      setAiFillInput("");
+      setAiFillActive(null);
+    } catch {
+      setAiFillResult({ section: item.section ?? "", message: "Network error. Please try again." });
+    } finally {
+      setAiFillLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -245,9 +334,9 @@ export function JobSeekerHomePage({
     };
   }, [initialData]);
 
-  // Fetch real AI insights (cached per day in sessionStorage)
+  // Fetch real AI insights (cached per day + completeness level in sessionStorage)
   useEffect(() => {
-    const cacheKey = `ai_insights_job_seeker_${new Date().toDateString()}`;
+    const cacheKey = `ai_insights_job_seeker_${new Date().toDateString()}_c${completion}`;
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached && aiInsightsKey === 0) {
@@ -282,7 +371,7 @@ export function JobSeekerHomePage({
     };
     void load();
     return () => { active = false; };
-  }, [aiInsightsKey]);
+  }, [aiInsightsKey, completion]);
 
   useEffect(() => {
     if (!guideOpen) {
@@ -337,8 +426,8 @@ export function JobSeekerHomePage({
     return () => window.removeEventListener("keydown", handleKeyboard);
   }, [guideOpen]);
 
-  const name = session?.user?.name ?? "Job Seeker";
-  const image = session?.user?.image ?? "";
+  const name = userName ?? "Job Seeker";
+  const image = userImage ?? "";
   const initials = name
     .split(" ")
     .map((part) => part[0])
@@ -346,8 +435,33 @@ export function JobSeekerHomePage({
     .slice(0, 2)
     .toUpperCase();
 
-  const completion = profile?.profileCompleteness ?? 0;
-  const preferredRole = profile?.preferredRoles?.[0] ?? "Add your target role";
+  // Pick the most relevant role — the one matching the most recommended job titles
+  const { primaryRole, otherRolesLabel } = useMemo(() => {
+    const roles = profile?.preferredRoles ?? [];
+    if (roles.length === 0) return { primaryRole: "Add your target role", otherRolesLabel: "" };
+    if (roles.length === 1) return { primaryRole: roles[0], otherRolesLabel: "" };
+
+    // Count how many recommended jobs each role appears in
+    const counts = roles.map((role) => {
+      const needle = role.toLowerCase();
+      return jobs.filter((j) => j.title.toLowerCase().includes(needle)).length;
+    });
+    const maxCount = Math.max(...counts);
+    const bestIdx = maxCount > 0 ? counts.indexOf(maxCount) : 0;
+    const primary = roles[bestIdx];
+    const others = roles.filter((_, i) => i !== bestIdx);
+
+    let label = "";
+    if (others.length === 1) {
+      label = `Also exploring ${others[0]}`;
+    } else if (others.length === 2) {
+      label = `Also exploring ${others[0]}, ${others[1]}`;
+    } else if (others.length > 2) {
+      label = `Also exploring ${others[0]}, ${others[1]} +${others.length - 2} more`;
+    }
+    return { primaryRole: primary, otherRolesLabel: label };
+  }, [profile?.preferredRoles, jobs]);
+
   const preferredLocation = profile?.preferredCountries?.slice(0, 2).join(", ") || "Add preferred locations";
   const preferredSalary =
     profile?.preferredSalary?.min && profile?.preferredSalary?.max && profile?.preferredSalary?.currency
@@ -380,7 +494,7 @@ export function JobSeekerHomePage({
     },
   ];
   const topSkills = (profile?.skills ?? [])
-    .map((skill) => skill.name?.trim())
+    .map((skill) => (typeof skill === "string" ? skill.trim() : skill.name?.trim()))
     .filter((skill): skill is string => Boolean(skill))
     .slice(0, 3);
   const activeMatchesCountLabel = jobs.length === 1 ? "1 active match" : `${jobs.length} active matches`;
@@ -393,7 +507,10 @@ export function JobSeekerHomePage({
           <div className="space-y-4">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{preferredRole}</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{primaryRole}</h1>
+                {otherRolesLabel && (
+                  <p className="mt-0.5 text-sm text-muted-foreground/80">{otherRolesLabel}</p>
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                   <span>{preferredLocation}</span>
                   <span aria-hidden="true">•</span>
@@ -800,7 +917,7 @@ export function JobSeekerHomePage({
                 <button
                   onClick={() => {
                     try {
-                      const key = `ai_insights_job_seeker_${new Date().toDateString()}`;
+                      const key = `ai_insights_job_seeker_${new Date().toDateString()}_c${completion}`;
                       sessionStorage.removeItem(key);
                     } catch {
                       // Ignore storage access errors and refresh from network.
@@ -890,21 +1007,82 @@ export function JobSeekerHomePage({
                 </p>
               </div>
 
+              {aiFillResult && (
+                <div className={`rounded-2xl border px-4 py-3 text-sm ${aiFillResult.message.includes("error") || aiFillResult.message.includes("wrong") ? "border-[hsl(var(--status-shortlisted)/0.18)] bg-[hsl(var(--status-shortlisted-bg))]" : "dashboard-surface-success border-[hsl(var(--status-selected)/0.18)]"}`}>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-[hsl(var(--status-selected))]" />
+                    {aiFillResult.message}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {suggestions.length > 0 ? suggestions.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/${locale}/job-seeker/${item.href}`}
-                    onClick={closeGuide}
-                    className="block rounded-3xl border border-border/60 px-5 py-4 transition-all hover:border-primary/30 hover:bg-muted/20"
-                  >
+                  <div key={item.id} className="rounded-3xl border border-border/60 px-5 py-4 transition-all hover:border-primary/30">
                     <div className="text-base font-semibold">{item.title}</div>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.body}</p>
-                    <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
-                      {item.cta}
-                      <ArrowRight className="h-4 w-4" />
+
+                    {/* AI auto-fill section */}
+                    {item.section && aiFillActive === item.id && (
+                      <div className="mt-3 space-y-2">
+                        <textarea
+                          value={aiFillInput}
+                          onChange={(e) => setAiFillInput(e.target.value)}
+                          placeholder={item.placeholder}
+                          rows={3}
+                          maxLength={2000}
+                          disabled={aiFillLoading}
+                          className="w-full rounded-2xl border border-border/60 bg-background px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                        />
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={aiFillLoading || !aiFillInput.trim()}
+                            onClick={() => handleAiFill(item)}
+                            className="h-9 rounded-full px-4"
+                          >
+                            {aiFillLoading ? (
+                              <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> AI is working...</>
+                            ) : (
+                              <><Wand2 className="mr-2 h-3.5 w-3.5" /> Fill with AI</>
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={aiFillLoading}
+                            onClick={() => { setAiFillActive(null); setAiFillInput(""); }}
+                            className="h-9 rounded-full px-3 text-muted-foreground"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      {item.section && aiFillActive !== item.id && (
+                        <button
+                          type="button"
+                          onClick={() => { setAiFillActive(item.id); setAiFillInput(""); setAiFillResult(null); }}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-primary/[0.08] px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/[0.14]"
+                        >
+                          <Wand2 className="h-3.5 w-3.5" />
+                          Let AI fill this
+                        </button>
+                      )}
+                      <Link
+                        href={`/${locale}/job-seeker/${item.href}`}
+                        onClick={closeGuide}
+                        className="inline-flex items-center gap-1 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {item.cta}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
                     </div>
-                  </Link>
+                  </div>
                 )) : (
                   <div className="dashboard-surface-success rounded-3xl border px-5 py-4 text-sm text-foreground">
                     Your home setup already looks good. You can browse jobs directly or keep refining your profile for even better recommendations.

@@ -72,9 +72,19 @@ export const jobSeekerSettingsSchema = z.object({
     salaryCurrency: z.string().max(5).optional(),
     // B — Interview
     instantBooking: z.boolean().optional(),
-    calendarConnected: z.boolean().optional(),
+    timezone: z.string().max(50).optional(),
     timeBuffer: z.number().int().min(0).max(120).optional(),
     weeklyAvailability: z.array(z.string().max(10)).max(7).optional(),
+    availableHours: z
+      .array(
+        z.object({
+          day: z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]),
+          startTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:mm"),
+          endTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:mm"),
+        })
+      )
+      .max(7)
+      .optional(),
     // C — Profile
     showSalary: z.boolean().optional(),
     openToRelocation: z.boolean().optional(),

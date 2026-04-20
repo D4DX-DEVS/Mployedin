@@ -96,6 +96,22 @@ interface DigestEmailData {
   };
 }
 
+function companyInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+const LOGO_COLORS = ["#3b82f6", "#059669", "#8b5cf6", "#d97706", "#e11d48", "#0891b2"];
+
+function logoColor(name: string): string {
+  const hash = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return LOGO_COLORS[hash % LOGO_COLORS.length];
+}
+
 function buildDigestEmail(data: DigestEmailData): string {
   const { userName, locale, jobs, profileViews } = data;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
@@ -111,7 +127,7 @@ function buildDigestEmail(data: DigestEmailData): string {
     ? "مسؤولو التوظيف شاهدوا ملفك"
     : "Recruiters viewed your profile";
 
-  // Job cards
+  // Bayt-style job cards with company logos
   const jobCards = jobs
     .map((j) => {
       const salaryText =
@@ -122,20 +138,31 @@ function buildDigestEmail(data: DigestEmailData): string {
         j.matchScore >= 80
           ? "#059669"
           : j.matchScore >= 60
-            ? "#d97706"
-            : "#6b7280";
+            ? "#0D6FD8"
+            : "#d97706";
+      const bgColor = logoColor(j.company);
+      const initials = companyInitials(j.company);
 
       return `
       <tr>
-        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-              <a href="${baseUrl}/${locale}/job-seeker/jobs/${j.jobId}" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 15px;">${esc(j.title)}</a>
-              <p style="margin: 4px 0 0; color: #6b7280; font-size: 13px;">${esc(j.company)} · ${esc(j.location || "Remote")}</p>
-              ${salaryText ? `<p style="margin: 2px 0 0; color: #374151; font-size: 13px;">${salaryText}</p>` : ""}
-            </div>
-            <span style="background: ${matchColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; white-space: nowrap;">${j.matchScore}% ${isAr ? "تطابق" : "match"}</span>
-          </div>
+        <td style="padding: 16px; border-bottom: 1px solid #f3f4f6;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+            <tr>
+              <td style="width: 48px; vertical-align: top;">
+                <div style="width: 44px; height: 44px; border-radius: 10px; background: ${bgColor}; color: white; font-size: 14px; font-weight: 700; text-align: center; line-height: 44px;">
+                  ${initials}
+                </div>
+              </td>
+              <td style="padding-${isAr ? "right" : "left"}: 12px; vertical-align: top;">
+                <a href="${baseUrl}/${locale}/job-seeker/jobs/${j.jobId}" style="color: #0D6FD8; text-decoration: none; font-weight: 600; font-size: 15px;">${esc(j.title)}</a>
+                <p style="margin: 2px 0 0; color: #374151; font-size: 13px; font-weight: 500;">${esc(j.company)}</p>
+                <p style="margin: 2px 0 0; color: #6b7280; font-size: 12px;">📍 ${esc(j.location || "Remote")}${salaryText ? ` · 💰 ${salaryText}` : ""}</p>
+              </td>
+              <td style="text-align: ${isAr ? "left" : "right"}; vertical-align: top; width: 80px;">
+                <span style="background: ${matchColor}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-block;">${j.matchScore}% ${isAr ? "تطابق" : "match"}</span>
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>`;
     })
@@ -163,23 +190,31 @@ function buildDigestEmail(data: DigestEmailData): string {
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: ${dir};">
-      <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+      <div style="background: linear-gradient(135deg, #0D6FD8 0%, #0a2a6e 100%); padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 24px; letter-spacing: 1px;">MPLOYEDIN</h1>
         <p style="color: #bfdbfe; margin: 8px 0 0; font-size: 14px;">
           ${isAr ? "ملخصك اليومي" : "Your Daily Digest"}
         </p>
       </div>
       <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none;">
         <p style="color: #374151; line-height: 1.6;">${greeting},</p>
+        <p style="color: #6b7280; font-size: 14px;">
+          ${isAr
+            ? `وجدنا لك ${jobs.length} وظائف مطابقة بناءً على ملفك الشخصي 👀`
+            : `We found some great job matches based on your profile 👀:`
+          }
+        </p>
 
         ${
           jobs.length > 0
             ? `
         <h3 style="color: #111827; font-size: 16px; margin: 20px 0 12px;">🎯 ${jobsTitle}</h3>
-        <table style="width: 100%; border-collapse: collapse;">
-          ${jobCards}
-        </table>
-        <div style="text-align: center; margin: 20px 0;">
+        <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse;">
+            ${jobCards}
+          </table>
+        </div>
+        <div style="text-align: center; margin: 24px 0;">
           <a href="${baseUrl}/${locale}/job-seeker/jobs" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">
             ${isAr ? "عرض جميع الوظائف" : "View All Jobs"}
           </a>

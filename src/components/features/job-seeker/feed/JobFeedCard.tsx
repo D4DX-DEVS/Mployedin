@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ShareJob } from "@/components/shared/ShareJob";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -334,6 +335,13 @@ export const JobFeedCard = memo(function JobFeedCard({
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <ShareJob
+                jobId={job._id}
+                jobTitle={job.title}
+                companyName={job.employerId?.companyName ?? "Company"}
+                locale={locale}
+                variant="icon"
+              />
               <button
                 onClick={onHide}
                 className="inline-flex items-center gap-1 rounded-xl border border-border bg-secondary/80 px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

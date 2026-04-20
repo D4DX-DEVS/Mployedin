@@ -20,7 +20,8 @@ export default async function JobSeekerPage({
   const session = await auth();
   if (!session?.user) redirect(`/${locale}/login`);
 
-  const userId = (session.user as unknown as { id: string }).id;
+  const sessionUser = session.user as { id: string; name?: string | null; image?: string | null };
+  const userId = sessionUser.id;
 
   await connectDB();
 
@@ -28,13 +29,18 @@ export default async function JobSeekerPage({
   const seeker = await JobSeeker.findOne({ userId })
     .select(
       "_id skills preferredCountries preferredRoles preferredSalary preferredJobType " +
-        "experience summary profileCompleteness cvFileUrl cv"
+        "experience education languages summary profileCompleteness cvFileUrl cv"
     )
     .lean();
 
-  // If profile not yet created (fresh sign-up), skip SSR data
   if (!seeker) {
-    return <JobSeekerHomePage locale={locale} />;
+    return (
+      <JobSeekerHomePage
+        locale={locale}
+        userName={sessionUser.name ?? undefined}
+        userImage={sessionUser.image ?? undefined}
+      />
+    );
   }
 
   const seekerId = seeker._id;
@@ -130,6 +136,13 @@ export default async function JobSeekerPage({
     }).filter((a) => a._id),
   };
 
-  return <JobSeekerHomePage locale={locale} initialData={initialData} />;
+  return (
+    <JobSeekerHomePage
+      locale={locale}
+      initialData={initialData}
+      userName={sessionUser.name ?? undefined}
+      userImage={sessionUser.image ?? undefined}
+    />
+  );
 }
 

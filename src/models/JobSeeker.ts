@@ -125,6 +125,7 @@ export interface IJobSeeker extends Document {
     uploadedAt: Date;
   }[];
   // Onboarding
+  summary?: string;
   headline?: string;
   workStatus?: "experienced" | "fresher";
   marketingConsent: boolean;
@@ -161,13 +162,11 @@ export interface IJobSeeker extends Document {
     analysesCount?: number;
     lastAnalysisAt?: Date;
   };
-  googleCalendar?: {
-    connected: boolean;
-    accessToken?: string;  // encrypted
-    refreshToken?: string; // encrypted
-    expiresAt?: Date;
-    email?: string;
-  };
+  availableHours?: {
+    day: string; // Mon, Tue, Wed, Thu, Fri, Sat, Sun
+    startTime: string; // HH:mm (24h)
+    endTime: string;   // HH:mm (24h)
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -298,6 +297,7 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       uploadedAt: { type: Date, default: Date.now },
       _id: false,
     }],
+    summary: String,
     headline: String,
     workStatus: { type: String, enum: ["experienced", "fresher"] },
     marketingConsent: { type: Boolean, default: false },
@@ -344,13 +344,14 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       analysesCount: { type: Number, default: 0, min: 0 },
       lastAnalysisAt: Date,
     },
-    googleCalendar: {
-      connected: { type: Boolean, default: false },
-      accessToken: { type: String, select: false },
-      refreshToken: { type: String, select: false },
-      expiresAt: Date,
-      email: String,
-    },
+    availableHours: [
+      {
+        day: { type: String, enum: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], required: true },
+        startTime: { type: String, required: true }, // HH:mm
+        endTime: { type: String, required: true },   // HH:mm
+        _id: false,
+      },
+    ],
   },
   { timestamps: true }
 );

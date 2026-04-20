@@ -78,6 +78,7 @@ interface ProfileData {
   noticePeriod?: number;
   updatedAt?: string;
   fullName?: string;
+  preferredRoles?: string[];
 }
 
 type ChecklistStep = {
@@ -96,7 +97,7 @@ function buildChecklist(profile: ProfileData | null): ChecklistStep[] {
     { id: "experience",  label: "Add Experience",     bonus: "+15%", done: (profile?.experience?.length ?? 0) > 0,    href: "./cv",                    icon: Briefcase     },
     { id: "education",   label: "Add Education",      bonus: "+10%", done: (profile?.education?.length ?? 0) > 0,     href: "./cv",                    icon: GraduationCap },
     { id: "personal",    label: "Personal Details",   bonus: "+10%", done: !!(profile?.dateOfBirth || profile?.nationality), href: "./profile/personal-details", icon: UserCircle    },
-    { id: "preferences", label: "Set Job Preferences",bonus: "+15%", done: false,                                      href: "./preferences",           icon: Target        },
+    { id: "preferences", label: "Set Job Preferences",bonus: "+15%", done: (profile?.preferredRoles?.length ?? 0) > 0,   href: "./preferences",           icon: Target        },
   ];
 }
 
@@ -127,6 +128,22 @@ export default function JobSeekerProfilePage() {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [editSummary, setEditSummary] = useState("");
   const [savingSummary, setSavingSummary] = useState(false);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
+
+  async function handleGenerateSummary() {
+    setGeneratingSummary(true);
+    try {
+      const res = await fetch("/api/ai/generate-summary", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to generate summary");
+      // Refetch the full profile to get consistent data after AI save
+      await fetchProfile();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGeneratingSummary(false);
+    }
+  }
 
   const [showVisibilityModal, setShowVisibilityModal] = useState(false);
   const [editVisibility, setEditVisibility] = useState<"visible" | "hidden">("visible");
@@ -149,7 +166,7 @@ export default function JobSeekerProfilePage() {
 
   async function fetchProfile() {
     try {
-      const res = await fetch("/api/job-seeker/profile");
+      const res = await fetch("/api/job-seeker/profile", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setProfile(data);
@@ -233,12 +250,10 @@ export default function JobSeekerProfilePage() {
       headers: { "Content-Type": "application/json", "x-csrf-token": getCsrfToken() },
       body: JSON.stringify(body),
     });
-    if (res.ok) {
-      const data = await res.json();
-      setProfile(data);
-      return data;
-    }
-    throw new Error("Save failed");
+    if (!res.ok) throw new Error("Save failed");
+    // Re-fetch via GET for consistent lean() shape used by the rest of the page
+    await fetchProfile();
+    return res.json();
   }
 
   async function handleSaveName() {
@@ -286,13 +301,38 @@ export default function JobSeekerProfilePage() {
   const displayAvatar = avatarUrl || session?.user?.image || "";
   const initials  = name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
 
-  const completeness    = profile?.profileCompleteness ?? 0;
+  // Compute completeness live from actual profile fields (same formula as the API)
+  // so it's always up-to-date without needing a DB round-trip or re-upload.
+  const completeness = profile ? Math.min(100, [
+    profile.userId                                                           ? 10 : 0,
+    profile.nationality                                                      ? 10 : 0,
+    profile.currentLocation                                                  ? 5  : 0,
+    profile.summary                                                          ? 10 : 0,
+    (profile.skills?.length ?? 0) > 0                                       ? 20 : 0,
+    (profile.experience?.length ?? 0) > 0                                   ? 20 : 0,
+    (profile.education?.length ?? 0) > 0                                    ? 15 : 0,
+    (profile.languages?.length ?? 0) > 0                                    ? 5  : 0,
+    (profile.linkedin || profile.socialLinks?.some((l) => l.label?.toLowerCase() === "linkedin")) ? 5 : 0,
+  ].reduce((a, b) => a + b, 0)) : 0;
   const checklist       = buildChecklist(profile);
   const missingSteps    = checklist.filter((s) => !s.done);
   const doneSteps       = checklist.filter((s) => s.done);
   const potentialBoost  = missingSteps.reduce((acc, s) => acc + parseInt(s.bonus), 0);
   const hasCv = !!(profile?.cvFileUrl || profile?.cv?.originalUrl);
   const aiExtracted = !!profile?.cvExtractedByAI;
+
+  // ── Detailed missing-fields for reaching 100% ────────────────────────
+  const missingFields: { label: string; points: number; href: string; icon: React.ElementType }[] = profile ? [
+    ...(!profile.nationality     ? [{ label: "Add nationality",       points: 10, href: "./cv",                        icon: Globe }] : []),
+    ...(!profile.currentLocation ? [{ label: "Add current location",  points: 5,  href: "./cv",                        icon: MapPin }] : []),
+    ...(!profile.summary         ? [{ label: "Write a summary",       points: 10, href: "#about",                      icon: User }] : []),
+    ...((profile.skills?.length ?? 0) === 0     ? [{ label: "Add skills",          points: 20, href: "./cv",                      icon: Award }] : []),
+    ...((profile.experience?.length ?? 0) === 0 ? [{ label: "Add experience",      points: 20, href: "./cv",                      icon: Briefcase }] : []),
+    ...((profile.education?.length ?? 0) === 0  ? [{ label: "Add education",       points: 15, href: "./cv",                      icon: GraduationCap }] : []),
+    ...((profile.languages?.length ?? 0) === 0  ? [{ label: "Add languages",       points: 5,  href: "./profile/personal-details", icon: LanguagesIcon }] : []),
+    ...(!(profile.linkedin || profile.socialLinks?.some((l) => l.label?.toLowerCase() === "linkedin"))
+      ? [{ label: "Add LinkedIn profile", points: 5, href: "./cv",                      icon: Linkedin }] : []),
+  ] : [];
 
   const completenessColor     = completeness >= 80 ? "text-emerald-600" : completeness >= 50 ? "text-amber-500" : "text-rose-500";
   const completenessRingColor = completeness >= 80 ? "stroke-emerald-500" : completeness >= 50 ? "stroke-amber-500" : "stroke-rose-500";
@@ -504,7 +544,17 @@ export default function JobSeekerProfilePage() {
               {profile?.summary ? (
                 <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{profile.summary}</p>
               ) : (
-                <p className="text-sm text-muted-foreground/70 italic">No summary yet — AI can generate one from your uploaded CV</p>
+                <button
+                  onClick={handleGenerateSummary}
+                  disabled={generatingSummary}
+                  className="inline-flex items-center gap-1.5 text-sm text-primary/80 italic hover:text-primary transition-colors disabled:opacity-60"
+                >
+                  {generatingSummary ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" /> Generating summary…</>
+                  ) : (
+                    <><Sparkles className="w-3 h-3" /> Generate summary with AI</>
+                  )}
+                </button>
               )}
               <button
                 onClick={() => { setEditSummary(profile?.summary ?? ""); setShowSummaryModal(true); }}
@@ -593,7 +643,9 @@ export default function JobSeekerProfilePage() {
               </div>
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {doneSteps.length}/{checklist.length} steps done
+              {missingSteps.length === 0 && completeness < 100
+                ? `${missingFields.length} detail${missingFields.length !== 1 ? "s" : ""} left`
+                : `${doneSteps.length}/${checklist.length} steps done`}
             </span>
           </div>
         </div>
@@ -602,9 +654,35 @@ export default function JobSeekerProfilePage() {
         <div className="sm:hidden mt-4 pt-4 border-t border-border/50">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
             <span>Profile completion</span>
-            <span className={cn("font-semibold", completenessColor)}>{completeness}% · {doneSteps.length}/{checklist.length} steps</span>
+            <span className={cn("font-semibold", completenessColor)}>
+              {completeness}% · {missingSteps.length === 0 && completeness < 100
+                ? `${missingFields.length} detail${missingFields.length !== 1 ? "s" : ""} left`
+                : `${doneSteps.length}/${checklist.length} steps`}
+            </span>
           </div>
           <Progress value={completeness} className="h-1.5" />
+          {/* Mobile: missing fields hints */}
+          {missingFields.length > 0 && missingSteps.length === 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
+              {missingFields.map((field) => (
+                <button
+                  key={field.label}
+                  onClick={() => {
+                    if (field.href.startsWith("#")) {
+                      document.getElementById(field.href.slice(1))?.scrollIntoView({ behavior: "smooth" });
+                    } else {
+                      router.push(field.href);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                >
+                  <field.icon className="w-2.5 h-2.5" />
+                  {field.label}
+                  <span className="font-semibold">+{field.points}%</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -760,6 +838,65 @@ export default function JobSeekerProfilePage() {
                   <span>{completeness}%</span>
                 </div>
               </div>
+
+              {/* ── Missing fields to reach 100% ──────────────────────── */}
+              {missingFields.length > 0 && missingSteps.length === 0 && (
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="text-xs font-semibold text-foreground">
+                      Add these to reach 100%
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      (+{missingFields.reduce((a, f) => a + f.points, 0)}% remaining)
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {missingFields.map((field) => (
+                      <button
+                        key={field.label}
+                        onClick={() => {
+                          if (field.href.startsWith("#")) {
+                            document.getElementById(field.href.slice(1))?.scrollIntoView({ behavior: "smooth" });
+                          } else {
+                            router.push(field.href);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/40 transition-colors cursor-pointer"
+                      >
+                        <field.icon className="w-3 h-3" />
+                        {field.label}
+                        <span className="font-semibold">+{field.points}%</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Mixed: some checklist steps + extra fields missing ── */}
+              {missingFields.length > 0 && missingSteps.length > 0 && missingFields.some(f =>
+                !missingSteps.some(s =>
+                  (s.id === "skills" && f.label === "Add skills") ||
+                  (s.id === "experience" && f.label === "Add experience") ||
+                  (s.id === "education" && f.label === "Add education") ||
+                  (s.id === "personal" && (f.label === "Add nationality" || f.label === "Add current location"))
+                )
+              ) && (
+                <div className="mt-3 px-3">
+                  <p className="text-[11px] text-muted-foreground">
+                    <span className="font-medium">Tip:</span>{" "}
+                    {missingFields.filter(f =>
+                      !missingSteps.some(s =>
+                        (s.id === "skills" && f.label === "Add skills") ||
+                        (s.id === "experience" && f.label === "Add experience") ||
+                        (s.id === "education" && f.label === "Add education") ||
+                        (s.id === "personal" && (f.label === "Add nationality" || f.label === "Add current location"))
+                      )
+                    ).map(f => `${f.label} (+${f.points}%)`).join(", ")}{" "}
+                    to boost your profile further.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -772,7 +909,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Experience ────────────────────────────────────────────── */}
           <div id="experience" className="scroll-mt-24">
-            <SectionCard icon={Briefcase} title="Experience" onAdd={() => router.push("./cv")} isEmpty={(profile?.experience?.length ?? 0) === 0} emptyLabel="Add work experience">
+            <SectionCard icon={Briefcase} title="Experience" onAdd={() => router.push("./experience")} isEmpty={(profile?.experience?.length ?? 0) === 0} emptyLabel="Add work experience">
               {(profile?.experience?.length ?? 0) > 0 && (
                 <div className="space-y-4">
                   {profile!.experience.map((exp, i) => (
@@ -795,15 +932,19 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Skills ────────────────────────────────────────────────── */}
           <div id="skills" className="scroll-mt-24">
-            <SectionCard icon={Award} title="Skills" onAdd={() => router.push("./cv")} isEmpty={(profile?.skills?.length ?? 0) === 0} emptyLabel="Add skills">
+            <SectionCard icon={Award} title="Skills" onAdd={() => router.push("./skills")} isEmpty={(profile?.skills?.length ?? 0) === 0} emptyLabel="Add skills">
               {(profile?.skills?.length ?? 0) > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {profile!.skills.map((s, i) => (
-                    <Badge key={i} variant="secondary" className="px-3 py-1 text-sm">
-                      {s.name}
-                      {s.yearsOfExperience > 0 && <span className="ms-1.5 text-xs text-muted-foreground">{s.yearsOfExperience}y</span>}
-                    </Badge>
-                  ))}
+                  {profile!.skills.map((s, i) => {
+                    const skillName = typeof s === "string" ? s : s.name;
+                    const years = typeof s === "string" ? 0 : s.yearsOfExperience;
+                    return (
+                      <Badge key={i} variant="secondary" className="px-3 py-1 text-sm">
+                        {skillName}
+                        {years > 0 && <span className="ms-1.5 text-xs text-muted-foreground">{years}y</span>}
+                      </Badge>
+                    );
+                  })}
                 </div>
               )}
             </SectionCard>
@@ -1140,7 +1281,31 @@ export default function JobSeekerProfilePage() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div>
-              <Label htmlFor="editSummary">About You</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label htmlFor="editSummary">About You</Label>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setGeneratingSummary(true);
+                    try {
+                      const res = await fetch("/api/ai/generate-summary", { method: "POST" });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error ?? "Failed");
+                      setEditSummary(data.summary);
+                      setProfile((prev) => prev ? { ...prev, summary: data.summary } : prev);
+                    } catch (e) { console.error(e); }
+                    finally { setGeneratingSummary(false); }
+                  }}
+                  disabled={generatingSummary}
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50"
+                >
+                  {generatingSummary ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" /> Generating…</>
+                  ) : (
+                    <><Sparkles className="w-3 h-3" /> Generate with AI</>
+                  )}
+                </button>
+              </div>
               <Textarea
                 id="editSummary"
                 value={editSummary}

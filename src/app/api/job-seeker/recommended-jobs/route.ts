@@ -57,7 +57,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // Score each job locally
   const seekerSkills = new Set((seeker.skills ?? []).map((s: string) => s.toLowerCase()));
   const seekerCountries = new Set((seeker.preferredCountries ?? []).map((c: string) => c.toLowerCase()));
-  const seekerRoles = new Set((seeker.preferredRoles ?? []).map((r: string) => r.toLowerCase()));
+  const seekerRoles = new Set<string>((seeker.preferredRoles ?? []).map((r: string) => r.toLowerCase()));
   const seekerJobType = seeker.preferredJobType ?? "any";
   const seekerSalaryMin = seeker.preferredSalary?.min ?? 0;
   const seekerSalaryMax = seeker.preferredSalary?.max ?? Infinity;
@@ -67,56 +67,70 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     // Skills overlap (40%)
     const jobSkills = (job.requirements?.skills ?? []).map((s: string) => s.toLowerCase());
+    let skillOverlap = 0;
     if (jobSkills.length > 0 && seekerSkills.size > 0) {
-      const overlap = jobSkills.filter((s: string) => seekerSkills.has(s)).length;
-      score += (overlap / Math.max(jobSkills.length, 1)) * 40;
+      skillOverlap = jobSkills.filter((s: string) => seekerSkills.has(s)).length;
+      score += (skillOverlap / Math.max(jobSkills.length, 1)) * 40;
     }
 
-    // Location match (30%)
+    // Role title relevance check
+    const titleLower = job.title?.toLowerCase() ?? "";
+    let roleMatch = false;
+    for (const role of seekerRoles) {
+      if (titleLower.includes(role) || role.includes(titleLower)) {
+        roleMatch = true;
+        break;
+      }
+    }
+
+    // Filter out jobs with zero skill overlap AND no role title relevance
+    // (completely unrelated jobs like "HR Manager" for a "Frontend Developer")
+    if (seekerRoles.size > 0 && seekerSkills.size > 0 && !roleMatch && skillOverlap === 0) {
+      return { ...job, matchScore: 0, _filtered: true };
+    }
+
+    // Location match (25%)
     const jobCountry = job.location?.country?.toLowerCase() ?? "";
     if (seekerCountries.size === 0 || seekerCountries.has(jobCountry)) {
-      score += 30;
+      score += 25;
     } else if (job.location?.isRemote) {
-      score += 20; // partial credit for remote
+      score += 15; // partial credit for remote
     }
 
-    // Salary range overlap (20%)
+    // Salary range overlap (15%)
     const jobSalaryMin = job.salary?.min ?? 0;
     const jobSalaryMax = job.salary?.max ?? Infinity;
     if (
       (jobSalaryMin <= seekerSalaryMax && jobSalaryMax >= seekerSalaryMin) ||
       seekerSalaryMin === 0
     ) {
-      score += 20;
+      score += 15;
     }
 
-    // Job type match (10%)
+    // Job type match (5%)
     if (seekerJobType === "any") {
-      score += 10;
+      score += 5;
     } else if (
       (seekerJobType === "remote" && job.location?.isRemote) ||
       (seekerJobType === "onsite" && !job.location?.isRemote) ||
       seekerJobType === "hybrid"
     ) {
-      score += 10;
+      score += 5;
     }
 
-    // Bonus: role title match
-    const titleLower = job.title?.toLowerCase() ?? "";
-    for (const role of seekerRoles) {
-      if (titleLower.includes(role)) {
-        score += 5;
-        break;
-      }
+    // Role title match bonus (15%)
+    if (roleMatch) {
+      score += 15;
     }
 
     return { ...job, matchScore: Math.min(100, Math.round(score)) };
   });
 
-  // Sort by score descending, then return limited items + total count.
-  scored.sort((a, b) => b.matchScore - a.matchScore);
-  const totalMatches = scored.length;
-  const items = scored.slice(0, itemLimit);
+  // Remove filtered-out jobs, sort by score descending
+  const relevant = scored.filter((j) => !(j as Record<string, unknown>)._filtered);
+  relevant.sort((a, b) => b.matchScore - a.matchScore);
+  const totalMatches = relevant.length;
+  const items = relevant.slice(0, itemLimit);
 
   return NextResponse.json({ items, totalMatches });
 });

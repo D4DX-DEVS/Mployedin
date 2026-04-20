@@ -3037,28 +3037,31 @@ Searchable country list with currency and phone-code data. Rate-limited.
 
 ## 23. Integrations
 
-### Google Calendar
+### Built-in Availability Calendar
 
-#### GET `/api/integrations/google-calendar`
+Availability is managed via the job seeker settings API (`PATCH /api/job-seekers/settings`). No external OAuth is needed.
 
-Returns connection status.
+#### GET `/api/job-seekers/[id]/availability?date=YYYY-MM-DD&range=7`
+
+Returns available 30-minute time slots for a candidate over a date range (1–14 days). Accounts for the candidate's `weeklyAvailability`, `availableHours`, `timeBuffer`, and already-booked interviews.
 
 **Response `200`:**
 ```json
-{ "connected": true, "email": "sara@gmail.com" }
+{
+  "seekerId": "ObjectId",
+  "timeBuffer": 30,
+  "availability": [
+    {
+      "date": "2026-04-22",
+      "dayName": "Wed",
+      "slots": [
+        { "start": "09:00", "end": "09:30" },
+        { "start": "09:30", "end": "10:00" }
+      ]
+    }
+  ]
+}
 ```
-
-#### GET `/api/integrations/google-calendar/connect`
-
-Initiates OAuth flow — generates CSRF state cookie and redirects to Google's consent screen.
-
-#### GET `/api/integrations/google-calendar/callback`
-
-OAuth 2.0 callback — exchanges auth code for tokens, validates CSRF state, stores encrypted credentials.
-
-#### DELETE `/api/integrations/google-calendar`
-
-Revoke stored OAuth credentials.
 
 ---
 

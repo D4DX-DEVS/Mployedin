@@ -376,23 +376,143 @@ function buildProfileCompletionEmail(data: ProfileCompletionEmailData): string {
   const dir = isAr ? "rtl" : "ltr";
   const remaining = 100 - completeness;
 
+  // Profile action items with boost percentages (Naukri-style gamification)
+  const actions = isAr
+    ? [
+        { label: "أرفق سيرتك الذاتية", boost: 10, desc: "أول ما ينظر إليه مسؤولو التوظيف" },
+        { label: "أضف مهاراتك", boost: 8, desc: "تطابق أفضل مع الوظائف" },
+        { label: "أكمل خبراتك المهنية", boost: 8, desc: "اعرض أدوارك ومسؤولياتك" },
+        { label: "أضف تفضيلاتك الوظيفية", boost: 5, desc: "احصل على توصيات أدق" },
+      ]
+    : [
+        { label: "Attach Resume", boost: 10, desc: "It is the first thing recruiters look at" },
+        { label: "Add Skills", boost: 8, desc: "Better matching with relevant jobs" },
+        { label: "Complete Work Experience", boost: 8, desc: "Showcase your role & responsibilities" },
+        { label: "Set Job Preferences", boost: 5, desc: "Get more accurate recommendations" },
+      ];
+
+  const actionRows = actions
+    .map(
+      (a) => `
+    <tr>
+      <td style="padding: 12px 16px; border-bottom: 1px solid #f3f4f6;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+          <tr>
+            <td style="vertical-align: top;">
+              <strong style="color: #111827; font-size: 14px;">${esc(a.label)}</strong>
+              <span style="color: #059669; font-size: 13px; font-weight: 600; ${isAr ? "margin-right" : "margin-left"}: 8px;">↑ ${isAr ? "زيادة" : "Boost"} ${a.boost}%</span>
+              <br><span style="color: #6b7280; font-size: 12px;">${esc(a.desc)}</span>
+            </td>
+            <td style="text-align: ${isAr ? "left" : "right"}; vertical-align: middle; width: 60px;">
+              <a href="${baseUrl}/${locale}/job-seeker/profile" style="color: #0D6FD8; font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid #0D6FD8; border-radius: 6px; padding: 4px 12px; display: inline-block;">
+                ${isAr ? "أضف" : "Add"}
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`,
+    )
+    .join("");
+
+  const completedActions = Math.round(completeness / 100 * 15);
+  const pendingActions = 15 - completedActions;
+
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: ${dir};">
-      <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+      <div style="background: linear-gradient(135deg, #0D6FD8 0%, #0a2a6e 100%); padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 24px; letter-spacing: 1px;">MPLOYEDIN</h1>
       </div>
       <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none;">
-        <p>${isAr ? `مرحباً <strong>${esc(userName)}</strong>` : `Hi <strong>${esc(userName)}</strong>`},</p>
-        <p style="color: #374151;">
-          ${isAr ? `ملفك الشخصي مكتمل بنسبة ${completeness}% فقط. أكمل الـ ${remaining}% المتبقية لتحصل على مشاهدات أكثر بـ 3 أضعاف من مسؤولي التوظيف.` : `Your profile is only ${completeness}% complete. Finish the remaining ${remaining}% to get 3x more recruiter views.`}
-        </p>
-        <div style="background: #f3f4f6; border-radius: 8px; height: 12px; margin: 16px 0; overflow: hidden;">
-          <div style="background: #0D6FD8; height: 100%; width: ${completeness}%; border-radius: 8px;"></div>
+        <p style="color: #374151; line-height: 1.6;">${isAr ? `مرحباً <strong>${esc(userName)}</strong>` : `Hi <strong>${esc(userName)}</strong>`},</p>
+
+        <!-- Gamification section -->
+        <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin: 16px 0; text-align: center; border: 1px solid #e5e7eb;">
+          <p style="margin: 0 0 4px; color: #111827; font-size: 16px; font-weight: 600;">
+            ${isAr ? `ملفك الشخصي مكتمل بنسبة ${completeness}%، لماذا يجب أن تصل لـ 100%` : `Your profile is ${completeness}% complete, here is why you should aim for a 100%`}
+          </p>
+
+          <!-- Circular-style progress indicator -->
+          <div style="margin: 16px auto; width: 80px; height: 80px; border-radius: 50%; background: conic-gradient(#0D6FD8 ${completeness * 3.6}deg, #e5e7eb ${completeness * 3.6}deg); display: flex; align-items: center; justify-content: center;">
+            <div style="width: 60px; height: 60px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center;">
+              <span style="color: #d97706; font-size: 18px; font-weight: 700;">${completeness}%</span>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: center; gap: 24px; margin-top: 12px;">
+            <div>
+              <span style="color: #059669; font-size: 14px;">✅</span>
+              <span style="color: #374151; font-size: 13px; margin-${isAr ? "right" : "left"}: 4px;">
+                ${String(completedActions).padStart(2, "0")} ${isAr ? "إجراءات مكتملة" : "actions completed"}
+              </span>
+            </div>
+            <div>
+              <span style="color: #d97706; font-size: 14px;">➕</span>
+              <span style="color: #374151; font-size: 13px; margin-${isAr ? "right" : "left"}: 4px;">
+                ${String(pendingActions).padStart(2, "0")} ${isAr ? "إجراءات معلقة" : "actions pending"}
+              </span>
+            </div>
+          </div>
         </div>
-        <p style="text-align: center; color: #6b7280; font-size: 14px;">${completeness}% ${isAr ? "مكتمل" : "complete"}</p>
-        <div style="text-align: center; margin: 24px 0;">
+
+        <!-- Benefits -->
+        <div style="margin: 20px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0;">
+                <span style="display: inline-block; width: 24px; height: 24px; background: #dbeafe; color: #1d4ed8; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 700;">1</span>
+                <span style="color: #374151; font-size: 14px; margin-${isAr ? "right" : "left"}: 8px;">
+                  ${isAr ? "فرص أعلى للتواصل من مسؤولي التوظيف" : "Higher chances of being contacted by recruiters"}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0;">
+                <span style="display: inline-block; width: 24px; height: 24px; background: #fef3c7; color: #b45309; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 700;">2</span>
+                <span style="color: #374151; font-size: 14px; margin-${isAr ? "right" : "left"}: 8px;">
+                  ${isAr ? "تميّز بين ملايين الباحثين عن عمل" : "Stand out amidst millions of other jobseekers"}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0;">
+                <span style="display: inline-block; width: 24px; height: 24px; background: #dcfce7; color: #15803d; border-radius: 50%; text-align: center; line-height: 24px; font-size: 12px; font-weight: 700;">3</span>
+                <span style="color: #374151; font-size: 14px; margin-${isAr ? "right" : "left"}: 8px;">
+                  ${isAr ? "احصل على توصيات وظائف مخصصة لك" : "Get personalised job recommendations"}
+                </span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin: 20px 0;">
           <a href="${baseUrl}/${locale}/job-seeker/profile" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">
-            ${isAr ? "أكمل ملفك الشخصي" : "Complete Your Profile"}
+            ${isAr ? "أكمل ملفي الشخصي" : "Complete my profile"}
+          </a>
+        </div>
+
+        <!-- Action items with boost % -->
+        <div style="margin-top: 24px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+          <div style="background: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">
+            <strong style="color: #111827; font-size: 14px;">
+              ${isAr ? "عزّز ملفك الشخصي بإضافة التفاصيل المفقودة" : "Enhance your profile by adding missing details!"}
+            </strong>
+          </div>
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+            ${actionRows}
+          </table>
+        </div>
+
+        <!-- Did you know section -->
+        <div style="margin-top: 24px; text-align: center; padding: 16px; background: #faf5ff; border-radius: 8px;">
+          <p style="margin: 0; font-size: 14px; font-weight: 600; color: #7c3aed;">
+            ${isAr ? "هل تعلم؟" : "Did you know?"}
+          </p>
+          <p style="margin: 8px 0 0; color: #6b7280; font-size: 13px;">
+            ${isAr ? "70% من مسؤولي التوظيف يبحثون عن المرشحين بناءً على ملفاتهم الشخصية دون نشر وظائف" : "70% recruiters search candidates based on their profile without posting jobs"}
+          </p>
+          <a href="${baseUrl}/${locale}/job-seeker/profile" style="color: #0D6FD8; font-size: 13px; text-decoration: none; display: inline-block; margin-top: 8px;">
+            ${isAr ? "أضف التفاصيل المفقودة →" : "Add missing details →"}
           </a>
         </div>
       </div>

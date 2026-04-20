@@ -10,6 +10,7 @@ import User from "@/models/User";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import { sendEmail } from "@/lib/communications/email";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { inngest } from "@/lib/inngest/client";
 
 /**
  * POST /api/jobs/[id]/apply
@@ -128,6 +129,17 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
       company,
       title: job.title,
       autoApplied: false,
+    },
+  }).catch(() => {});
+
+  // Fire "Similar Jobs" email (delayed 2h via Inngest)
+  inngest.send({
+    name: "jobs/similar-after-apply",
+    data: {
+      userId: ctx.userId,
+      jobId,
+      jobTitle: job.title,
+      companyName: company,
     },
   }).catch(() => {});
 

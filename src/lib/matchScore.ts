@@ -158,11 +158,11 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
 
   let score = Math.round(raw * 100);
 
-  // ── Role title bonus (+5, capped at 100) ─────────────────────────────
+  // ── Role title bonus (+15, capped at 100) ────────────────────────────
   if (job.title && seeker.preferredRoles?.length) {
     const titleLower = job.title.toLowerCase();
-    if (seeker.preferredRoles.some((r) => titleLower.includes(r.toLowerCase()))) {
-      score = Math.min(100, score + 5);
+    if (seeker.preferredRoles.some((r) => titleLower.includes(r.toLowerCase()) || r.toLowerCase().includes(titleLower))) {
+      score = Math.min(100, score + 15);
     }
   }
 

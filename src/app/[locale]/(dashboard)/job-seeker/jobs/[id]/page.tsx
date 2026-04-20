@@ -9,6 +9,7 @@ import EasyApply from "@/components/features/public/EasyApply";
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import RelativeDate from "@/components/shared/RelativeDate";
+import { ShareJob } from "@/components/shared/ShareJob";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -190,6 +191,12 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                       Verified employer
                     </span>
                   )}
+                  <ShareJob
+                    jobId={String(job._id)}
+                    jobTitle={job.title}
+                    companyName={employer?.companyName ?? "Company"}
+                    locale={locale}
+                  />
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2 text-sm text-muted-foreground">

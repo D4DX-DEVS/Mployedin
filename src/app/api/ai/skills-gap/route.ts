@@ -17,12 +17,14 @@ interface NormalizedCriticalGap {
   priority: GapPriority;
   reason: string;
   learningPath: string;
+  demandPercent: number;
 }
 
 interface NormalizedSkillsGapAnalysis {
   overallScore: number;
   existingStrengths: string[];
   criticalGaps: NormalizedCriticalGap[];
+  skillLevels: Record<string, number>;
   estimatedTimeToReady: string;
   recommendations: string[];
   summary: string;
@@ -66,6 +68,7 @@ function normalizeAnalysis(payload: unknown): NormalizedSkillsGapAnalysis {
         priority: parsePriority(obj.priority),
         reason: String(obj.reason ?? "Build this skill to improve role fit.").trim(),
         learningPath: String(obj.learningPath ?? "Learn fundamentals, ship a mini-project, then validate with interview tasks.").trim(),
+        demandPercent: Math.min(100, Math.max(0, Math.round(Number(obj.demandPercent) || 0))),
       };
     })
     .filter((gap): gap is NormalizedCriticalGap => Boolean(gap));
@@ -86,10 +89,21 @@ function normalizeAnalysis(payload: unknown): NormalizedSkillsGapAnalysis {
     return sum + 3;
   }, 0));
 
+  // Parse skill levels (demand-based percentages from AI)
+  const rawSkillLevels = raw.skillLevels && typeof raw.skillLevels === "object" ? raw.skillLevels as Record<string, unknown> : {};
+  const skillLevels: Record<string, number> = {};
+  for (const [key, val] of Object.entries(rawSkillLevels)) {
+    const num = Number(val);
+    if (key && Number.isFinite(num)) {
+      skillLevels[key.trim()] = Math.min(100, Math.max(0, Math.round(num)));
+    }
+  }
+
   return {
     overallScore,
     existingStrengths,
     criticalGaps,
+    skillLevels,
     estimatedTimeToReady: String(raw.estimatedTimeToReady ?? "2-4 months").trim() || "2-4 months",
     recommendations,
     summary: String(raw.summary ?? "You have a strong foundation with a few skill gaps to close.").trim(),
@@ -144,9 +158,92 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   if (targetJobId) {
     const job = await Job.findById(targetJobId).lean();
     if (job) {
-      targetDesc = `${job.title} — Requirements: ${(job.requirements ?? []).join(", ")}`;
+      targetDesc = `${job.title} — Requirements: ${(job.requirements?.skills ?? []).join(", ")}`;
     }
   }
+
+  /* ── Aggregate real skill demand from platform jobs ── */
+  const roleKeywords = (safeTargetRole ?? "")
+    .split(/\s+or\s+/i)
+    .map((r) => r.trim())
+    .filter(Boolean);
+  const titleRegex = roleKeywords.length
+    ? new RegExp(roleKeywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "i")
+    : null;
+
+  interface SkillDemandEntry {
+    skill: string;
+    count: number;
+    percentage: number;
+    isPreferred: boolean;
+  }
+
+  let platformMatchingJobs = 0;
+  let demandedSkills: SkillDemandEntry[] = [];
+  let topMissingFromPlatform: string[] = [];
+
+  if (titleRegex) {
+    // Count matching active jobs
+    const matchingJobs = await Job.find(
+      { status: "active", title: { $regex: titleRegex } },
+      { "requirements.skills": 1, "requirements.preferredSkills": 1, title: 1 }
+    ).lean();
+
+    platformMatchingJobs = matchingJobs.length;
+
+    if (platformMatchingJobs > 0) {
+      // Aggregate skill demand across all matching jobs
+      const skillCounts = new Map<string, { required: number; preferred: number }>();
+      for (const job of matchingJobs) {
+        const reqSkills = job.requirements?.skills ?? [];
+        const prefSkills = job.requirements?.preferredSkills ?? [];
+        for (const s of reqSkills) {
+          const key = s.toLowerCase().trim();
+          if (!key) continue;
+          const existing = skillCounts.get(key) ?? { required: 0, preferred: 0 };
+          existing.required++;
+          skillCounts.set(key, existing);
+        }
+        for (const s of prefSkills) {
+          const key = s.toLowerCase().trim();
+          if (!key) continue;
+          const existing = skillCounts.get(key) ?? { required: 0, preferred: 0 };
+          existing.preferred++;
+          skillCounts.set(key, existing);
+        }
+      }
+
+      // Build sorted skill demand list
+      demandedSkills = Array.from(skillCounts.entries())
+        .map(([skill, counts]) => ({
+          skill,
+          count: counts.required + counts.preferred,
+          percentage: Math.round(((counts.required + counts.preferred) / platformMatchingJobs) * 100),
+          isPreferred: counts.required === 0,
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 30);
+
+      // Find skills employers want that the user doesn't have
+      const userSkillsLower = new Set(dedupedCurrentSkills.map((s) => s.toLowerCase()));
+      topMissingFromPlatform = demandedSkills
+        .filter((d) => !userSkillsLower.has(d.skill))
+        .slice(0, 10)
+        .map((d) => `${d.skill} (required in ${d.percentage}% of ${platformMatchingJobs} jobs)`);
+    }
+  }
+
+  /* ── Build AI prompt enriched with real platform data ── */
+  const platformContext = platformMatchingJobs > 0
+    ? `\n\nPLATFORM DATA (from ${platformMatchingJobs} active "${safeTargetRole}" jobs on Mployedin):
+TOP SKILLS EMPLOYERS REQUIRE:
+${demandedSkills.slice(0, 15).map((d) => `- ${d.skill}: required in ${d.percentage}% of jobs (${d.count}/${platformMatchingJobs})`).join("\n")}
+
+SKILLS THE CANDIDATE IS MISSING (from real employer demand):
+${topMissingFromPlatform.length > 0 ? topMissingFromPlatform.map((s) => `- ${s}`).join("\n") : "- None — candidate has all top demanded skills"}
+
+IMPORTANT: Base your overallScore primarily on how well the candidate's skills match what employers on this platform actually require. The skill percentages in "skillLevels" should reflect what percentage of matching jobs require that skill. Critical gaps should prioritize skills that employers on this platform actually demand. You may add 1-2 general market insights but prioritize platform data.`
+    : `\n\nNOTE: No active jobs matching "${safeTargetRole ?? "the role"}" were found on the platform. Base your analysis on general Gulf job market knowledge.`;
 
   const prompt = `You are a career development AI for the Gulf region job market.
 
@@ -155,15 +252,17 @@ CANDIDATE CURRENT TITLE: ${seeker.currentJobTitle ?? "N/A"}
 YEARS OF EXPERIENCE: ${seeker.yearsOfExperience ?? "N/A"}
 
 TARGET ROLE/JOB: ${targetDesc}
+${platformContext}
 
 Analyse the skill gap. Return ONLY a JSON object (no markdown):
 {
-  "overallScore": <integer 0-100, how close they already are>,
-  "existingStrengths": [<skill strings that match>],
-  "criticalGaps": [{ "skill": "...", "priority": "high|medium|low", "reason": "...", "learningPath": "..." }],
+  "overallScore": <integer 0-100, how many of the top demanded skills the candidate already has>,
+  "existingStrengths": [<candidate skills that match employer demand>],
+  "criticalGaps": [{ "skill": "...", "priority": "high|medium|low", "reason": "...", "learningPath": "...", "demandPercent": <percent of jobs requiring this skill or 0 if unknown> }],
+  "skillLevels": { "<skill_name>": <0-100 based on demand match percentage> },
   "estimatedTimeToReady": "<e.g. 3 months>",
   "recommendations": [<3-5 string action items>],
-  "summary": "<2-3 sentence overall assessment>"
+  "summary": "<2-3 sentence overall assessment referencing real platform data when available>"
 }`;
 
   const text = await routeGenerate(prompt, "skills_gap");
@@ -203,5 +302,15 @@ Analyse the skill gap. Return ONLY a JSON object (no markdown):
     lastAnalysisAt: progressData?.lastAnalysisAt ? new Date(progressData.lastAnalysisAt).toISOString() : new Date().toISOString(),
   };
 
-  return NextResponse.json({ analysis, progress, generatedAt: new Date().toISOString() });
+  return NextResponse.json({
+    analysis,
+    progress,
+    platformData: {
+      matchingJobsCount: platformMatchingJobs,
+      demandedSkills: demandedSkills.slice(0, 20),
+      topMissingSkills: topMissingFromPlatform,
+      dataSource: platformMatchingJobs > 0 ? "platform" : "ai_only",
+    },
+    generatedAt: new Date().toISOString(),
+  });
 });

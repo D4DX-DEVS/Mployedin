@@ -40,16 +40,32 @@ interface CriticalGap {
   priority: "high" | "medium" | "low";
   reason: string;
   learningPath: string;
+  demandPercent?: number;
 }
 
 interface SkillsGapResult {
   overallScore: number;
   existingStrengths: string[];
   criticalGaps: CriticalGap[];
+  skillLevels?: Record<string, number>;
   estimatedTimeToReady: string;
   recommendations: string[];
   summary: string;
   projectedScore: number;
+}
+
+interface PlatformDemandSkill {
+  skill: string;
+  count: number;
+  percentage: number;
+  isPreferred: boolean;
+}
+
+interface PlatformData {
+  matchingJobsCount: number;
+  demandedSkills: PlatformDemandSkill[];
+  topMissingSkills: string[];
+  dataSource: "platform" | "ai_only";
 }
 
 interface SkillsCoachProgress {
@@ -139,10 +155,12 @@ function SkillBar({
   label,
   level,
   isStrength,
+  demandInfo,
 }: {
   label: string;
   level: number;
   isStrength: boolean;
+  demandInfo?: string;
 }) {
   const color = isStrength
     ? "bg-emerald-500"
@@ -153,7 +171,14 @@ function SkillBar({
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
-        <span className="truncate font-medium">{label}</span>
+        <div className="flex items-center gap-1.5 truncate">
+          <span className="truncate font-medium">{label}</span>
+          {demandInfo && (
+            <span className="shrink-0 rounded bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              {demandInfo}
+            </span>
+          )}
+        </div>
         <span className="ml-2 shrink-0 text-muted-foreground">{level}%</span>
       </div>
       <div className="h-2 w-full rounded-full bg-muted/40">
@@ -189,6 +214,7 @@ export default function JobSeekerSkillsPage() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState("");
   const [targetRole, setTargetRole] = useState("");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [gapResult, setGapResult] = useState<SkillsGapResult | null>(null);
   const [loadingGap, setLoadingGap] = useState(false);
   const [gapError, setGapError] = useState("");
@@ -200,6 +226,7 @@ export default function JobSeekerSkillsPage() {
   const [animateScore, setAnimateScore] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [platformData, setPlatformData] = useState<PlatformData | null>(null);
 
   const resultsRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -343,6 +370,7 @@ export default function JobSeekerSkillsPage() {
 
         setGapResult(data.analysis ?? null);
         setProgress(data.progress ?? null);
+        setPlatformData(data.platformData ?? null);
         await loadMatchingJobsCount();
 
         setAnimateScore(true);
@@ -423,35 +451,72 @@ export default function JobSeekerSkillsPage() {
     : 0;
 
   const impactSuggestions = gapResult
-    ? gapResult.criticalGaps.slice(0, 3).map((gap) => ({
-        skill: gap.skill,
-        boost:
-          gap.priority === "high" ? 8 : gap.priority === "medium" ? 5 : 3,
-        priority: gap.priority,
-        reason: gap.reason,
-        learningPath: gap.learningPath,
-      }))
+    ? gapResult.criticalGaps.slice(0, 3).map((gap) => {
+        // Look up real platform demand for this skill
+        const platformSkill = platformData?.demandedSkills?.find(
+          (d) => d.skill.toLowerCase() === gap.skill.toLowerCase()
+        );
+        return {
+          skill: gap.skill,
+          boost:
+            gap.priority === "high" ? 8 : gap.priority === "medium" ? 5 : 3,
+          priority: gap.priority,
+          reason: gap.reason,
+          learningPath: gap.learningPath,
+          demandPercent: gap.demandPercent ?? platformSkill?.percentage ?? 0,
+          jobsRequiring: platformSkill?.count ?? 0,
+        };
+      })
     : [];
 
-  // Build skill bars from gap result using seeded random for stability
+  // Build skill bars from real platform demand data + AI skill levels
   const skillBars = gapResult
-    ? [
-        ...gapResult.existingStrengths.map((s) => ({
-          label: s,
-          level: 70 + Math.round(seededRandom(s) * 25),
-          isStrength: true,
-        })),
-        ...gapResult.criticalGaps.map((g) => ({
-          label: g.skill,
-          level:
-            g.priority === "high"
-              ? 15 + Math.round(seededRandom(g.skill) * 15)
-              : g.priority === "medium"
-                ? 35 + Math.round(seededRandom(g.skill) * 15)
-                : 50 + Math.round(seededRandom(g.skill) * 10),
-          isStrength: false,
-        })),
-      ].sort((a, b) => b.level - a.level)
+    ? (() => {
+        const aiLevels = gapResult.skillLevels ?? {};
+        // Use platform demand percentages when available, fall back to AI levels
+        const platformMap = new Map(
+          (platformData?.demandedSkills ?? []).map((d) => [d.skill.toLowerCase(), d.percentage])
+        );
+        const userSkillsLower = new Set(mySkills.map((s) => s.toLowerCase()));
+
+        const bars = [
+          ...gapResult.existingStrengths.map((s) => {
+            const demandPct = platformMap.get(s.toLowerCase());
+            const aiLevel = aiLevels[s];
+            return {
+              label: s,
+              level: demandPct ?? aiLevel ?? (70 + Math.round(seededRandom(s) * 25)),
+              isStrength: true,
+              demandInfo: demandPct != null ? `Required in ${demandPct}% of jobs` : undefined,
+            };
+          }),
+          ...gapResult.criticalGaps.map((g) => {
+            const demandPct = platformMap.get(g.skill.toLowerCase());
+            const aiLevel = aiLevels[g.skill];
+            // For gaps: show demand percentage (how much employers want it) not how good the user is
+            const level = g.demandPercent
+              ? g.demandPercent
+              : demandPct
+                ? demandPct
+                : aiLevel
+                  ? aiLevel
+                  : g.priority === "high"
+                    ? 15 + Math.round(seededRandom(g.skill) * 15)
+                    : g.priority === "medium"
+                      ? 35 + Math.round(seededRandom(g.skill) * 15)
+                      : 50 + Math.round(seededRandom(g.skill) * 10);
+            return {
+              label: g.skill,
+              level,
+              isStrength: false,
+              demandInfo: (g.demandPercent ?? demandPct) != null
+                ? `Required in ${g.demandPercent ?? demandPct}% of jobs`
+                : undefined,
+            };
+          }),
+        ].sort((a, b) => b.level - a.level);
+        return bars;
+      })()
     : [];
 
   /* ── Render ── */
@@ -489,25 +554,37 @@ export default function JobSeekerSkillsPage() {
             </div>
             <Input
               value={targetRole}
-              onChange={(e) => setTargetRole(e.target.value)}
+              onChange={(e) => {
+                setTargetRole(e.target.value);
+                setSelectedRoles([]);
+              }}
               placeholder={t("targetRolePlaceholder")}
               className="h-11"
             />
             <div className="flex flex-wrap gap-1.5">
-              {POPULAR_ROLES.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => setTargetRole(role)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
-                    targetRole === role
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "border border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-primary"
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
+              {POPULAR_ROLES.map((role) => {
+                const isSelected = selectedRoles.includes(role);
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => {
+                      const next = isSelected
+                        ? selectedRoles.filter((r) => r !== role)
+                        : [...selectedRoles, role];
+                      setSelectedRoles(next);
+                      setTargetRole(next.join(" or "));
+                    }}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${
+                      isSelected
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "border border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-primary"
+                    }`}
+                  >
+                    {role}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -652,6 +729,12 @@ export default function JobSeekerSkillsPage() {
                   </div>
 
                   <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
+                    {platformData?.dataSource === "platform" && (
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                        <Briefcase className="h-3.5 w-3.5" />
+                        Based on {platformData.matchingJobsCount} real jobs
+                      </div>
+                    )}
                     {improvement > 0 && (
                       <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                         <TrendingUp className="h-3.5 w-3.5" />+{improvement}%{" "}
@@ -694,6 +777,7 @@ export default function JobSeekerSkillsPage() {
                         label={bar.label}
                         level={bar.level}
                         isStrength={bar.isStrength}
+                        demandInfo={bar.demandInfo}
                       />
                     ))}
                   </div>
@@ -754,6 +838,14 @@ export default function JobSeekerSkillsPage() {
                                 <TrendingUp className="h-3 w-3" />+
                                 {action.boost}% {t("matchImpact")}
                               </span>
+                              {action.demandPercent > 0 && (
+                                <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                  <Briefcase className="h-3 w-3" />
+                                  {action.jobsRequiring > 0
+                                    ? `${action.jobsRequiring} jobs require this`
+                                    : `${action.demandPercent}% employer demand`}
+                                </span>
+                              )}
                             </div>
                           </div>
                           <Button
@@ -973,7 +1065,9 @@ export default function JobSeekerSkillsPage() {
                   <p className="mb-4 text-sm opacity-90">
                     {loadingJobsCount
                       ? t("loadingJobs")
-                      : t("totalMatches", { count: matchingJobsCount })}
+                      : platformData?.matchingJobsCount
+                        ? t("totalMatches", { count: platformData.matchingJobsCount })
+                        : t("totalMatches", { count: matchingJobsCount })}
                   </p>
                   <Link href={`/${locale}/job-seeker/jobs`}>
                     <Button

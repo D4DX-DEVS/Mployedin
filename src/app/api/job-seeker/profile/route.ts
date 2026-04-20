@@ -21,7 +21,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json(null, { status: 204 });
   }
 
-  return NextResponse.json(profile);
+  return NextResponse.json(profile, {
+    headers: { "Cache-Control": "no-store, max-age=0" },
+  });
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx) {
@@ -63,6 +65,26 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     { upsert: true, new: true, runValidators: true }
   );
 
+  // Recalculate and persist profile completeness after every update
+  let responseDoc = profile;
+  if (profile) {
+    const doc = profile.toObject ? profile.toObject() : profile;
+    let completeness = 0;
+    if (doc.userId)                                            completeness += 10;
+    if (doc.nationality)                                       completeness += 10;
+    if (doc.currentLocation)                                   completeness += 5;
+    if (doc.summary)                                           completeness += 10;
+    if (Array.isArray(doc.skills)    && doc.skills.length)    completeness += 20;
+    if (Array.isArray(doc.experience)&& doc.experience.length) completeness += 20;
+    if (Array.isArray(doc.education) && doc.education.length) completeness += 15;
+    if (Array.isArray(doc.languages) && doc.languages.length) completeness += 5;
+    if (doc.linkedin || doc.socialLinks?.some((l: { label?: string }) => l.label?.toLowerCase() === "linkedin")) completeness += 5;
+    completeness = Math.min(100, completeness);
+    await JobSeeker.updateOne({ userId: ctx.userId }, { $set: { profileCompleteness: completeness } });
+    doc.profileCompleteness = completeness;
+    responseDoc = doc;
+  }
+
   await logActivity({
     ...actorFromCtx(ctx),
     action: "job_seeker.update_profile",
@@ -71,7 +93,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     req,
   });
 
-  return NextResponse.json(profile);
+  return NextResponse.json(responseDoc);
 }
 
 export const GET = withAuth(getHandler);

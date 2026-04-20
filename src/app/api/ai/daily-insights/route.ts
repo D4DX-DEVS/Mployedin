@@ -36,9 +36,36 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
       Application.find({ jobSeekerId: ctx.userId, createdAt: { $gte: yesterday } }).lean(),
     ]);
 
+    // Recalculate completeness on the fly so insights always reflect current state
+    const doc = seeker as Record<string, unknown> | null;
+    let liveCompleteness = 0;
+    if (doc) {
+      if (doc.userId) liveCompleteness += 10;
+      if (doc.nationality) liveCompleteness += 10;
+      if (doc.currentLocation) liveCompleteness += 5;
+      if (doc.summary) liveCompleteness += 10;
+      if (Array.isArray(doc.skills) && doc.skills.length) liveCompleteness += 20;
+      if (Array.isArray(doc.experience) && doc.experience.length) liveCompleteness += 20;
+      if (Array.isArray(doc.education) && doc.education.length) liveCompleteness += 15;
+      if (Array.isArray(doc.languages) && doc.languages.length) liveCompleteness += 5;
+      const socialLinks = doc.socialLinks as Array<{ label?: string }> | undefined;
+      if (doc.linkedin || socialLinks?.some((l) => l.label?.toLowerCase() === "linkedin")) liveCompleteness += 5;
+      liveCompleteness = Math.min(100, liveCompleteness);
+    }
+
+    // Identify missing profile sections for actionable guidance
+    const missingSections: string[] = [];
+    if (!doc?.summary) missingSections.push("Professional summary");
+    if (!Array.isArray(doc?.skills) || !(doc.skills as unknown[]).length) missingSections.push("Skills");
+    if (!Array.isArray(doc?.experience) || !(doc.experience as unknown[]).length) missingSections.push("Work experience");
+    if (!Array.isArray(doc?.education) || !(doc.education as unknown[]).length) missingSections.push("Education");
+    if (!Array.isArray(doc?.languages) || !(doc.languages as unknown[]).length) missingSections.push("Languages");
+    if (!doc?.nationality) missingSections.push("Nationality");
+
     contextData = `
 Role: Job Seeker
-Profile completeness: ${seeker?.profileCompleteness ?? 0}%
+Profile completeness: ${liveCompleteness}%
+${missingSections.length > 0 ? `Missing sections: ${missingSections.join(", ")}` : "Profile is complete."}
 Skills: ${(seeker?.skills ?? []).slice(0, 5).join(", ")}
 New applications today: ${recentApps.length}`;
   } else if (ctx.role === "employer") {
