@@ -109,11 +109,19 @@ export function UserProfileDropdown({
 
   const handleLogout = async () => {
     setLoggingOut(true);
-    // Clear client caches & sign out without waiting for redirect
-    router.refresh();
-    await signOut({ redirect: false });
-    // Instant hard navigation to login — no client-side transition delay
-    window.location.href = `/${locale}/login`;
+    try {
+      // Race signOut against a timeout so the user is never stuck
+      await Promise.race([
+        signOut({ redirect: false }),
+        new Promise((resolve) => setTimeout(resolve, 4000)),
+      ]);
+    } catch {
+      // Even if signOut fails, navigate to login — the server session
+      // will be invalidated on next request anyway.
+    } finally {
+      // Hard navigation clears all client state; no router.refresh() needed
+      window.location.href = `/${locale}/login`;
+    }
   };
 
   const initials = userName

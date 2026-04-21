@@ -10,6 +10,7 @@ import Job from "@/models/Job";
 import Application from "@/models/Application";
 import Placement from "@/models/Placement";
 import Lead from "@/models/Lead";
+import { formatCurrency } from "@/lib/currency";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -34,7 +35,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
 
   // Load live data
   const saProfile = await SuperAgent.findOne({ userId: session.user.id })
-    .select("agentIds assignedCityIds assignedStateIds commissions overrideRate")
+    .select("agentIds assignedCityIds assignedStateIds commissions overrideRate currencyCode")
     .lean();
 
   const agentDocIds = saProfile?.agentIds ?? [];
@@ -83,6 +84,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
   });
 
   const commissions = saProfile?.commissions ?? { total: 0, pending: 0, paid: 0 };
+  const currencyCode = saProfile?.currencyCode ?? "AED";
 
   const kpis = [
     {
@@ -108,7 +110,7 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
     },
     {
       label: "Commissions Earned",
-      value: commissions.total > 0 ? `AED ${commissions.total.toLocaleString()}` : "AED 0",
+      value: commissions.total > 0 ? formatCurrency(commissions.total, currencyCode) : formatCurrency(0, currencyCode),
       helper: "Commission performance and payout visibility for your portfolio.",
       icon: DollarSign,
       iconClassName: "border border-amber-200 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-800/70 dark:bg-amber-950/70 dark:text-amber-200",

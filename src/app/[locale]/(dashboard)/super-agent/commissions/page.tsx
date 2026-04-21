@@ -18,6 +18,7 @@ import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
+import { formatCurrency } from "@/lib/currency";
 
 interface Commission {
   _id: string;
@@ -40,6 +41,7 @@ export default function SuperAgentCommissionsPage() {
   const [overrideRate, setOverrideRate] = useState<number>(0);
   const [savingRate, setSavingRate] = useState(false);
   const [rateMessage, setRateMessage] = useState("");
+  const [currencyCode, setCurrencyCode] = useState("AED");
 
   useEffect(() => {
     fetch("/api/super-agent/profile")
@@ -47,6 +49,9 @@ export default function SuperAgentCommissionsPage() {
       .then((data) => {
         if (data?.profile?.overrideRate != null) {
           setOverrideRate(data.profile.overrideRate);
+        }
+        if (data?.profile?.currencyCode) {
+          setCurrencyCode(data.profile.currencyCode);
         }
       })
       .catch(() => {});
@@ -103,7 +108,7 @@ export default function SuperAgentCommissionsPage() {
   const kpis = [
     {
       label: "Visible Payouts",
-      value: totalAmount > 0 ? `AED ${totalAmount.toLocaleString()}` : "—",
+      value: totalAmount > 0 ? formatCurrency(totalAmount, currencyCode) : "—",
       helper: "Commission amount represented in the current results page.",
       icon: <Coins className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
@@ -228,7 +233,7 @@ export default function SuperAgentCommissionsPage() {
                     </TableCell>
                       <TableCell className="py-4 capitalize text-muted-foreground">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
                       <TableCell className="max-w-xs truncate py-4 text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
-                      <TableCell className="py-4 text-right font-semibold text-foreground">{c.currency ?? "AED"} {c.amount.toLocaleString()}</TableCell>
+                      <TableCell className="py-4 text-right font-semibold text-foreground">{formatCurrency(c.amount, c.currency ?? currencyCode)}</TableCell>
                     <TableCell className="py-4"><StatusBadge status={c.status} /></TableCell>
                       <TableCell className="py-4 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="py-4">

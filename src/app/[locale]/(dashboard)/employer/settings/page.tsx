@@ -1024,7 +1024,7 @@ function CompanySettingsPage() {
 
 // ─── Employer Notifications Tab (API-connected) ──────────────────────────────
 
-type Channel = "in_app" | "email" | "whatsapp";
+type Channel = "in_app" | "email";
 type CategoryKey = "applications" | "interviews" | "offers" | "jobs" | "system";
 type EmailFrequency = "instant" | "daily" | "weekly" | "none";
 
@@ -1054,7 +1054,6 @@ const FREQ_OPTIONS: { value: EmailFrequency; label: string; desc: string }[] = [
 const CH_LABELS: Record<Channel, { label: string; Icon: typeof Bell }> = {
   in_app: { label: "In-App", Icon: Bell },
   email: { label: "Email", Icon: Mail },
-  whatsapp: { label: "WhatsApp", Icon: Phone },
 };
 
 function EmployerNotificationsTab() {

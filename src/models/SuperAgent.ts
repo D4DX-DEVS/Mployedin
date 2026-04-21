@@ -11,6 +11,8 @@ export interface ISuperAgent extends Document {
     paid: number;
   };
   overrideRate?: number; // commission override %
+  country?: string;
+  currencyCode?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +30,8 @@ const SuperAgentSchema = new Schema<ISuperAgent>(
       paid: { type: Number, default: 0 },
     },
     overrideRate: { type: Number, default: 0 },
+    country: { type: String, default: "" },
+    currencyCode: { type: String, default: "AED" },
   },
   { timestamps: true }
 );

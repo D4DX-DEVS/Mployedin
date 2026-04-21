@@ -23,24 +23,69 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const limit = parseInt(searchParams.get("limit") ?? "10");
   const skip = (page - 1) * limit;
 
+  // Agents can only see employers assigned to them — resolve via Agent doc
+  if (ctx.role === "agent") {
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
+    if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
+    const empIds = agentDoc.assignedEmployerIds ?? [];
+    if (empIds.length === 0) {
+      return NextResponse.json({ employers: [], pagination: { page, limit, total: 0, pages: 0 } });
+    }
+
+    // Query Employer profiles for assigned employers
+    const empQuery: Record<string, unknown> = { _id: { $in: empIds } };
+    if (search) {
+      const safe = escapeRegex(search);
+      empQuery.$or = [
+        { companyName: { $regex: safe, $options: "i" } },
+        { companyEmail: { $regex: safe, $options: "i" } },
+        { industry: { $regex: safe, $options: "i" } },
+      ];
+    }
+
+    const [profiles, total] = await Promise.all([
+      Employer.find(empQuery)
+        .populate("userId", "name email isActive createdAt")
+        .sort({ companyName: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Employer.countDocuments(empQuery),
+    ]);
+
+    const employers = profiles.map((p) => {
+      const user = p.userId as { _id?: unknown; name?: string; email?: string; isActive?: boolean; createdAt?: Date } | null;
+      return {
+        _id: user?._id ?? p._id,
+        name: user?.name,
+        email: user?.email,
+        companyName: p.companyName,
+        industry: p.industry,
+        isActive: user?.isActive ?? true,
+        createdAt: user?.createdAt,
+        verificationDocs: p.verificationDocs ?? [],
+        domainVerified: p.domainVerified ?? false,
+        verificationLevel: p.verificationLevel,
+        isAgentVerified: p.isAgentVerified ?? false,
+      };
+    });
+
+    return NextResponse.json({ employers, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+  }
+
+  // Non-agent roles: query User model directly
   const query: Record<string, unknown> = { role: "employer", isActive: true };
   if (search) {
     const safe = escapeRegex(search);
     query.$or = [
       { name: { $regex: safe, $options: "i" } },
-      { companyName: { $regex: safe, $options: "i" } },
       { email: { $regex: safe, $options: "i" } },
     ];
   }
 
-  // Agents can only see employers assigned to them
-  if (ctx.role === "agent") {
-    query.assignedAgent = ctx.userId;
-  }
-
   const [users, total] = await Promise.all([
     User.find(query)
-      .select("name email companyName industry location isActive createdAt")
+      .select("name email isActive createdAt")
       .sort({ name: 1 })
       .skip(skip)
       .limit(limit)
@@ -51,7 +96,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Attach verificationDocs and domainVerified from Employer model
   const userIds = users.map((u) => u._id);
   const employerProfiles = await Employer.find({ userId: { $in: userIds } })
-    .select("userId verificationDocs domainVerified verificationLevel isAgentVerified")
+    .select("userId companyName industry verificationDocs domainVerified verificationLevel isAgentVerified")
     .lean();
 
   const profileMap = new Map(
@@ -62,6 +107,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     const profile = profileMap.get(String(u._id));
     return {
       ...u,
+      companyName: profile?.companyName,
+      industry: profile?.industry,
       verificationDocs: profile?.verificationDocs ?? [],
       domainVerified: profile?.domainVerified ?? false,
       verificationLevel: profile?.verificationLevel,

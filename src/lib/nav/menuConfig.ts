@@ -600,6 +600,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "الرسائل مع الوكلاء وأصحاب العمل",
           },
           {
+            title: "Settings",
+            titleAr: "الإعدادات",
+            href: p("/super-agent/settings"),
+            icon: "Settings",
+            description: "Region & currency preferences",
+            descriptionAr: "تفضيلات المنطقة والعملة",
+          },
+          {
             title: "Notifications",
             titleAr: "الإشعارات",
             href: p("/notifications"),
@@ -721,6 +729,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             icon: "MessageSquare",
             description: "Messages with employers & super agents",
             descriptionAr: "الرسائل مع أصحاب العمل والوكلاء الكبار",
+          },
+          {
+            title: "Settings",
+            titleAr: "الإعدادات",
+            href: p("/agent/settings"),
+            icon: "Settings",
+            description: "Region & currency preferences",
+            descriptionAr: "تفضيلات المنطقة والعملة",
           },
           {
             title: "Notifications",

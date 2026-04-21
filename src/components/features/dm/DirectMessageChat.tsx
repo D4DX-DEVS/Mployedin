@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, Loader2, MessageSquare, AlertTriangle } from "lucide-react";
+import { Send, Loader2, MessageSquare, AlertTriangle, MoreVertical, Trash2, Eraser } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { conversationKeys } from "@/hooks/useConversations";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface DMMessage {
   _id: string;
@@ -36,12 +43,17 @@ interface Conversation {
 interface Props {
   conversation: Conversation;
   currentUserId: string;
+  /** Called after the conversation is deleted so the parent can clear selection */
+  onDeleteConversation?: () => void;
+  /** Called when a real conversation is created from a pending new-chat */
+  onConversationCreated?: (convId: string) => void;
 }
 
 const POLL_INTERVAL = 5000; // 5 seconds
 
-export function DirectMessageChat({ conversation, currentUserId }: Props) {
+export function DirectMessageChat({ conversation, currentUserId, onDeleteConversation, onConversationCreated }: Props) {
   const queryClient = useQueryClient();
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -51,6 +63,11 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const userSentRef = useRef(false);
+  // Track the real conversation ID (may differ from props if conversation was pending)
+  const realConvIdRef = useRef<string | null>(null);
+
+  const isPending = conversation._id.startsWith("pending-");
+  const convId = realConvIdRef.current ?? (isPending ? null : conversation._id);
 
   const otherParticipant = conversation.participantDetails.find(
     (p) => p.userId !== currentUserId
@@ -58,12 +75,18 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
 
   // Load message history
   const loadMessages = useCallback(async (isInitial = false) => {
+    const activeConvId = realConvIdRef.current ?? (conversation._id.startsWith("pending-") ? null : conversation._id);
+    if (!activeConvId) {
+      // Pending new chat — no messages to load
+      if (isInitial) setLoading(false);
+      return;
+    }
     if (isInitial) {
       setLoading(true);
       setError("");
     }
     try {
-      const res = await fetch(`/api/dm/${conversation._id}/messages`);
+      const res = await fetch(`/api/dm/${activeConvId}/messages`);
       if (res.ok) {
         const data = await res.json();
         const fetched: DMMessage[] = data.messages ?? [];
@@ -84,7 +107,7 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
           return next;
         });
         // Mark as read and refresh conversation list so unread badges clear
-        fetch(`/api/dm/${conversation._id}/read`, { method: "PATCH" })
+        fetch(`/api/dm/${activeConvId}/read`, { method: "PATCH" })
           .then(() => queryClient.invalidateQueries({ queryKey: conversationKeys.lists() }))
           .catch(() => {});
       } else if (isInitial) {
@@ -93,7 +116,7 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
     } finally {
       if (isInitial) setLoading(false);
     }
-  }, [conversation._id]);
+  }, [conversation._id, queryClient]);
 
   // Initial load
   useEffect(() => {
@@ -143,7 +166,7 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
     // Optimistic update
     const optimistic: DMMessage = {
       _id: `opt-${Date.now()}`,
-      conversationId: conversation._id,
+      conversationId: convId ?? "pending",
       senderId: currentUserId,
       content,
       createdAt: new Date().toISOString(),
@@ -151,7 +174,28 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
     setMessages((prev) => [...prev, optimistic]);
 
     try {
-      const res = await fetch(`/api/dm/${conversation._id}/messages`, {
+      // If this is a pending new chat, create the conversation first
+      let targetConvId = convId;
+      if (!targetConvId) {
+        const recipientId = conversation.participants.find((p) => p !== currentUserId);
+        if (!recipientId) throw new Error("No recipient found");
+
+        const createRes = await fetch("/api/dm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipientId }),
+        });
+        if (!createRes.ok) {
+          const err = await createRes.json().catch(() => ({}));
+          throw new Error((err as { error?: string }).error ?? "Failed to create conversation");
+        }
+        const createData = await createRes.json();
+        targetConvId = createData.conversation._id;
+        realConvIdRef.current = targetConvId!;
+        onConversationCreated?.(targetConvId!);
+      }
+
+      const res = await fetch(`/api/dm/${targetConvId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
@@ -173,7 +217,7 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
       setSending(false);
       textareaRef.current?.focus();
     }
-  }, [input, sending, conversation._id, currentUserId]);
+  }, [input, sending, convId, currentUserId, conversation.participants, onConversationCreated]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -182,19 +226,101 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
     }
   };
 
+  const clearChat = useCallback(async () => {
+    if (!convId) return; // No conversation to clear
+    const ok = await confirm({
+      title: "Clear Chat",
+      message: "This will permanently delete all messages in this conversation. The conversation will remain.",
+      confirmLabel: "Clear Messages",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/dm/${convId}/manage`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear" }),
+      });
+      if (res.ok) {
+        setMessages([]);
+        queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
+      } else {
+        setError("Failed to clear chat.");
+      }
+    } catch {
+      setError("Failed to clear chat.");
+    }
+  }, [convId, confirm, queryClient]);
+
+  const deleteChat = useCallback(async () => {
+    if (!convId) {
+      // Pending chat with no messages — just navigate back
+      onDeleteConversation?.();
+      return;
+    }
+    const ok = await confirm({
+      title: "Delete Conversation",
+      message: "This will permanently delete this conversation and all messages. This action cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/dm/${convId}/manage`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
+        onDeleteConversation?.();
+      } else {
+        setError("Failed to delete conversation.");
+      }
+    } catch {
+      setError("Failed to delete conversation.");
+    }
+  }, [convId, confirm, queryClient, onDeleteConversation]);
+
   return (
     <div className="flex flex-col h-full">
+      {ConfirmDialogNode}
       {/* Chat header */}
       <div className="px-4 py-3 border-b flex items-center gap-3 shrink-0 bg-card">
-        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-          <span className="text-sm font-bold text-primary">
-            {otherParticipant?.name?.[0]?.toUpperCase() ?? "?"}
-          </span>
+        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+          {otherParticipant?.avatar ? (
+            <img
+              src={otherParticipant.avatar}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-sm font-bold text-primary">
+              {otherParticipant?.name?.[0]?.toUpperCase() ?? "?"}
+            </span>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm truncate">{otherParticipant?.name ?? "Unknown"}</p>
           <p className="text-xs text-muted-foreground capitalize">{otherParticipant?.role?.replace("_", " ") ?? ""}</p>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={clearChat} className="gap-2 text-muted-foreground">
+              <Eraser className="h-3.5 w-3.5" />
+              Clear Chat
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={deleteChat} className="gap-2 text-destructive focus:text-destructive">
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Chat
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Messages */}

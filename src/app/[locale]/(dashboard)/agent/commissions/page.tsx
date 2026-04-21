@@ -10,6 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { ArrowRight, Clock, DollarSign, Inbox, Loader2, Sparkles, TrendingUp } from "lucide-react";
+import { formatCurrency } from "@/lib/currency";
 
 interface Commission {
   _id: string;
@@ -36,6 +37,16 @@ export default function AgentCommissionsPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [currencyCode, setCurrencyCode] = useState("AED");
+
+  useEffect(() => {
+    fetch("/api/agent/settings")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.settings?.currencyCode) setCurrencyCode(data.settings.currencyCode);
+      })
+      .catch(() => {});
+  }, []);
 
   const loadCommissions = useCallback(async () => {
     setLoading(true);
@@ -83,7 +94,7 @@ export default function AgentCommissionsPage() {
               { label: "Paid", value: summary.paid, color: "text-green-600", tone: "workspace-tone-emerald", icon: DollarSign },
             ].map(({ label, value, color, tone, icon: Icon }) => (
               <div key={label} className="workspace-glass-panel rounded-2xl p-4">
-                <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p><p className={`mt-3 text-2xl font-semibold tracking-tight ${color}`}>{summary.currency} {value.toLocaleString()}</p><p className="mt-1 text-xs text-muted-foreground">Current {label.toLowerCase()} commission value.</p></div><div className={`rounded-2xl p-2.5 ${tone}`}><Icon className="h-5 w-5" /></div></div>
+                <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p><p className={`mt-3 text-2xl font-semibold tracking-tight ${color}`}>{formatCurrency(value, currencyCode)}</p><p className="mt-1 text-xs text-muted-foreground">Current {label.toLowerCase()} commission value.</p></div><div className={`rounded-2xl p-2.5 ${tone}`}><Icon className="h-5 w-5" /></div></div>
               </div>
             ))}
           </div>
@@ -160,7 +171,7 @@ export default function AgentCommissionsPage() {
                 </TableCell>
                 <TableCell className="capitalize text-muted-foreground">{c.type?.replace("_", " ")}</TableCell>
                 <TableCell className={`font-bold ${statusColor(c.status)}`}>
-                  {c.currency} {c.amount.toLocaleString()}
+                  {formatCurrency(c.amount, c.currency || currencyCode)}
                 </TableCell>
                 <TableCell><StatusBadge status={c.status} /></TableCell>
                 <TableCell className="text-xs text-muted-foreground">

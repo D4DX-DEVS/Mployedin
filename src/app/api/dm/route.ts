@@ -49,6 +49,37 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     .sort({ lastMessageAt: -1, updatedAt: -1 })
     .lean();
 
+  // Backfill missing avatars — older conversations may have been created
+  // before the avatar field was correctly populated.
+  const missingAvatarIds = new Set<string>();
+  for (const conv of conversations) {
+    for (const p of conv.participantDetails ?? []) {
+      if (!p.avatar) missingAvatarIds.add(p.userId.toString());
+    }
+  }
+
+  if (missingAvatarIds.size > 0) {
+    const users = await User.find({
+      _id: { $in: [...missingAvatarIds].map((id) => new mongoose.Types.ObjectId(id)) },
+    })
+      .select("_id avatar")
+      .lean();
+
+    const avatarMap = new Map<string, string>();
+    for (const u of users) {
+      if (u.avatar) avatarMap.set(u._id.toString(), u.avatar);
+    }
+
+    for (const conv of conversations) {
+      for (const p of conv.participantDetails ?? []) {
+        if (!p.avatar) {
+          const a = avatarMap.get(p.userId.toString());
+          if (a) p.avatar = a;
+        }
+      }
+    }
+  }
+
   return NextResponse.json({ conversations });
 }
 
@@ -98,8 +129,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
     // Load both users to get display names
     const [userA, userB] = await Promise.all([
-      User.findById(ctx.userId).select("name email role image").lean(),
-      User.findById(recipientId).select("name email role image").lean(),
+      User.findById(ctx.userId).select("name email role avatar").lean(),
+      User.findById(recipientId).select("name email role avatar").lean(),
     ]);
 
     if (!userA || !userB) {
@@ -132,7 +163,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
           userId: userA._id,
           name: userA.name ?? userA.email ?? "User",
           role: userA.role,
-          avatar: userA.image,
+          avatar: userA.avatar ?? employerA?.logo,
           headline: jobSeekerA?.headline,
           companyName: employerA?.companyName,
         },
@@ -140,7 +171,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
           userId: userB._id,
           name: userB.name ?? userB.email ?? "User",
           role: userB.role,
-          avatar: userB.image,
+          avatar: userB.avatar ?? employerB?.logo,
           headline: jobSeekerB?.headline,
           companyName: employerB?.companyName,
         },

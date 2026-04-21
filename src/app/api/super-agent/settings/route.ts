@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import SuperAgent from "@/models/SuperAgent";
+import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -17,16 +18,16 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
   const profile = await SuperAgent.findOne({ userId: ctx.userId })
-    .select("overrideRate commissions currencyCode country")
+    .select("country currencyCode overrideRate")
     .lean();
 
-  if (!profile) {
-    return NextResponse.json({
-      profile: { overrideRate: 0, commissions: { total: 0, pending: 0, paid: 0 }, currencyCode: "AED" },
-    });
-  }
-
-  return NextResponse.json({ profile });
+  return NextResponse.json({
+    settings: {
+      country: profile?.country ?? "",
+      currencyCode: profile?.currencyCode ?? "AED",
+      overrideRate: profile?.overrideRate ?? 0,
+    },
+  });
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx) {
@@ -36,7 +37,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
 
-  let body: { overrideRate?: number };
+  let body: { country?: string; currencyCode?: string };
   try {
     body = await req.json();
   } catch {
@@ -44,12 +45,24 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const updates: Record<string, unknown> = {};
-  if (body.overrideRate != null) {
-    const rate = Number(body.overrideRate);
-    if (isNaN(rate) || rate < 0 || rate > 100) {
-      return NextResponse.json({ error: "overrideRate must be 0–100" }, { status: 400 });
+
+  if (body.country != null) {
+    if (typeof body.country !== "string" || body.country.length > 5) {
+      return NextResponse.json({ error: "Invalid country code" }, { status: 400 });
     }
-    updates.overrideRate = rate;
+    updates.country = body.country;
+  }
+
+  if (body.currencyCode != null) {
+    const valid = SUPPORTED_CURRENCIES.some((c) => c.code === body.currencyCode);
+    if (!valid) {
+      return NextResponse.json({ error: "Unsupported currency code" }, { status: 400 });
+    }
+    updates.currencyCode = body.currencyCode;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
   const profile = await SuperAgent.findOneAndUpdate(
@@ -57,14 +70,20 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     { $set: updates },
     { new: true }
   )
-    .select("overrideRate commissions")
+    .select("country currencyCode overrideRate")
     .lean();
 
   if (!profile) {
     return NextResponse.json({ error: "Super agent profile not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ profile });
+  return NextResponse.json({
+    settings: {
+      country: profile.country ?? "",
+      currencyCode: profile.currencyCode ?? "AED",
+      overrideRate: profile.overrideRate ?? 0,
+    },
+  });
 }
 
 export const GET = withAuth(getHandler);

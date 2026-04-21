@@ -7,6 +7,7 @@ import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
+import { formatCurrency } from "@/lib/currency";
 
 interface Stats {
   totalAgents: number;
@@ -18,6 +19,16 @@ interface Stats {
 export default function SuperAgentReportsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currencyCode, setCurrencyCode] = useState("AED");
+
+  useEffect(() => {
+    fetch("/api/super-agent/settings")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.settings?.currencyCode) setCurrencyCode(data.settings.currencyCode);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/super-agent/reports")
@@ -51,7 +62,7 @@ export default function SuperAgentReportsPage() {
     },
     {
       label: "Commissions",
-      value: `$${(stats?.totalCommissions ?? 0).toLocaleString()}`,
+      value: formatCurrency(stats?.totalCommissions ?? 0, currencyCode),
       helper: "Total commissions currently included in the super-agent report payload.",
       icon: <Coins className="h-5 w-5" />,
       toneClassName: "workspace-tone-amber",

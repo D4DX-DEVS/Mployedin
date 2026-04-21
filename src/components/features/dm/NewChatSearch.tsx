@@ -60,29 +60,15 @@ export function NewChatSearch({ dashboardPrefix, trigger }: NewChatSearchProps) 
   const currentUserId = (session?.user as unknown as { id?: string })?.id;
 
   const startConversation = useCallback(
-    async (targetUser: SearchUser) => {
+    (targetUser: SearchUser) => {
       if (!currentUserId || creating) return;
       setCreating(targetUser._id);
-      try {
-        const res = await fetch("/api/dm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipientId: targetUser._id }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error((err as { error?: string }).error ?? "Failed to start conversation");
-        }
-        const data = await res.json();
-        const convId = data.conversation._id;
-        setOpen(false);
-        setQuery("");
-        router.push(`/${locale}/${dashboardPrefix}/messages?conv=${convId}`);
-      } catch (err) {
-        console.error("[NewChatSearch] Failed:", err);
-      } finally {
-        setCreating(null);
-      }
+      // Navigate to messages page with the target user's info.
+      // The conversation will be created lazily when the first message is sent.
+      setOpen(false);
+      setQuery("");
+      router.push(`/${locale}/${dashboardPrefix}/messages?newChat=${targetUser._id}`);
+      setCreating(null);
     },
     [currentUserId, creating, locale, dashboardPrefix, router]
   );

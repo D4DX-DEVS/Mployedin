@@ -132,8 +132,8 @@ export function DashboardShell({
             <JobSeekerBottomNav locale={locale} />
           </>
         ) : (
-          <main className={`dashboard-main isolate min-h-0 flex flex-1 flex-col overflow-y-auto bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""}`}>
-            <div>{children}</div>
+          <main className={`dashboard-main isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""}`}>
+            {children}
           </main>
         )}
       </div>

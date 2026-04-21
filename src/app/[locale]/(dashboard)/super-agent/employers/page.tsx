@@ -17,6 +17,7 @@ import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
+import { formatCurrency } from "@/lib/currency";
 
 interface Employer {
   _id: string;
@@ -40,6 +41,16 @@ export default function SuperAgentEmployersPage() {
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [referralLink, setReferralLink] = useState("");
   const [referralCopied, setReferralCopied] = useState(false);
+  const [currencyCode, setCurrencyCode] = useState("AED");
+
+  useEffect(() => {
+    fetch("/api/super-agent/settings")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.settings?.currencyCode) setCurrencyCode(data.settings.currencyCode);
+      })
+      .catch(() => {});
+  }, []);
 
   const ONBOARD_FIELDS: CrudField[] = [
     { name: "name", label: "Contact Name", type: "text", required: true },
@@ -157,7 +168,7 @@ export default function SuperAgentEmployersPage() {
           },
           {
             label: "Revenue Tracked",
-            value: stats.revenue > 0 ? `AED ${stats.revenue.toLocaleString()}` : "—",
+            value: stats.revenue > 0 ? formatCurrency(stats.revenue, currencyCode) : "—",
             helper: "Visible account revenue surfaced by the current employer response.",
             icon: <DollarSign className="h-5 w-5" />,
             toneClassName: "workspace-tone-amber",

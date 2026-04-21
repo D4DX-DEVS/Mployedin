@@ -27,6 +27,8 @@ export interface IAgent extends Document {
   performance: IAgentPerformance;
   activityLog: IActivityLog[];
   commissionRate?: number; // percentage
+  country?: string;
+  currencyCode?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,6 +63,8 @@ const AgentSchema = new Schema<IAgent>(
     },
     activityLog: [ActivityLogSchema],
     commissionRate: { type: Number, default: 0 },
+    country: { type: String, default: "" },
+    currencyCode: { type: String, default: "AED" },
   },
   { timestamps: true }
 );

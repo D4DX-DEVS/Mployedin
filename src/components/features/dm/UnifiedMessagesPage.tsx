@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageSquare, Search, Inbox, Loader2, ChevronLeft, Headset, Shield, Users, Building2, Star } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DirectMessageChat } from "@/components/features/dm/DirectMessageChat";
@@ -11,7 +11,7 @@ import { NewChatSearch } from "@/components/features/dm/NewChatSearch";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useConversations } from "@/hooks/useConversations";
+import { useConversations, conversationKeys } from "@/hooks/useConversations";
 import type { Conversation } from "@/hooks/useConversations";
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
@@ -54,6 +54,7 @@ export function UnifiedMessagesPage({
   const searchParams = useSearchParams();
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const queryClient = useQueryClient();
 
   const { data: conversations = [], isLoading: loading } = useConversations();
   const { data: customerCareConvs = [], isLoading: customerCareLoading } = useQuery({
@@ -75,17 +76,61 @@ export function UnifiedMessagesPage({
   const [activeTab, setActiveTab] = useState<"dm" | "support">(
     searchParams.get("tab") === "support" ? "support" : "dm"
   );
+  // Pending new-chat recipient (conversation not created yet)
+  const [pendingRecipientId, setPendingRecipientId] = useState<string | null>(
+    searchParams.get("newChat")
+  );
 
   const currentUserId = (session?.user as unknown as { id?: string })?.id ?? "";
+
+  // Fetch pending recipient's user info from the search API
+  const { data: pendingRecipientData } = useQuery({
+    queryKey: ["pendingRecipient", pendingRecipientId],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${pendingRecipientId}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.user as { _id: string; name: string; role: string; avatar?: string; headline?: string; companyName?: string } | null;
+    },
+    enabled: !!pendingRecipientId,
+    staleTime: 60 * 1000,
+  });
+
+  // Build a synthetic conversation object for the pending new-chat view
+  const pendingConversation: Conversation | undefined = pendingRecipientData
+    ? {
+        _id: `pending-${pendingRecipientData._id}`,
+        participants: [currentUserId, pendingRecipientData._id],
+        participantDetails: [
+          { userId: currentUserId, name: "Me", role: "" },
+          {
+            userId: pendingRecipientData._id,
+            name: pendingRecipientData.name,
+            role: pendingRecipientData.role,
+            avatar: pendingRecipientData.avatar,
+            headline: pendingRecipientData.headline,
+            companyName: pendingRecipientData.companyName,
+          },
+        ],
+      }
+    : undefined;
 
   // Sync active conv with URL param
   useEffect(() => {
     const conv = searchParams.get("conv");
-    if (conv) setActiveConvId(conv);
+    const newChat = searchParams.get("newChat");
+    if (conv) {
+      setActiveConvId(conv);
+      setPendingRecipientId(null);
+    } else if (newChat) {
+      setPendingRecipientId(newChat);
+      setActiveConvId(null);
+    }
   }, [searchParams]);
 
   function selectConversation(id: string) {
     setActiveConvId(id);
+    setPendingRecipientId(null);
     const tabParam = activeTab === "support" ? "&tab=support" : "";
     router.replace(`/${locale}/${dashboardPrefix}/messages?conv=${id}${tabParam}`, {
       scroll: false,
@@ -94,11 +139,20 @@ export function UnifiedMessagesPage({
 
   function clearConversation() {
     setActiveConvId(null);
+    setPendingRecipientId(null);
     const tabParam = activeTab === "support" ? "?tab=support" : "";
     router.replace(`/${locale}/${dashboardPrefix}/messages${tabParam}`, {
       scroll: false,
     });
   }
+
+  // Called when DirectMessageChat creates a real conversation from a pending chat
+  const handleConversationCreated = useCallback((convId: string) => {
+    setPendingRecipientId(null);
+    setActiveConvId(convId);
+    queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
+    router.replace(`/${locale}/${dashboardPrefix}/messages?conv=${convId}`, { scroll: false });
+  }, [queryClient, locale, dashboardPrefix, router]);
 
   // Enhanced search: name + headline + companyName
   function filterConversations(convs: Conversation[]) {
@@ -121,9 +175,9 @@ export function UnifiedMessagesPage({
   const isLoadingConvs = activeTab === "support" ? customerCareLoading : loading;
 
   // Find active conversation across both lists
-  const activeConversation =
-    conversations.find((c) => c._id === activeConvId) ||
-    customerCareConvs.find((c) => c._id === activeConvId);
+  const activeConversation = pendingConversation
+    ?? conversations.find((c) => c._id === activeConvId)
+    ?? customerCareConvs.find((c) => c._id === activeConvId);
 
   const dmUnreadTotal = conversations.reduce(
     (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
@@ -151,7 +205,7 @@ export function UnifiedMessagesPage({
         <div
           className={cn(
             "w-full md:w-80 shrink-0 border-r flex flex-col",
-            activeConvId ? "hidden md:flex" : "flex"
+            (activeConvId || pendingRecipientId) ? "hidden md:flex" : "flex"
           )}
         >
           {/* Tab switcher for admin */}
@@ -245,10 +299,18 @@ export function UnifiedMessagesPage({
                         : "hover:bg-muted/40"
                     )}
                   >
-                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-primary">
-                        {other?.name?.[0]?.toUpperCase() ?? "?"}
-                      </span>
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                      {other?.avatar ? (
+                        <img
+                          src={other.avatar}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-sm font-bold text-primary">
+                          {other?.name?.[0]?.toUpperCase() ?? "?"}
+                        </span>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
@@ -330,7 +392,7 @@ export function UnifiedMessagesPage({
         <div
           className={cn(
             "flex-1 flex flex-col",
-            !activeConvId ? "hidden md:flex" : "flex"
+            !activeConvId && !pendingRecipientId ? "hidden md:flex" : "flex"
           )}
         >
           {activeConversation && currentUserId ? (
@@ -347,6 +409,8 @@ export function UnifiedMessagesPage({
                 key={activeConversation._id}
                 conversation={activeConversation}
                 currentUserId={currentUserId}
+                onDeleteConversation={clearConversation}
+                onConversationCreated={handleConversationCreated}
               />
             </>
           ) : (

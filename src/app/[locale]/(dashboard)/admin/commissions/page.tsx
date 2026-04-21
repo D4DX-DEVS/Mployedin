@@ -8,7 +8,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Plus, Pencil, Trash2, Sparkles, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw, Search, CalendarDays } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw, Search, CalendarDays, Globe } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,20 @@ const TYPE_OPTIONS = [
   { value: "bonus", label: "Bonus" },
 ];
 
+const CURRENCY_OPTIONS = [
+  { value: "all", label: "All currencies" },
+  { value: "AED", label: "AED — United Arab Emirates" },
+  { value: "SAR", label: "SAR — Saudi Arabia" },
+  { value: "QAR", label: "QAR — Qatar" },
+  { value: "KWD", label: "KWD — Kuwait" },
+  { value: "BHD", label: "BHD — Bahrain" },
+  { value: "OMR", label: "OMR — Oman" },
+  { value: "INR", label: "INR — India" },
+  { value: "USD", label: "USD — United States" },
+  { value: "GBP", label: "GBP — United Kingdom" },
+  { value: "EUR", label: "EUR — Europe" },
+];
+
 export default function AdminCommissionsPage() {
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -68,6 +82,7 @@ export default function AdminCommissionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [currencyFilter, setCurrencyFilter] = useState("");
   const [summary, setSummary] = useState<{ pending: number; approved: number; paid: number; currency: string }>({ pending: 0, approved: 0, paid: 0, currency: "AED" });
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
@@ -84,6 +99,7 @@ export default function AdminCommissionsPage() {
       if (searchTerm.trim()) params.set("search", searchTerm.trim());
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
+      if (currencyFilter) params.set("currency", currencyFilter);
 
       const res = await fetch(`/api/commissions?${params}`);
       if (!res.ok) {
@@ -101,7 +117,7 @@ export default function AdminCommissionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [status, typeFilter, searchTerm, dateFrom, dateTo, page, limit, updateTotal]);
+  }, [status, typeFilter, searchTerm, dateFrom, dateTo, currencyFilter, page, limit, updateTotal]);
 
   useEffect(() => { fetchCommissions(); }, [fetchCommissions]);
 
@@ -177,7 +193,8 @@ export default function AdminCommissionsPage() {
   const approvedAmount = summary.approved;
   const paidAmount = summary.paid;
   const summaryCurrency = summary.currency;
-  const hasActiveFilters = Boolean(status || typeFilter || searchTerm || dateFrom || dateTo);
+  const displayCurrency = currencyFilter || summaryCurrency;
+  const hasActiveFilters = Boolean(status || typeFilter || searchTerm || dateFrom || dateTo || currencyFilter);
 
   return (
     <div className="page-container space-y-6">
@@ -221,7 +238,7 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Visible records</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{visibleCommissions}</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{visibleCommissions}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Commission records loaded on the current page.</p>
               </div>
               <div className="workspace-tone-sky rounded-2xl p-2.5">
@@ -233,10 +250,10 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pending review</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-amber-500 dark:text-amber-300">{summaryCurrency} {pendingAmount.toLocaleString()}</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {pendingAmount.toLocaleString()}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Total amount waiting for approval.</p>
               </div>
-              <div className="workspace-tone-amber rounded-2xl p-2.5">
+              <div className="workspace-tone-sky rounded-2xl p-2.5">
                 <Clock3 className="h-5 w-5" />
               </div>
             </div>
@@ -245,10 +262,10 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Approved</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-300">{summaryCurrency} {approvedAmount.toLocaleString()}</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {approvedAmount.toLocaleString()}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Total approved amount ready for payout.</p>
               </div>
-              <div className="workspace-tone-emerald rounded-2xl p-2.5">
+              <div className="workspace-tone-sky rounded-2xl p-2.5">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
             </div>
@@ -257,10 +274,10 @@ export default function AdminCommissionsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Paid out</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-violet-600 dark:text-violet-300">{summaryCurrency} {paidAmount.toLocaleString()}</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-primary">{displayCurrency} {paidAmount.toLocaleString()}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Total paid commission amount.</p>
               </div>
-              <div className="workspace-tone-violet rounded-2xl p-2.5">
+              <div className="workspace-tone-sky rounded-2xl p-2.5">
                 <ReceiptText className="h-5 w-5" />
               </div>
             </div>
@@ -277,7 +294,7 @@ export default function AdminCommissionsPage() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div>
             <label htmlFor="admin-commissions-search" className="sr-only">Search by agent name</label>
             <div className="relative">
@@ -322,6 +339,21 @@ export default function AdminCommissionsPage() {
             />
           </div>
 
+          <div>
+            <label htmlFor="admin-commissions-currency-filter" className="sr-only">Filter by currency / country</label>
+            <SearchableSelect
+              id="admin-commissions-currency-filter"
+              className="h-11 w-full rounded-xl border-border bg-secondary/65"
+              options={CURRENCY_OPTIONS}
+              value={currencyFilter || "all"}
+              onValueChange={(value) => {
+                setCurrencyFilter(value === "all" ? "" : value);
+                resetPage();
+              }}
+              placeholder="All currencies"
+            />
+          </div>
+
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -354,6 +386,7 @@ export default function AdminCommissionsPage() {
               setStatus("");
               setTypeFilter("");
               setSearchTerm("");
+              setCurrencyFilter("");
               setDateFrom("");
               setDateTo("");
               resetPage();

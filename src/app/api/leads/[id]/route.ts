@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
+import Agent from "@/models/Agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { leadUpdateSchema } from "@/lib/validators/leads";
@@ -12,10 +13,13 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 /** Verify agent owns this lead, or user is super_agent/admin */
 async function verifyLeadAccess(leadId: string, ctx: AuthCtx) {
-  const lead = await Lead.findById(leadId).lean() as { assignedAgentId?: string } | null;
+  const lead = await Lead.findById(leadId).lean() as { agentId?: unknown } | null;
   if (!lead) return { lead: null, error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
-  if (ctx.role === "agent" && String(lead.assignedAgentId) !== ctx.userId) {
-    return { lead: null, error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  if (ctx.role === "agent") {
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!agentDoc || String(lead.agentId) !== String(agentDoc._id)) {
+      return { lead: null, error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+    }
   }
   return { lead, error: null };
 }

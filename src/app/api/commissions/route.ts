@@ -17,6 +17,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const search = searchParams.get("search");
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
+  const currency = searchParams.get("currency");
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "10");
   const skip = (page - 1) * limit;
@@ -24,7 +25,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Build query based on role
   const query: Record<string, unknown> = {};
   if (ctx.role === "agent") {
-    query.agentId = ctx.userId;
+    const Agent = (await import("@/models/Agent")).default;
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
+    query.agentId = agentDoc._id;
   } else if (ctx.role === "super_agent") {
     query.superAgentId = ctx.userId;
   }
@@ -33,6 +37,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
   if (type && type !== "all") {
     query.type = type;
+  }
+  if (currency && currency !== "all") {
+    query.currency = currency;
   }
   if (dateFrom || dateTo) {
     const dateFilter: Record<string, Date> = {};
@@ -55,7 +62,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     ).lean();
     agentIdFilter = matchingAgents.map((a: { _id: unknown }) => a._id);
     query.agentId = ctx.role === "agent"
-      ? ctx.userId // agent can only see own, ignore search
+      ? query.agentId // already resolved Agent._id above, keep it
       : { $in: agentIdFilter };
   }
 
@@ -82,7 +89,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     },
   ]);
 
-  const summary = { pending: 0, approved: 0, paid: 0, disputed: 0, currency: "AED" };
+  const summary = { pending: 0, approved: 0, paid: 0, disputed: 0, currency: (currency && currency !== "all") ? currency : "AED" };
   for (const row of summaryAgg) {
     const s = row._id as string;
     if (s === "pending" || s === "approved" || s === "paid" || s === "disputed") {

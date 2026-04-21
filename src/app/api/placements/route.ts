@@ -19,7 +19,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const query: Record<string, unknown> = {};
 
   if (ctx.role === "employer") query.employerId = ctx.userId;
-  else if (ctx.role === "agent") query.agentId = ctx.userId;
+  else if (ctx.role === "agent") {
+    const Agent = (await import("@/models/Agent")).default;
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
+    query.agentId = agentDoc._id;
+  }
   else if (ctx.role === "job_seeker") query.jobSeekerId = ctx.userId;
 
   if (visaStatus && visaStatus !== "all") {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
+import Agent from "@/models/Agent";
 import { escapeRegex, pick } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
 import { leadCreateSchema } from "@/lib/validators/leads";
@@ -18,9 +19,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   const filter: Record<string, unknown> = {};
 
-  // Agents see only their leads
+  // Agents see only their leads — resolve Agent doc from userId
   if (ctx.role === "agent") {
-    filter.assignedAgentId = ctx.userId;
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
+    filter.agentId = agentDoc._id;
   }
 
   if (status) filter.status = status;
@@ -56,9 +59,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   await connectDB();
   const body = await validateBody(req, leadCreateSchema);
+
+  // Resolve Agent._id from User._id
+  const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+  if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
+
   const lead = await Lead.create({
     ...body,
-    assignedAgentId: ctx.userId,
+    agentId: agentDoc._id,
     status: "new",
   });
 
