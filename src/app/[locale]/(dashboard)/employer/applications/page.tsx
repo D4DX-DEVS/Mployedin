@@ -16,8 +16,11 @@ import {
   Filter,
   History,
   Inbox,
+  Mail,
   MapPin,
+  Plus,
   Search,
+  Send,
   Sparkles,
   Square,
   User,
@@ -25,11 +28,13 @@ import {
   X,
 } from "lucide-react";
 import { ScorecardForm } from "@/components/scorecards/ScorecardForm";
+import { FeatureGate } from "@/components/shared/FeatureGate";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
@@ -69,6 +74,7 @@ interface Applicant {
   matchStrengths?: string[];
   matchGaps?: string[];
   otherApplicationsCount?: number;
+  screeningAnswers?: { questionId: string; questionLabel: string; answer: string | string[] | boolean }[];
 }
 
 interface TimelineEntry {
@@ -155,6 +161,25 @@ export default function EmployerApplicationsPage() {
     matchBreakdown?: { skills?: number; experience?: number; location?: number; overall?: number };
   } | null>(null);
   const [bulkMatchProgress, setBulkMatchProgress] = useState<{ done: number; total: number } | null>(null);
+
+  // ── Bulk interview & email state ──────────────────────────────────
+  const [bulkInterviewModal, setBulkInterviewModal] = useState(false);
+  const [emailPreviewModal, setEmailPreviewModal] = useState<{
+    action: "reject" | "move_stage" | "send_message";
+    targetStage?: string;
+    rejectionReason?: string;
+  } | null>(null);
+
+  // ── Shortlist confirmation & post-shortlist interview prompt ───────
+  const [shortlistConfirm, setShortlistConfirm] = useState<{
+    candidates: Applicant[];
+    total: number;
+  } | null>(null);
+  const [shortlistCount, setShortlistCount] = useState(0);
+  const [postShortlistPrompt, setPostShortlistPrompt] = useState<{
+    shortlistedIds: string[];
+    candidateNames: string[];
+  } | null>(null);
 
   // ── New filter state ──────────────────────────────────────────────
   const [jobFilter, setJobFilter] = useState(initialJobId);
@@ -278,27 +303,46 @@ export default function EmployerApplicationsPage() {
     }
   }
 
-  /** Auto-shortlist top candidates: shortlist those with score >= 70%, or top 5 if none qualify */
-  async function handleAutoShortlist() {
+  /** Show confirmation before auto-shortlisting top candidates */
+  function handleAutoShortlist() {
     const scored = [...filteredApplications]
       .filter((app) => app.aiMatchScore != null && app.status === "applied")
       .sort((a, b) => (b.aiMatchScore ?? 0) - (a.aiMatchScore ?? 0));
     if (!scored.length) return;
 
-    const threshold = 70;
-    let toShortlist = scored.filter((app) => (app.aiMatchScore ?? 0) >= threshold);
-    // Fall back to top 5 if none exceed threshold
-    if (!toShortlist.length) toShortlist = scored.slice(0, 5);
+    // Show all eligible candidates sorted by score; user picks how many
+    setShortlistConfirm({ candidates: scored, total: scored.length });
+    setShortlistCount(scored.length); // default: all
+  }
+
+  /** Execute the actual shortlisting after user confirms */
+  async function confirmAutoShortlist() {
+    if (!shortlistConfirm) return;
+    const picked = shortlistConfirm.candidates.slice(0, shortlistCount);
+    if (!picked.length) return;
+    const ids = picked.map((a) => a._id);
+    const names = picked.map((a) => getCandidateName(a));
 
     try {
       await bulkAction.mutateAsync({
-        applicationIds: toShortlist.map((a) => a._id),
+        applicationIds: ids,
         action: "move_stage",
         params: { targetStage: "shortlisted" },
       });
+      setShortlistConfirm(null);
+      // After successful shortlist, prompt user to schedule interviews
+      setPostShortlistPrompt({ shortlistedIds: ids, candidateNames: names });
     } catch (err) {
       console.error("Auto shortlist failed:", err);
     }
+  }
+
+  /** User chose to schedule interviews after shortlisting */
+  function handlePostShortlistInterview() {
+    if (!postShortlistPrompt) return;
+    setSelected(postShortlistPrompt.shortlistedIds);
+    setPostShortlistPrompt(null);
+    setBulkInterviewModal(true);
   }
 
   async function handleOpenScorecard(data: { applicationId: string }) {
@@ -434,7 +478,11 @@ export default function EmployerApplicationsPage() {
   const allVisibleSelected = filteredApplications.length > 0 && filteredApplications.every((app) => selected.includes(app._id));
   const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0 || !!jobFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0;
 
-  async function handleBulkAction(action: "reject" | "move_stage", targetStage?: string) {
+  async function handleBulkAction(
+    action: "reject" | "move_stage" | "send_message",
+    targetStage?: string,
+    emailOverride?: { emailSubject?: string; emailBody?: string },
+  ) {
     if (!selected.length) return;
     if (action === "reject" && !rejectionReason.trim()) {
       setShowRejectPrompt(true);
@@ -447,13 +495,76 @@ export default function EmployerApplicationsPage() {
         params: {
           ...(targetStage && { targetStage }),
           ...(action === "reject" && { rejectionReason: rejectionReason.trim() }),
+          ...(emailOverride?.emailSubject && { emailSubject: emailOverride.emailSubject }),
+          ...(emailOverride?.emailBody && { emailBody: emailOverride.emailBody }),
         },
       });
       setSelected([]);
       setRejectionReason("");
       setShowRejectPrompt(false);
+      setEmailPreviewModal(null);
     } catch {
       // error handled by React Query
+    }
+  }
+
+  /** Open email preview before executing bulk action */
+  function openEmailPreview(action: "reject" | "move_stage" | "send_message", targetStage?: string) {
+    if (action === "reject" && !rejectionReason.trim()) {
+      setShowRejectPrompt(true);
+      return;
+    }
+    setEmailPreviewModal({
+      action,
+      targetStage,
+      rejectionReason: action === "reject" ? rejectionReason.trim() : undefined,
+    });
+  }
+
+  /** Open bulk interview scheduling modal for selected candidates */
+  function openBulkInterviewModal() {
+    if (!selected.length) return;
+    setBulkInterviewModal(true);
+  }
+
+  async function handleBulkInterview(data: {
+    scheduledAt: string;
+    type: string;
+    duration: number;
+    durationPerCandidate: number;
+    gapMinutes: number;
+    location?: string;
+    meetLink?: string;
+    workingHours?: { start: string; end: string };
+    breaks?: { label: string; start: string; end: string }[];
+  }) {
+    if (!selected.length) return;
+    const candidates = selected.map((appId) => {
+      const app = filteredApplications.find((a) => a._id === appId);
+      return {
+        applicationId: appId,
+        jobSeekerId: app?.jobSeekerId?._id ?? "",
+      };
+    }).filter((c) => c.jobSeekerId);
+
+    try {
+      await createInterview.mutateAsync({
+        candidates,
+        jobId: jobFilter || filteredApplications[0]?.jobId?._id || "",
+        scheduledAt: data.scheduledAt,
+        type: data.type,
+        duration: data.duration,
+        durationPerCandidate: data.durationPerCandidate,
+        gapMinutes: data.gapMinutes,
+        ...(data.location && { location: data.location }),
+        ...(data.meetLink && { meetLink: data.meetLink }),
+        ...(data.workingHours && { workingHours: data.workingHours }),
+        ...(data.breaks?.length && { breaks: data.breaks }),
+      });
+      setSelected([]);
+      setBulkInterviewModal(false);
+    } catch (err) {
+      console.error("Bulk interview scheduling failed:", err);
     }
   }
 
@@ -791,8 +902,13 @@ export default function EmployerApplicationsPage() {
           <span className="text-sm font-semibold">{selected.length} selected for bulk review</span>
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm"
-              onClick={() => handleBulkAction("move_stage", "shortlisted")} disabled={bulkAction.isPending}>
+              onClick={() => openEmailPreview("move_stage", "shortlisted")} disabled={bulkAction.isPending}>
               Shortlist Selected
+            </Button>
+            <Button size="sm" variant="outline" className="h-10 rounded-xl border-violet-300/40 bg-background/80 px-4 text-sm text-violet-700 hover:bg-violet-500/10 dark:text-violet-300"
+              onClick={openBulkInterviewModal} disabled={createInterview.isPending}>
+              <Calendar className="mr-2 h-3.5 w-3.5" />
+              Schedule Interviews
             </Button>
             <Button size="sm" variant="outline" className="h-10 rounded-xl border-destructive/30 bg-background/80 px-4 text-sm text-destructive hover:bg-destructive/10"
               onClick={() => setShowRejectPrompt(true)} disabled={bulkAction.isPending}>
@@ -817,15 +933,172 @@ export default function EmployerApplicationsPage() {
               maxLength={500}
             />
             <Button size="sm" variant="destructive" className="h-11 rounded-xl px-4"
-              onClick={() => handleBulkAction("reject")} disabled={bulkAction.isPending || !rejectionReason.trim()}>
-              {bulkAction.isPending ? "Rejecting…" : "Confirm Reject"}
+              onClick={() => openEmailPreview("reject")} disabled={bulkAction.isPending || !rejectionReason.trim()}>
+              {bulkAction.isPending ? "Rejecting…" : "Preview & Reject"}
             </Button>
             <Button size="sm" variant="ghost" className="h-11 rounded-xl px-4" onClick={() => setShowRejectPrompt(false)}>Cancel</Button>
           </div>
         </div>
       )}
 
-      {isLoading ? (
+      {/* Shortlist Top confirmation — user picks how many */}
+      {shortlistConfirm && (
+        <div className="flex flex-col gap-4 rounded-[24px] border border-emerald-500/20 bg-emerald-500/10 p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20">
+              <CheckCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">
+                {shortlistConfirm.total} high-matched candidate{shortlistConfirm.total > 1 ? "s" : ""} found
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Select how many of the top candidates you want to shortlist. They are ranked by AI match score (highest first).
+              </p>
+
+              {/* Number picker */}
+              <div className="mt-3 flex items-center gap-3">
+                <label className="text-xs font-medium text-foreground">Shortlist top</label>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button" size="sm" variant="outline"
+                    className="h-8 w-8 rounded-lg p-0 text-sm"
+                    disabled={shortlistCount <= 1}
+                    onClick={() => setShortlistCount((c) => Math.max(1, c - 1))}
+                  >
+                    −
+                  </Button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={shortlistConfirm.total}
+                    value={shortlistCount}
+                    onChange={(e) => {
+                      const v = Math.max(1, Math.min(shortlistConfirm.total, Number(e.target.value) || 1));
+                      setShortlistCount(v);
+                    }}
+                    className="h-8 w-14 rounded-lg border border-emerald-300/60 bg-background/80 text-center text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-400 dark:border-emerald-500/30"
+                  />
+                  <Button
+                    type="button" size="sm" variant="outline"
+                    className="h-8 w-8 rounded-lg p-0 text-sm"
+                    disabled={shortlistCount >= shortlistConfirm.total}
+                    onClick={() => setShortlistCount((c) => Math.min(shortlistConfirm.total, c + 1))}
+                  >
+                    +
+                  </Button>
+                </div>
+                <span className="text-xs text-muted-foreground">of {shortlistConfirm.total}</span>
+              </div>
+
+              {/* Candidate list — highlight which are included */}
+              <div className="mt-3 flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                {shortlistConfirm.candidates.map((app, idx) => {
+                  const included = idx < shortlistCount;
+                  return (
+                    <div
+                      key={app._id}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs transition-opacity ${
+                        included
+                          ? "border-emerald-200/60 bg-background/80 dark:border-emerald-500/20"
+                          : "border-border/40 bg-muted/30 opacity-50"
+                      }`}
+                    >
+                      <span className="w-4 text-center text-[10px] font-bold text-emerald-600 dark:text-emerald-300">
+                        {idx + 1}
+                      </span>
+                      <span className="font-medium text-foreground">{getCandidateName(app)}</span>
+                      {app.aiMatchScore != null && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            app.aiMatchScore >= 80
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+                              : app.aiMatchScore >= 60
+                                ? "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300"
+                                : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                          }`}
+                        >
+                          {app.aiMatchScore}%
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4" onClick={() => setShortlistConfirm(null)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="h-9 rounded-xl bg-emerald-600 px-4 text-white hover:bg-emerald-700"
+              disabled={bulkAction.isPending || shortlistCount < 1}
+              onClick={confirmAutoShortlist}
+            >
+              <CheckCheck className="mr-2 h-3.5 w-3.5" />
+              {bulkAction.isPending ? "Shortlisting..." : `Shortlist Top ${shortlistCount}`}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Post-shortlist: prompt to schedule interviews */}
+      {postShortlistPrompt && (
+        <div className="flex flex-col gap-3 rounded-[24px] border border-violet-500/20 bg-violet-500/10 p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-500/20">
+              <Calendar className="h-5 w-5 text-violet-600 dark:text-violet-300" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">
+                {postShortlistPrompt.shortlistedIds.length} candidate{postShortlistPrompt.shortlistedIds.length > 1 ? "s" : ""} shortlisted successfully!
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Would you like to schedule interviews for these candidates? You can set a start time and each candidate will be auto-assigned consecutive time slots.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {postShortlistPrompt.candidateNames.map((name, i) => (
+                  <span key={i} className="rounded-full border border-violet-200/60 bg-background/80 px-2.5 py-1 text-[11px] font-medium text-foreground dark:border-violet-500/20">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4" onClick={() => setPostShortlistPrompt(null)}>
+              Skip for Now
+            </Button>
+            <Button
+              size="sm"
+              className="h-9 rounded-xl bg-violet-600 px-4 text-white hover:bg-violet-700"
+              onClick={handlePostShortlistInterview}
+            >
+              <Calendar className="mr-2 h-3.5 w-3.5" />
+              Schedule Interviews
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {applicationsQuery.isError ? (
+        <div className="workspace-panel-surface rounded-[24px] px-6 py-16 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-rose-50 text-rose-500 dark:bg-rose-500/15 dark:text-rose-400">
+            <Inbox className="h-7 w-7" />
+          </div>
+          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+            Unable to load applications
+          </h3>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+            Something went wrong while fetching applications. This may be a subscription limit — please check your plan or try refreshing the page.
+          </p>
+          <Button variant="outline" className="mt-4" onClick={() => applicationsQuery.refetch()}>
+            Try Again
+          </Button>
+        </div>
+      ) : isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-20 animate-pulse rounded-[20px] border border-border/60 bg-background/70" />
@@ -846,8 +1119,8 @@ export default function EmployerApplicationsPage() {
         />
       )}
 
-      {scorecardModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
+      {scorecardModal && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
           <div className="bg-background rounded-lg border border-border shadow-lg max-w-2xl w-full mx-4">
             <div className="px-6 py-4 border-b border-border">
               <h2 className="text-lg font-semibold">Create Interview Scorecard</h2>
@@ -856,31 +1129,72 @@ export default function EmployerApplicationsPage() {
               </p>
             </div>
             <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+              <FeatureGate feature="scorecardEvaluations">
               <ScorecardForm
                 interviewId={scorecardModal.interviewId}
                 onSubmit={handleScorecardSubmit}
                 onCancel={() => setScorecardModal(null)}
                 isLoading={createScorecard.isPending}
               />
+              </FeatureGate>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Interview Scheduling Modal */}
-      {interviewModal && (
+      {interviewModal && createPortal(
         <InterviewScheduleModal
           onSubmit={handleCreateInterview}
           onCancel={() => setInterviewModal(null)}
-        />
+        />,
+        document.body
       )}
 
       {/* Offer Creation Modal */}
-      {offerModal && (
+      {offerModal && createPortal(
         <OfferCreateModal
           onSubmit={handleCreateOffer}
           onCancel={() => setOfferModal(null)}
-        />
+        />,
+        document.body
+      )}
+
+      {/* Bulk Interview Scheduling Modal */}
+      {bulkInterviewModal && createPortal(
+        <BulkInterviewScheduleModal
+          candidateCount={selected.length}
+          candidateNames={selected.map((id) => {
+            const app = filteredApplications.find((a) => a._id === id);
+            return app ? getCandidateName(app) : `#${id.slice(-4)}`;
+          })}
+          onSubmit={handleBulkInterview}
+          onCancel={() => setBulkInterviewModal(false)}
+          isLoading={createInterview.isPending}
+        />,
+        document.body
+      )}
+
+      {/* Email Preview Modal */}
+      {emailPreviewModal && createPortal(
+        <EmailPreviewModal
+          action={emailPreviewModal.action}
+          targetStage={emailPreviewModal.targetStage}
+          rejectionReason={emailPreviewModal.rejectionReason}
+          candidateCount={selected.length}
+          jobTitle={selectedJob?.title ?? "Position"}
+          onConfirm={(emailOverride) => {
+            handleBulkAction(
+              emailPreviewModal.action,
+              emailPreviewModal.targetStage,
+              emailOverride,
+            );
+          }}
+          onCancel={() => setEmailPreviewModal(null)}
+          isLoading={bulkAction.isPending}
+        />,
+        document.body
       )}
 
       {/* Activity Timeline Panel */}
@@ -1402,6 +1716,26 @@ function ApplicationDetailsPanel({
                 </div>
               ) : null}
 
+              {app.screeningAnswers && app.screeningAnswers.length > 0 ? (
+                <div className="workspace-glass-panel rounded-[24px] p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Screening Answers</p>
+                  <div className="mt-3 space-y-3">
+                    {app.screeningAnswers.map((sa) => (
+                      <div key={sa.questionId} className="space-y-1">
+                        <p className="text-xs font-medium text-foreground/80">{sa.questionLabel}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {Array.isArray(sa.answer)
+                            ? sa.answer.join(", ")
+                            : typeof sa.answer === "boolean"
+                              ? sa.answer ? "Yes" : "No"
+                              : String(sa.answer)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {app.matchStrengths?.length ? (
                 <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/10 p-5">
                   <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Strengths</p>
@@ -1530,6 +1864,552 @@ function ApplicationDetailsPanel({
   return createPortal(sheet, document.body);
 }
 
+function BulkInterviewScheduleModal({
+  candidateCount,
+  candidateNames,
+  onSubmit,
+  onCancel,
+  isLoading,
+}: {
+  candidateCount: number;
+  candidateNames: string[];
+  onSubmit: (data: {
+    scheduledAt: string; type: string; duration: number;
+    durationPerCandidate: number; gapMinutes: number;
+    location?: string; meetLink?: string;
+    workingHours?: { start: string; end: string };
+    breaks?: { label: string; start: string; end: string }[];
+  }) => Promise<void>;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [type, setType] = useState<"video" | "offline" | "hybrid">("video");
+  const [durationPerCandidate, setDurationPerCandidate] = useState(30);
+  const [gapMinutes, setGapMinutes] = useState(5);
+  const [location, setLocation] = useState("");
+  const [meetLink, setMeetLink] = useState("");
+
+  // Working hours & breaks
+  const [whStart, setWhStart] = useState("09:00");
+  const [whEnd, setWhEnd] = useState("21:00");
+  const [breaks, setBreaks] = useState<{ label: string; start: string; end: string }[]>([
+    { label: "Lunch Break", start: "13:00", end: "14:00" },
+  ]);
+
+  const addBreak = () => setBreaks((p) => [...p, { label: "", start: "16:00", end: "16:15" }]);
+  const removeBreak = (idx: number) => setBreaks((p) => p.filter((_, i) => i !== idx));
+  const updateBreak = (idx: number, field: "label" | "start" | "end", value: string) =>
+    setBreaks((p) => p.map((b, i) => (i === idx ? { ...b, [field]: value } : b)));
+
+  // ---- Smart slot scheduler ----
+  type PreviewItem =
+    | { kind: "interview"; name: string; index: number; start: string; end: string; date: string; scheduledAt: Date }
+    | { kind: "break"; label: string; start: string; end: string; date: string }
+    | { kind: "day"; date: string };
+
+  function computeSlots(): { items: PreviewItem[]; lastEnd: Date | null } {
+    if (!scheduledAt) return { items: [], lastEnd: null };
+
+    const fmt = (d: Date) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+    const fmtDate = (d: Date) => d.toLocaleDateString([], { day: "2-digit", month: "short" });
+
+    // Parse HH:mm to minutes-since-midnight
+    const parseHM = (hm: string) => { const [h, m] = hm.split(":").map(Number); return h * 60 + m; };
+    const whStartMin = parseHM(whStart);
+    const whEndMin = parseHM(whEnd);
+
+    // Sort breaks by start time
+    const sortedBreaks = [...breaks]
+      .filter((b) => b.start && b.end && parseHM(b.start) < parseHM(b.end))
+      .sort((a, b) => parseHM(a.start) - parseHM(b.start));
+
+    // Set date's time to HH:mm
+    const setTime = (d: Date, hm: string) => {
+      const [h, m] = hm.split(":").map(Number);
+      const n = new Date(d);
+      n.setHours(h, m, 0, 0);
+      return n;
+    };
+
+    // Get minutes-since-midnight from a Date
+    const minuteOfDay = (d: Date) => d.getHours() * 60 + d.getMinutes();
+
+    // Advance cursor past any overlap with a break or past working hours end
+    function nextAvailable(cursor: Date, durationMin: number): Date {
+      let c = new Date(cursor);
+      // Safety: max 50 iterations to prevent infinite loop
+      for (let iter = 0; iter < 50; iter++) {
+        const cMin = minuteOfDay(c);
+        const slotEndMin = cMin + durationMin;
+
+        // If cursor is before working hours start → advance to WH start
+        if (cMin < whStartMin) {
+          c = setTime(c, whStart);
+          continue;
+        }
+
+        // If slot would end past working hours → advance to next day WH start
+        if (slotEndMin > whEndMin) {
+          const next = new Date(c);
+          next.setDate(next.getDate() + 1);
+          c = setTime(next, whStart);
+          continue;
+        }
+
+        // Check break overlaps
+        let pushed = false;
+        for (const brk of sortedBreaks) {
+          const bStart = parseHM(brk.start);
+          const bEnd = parseHM(brk.end);
+          // Overlap: slot starts before break ends AND slot ends after break starts
+          if (cMin < bEnd && slotEndMin > bStart) {
+            c = setTime(c, brk.end);
+            pushed = true;
+            break;
+          }
+        }
+        if (pushed) continue;
+
+        return c;
+      }
+      return c;
+    }
+
+    const items: PreviewItem[] = [];
+    let cursor = new Date(scheduledAt);
+    let lastEnd: Date | null = null;
+    let prevDate = "";
+    let interviewIdx = 0;
+
+    for (let i = 0; i < candidateNames.length; i++) {
+      cursor = nextAvailable(cursor, durationPerCandidate);
+      const curDate = fmtDate(cursor);
+
+      // Day header when date changes
+      if (curDate !== prevDate) {
+        items.push({ kind: "day", date: curDate });
+        prevDate = curDate;
+      }
+
+      // Check if any breaks fall between previous slot end and this slot start — show them
+      if (lastEnd) {
+        const prevEndMin = minuteOfDay(lastEnd);
+        const curStartMin = minuteOfDay(cursor);
+        const isSameDay = cursor.toDateString() === lastEnd.toDateString();
+        if (isSameDay) {
+          for (const brk of sortedBreaks) {
+            const bStart = parseHM(brk.start);
+            const bEnd = parseHM(brk.end);
+            if (bStart >= prevEndMin && bEnd <= curStartMin) {
+              items.push({
+                kind: "break",
+                label: brk.label || "Break",
+                start: fmt(setTime(cursor, brk.start)),
+                end: fmt(setTime(cursor, brk.end)),
+                date: curDate,
+              });
+            }
+          }
+        }
+      }
+
+      const slotEnd = new Date(cursor.getTime() + durationPerCandidate * 60_000);
+      items.push({
+        kind: "interview",
+        name: candidateNames[i],
+        index: ++interviewIdx,
+        start: fmt(cursor),
+        end: fmt(slotEnd),
+        date: curDate,
+        scheduledAt: new Date(cursor),
+      });
+
+      lastEnd = slotEnd;
+      // Advance cursor by gap
+      cursor = new Date(slotEnd.getTime() + gapMinutes * 60_000);
+    }
+
+    return { items, lastEnd };
+  }
+
+  const { items: previewItems, lastEnd: lastSlotEnd } = computeSlots();
+  const interviewCount = previewItems.filter((p) => p.kind === "interview").length;
+  const dayCount = previewItems.filter((p) => p.kind === "day").length;
+
+  // Duration summary
+  const interviewMinutes = interviewCount * durationPerCandidate;
+  const totalMinutes = lastSlotEnd && scheduledAt
+    ? Math.round((lastSlotEnd.getTime() - new Date(scheduledAt).getTime()) / 60_000)
+    : 0;
+
+  const isPast = scheduledAt ? new Date(scheduledAt) < new Date() : false;
+
+  async function handleSubmit() {
+    if (!scheduledAt || isPast) return;
+    const validBreaks = breaks.filter((b) => b.start && b.end && b.start < b.end);
+    await onSubmit({
+      scheduledAt: new Date(scheduledAt).toISOString(),
+      type,
+      duration: durationPerCandidate,
+      durationPerCandidate,
+      gapMinutes,
+      ...(location && { location }),
+      ...(meetLink && { meetLink }),
+      workingHours: { start: whStart, end: whEnd },
+      ...(validBreaks.length > 0 && { breaks: validBreaks }),
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
+      <div className="bg-background rounded-lg border border-border shadow-lg max-w-lg w-full mx-4">
+        <div className="px-6 py-4 border-b border-border">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-sky-600" />
+            Bulk Schedule Interviews
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Schedule interviews for {candidateCount} candidate{candidateCount > 1 ? "s" : ""} with auto-staggered time slots
+          </p>
+        </div>
+        <div className="px-6 py-4 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+          {/* Start Date & Time */}
+          <DateTimePicker
+            label="Start Date & Time *"
+            value={scheduledAt}
+            onChange={setScheduledAt}
+            minDate={new Date()}
+            placeholder="Pick date & time"
+          />
+          {isPast && (
+            <p className="text-xs text-red-500 -mt-2">Please select a future date and time</p>
+          )}
+
+          {/* Type / Duration / Gap row */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium mb-1">Type</label>
+              <SearchableSelect
+                className="h-9"
+                options={[
+                  { value: "video", label: "Video" },
+                  { value: "offline", label: "In-Person" },
+                  { value: "hybrid", label: "Hybrid" },
+                ]}
+                value={type}
+                onValueChange={(v) => setType(v as typeof type)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">Per Candidate</label>
+              <SearchableSelect
+                className="h-9"
+                options={[
+                  { value: "15", label: "15 min" },
+                  { value: "30", label: "30 min" },
+                  { value: "45", label: "45 min" },
+                  { value: "60", label: "60 min" },
+                ]}
+                value={String(durationPerCandidate)}
+                onValueChange={(v) => setDurationPerCandidate(+v)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">Gap Between</label>
+              <SearchableSelect
+                className="h-9"
+                options={[
+                  { value: "0", label: "No gap" },
+                  { value: "5", label: "5 min" },
+                  { value: "10", label: "10 min" },
+                  { value: "15", label: "15 min" },
+                  { value: "30", label: "30 min" },
+                ]}
+                value={String(gapMinutes)}
+                onValueChange={(v) => setGapMinutes(+v)}
+              />
+            </div>
+          </div>
+
+          {/* Working Hours */}
+          <div className="rounded-lg border border-border p-3 space-y-3">
+            <p className="text-xs font-medium flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              Working Hours
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] text-muted-foreground mb-1">Start</label>
+                <input type="time" value={whStart} onChange={(e) => setWhStart(e.target.value)}
+                  className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+              </div>
+              <div>
+                <label className="block text-[11px] text-muted-foreground mb-1">End</label>
+                <input type="time" value={whEnd} onChange={(e) => setWhEnd(e.target.value)}
+                  className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+              </div>
+            </div>
+
+            {/* Break Windows */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Break Windows</p>
+              {breaks.map((brk, idx) => (
+                <div key={idx} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+                  <div>
+                    <input
+                      value={brk.label}
+                      onChange={(e) => updateBreak(idx, "label", e.target.value)}
+                      placeholder="e.g. Lunch Break"
+                      className="w-full h-8 px-2 text-xs border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-sky-400"
+                    />
+                  </div>
+                  <div>
+                    <input type="time" value={brk.start}
+                      onChange={(e) => updateBreak(idx, "start", e.target.value)}
+                      className="h-8 w-24 px-2 text-xs border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                  </div>
+                  <div>
+                    <input type="time" value={brk.end}
+                      onChange={(e) => updateBreak(idx, "end", e.target.value)}
+                      className="h-8 w-24 px-2 text-xs border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+                  </div>
+                  <button onClick={() => removeBreak(idx)} className="h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              {breaks.length < 10 && (
+                <button onClick={addBreak}
+                  className="flex items-center gap-1.5 text-xs text-sky-600 hover:text-sky-700 font-medium mt-1">
+                  <Plus className="h-3.5 w-3.5" /> Add Break
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Location / Meeting Link */}
+          {type !== "video" && (
+            <div>
+              <label className="block text-xs font-medium mb-1">Location</label>
+              <input value={location} onChange={(e) => setLocation(e.target.value)}
+                placeholder="Office address or room"
+                className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+            </div>
+          )}
+          {type !== "offline" && (
+            <div>
+              <label className="block text-xs font-medium mb-1">Meeting Link</label>
+              <input value={meetLink} onChange={(e) => setMeetLink(e.target.value)}
+                placeholder="https://meet.google.com/..."
+                className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400" />
+            </div>
+          )}
+
+          {/* Time slots preview */}
+          {previewItems.length > 0 && (
+            <div className="rounded-xl border border-sky-200/60 bg-sky-50/40 dark:border-sky-500/20 dark:bg-sky-500/5 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700 dark:text-sky-300 mb-3">
+                Auto-calculated Schedule{dayCount > 1 ? ` · ${dayCount} Days` : ""}
+              </p>
+              <div className="space-y-1 max-h-56 overflow-y-auto">
+                {previewItems.map((item, i) => (
+                  <div key={i}>
+                    {item.kind === "day" ? (
+                      <div className="flex items-center gap-2 py-1.5 mt-1 first:mt-0">
+                        <div className="flex-1 border-t border-sky-300/40 dark:border-sky-600/30" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">{item.date}</span>
+                        <div className="flex-1 border-t border-sky-300/40 dark:border-sky-600/30" />
+                      </div>
+                    ) : item.kind === "break" ? (
+                      <div className="flex items-center gap-2 py-1 my-0.5 rounded-md bg-amber-50/60 dark:bg-amber-500/5 px-3">
+                        <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span className="flex-1 text-xs font-medium text-amber-700 dark:text-amber-300 truncate">{item.label}</span>
+                        <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400">{item.start} – {item.end}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="w-6 text-center text-xs font-bold text-sky-600 dark:text-sky-300">{item.index}</span>
+                        <span className="flex-1 truncate font-medium text-foreground">{item.name}</span>
+                        <span className="font-mono text-xs text-sky-700 dark:text-sky-300">{item.start} – {item.end}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {lastSlotEnd && (
+                <div className="mt-3 text-xs text-muted-foreground border-t border-sky-200/40 dark:border-sky-500/15 pt-2 space-y-0.5">
+                  <p>
+                    Total: {totalMinutes} min · Interviews: {interviewMinutes} min
+                    (ends at {lastSlotEnd.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })})
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="px-6 py-4 border-t border-border flex gap-2 justify-end">
+          <Button variant="ghost" onClick={onCancel} className="h-9">Cancel</Button>
+          <Button onClick={handleSubmit} disabled={!scheduledAt || isPast || isLoading} className="h-9 bg-sky-600 text-white hover:bg-sky-700">
+            <Calendar className="w-3.5 h-3.5 me-1" />
+            {isLoading ? "Scheduling..." : `Schedule ${candidateCount} Interview${candidateCount > 1 ? "s" : ""}`}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmailPreviewModal({
+  action,
+  targetStage,
+  rejectionReason,
+  candidateCount,
+  jobTitle,
+  onConfirm,
+  onCancel,
+  isLoading,
+}: {
+  action: "reject" | "move_stage" | "send_message";
+  targetStage?: string;
+  rejectionReason?: string;
+  candidateCount: number;
+  jobTitle: string;
+  onConfirm: (emailOverride?: { emailSubject?: string; emailBody?: string }) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  const statusLabel =
+    action === "reject" ? "Rejection" :
+    targetStage === "shortlisted" ? "Shortlisted" :
+    targetStage === "selected" ? "Selected" :
+    targetStage === "offer" ? "Offer" :
+    targetStage === "hired" ? "Hired" :
+    action === "send_message" ? "Message" :
+    (targetStage ?? "Update").replace(/_/g, " ");
+
+  // Default email subject/body based on action
+  const defaultSubject = action === "reject"
+    ? `Application Update – ${jobTitle}`
+    : action === "send_message"
+    ? `Update regarding ${jobTitle}`
+    : targetStage === "offer"
+    ? `Offer Extended – ${jobTitle}`
+    : `Application Update – ${jobTitle}`;
+
+  const defaultBody = action === "reject"
+    ? `<p>Dear <strong>{{candidateName}}</strong>,</p>
+<p>Thank you for your interest in the <strong>{{jobTitle}}</strong> position at <strong>{{companyName}}</strong>.</p>
+<p>After careful consideration, we have decided to move forward with other candidates at this time.</p>
+${rejectionReason ? `<p><em>Reason: ${rejectionReason}</em></p>` : ""}
+<p>We appreciate your time and wish you the best in your career journey.</p>`
+    : targetStage === "offer"
+    ? `<p>Dear <strong>{{candidateName}}</strong>,</p>
+<p>We are pleased to inform you that <strong>{{companyName}}</strong> has extended an offer for the <strong>{{jobTitle}}</strong> position.</p>
+<p>Please log in to your MPLOYEDIN dashboard to review the offer details.</p>`
+    : targetStage === "selected"
+    ? `<p>Dear <strong>{{candidateName}}</strong>,</p>
+<p>Congratulations! You have been selected for the <strong>{{jobTitle}}</strong> position at <strong>{{companyName}}</strong>.</p>
+<p>We will be in touch shortly with the next steps.</p>`
+    : targetStage === "shortlisted"
+    ? `<p>Dear <strong>{{candidateName}}</strong>,</p>
+<p>Great news! Your application for <strong>{{jobTitle}}</strong> at <strong>{{companyName}}</strong> has been shortlisted.</p>
+<p>The hiring team will review your profile further and contact you regarding the next steps.</p>`
+    : `<p>Dear <strong>{{candidateName}}</strong>,</p>
+<p>We have an update regarding your application for <strong>{{jobTitle}}</strong> at <strong>{{companyName}}</strong>.</p>
+<p>Your application status has been updated to: <strong>{{status}}</strong>.</p>`;
+
+  const [subject, setSubject] = useState(defaultSubject);
+  const [body, setBody] = useState(defaultBody);
+  const [customized, setCustomized] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
+      <div className="bg-background rounded-lg border border-border shadow-lg max-w-2xl w-full mx-4">
+        <div className="px-6 py-4 border-b border-border">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Mail className="h-5 w-5 text-sky-600" />
+            {action === "send_message" ? "Send Bulk Email" : `${statusLabel} — Email Preview`}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {action === "send_message"
+              ? `Send email to ${candidateCount} candidate${candidateCount > 1 ? "s" : ""}`
+              : `This email will be sent to ${candidateCount} candidate${candidateCount > 1 ? "s" : ""} after the status change`}
+          </p>
+        </div>
+        <div className="px-6 py-4 space-y-4 max-h-[calc(100vh-240px)] overflow-y-auto">
+          <div className="rounded-xl border border-sky-200/60 bg-sky-50/30 dark:border-sky-500/20 dark:bg-sky-500/5 px-4 py-3">
+            <p className="text-xs text-muted-foreground mb-1">
+              Available placeholders: <code className="text-[10px]">{`{{candidateName}}`}</code> <code className="text-[10px]">{`{{jobTitle}}`}</code> <code className="text-[10px]">{`{{companyName}}`}</code> <code className="text-[10px]">{`{{status}}`}</code>
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">Email Subject</label>
+            <input
+              value={subject}
+              onChange={(e) => { setSubject(e.target.value); setCustomized(true); }}
+              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400"
+              maxLength={200}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1">Email Body</label>
+            <textarea
+              value={body}
+              onChange={(e) => { setBody(e.target.value); setCustomized(true); }}
+              className="w-full h-40 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-sky-400 resize-none font-mono"
+              maxLength={10000}
+            />
+          </div>
+
+          {/* Live preview */}
+          <div>
+            <label className="block text-xs font-medium mb-2">Preview</label>
+            <div className="rounded-xl border border-border bg-white dark:bg-slate-950 p-4 text-sm">
+              <div className="border-b border-border pb-2 mb-3">
+                <p className="text-xs text-muted-foreground">Subject:</p>
+                <p className="font-medium">{subject.replace(/\{\{jobTitle\}\}/g, jobTitle).replace(/\{\{companyName\}\}/g, "Company")}</p>
+              </div>
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{
+                  __html: body
+                    .replace(/\{\{candidateName\}\}/g, "John Doe")
+                    .replace(/\{\{jobTitle\}\}/g, jobTitle)
+                    .replace(/\{\{companyName\}\}/g, "Company")
+                    .replace(/\{\{status\}\}/g, statusLabel.toLowerCase()),
+                }}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-border flex gap-2 justify-between">
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground"
+            onClick={() => { setSubject(defaultSubject); setBody(defaultBody); setCustomized(false); }}>
+            Reset to Default
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={onCancel} className="h-9">Cancel</Button>
+            {action !== "send_message" && (
+              <Button variant="outline" onClick={() => onConfirm()} disabled={isLoading} className="h-9">
+                {isLoading ? "Processing..." : `${statusLabel} Without Email`}
+              </Button>
+            )}
+            <Button
+              onClick={() => onConfirm(customized ? { emailSubject: subject, emailBody: body } : { emailSubject: subject, emailBody: body })}
+              disabled={isLoading || (!subject.trim() && action === "send_message")}
+              className="h-9"
+            >
+              <Send className="w-3.5 h-3.5 me-1" />
+              {isLoading ? "Sending..." : `${action === "send_message" ? "Send" : statusLabel} & Email ${candidateCount}`}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InterviewScheduleModal({
   onSubmit,
   onCancel,
@@ -1565,22 +2445,20 @@ function InterviewScheduleModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div className="bg-background rounded-lg border border-border shadow-lg max-w-md w-full mx-4">
         <div className="px-6 py-4 border-b border-border">
           <h2 className="text-lg font-semibold">Schedule Interview</h2>
           <p className="text-sm text-muted-foreground mt-1">Set up the interview details</p>
         </div>
         <div className="px-6 py-4 space-y-4">
-          <div>
-            <label className="block text-xs font-medium mb-1">Date & Time *</label>
-            <input
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={(e) => setScheduledAt(e.target.value)}
-              className="w-full h-9 px-3 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
-            />
-          </div>
+          <DateTimePicker
+            label="Date & Time *"
+            value={scheduledAt}
+            onChange={setScheduledAt}
+            minDate={new Date()}
+            placeholder="Pick date & time"
+          />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1">Type</label>
@@ -1681,7 +2559,7 @@ function OfferCreateModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto py-8">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
       <div className="bg-background rounded-lg border border-border shadow-lg max-w-md w-full mx-4">
         <div className="px-6 py-4 border-b border-border">
           <h2 className="text-lg font-semibold">Create Offer</h2>

@@ -16,13 +16,13 @@ type Params = { id: string };
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
-  const job = await Job.findById(params?.id)
+  const job = await Job.findOne({ _id: params?.id, deletedAt: null })
     .populate("employerId", "companyName country industry verificationLevel")
     .lean();
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
   // Job seekers may only view active jobs; owners and privileged roles can view any status
-  if (ctx.role === "job_seeker" && job.status !== "active") {
+  if (ctx.role === "job_seeker" && job.status !== "active" && job.status !== "paused") {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
@@ -60,7 +60,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const allowedFields = [
     "title", "description", "category", "location", "requirements",
     "salary", "status", "expiresAt", "applicationMode", "tags", "vacancies",
-    "maxApplicants", "showSalary", "visibility",
+    "maxApplicants", "showSalary", "visibility", "screeningQuestions",
   ];
   const adminFields = ["poster.approvalStatus", "featuredUntil"];
 
@@ -90,7 +90,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   return NextResponse.json({ job });
 }
 
-// DELETE /api/jobs/[id]
+// DELETE /api/jobs/[id] — soft delete
 async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
@@ -106,14 +106,12 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const hardDeleted = ["draft", "closed", "expired"].includes(job.status);
-
-  if (hardDeleted) {
-    await job.deleteOne();
-  } else {
+  // Soft delete: mark as deleted instead of removing from DB
+  job.deletedAt = new Date();
+  if (job.status === "active" || job.status === "paused") {
     job.status = "closed";
-    await job.save();
   }
+  await job.save();
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -124,9 +122,7 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
     req: _req,
   });
 
-  return NextResponse.json({
-    message: hardDeleted ? "Job deleted successfully" : "Job archived successfully",
-  });
+  return NextResponse.json({ message: "Job deleted successfully" });
 }
 
 export const GET = withAuth(getHandler);

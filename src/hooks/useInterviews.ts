@@ -3,16 +3,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 // ── Types ──────────────────────────────────────────────────────────
 export interface Interview {
   _id: string;
+  applicationId?: string;
   jobSeekerId?: {
     fullName?: string;
     email?: string;
     skills?: string[];
     experience?: { jobTitle: string; company: string; isCurrent: boolean; startDate?: string }[];
   };
-  jobId?: { title?: string; requirements?: { skills?: string[]; experienceMin?: number } };
+  jobId?: { _id?: string; title?: string; requirements?: { skills?: string[]; experienceMin?: number } };
   scheduledAt: string;
   type?: string;
   status: string;
+  outcome?: "passed" | "failed" | "hold" | "no_show";
+  interviewRound?: number;
+  feedback?: string;
   notes?: string;
 }
 
@@ -62,17 +66,59 @@ export function useInterviews(filters: InterviewsFilters) {
   });
 }
 
-/** Update interview status (complete, cancel) */
+/** Update interview (status, outcome, reschedule fields) */
 export function useUpdateInterview() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async (payload: {
+      id: string;
+      status?: string;
+      outcome?: string;
+      feedback?: string;
+      scheduledAt?: string;
+      duration?: number;
+      type?: string;
+      location?: string;
+      meetLink?: string;
+    }) => {
+      const { id, ...body } = payload;
       const res = await fetch(`/api/interviews/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error("Failed to update interview status");
+      if (!res.ok) throw new Error("Failed to update interview");
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: interviewKeys.lists() });
+    },
+  });
+}
+
+/** Schedule the next interview round */
+export function useScheduleNextRound() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      interviewId: string;
+      scheduledAt: string;
+      duration?: number;
+      type?: string;
+      location?: string;
+      meetLink?: string;
+      instructions?: string;
+    }) => {
+      const { interviewId, ...body } = payload;
+      const res = await fetch(`/api/interviews/${interviewId}/next-round`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Failed to schedule next round");
+      }
       return res.json();
     },
     onSuccess: () => {

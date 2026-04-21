@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { teamInviteSchema } from "@/lib/validators/team";
@@ -198,4 +199,6 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 }
 
 export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+export const POST = withAuth(
+  withSubscription(postHandler, { type: "limit", feature: "teamMembers" }),
+);

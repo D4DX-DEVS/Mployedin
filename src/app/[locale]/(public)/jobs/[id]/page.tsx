@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { MapPin, Briefcase, Clock, Users, Globe } from "lucide-react";
 import Link from "next/link";
-import EasyApply from "@/components/features/public/EasyApply";
+import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/features/public/EasyApply";
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import RelativeDate from "@/components/shared/RelativeDate";
@@ -280,7 +280,12 @@ export default async function JobDetailPage({ params }: PageProps) {
                   <p className="text-xs text-muted-foreground">{employer?.companyName}</p>
                 </div>
 
-                <EasyApply jobId={String(job._id)} jobTitle={job.title} locale={locale} />
+                <EasyApply
+                  jobId={String(job._id)}
+                  jobTitle={job.title}
+                  locale={locale}
+                  screeningQuestions={(job as Record<string, unknown>).screeningQuestions as EasyApplyScreeningQuestion[] | undefined}
+                />
 
                 <p className="text-xs text-muted-foreground text-center mt-3">
                   Your profile is auto-attached to the application.

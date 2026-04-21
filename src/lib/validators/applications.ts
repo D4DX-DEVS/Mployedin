@@ -5,6 +5,13 @@ export const applicationCreateSchema = z.object({
   jobId: commonSchemas.objectId,
   coverLetter: z.string().max(5000).trim().optional(),
   easyApply: z.boolean().optional(),
+  screeningAnswers: z.array(
+    z.object({
+      questionId: z.string().min(1).max(50),
+      questionLabel: z.string().min(1).max(500),
+      answer: z.union([z.string().max(2000), z.array(z.string().max(200)), z.boolean()]),
+    })
+  ).max(20).optional(),
 });
 
 export const applicationUpdateSchema = z
@@ -53,8 +60,12 @@ export const bulkActionSchema = z.object({
     .object({
       targetStage: z.string().max(50).optional(),
       rejectionReason: z.string().max(500).optional(),
-      messageContent: z.string().max(2000).optional(),
+      messageContent: z.string().max(5000).optional(),
       templateId: commonSchemas.objectId.optional(),
+      /** Custom email subject (supports {{jobTitle}}, {{companyName}} placeholders) */
+      emailSubject: z.string().max(200).optional(),
+      /** Custom email body HTML (supports {{candidateName}}, {{jobTitle}}, {{companyName}}, {{status}} placeholders) */
+      emailBody: z.string().max(10000).optional(),
     })
     .optional(),
 });

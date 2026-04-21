@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import ReferralLink from "@/models/ReferralLink";
 import User from "@/models/User";
 
 export async function GET(req: NextRequest) {
@@ -12,7 +13,21 @@ export async function GET(req: NextRequest) {
 
   await connectDB();
 
-  // Check agents first
+  // Check new ReferralLink model first
+  const rl = await ReferralLink.findOne({ code, isActive: true }).populate("createdBy", "name").lean();
+  if (rl) {
+    const expired = rl.expiresAt && new Date(rl.expiresAt) < new Date();
+    const maxReached = rl.maxUses > 0 && rl.usedCount >= rl.maxUses;
+    return NextResponse.json({
+      valid: !expired && !maxReached,
+      referrerType: rl.creatorRole,
+      referrerName: (rl.createdBy as { name?: string })?.name ?? "Agent",
+      ...(expired ? { reason: "expired" } : {}),
+      ...(maxReached ? { reason: "max_reached" } : {}),
+    });
+  }
+
+  // Fallback: legacy codes on Agent/SuperAgent models
   const agent = await Agent.findOne({ referralCode: code }).select("userId").lean();
   if (agent) {
     const agentUser = await User.findById(agent.userId).select("name").lean();
@@ -23,7 +38,6 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Check super-agents
   const sa = await SuperAgent.findOne({ referralCode: code }).select("userId").lean();
   if (sa) {
     const saUser = await User.findById(sa.userId).select("name").lean();

@@ -24,7 +24,7 @@ interface Interview {
 }
 
 const INTERVIEW_FIELDS: CrudField[] = [
-  { name: "scheduledAt", label: "Scheduled At", type: "date", required: true },
+  { name: "scheduledAt", label: "Scheduled At", type: "date", required: true, min: new Date().toISOString().slice(0, 10) },
   { name: "type", label: "Type", type: "select", options: [
     { value: "video", label: "Video" }, { value: "in-person", label: "In-Person" }, { value: "phone", label: "Phone" },
   ]},

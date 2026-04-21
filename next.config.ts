@@ -40,9 +40,9 @@ const nextConfig: NextConfig = {
     if (dev) {
       config.watchOptions = {
         ...config.watchOptions,
-        poll: 1000,           // fall back to polling (1 s)
-        aggregateTimeout: 300, // batch changes within 300 ms
-        ignored: /node_modules|\.next|\.git/,
+        poll: 3000,           // fall back to polling (3 s — reduces HMR noise on OneDrive)
+        aggregateTimeout: 600, // batch changes within 600 ms
+        ignored: /node_modules|\.next|\.git|\.tmp$|~\$/,
       };
     }
     return config;

@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Interview from "@/models/Interview";
+import Application from "@/models/Application";
+import JobSeeker from "@/models/JobSeeker";
+import Job from "@/models/Job";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { interviewUpdateSchema } from "@/lib/validators/interviews";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -36,6 +40,64 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   Object.assign(interview, update);
   await interview.save();
+
+  // Handle outcome-based workflow transitions
+  if (body.status === "completed" && body.outcome) {
+    const application = await Application.findById(interview.applicationId);
+    const jobSeeker = application
+      ? await JobSeeker.findById(interview.jobSeekerId).select("userId fullName").lean()
+      : null;
+    const job = application
+      ? await Job.findById(interview.jobId).select("title").lean()
+      : null;
+    const jobTitle = (job as { title?: string } | null)?.title ?? "a position";
+
+    if (body.outcome === "failed" && application) {
+      // Rejection: update application status and notify
+      application.status = "rejected";
+      application.statusHistory = application.statusHistory || [];
+      application.statusHistory.push({
+        status: "rejected",
+        changedAt: new Date(),
+        changedBy: ctx.userId,
+      });
+      await application.save();
+
+      if (jobSeeker) {
+        await notify({
+          userId: String((jobSeeker as { userId: unknown }).userId),
+          type: "application_status_update",
+          title: "Interview Result",
+          message: `Thank you for interviewing for "${jobTitle}". Unfortunately, we have decided to move forward with other candidates at this time.`,
+          link: `/en/job-seeker/applications`,
+          sendEmail: true,
+          metadata: { jobTitle, applicationId: String(application._id), outcome: "failed" },
+        }).catch(() => { /* non-blocking */ });
+      }
+    } else if (body.outcome === "passed" && application) {
+      // Passed: move application to selected stage
+      application.status = "selected";
+      application.statusHistory = application.statusHistory || [];
+      application.statusHistory.push({
+        status: "selected",
+        changedAt: new Date(),
+        changedBy: ctx.userId,
+      });
+      await application.save();
+
+      if (jobSeeker) {
+        await notify({
+          userId: String((jobSeeker as { userId: unknown }).userId),
+          type: "application_status_update",
+          title: "Interview Cleared!",
+          message: `Congratulations! You have cleared the round ${interview.interviewRound ?? 1} interview for "${jobTitle}". The employer will reach out with next steps soon.`,
+          link: `/en/job-seeker/applications`,
+          sendEmail: true,
+          metadata: { jobTitle, applicationId: String(application._id), outcome: "passed" },
+        }).catch(() => { /* non-blocking */ });
+      }
+    }
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

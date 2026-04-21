@@ -1,6 +1,10 @@
 /**
- * Email communication service using Nodemailer with Gmail OAuth2
- * or SMTP (for development). Configure via environment variables.
+ * Email communication service using Nodemailer.
+ *
+ * Priority chain for SMTP config:
+ *  1. Employer SMTP override (premium feature — per-employer G Suite)
+ *  2. System-wide SMTP from admin settings (SystemSettings.smtp in DB)
+ *  3. Environment variables (GMAIL_*, SMTP_*, ETHEREAL_*)
  */
 
 import nodemailer from "nodemailer";
@@ -19,16 +23,28 @@ interface EmailPayload {
   source?: string;
   /** Category for email logging (e.g. "jobs", "applications", "system") */
   category?: string;
+  /** Employer ID — if provided, checks for employer SMTP override first */
+  employerId?: string;
+  /** Sender display name override (e.g. company name) */
+  senderName?: string;
 }
 
-let transporter: nodemailer.Transporter | null = null;
+interface SmtpConfig {
+  smtpEmail: string;
+  smtpAppPassword: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpSecure?: boolean;
+}
 
-function getTransporter(): nodemailer.Transporter {
-  if (transporter) return transporter;
+let defaultTransporter: nodemailer.Transporter | null = null;
+
+function getEnvTransporter(): nodemailer.Transporter {
+  if (defaultTransporter) return defaultTransporter;
 
   if (process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN) {
     // Gmail OAuth2
-    transporter = nodemailer.createTransport({
+    defaultTransporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         type: "OAuth2",
@@ -38,20 +54,20 @@ function getTransporter(): nodemailer.Transporter {
         refreshToken: process.env.GMAIL_REFRESH_TOKEN,
       },
     });
-  } else if (process.env.SMTP_HOST) {
-    // Generic SMTP
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT ?? "587"),
-      secure: process.env.SMTP_SECURE === "true",
+  } else if (process.env.SMTP_HOST || process.env.EMAIL_HOST) {
+    // Generic SMTP (supports both SMTP_* and EMAIL_* env var naming)
+    defaultTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST ?? process.env.EMAIL_HOST,
+      port: parseInt(process.env.SMTP_PORT ?? process.env.EMAIL_PORT ?? "587"),
+      secure: (process.env.SMTP_SECURE ?? process.env.EMAIL_SECURE) === "true",
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: process.env.SMTP_USER ?? process.env.EMAIL_USER,
+        pass: process.env.SMTP_PASS ?? process.env.EMAIL_PASS,
       },
     });
   } else {
     // Development: ethereal fake SMTP (auto-created)
-    transporter = nodemailer.createTransport({
+    defaultTransporter = nodemailer.createTransport({
       host: "smtp.ethereal.email",
       port: 587,
       auth: {
@@ -61,12 +77,83 @@ function getTransporter(): nodemailer.Transporter {
     });
   }
 
-  return transporter;
+  return defaultTransporter;
+}
+
+function createSmtpTransporter(smtp: SmtpConfig): nodemailer.Transporter {
+  return nodemailer.createTransport({
+    host: smtp.smtpHost || "smtp.gmail.com",
+    port: smtp.smtpPort || 587,
+    secure: smtp.smtpSecure || false,
+    auth: {
+      user: smtp.smtpEmail,
+      pass: smtp.smtpAppPassword,
+    },
+  });
+}
+
+/**
+ * Resolve the best transporter and sender email in order:
+ *  1. Employer SMTP override (if employerId provided and employer has custom SMTP)
+ *  2. System-wide SMTP from DB (SystemSettings.smtp)
+ *  3. Environment variable based transporter
+ */
+async function resolveTransporter(employerId?: string): Promise<{ transporter: nodemailer.Transporter; fromEmail: string }> {
+  // 1. Try employer-level SMTP override
+  if (employerId) {
+    try {
+      const { connectDB } = await import("@/lib/db/mongoose");
+      await connectDB();
+      const { Employer } = await import("@/models/Employer");
+      const employer = await Employer.findById(employerId)
+        .select("+smtpOverride.smtpAppPassword")
+        .lean();
+      if (employer?.smtpOverride?.smtpEmail && employer.smtpOverride.smtpAppPassword) {
+        const { decrypt } = await import("@/lib/security/encryption");
+        let password = employer.smtpOverride.smtpAppPassword;
+        try { password = decrypt(password); } catch { /* already plain */ }
+        const smtp: SmtpConfig = {
+          smtpEmail: employer.smtpOverride.smtpEmail,
+          smtpAppPassword: password,
+          smtpHost: employer.smtpOverride.smtpHost,
+          smtpPort: employer.smtpOverride.smtpPort,
+          smtpSecure: employer.smtpOverride.smtpSecure,
+        };
+        return { transporter: createSmtpTransporter(smtp), fromEmail: smtp.smtpEmail };
+      }
+    } catch { /* fall through to system-wide */ }
+  }
+
+  // 2. Try system-wide SMTP from DB
+  try {
+    const { connectDB } = await import("@/lib/db/mongoose");
+    await connectDB();
+    const { default: SystemSettings } = await import("@/models/SystemSettings");
+    const settings = await SystemSettings.findOne().select("+smtp.smtpAppPassword").lean();
+    if (settings?.smtp?.smtpEmail && settings.smtp.smtpAppPassword) {
+      const { decrypt } = await import("@/lib/security/encryption");
+      let password = settings.smtp.smtpAppPassword;
+      try { password = decrypt(password); } catch { /* already plain */ }
+      const smtp: SmtpConfig = {
+        smtpEmail: settings.smtp.smtpEmail,
+        smtpAppPassword: password,
+        smtpHost: settings.smtp.smtpHost,
+        smtpPort: settings.smtp.smtpPort,
+        smtpSecure: settings.smtp.smtpSecure,
+      };
+      return { transporter: createSmtpTransporter(smtp), fromEmail: smtp.smtpEmail };
+    }
+  } catch { /* fall through to env vars */ }
+
+  // 3. Fall back to env-based transporter
+  const fromEmail = process.env.GMAIL_USER ?? process.env.SMTP_USER ?? process.env.EMAIL_USER ?? "noreply@mployedin.com";
+  return { transporter: getEnvTransporter(), fromEmail };
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<{ messageId: string }> {
-  const t = getTransporter();
+  const { transporter: t, fromEmail } = await resolveTransporter(payload.employerId);
   const toAddr = Array.isArray(payload.to) ? payload.to.join(", ") : payload.to;
+  const senderName = payload.senderName || "MPLOYEDIN";
 
   // Build List-Unsubscribe headers (RFC 8058) if userId is provided
   const headers: Record<string, string> = {};
@@ -80,7 +167,7 @@ export async function sendEmail(payload: EmailPayload): Promise<{ messageId: str
 
   try {
     const info = await t.sendMail({
-      from: `MPLOYEDIN <${process.env.GMAIL_USER ?? process.env.SMTP_USER ?? "noreply@mployedin.com"}>`,
+      from: `${senderName} <${fromEmail}>`,
       to: toAddr,
       subject: payload.subject,
       html: payload.html,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { Employer } from "@/models/Employer";
 import Job from "@/models/Job";
 import { Application } from "@/models/Application";
@@ -49,6 +50,10 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx): Promise<NextResponse
   if (ctx.role !== "employer") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  // Subscription toggle gate
+  const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "toggle", feature: "analyticsLevel" });
+  if (gateErr) return gateErr;
 
   await connectDB();
 

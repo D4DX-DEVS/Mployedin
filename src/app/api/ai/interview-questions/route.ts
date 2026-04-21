@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import { connectDB } from "@/lib/db/mongoose";
+import { InterviewQuestion } from "@/models/InterviewQuestion";
 
 const QUESTION_TYPES = ["technical", "behavioral", "culture_fit", "situational"] as const;
 type QuestionType = (typeof QUESTION_TYPES)[number];
@@ -13,6 +16,11 @@ export async function POST(req: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Subscription feature gate
+    const userRole = (session.user as unknown as { role: string }).role;
+    const gateErr = await enforceFeatureGate(session.user.id!, userRole, { type: "ai", feature: "ai_interview_questions" });
+    if (gateErr) return gateErr;
 
     const ip =
       req.headers.get("x-forwarded-for") ??
@@ -36,6 +44,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const jobTitle = sanitizeAIInput(String(body.jobTitle ?? ""), 200);
+    const candidateName = body.candidateName ? sanitizeAIInput(String(body.candidateName), 200) : undefined;
+    const interviewId = body.interviewId ? String(body.interviewId) : undefined;
     const skills = Array.isArray(body.skills)
       ? (body.skills as string[]).slice(0, 15).map((s) => sanitizeAIInput(String(s), 50))
       : [];
@@ -98,12 +108,66 @@ Output ONLY the JSON array, no markdown code blocks.`;
       );
     }
 
+    // Persist generated questions if interviewId provided
+    let savedId: string | undefined;
+    if (interviewId) {
+      try {
+        await connectDB();
+        const doc = await InterviewQuestion.create({
+          interviewId,
+          generatedBy: (session.user as unknown as { id: string }).id,
+          questionType,
+          questions,
+          jobTitle,
+          candidateName,
+        });
+        savedId = doc._id.toString();
+      } catch (saveErr) {
+        console.error("[Interview Questions Save Error]", saveErr);
+        // Don't fail the request – still return the generated questions
+      }
+    }
+
     return NextResponse.json(
-      { questions, jobTitle, questionType, count: questions.length },
+      { questions, jobTitle, questionType, count: questions.length, savedId },
       { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );
   } catch (err) {
     console.error("[Interview Questions Error]", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+/** GET /api/ai/interview-questions?interviewId=xxx — fetch all saved question sets */
+export async function GET(req: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const interviewId = req.nextUrl.searchParams.get("interviewId");
+    if (!interviewId) {
+      return NextResponse.json({ error: "interviewId is required" }, { status: 400 });
+    }
+
+    await connectDB();
+
+    const saved = await InterviewQuestion.find({ interviewId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Group by questionType, newest first
+    const byType: Record<string, typeof saved> = {};
+    for (const doc of saved) {
+      const key = doc.questionType;
+      if (!byType[key]) byType[key] = [];
+      byType[key].push(doc);
+    }
+
+    return NextResponse.json({ history: byType });
+  } catch (err) {
+    console.error("[Interview Questions GET Error]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

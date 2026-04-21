@@ -5,6 +5,7 @@ import JobSeeker from "@/models/JobSeeker";
 import bcrypt from "bcryptjs";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
+import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 
 export const runtime = "nodejs";
 
@@ -59,6 +60,11 @@ export async function POST(req: NextRequest) {
       preferredRoles: [],
       preferredLocations: [],
     });
+
+    // Auto-assign default subscription plan (fire-and-forget — don't block registration)
+    autoAssignDefaultPlan(user._id.toString(), "job_seeker").catch((err) =>
+      console.error("[Registration] Failed to auto-assign subscription:", err),
+    );
 
     await logActivity({
       actorId: user._id.toString(),

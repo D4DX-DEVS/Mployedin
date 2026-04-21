@@ -10,6 +10,7 @@ import { useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight, ArrowUp } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useFeatureGate } from "@/hooks/useFeatureGate";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -239,6 +240,9 @@ export function JobFeedPage({ locale }: { locale: string }) {
     },
     [hasNextPage, isFetchingNextPage, fetchNextPage],
   );
+
+  // ── Subscription gate ────────────────────────────────────────────────────────
+  const { allowed: applyAllowed } = useFeatureGate("applicationsSubmitted");
 
   // ── Mutations ───────────────────────────────────────────────────────────────
 
@@ -608,7 +612,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       isApplied={appliedIds.has(job._id)}
                       onToggleSelect={() => toggleSelect(job._id)}
                       onSave={() => saveMutation.mutate(job._id)}
-                      onApply={() => applyMutation.mutate(job._id)}
+                      onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error("Application limit reached — upgrade your plan")}
                       onHide={() => {
                         setHidden((s) => new Set([...s, job._id]));
                         toast.success("Job hidden");
@@ -716,7 +720,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   isApplied={appliedIds.has(job._id)}
                   onToggleSelect={() => toggleSelect(job._id)}
                   onSave={() => saveMutation.mutate(job._id)}
-                  onApply={() => applyMutation.mutate(job._id)}
+                  onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error("Application limit reached — upgrade your plan")}
                   onHide={() => {
                     setHidden((s) => new Set([...s, job._id]));
                     toast.success("Job hidden");

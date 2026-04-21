@@ -62,6 +62,52 @@ export const notificationUpdateSchema = z.object({
   markAllRead: z.boolean().optional(),
 });
 
+// ── Template Schemas ──────────────────────────────────────────────────────────
+
+const workflowStageTemplateSchema = z.object({
+  id: z.string().max(50),
+  label: z.string().max(100),
+  enabled: z.boolean(),
+  autoProgress: z.boolean(),
+  order: z.number().int().min(0),
+});
+
+const workflowSettingsTemplateSchema = z.object({
+  aiAutoScreen: z.boolean().optional(),
+  notifyOnStageChange: z.boolean().optional(),
+  autoRejectBelow: z.number().int().min(0).max(100).optional(),
+});
+
+/** Create/Update a workflow template */
+export const workflowTemplateSchema = z.object({
+  name: z.string().min(1).max(100).trim(),
+  description: z.string().max(500).trim().optional(),
+  stages: z.array(workflowStageTemplateSchema).min(1).max(20),
+  settings: workflowSettingsTemplateSchema.optional(),
+  tags: z.array(z.string().max(50)).max(10).optional(),
+  isDefault: z.boolean().optional(),
+});
+
+const matchingWeightValuesSchema = z.object({
+  skills: z.number().min(0).max(100),
+  experience: z.number().min(0).max(100),
+  education: z.number().min(0).max(100),
+  location: z.number().min(0).max(100),
+  salary: z.number().min(0).max(100),
+  languages: z.number().min(0).max(100),
+  availability: z.number().min(0).max(100),
+  behaviorSignals: z.number().min(0).max(100),
+});
+
+/** Create/Update a matching weight template */
+export const matchingWeightTemplateSchema = z.object({
+  name: z.string().min(1).max(100).trim(),
+  description: z.string().max(500).trim().optional(),
+  weights: matchingWeightValuesSchema,
+  tags: z.array(z.string().max(50)).max(10).optional(),
+  isDefault: z.boolean().optional(),
+});
+
 /** Password change */
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1).max(128),

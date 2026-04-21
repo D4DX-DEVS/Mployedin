@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { connectDB } from "@/lib/db/mongoose";
 import Application from "@/models/Application";
 import Job from "@/models/Job";
@@ -15,6 +16,9 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
  * based on their role and recent platform activity.
  */
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
+  const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "ai", feature: "ai_daily_insights" });
+  if (gateErr) return gateErr;
+
   const rl = checkRateLimitDual(_req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
   if (!rl.allowed) {
     return NextResponse.json(

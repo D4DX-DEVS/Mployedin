@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import User, { type UserRole } from "@/models/User";
@@ -21,6 +22,11 @@ export async function POST(req: NextRequest) {
   }
 
   const role = (session.user as unknown as { role: UserRole }).role;
+
+  // Subscription feature gate
+  const gateErr = await enforceFeatureGate(session.user.id!, role, { type: "ai", feature: "ai_cv_extraction" });
+  if (gateErr) return gateErr;
+
   if (role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

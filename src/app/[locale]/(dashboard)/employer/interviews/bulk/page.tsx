@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Calendar, Search, Users, Clock, Send, CheckCircle, Loader2, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useShortlistedCandidates, useBulkScheduleInterviews } from "@/hooks/useInterviews";
 
 interface Candidate {
@@ -158,17 +159,24 @@ export default function EmployerBulkInterviewPage() {
           </h3>
 
           <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground">Date *</label>
-              <input type="date" value={slot.date} onChange={e => setSlot(s => ({ ...s, date: e.target.value }))}
-                className="input-field w-full mt-1" />
-            </div>
+            <DateTimePicker
+              label="Date"
+              required
+              mode="date"
+              value={slot.date}
+              onChange={(v) => setSlot(s => ({ ...s, date: v }))}
+              minDate={new Date()}
+              placeholder="Pick a date"
+            />
             <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-muted-foreground">Time *</label>
-                <input type="time" value={slot.time} onChange={e => setSlot(s => ({ ...s, time: e.target.value }))}
-                  className="input-field w-full mt-1" />
-              </div>
+              <DateTimePicker
+                label="Time"
+                required
+                mode="time"
+                value={slot.time}
+                onChange={(v) => setSlot(s => ({ ...s, time: v }))}
+                placeholder="Pick a time"
+              />
               <div>
                 <label className="text-xs text-muted-foreground">Duration (min)</label>
                 <select value={slot.duration} onChange={e => setSlot(s => ({ ...s, duration: parseInt(e.target.value) }))}

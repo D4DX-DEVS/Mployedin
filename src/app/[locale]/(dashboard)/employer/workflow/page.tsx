@@ -4,13 +4,20 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Settings2, ChevronDown, ChevronUp,
   Save, Loader2, CheckCircle, Plus, Trash2, ArrowRight, Sparkles, Bell, ShieldAlert,
+  BookTemplate, Copy,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { FeatureGate } from "@/components/shared/FeatureGate";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useWorkflow, useSaveWorkflow, type WorkflowStage } from "@/hooks/useWorkflow";
+import {
+  useEmployerWorkflowTemplates,
+  useCreateEmployerWorkflowTemplate,
+  type WorkflowTemplateItem,
+} from "@/hooks/useWorkflowTemplates";
 
 const DEFAULT_STAGES: WorkflowStage[] = [
   { id: "new", label: "New Application", enabled: true, autoProgress: false, order: 1 },
@@ -37,6 +44,8 @@ const STAGE_COLORS: Record<string, string> = {
 export default function EmployerWorkflowPage() {
   const { data: serverData, isLoading: loading, error: fetchError } = useWorkflow();
   const saveWorkflow = useSaveWorkflow();
+  const { data: templates, isLoading: templatesLoading } = useEmployerWorkflowTemplates();
+  const createTemplate = useCreateEmployerWorkflowTemplate();
 
   const [stages, setStages] = useState<WorkflowStage[]>(DEFAULT_STAGES);
   const [aiAutoScreen, setAiAutoScreen] = useState(true);
@@ -47,6 +56,10 @@ export default function EmployerWorkflowPage() {
   const [addingStage, setAddingStage] = useState(false);
   const [newStageLabel, setNewStageLabel] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [showSaveAsTemplate, setShowSaveAsTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateSaved, setTemplateSaved] = useState(false);
 
   // Seed local state from server data
   useEffect(() => {
@@ -119,6 +132,32 @@ export default function EmployerWorkflowPage() {
     }
   };
 
+  const applyTemplate = (t: WorkflowTemplateItem) => {
+    setStages(t.stages);
+    setAiAutoScreen(t.settings.aiAutoScreen);
+    setNotifyOnStageChange(t.settings.notifyOnStageChange);
+    setAutoRejectBelow(t.settings.autoRejectBelow);
+    setShowTemplateSelector(false);
+    markDirty();
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim()) return;
+    try {
+      await createTemplate.mutateAsync({
+        name: templateName.trim(),
+        stages,
+        settings: { aiAutoScreen, notifyOnStageChange, autoRejectBelow },
+      });
+      setTemplateSaved(true);
+      setShowSaveAsTemplate(false);
+      setTemplateName("");
+      setTimeout(() => setTemplateSaved(false), 3000);
+    } catch {
+      setError("Failed to save template");
+    }
+  };
+
   if (loading)
     return (
       <div className="page-container employer-legacy-surface space-y-4">
@@ -143,28 +182,127 @@ export default function EmployerWorkflowPage() {
         : "Live configuration";
 
   return (
+    <FeatureGate feature="workflowCustomization">
     <div className="page-container employer-legacy-surface space-y-6">
       <PageHeader
         title="Hiring Workflow"
         description="Configure your recruitment pipeline stages and automation"
         actions={
-          <Button
-            onClick={handleSave}
-            disabled={saveWorkflow.isPending || !dirty}
-            className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700 disabled:bg-slate-300"
-            size="sm"
-          >
-            {saveWorkflow.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : saved ? (
-              <CheckCircle className="h-4 w-4" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            {saveWorkflow.isPending ? "Saving…" : saved ? "Saved!" : "Save Workflow"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTemplateSelector(!showTemplateSelector)}
+              className="gap-1.5 rounded-xl border-border"
+            >
+              <BookTemplate className="h-4 w-4" />
+              Templates
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSaveAsTemplate(!showSaveAsTemplate)}
+              className="gap-1.5 rounded-xl border-border"
+            >
+              <Copy className="h-4 w-4" />
+              Save as Template
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saveWorkflow.isPending || !dirty}
+              className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700 disabled:bg-slate-300"
+              size="sm"
+            >
+              {saveWorkflow.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : saved ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {saveWorkflow.isPending ? "Saving…" : saved ? "Saved!" : "Save Workflow"}
+            </Button>
+          </div>
         }
       />
+
+      {/* ─── Template Selector ─── */}
+      {showTemplateSelector && (
+        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Load from Template</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Select a preset workflow to apply to your current configuration</p>
+            </div>
+            <button onClick={() => setShowTemplateSelector(false)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
+          </div>
+          {templatesLoading ? (
+            <div className="h-16 animate-pulse rounded-xl border border-border bg-background/70" />
+          ) : templates && templates.length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {templates.map((t) => (
+                <button
+                  key={t._id}
+                  onClick={() => applyTemplate(t)}
+                  className="rounded-xl border border-border bg-background/80 p-3 text-left transition-all hover:border-sky-500/40 hover:bg-sky-500/5"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">{t.name}</span>
+                    <Badge variant={t.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
+                      {t.scope === "system" ? "System" : "Custom"}
+                    </Badge>
+                    {t.isDefault && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
+                  </div>
+                  {t.description && <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{t.description}</p>}
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {t.stages.filter((s) => s.enabled).length} stages · AI: {t.settings.aiAutoScreen ? "on" : "off"}
+                  </p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-center text-sm text-muted-foreground">
+              No workflow templates available yet.
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* ─── Save as Template ─── */}
+      {showSaveAsTemplate && (
+        <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+          <div className="flex items-center gap-3">
+            <Input
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Template name (e.g. My Tech Pipeline)"
+              maxLength={100}
+              className="flex-1"
+              onKeyDown={(e) => e.key === "Enter" && handleSaveAsTemplate()}
+            />
+            <Button
+              onClick={handleSaveAsTemplate}
+              disabled={!templateName.trim() || createTemplate.isPending}
+              className="gap-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+              size="sm"
+            >
+              {createTemplate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setShowSaveAsTemplate(false); setTemplateName(""); }} className="rounded-xl">
+              Cancel
+            </Button>
+          </div>
+        </section>
+      )}
+
+      {/* Template saved banner */}
+      {templateSaved && (
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
+          <CheckCircle className="h-4 w-4" />
+          Workflow saved as template successfully!
+        </div>
+      )}
 
       {/* Unsaved changes banner */}
       {dirty && (
@@ -537,5 +675,6 @@ export default function EmployerWorkflowPage() {
         </div>
       </div>
     </div>
+    </FeatureGate>
   );
 }

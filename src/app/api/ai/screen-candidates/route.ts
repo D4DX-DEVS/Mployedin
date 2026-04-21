@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -16,6 +17,11 @@ export async function POST(req: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Subscription feature gate
+    const userRole = (session.user as unknown as { role: string }).role;
+    const gateErr = await enforceFeatureGate(session.user.id!, userRole, { type: "ai", feature: "ai_candidate_screening" });
+    if (gateErr) return gateErr;
 
     const ip =
       req.headers.get("x-forwarded-for") ??
@@ -56,7 +62,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Ownership check — user must be the employer or admin
-    const userRole = (session.user as unknown as { role?: string }).role;
     const userId = (session.user as unknown as { id: string }).id;
     if (userRole !== "admin") {
       const { Employer } = await import("@/models/Employer");

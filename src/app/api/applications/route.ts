@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import Offer from "@/models/Offer";
@@ -20,7 +21,8 @@ import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput } from "@/lib/ai/sanitize";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
-interface AuthCtx { userId: string; role: UserRole; locale: string; }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AuthCtx = any;
 
 function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
   const cleaned = (values ?? [])
@@ -53,6 +55,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
 
+  // Track employer's accessible job IDs for validation & dropdown
+  let accessibleJobIds: unknown[] | null = null;
+
   if (ctx.role === "job_seeker") {
     const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!seeker) return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 } });
@@ -62,7 +67,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     const { Employer } = await import("@/models/Employer");
     const { CompanyUser } = await import("@/models/CompanyUser");
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp) return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 } });
+    if (!emp) return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });
 
     // Check job-level access for team members
     const teamMember = await CompanyUser.findOne({
@@ -83,12 +88,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     }
 
     const jobs = await Job.find(jobQuery).select("_id").lean();
-    query.jobId = { $in: jobs.map((j) => j._id) };
+    accessibleJobIds = jobs.map((j) => j._id);
+    query.jobId = { $in: accessibleJobIds };
   } else if (ctx.role === "agent") {
     // Agent sees applications for their jobs + jobs from assigned employers
     const { Agent } = await import("@/models/Agent");
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
-    if (!agentDoc) return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 } });
+    if (!agentDoc) return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });
     const jobFilter: Record<string, unknown> = {
       $or: [
         { agentId: agentDoc._id },
@@ -98,11 +104,21 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       ],
     };
     const agentJobs = await Job.find(jobFilter).select("_id").lean();
-    query.jobId = { $in: agentJobs.map((j) => j._id) };
+    accessibleJobIds = agentJobs.map((j) => j._id);
+    query.jobId = { $in: accessibleJobIds };
   }
 
   if (status) query.status = status;
-  if (jobId) query.jobId = jobId;
+  // Validate jobId against accessible jobs to prevent unauthorized access
+  if (jobId) {
+    if (accessibleJobIds) {
+      const isAccessible = accessibleJobIds.some((id) => String(id) === jobId);
+      if (!isAccessible) {
+        return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });
+      }
+    }
+    query.jobId = jobId;
+  }
 
   // Date range filter on appliedAt
   if (dateFrom || dateTo) {
@@ -358,7 +374,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
   const body = await validateBody(req, applicationCreateSchema);
-  const { jobId, coverLetter } = body;
+  const { jobId, coverLetter, screeningAnswers } = body;
 
   const job = await Job.findById(jobId).lean();
   if (!job || job.status !== "active") {
@@ -373,6 +389,23 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const existing = await Application.findOne({ jobSeekerId: seeker._id, jobId }).lean();
   if (existing) {
     return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
+  }
+
+  // Validate required screening questions are answered
+  const jobScreeningQuestions = (job as Record<string, unknown>).screeningQuestions as Array<{ id: string; label: string; required: boolean }> | undefined;
+  if (jobScreeningQuestions && jobScreeningQuestions.length > 0) {
+    const answerMap = new Map((screeningAnswers ?? []).map((a: { questionId: string }) => [a.questionId, a]));
+    for (const q of jobScreeningQuestions) {
+      if (q.required) {
+        const answer = answerMap.get(q.id) as { answer?: string | string[] | boolean } | undefined;
+        if (!answer || answer.answer === "" || answer.answer === undefined || (Array.isArray(answer.answer) && answer.answer.length === 0)) {
+          return NextResponse.json(
+            { error: `Required screening question "${q.label}" must be answered` },
+            { status: 400 }
+          );
+        }
+      }
+    }
   }
 
   // Check employer's autoRejectBelow threshold for newly scored applications
@@ -405,7 +438,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     statusHistory: [{ status: "applied", changedAt: new Date(), note: "Application submitted" }],
     behaviorSignals: signals,
     behaviorScore: bScore,
+    screeningAnswers: screeningAnswers ?? [],
   });
+
+  // Track applicant on the job document for quick count access
+  await Job.updateOne(
+    { _id: jobId },
+    { $addToSet: { applicantIds: seeker._id } }
+  );
 
   // aiAutoScreen: if enabled, compute AI match score immediately and apply auto-reject if threshold set
   if (aiAutoScreen) {
@@ -496,5 +536,9 @@ Return JSON only: {"score":<0-100>,"breakdown":{"skills":<0-100>,"experience":<0
   return NextResponse.json({ application }, { status: 201 });
 }
 
-export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+export const GET = withAuth(
+  withSubscription(getHandler, { type: "limit", feature: "applicationsViewed" }),
+);
+export const POST = withAuth(
+  withSubscription(postHandler, { type: "limit", feature: "applicationsSubmitted" }),
+);

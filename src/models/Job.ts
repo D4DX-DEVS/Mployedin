@@ -4,6 +4,7 @@ export type JobStatus =
   | "draft"
   | "pending_approval"
   | "active"
+  | "paused"
   | "closed"
   | "expired";
 export type WorkflowMode = "auto" | "manual";
@@ -73,6 +74,18 @@ export interface IMatchingWeights {
   behaviorSignals: number;
 }
 
+export type ScreeningQuestionType = "text" | "textarea" | "select" | "checkbox" | "radio" | "number" | "date";
+
+export interface IScreeningQuestion {
+  id: string;
+  label: string;
+  type: ScreeningQuestionType;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+  order: number;
+}
+
 export interface IJob extends Document {
   _id: mongoose.Types.ObjectId;
   employerId: mongoose.Types.ObjectId;
@@ -93,6 +106,7 @@ export interface IJob extends Document {
   workflowMode: WorkflowMode;
   workflow?: IJobWorkflow;
   matchingWeights?: IMatchingWeights;
+  screeningQuestions?: IScreeningQuestion[];
   vacancies?: number;
   applicantIds: mongoose.Types.ObjectId[];
   poster: IJobPoster;
@@ -106,6 +120,7 @@ export interface IJob extends Document {
   tags: string[];
   visibility: JobVisibility;
   category?: string;
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -152,7 +167,7 @@ const JobSchema = new Schema<IJob>(
     },
     status: {
       type: String,
-      enum: ["draft", "pending_approval", "active", "closed", "expired"],
+      enum: ["draft", "pending_approval", "active", "paused", "closed", "expired"],
       default: "draft",
     },
     workflowMode: { type: String, enum: ["auto", "manual"], default: "manual" },
@@ -180,6 +195,16 @@ const JobSchema = new Schema<IJob>(
       availability: Number,
       behaviorSignals: Number,
     },
+    screeningQuestions: [{
+      id: { type: String, required: true },
+      label: { type: String, required: true, maxlength: 500 },
+      type: { type: String, enum: ["text", "textarea", "select", "checkbox", "radio", "number", "date"], required: true },
+      required: { type: Boolean, default: false },
+      options: [{ type: String, maxlength: 200 }],
+      placeholder: { type: String, maxlength: 200 },
+      order: { type: Number, default: 0 },
+      _id: false,
+    }],
     vacancies: { type: Number, min: 1 },
     applicantIds: [{ type: Schema.Types.ObjectId, ref: "JobSeeker" }],
     poster: {
@@ -201,6 +226,7 @@ const JobSchema = new Schema<IJob>(
     tags: [String],
     visibility: { type: String, enum: ["public", "private", "invite_only"], default: "public" },
     category: String,
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -208,6 +234,7 @@ const JobSchema = new Schema<IJob>(
 JobSchema.index({ employerId: 1 });
 JobSchema.index({ agentId: 1 });
 JobSchema.index({ status: 1 });
+JobSchema.index({ deletedAt: 1 });
 JobSchema.index({ "location.country": 1 });
 JobSchema.index({ "requirements.skills": 1 });
 JobSchema.index({ createdAt: -1 });

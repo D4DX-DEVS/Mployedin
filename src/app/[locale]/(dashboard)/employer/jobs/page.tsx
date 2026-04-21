@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal } from "lucide-react";
+import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,13 +17,14 @@ import { useDebounce } from "@/hooks/useDebounce";
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
   draft: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
+  paused: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
   closed: "bg-muted text-muted-foreground",
   expired: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
 };
 
 const JOB_SUMMARY_MAX_LENGTH = 180;
 
-type PendingJobAction = "activate" | "deactivate" | "delete";
+type PendingJobAction = "activate" | "deactivate" | "pause" | "delete";
 
 export default function EmployerJobsPage() {
   const router = useRouter();
@@ -34,7 +35,6 @@ export default function EmployerJobsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [approvalStatusFilter, setApprovalStatusFilter] = useState("all");
   const [workModeFilter, setWorkModeFilter] = useState("all");
   const [salaryVisibilityFilter, setSalaryVisibilityFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -54,7 +54,7 @@ export default function EmployerJobsPage() {
     .filter(Boolean);
 
   // Reset page when filters change
-  useEffect(() => { setPage(1); }, [statusFilter, approvalStatusFilter, workModeFilter, salaryVisibilityFilter, debouncedSearch, debouncedLocation, debouncedSkills]);
+  useEffect(() => { setPage(1); }, [statusFilter, workModeFilter, salaryVisibilityFilter, debouncedSearch, debouncedLocation, debouncedSkills]);
 
   useEffect(() => { document.title = "My Jobs · MPLOYEDIN"; }, []);
 
@@ -63,7 +63,6 @@ export default function EmployerJobsPage() {
     page,
     limit,
     status: statusFilter,
-    approvalStatus: approvalStatusFilter,
     workMode: workModeFilter,
     search: debouncedSearch,
     location: debouncedLocation,
@@ -76,7 +75,6 @@ export default function EmployerJobsPage() {
   const total = data?.pagination?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const hasActiveFilters = statusFilter !== "all"
-    || approvalStatusFilter !== "all"
     || workModeFilter !== "all"
     || salaryVisibilityFilter !== "all"
     || Boolean(search.trim())
@@ -96,6 +94,7 @@ export default function EmployerJobsPage() {
 
   const activeJobs = jobs.filter((job) => job.status === "active").length;
   const draftJobs = jobs.filter((job) => job.status === "draft").length;
+  const pausedJobs = jobs.filter((job) => job.status === "paused").length;
   const hiddenSalaryJobs = jobs.filter((job) => job.showSalary === false).length;
   const totalOpenings = jobs.reduce((sum, job) => sum + (job.vacancies ?? 0), 0);
 
@@ -162,6 +161,37 @@ export default function EmployerJobsPage() {
     }
   }
 
+  async function handlePauseJob(job: Job) {
+    const ok = await confirmDialog(
+      "Pause this job? It will temporarily stop accepting new applications. You can resume it at any time."
+    );
+    if (!ok) return;
+
+    setPendingJobAction({ jobId: job._id, action: "pause" });
+
+    try {
+      await updateStatus.mutateAsync({ jobId: job._id, status: "paused" });
+      toast.success("Job paused successfully!");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to pause job");
+    } finally {
+      setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
+    }
+  }
+
+  async function handleResumeJob(job: Job) {
+    setPendingJobAction({ jobId: job._id, action: "activate" });
+
+    try {
+      await updateStatus.mutateAsync({ jobId: job._id, status: "active" });
+      toast.success("Job resumed successfully!");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to resume job");
+    } finally {
+      setPendingJobAction((current) => (current?.jobId === job._id ? null : current));
+    }
+  }
+
   async function handleDeleteJob(job: Job) {
     const prompt =
       job.status === "draft"
@@ -204,14 +234,9 @@ export default function EmployerJobsPage() {
     return `${Math.max(min, max).toLocaleString()} ${currency}`;
   }
 
-  function getApprovalStatus(job: Job): "pending" | "approved" | "rejected" | undefined {
-    return job.poster?.approvalStatus ?? job["poster.approvalStatus"];
-  }
-
   function resetFilters() {
     setSearch("");
     setStatusFilter("all");
-    setApprovalStatusFilter("all");
     setWorkModeFilter("all");
     setSalaryVisibilityFilter("all");
     setLocationFilter("");
@@ -245,7 +270,6 @@ export default function EmployerJobsPage() {
       // $all causes $text to match descriptions that merely mention the skill name.
       setSearch(hasSkills ? "" : (filters.search ?? ""));
       setStatusFilter(filters.status ?? "all");
-      setApprovalStatusFilter(filters.approvalStatus ?? "all");
       setWorkModeFilter(filters.workMode ?? "all");
       setLocationFilter(filters.location ?? "");
       setSkillsFilter(hasSkills ? filters.skills.join(", ") : "");
@@ -265,7 +289,7 @@ export default function EmployerJobsPage() {
   }
 
   function getFilledSlots(job: Job): number {
-    return job.applicantIds?.length ?? 0;
+    return job.applicationCount ?? job.applicantIds?.length ?? 0;
   }
 
   function getJobSummary(job: Job): string | null {
@@ -392,6 +416,7 @@ export default function EmployerJobsPage() {
             options={[
               { value: "all", label: "All statuses" },
               { value: "active", label: "Active" },
+              { value: "paused", label: "Paused" },
               { value: "draft", label: "Draft" },
               { value: "closed", label: "Closed" },
               { value: "expired", label: "Expired" },
@@ -399,18 +424,6 @@ export default function EmployerJobsPage() {
             value={statusFilter}
             onValueChange={setStatusFilter}
             placeholder="All statuses"
-          />
-          <SearchableSelect
-            className="h-11 w-full rounded-xl border-border bg-background/70"
-            options={[
-              { value: "all", label: "All approvals" },
-              { value: "pending", label: "Pending approval" },
-              { value: "approved", label: "Approved" },
-              { value: "rejected", label: "Rejected" },
-            ]}
-            value={approvalStatusFilter}
-            onValueChange={setApprovalStatusFilter}
-            placeholder="All approvals"
           />
         </div>
 
@@ -548,8 +561,8 @@ export default function EmployerJobsPage() {
             const expires = job.expiresAt ? new Date(job.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
             const isActivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "activate";
             const isDeactivating = pendingJobAction?.jobId === job._id && pendingJobAction.action === "deactivate";
+            const isPausing = pendingJobAction?.jobId === job._id && pendingJobAction.action === "pause";
             const isDeleting = pendingJobAction?.jobId === job._id && pendingJobAction.action === "delete";
-            const approvalStatus = getApprovalStatus(job);
             const jobSummary = getJobSummary(job);
 
             return (
@@ -562,12 +575,6 @@ export default function EmployerJobsPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{job.title}</h3>
                       <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2.5 py-0.5 text-xs font-medium capitalize`}>{job.status}</Badge>
-                      {approvalStatus === "pending" && (
-                        <Badge className="border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-300">Pending Approval</Badge>
-                      )}
-                      {approvalStatus === "rejected" && (
-                        <Badge className="border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-300">Approval Rejected</Badge>
-                      )}
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-1.5">
                       <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job)}</span>
@@ -689,11 +696,26 @@ export default function EmployerJobsPage() {
                         </Button>
                       )}
                       {can("jobs", "update") && job.status === "active" && (
+                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-sky-200 px-3 text-sky-700 hover:bg-sky-50 dark:border-sky-500/30 dark:text-sky-300 dark:hover:bg-sky-950/40" onClick={() => { void handlePauseJob(job); }} disabled={isPausing}>
+                          <PauseCircle className="h-4 w-4" /> {isPausing ? "Pausing…" : "Pause"}
+                        </Button>
+                      )}
+                      {can("jobs", "update") && job.status === "active" && (
                         <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-orange-200 px-3 text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-950/40" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
                           <Clock className="h-4 w-4" /> {isDeactivating ? "Deactivating…" : "Deactivate"}
                         </Button>
                       )}
-                      {can("jobs", "delete") && (job.status === "draft" || job.status === "closed" || job.status === "expired") && (
+                      {can("jobs", "update") && job.status === "paused" && (
+                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-xl border-emerald-200 px-3 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleResumeJob(job); }} disabled={isActivating}>
+                          <PlayCircle className="h-3.5 w-3.5" /> {isActivating ? "Resuming…" : "Resume"}
+                        </Button>
+                      )}
+                      {can("jobs", "update") && job.status === "paused" && (
+                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-orange-200 px-3 text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-950/40" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
+                          <Clock className="h-4 w-4" /> {isDeactivating ? "Deactivating…" : "Deactivate"}
+                        </Button>
+                      )}
+                      {can("jobs", "delete") && (job.status === "draft" || job.status === "paused" || job.status === "closed" || job.status === "expired") && (
                         <Button size="sm" variant="outline" title="Delete" className="h-9 gap-2 rounded-xl border-destructive/20 px-3 text-destructive hover:bg-destructive/5"
                           onClick={() => { void handleDeleteJob(job); }} disabled={isDeleting}>
                           <Trash2 className="h-4 w-4" /> {isDeleting ? "Deleting…" : "Delete"}

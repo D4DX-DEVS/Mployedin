@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { JobTemplatePickers } from "./JobTemplatePickers";
+import type { WorkflowTemplateItem } from "@/hooks/useWorkflowTemplates";
+import type { MatchingWeightTemplateItem } from "@/hooks/useMatchingWeightTemplates";
 import type { JobFormValues } from "./jobFormSchema";
 
 interface AssignedAgent {
@@ -30,6 +33,8 @@ export function AdvancedSettingsSection() {
   const agentId = watch("agentId");
 
   const [agents, setAgents] = useState<AssignedAgent[]>([]);
+  const [selectedWorkflowTemplateId, setSelectedWorkflowTemplateId] = useState<string | null>(null);
+  const [selectedMatchingWeightTemplateId, setSelectedMatchingWeightTemplateId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/employers/agents")
@@ -94,6 +99,16 @@ export function AdvancedSettingsSection() {
             {agentId && agents.length > 0 && (
               <Badge variant="secondary" className="text-[11px]">
                 Agent: {agents.find((a) => a._id === agentId)?.name ?? "assigned"}
+              </Badge>
+            )}
+            {selectedWorkflowTemplateId && (
+              <Badge variant="secondary" className="text-[11px]">
+                Workflow template
+              </Badge>
+            )}
+            {selectedMatchingWeightTemplateId && (
+              <Badge variant="secondary" className="text-[11px]">
+                Weight template
               </Badge>
             )}
           </div>
@@ -261,6 +276,22 @@ export function AdvancedSettingsSection() {
                   </p>
                 </div>
               )}
+
+              {/* ─── Workflow & Matching Weight Templates ─── */}
+              <div className="space-y-2 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
+                <Label className="text-sm font-medium">Hiring Configuration Templates</Label>
+                <p className="text-xs text-muted-foreground">
+                  Optionally apply a workflow pipeline and matching weight preset to this job
+                </p>
+                <div className="mt-2">
+                  <JobTemplatePickers
+                    selectedWorkflowTemplateId={selectedWorkflowTemplateId}
+                    selectedMatchingWeightTemplateId={selectedMatchingWeightTemplateId}
+                    onWorkflowTemplateSelect={(t: WorkflowTemplateItem | null) => setSelectedWorkflowTemplateId(t?._id ?? null)}
+                    onMatchingWeightTemplateSelect={(t: MatchingWeightTemplateItem | null) => setSelectedMatchingWeightTemplateId(t?._id ?? null)}
+                  />
+                </div>
+              </div>
 
               <div className="space-y-2 rounded-xl border border-border/70 bg-background p-4">
                 <Label className="text-sm font-medium">Tags</Label>

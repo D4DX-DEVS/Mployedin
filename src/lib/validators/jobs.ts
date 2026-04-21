@@ -1,6 +1,16 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
 
+const screeningQuestionSchema = z.object({
+  id: z.string().min(1).max(50),
+  label: z.string().min(1).max(500),
+  type: z.enum(["text", "textarea", "select", "checkbox", "radio", "number", "date"]),
+  required: z.boolean().default(false),
+  options: z.array(z.string().max(200)).max(20).optional(),
+  placeholder: z.string().max(200).optional(),
+  order: z.number().int().min(0).default(0),
+});
+
 const locationSchema = z.object({
   country: z.string().min(1).max(100),
   city: z.string().min(1).max(100),
@@ -59,6 +69,7 @@ export const jobCreateSchema = z.object({
   tags: z.array(z.string().max(50)).max(20).optional(),
   visibility: z.enum(["public", "private", "invite_only"]).optional(),
   status: z.enum(["draft", "active"]).optional(),
+  screeningQuestions: z.array(screeningQuestionSchema).max(20).optional(),
 });
 
 export const jobUpdateSchema = z.object({
@@ -66,7 +77,7 @@ export const jobUpdateSchema = z.object({
   description: z.string().min(20).max(5000).trim().optional(),
   category: z.string().max(100).optional(),
   location: locationSchema.optional(),
-  status: z.enum(["draft", "active", "closed", "expired"]).optional(),
+  status: z.enum(["draft", "active", "paused", "closed", "expired"]).optional(),
   requirements: requirementsSchema.optional(),
   salary: salarySchema.optional(),
   employmentType: z.enum(["full_time", "part_time", "contract", "internship", "freelance"]).optional(),
@@ -83,4 +94,5 @@ export const jobUpdateSchema = z.object({
   maxApplicants: z.number().int().min(1).max(10000).optional(),
   showSalary: z.boolean().optional(),
   visibility: z.enum(["public", "private", "invite_only"]).optional(),
+  screeningQuestions: z.array(screeningQuestionSchema).max(20).optional(),
 });

@@ -37,6 +37,7 @@ const RESOURCE_LABELS: Record<Resource, string> = {
   cms: "CMS",
   contact_submissions: "Contact Submissions",
   offers: "Offers",
+  subscriptions: "Subscriptions",
 };
 
 /** Human-readable labels for actions */

@@ -3,7 +3,10 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Interview from "@/models/Interview";
 import Application from "@/models/Application";
+import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
+// Ensure Mongoose model registration for populate
+void Job;
 import { validateBody } from "@/lib/validators";
 import { interviewCreateSchema } from "@/lib/validators/interviews";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";

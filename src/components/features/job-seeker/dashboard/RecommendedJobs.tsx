@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useFeatureGate } from "@/hooks/useFeatureGate";
 import {
   Sparkles,
   MapPin,
@@ -108,6 +109,8 @@ export function RecommendedJobs({ locale }: { locale: string }) {
     },
     [hasNextPage, isFetchingNextPage, fetchNextPage]
   );
+
+  const { allowed: applyAllowed } = useFeatureGate("applicationsSubmitted");
 
   const applyMutation = useMutation({
     mutationFn: (jobId: string) =>
@@ -294,8 +297,8 @@ export function RecommendedJobs({ locale }: { locale: string }) {
                 <Button
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => applyMutation.mutate(job._id)}
-                  disabled={isApplied || (applyMutation.isPending && applyMutation.variables === job._id)}
+                  onClick={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error("Application limit reached — upgrade your plan")}
+                  disabled={!applyAllowed || isApplied || (applyMutation.isPending && applyMutation.variables === job._id)}
                 >
                   {isApplied ? (
                     <>

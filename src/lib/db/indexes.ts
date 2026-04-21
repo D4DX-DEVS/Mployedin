@@ -186,5 +186,34 @@ export async function ensureIndexes() {
     { key: { isActive: 1, sortOrder: 1 } },
   ]);
 
+  // ── Subscription Plans ──────────────────────────────────────────────────────
+  await safeCreateIndexes(db, "subscriptionplans", [
+    { key: { slug: 1 }, unique: true },
+    { key: { targetRole: 1, isActive: 1, sortOrder: 1 } },
+    { key: { isDefault: 1, targetRole: 1 } },
+  ]);
+
+  // ── Subscriptions ─────────────────────────────────────────────────────────
+  await safeCreateIndexes(db, "subscriptions", [
+    { key: { userId: 1, targetRole: 1, status: 1 } },
+    { key: { endDate: 1, status: 1 } },
+    { key: { planId: 1 } },
+    { key: { usageResetAt: 1, status: 1 } },
+  ]);
+
+  // ── Invoices ──────────────────────────────────────────────────────────────
+  await safeCreateIndexes(db, "invoices", [
+    { key: { invoiceNumber: 1 }, unique: true },
+    { key: { userId: 1, createdAt: -1 } },
+    { key: { subscriptionId: 1 } },
+    { key: { status: 1 } },
+  ]);
+
+  // ── Subscription History ──────────────────────────────────────────────────
+  await safeCreateIndexes(db, "subscriptionhistories", [
+    { key: { userId: 1, createdAt: -1 } },
+    { key: { subscriptionId: 1 } },
+  ]);
+
   console.log("[DB] Indexes ensured ✅");
 }

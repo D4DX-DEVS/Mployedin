@@ -5,7 +5,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Edit2, Copy, CheckCircle, XCircle, Clock, MapPin,
   Briefcase, DollarSign, Users, Eye, Calendar, Tag, Trash2,
-  GitBranch, SlidersHorizontal,
+  GitBranch, SlidersHorizontal, PauseCircle, PlayCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,7 @@ interface Job {
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700 border-emerald-200",
   draft: "bg-amber-100 text-amber-700 border-amber-200",
+  paused: "bg-sky-100 text-sky-700 border-sky-200",
   closed: "bg-muted text-muted-foreground",
   expired: "bg-red-100 text-red-700 border-red-200",
   pending_approval: "bg-blue-100 text-blue-700 border-blue-200",
@@ -69,7 +70,7 @@ export default function JobDetailPage() {
   }
 
   async function handleDelete() {
-    const ok = await confirmDialog("Delete this draft job? This cannot be undone.");
+    const ok = await confirmDialog("Delete this job? It will be removed from your job list.");
     if (!ok) return;
     setDeleting(true);
     try {
@@ -157,6 +158,21 @@ export default function JobDetailPage() {
             </Button>
           )}
           {can("jobs", "update") && job.status === "active" && (
+            <Button size="sm" variant="outline" className="gap-1.5 h-9 border-sky-200 text-sky-700 hover:bg-sky-50" onClick={() => updateStatus("paused")}>
+              <PauseCircle className="w-3.5 h-3.5" /> Pause
+            </Button>
+          )}
+          {can("jobs", "update") && job.status === "active" && (
+            <Button size="sm" variant="destructive" className="gap-1.5 h-9" onClick={() => updateStatus("closed")}>
+              <XCircle className="w-3.5 h-3.5" /> Close Job
+            </Button>
+          )}
+          {can("jobs", "update") && job.status === "paused" && (
+            <Button size="sm" className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateStatus("active")}>
+              <PlayCircle className="w-3.5 h-3.5" /> Resume
+            </Button>
+          )}
+          {can("jobs", "update") && job.status === "paused" && (
             <Button size="sm" variant="destructive" className="gap-1.5 h-9" onClick={() => updateStatus("closed")}>
               <XCircle className="w-3.5 h-3.5" /> Close Job
             </Button>

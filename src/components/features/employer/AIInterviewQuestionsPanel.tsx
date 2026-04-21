@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   X, Sparkles, Loader2, ChevronDown, ChevronUp,
   Copy, Check, Printer, AlertTriangle, Lightbulb, Target,
+  History, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +20,15 @@ interface Question {
 
 type QuestionType = "technical" | "behavioral" | "culture_fit" | "situational";
 
+interface SavedSet {
+  _id: string;
+  questionType: QuestionType;
+  questions: Question[];
+  createdAt: string;
+}
+
 interface Props {
+  interviewId?: string;
   jobTitle: string;
   candidateName?: string;
   skills?: string[];
@@ -34,6 +44,7 @@ const TABS: { key: QuestionType; label: string; color: string }[] = [
 ];
 
 export function AIInterviewQuestionsPanel({
+  interviewId,
   jobTitle,
   candidateName,
   skills = [],
@@ -43,12 +54,48 @@ export function AIInterviewQuestionsPanel({
   const [activeTab, setActiveTab] = useState<QuestionType>("technical");
   const [count, setCount] = useState("8");
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState("");
+  // Current (latest) questions per type
   const [questionsByType, setQuestionsByType] = useState<Partial<Record<QuestionType, Question[]>>>({});
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  // Full history per type (all previous saved sets, newest first)
+  const [historyByType, setHistoryByType] = useState<Partial<Record<QuestionType, SavedSet[]>>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const questions = questionsByType[activeTab] ?? [];
+  const history = historyByType[activeTab] ?? [];
+
+  // Load saved question history on mount
+  const loadHistory = useCallback(async () => {
+    if (!interviewId) return;
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/ai/interview-questions?interviewId=${interviewId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const byType = data.history as Record<string, SavedSet[]>;
+
+      setHistoryByType(byType);
+
+      // Pre-populate latest questions per type from history
+      const latest: Partial<Record<QuestionType, Question[]>> = {};
+      for (const type of TABS.map((t) => t.key)) {
+        const sets = byType[type];
+        if (sets?.length) {
+          latest[type] = sets[0].questions;
+        }
+      }
+      setQuestionsByType(latest);
+    } catch {
+      // Silently fail — user can still generate fresh
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [interviewId]);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   async function generate(type: QuestionType) {
     setLoading(true);
@@ -59,7 +106,9 @@ export function AIInterviewQuestionsPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          interviewId,
           jobTitle,
+          candidateName,
           skills,
           experienceYears,
           questionType: type,
@@ -72,6 +121,11 @@ export function AIInterviewQuestionsPanel({
       }
       const data = await res.json();
       setQuestionsByType((prev) => ({ ...prev, [type]: data.questions }));
+
+      // Refresh history to include the newly saved set
+      if (interviewId) {
+        loadHistory();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -82,16 +136,24 @@ export function AIInterviewQuestionsPanel({
   function handleTabChange(type: QuestionType) {
     setActiveTab(type);
     setError("");
-    // Auto-generate if not already loaded
-    if (!questionsByType[type]) generate(type);
+    setShowHistory(false);
   }
 
-  function toggleExpand(i: number) {
-    setExpanded((prev) => ({ ...prev, [i]: !prev[i] }));
+  function toggleExpand(key: string) {
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function getAllDisplayQuestions(): Question[] {
+    if (showHistory) {
+      // Flatten all history sets for the active tab
+      return history.flatMap((s) => s.questions);
+    }
+    return questions;
   }
 
   function copyAll() {
-    const text = questions
+    const allQ = getAllDisplayQuestions();
+    const text = allQ
       .map((q, i) => `Q${i + 1}: ${q.question}\n→ Tests: ${q.tests}\n→ Strong answer: ${q.strongAnswer}\n→ Red flag: ${q.redFlag}`)
       .join("\n\n");
     navigator.clipboard.writeText(text).then(() => {
@@ -101,6 +163,7 @@ export function AIInterviewQuestionsPanel({
   }
 
   function printQuestions() {
+    const allQ = getAllDisplayQuestions();
     const html = `
       <html><head><title>Interview Questions — ${jobTitle}</title>
       <style>body{font-family:sans-serif;padding:24px;max-width:700px;margin:auto}
@@ -112,8 +175,8 @@ export function AIInterviewQuestionsPanel({
       .redflag{color:#dc2626}</style></head>
       <body>
       <h1>Interview Questions: ${jobTitle}</h1>
-      <p class="meta">${candidateName ? `Candidate: ${candidateName} · ` : ""}Type: ${activeTab.replace("_", " ")} · ${questions.length} questions</p>
-      ${questions.map((q, i) => `
+      <p class="meta">${candidateName ? `Candidate: ${candidateName} · ` : ""}Type: ${activeTab.replace("_", " ")} · ${allQ.length} questions</p>
+      ${allQ.map((q, i) => `
         <div class="q">
           <h3>Q${i + 1}: ${q.question}</h3>
           <div class="label">Tests</div><div class="val">${q.tests}</div>
@@ -125,14 +188,65 @@ export function AIInterviewQuestionsPanel({
     if (w) { w.document.write(html); w.document.close(); w.print(); }
   }
 
-  const activeTabMeta = TABS.find((t) => t.key === activeTab)!;
+  function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString(undefined, {
+      month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    });
+  }
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-end bg-black/50 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="relative flex flex-col bg-background h-full w-full max-w-xl shadow-2xl overflow-hidden">
+  const activeTabMeta = TABS.find((t) => t.key === activeTab)!;
+  const totalHistorySets = history.length;
+
+  function renderQuestionCard(q: Question, idx: number, keyPrefix: string) {
+    const key = `${keyPrefix}-${idx}`;
+    return (
+      <div key={key} className="rounded-xl border bg-card overflow-hidden">
+        <button
+          className="w-full flex items-start gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+          onClick={() => toggleExpand(key)}
+        >
+          <span className={`shrink-0 w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center border ${activeTabMeta.color}`}>
+            {idx + 1}
+          </span>
+          <p className="flex-1 text-sm font-medium leading-snug">{q.question}</p>
+          {expanded[key]
+            ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+            : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />}
+        </button>
+
+        {expanded[key] && (
+          <div className="border-t divide-y text-xs">
+            <div className="px-4 py-3 flex gap-2">
+              <Target className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px] mb-1">Tests</p>
+                <p className="text-foreground/80">{q.tests}</p>
+              </div>
+            </div>
+            <div className="px-4 py-3 flex gap-2">
+              <Lightbulb className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-emerald-700 uppercase tracking-wide text-[10px] mb-1">Strong Answer</p>
+                <p className="text-foreground/80">{q.strongAnswer}</p>
+              </div>
+            </div>
+            <div className="px-4 py-3 flex gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-red-600 uppercase tracking-wide text-[10px] mb-1">Red Flag</p>
+                <p className="text-foreground/80">{q.redFlag}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return createPortal(
+    <>
+      <div className="fixed inset-0 z-[70]" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-[70] flex flex-col bg-background w-full max-w-xl shadow-2xl border-l border-border/60 overflow-hidden animate-in slide-in-from-right duration-300">
 
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4 border-b shrink-0">
@@ -163,21 +277,25 @@ export function AIInterviewQuestionsPanel({
         {/* Tabs + Controls */}
         <div className="px-5 pt-4 pb-3 border-b shrink-0 space-y-3">
           <div className="flex gap-1.5 flex-wrap">
-            {TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => handleTabChange(tab.key)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all
-                  ${activeTab === tab.key
-                    ? tab.color
-                    : "bg-muted text-muted-foreground border-transparent hover:border-border"}`}
-              >
-                {tab.label}
-                {questionsByType[tab.key] && (
-                  <span className="ml-1 opacity-60">({questionsByType[tab.key]!.length})</span>
-                )}
-              </button>
-            ))}
+            {TABS.map((tab) => {
+              const tabHistory = historyByType[tab.key];
+              const totalQ = tabHistory?.reduce((sum, s) => sum + s.questions.length, 0) ?? 0;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => handleTabChange(tab.key)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-all
+                    ${activeTab === tab.key
+                      ? tab.color
+                      : "bg-muted text-muted-foreground border-transparent hover:border-border"}`}
+                >
+                  {tab.label}
+                  {totalQ > 0 && (
+                    <span className="ml-1 opacity-60">({totalQ})</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Questions:</span>
@@ -198,6 +316,17 @@ export function AIInterviewQuestionsPanel({
               {loading ? "Generating..." : questions.length ? "Regenerate" : "Generate"}
             </Button>
           </div>
+
+          {/* History toggle */}
+          {totalHistorySets > 1 && (
+            <button
+              className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${showHistory ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setShowHistory((p) => !p)}
+            >
+              <History className="w-3.5 h-3.5" />
+              {showHistory ? "Show latest only" : `View all history (${totalHistorySets} sets)`}
+            </button>
+          )}
         </div>
 
         {/* Questions List */}
@@ -209,16 +338,16 @@ export function AIInterviewQuestionsPanel({
             </div>
           )}
 
-          {loading && (
+          {(loading || historyLoading) && (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">
-                Generating {count} {activeTabMeta.label.toLowerCase()} questions...
+                {historyLoading ? "Loading saved questions..." : `Generating ${count} ${activeTabMeta.label.toLowerCase()} questions...`}
               </p>
             </div>
           )}
 
-          {!loading && questions.length === 0 && !error && (
+          {!loading && !historyLoading && questions.length === 0 && !error && (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <Sparkles className="w-8 h-8 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
@@ -227,54 +356,35 @@ export function AIInterviewQuestionsPanel({
             </div>
           )}
 
-          {!loading && questions.map((q, i) => (
-            <div key={i} className="rounded-xl border bg-card overflow-hidden">
-              {/* Question row */}
-              <button
-                className="w-full flex items-start gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
-                onClick={() => toggleExpand(i)}
-              >
-                <span className={`shrink-0 w-6 h-6 rounded-full text-[11px] font-bold flex items-center justify-center border ${activeTabMeta.color}`}>
-                  {i + 1}
-                </span>
-                <p className="flex-1 text-sm font-medium leading-snug">{q.question}</p>
-                {expanded[i]
-                  ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                  : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />}
-              </button>
-
-              {/* Expanded detail */}
-              {expanded[i] && (
-                <div className="border-t divide-y text-xs">
-                  <div className="px-4 py-3 flex gap-2">
-                    <Target className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-muted-foreground uppercase tracking-wide text-[10px] mb-1">Tests</p>
-                      <p className="text-foreground/80">{q.tests}</p>
-                    </div>
+          {/* Show history view — all sets grouped by date */}
+          {!loading && !historyLoading && showHistory && history.length > 0 && (
+            <>
+              {history.map((set, setIdx) => (
+                <div key={set._id}>
+                  <div className="flex items-center gap-2 mb-2 mt-1">
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-[11px] font-medium text-muted-foreground">
+                      {formatDate(set.createdAt)} · {set.questions.length} questions
+                      {setIdx === 0 && <Badge variant="secondary" className="ml-1.5 text-[9px] h-4 px-1">Latest</Badge>}
+                    </span>
                   </div>
-                  <div className="px-4 py-3 flex gap-2">
-                    <Lightbulb className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-emerald-700 uppercase tracking-wide text-[10px] mb-1">Strong Answer</p>
-                      <p className="text-foreground/80">{q.strongAnswer}</p>
-                    </div>
+                  <div className="space-y-2">
+                    {set.questions.map((q, qi) => renderQuestionCard(q, qi, `h-${set._id}`))}
                   </div>
-                  <div className="px-4 py-3 flex gap-2">
-                    <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-red-600 uppercase tracking-wide text-[10px] mb-1">Red Flag</p>
-                      <p className="text-foreground/80">{q.redFlag}</p>
-                    </div>
-                  </div>
+                  {setIdx < history.length - 1 && (
+                    <div className="border-t border-dashed border-border/60 my-4" />
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              ))}
+            </>
+          )}
+
+          {/* Show latest questions (default view) */}
+          {!loading && !historyLoading && !showHistory && questions.map((q, i) => renderQuestionCard(q, i, "current"))}
         </div>
 
         {/* Footer Actions */}
-        {questions.length > 0 && (
+        {getAllDisplayQuestions().length > 0 && (
           <div className="px-5 py-3 border-t flex gap-2 shrink-0">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={copyAll}>
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
@@ -285,11 +395,12 @@ export function AIInterviewQuestionsPanel({
               Print
             </Button>
             <p className="text-xs text-muted-foreground ms-auto flex items-center">
-              {questions.length} questions · {activeTabMeta.label}
+              {getAllDisplayQuestions().length} questions · {activeTabMeta.label}
             </p>
           </div>
         )}
       </div>
-    </div>
+    </>,
+    document.body
   );
 }

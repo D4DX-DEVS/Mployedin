@@ -17,6 +17,7 @@ import { Step1BasicInfo } from "./Step1BasicInfo";
 import { Step2JobDetails } from "./Step2JobDetails";
 import { Step3Requirements } from "./Step3Requirements";
 import { Step4SalarySettings } from "./Step4SalarySettings";
+import { Step5ScreeningQuestions } from "./Step5ScreeningQuestions";
 import { AdvancedSettingsSection } from "./AdvancedSettingsSection";
 import { JobQualityScore } from "./JobQualityScore";
 import { MatchPreviewPanel } from "./MatchPreviewPanel";
@@ -35,6 +36,7 @@ const STEP_FIELDS: Record<number, (keyof JobFormValues)[]> = {
   2: ["description"],
   3: ["requirements"],
   4: ["salary"],
+  5: ["screeningQuestions"],
 };
 
 interface JobTemplateData {
@@ -91,6 +93,7 @@ const DEFAULT_JOB_FORM_VALUES: JobFormValues = {
   tags: [],
   expiresAt: "",
   agentId: undefined,
+  screeningQuestions: [],
 };
 
 function mergeJobFormValues(base: JobFormValues, incoming: Partial<JobFormValues>): JobFormValues {
@@ -116,6 +119,7 @@ function mergeJobFormValues(base: JobFormValues, incoming: Partial<JobFormValues
     qualifications: incoming.qualifications ?? base.qualifications,
     benefits: incoming.benefits ?? base.benefits,
     learningOutcomes: incoming.learningOutcomes ?? base.learningOutcomes,
+    screeningQuestions: incoming.screeningQuestions ?? base.screeningQuestions,
   };
 }
 
@@ -536,10 +540,11 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
                     />
                   )}
                   {currentStep === 4 && <Step4SalarySettings key="step4" />}
+                  {currentStep === 5 && <Step5ScreeningQuestions key="step5" />}
                 </AnimatePresence>
               </div>
 
-              {/* Advanced settings only on last step */}
+              {/* Advanced settings only on step 4 */}
               {currentStep === 4 && (
                 <div className="mt-3">
                   <AdvancedSettingsSection />

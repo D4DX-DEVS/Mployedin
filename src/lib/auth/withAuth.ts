@@ -15,6 +15,7 @@ interface AuthContext {
   customPermissions?: CustomPermissions;
   companyUserRole?: CompanyRole;
   companyId?: string;
+  [key: string]: unknown;
 }
 
 type RouteHandler = (

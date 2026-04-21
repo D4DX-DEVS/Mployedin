@@ -4,12 +4,14 @@ import User from "@/models/User";
 import Employer from "@/models/Employer";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import ReferralLink from "@/models/ReferralLink";
 import { CompanyUser, getDefaultPermissions } from "@/models/CompanyUser";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
+import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 
 export const runtime = "nodejs";
 
@@ -85,18 +87,50 @@ export async function POST(req: NextRequest) {
     let referrerAgentId: string | undefined;
     let isAgentVerified = false;
     let verifiedByAgentId: string | undefined;
+    let matchedReferralLink: { _id: string } | null = null;
 
     if (referralCode) {
-      const agentRef = await Agent.findOne({ referralCode }).select("_id userId").lean();
-      if (agentRef) {
-        referrerAgentId = agentRef._id.toString();
-        isAgentVerified = true;
-        verifiedByAgentId = agentRef.userId.toString();
+      // 1. Check new ReferralLink collection first
+      const rl = await ReferralLink.findOne({ code: referralCode, isActive: true });
+      if (rl) {
+        // Check expiry
+        if (rl.expiresAt && rl.expiresAt < new Date()) {
+          return NextResponse.json({ message: "This referral link has expired." }, { status: 400 });
+        }
+        // Check max uses
+        if (rl.maxUses > 0 && rl.usedCount >= rl.maxUses) {
+          return NextResponse.json({ message: "This referral link has reached its maximum usage." }, { status: 400 });
+        }
+        matchedReferralLink = { _id: rl._id.toString() };
+
+        // Resolve agent/super-agent from the link
+        if (rl.agentId) {
+          const agentRef = await Agent.findById(rl.agentId).select("_id userId").lean();
+          if (agentRef) {
+            referrerAgentId = agentRef._id.toString();
+            isAgentVerified = true;
+            verifiedByAgentId = agentRef.userId.toString();
+          }
+        } else if (rl.superAgentId) {
+          const saRef = await SuperAgent.findById(rl.superAgentId).select("userId").lean();
+          if (saRef) {
+            isAgentVerified = true;
+            verifiedByAgentId = saRef.userId.toString();
+          }
+        }
       } else {
-        const saRef = await SuperAgent.findOne({ referralCode }).select("userId").lean();
-        if (saRef) {
+        // 2. Fallback: legacy referral codes on Agent/SuperAgent models
+        const agentRef = await Agent.findOne({ referralCode }).select("_id userId").lean();
+        if (agentRef) {
+          referrerAgentId = agentRef._id.toString();
           isAgentVerified = true;
-          verifiedByAgentId = saRef.userId.toString();
+          verifiedByAgentId = agentRef.userId.toString();
+        } else {
+          const saRef = await SuperAgent.findOne({ referralCode }).select("userId").lean();
+          if (saRef) {
+            isAgentVerified = true;
+            verifiedByAgentId = saRef.userId.toString();
+          }
         }
       }
     }
@@ -119,6 +153,24 @@ export async function POST(req: NextRequest) {
       ...(verifiedByAgentId ? { verifiedByAgentId } : {}),
     });
 
+    // Track referral link usage
+    if (matchedReferralLink) {
+      await ReferralLink.findByIdAndUpdate(matchedReferralLink._id, {
+        $inc: { usedCount: 1 },
+        $push: {
+          registrations: {
+            employerId: employer._id,
+            userId: user._id,
+            companyName,
+            email: contactEmail,
+            country: country || undefined,
+            city: city || undefined,
+            registeredAt: new Date(),
+          },
+        },
+      });
+    }
+
     // Link employer to referring agent
     if (referrerAgentId) {
       await Agent.findByIdAndUpdate(referrerAgentId, {
@@ -139,6 +191,11 @@ export async function POST(req: NextRequest) {
       acceptedAt: new Date(),
       status: "active",
     });
+
+    // Auto-assign default subscription plan (fire-and-forget — don't block registration)
+    autoAssignDefaultPlan(user._id.toString(), "employer").catch((err) =>
+      console.error("[Registration] Failed to auto-assign subscription:", err),
+    );
 
     await logActivity({
       actorId: user._id.toString(),

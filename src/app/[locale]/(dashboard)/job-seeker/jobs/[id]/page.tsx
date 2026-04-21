@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { MapPin, Briefcase, Clock, Users, Globe } from "lucide-react";
 import Link from "next/link";
-import EasyApply from "@/components/features/public/EasyApply";
+import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/features/public/EasyApply";
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsights";
@@ -260,7 +260,12 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   ) : null}
                 </div>
                 <div className="mt-4">
-                  <EasyApply jobId={String(job._id)} jobTitle={job.title} locale={locale} />
+                  <EasyApply
+                    jobId={String(job._id)}
+                    jobTitle={job.title}
+                    locale={locale}
+                    screeningQuestions={(job as Record<string, unknown>).screeningQuestions as EasyApplyScreeningQuestion[] | undefined}
+                  />
                 </div>
               </aside>
             </div>

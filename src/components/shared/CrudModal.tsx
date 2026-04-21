@@ -23,6 +23,7 @@ export interface CrudField {
   required?: boolean;
   placeholder?: string;
   options?: { value: string; label: string }[];
+  min?: string;
 }
 
 interface CrudModalProps {
@@ -113,6 +114,7 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
                       onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
                       required={field.required}
                       placeholder={field.placeholder}
+                      min={field.min}
                     />
                   )}
                 </div>

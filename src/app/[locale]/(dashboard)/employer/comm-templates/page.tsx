@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { FeatureGate } from "@/components/shared/FeatureGate";
 import type { CommTemplateType } from "@/models/CommTemplate";
 import { toast } from "sonner";
 import { useCommTemplates, useCreateCommTemplate, useDeleteCommTemplate } from "@/hooks/useCommTemplates";
@@ -79,6 +80,7 @@ export default function CommTemplatesPage() {
     : templates.filter((t) => t.type === filterType);
 
   return (
+    <FeatureGate feature="commTemplates">
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
       <PageHeader
@@ -243,5 +245,6 @@ export default function CommTemplatesPage() {
         </div>
       )}
     </div>
+    </FeatureGate>
   );
 }

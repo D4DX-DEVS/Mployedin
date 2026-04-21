@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import {
   ArrowRight,
   BriefcaseBusiness,
-  CalendarRange,
+  Building2,
   Inbox,
   Loader2,
   Plus,
@@ -21,6 +21,7 @@ import {
   Sparkles,
   Users,
   Edit2,
+  Eye,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,13 +31,18 @@ interface JobItem {
   _id: string;
   title: string;
   status: string;
-  poster?: { approvalStatus?: string };
   location?: { city?: string; country?: string; isRemote?: boolean };
   category?: string;
   vacancies?: number;
   applicantIds?: string[];
-  employerId?: { companyName?: string };
+  applicationCount?: number;
+  employerId?: { _id?: string; companyName?: string };
   createdAt: string;
+}
+
+interface EmployerOption {
+  _id: string;
+  companyName?: string;
 }
 
 export default function AgentJobsPage() {
@@ -47,6 +53,22 @@ export default function AgentJobsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [employerFilter, setEmployerFilter] = useState("");
+  const [employers, setEmployers] = useState<EmployerOption[]>([]);
+
+  // Load assigned employers for filter dropdown
+  useEffect(() => {
+    fetch("/api/employers?limit=200")
+      .then((r) => r.ok ? r.json() : { employers: [] })
+      .then((data) => {
+        const list = (data.employers ?? []).map((e: { _id: string; companyName?: string; employer?: { companyName?: string } }) => ({
+          _id: String(e._id),
+          companyName: e.companyName ?? e.employer?.companyName ?? "Unknown",
+        }));
+        setEmployers(list);
+      })
+      .catch(() => {});
+  }, []);
 
   const loadJobs = useCallback(async () => {
     setLoading(true);
@@ -54,6 +76,7 @@ export default function AgentJobsPage() {
       const params = pagination.paginationParams();
       if (search) params.set("search", search);
       if (statusFilter) params.set("status", statusFilter);
+      if (employerFilter) params.set("employerId", employerFilter);
       const res = await fetch(`/api/jobs?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -63,14 +86,14 @@ export default function AgentJobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, pagination.page, pagination.limit]);
+  }, [search, statusFilter, employerFilter, pagination.page, pagination.limit]);
 
   useEffect(() => {
     const t = setTimeout(loadJobs, 300);
     return () => clearTimeout(t);
   }, [loadJobs]);
 
-  useEffect(() => { pagination.resetPage(); }, [search, statusFilter]);
+  useEffect(() => { pagination.resetPage(); }, [search, statusFilter, employerFilter]);
 
   const handleCloseJob = async (id: string) => {
     if (!confirm("Close this job? It will no longer accept applications.")) return;
@@ -90,8 +113,8 @@ export default function AgentJobsPage() {
 
   const activeJobs = jobs.filter((job) => job.status === "active").length;
   const draftJobs = jobs.filter((job) => job.status === "draft").length;
-  const pendingApprovals = jobs.filter((job) => (job.poster?.approvalStatus ?? "pending") === "pending").length;
-  const totalApplicants = jobs.reduce((sum, job) => sum + (job.applicantIds?.length ?? 0), 0);
+  const uniqueEmployers = new Set(jobs.map((job) => job.employerId?._id ?? job.employerId).filter(Boolean)).size;
+  const totalApplicants = jobs.reduce((sum, job) => sum + (job.applicationCount ?? job.applicantIds?.length ?? 0), 0);
 
   const summaryCards = [
     {
@@ -109,10 +132,10 @@ export default function AgentJobsPage() {
       tone: "workspace-tone-amber",
     },
     {
-      label: "Pending approval",
-      value: pendingApprovals,
-      description: "Posts that still need a decision upstream.",
-      icon: CalendarRange,
+      label: "Employers",
+      value: uniqueEmployers,
+      description: "Companies with jobs in your portfolio.",
+      icon: Building2,
       tone: "workspace-tone-sky",
     },
     {
@@ -137,7 +160,7 @@ export default function AgentJobsPage() {
               Managed Job Board
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Review the jobs you own directly or through assigned employers, keep approvals moving, and jump into candidates without leaving the same workspace.
+              View and manage jobs you own directly or through your assigned employers. Filter by employer and track candidates in one place.
             </p>
           </div>
 
@@ -217,6 +240,22 @@ export default function AgentJobsPage() {
               );
             })}
           </div>
+
+          {employers.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <select
+                value={employerFilter}
+                onChange={(e) => setEmployerFilter(e.target.value)}
+                className="h-11 rounded-xl border border-border bg-secondary/65 px-3 text-sm text-foreground"
+              >
+                <option value="">All Employers</option>
+                {employers.map((emp) => (
+                  <option key={emp._id} value={emp._id}>{emp.companyName}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </section>
 
@@ -253,7 +292,6 @@ export default function AgentJobsPage() {
                   <TableHead>Employer</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Approval</TableHead>
                   <TableHead>Applicants</TableHead>
                   <TableHead>Posted</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -272,11 +310,8 @@ export default function AgentJobsPage() {
                     <TableCell>
                       <StatusBadge status={job.status} />
                     </TableCell>
-                    <TableCell>
-                      <StatusBadge status={job.poster?.approvalStatus ?? "pending"} />
-                    </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {job.applicantIds?.length ?? 0}
+                      {job.applicationCount ?? job.applicantIds?.length ?? 0}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(job.createdAt).toLocaleDateString()}
@@ -292,6 +327,17 @@ export default function AgentJobsPage() {
                             aria-label={`View candidates for ${job.title}`}
                           >
                             <Users className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </Link>
+                        <Link href={`/${locale}/agent/jobs/${job._id}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 rounded-xl px-2.5"
+                            title="View Job"
+                            aria-label={`View ${job.title}`}
+                          >
+                            <Eye className="h-4 w-4 text-sky-600" />
                           </Button>
                         </Link>
                         <Link href={`/${locale}/agent/jobs/new?edit=${job._id}`}>

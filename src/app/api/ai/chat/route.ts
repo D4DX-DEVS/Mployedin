@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { GEMINI_MODELS } from "@/lib/ai/gemini";
@@ -34,6 +35,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Subscription feature gate
+    const userRole = (session.user as unknown as { role: string }).role;
+    const gateErr = await enforceFeatureGate(session.user.id!, userRole, { type: "ai", feature: "ai_chat" });
+    if (gateErr) return gateErr;
+
     // Rate limit AI calls per user
     const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
     const { allowed, remaining, resetAt } = checkRateLimit(
@@ -62,7 +68,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch user profile + real platform jobs for context-aware AI responses
-    const userRole = (session.user as unknown as { role: UserRole }).role;
     let profileContext = "";
     let jobsContext = "";
     let roleStatsContext = "";

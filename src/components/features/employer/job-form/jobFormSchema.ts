@@ -178,6 +178,19 @@ export const jobFormSchema = z.object({
   expiresAt: z.string().optional(),
   tags: z.array(z.string().max(50)).max(20).default([]),
   agentId: z.string().optional(),
+
+  // Screening Questions
+  screeningQuestions: z.array(
+    z.object({
+      id: z.string().min(1),
+      label: z.string().min(1, "Question text is required").max(500),
+      type: z.enum(["text", "textarea", "select", "checkbox", "radio", "number", "date"]),
+      required: z.boolean().default(false),
+      options: z.array(z.string().max(200)).max(20).optional(),
+      placeholder: z.string().max(200).optional(),
+      order: z.number().int().min(0).default(0),
+    })
+  ).max(20).default([]),
 });
 
 export type JobFormValues = z.infer<typeof jobFormSchema>;
@@ -187,6 +200,7 @@ export const JOB_FORM_STEPS = [
   { id: 2, label: "Job Details", fields: ["description"] },
   { id: 3, label: "Requirements", fields: ["requirements"] },
   { id: 4, label: "Salary & Settings", fields: ["salary", "applicationMode", "vacancies"] },
+  { id: 5, label: "Screening Questions", fields: ["screeningQuestions"] },
 ] as const;
 
 /** Format salary for display */

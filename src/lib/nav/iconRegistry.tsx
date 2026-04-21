@@ -56,6 +56,10 @@ import {
   GitBranch,
   FolderOpen,
   Headset,
+  Crown,
+  CreditCard,
+  Link2,
+  Scale,
   type LucideProps,
 } from "lucide-react";
 import type { FC } from "react";
@@ -111,6 +115,10 @@ export type IconName =
   | "GitBranch"
   | "FolderOpen"
   | "Headset"
+  | "Crown"
+  | "CreditCard"
+  | "Link2"
+  | "Scale"
   | "Activity";
 
 const ICON_MAP: Record<IconName, FC<LucideProps>> = {
@@ -164,6 +172,10 @@ const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   GitBranch,
   FolderOpen,
   Headset,
+  Crown,
+  CreditCard,
+  Link2,
+  Scale,
   Activity,
 };
 

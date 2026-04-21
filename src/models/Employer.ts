@@ -66,6 +66,14 @@ export interface IEmployer extends Document {
   workflow?: Record<string, unknown>;
   matchingWeights?: Record<string, number>;
   responseTimeCommitment?: number;
+  // SMTP override (premium feature)
+  smtpOverride?: {
+    smtpEmail?: string;
+    smtpAppPassword?: string;
+    smtpHost?: string;
+    smtpPort?: number;
+    smtpSecure?: boolean;
+  };
   // Related
   jobIds: mongoose.Types.ObjectId[];
   // Payment
@@ -131,6 +139,13 @@ const EmployerSchema = new Schema<IEmployer>(
     workflow: { type: Schema.Types.Mixed },
     matchingWeights: { type: Schema.Types.Mixed },
     responseTimeCommitment: { type: Number, min: 1, max: 30 },
+    smtpOverride: {
+      smtpEmail: { type: String },
+      smtpAppPassword: { type: String, select: false },
+      smtpHost: { type: String, default: "smtp.gmail.com" },
+      smtpPort: { type: Number, default: 587 },
+      smtpSecure: { type: Boolean, default: false },
+    },
     jobIds: [{ type: Schema.Types.ObjectId, ref: "Job" }],
     paymentStatus: {
       type: String,
@@ -154,6 +169,10 @@ EmployerSchema.pre("save", function () {
       this[field] = encryptIfPlain(value);
     }
   }
+  // Encrypt SMTP app password
+  if (this.smtpOverride?.smtpAppPassword) {
+    this.smtpOverride.smtpAppPassword = encryptIfPlain(this.smtpOverride.smtpAppPassword);
+  }
 });
 
 // Decrypt PII fields after reading from DB
@@ -164,6 +183,10 @@ function decryptEmployerPII(doc: IEmployer | null) {
     if (value && typeof value === "string") {
       try { doc[field] = decrypt(value); } catch { /* already plain or corrupted */ }
     }
+  }
+  // Decrypt SMTP app password
+  if (doc.smtpOverride?.smtpAppPassword) {
+    try { doc.smtpOverride.smtpAppPassword = decrypt(doc.smtpOverride.smtpAppPassword); } catch { /* already plain or corrupted */ }
   }
   return doc;
 }

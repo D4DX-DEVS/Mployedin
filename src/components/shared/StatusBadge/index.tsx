@@ -25,6 +25,10 @@ const statusVariants: Record<
     label: "Active",
     className: "status-active",
   },
+  paused: {
+    label: "Paused",
+    className: "status-pending",
+  },
   closed: {
     label: "Closed",
     className: "status-closed",

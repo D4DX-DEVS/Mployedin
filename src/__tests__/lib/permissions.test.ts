@@ -80,4 +80,37 @@ describe("RBAC Permission Matrix", () => {
       expect(canAccess("super_agent", "users", "impersonate")).toBe(false);
     });
   });
+
+  describe("Subscriptions resource", () => {
+    it("admin should have full subscriptions access", () => {
+      expect(canAccess("admin", "subscriptions", "read")).toBe(true);
+      expect(canAccess("admin", "subscriptions", "create")).toBe(true);
+      expect(canAccess("admin", "subscriptions", "update")).toBe(true);
+      expect(canAccess("admin", "subscriptions", "delete")).toBe(true);
+    });
+
+    it("super_agent should have subscriptions CRUD", () => {
+      expect(canAccess("super_agent", "subscriptions", "read")).toBe(true);
+      expect(canAccess("super_agent", "subscriptions", "create")).toBe(true);
+      expect(canAccess("super_agent", "subscriptions", "update")).toBe(true);
+    });
+
+    it("agent should be able to read and create subscriptions", () => {
+      expect(canAccess("agent", "subscriptions", "read")).toBe(true);
+      expect(canAccess("agent", "subscriptions", "create")).toBe(true);
+    });
+
+    it("employer should only read own subscription", () => {
+      expect(canAccess("employer", "subscriptions", "read")).toBe(true);
+      expect(canAccess("employer", "subscriptions", "create")).toBe(false);
+      expect(canAccess("employer", "subscriptions", "update")).toBe(false);
+      expect(canAccess("employer", "subscriptions", "delete")).toBe(false);
+    });
+
+    it("job_seeker should only read own subscription", () => {
+      expect(canAccess("job_seeker", "subscriptions", "read")).toBe(true);
+      expect(canAccess("job_seeker", "subscriptions", "create")).toBe(false);
+      expect(canAccess("job_seeker", "subscriptions", "update")).toBe(false);
+    });
+  });
 });

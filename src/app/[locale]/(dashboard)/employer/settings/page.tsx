@@ -5,8 +5,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   Save, Building2, Globe, Phone, Mail, Shield, FileText,
   Briefcase, Bell, AlertTriangle, Linkedin, Twitter, Facebook, Instagram,
-  MapPin, Calendar, Users, Eye, Link2, CheckCircle2, Clock, Sparkles,
-  ChevronRight, Camera, X, Upload, Trash2,
+  MapPin, Calendar, Users, Eye, EyeOff, Link2, CheckCircle2, Clock, Sparkles,
+  ChevronRight, Camera, X, Upload, Trash2, Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -936,6 +936,9 @@ function CompanySettingsPage() {
                   </div>
                 </SectionCard>
 
+                {/* SMTP Override (Premium) */}
+                <EmployerSmtpOverride isPremium={company?.subscriptionType === "premium"} />
+
                 {/* Danger Zone */}
                 <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] p-6 space-y-4">
                   <div className="flex items-center gap-2.5">
@@ -1226,5 +1229,228 @@ function EmployerNotificationsTab() {
         )}
       </div>
     </>
+  );
+}
+
+// ─── Employer SMTP Override (Premium Feature) ────────────────────────────────
+
+function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
+  const [smtp, setSmtp] = useState({
+    smtpEmail: "",
+    smtpAppPassword: "",
+    smtpHost: "smtp.gmail.com",
+    smtpPort: 587,
+    smtpSecure: false,
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/employers/me/smtp")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.smtp) {
+          setSmtp({
+            smtpEmail: data.smtp.smtpEmail ?? "",
+            smtpAppPassword: data.smtp.smtpAppPassword ?? "",
+            smtpHost: data.smtp.smtpHost ?? "smtp.gmail.com",
+            smtpPort: data.smtp.smtpPort ?? 587,
+            smtpSecure: data.smtp.smtpSecure ?? false,
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/employers/me/smtp", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ smtp }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    if (!smtp.smtpEmail || !smtp.smtpAppPassword) return;
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/employers/me/smtp/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ smtp }),
+      });
+      const data = await res.json();
+      setTestResult({ ok: res.ok, message: data.message ?? (res.ok ? "Test email sent!" : "Failed") });
+    } catch {
+      setTestResult({ ok: false, message: "Network error" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleClear = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/employers/me/smtp", {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setSmtp({ smtpEmail: "", smtpAppPassword: "", smtpHost: "smtp.gmail.com", smtpPort: 587, smtpSecure: false });
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isPremium) {
+    return (
+      <SectionCard>
+        <SectionHeader icon={Mail} title="Custom Email (SMTP)" description="Send emails from your own G Suite / Gmail account" />
+        <div className="p-6">
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20">
+            <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Premium Feature</p>
+              <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-0.5">
+                Upgrade to Premium to send emails from your own domain. Platform emails will be used by default.
+              </p>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+    );
+  }
+
+  if (loading) {
+    return <div className="h-32 animate-pulse rounded-xl bg-muted/30" />;
+  }
+
+  return (
+    <SectionCard>
+      <SectionHeader icon={Mail} title="Custom Email (SMTP)" description="Override platform email — send from your own G Suite / Gmail" />
+      <div className="p-6 space-y-4">
+        <p className="text-xs text-muted-foreground">
+          When configured, candidate emails (offers, rejections, status updates) will be sent from your email address instead of the platform default.
+        </p>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <FieldLabel>SMTP Email</FieldLabel>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+              <Input
+                type="email"
+                className="pl-10"
+                placeholder="hr@yourcompany.com"
+                value={smtp.smtpEmail}
+                onChange={(e) => setSmtp((s) => ({ ...s, smtpEmail: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div>
+            <FieldLabel>App Password</FieldLabel>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••••••••••"
+                value={smtp.smtpAppPassword}
+                onChange={(e) => setSmtp((s) => ({ ...s, smtpAppPassword: e.target.value }))}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Gmail: Enable 2FA → myaccount.google.com/apppasswords
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <FieldLabel>SMTP Host</FieldLabel>
+            <Input
+              placeholder="smtp.gmail.com"
+              value={smtp.smtpHost}
+              onChange={(e) => setSmtp((s) => ({ ...s, smtpHost: e.target.value }))}
+            />
+          </div>
+          <div>
+            <FieldLabel>SMTP Port</FieldLabel>
+            <Input
+              type="number"
+              placeholder="587"
+              value={smtp.smtpPort}
+              onChange={(e) => setSmtp((s) => ({ ...s, smtpPort: parseInt(e.target.value) || 587 }))}
+            />
+          </div>
+          <div className="flex items-end gap-2 pb-1">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={smtp.smtpSecure}
+                onChange={(e) => setSmtp((s) => ({ ...s, smtpSecure: e.target.checked }))}
+                className="h-4 w-4 rounded border-border"
+              />
+              SSL/TLS (port 465)
+            </label>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Button size="sm" onClick={handleSave} disabled={saving || !smtp.smtpEmail}>
+            <Save className="w-3.5 h-3.5 me-1.5" />
+            {saving ? "Saving…" : "Save SMTP"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTest}
+            disabled={testing || !smtp.smtpEmail || !smtp.smtpAppPassword || smtp.smtpAppPassword === "••••••••"}
+          >
+            <Send className="w-3.5 h-3.5 me-1.5" />
+            {testing ? "Sending…" : "Test Email"}
+          </Button>
+          {smtp.smtpEmail && (
+            <Button variant="ghost" size="sm" onClick={handleClear} disabled={saving} className="text-destructive hover:text-destructive">
+              <Trash2 className="w-3.5 h-3.5 me-1.5" />
+              Clear Override
+            </Button>
+          )}
+          {saved && (
+            <span className="text-sm text-green-600 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+            </span>
+          )}
+          {testResult && (
+            <span className={`text-sm ${testResult.ok ? "text-green-600" : "text-red-600"}`}>
+              {testResult.message}
+            </span>
+          )}
+        </div>
+      </div>
+    </SectionCard>
   );
 }

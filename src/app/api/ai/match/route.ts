@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
@@ -29,6 +30,9 @@ function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength =
  * job seeker vs a job posting.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+  const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "ai", feature: "ai_job_matching" });
+  if (gateErr) return gateErr;
+
   const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
   if (!rl.allowed) {
     return NextResponse.json(

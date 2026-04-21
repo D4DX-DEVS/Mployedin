@@ -36,6 +36,12 @@ export interface IBehaviorSignals {
   lastActiveAt?: Date;
 }
 
+export interface IScreeningAnswer {
+  questionId: string;
+  questionLabel: string;
+  answer: string | string[] | boolean;
+}
+
 export interface IApplication extends Document {
   _id: mongoose.Types.ObjectId;
   jobSeekerId: mongoose.Types.ObjectId;
@@ -59,6 +65,7 @@ export interface IApplication extends Document {
   withdrawalNote?: string;
   source?: 'easy_apply' | 'full_form' | 'direct' | 'auto_apply';
   autoApplied: boolean;
+  screeningAnswers?: IScreeningAnswer[];
   notes: INote[];
   appliedAt: Date;
   statusHistory: {
@@ -143,6 +150,12 @@ const ApplicationSchema = new Schema<IApplication>(
       default: 'full_form',
     },
     autoApplied: { type: Boolean, default: false },
+    screeningAnswers: [{
+      questionId: { type: String, required: true },
+      questionLabel: { type: String, required: true },
+      answer: { type: Schema.Types.Mixed, required: true },
+      _id: false,
+    }],
     notes: [
       {
         authorId: { type: Schema.Types.ObjectId, ref: "User", required: true },

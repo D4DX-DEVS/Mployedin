@@ -18,6 +18,7 @@ export { ConversationThread } from "./ConversationThread";
 export { CandidateNPS } from "./CandidateNPS";
 export { ActivityEvent } from "./ActivityEvent";
 export type { IActivityEvent, ActivityEventType } from "./ActivityEvent";
+export { InterviewQuestion } from "./InterviewQuestion";
 
 // ── Job Attribute Master Data ─────────────────────────────────────────────────
 export { SalaryPeriod } from "./SalaryPeriod";
@@ -51,6 +52,16 @@ export { Video } from "./Video";
 export { StaticPage } from "./StaticPage";
 export { ContactSubmission } from "./ContactSubmission";
 
+// ── Workflow & Matching Weight Templates ──────────────────────────────────────
+export { WorkflowTemplate } from "./WorkflowTemplate";
+export { MatchingWeightTemplate } from "./MatchingWeightTemplate";
+
 // ── Job Seeker Dashboard ──────────────────────────────────────────────────────
 export { SavedJob } from "./SavedJob";
 export { ProfileView } from "./ProfileView";
+
+// ── Subscription ─────────────────────────────────────────────────────────────
+export { SubscriptionPlan } from "./SubscriptionPlan";
+export { Subscription } from "./Subscription";
+export { Invoice } from "./Invoice";
+export { SubscriptionHistory } from "./SubscriptionHistory";

@@ -6,7 +6,7 @@ export interface Job {
   title: string;
   location: string | { isRemote?: boolean; city?: string; country?: string };
   category: string;
-  status: "draft" | "active" | "closed" | "expired";
+  status: "draft" | "active" | "paused" | "closed" | "expired";
   workMode?: "onsite" | "hybrid" | "remote";
   employmentType?: "full_time" | "part_time" | "contract" | "internship" | "freelance";
   salary: { min: number; max: number; currency: string; isNegotiable?: boolean; period?: string };
@@ -23,6 +23,7 @@ export interface Job {
   updatedAt?: string;
   employerId?: { companyName?: string };
   applicantIds?: string[];
+  applicationCount?: number;
   createdAt: string;
   expiresAt?: string;
 }
@@ -80,7 +81,7 @@ export function useJobs(filters: JobsFilters) {
   return useQuery({
     queryKey: jobKeys.list(filters),
     queryFn: () => fetchJobs(filters),
-    staleTime: 30 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 min — match global default; avoids HMR refetch storms
     placeholderData: (prev) => prev,
   });
 }

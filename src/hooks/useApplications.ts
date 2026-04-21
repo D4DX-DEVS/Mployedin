@@ -143,7 +143,7 @@ export function useCreateScorecard() {
   });
 }
 
-/** Create an interview from the applications page */
+/** Create an interview from the applications page (supports staggered bulk scheduling) */
 export function useCreateInterviewFromApp() {
   const qc = useQueryClient();
   return useMutation({
@@ -156,13 +156,20 @@ export function useCreateInterviewFromApp() {
       location?: string;
       meetLink?: string;
       instructions?: string;
+      durationPerCandidate?: number;
+      gapMinutes?: number;
+      workingHours?: { start: string; end: string };
+      breaks?: { label: string; start: string; end: string }[];
     }) => {
       const res = await fetch("/api/interviews/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error("Failed to create interview");
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || data?.message || "Failed to create interview");
+      }
       return res.json();
     },
     onSuccess: () => {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import Job from "@/models/Job";
@@ -84,6 +85,9 @@ function normalizeReportOutput(report: string): string {
  * explicitly instructed NOT to invent numbers that were not supplied.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+  const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "ai", feature: "ai_hiring_reports" });
+  if (gateErr) return gateErr;
+
   const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
   if (!rl.allowed) {
     return NextResponse.json(

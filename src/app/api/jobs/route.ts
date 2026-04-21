@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import Job from "@/models/Job";
+import { Application } from "@/models/Application";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { Employer } from "@/models/Employer";
 import Agent from "@/models/Agent";
@@ -54,7 +56,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const employerId = searchParams.get("employerId") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const query: Record<string, any> = {};
+  const query: Record<string, any> = { deletedAt: null };
 
   // Agent-scoped: only their own jobs + jobs from assigned employers
   if (ctx.role === "agent") {
@@ -71,6 +73,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   } else if (myJobs && ctx.role === "employer") {
     // Employer fetching their own jobs — scope to their employerId, no status filter
     const empDoc = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    // DEBUG: temporary logging to diagnose production vs local mismatch
+    console.log("[jobs/GET] employer lookup", {
+      ctxUserId: ctx.userId,
+      empDocFound: !!empDoc,
+      empDocId: empDoc?._id?.toString() ?? null,
+    });
     if (empDoc) {
       query.employerId = empDoc._id;
 
@@ -125,6 +133,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (employerId) query.employerId = employerId;
 
   const skip = (page - 1) * limit;
+  // DEBUG: log final query
+  console.log("[jobs/GET] final query", JSON.stringify(query));
   const [jobs, total] = await Promise.all([
     Job.find(query)
       .sort(search ? { score: { $meta: "textScore" } } : { createdAt: -1 })
@@ -134,6 +144,21 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .lean(),
     Job.countDocuments(query),
   ]);
+  // DEBUG: log result count
+  console.log("[jobs/GET] results", { total, jobsReturned: jobs.length });
+
+  // Aggregate real application counts from Application collection for managed job views
+  if (canFilterManagedJobs && jobs.length > 0) {
+    const jobIds = jobs.map((j) => j._id);
+    const appCounts = await Application.aggregate([
+      { $match: { jobId: { $in: jobIds } } },
+      { $group: { _id: "$jobId", count: { $sum: 1 } } },
+    ]);
+    const countMap = new Map(appCounts.map((c) => [String(c._id), c.count as number]));
+    for (const job of jobs) {
+      (job as Record<string, unknown>).applicationCount = countMap.get(String(job._id)) ?? 0;
+    }
+  }
 
   return NextResponse.json({
     jobs,
@@ -262,6 +287,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     showSalary,
     tags: tags ?? [],
     visibility: visibility ?? "public",
+    screeningQuestions: body.screeningQuestions ?? [],
     "poster.approvalStatus": approvalStatus,
   });
 
@@ -308,4 +334,6 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
 }
 
 export const GET = withAuth(getHandler);
-export const POST = withAuth(createHandler);
+export const POST = withAuth(
+  withSubscription(createHandler, { type: "limit", feature: "activeJobs" }),
+);

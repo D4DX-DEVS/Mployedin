@@ -1,11 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sliders, Save, RotateCcw, Loader2, CheckCircle, Sparkles, Target, Scale, BarChart3 } from "lucide-react";
+import { Sliders, Save, RotateCcw, Loader2, CheckCircle, Sparkles, Target, Scale, BarChart3, BookTemplate, Copy } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { FeatureGate } from "@/components/shared/FeatureGate";
 import { useMatchingWeights, useSaveMatchingWeights, type MatchingWeights } from "@/hooks/useMatchingWeights";
+import {
+  useEmployerMatchingWeightTemplates,
+  useCreateEmployerMatchingWeightTemplate,
+  type MatchingWeightTemplateItem,
+} from "@/hooks/useMatchingWeightTemplates";
 
 const DEFAULT_WEIGHTS: MatchingWeights = {
   skills: 27,
@@ -43,11 +50,17 @@ const WEIGHT_DESCRIPTIONS: Record<keyof MatchingWeights, string> = {
 export default function EmployerMatchingWeightsPage() {
   const { data: serverWeights, isLoading: loading } = useMatchingWeights();
   const saveWeights = useSaveMatchingWeights();
+  const { data: templates, isLoading: templatesLoading } = useEmployerMatchingWeightTemplates();
+  const createTemplate = useCreateEmployerMatchingWeightTemplate();
 
   const [weights, setWeights] = useState<MatchingWeights>(DEFAULT_WEIGHTS);
   const [saved, setSaved] = useState(false);
   const [total, setTotal] = useState(100);
   const [error, setError] = useState<string | null>(null);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [showSaveAsTemplate, setShowSaveAsTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateSaved, setTemplateSaved] = useState(false);
 
   // Seed local state from server data
   useEffect(() => {
@@ -75,6 +88,28 @@ export default function EmployerMatchingWeightsPage() {
     }
   };
 
+  const applyTemplate = (t: MatchingWeightTemplateItem) => {
+    setWeights(t.weights);
+    setShowTemplateSelector(false);
+    setSaved(false);
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim()) return;
+    try {
+      await createTemplate.mutateAsync({
+        name: templateName.trim(),
+        weights,
+      });
+      setTemplateSaved(true);
+      setShowSaveAsTemplate(false);
+      setTemplateName("");
+      setTimeout(() => setTemplateSaved(false), 3000);
+    } catch {
+      setError("Failed to save template");
+    }
+  };
+
   const isTotalValid = total === 100;
   const weightKeys = Object.keys(weights) as Array<keyof MatchingWeights>;
   const topPriority = weightKeys.reduce((highest, key) => (
@@ -93,11 +128,115 @@ export default function EmployerMatchingWeightsPage() {
   );
 
   return (
+    <FeatureGate feature="matchingWeightCustomization">
     <div className="page-container employer-legacy-surface space-y-6">
       <PageHeader
         title="AI Matching Weights"
         description="Customise how candidates are scored and ranked for your roles"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTemplateSelector(!showTemplateSelector)}
+              className="gap-1.5 rounded-xl border-border"
+            >
+              <BookTemplate className="h-4 w-4" />
+              Templates
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSaveAsTemplate(!showSaveAsTemplate)}
+              className="gap-1.5 rounded-xl border-border"
+            >
+              <Copy className="h-4 w-4" />
+              Save as Template
+            </Button>
+          </div>
+        }
       />
+
+      {/* ─── Template Selector ─── */}
+      {showTemplateSelector && (
+        <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Load from Template</h3>
+              <p className="mt-1 text-xs text-muted-foreground">Select a matching weight preset to apply</p>
+            </div>
+            <button onClick={() => setShowTemplateSelector(false)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
+          </div>
+          {templatesLoading ? (
+            <div className="h-16 animate-pulse rounded-xl border border-border bg-background/70" />
+          ) : templates && templates.length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {templates.map((t) => {
+                const wKeys = Object.keys(t.weights) as Array<keyof MatchingWeights>;
+                const topKey = wKeys.reduce((h, k) => (t.weights[k] > t.weights[h] ? k : h), wKeys[0]);
+                return (
+                  <button
+                    key={t._id}
+                    onClick={() => applyTemplate(t)}
+                    className="rounded-xl border border-border bg-background/80 p-3 text-left transition-all hover:border-sky-500/40 hover:bg-sky-500/5"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">{t.name}</span>
+                      <Badge variant={t.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
+                        {t.scope === "system" ? "System" : "Custom"}
+                      </Badge>
+                    </div>
+                    {t.description && <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{t.description}</p>}
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      Top: {WEIGHT_LABELS[topKey]} ({t.weights[topKey]}%)
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-center text-sm text-muted-foreground">
+              No matching weight templates available yet.
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* ─── Save as Template ─── */}
+      {showSaveAsTemplate && (
+        <section className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+          <div className="flex items-center gap-3">
+            <Input
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Template name (e.g. Tech Roles — Skills Heavy)"
+              maxLength={100}
+              className="flex-1"
+              onKeyDown={(e) => e.key === "Enter" && handleSaveAsTemplate()}
+            />
+            <Button
+              onClick={handleSaveAsTemplate}
+              disabled={!templateName.trim() || !isTotalValid || createTemplate.isPending}
+              className="gap-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+              size="sm"
+            >
+              {createTemplate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setShowSaveAsTemplate(false); setTemplateName(""); }} className="rounded-xl">
+              Cancel
+            </Button>
+          </div>
+        </section>
+      )}
+
+      {/* Template saved banner */}
+      {templateSaved && (
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
+          <CheckCircle className="h-4 w-4" />
+          Matching weights saved as template successfully!
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center justify-between rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
@@ -270,5 +409,6 @@ export default function EmployerMatchingWeightsPage() {
         </div>
       </div>
     </div>
+    </FeatureGate>
   );
 }

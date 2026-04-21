@@ -30,7 +30,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
   await connectDB();
 
   const [job, seeker, seekerUser] = await Promise.all([
-    Job.findById(jobId).select("title employerId status").lean(),
+    Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status").lean(),
     JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt").lean(),
     User.findById(ctx.userId).select("email name").lean(),
   ]);
