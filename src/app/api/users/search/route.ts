@@ -73,8 +73,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       searchableRoles.push("job_seeker", "agent", "super_agent");
       break;
     case "job_seeker":
-      // Job seekers can DM employers (apply / follow-up)
-      searchableRoles.push("employer");
+      // Job seekers can DM employers + other job seekers (peer networking)
+      searchableRoles.push("employer", "job_seeker");
       break;
   }
 

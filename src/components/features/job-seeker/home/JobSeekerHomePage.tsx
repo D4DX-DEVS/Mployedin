@@ -507,11 +507,11 @@ export function JobSeekerHomePage({
   return (
     <>
       <div className="space-y-4">
-        <section className="rounded-[28px] border border-border/70 bg-background px-5 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:px-6 sm:py-5">
+        <section className="overflow-hidden rounded-[28px] border border-border/70 bg-background px-3 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:px-6 sm:py-5">
           <div className="space-y-4">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{primaryRole}</h1>
+                <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl md:text-[2rem]">{primaryRole}</h1>
                 {otherRolesLabel && (
                   <p className="mt-0.5 text-sm text-muted-foreground/80">{otherRolesLabel}</p>
                 )}
@@ -570,13 +570,13 @@ export function JobSeekerHomePage({
           </div>
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.72fr)_340px] xl:items-start">
-          <div className="space-y-5">
-            <section className="card-base rounded-[28px] p-5 sm:p-6">
+        <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.72fr)_340px] xl:items-start">
+          <div className="min-w-0 space-y-5">
+            <section className="card-base overflow-hidden rounded-[28px] p-4 sm:p-6">
               <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div>
+                <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("recommendedJobs.eyebrow")}</div>
-                  <h2 className="mt-1 text-2xl font-semibold tracking-tight">{t("recommendedJobs.title")}</h2>
+                  <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-2xl">{t("recommendedJobs.title")}</h2>
                 </div>
                 <Link href={`/${locale}/job-seeker/jobs`} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
                   {t("recommendedJobs.viewAll")}
@@ -617,7 +617,7 @@ export function JobSeekerHomePage({
                       <Link
                         key={job._id}
                         href={`/${locale}/job-seeker/jobs/${job._id}`}
-                        className="group block rounded-[22px] border border-border/60 bg-background px-4 py-4 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_32px_rgba(15,23,42,0.06)] sm:px-5"
+                        className="group block overflow-hidden rounded-[22px] border border-border/60 bg-background px-3 py-4 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_32px_rgba(15,23,42,0.06)] sm:px-5"
                       >
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                           <div className="flex min-w-0 gap-4">
@@ -699,7 +699,7 @@ export function JobSeekerHomePage({
 
               {/* Already applied — shown below recommendations so the user understands why they may see fewer suggestions */}
               {appliedJobs.length > 0 && (
-                <div className="mt-5 rounded-[22px] border border-border/50 bg-muted/20 px-4 py-4">
+                <div className="mt-5 rounded-[22px] border border-border/50 bg-muted/20 px-3 py-4 sm:px-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       <CheckCircle2 className="h-3.5 w-3.5 text-[hsl(var(--status-selected))]" />
@@ -739,7 +739,7 @@ export function JobSeekerHomePage({
                         <Link
                           key={app._id}
                           href={`/${locale}/job-seeker/jobs/${app._id}`}
-                          className="flex items-center gap-3 rounded-[16px] border border-border/50 bg-background px-3 py-2.5 transition-colors hover:border-primary/20 hover:bg-muted/30"
+                          className="flex items-center gap-2 rounded-[16px] border border-border/50 bg-background px-2 py-2.5 transition-colors hover:border-primary/20 hover:bg-muted/30 sm:gap-3 sm:px-3"
                         >
                           <Avatar className="h-8 w-8 rounded-xl border border-border/60 bg-muted/20 shrink-0">
                             <AvatarImage src={app.companyLogo ?? ""} alt={app.companyName ?? app.title} />
@@ -753,7 +753,7 @@ export function JobSeekerHomePage({
                               <p className="truncate text-xs text-muted-foreground">{app.companyName}</p>
                             )}
                           </div>
-                          <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${statusClass}`}>
+                          <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold sm:px-2.5 sm:text-[11px] ${statusClass}`}>
                             {statusLabel}
                           </span>
                         </Link>
@@ -764,12 +764,12 @@ export function JobSeekerHomePage({
               )}
             </section>
 
-            <section className="card-base rounded-[28px] p-5 sm:p-6">
+            <section className="card-base overflow-hidden rounded-[28px] p-4 sm:p-6">
               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
+                <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("priorityActions.eyebrow")}</div>
-                  <h2 className="mt-1 text-2xl font-semibold tracking-tight">{t("priorityActions.title")}</h2>
-                  <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+                  <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-2xl">{t("priorityActions.title")}</h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
                     {t("priorityActions.description")}
                   </p>
                 </div>
@@ -824,22 +824,22 @@ export function JobSeekerHomePage({
             </section>
           </div>
 
-          <aside className="space-y-5 xl:sticky xl:top-24">
-            <section className="card-base rounded-[28px] p-5">
-              <div className="flex items-start gap-4">
-                <Avatar className="h-16 w-16 ring-4 ring-background shadow-sm">
+          <aside className="min-w-0 space-y-5 xl:sticky xl:top-24">
+            <section className="card-base overflow-hidden rounded-[28px] p-4 sm:p-5">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <Avatar className="h-12 w-12 shrink-0 ring-4 ring-background shadow-sm sm:h-16 sm:w-16">
                   <AvatarImage src={image} alt={name} />
-                  <AvatarFallback className="bg-primary text-lg font-semibold text-primary-foreground">
+                  <AvatarFallback className="bg-primary text-base font-semibold text-primary-foreground sm:text-lg">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h2 className="truncate text-lg font-semibold">{name}</h2>
+                    <h2 className="truncate text-base font-semibold sm:text-lg">{name}</h2>
                     {completion >= 80 && <CheckCircle2 className="h-4 w-4 text-[hsl(var(--status-selected))]" />}
                   </div>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  <p className="mt-1 line-clamp-3 text-sm leading-6 text-muted-foreground">
                     {profile?.summary?.slice(0, 118) || t("profileCard.summaryFallback")}
                   </p>
                 </div>
@@ -884,7 +884,7 @@ export function JobSeekerHomePage({
               </div>
             </section>
 
-            <section className="card-base rounded-[28px] p-5">
+            <section className="card-base overflow-hidden rounded-[28px] p-4 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("quickAccess.eyebrow")}</div>
@@ -909,7 +909,7 @@ export function JobSeekerHomePage({
               </div>
             </section>
 
-            <section className="card-base rounded-[28px] p-5">
+            <section className="card-base overflow-hidden rounded-[28px] p-4 sm:p-5">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 text-primary">

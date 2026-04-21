@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
               const link = `/${locale}/job-seeker/jobs/${j._id}`;
               return `- [${j.title}](${link}) | ${loc}${sal} | Skills: ${skills}`;
             });
-            jobsContext = `\n\n## Live Jobs on MPLOYEDIN (ONLY reference these — never invent jobs)\n${jobLines.join("\n")}\n\nFormat EVERY job recommendation as a markdown link exactly like: [Job Title](URL). Never show raw IDs. Always use the link format from the list above so users can click to view the job. Tell the user they can click the job title to view and apply. Do NOT mention any job not in this list.`;
+            jobsContext = `\n\n## Live Jobs on MPLOYEDIN (ONLY reference these — never invent jobs)\n${jobLines.join("\n")}\n\nFormat EVERY job recommendation as a markdown link exactly like: [Job Title](/en/job-seeker/jobs/ID). CRITICAL: Use ONLY the relative URLs provided above (starting with /). NEVER prepend a domain like https://mployedin.com or https://www.mployedin.com. Never show raw IDs. Always copy the link EXACTLY as provided in the list above so users can click to view the job. Tell the user they can click the job title to view and apply. Do NOT mention any job not in this list.`;
           } else {
             jobsContext = `\n\n## Live Jobs on MPLOYEDIN\nNo active jobs currently match the user's skill set. Tell the user honestly that there are no matching roles right now and suggest they check their job feed for the latest listings or update their skills.`;
           }

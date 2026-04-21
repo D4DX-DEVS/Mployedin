@@ -12,6 +12,8 @@ import {
   Clock,
   Settings,
   Mail,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -59,6 +61,8 @@ export function UserProfileDropdown({
   const [resetOpen, setResetOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resetStatus, setResetStatus] = useState<"idle" | "success" | "error">("idle");
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const { data: session } = useSession();
   const userImage = session?.user?.image;
@@ -103,9 +107,13 @@ export function UserProfileDropdown({
     }
   };
 
-  const handleLogout = () => {
-    router.refresh(); // Bust Next.js router cache so back-navigation re-runs the server auth check
-    signOut({ callbackUrl: `/${locale}/login` });
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    // Clear client caches & sign out without waiting for redirect
+    router.refresh();
+    await signOut({ redirect: false });
+    // Instant hard navigation to login — no client-side transition delay
+    window.location.href = `/${locale}/login`;
   };
 
   const initials = userName
@@ -221,13 +229,62 @@ export function UserProfileDropdown({
           {/* Logout */}
           <DropdownMenuItem
             className="cursor-pointer gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 rounded-md transition-colors"
-            onSelect={handleLogout}
+            onSelect={() => setLogoutOpen(true)}
           >
             <LogOut className="h-4 w-4" />
             <span className="font-medium text-sm">{isAr ? "تسجيل الخروج" : "Logout"}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={logoutOpen} onOpenChange={(open) => { if (!loggingOut) setLogoutOpen(open); }}>
+        <DialogContent className="max-w-sm" onInteractOutside={(e) => { if (loggingOut) e.preventDefault(); }}>
+          <DialogHeader>
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              </div>
+              <div className="pt-0.5">
+                <DialogTitle>{isAr ? "تسجيل الخروج" : "Log Out"}</DialogTitle>
+                <DialogDescription className="mt-1">
+                  {isAr
+                    ? "هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟"
+                    : "Are you sure you want to log out of your account?"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLogoutOpen(false)}
+              disabled={loggingOut}
+            >
+              {isAr ? "إلغاء" : "Cancel"}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleLogout}
+              disabled={loggingOut}
+            >
+              {loggingOut ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {isAr ? "جاري الخروج..." : "Logging out..."}
+                </>
+              ) : (
+                <>
+                  <LogOut className="h-3.5 w-3.5" />
+                  {isAr ? "تسجيل الخروج" : "Log Out"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reset Password Dialog */}
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>

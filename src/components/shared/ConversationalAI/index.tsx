@@ -36,6 +36,16 @@ function hasMalayalam(text: string): boolean {
   return /[\u0D00-\u0D7F]/.test(text);
 }
 
+/** Convert absolute mployedin.com URLs to relative paths */
+function normalizeHref(href: string | undefined): string | undefined {
+  if (!href) return href;
+  try {
+    const stripped = href.replace(/^https?:\/\/(www\.)?mployedin\.com/, "");
+    if (stripped !== href) return stripped || "/";
+  } catch { /* keep original */ }
+  return href;
+}
+
 function AIMarkdown({ content }: { content: string }) {
   const router = useRouter();
   return (
@@ -51,7 +61,8 @@ function AIMarkdown({ content }: { content: string }) {
         li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
         strong: ({ ...props }) => <strong className="font-semibold" {...props} />,
         code: ({ ...props }) => <code className="rounded bg-black/10 px-1 font-mono text-[0.88em] dark:bg-white/10" {...props} />,
-        a: ({ href, ...props }) => {
+        a: ({ href: rawHref, ...props }) => {
+          const href = normalizeHref(rawHref);
           const isInternal = href?.startsWith("/");
           return (
             <a
@@ -453,7 +464,7 @@ export function ConversationalAI({
         <button
           onClick={() => setOpen(true)}
           className={cn(
-            "fixed bottom-6 right-6 z-[100] flex h-14 w-14 items-center justify-center rounded-full shadow-lg",
+            "fixed bottom-20 right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full shadow-lg lg:bottom-6 lg:right-6",
             "bg-primary text-white hover:bg-primary/90 transition-all duration-200 hover:scale-105",
             className
           )}

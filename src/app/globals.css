@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Prevent horizontal overflow on all viewports */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 /* Align Tailwind v4 dark: variant with class-based ThemeProvider (.dark on <html>) */
 @variant dark (&:is(.dark *));
 
@@ -500,10 +507,18 @@ body {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border) / 0.6);
     border-radius: var(--radius);
-    padding: 1.25rem 1.5rem;
+    padding: 0.875rem 0.875rem;
     box-shadow: 0 4px 20px -2px rgb(0 0 0 / 0.05);
     transition: all 0.2s ease-in-out;
     isolation: isolate;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  @media (min-width: 640px) {
+    .card-base {
+      padding: 1.25rem 1.5rem;
+    }
   }
 
   .card-base:hover {

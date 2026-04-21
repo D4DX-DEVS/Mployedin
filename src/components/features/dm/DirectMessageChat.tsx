@@ -44,9 +44,10 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const userSentRef = useRef(false);
 
   const otherParticipant = conversation.participantDetails.find(
     (p) => p.userId !== currentUserId
@@ -68,7 +69,16 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
           const optimistic = prev.filter((m) => m._id.startsWith("opt-"));
           const fetchedIds = new Set(fetched.map((m) => m._id));
           const kept = optimistic.filter((m) => !fetchedIds.has(m._id));
-          return [...fetched, ...kept];
+          const next = [...fetched, ...kept];
+
+          // Skip update if message list hasn't actually changed
+          if (
+            next.length === prev.length &&
+            next.every((m, i) => m._id === prev[i]?._id)
+          ) {
+            return prev;
+          }
+          return next;
         });
         // Mark as read
         fetch(`/api/dm/${conversation._id}/read`, { method: "PATCH" }).catch(() => {});
@@ -96,10 +106,26 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
     };
   }, [loadMessages]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom only on initial load or when user sends a message
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    if (userSentRef.current) {
+      container.scrollTop = container.scrollHeight;
+      userSentRef.current = false;
+    }
   }, [messages]);
+
+  // Scroll to bottom after initial load completes
+  useEffect(() => {
+    if (!loading) {
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  }, [loading]);
 
   const sendMessage = useCallback(async () => {
     const content = input.trim();
@@ -107,6 +133,7 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
 
     setSending(true);
     setInput("");
+    userSentRef.current = true;
 
     // Optimistic update
     const optimistic: DMMessage = {
@@ -166,7 +193,7 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -199,7 +226,6 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
             );
           })
         )}
-        <div ref={bottomRef} />
       </div>
 
       {/* Error */}

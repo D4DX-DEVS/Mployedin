@@ -128,7 +128,7 @@ export default function LoginPage() {
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2.2rem]">
           Welcome back
         </h1>
-        <p className="max-w-md text-base leading-7 text-muted-foreground font-light">
+        <p className="text-sm leading-6 text-muted-foreground font-light sm:max-w-md sm:text-base sm:leading-7">
           Please enter your credentials to access your account.
         </p>
       </div>

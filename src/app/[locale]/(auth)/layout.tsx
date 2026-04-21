@@ -12,7 +12,7 @@ export default async function AuthLayout({
   const { locale } = await params;
 
   return (
-    <div className="theme-light flex min-h-screen flex-col bg-background" data-theme-scope="light">
+    <div className="flex min-h-screen flex-col bg-background">
       <div className="flex flex-1 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.08),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(var(--accent)/0.08),transparent_28%)]">
         <div className="relative hidden w-0 flex-1 overflow-hidden border-r border-border/50 bg-[linear-gradient(160deg,hsl(var(--background)),hsl(var(--muted)/0.95))] lg:block">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.24)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.24)_1px,transparent_1px)] bg-[size:76px_76px] opacity-35" />
@@ -52,7 +52,7 @@ export default async function AuthLayout({
           </div>
 
           <div className="mx-auto flex w-full max-w-md flex-1 items-center">
-            <div className="w-full rounded-[32px] border border-border/60 bg-background/86 p-6 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.35)] backdrop-blur md:p-8">
+            <div className="w-full rounded-[32px] border border-border/60 bg-background/86 p-6 shadow-[0_30px_80px_-42px_rgba(15,23,42,0.35)] dark:shadow-[0_30px_80px_-42px_rgba(0,0,0,0.55)] backdrop-blur md:p-8">
               {children}
             </div>
           </div>

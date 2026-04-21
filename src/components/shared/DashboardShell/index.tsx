@@ -86,7 +86,7 @@ export function DashboardShell({
                   alt="Mployedin"
                   width={176}
                   height={48}
-                  className="h-12 w-auto object-contain"
+                  className="h-8 w-auto object-contain sm:h-12"
                   style={{ width: "auto" }}
                   priority
                 />
