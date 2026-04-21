@@ -15,10 +15,10 @@ import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, useSaveAsTempla
 import { useDebounce } from "@/hooks/useDebounce";
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  draft: "bg-amber-100 text-amber-700 border-amber-200",
+  active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
+  draft: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
   closed: "bg-muted text-muted-foreground",
-  expired: "bg-red-100 text-red-700 border-red-200",
+  expired: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
 };
 
 const JOB_SUMMARY_MAX_LENGTH = 180;
@@ -560,42 +560,42 @@ export default function EmployerJobsPage() {
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">{job.title}</h3>
+                      <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{job.title}</h3>
                       <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2.5 py-0.5 text-xs font-medium capitalize`}>{job.status}</Badge>
                       {approvalStatus === "pending" && (
-                        <Badge className="border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Pending Approval</Badge>
+                        <Badge className="border border-amber-200 bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-300">Pending Approval</Badge>
                       )}
                       {approvalStatus === "rejected" && (
-                        <Badge className="border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700">Approval Rejected</Badge>
+                        <Badge className="border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-300">Approval Rejected</Badge>
                       )}
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-1.5">
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">{formatLocation(job)}</span>
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job)}</span>
                       {job.category ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">{job.category}</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
                       ) : null}
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">{formatSalary(job)}</span>
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatSalary(job)}</span>
                       {job.vacancies != null ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">
                           {job.vacancies} opening{job.vacancies === 1 ? "" : "s"}
                         </span>
                       ) : null}
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">Posted {posted}</span>
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">Posted {posted}</span>
                       {expires ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">Expires {expires}</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">Expires {expires}</span>
                       ) : null}
                     </div>
 
                     {job.requirements?.skills?.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {job.requirements.skills.slice(0, 4).map((s) => (
-                          <Badge key={s} variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-normal text-slate-600">{s}</Badge>
+                          <Badge key={s} variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-normal text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
                         ))}
                       </div>
                     )}
 
                     {jobSummary ? (
-                      <p className="mt-2.5 line-clamp-2 max-w-3xl text-sm leading-5 text-slate-600">{jobSummary}</p>
+                      <p className="mt-2.5 line-clamp-2 max-w-3xl text-sm leading-5 text-muted-foreground">{jobSummary}</p>
                     ) : null}
 
                     <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
@@ -633,30 +633,30 @@ export default function EmployerJobsPage() {
                         Applications
                         <ArrowRight className="ml-auto h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="outline" title="View job" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
+                      <Button size="sm" variant="outline" title="View job" className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
                         onClick={() => router.push(`/${locale}/employer/jobs/${job._id}`)}>
                         <Eye className="h-4 w-4" /> View
                       </Button>
                       {can("jobs", "update") && (
-                        <Button size="sm" variant="outline" title="Edit" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
+                        <Button size="sm" variant="outline" title="Edit" className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
                           onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/edit`)}>
                           <Edit2 className="h-4 w-4" /> Edit
                         </Button>
                       )}
                       {can("jobs", "update") && (
-                        <Button size="sm" variant="outline" title="Job Workflow" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
+                        <Button size="sm" variant="outline" title="Job Workflow" className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
                           onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=workflow`)}>
                           <GitBranch className="h-4 w-4" /> Workflow
                         </Button>
                       )}
                       {can("jobs", "update") && (
-                        <Button size="sm" variant="outline" title="Matching Weights" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
+                        <Button size="sm" variant="outline" title="Matching Weights" className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
                           onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=matching-weights`)}>
                           <SlidersHorizontal className="h-4 w-4" /> Weights
                         </Button>
                       )}
                       {can("jobs", "create") && (
-                        <Button size="sm" variant="outline" title="Clone" className="h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm"
+                        <Button size="sm" variant="outline" title="Clone" className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
                           onClick={() => { void handleCloneJob(job); }}
                           disabled={cloningJobId === job._id}>
                           <Copy className="h-4 w-4" /> {cloningJobId === job._id ? "Cloning…" : "Clone"}
@@ -667,9 +667,9 @@ export default function EmployerJobsPage() {
                           size="sm"
                           variant="outline"
                           title={savedTemplateIds.has(job._id) ? "Already saved as template" : "Save as Template"}
-                          className={`h-9 gap-2 rounded-xl border-slate-200 bg-white px-3 text-sm ${
+                          className={`h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground ${
                             savedTemplateIds.has(job._id)
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 cursor-default"
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/40 cursor-default"
                               : ""
                           }`}
                           onClick={() => { if (!savedTemplateIds.has(job._id)) void handleSaveAsTemplate(job); }}
@@ -684,12 +684,12 @@ export default function EmployerJobsPage() {
                         </Button>
                       )}
                       {can("jobs", "update") && job.status === "draft" && (
-                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-xl border-emerald-200 px-3 text-emerald-700 hover:bg-emerald-50" onClick={() => { void handleActivateJob(job); }} disabled={isActivating}>
+                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-xl border-emerald-200 px-3 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleActivateJob(job); }} disabled={isActivating}>
                         <CheckCircle className="h-3.5 w-3.5" /> {isActivating ? "Activating…" : "Activate"}
                         </Button>
                       )}
                       {can("jobs", "update") && job.status === "active" && (
-                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-orange-200 px-3 text-orange-700 hover:bg-orange-50" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
+                        <Button size="sm" variant="outline" className="h-9 gap-2 rounded-xl border-orange-200 px-3 text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300 dark:hover:bg-orange-950/40" onClick={() => { void handleDeactivateJob(job); }} disabled={isDeactivating}>
                           <Clock className="h-4 w-4" /> {isDeactivating ? "Deactivating…" : "Deactivate"}
                         </Button>
                       )}
