@@ -8,6 +8,7 @@ import Link from "next/link";
 import EasyApply from "@/components/features/public/EasyApply";
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
+import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsights";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
 
@@ -274,6 +275,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   {renderJobDescription(job.description ?? "")}
                 </div>
               </section>
+
+              {/* Profile Insights — skill matching + micro questions */}
+              <SkillInsights jobId={String(job._id)} source="job_view" />
 
               {job.requirements && (
                 <section className="card-base rounded-[28px] p-6">

@@ -9,6 +9,7 @@ import { ChevronDown, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
+import { useConversations } from "@/hooks/useConversations";
 
 interface SidebarProps {
   navGroups: NavGroup[];
@@ -32,6 +33,12 @@ export function Sidebar({
   const sessionRole = (session?.user as { role?: string } | undefined)?.role;
   const effectiveRole = userRole ?? sessionRole;
   const isRtl = locale === "ar";
+  const currentUserId = (session?.user as unknown as { id?: string })?.id ?? "";
+  const { data: conversations } = useConversations();
+  const unreadMessageCount = (conversations ?? []).reduce(
+    (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
+    0
+  );
   const usesSimpleEmployerMenu = effectiveRole === "employer";
   const isSuperAgent = effectiveRole === "super_agent";
   const usesModernWorkspaceShell = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
@@ -381,6 +388,11 @@ export function Sidebar({
               >
                 {locale === "ar" ? item.titleAr : item.title}
               </span>
+              {item.title === "Messages" && unreadMessageCount > 0 && (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                </span>
+              )}
               {usesInlineWorkspaceSidebar && hasChildren && (
                 <ChevronDown
                   className={cn(

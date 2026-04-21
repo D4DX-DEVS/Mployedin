@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Send, Loader2, MessageSquare, AlertTriangle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { conversationKeys } from "@/hooks/useConversations";
 
 interface DMMessage {
   _id: string;
@@ -39,6 +41,7 @@ interface Props {
 const POLL_INTERVAL = 5000; // 5 seconds
 
 export function DirectMessageChat({ conversation, currentUserId }: Props) {
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<DMMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -80,8 +83,10 @@ export function DirectMessageChat({ conversation, currentUserId }: Props) {
           }
           return next;
         });
-        // Mark as read
-        fetch(`/api/dm/${conversation._id}/read`, { method: "PATCH" }).catch(() => {});
+        // Mark as read and refresh conversation list so unread badges clear
+        fetch(`/api/dm/${conversation._id}/read`, { method: "PATCH" })
+          .then(() => queryClient.invalidateQueries({ queryKey: conversationKeys.lists() }))
+          .catch(() => {});
       } else if (isInitial) {
         setError("Failed to load messages.");
       }

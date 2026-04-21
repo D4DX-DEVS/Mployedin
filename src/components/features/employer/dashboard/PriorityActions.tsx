@@ -164,9 +164,9 @@ export function PriorityActions({
             <div
               key={`${action.href}-${action.text}`}
               className={cn(
-                "flex flex-col gap-3.5 rounded-[22px] border p-3.5 transition-all sm:flex-row sm:items-center sm:gap-3 sm:p-4",
+                "flex flex-col gap-3.5 rounded-[22px] border p-3.5 transition-all xl:flex-row xl:items-center xl:gap-3 xl:p-4",
                 isUrgent && idx === 0
-                  ? "border-red-200 bg-[linear-gradient(135deg,_rgba(254,242,242,0.96),_rgba(255,255,255,0.98))]"
+                  ? "border-red-200 dark:border-red-500/30 bg-[linear-gradient(135deg,_rgba(254,242,242,0.96),_rgba(255,255,255,0.98))] dark:bg-[linear-gradient(135deg,_rgba(127,29,29,0.18),_rgba(30,30,30,0.95))]"
                   : "border-border bg-background/80 hover:-translate-y-0.5 hover:border-sky-500/25"
               )}
             >
@@ -200,7 +200,7 @@ export function PriorityActions({
               <Link
                 href={action.href}
                 className={cn(
-                  "inline-flex shrink-0 items-center justify-center gap-1 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors",
+                  "inline-flex items-center justify-center gap-1 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors whitespace-nowrap self-start xl:self-center xl:shrink-0",
                   isUrgent
                     ? "bg-sky-600 text-white hover:bg-sky-700"
                     : "border border-border bg-background/80 text-foreground/85 hover:border-sky-500/25 hover:text-sky-700 dark:hover:text-sky-300"

@@ -5,6 +5,7 @@ import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
 import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, getMatchedSkills } from "@/lib/matchScore";
+import SkillConfirmation from "@/models/SkillConfirmation";
 
 /**
  * GET /api/jobs/recommended
@@ -47,6 +48,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 
   const seekerProfile = seekerProfileFromDoc(seeker);
+
+  // Merge confirmed skills from SkillConfirmation into effective skills list
+  const confirmedSkills = await SkillConfirmation.find({
+    userId: ctx.userId,
+    status: "confirmed",
+  }).select("skill").lean();
+
+  const confirmedSet = new Set(confirmedSkills.map((c) => c.skill));
+  const existingLower = new Set(seekerProfile.skills.map((s) => s.toLowerCase()));
+  for (const cs of confirmedSet) {
+    if (!existingLower.has(cs.toLowerCase())) {
+      seekerProfile.skills.push(cs);
+    }
+  }
 
   // Exclude already-applied jobs
   const seekerId = (seeker as unknown as { _id: unknown })._id;

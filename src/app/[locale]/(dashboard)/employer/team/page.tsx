@@ -136,9 +136,9 @@ export default function TeamManagementPage() {
   const totalCount = members.length;
 
   const stats = [
-    { label: "Active Members", value: activeCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100" },
-    { label: "Pending Invites", value: pendingCount, icon: Clock, color: "text-amber-600", bg: "bg-amber-50 border-amber-100" },
-    { label: "Total Members", value: totalCount, icon: Users, color: "text-primary", bg: "bg-primary/5 border-primary/10" },
+    { label: "Active Members", value: activeCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-background border-border/60 dark:bg-card" },
+    { label: "Pending Invites", value: pendingCount, icon: Clock, color: "text-amber-600", bg: "bg-background border-border/60 dark:bg-card" },
+    { label: "Total Members", value: totalCount, icon: Users, color: "text-primary", bg: "bg-background border-border/60 dark:bg-card" },
   ];
 
   return (
