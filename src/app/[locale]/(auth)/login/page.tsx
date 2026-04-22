@@ -75,7 +75,7 @@ export default function LoginPage() {
       const session = await getSession();
       const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
-      router.push(getPostSignInPath(locale, role, isOnboarded));
+      router.replace(getPostSignInPath(locale, role, isOnboarded));
     } catch {
       setError("Google sign-in failed. Please try again.");
     } finally {
@@ -94,22 +94,27 @@ export default function LoginPage() {
       localStorage.removeItem(REMEMBER_ME_KEY);
     }
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      rememberMe: rememberMe ? "true" : "false",
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        rememberMe: rememberMe ? "true" : "false",
+        redirect: false,
+      });
 
-    setLoading(false);
+      if (result?.error) {
+        setError("Invalid email or password. Please try again.");
+        return;
+      }
 
-    if (result?.error) {
-      setError("Invalid email or password. Please try again.");
-    } else {
       const session = await getSession();
       const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
-      router.push(getPostSignInPath(locale, role, isOnboarded));
+      router.replace(getPostSignInPath(locale, role, isOnboarded));
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
   }
 

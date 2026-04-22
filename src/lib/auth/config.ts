@@ -92,12 +92,15 @@ export const authConfig: NextAuthConfig = {
           return null;
         }
 
-        // Reset failed attempts on successful login
-        await User.findByIdAndUpdate(user._id, {
-          lastLogin: new Date(),
-          failedLoginAttempts: 0,
-          lockUntil: null,
-        });
+        // Reset failed attempts + look up onboarding status in parallel
+        const [, jobSeeker] = await Promise.all([
+          User.findByIdAndUpdate(user._id, {
+            lastLogin: new Date(),
+            failedLoginAttempts: 0,
+            lockUntil: null,
+          }),
+          JobSeeker.findOne({ userId: user._id }).select("isOnboarded").lean(),
+        ]);
 
         logActivity({
           actorId: user._id.toString(),
@@ -106,9 +109,6 @@ export const authConfig: NextAuthConfig = {
           resource: "auth",
           meta: { email: user.email, provider: "credentials" },
         });
-
-        // Look up isOnboarded from JobSeeker profile
-        const jobSeeker = await JobSeeker.findOne({ userId: user._id }).select("isOnboarded").lean();
 
         return {
           id: user._id.toString(),
@@ -147,7 +147,6 @@ export const authConfig: NextAuthConfig = {
 
           await connectDB();
           let dbUser = await User.findOne({ email });
-          const isNewUser = !dbUser;
           const providerName = decoded.name ?? email.split("@")[0];
           const providerAvatar = decoded.picture ?? null;
 
@@ -174,6 +173,25 @@ export const authConfig: NextAuthConfig = {
               preferredRoles: [],
               preferredLocations: [],
             });
+
+            logActivity({
+              actorId: dbUser._id.toString(),
+              actorRole: dbUser.role,
+              action: "register.oauth",
+              resource: "auth",
+              meta: { email, provider: "firebase-google" },
+            });
+
+            return {
+              id: dbUser._id.toString(),
+              email: dbUser.email,
+              name: dbUser.name,
+              image: dbUser.avatar ?? providerAvatar,
+              role: dbUser.role,
+              locale: dbUser.locale,
+              isEmailVerified,
+              isOnboarded: false,
+            };
           } else {
             const update: Record<string, unknown> = {};
 
@@ -190,13 +208,13 @@ export const authConfig: NextAuthConfig = {
             }
           }
 
-          // Look up isOnboarded
+          // Look up isOnboarded for existing users
           const fbJobSeeker = await JobSeeker.findOne({ userId: dbUser._id }).select("isOnboarded").lean();
 
           logActivity({
             actorId: dbUser._id.toString(),
             actorRole: dbUser.role,
-            action: isNewUser ? "register.oauth" : "login.success",
+            action: "login.success",
             resource: "auth",
             meta: { email, provider: "firebase-google" },
           });
@@ -273,20 +291,31 @@ export const authConfig: NextAuthConfig = {
         token.pca = pca ? Math.floor(new Date(pca).getTime() / 1000) : null;
       }
 
-      // Token refresh path — verify password hasn't changed since this token was issued
+      // Token refresh path — verify password hasn't changed since this token was issued.
+      // Only hit DB when token.pca is set (password was changed at least once) or
+      // periodically (every updateAge cycle — controlled by NextAuth).
       if (token.id && !user) {
-        await connectDB();
-        const dbUser = await User.findById(token.id)
-          .select("passwordChangedAt isActive")
-          .lean() as { passwordChangedAt?: Date; isActive?: boolean } | null;
+        // Quick JWT-only check: if passwordChangedAt (cached as token.pca) is
+        // still older than iat, skip the DB round-trip entirely.
+        const pcaSec = (token.pca as number | null) ?? 0;
+        const needsDbCheck = pcaSec > 0 && (token.iat as number) < pcaSec;
 
-        if (!dbUser?.isActive) return null;
+        if (needsDbCheck) {
+          await connectDB();
+          const dbUser = await User.findById(token.id)
+            .select("passwordChangedAt isActive")
+            .lean() as { passwordChangedAt?: Date; isActive?: boolean } | null;
 
-        if (dbUser.passwordChangedAt) {
-          const changedAt = Math.floor(
-            new Date(dbUser.passwordChangedAt).getTime() / 1000
-          );
-          if ((token.iat as number) < changedAt) return null;
+          if (!dbUser?.isActive) return null;
+
+          if (dbUser.passwordChangedAt) {
+            const changedAt = Math.floor(
+              new Date(dbUser.passwordChangedAt).getTime() / 1000
+            );
+            if ((token.iat as number) < changedAt) return null;
+            // Update cached value so future refreshes can skip DB
+            token.pca = changedAt;
+          }
         }
       }
       // OAuth sign-in: create/find user in DB (LinkedIn OAuth — Firebase handles its own flow in authorize())
@@ -351,9 +380,9 @@ export const authConfig: NextAuthConfig = {
         });
       }
 
-      // Resolve companyUserRole for employers
+      // Resolve companyUserRole for employers — only when not already cached
       const resolvedRole = (token.role as string) ?? "";
-      if (resolvedRole === "employer" && token.id) {
+      if (resolvedRole === "employer" && token.id && !token.companyId) {
         try {
           await connectDB();
           const emp = await Employer.findOne({ userId: token.id as string }).select("_id").lean();
