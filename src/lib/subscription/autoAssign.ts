@@ -8,9 +8,7 @@
 import connectDB from "@/lib/db/mongoose";
 import SubscriptionPlan from "@/models/SubscriptionPlan";
 import Subscription from "@/models/Subscription";
-import Invoice from "@/models/Invoice";
 import SubscriptionHistory from "@/models/SubscriptionHistory";
-import { generateInvoiceNumber } from "./invoiceNumber";
 import { calcEndDate, nextUsageReset, initAiUsage, buildPlanSnapshot } from "./helpers";
 
 export async function autoAssignDefaultPlan(
@@ -74,24 +72,6 @@ export async function autoAssignDefaultPlan(
     reason: "Auto-assigned on registration",
   });
 
-  // Invoice (Free plans → $0)
-  if (plan.price > 0) {
-    const invoiceNumber = await generateInvoiceNumber();
-    await Invoice.create({
-      invoiceNumber,
-      userId,
-      subscriptionId: subscription._id,
-      planId: plan._id,
-      type: "new",
-      planName: plan.name,
-      description: `New subscription: ${plan.name} (${plan.billingCycle})`,
-      amount: plan.price,
-      currency: plan.currency,
-      billingCycle: plan.billingCycle,
-      periodStart: startDate,
-      periodEnd: endDate,
-      status: "issued",
-      issuedAt: new Date(),
-    });
-  }
+  // Skip invoices for auto-assigned plans — no payment system yet.
+  // When payments are added, re-enable invoice generation here.
 }

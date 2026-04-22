@@ -86,7 +86,7 @@ const EMPLOYER_PLANS = [
     currency: "AED",
     billingCycle: "monthly",
     isActive: true,
-    isDefault: true,
+    isDefault: false,
     sortOrder: 0,
     employerLimits: {
       maxActiveJobs: 2,
@@ -189,7 +189,7 @@ const EMPLOYER_PLANS = [
     currency: "AED",
     billingCycle: "monthly",
     isActive: true,
-    isDefault: false,
+    isDefault: true,
     sortOrder: 3,
     employerLimits: {
       maxActiveJobs: -1,
@@ -226,7 +226,7 @@ const JOB_SEEKER_PLANS = [
     currency: "AED",
     billingCycle: "monthly",
     isActive: true,
-    isDefault: true,
+    isDefault: false,
     sortOrder: 0,
     jobSeekerLimits: {
       maxApplicationsPerMonth: 10,
@@ -278,7 +278,7 @@ const JOB_SEEKER_PLANS = [
     currency: "AED",
     billingCycle: "monthly",
     isActive: true,
-    isDefault: false,
+    isDefault: true,
     sortOrder: 2,
     jobSeekerLimits: {
       maxApplicationsPerMonth: -1,
@@ -303,13 +303,14 @@ async function seed() {
 
   const allPlans = [...EMPLOYER_PLANS, ...JOB_SEEKER_PLANS];
   let created = 0;
-  let skipped = 0;
+  let updated = 0;
 
   for (const plan of allPlans) {
     const existing = await SubscriptionPlan.findOne({ slug: plan.slug });
     if (existing) {
-      console.log(`  ⏭ ${plan.slug} already exists — skipping`);
-      skipped++;
+      await SubscriptionPlan.updateOne({ slug: plan.slug }, { $set: plan });
+      console.log(`  🔄 ${plan.slug} updated`);
+      updated++;
       continue;
     }
     await SubscriptionPlan.create(plan);
@@ -317,7 +318,7 @@ async function seed() {
     created++;
   }
 
-  console.log(`\nDone — created: ${created}, skipped: ${skipped}`);
+  console.log(`\nDone — created: ${created}, updated: ${updated}`);
   await mongoose.disconnect();
 }
 
