@@ -78,14 +78,6 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 description: "Confirmed hires & placements",
                 descriptionAr: "التعيينات المؤكدة",
               },
-              {
-                title: "Approvals",
-                titleAr: "الموافقات",
-                href: p("/admin/approvals"),
-                icon: "CheckCircle",
-                description: "Pending approval requests",
-                descriptionAr: "طلبات الموافقة المعلقة",
-              },
             ],
           },
           {
@@ -237,6 +229,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "رسائل نموذج الاتصال",
               },
             ],
+          },
+          {
+            title: "Poster Templates",
+            titleAr: "قوالب الإعلانات",
+            href: p("/admin/poster-templates"),
+            icon: "LayoutTemplate",
+            description: "Design poster templates for employers",
+            descriptionAr: "تصميم قوالب الإعلانات لأصحاب العمل",
           },
           {
             title: "Job Attributes",

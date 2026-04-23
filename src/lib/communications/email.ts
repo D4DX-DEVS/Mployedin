@@ -305,6 +305,58 @@ export const EmailTemplates = {
     `,
   }),
 
+  jobSeekerWelcome: (name: string, dashboardUrl: string) => ({
+    subject: "Welcome to MPLOYEDIN – Let's Find Your Next Opportunity!",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+        </div>
+        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p>Dear <strong>${name}</strong>,</p>
+          <p>Welcome to <strong>MPLOYEDIN</strong>! We're excited to have you on board.</p>
+          <p>Here's how to get started:</p>
+          <ul style="color: #374151; line-height: 1.8;">
+            <li><strong>Complete your profile</strong> – Add your skills, experience, and preferences so employers can find you.</li>
+            <li><strong>Browse jobs</strong> – Explore opportunities that match your skills and interests.</li>
+            <li><strong>Get matched</strong> – Our AI will recommend the best jobs for you automatically.</li>
+          </ul>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${dashboardUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Go to Dashboard</a>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">If you have any questions, feel free to reach out to our support team.</p>
+          <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
+        </div>
+      </div>
+    `,
+  }),
+
+  employerSelfWelcome: (contactName: string, companyName: string, dashboardUrl: string) => ({
+    subject: `Welcome to MPLOYEDIN – ${companyName} Is Ready to Hire!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+        </div>
+        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p>Dear <strong>${contactName}</strong>,</p>
+          <p>Welcome to <strong>MPLOYEDIN</strong>! Your company <strong>${companyName}</strong> is now registered and ready to start hiring top talent.</p>
+          <p>Here's what you can do next:</p>
+          <ul style="color: #374151; line-height: 1.8;">
+            <li><strong>Post your first job</strong> – Create a job listing and reach thousands of qualified candidates.</li>
+            <li><strong>Browse candidates</strong> – Search our database of job seekers matched to your needs.</li>
+            <li><strong>Set up your team</strong> – Invite team members to collaborate on hiring.</li>
+          </ul>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${dashboardUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Go to Dashboard</a>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">If you have any questions, feel free to reach out to our support team.</p>
+          <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
+        </div>
+      </div>
+    `,
+  }),
+
   passwordReset: (resetUrl: string) => ({
     subject: "Reset Your Password – MPLOYEDIN",
     html: `

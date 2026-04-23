@@ -8,6 +8,8 @@ import Employer from "@/models/Employer";
 import mongoose from "mongoose";
 import type { UserRole } from "@/models/User";
 import { triggerRealtimeEvent } from "@/lib/realtime";
+import { validateBody } from "@/lib/validators";
+import { dmStartConversationSchema } from "@/lib/validators/dm";
 
 interface AuthCtx { userId: string; role: UserRole; }
 
@@ -90,12 +92,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
-  const body = await req.json();
-  const recipientId = String(body.recipientId ?? "");
-
-  if (!recipientId || !mongoose.Types.ObjectId.isValid(recipientId)) {
-    return NextResponse.json({ error: "recipientId is required" }, { status: 400 });
-  }
+  const body = await validateBody(req, dmStartConversationSchema);
+  const recipientId = body.recipientId;
 
   if (recipientId === ctx.userId) {
     return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });

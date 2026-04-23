@@ -53,6 +53,54 @@ export function currencyForCountry(countryCode: string): CurrencyInfo {
   return COUNTRY_CURRENCIES[countryCode] ?? COUNTRY_CURRENCIES.AE;
 }
 
+/**
+ * Approximate exchange rates FROM AED.
+ * i.e. 1 AED ≈ X of target currency.
+ * Updated periodically — these are indicative display-only rates.
+ */
+export const AED_EXCHANGE_RATES: Record<string, number> = {
+  AED: 1,
+  USD: 0.2723,
+  INR: 22.78,
+  GBP: 0.2158,
+  SAR: 1.0209,
+  QAR: 0.9914,
+  KWD: 0.0836,
+  BHD: 0.1026,
+  OMR: 0.1048,
+  EGP: 13.63,
+  PKR: 75.83,
+  BDT: 32.59,
+  PHP: 15.32,
+  CAD: 0.3753,
+  AUD: 0.4179,
+  EUR: 0.2514,
+  JPY: 38.86,
+  SGD: 0.3598,
+  MYR: 1.1796,
+  JOD: 0.1929,
+  LBP: 24384,
+  NGN: 422.0,
+  ZAR: 4.9,
+  KES: 35.2,
+};
+
+/** Convert an amount from one currency to another using AED as pivot.
+ *  Accepts an optional rates map (from live API); falls back to AED_EXCHANGE_RATES. */
+export function convertCurrency(
+  amount: number,
+  fromCurrency: string,
+  toCurrency: string,
+  rates: Record<string, number> = AED_EXCHANGE_RATES,
+): number {
+  if (fromCurrency === toCurrency) return amount;
+  const fromRate = rates[fromCurrency] ?? AED_EXCHANGE_RATES[fromCurrency] ?? 1;
+  const toRate = rates[toCurrency] ?? AED_EXCHANGE_RATES[toCurrency] ?? 1;
+  // Convert: amount → AED → target
+  const inAED = amount / fromRate;
+  return Math.round(inAED * toRate * 100) / 100;
+}
+
 /** Format a number with a currency code, e.g. "INR 12,500" or "$ 3,200" */
 export function formatCurrency(amount: number | string | null | undefined, currencyCode = "AED"): string {
   if (amount == null || amount === "") return "—";
@@ -61,4 +109,23 @@ export function formatCurrency(amount: number | string | null | undefined, curre
   const info = SUPPORTED_CURRENCIES.find((c) => c.code === currencyCode);
   const symbol = info?.symbol ?? currencyCode;
   return `${symbol} ${num.toLocaleString()}`;
+}
+
+/**
+ * Convert and format: converts from source currency to display currency,
+ * then formats with the display currency symbol.
+ * Accepts an optional rates map (from live API); falls back to AED_EXCHANGE_RATES.
+ */
+export function convertAndFormat(
+  amount: number | string | null | undefined,
+  fromCurrency: string,
+  toCurrency: string,
+  rates?: Record<string, number>,
+): string {
+  if (amount == null || amount === "") return "—";
+  const num = Number(amount);
+  if (isNaN(num)) return "—";
+  if (num === 0) return "Free";
+  const converted = convertCurrency(num, fromCurrency, toCurrency, rates);
+  return formatCurrency(converted, toCurrency);
 }

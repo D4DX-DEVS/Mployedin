@@ -1,0 +1,45 @@
+{
+  "servers": {
+    "linkedin-mcp-runner": {
+      "command": "npx",
+      "args": ["-y", "linkedin-mcp-runner"],
+      "env": {
+        "LIGO_API_KEY": "${input:ligoApiKey}"
+      }
+    },
+    "linkedin-publisher": {
+      "command": "npx",
+      "args": ["-y", "@humanagencyp/linkedin-mcp"],
+      "env": {
+        "LINKEDIN_ACCESS_TOKEN": "${input:linkedinAccessToken}"
+      }
+    },
+    "linkedin-scraper": {
+      "command": "npx",
+      "args": ["-y", "@pullapi/linkedin-scraper-mcp"],
+      "env": {
+        "RAPIDAPI_KEY": "${input:rapidApiKey}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "id": "ligoApiKey",
+      "type": "promptString",
+      "description": "LiGo API Key (from ligo.ertiqah.com/integrations/claude)",
+      "password": true
+    },
+    {
+      "id": "linkedinAccessToken",
+      "type": "promptString",
+      "description": "LinkedIn OAuth2 Access Token (from linkedin.com/developers)",
+      "password": true
+    },
+    {
+      "id": "rapidApiKey",
+      "type": "promptString",
+      "description": "RapidAPI Key (from rapidapi.com/pullapi/api)",
+      "password": true
+    }
+  ]
+}

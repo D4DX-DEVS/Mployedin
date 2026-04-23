@@ -27,11 +27,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const employer = job.employerId as any;
   const title = `${job.title} at ${employer?.companyName ?? "Company"} | mployedin`;
+  const description = job.description?.slice(0, 160);
+  const ogImageUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/og/job?id=${id}`;
 
   return {
     title,
-    description: job.description?.slice(0, 160),
-    openGraph: { title, description: job.description?.slice(0, 160), type: "website" },
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImageUrl],
+    },
   };
 }
 

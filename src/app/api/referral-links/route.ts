@@ -5,6 +5,8 @@ import ReferralLink from "@/models/ReferralLink";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import crypto from "crypto";
+import { validateBody } from "@/lib/validators";
+import { referralLinkCreateSchema } from "@/lib/validators/referral-links";
 
 interface AuthCtx {
   userId: string;
@@ -94,9 +96,9 @@ async function handlePost(req: NextRequest, ctx: AuthCtx) {
     );
   }
 
-  const body = await req.json();
-  const label = (body.label ?? "").trim().slice(0, 100);
-  const maxUses = Math.max(0, parseInt(body.maxUses ?? "0") || 0);
+  const body = await validateBody(req, referralLinkCreateSchema);
+  const label = body.label ?? "";
+  const maxUses = body.maxUses;
   const expiresAt = body.expiresAt ? new Date(body.expiresAt) : undefined;
 
   // Validate expiry is in the future

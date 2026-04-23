@@ -11,6 +11,7 @@ export const aiChatSchema = z.object({
     .min(1)
     .max(50, "Maximum 50 messages per request"),
   context: z.string().max(2000).optional(),
+  currentPage: z.string().max(200).optional(),
 });
 
 export const aiReportSchema = z.object({
@@ -26,6 +27,10 @@ export const aiJobSearchSchema = z.object({
 });
 
 export const aiCandidateSearchSchema = z.object({
+  query: z.string().min(1).max(500).trim(),
+});
+
+export const aiApplicationSearchSchema = z.object({
   query: z.string().min(1).max(500).trim(),
 });
 
@@ -60,4 +65,33 @@ export const aiJobDescriptionSchema = z.object({
   seniority: z.string().max(50).optional(),
   skills: z.array(z.string().max(100)).max(30).optional(),
   tone: z.enum(["professional", "casual", "creative"]).default("professional"),
+});
+
+/** POST /api/ai/enhance-text */
+export const aiEnhanceTextSchema = z.object({
+  text: z.string().min(1).max(2000).trim(),
+  context: z.string().max(200).optional(),
+});
+
+/** POST /api/ai/profile-fill */
+export const aiProfileFillSchema = z.object({
+  section: z.enum(["summary", "skills", "experience", "education", "languages"]),
+  input: z.string().min(3).max(2000).trim(),
+});
+
+/** POST /api/ai/screen-candidates */
+export const aiScreenCandidatesSchema = z.object({
+  jobId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid jobId"),
+  maxCandidates: z.number().int().min(1).max(20).default(10),
+});
+
+/** POST /api/ai/interview-questions */
+export const aiInterviewQuestionsSchema = z.object({
+  jobTitle: z.string().min(1).max(200).trim(),
+  candidateName: z.string().max(200).optional(),
+  interviewId: z.string().max(50).optional(),
+  skills: z.array(z.string().max(100)).max(15).optional(),
+  experienceYears: z.number().min(0).max(60).optional(),
+  questionType: z.enum(["technical", "behavioral", "culture_fit", "situational"]).optional(),
+  count: z.number().int().min(1).max(15).default(8),
 });

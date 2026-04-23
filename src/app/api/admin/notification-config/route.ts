@@ -3,6 +3,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { getSystemConfig } from "@/models/SystemConfig";
 import SystemConfig from "@/models/SystemConfig";
+import { validateBody } from "@/lib/validators";
+import { notificationConfigUpdateSchema } from "@/lib/validators/settings";
 
 /**
  * GET /api/admin/notification-config
@@ -29,7 +31,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   }
 
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, notificationConfigUpdateSchema);
   const updates: Record<string, unknown> = {};
 
   // Toggle cron jobs

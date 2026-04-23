@@ -5,6 +5,8 @@ import Conversation from "@/models/Conversation";
 import mongoose from "mongoose";
 import type { UserRole } from "@/models/User";
 import { triggerRealtimeEvent } from "@/lib/realtime";
+import { validateBody } from "@/lib/validators";
+import { customerCareManageSchema } from "@/lib/validators/dm";
 
 interface AuthCtx {
   userId: string;
@@ -42,7 +44,7 @@ async function patchHandler(
     return NextResponse.json({ error: "Customer care conversation not found" }, { status: 404 });
   }
 
-  const body = await req.json();
+  const body = await validateBody(req, customerCareManageSchema);
   const { status, assignedTo, priority } = body;
 
   if (!conversation.customerCare) {

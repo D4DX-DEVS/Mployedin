@@ -5,6 +5,8 @@ import JobSeeker from "@/models/JobSeeker";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
+import { validateBody } from "@/lib/validators";
+import { aiProfileFillSchema } from "@/lib/validators/ai";
 
 type SectionId = "summary" | "skills" | "experience" | "education" | "languages";
 
@@ -49,21 +51,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
   }
 
-  const body = await req.json().catch(() => null);
-  const section = body?.section as string;
-  const userInput = body?.input as string;
-
-  if (!section || !VALID_SECTIONS.has(section as SectionId)) {
-    return NextResponse.json({ error: "Invalid section. Must be one of: summary, skills, experience, education, languages" }, { status: 400 });
-  }
-
-  if (!userInput || typeof userInput !== "string" || userInput.trim().length < 3) {
-    return NextResponse.json({ error: "Please provide some details for the AI to work with." }, { status: 400 });
-  }
-
-  if (userInput.length > 2000) {
-    return NextResponse.json({ error: "Input too long. Please keep it under 2000 characters." }, { status: 400 });
-  }
+  const body = await validateBody(req, aiProfileFillSchema);
+  const section = body.section;
+  const userInput = body.input;
 
   await connectDB();
   const seeker = await JobSeeker.findOne({ userId: ctx.userId }).lean();

@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { Check, ChevronRight, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin } from "lucide-react";
+import { Check, ChevronRight, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin, Mail, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -198,9 +198,14 @@ export default function JobSeekerOnboardingPage() {
   const phoneRef = useRef<HTMLInputElement>(null);
 
   const userName = (session?.user?.name as string | undefined) ?? "";
+  const userEmail = (session?.user?.email as string | undefined) ?? "";
+  const userImage = (session?.user?.image as string | undefined) ?? "";
   const isLinkedIn = (session?.user as unknown as { provider?: string })?.provider === "linkedin";
   const [linkedInPrefilled, setLinkedInPrefilled] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [aiImporting, setAiImporting] = useState(false);
+  const [aiImported, setAiImported] = useState(false);
+  const [aiImportError, setAiImportError] = useState("");
 
   const [step0, setStep0] = useState<Step0Data>({
     name: userName,
@@ -250,6 +255,25 @@ export default function JobSeekerOnboardingPage() {
             setLinkedInPrefilled(true);
           }
 
+          // Pre-fill step1 from LinkedIn extras (headline used as job title hint, location)
+          if (isLinkedIn && p.currentLocation) {
+            setStep1((prev) => ({
+              ...prev,
+              currentCity: p.currentLocation || prev.currentCity,
+            }));
+          }
+
+          // Pre-fill step3 from LinkedIn extras (headline, preferred locations)
+          if (isLinkedIn) {
+            setStep3((prev) => ({
+              ...prev,
+              headline: p.headline || prev.headline,
+              preferredLocations: p.currentLocation && !prev.preferredLocations.length
+                ? [p.currentLocation]
+                : prev.preferredLocations,
+            }));
+          }
+
           // Auto-focus phone if name is already filled
           if ((p.fullName || userName) && !p.phone) {
             setTimeout(() => phoneRef.current?.focus(), 300);
@@ -261,6 +285,97 @@ export default function JobSeekerOnboardingPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, userName]);
+
+  // ── AI-powered LinkedIn profile import ──────────────────────────────────
+  const handleAiImport = useCallback(async () => {
+    setAiImporting(true);
+    setAiImportError("");
+    try {
+      const res = await fetch("/api/linkedin/import-profile", { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? "Import failed");
+      }
+      const { imported } = await res.json() as {
+        imported: {
+          name?: string;
+          headline?: string;
+          location?: string;
+          summary?: string;
+          industry?: string;
+          skills?: string[];
+          languages?: string[];
+          certifications?: string[];
+          experience?: {
+            jobTitle: string;
+            company: string;
+            location?: string;
+            startDate?: string;
+            endDate?: string;
+            isCurrent?: boolean;
+          }[];
+          education?: {
+            degree: string;
+            institution: string;
+            field?: string;
+            startYear?: number;
+            endYear?: number;
+          }[];
+        };
+      };
+
+      // Pre-fill Step 0
+      if (imported.name) {
+        setStep0((p) => ({ ...p, name: imported.name || p.name }));
+      }
+
+      // Pre-fill Step 1 (Employment)
+      const firstExp = imported.experience?.[0];
+      if (firstExp) {
+        setStep0((p) => ({ ...p, workStatus: p.workStatus || "experienced" }));
+        setStep1((p) => ({
+          ...p,
+          isCurrentlyEmployed: firstExp.isCurrent ?? p.isCurrentlyEmployed,
+          companyName: firstExp.company || p.companyName,
+          jobTitle: firstExp.jobTitle || p.jobTitle,
+          currentCity: imported.location || firstExp.location || p.currentCity,
+          skills: imported.skills?.length ? imported.skills.slice(0, 15) : p.skills,
+          industry: imported.industry || p.industry,
+        }));
+      } else if (imported.location) {
+        setStep1((p) => ({ ...p, currentCity: imported.location || p.currentCity }));
+      }
+
+      // Pre-fill Step 2 (Education)
+      const firstEdu = imported.education?.[0];
+      if (firstEdu) {
+        setStep2((p) => ({
+          ...p,
+          qualification: firstEdu.degree || p.qualification,
+          university: firstEdu.institution || p.university,
+          specialization: firstEdu.field || p.specialization,
+          startYear: firstEdu.startYear?.toString() || p.startYear,
+          passingYear: firstEdu.endYear?.toString() || p.passingYear,
+        }));
+      }
+
+      // Pre-fill Step 3 (Headline & Preferences)
+      setStep3((p) => ({
+        ...p,
+        headline: imported.headline || imported.summary || p.headline,
+        preferredLocations: imported.location && !p.preferredLocations.length
+          ? [imported.location]
+          : p.preferredLocations,
+      }));
+
+      setAiImported(true);
+      setLinkedInPrefilled(true);
+    } catch (err) {
+      setAiImportError((err as Error).message);
+    } finally {
+      setAiImporting(false);
+    }
+  }, []);
 
   const [step1, setStep1] = useState<Step1Data>({
     isCurrentlyEmployed: null,
@@ -511,11 +626,57 @@ export default function JobSeekerOnboardingPage() {
             {step === 0 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Welcome, {step0.name.split(" ")[0] || "there"} !</h2>
+                  <div className="flex items-center gap-4">
+                    {linkedInPrefilled && userImage ? (
+                      <Image
+                        src={userImage}
+                        alt={step0.name || "Profile"}
+                        width={56}
+                        height={56}
+                        className="rounded-full border-2 border-blue-200 shrink-0"
+                      />
+                    ) : null}
+                    <h2 className="text-2xl font-bold text-gray-900">Welcome, {step0.name.split(" ")[0] || "there"} !</h2>
+                  </div>
                   {linkedInPrefilled && (
                     <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800">
                       <Linkedin className="w-4 h-4 text-[#0A66C2] shrink-0" />
                       We imported your info from LinkedIn. Please verify and complete the remaining fields.
+                    </div>
+                  )}
+                  {/* AI Import from LinkedIn button */}
+                  {isLinkedIn && !aiImported && (
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        disabled={aiImporting}
+                        onClick={handleAiImport}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-medium shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {aiImporting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            AI is importing your LinkedIn profile...
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="w-4 h-4" />
+                            Auto-fill all steps from LinkedIn with AI
+                          </>
+                        )}
+                      </button>
+                      {aiImportError && (
+                        <p className="text-xs text-red-500 mt-1.5">{aiImportError}</p>
+                      )}
+                      <p className="text-xs text-gray-400 mt-1.5 text-center">
+                        AI will analyze your LinkedIn profile and fill experience, education, skills &amp; more
+                      </p>
+                    </div>
+                  )}
+                  {aiImported && (
+                    <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-purple-50 border border-purple-200 text-sm text-purple-800">
+                      <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
+                      AI has pre-filled your profile from LinkedIn! Please review each step.
                     </div>
                   )}
                   <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
@@ -547,6 +708,26 @@ export default function JobSeekerOnboardingPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Email (read-only for LinkedIn users) */}
+                {linkedInPrefilled && userEmail && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm font-medium text-gray-800">Email</Label>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
+                        <Linkedin className="w-3 h-3" /> From LinkedIn
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        value={userEmail}
+                        readOnly
+                        className="h-11 pr-10 border-gray-300 bg-gray-50 text-gray-600 cursor-default"
+                      />
+                      <Mail className="absolute right-3 top-3 w-5 h-5 text-green-500" />
+                    </div>
+                  </div>
+                )}
 
                 {/* Mobile number */}
                 <div className="space-y-1.5">
@@ -738,7 +919,14 @@ export default function JobSeekerOnboardingPage() {
 
                     {/* Current city */}
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-gray-800">Current city <span className="text-red-500">*</span></Label>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm font-medium text-gray-800">Current city <span className="text-red-500">*</span></Label>
+                        {linkedInPrefilled && step1.currentCity.trim() && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
+                            <Linkedin className="w-3 h-3" /> From LinkedIn
+                          </span>
+                        )}
+                      </div>
                       <Input
                         value={step1.currentCity}
                         onChange={(e) => setStep1((p) => ({ ...p, currentCity: e.target.value }))}
@@ -1093,7 +1281,14 @@ export default function JobSeekerOnboardingPage() {
 
                 {/* Resume headline */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-800">Resume headline</Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm font-medium text-gray-800">Resume headline</Label>
+                    {linkedInPrefilled && step3.headline.trim() && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-[11px] font-medium text-[#0A66C2]">
+                        <Linkedin className="w-3 h-3" /> From LinkedIn
+                      </span>
+                    )}
+                  </div>
                   <textarea
                     value={step3.headline}
                     onChange={(e) => setStep3((p) => ({ ...p, headline: e.target.value }))}

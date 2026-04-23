@@ -6,6 +6,8 @@ import Agent from "@/models/Agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { jobApprovalSchema } from "@/lib/validators/misc";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -36,7 +38,7 @@ async function handler(
     }
   }
 
-  const { approved } = await req.json() as { approved: boolean };
+  const { approved } = await validateBody(req, jobApprovalSchema);
 
   job.set("poster.approvalStatus", approved ? "approved" : "rejected");
   if (approved) job.status = "active";

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import ReferralLink from "@/models/ReferralLink";
+import { validateBody } from "@/lib/validators";
+import { referralLinkUpdateSchema } from "@/lib/validators/referral-links";
 
 interface AuthCtx {
   userId: string;
@@ -49,11 +51,11 @@ async function handlePatch(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await validateBody(req, referralLinkUpdateSchema);
 
-  if (body.label !== undefined) link.label = body.label.trim().slice(0, 100);
-  if (body.isActive !== undefined) link.isActive = Boolean(body.isActive);
-  if (body.maxUses !== undefined) link.maxUses = Math.max(0, parseInt(body.maxUses) || 0);
+  if (body.label !== undefined) link.label = body.label;
+  if (body.isActive !== undefined) link.isActive = body.isActive;
+  if (body.maxUses !== undefined) link.maxUses = body.maxUses;
   if (body.expiresAt !== undefined) {
     link.expiresAt = body.expiresAt ? new Date(body.expiresAt) : undefined;
   }

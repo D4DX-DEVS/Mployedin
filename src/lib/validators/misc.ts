@@ -134,3 +134,15 @@ export const chatHistoryCreateSchema = z.object({
     .max(100),
   title: z.string().max(200).trim().nullish(),
 });
+
+/** POST /api/admin/jobs/[id]/approve */
+export const jobApprovalSchema = z.object({
+  approved: z.boolean(),
+});
+
+/** POST /api/auth/job-seeker-register */
+export const jobSeekerRegisterSchema = z.object({
+  name: z.string().min(1).max(200).trim(),
+  email: z.string().email().max(254).trim().toLowerCase(),
+  password: z.string().min(8).max(128),
+});

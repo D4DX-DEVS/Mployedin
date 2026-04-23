@@ -117,7 +117,7 @@ export default auth(async function middleware(req: NextRequest) {
   const intlResponse = intlMiddleware(req);
 
   // Check auth session
-  const session = (req as unknown as { auth?: { user?: { id: string; role: UserRole; locale: string; isEmailVerified?: boolean; isOnboarded?: boolean } } }).auth;
+  const session = (req as unknown as { auth?: { user?: { id: string; email?: string; role: UserRole; locale: string; isEmailVerified?: boolean; isOnboarded?: boolean } } }).auth;
   const isPublic = isPublicRoute(pathname);
 
   if (!session?.user && !isPublic) {
@@ -135,8 +135,12 @@ export default auth(async function middleware(req: NextRequest) {
     const isVerifyPage = stripped.startsWith("/verify-email");
     if (inDashboard && !isVerifyPage && session.user.isEmailVerified === false) {
       const urlLocale = pathname.split("/")[1] || defaultLocale;
+      const verifyUrl = new URL(`/${urlLocale}/verify-email`, req.url);
+      if (session.user.email) {
+        verifyUrl.searchParams.set("email", session.user.email);
+      }
       return withSecurityHeaders(
-        NextResponse.redirect(new URL(`/${urlLocale}/verify-email`, req.url))
+        NextResponse.redirect(verifyUrl)
       );
     }
     // Redirect non-onboarded job seekers trying to access the dashboard back to onboarding

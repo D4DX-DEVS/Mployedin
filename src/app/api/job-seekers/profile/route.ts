@@ -5,6 +5,7 @@ import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import { logActivity } from "@/lib/audit/log";
 import { z } from "zod";
+import { validateBody } from "@/lib/validators";
 
 export const runtime = "nodejs";
 
@@ -83,22 +84,9 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsedData = await validateBody(req, profileUpdateSchema);
 
-  const parsed = profileUpdateSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })) },
-      { status: 400 }
-    );
-  }
-
-  const { name, phone, onboardingComplete, education: eduInput, experience: expInput, ...seekerData } = parsed.data;
+  const { name, phone, onboardingComplete, education: eduInput, experience: expInput, ...seekerData } = parsedData;
 
   await connectDB();
 

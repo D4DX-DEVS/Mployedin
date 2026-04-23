@@ -8,6 +8,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import { Application } from "@/models/Application";
 import { JobSeeker } from "@/models/JobSeeker";
+import { validateBody } from "@/lib/validators";
+import { aiScreenCandidatesSchema } from "@/lib/validators/ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 
@@ -43,9 +45,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
-    const jobId = sanitizeAIInput(String(body.jobId ?? ""), 100);
-    const maxCandidates = Math.min(Number(body.maxCandidates ?? 10), 20);
+    const body = await validateBody(req, aiScreenCandidatesSchema);
+    const jobId = body.jobId;
+    const maxCandidates = body.maxCandidates;
 
     if (!jobId) {
       return NextResponse.json({ error: "jobId is required" }, { status: 400 });
@@ -178,6 +180,7 @@ Output ONLY a JSON array, no markdown code blocks, sorted by score descending.`;
       { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );
   } catch (err) {
+    if (err instanceof NextResponse) return err;
     console.error("[Screen Candidates Error]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }

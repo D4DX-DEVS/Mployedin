@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Edit2, Copy, CheckCircle, XCircle, Clock, MapPin,
   Briefcase, DollarSign, Users, Eye, Calendar, Tag, Trash2,
-  GitBranch, SlidersHorizontal, PauseCircle, PlayCircle,
+  GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useJobDetail, useUpdateJobStatus, useCloneJob, useDeleteJob } from "@/hooks/useJobs";
 import { useConfirm } from "@/hooks/useConfirm";
+import { JobPosterDialog } from "@/components/features/employer/jobs/JobPosterDialog";
 
 interface Job {
   _id: string;
@@ -63,7 +64,15 @@ export default function JobDetailPage() {
   const deleteMutation = useDeleteJob();
   const [cloning, setCloning] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [posterOpen, setPosterOpen] = useState(false);
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
+
+  // Auto-open poster dialog from ?poster=1 (e.g. after job creation)
+  useEffect(() => {
+    if (searchParams.get("poster") === "1" && job) {
+      setPosterOpen(true);
+    }
+  }, [searchParams, job]);
 
   async function updateStatus(status: string) {
     updateStatusMutation.mutate({ jobId: id, status });
@@ -132,12 +141,23 @@ export default function JobDetailPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
+      {job && (
+        <JobPosterDialog
+          open={posterOpen}
+          onOpenChange={setPosterOpen}
+          job={job}
+          locale={locale}
+        />
+      )}
       {/* Back + Actions */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <Button variant="ghost" size="sm" className="gap-2 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => router.push(`/${locale}/employer/jobs`)}>
           <ArrowLeft className="w-4 h-4" /> Back to Jobs
         </Button>
         <div className="flex gap-2 flex-wrap">
+          <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={() => setPosterOpen(true)}>
+            <ImageIcon className="w-3.5 h-3.5" /> Create Poster
+          </Button>
           <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={cloneJob} disabled={cloning}>
             <Copy className="w-3.5 h-3.5" /> {cloning ? "Cloning…" : "Clone"}
           </Button>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/auth/withAuth";
+import { verifyCronRequest } from "@/lib/security/cron-auth";
 import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import { inngest } from "@/lib/inngest/client";
@@ -12,16 +12,14 @@ import { inngest } from "@/lib/inngest/client";
  *
  * TODO: DISABLED — auto-apply feature is planned for future release.
  */
-export const POST = withAuth(async (_req: NextRequest, ctx) => {
+export async function POST(req: NextRequest) {
+  const authError = verifyCronRequest(req);
+  if (authError) return authError;
+
   // Feature disabled — return early
   return NextResponse.json({ error: "Auto-apply feature is not yet available" }, { status: 503 });
 
   // TODO: Re-enable when auto-apply feature is ready
-  // // Allow admin or internal cron (role check is flexible)
-  // if (!["admin", "super_agent"].includes(ctx.role)) {
-  //   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  // }
-  //
   // await connectDB();
   //
   // const seekers = await JobSeeker.find({ applicationMode: "auto" })
@@ -41,4 +39,4 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
   // );
   //
   // return NextResponse.json({ triggered: seekers.length });
-});
+}

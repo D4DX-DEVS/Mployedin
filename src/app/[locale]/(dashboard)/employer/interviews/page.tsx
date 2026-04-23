@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -19,6 +19,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { AIInterviewQuestionsPanel } from "@/components/features/employer/AIInterviewQuestionsPanel";
 import { useInterviews, useUpdateInterview, useScheduleNextRound } from "@/hooks/useInterviews";
+import { useCreateOffer } from "@/hooks/useOffers";
 import type { Interview } from "@/hooks/useInterviews";
 
 interface AIQuestionsTarget {
@@ -38,6 +39,7 @@ type ModalType =
 
 export default function EmployerInterviewsPage() {
   const { locale } = useParams<{ locale: string }>();
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const { can } = usePermissions();
@@ -48,6 +50,7 @@ export default function EmployerInterviewsPage() {
   const { data, isLoading: loading, error, refetch } = useInterviews({ page, limit, status: status || undefined });
   const updateMutation = useUpdateInterview();
   const nextRoundMutation = useScheduleNextRound();
+  const createOfferMutation = useCreateOffer();
 
   const interviews = data?.interviews ?? [];
   const total = data?.total ?? 0;
@@ -128,7 +131,9 @@ export default function EmployerInterviewsPage() {
           onClose={() => setModal({ kind: "none" })}
           updateMutation={updateMutation}
           nextRoundMutation={nextRoundMutation}
+          createOfferMutation={createOfferMutation}
           locale={locale}
+          onOfferCreated={() => router.push(`/${locale}/employer/offers`)}
         />
       )}
 
@@ -439,13 +444,17 @@ function InterviewActionModal({
   onClose,
   updateMutation,
   nextRoundMutation,
+  createOfferMutation,
   locale,
+  onOfferCreated,
 }: {
   modal: Exclude<ModalType, { kind: "none" }>;
   onClose: () => void;
   updateMutation: ReturnType<typeof useUpdateInterview>;
   nextRoundMutation: ReturnType<typeof useScheduleNextRound>;
+  createOfferMutation: ReturnType<typeof useCreateOffer>;
   locale: string;
+  onOfferCreated: () => void;
 }) {
   const [outcome, setOutcome] = useState<string>("");
   const [feedback, setFeedback] = useState("");
@@ -519,21 +528,16 @@ function InterviewActionModal({
         });
       } else if (modal.kind === "offer") {
         if (!salaryAmount || !startDate) { setSubmitError("Salary and start date are required"); setSubmitting(false); return; }
-        const res = await fetch("/api/offers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            applicationId: iv.applicationId,
-            salary: { amount: Number(salaryAmount), currency: salaryCurrency, period: salaryPeriod },
-            startDate: new Date(startDate).toISOString(),
-            benefits: benefits || undefined,
-            notes: offerNotes || undefined,
-          }),
+        await createOfferMutation.mutateAsync({
+          applicationId: iv.applicationId!,
+          salary: { amount: Number(salaryAmount), currency: salaryCurrency, period: salaryPeriod },
+          startDate: new Date(startDate).toISOString(),
+          benefits: benefits || undefined,
+          notes: offerNotes || undefined,
         });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error ?? "Failed to create offer");
-        }
+        onClose();
+        onOfferCreated();
+        return;
       }
       onClose();
     } catch (e) {

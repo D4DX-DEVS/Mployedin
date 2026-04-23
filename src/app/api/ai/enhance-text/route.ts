@@ -3,6 +3,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
+import { validateBody } from "@/lib/validators";
+import { aiEnhanceTextSchema } from "@/lib/validators/ai";
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   if (ctx.role !== "job_seeker") {
@@ -17,13 +19,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
   }
 
-  const body = await req.json().catch(() => null);
-  if (!body || typeof body.text !== "string" || !body.text.trim()) {
-    return NextResponse.json({ error: "Text is required" }, { status: 400 });
-  }
+  const body = await validateBody(req, aiEnhanceTextSchema);
 
   const text = sanitizeAIInput(body.text, 2000);
-  const context = typeof body.context === "string" ? sanitizeAIInput(body.context, 200) : "";
+  const context = body.context ? sanitizeAIInput(body.context, 200) : "";
 
   const prompt = `You are a professional career coach. Enhance the following ${context || "text"} to sound more professional, impactful, and achievement-oriented.
 

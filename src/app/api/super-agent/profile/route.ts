@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import SuperAgent from "@/models/SuperAgent";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { superAgentProfileUpdateSchema } from "@/lib/validators/settings";
 
 interface AuthCtx {
   userId: string;
@@ -36,20 +38,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
 
-  let body: { overrideRate?: number };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const body = await validateBody(req, superAgentProfileUpdateSchema);
 
   const updates: Record<string, unknown> = {};
   if (body.overrideRate != null) {
-    const rate = Number(body.overrideRate);
-    if (isNaN(rate) || rate < 0 || rate > 100) {
-      return NextResponse.json({ error: "overrideRate must be 0–100" }, { status: 400 });
-    }
-    updates.overrideRate = rate;
+    updates.overrideRate = body.overrideRate;
   }
 
   const profile = await SuperAgent.findOneAndUpdate(

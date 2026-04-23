@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import SystemSettings from "@/models/SystemSettings";
 import type { ISystemSettings } from "@/models/SystemSettings";
+import { validateBody } from "@/lib/validators";
+import { systemSettingsUpdateSchema } from "@/lib/validators/settings";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -31,11 +33,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   await connectDB();
-  const body = await req.json();
+  const body = await validateBody(req, systemSettingsUpdateSchema);
   const allowed: (keyof ISystemSettings)[] = ["platformName", "supportEmail", "maintenanceMode"];
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
-    if (body[key] !== undefined) update[key] = body[key];
+    if ((body as Record<string, unknown>)[key] !== undefined) update[key] = (body as Record<string, unknown>)[key];
   }
 
   // Handle SMTP config separately

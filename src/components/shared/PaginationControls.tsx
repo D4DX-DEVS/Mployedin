@@ -48,8 +48,8 @@ export function PaginationControls({
       )}
     >
       {/* Left: rows per page */}
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <span className="whitespace-nowrap">Rows per page</span>
+      <div className="flex items-center gap-2 text-muted-foreground leading-none">
+        <span className="whitespace-nowrap flex items-center h-8">Rows per page</span>
         <Select
           value={String(limit)}
           onValueChange={(v) => onLimitChange(Number(v))}

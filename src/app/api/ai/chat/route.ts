@@ -6,6 +6,8 @@ import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai
 import { GEMINI_MODELS } from "@/lib/ai/gemini";
 import { getAssistantSystemPrompt, type AssistantContext } from "@/lib/ai/assistantPrompts";
 import { connectDB } from "@/lib/db/mongoose";
+import { validateBody } from "@/lib/validators";
+import { aiChatSchema } from "@/lib/validators/ai";
 import JobSeeker from "@/models/JobSeeker";
 import Job from "@/models/Job";
 import User from "@/models/User";
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
+    const body = await validateBody(req, aiChatSchema);
     const messages = sanitizeChatMessages(body.messages ?? [], 50, 4000);
     const context = body.context ? sanitizeAIInput(String(body.context), 2000) : undefined;
     const currentPage = body.currentPage ? sanitizeAIInput(String(body.currentPage), 200) : undefined;
@@ -559,6 +561,7 @@ Use this data to answer questions about team performance, identify underperforme
       },
     });
   } catch (error) {
+    if (error instanceof NextResponse) return error;
     console.error("[AI Chat Error]", error);
     return NextResponse.json(
       { error: "AI service error" },

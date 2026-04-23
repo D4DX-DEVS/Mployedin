@@ -6,6 +6,8 @@ import DirectMessage from "@/models/DirectMessage";
 import { triggerRealtimeEvent } from "@/lib/realtime";
 import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import mongoose from "mongoose";
+import { validateBody } from "@/lib/validators";
+import { dmSendMessageSchema } from "@/lib/validators/dm";
 
 async function assertParticipant(conversationId: string, userId: string) {
   const conv = await Conversation.findById(conversationId).lean();
@@ -64,9 +66,8 @@ async function postHandler(req: NextRequest, ctx: { userId: string }, params?: R
   const rl = checkRateLimitDual(req, ctx.userId, { limit: 60, windowSec: 60, prefix: "dm-send" });
   if (!rl.allowed) return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
 
-  const body = await req.json();
-  const content = String(body.content ?? "").trim().slice(0, 2000);
-  if (!content) return NextResponse.json({ error: "content is required" }, { status: 400 });
+  const body = await validateBody(req, dmSendMessageSchema);
+  const content = body.content;
 
   const msg = await DirectMessage.create({
     conversationId: new mongoose.Types.ObjectId(conversationId),

@@ -8,6 +8,8 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { approvalDecisionSchema } from "@/lib/validators/super-agent";
 
 interface AuthCtx {
   userId: string;
@@ -85,20 +87,8 @@ async function patchHandler(
     // If agentIds is empty, allow action (matches GET route scoping behavior)
   }
 
-  let body: { status?: string; reason?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
+  const body = await validateBody(req, approvalDecisionSchema);
   const { status, reason } = body;
-  if (!status || !["approved", "rejected"].includes(status)) {
-    return NextResponse.json(
-      { error: "status must be 'approved' or 'rejected'" },
-      { status: 400 }
-    );
-  }
 
   const prevApprovalStatus = job.poster?.approvalStatus ?? "pending";
 

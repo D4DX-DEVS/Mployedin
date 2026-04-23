@@ -613,7 +613,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
   const quickActions: QuickAction[] = [
     {
       label: "Job Approvals",
-      href: `/${locale}/admin/approvals`,
+      href: `/${locale}/admin/jobs`,
       desc: "Clear the review queue before employer launches stall.",
       badge: stats.pendingApprovals > 0 ? `${stats.pendingApprovals} pending` : "Queue clear",
       icon: AlertCircle,

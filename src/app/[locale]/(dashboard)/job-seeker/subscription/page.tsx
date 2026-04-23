@@ -15,6 +15,10 @@ import { Badge } from "@/components/ui/badge";
 import { useMySubscription, type MySubscription } from "@/hooks/useSubscription";
 import { useFeatureGateMap } from "@/hooks/useFeatureGate";
 import { useInvoices, type InvoiceItem } from "@/hooks/useInvoices";
+import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
+import { useExchangeRates } from "@/hooks/useExchangeRates";
+import { CurrencySelector } from "@/components/shared/CurrencySelector";
+import { convertAndFormat } from "@/lib/currency";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,6 +53,8 @@ export default function JobSeekerSubscriptionPage() {
   const { data: subscription, isLoading } = useMySubscription();
   const { data: gateMap } = useFeatureGateMap();
   const { data: invoices } = useInvoices({});
+  const { displayCurrency, setDisplayCurrency } = useCurrencyPreference();
+  const { rates, source: rateSource } = useExchangeRates();
 
   if (isLoading) {
     return (
@@ -63,16 +69,27 @@ export default function JobSeekerSubscriptionPage() {
 
   return (
     <div className="page-container space-y-6">
-      <PageHeader
-        title="My Subscription"
-        description="View your plan, usage, and invoices"
-      />
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <PageHeader
+          title="My Subscription"
+          description="View your plan, usage, and invoices"
+        />
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Display currency:</span>
+          <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
+          {rateSource === "live" && (
+            <span className="text-[10px] text-emerald-500" title="Live exchange rates">● live</span>
+          )}
+        </div>
+      </div>
 
       {subscription ? (
         <ActivePlanView
           subscription={subscription}
           features={gateMap?.features ?? {}}
           invoices={invoices ?? []}
+          displayCurrency={displayCurrency}
+          rates={rates}
         />
       ) : (
         <NoPlanView />
@@ -87,10 +104,14 @@ function ActivePlanView({
   subscription,
   features,
   invoices,
+  displayCurrency,
+  rates,
 }: {
   subscription: MySubscription;
   features: Record<string, { allowed: boolean; limit?: number; used?: number; remaining?: number }>;
   invoices: InvoiceItem[];
+  displayCurrency: string;
+  rates: Record<string, number>;
 }) {
   const snap = subscription.planSnapshot;
   const limits = snap?.jobSeekerLimits as Record<string, unknown> | undefined;
@@ -109,8 +130,16 @@ function ActivePlanView({
             <div>
               <h3 className="text-xl font-bold">{snap?.name ?? "Unknown"}</h3>
               <p className="text-sm text-muted-foreground">
-                {snap?.price > 0 ? `${snap.price} ${snap.currency}` : "Free"} / {snap?.billingCycle}
+                {snap?.price > 0
+                  ? convertAndFormat(snap.price, snap.currency ?? "AED", displayCurrency, rates)
+                  : "Free"}{" "}
+                / {snap?.billingCycle}
               </p>
+              {snap?.price > 0 && displayCurrency !== (snap.currency ?? "AED") && (
+                <p className="text-[10px] text-muted-foreground/60">
+                  ≈ original: {snap.price} {snap.currency}
+                </p>
+              )}
             </div>
           </div>
           <div className="text-right">
@@ -223,7 +252,7 @@ function ActivePlanView({
       </section>
 
       {/* ── Invoice History ── */}
-      {invoices.length > 0 && <InvoiceTable invoices={invoices} />}
+      {invoices.length > 0 && <InvoiceTable invoices={invoices} displayCurrency={displayCurrency} rates={rates} />}
 
       {/* ── Upgrade CTA ── */}
       {(snap?.tier ?? 0) < 2 && (
@@ -319,7 +348,7 @@ function FeaturePill({ label, allowed }: { label: string; allowed?: boolean }) {
   );
 }
 
-function InvoiceTable({ invoices }: { invoices: InvoiceItem[] }) {
+function InvoiceTable({ invoices, displayCurrency, rates }: { invoices: InvoiceItem[]; displayCurrency: string; rates: Record<string, number> }) {
   const TYPE_BADGE: Record<string, string> = {
     new: "bg-sky-500/10 text-sky-400 border-sky-500/30",
     renewal: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
@@ -356,7 +385,12 @@ function InvoiceTable({ invoices }: { invoices: InvoiceItem[] }) {
                 </td>
                 <td className="py-2.5 pr-4">{inv.planName}</td>
                 <td className="py-2.5 pr-4 font-medium">
-                  {inv.amount} {inv.currency}
+                  {convertAndFormat(inv.amount, inv.currency ?? "AED", displayCurrency, rates)}
+                  {displayCurrency !== (inv.currency ?? "AED") && (
+                    <span className="block text-[10px] text-muted-foreground/60">
+                      ≈ {inv.amount} {inv.currency}
+                    </span>
+                  )}
                 </td>
                 <td className="py-2.5 pr-4">
                   <Badge variant="outline" className={`text-xs ${

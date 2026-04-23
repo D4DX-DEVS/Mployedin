@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Loader2, Mail } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, Mail, RefreshCw } from "lucide-react";
 
 type Status = "idle" | "verifying" | "success" | "error" | "no-token";
 
@@ -13,9 +13,35 @@ export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
   const token = searchParams.get("token");
+  const emailParam = searchParams.get("email");
 
   const [status, setStatus] = useState<Status>(token ? "verifying" : "no-token");
   const [message, setMessage] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
+
+  const handleResend = useCallback(async () => {
+    if (!emailParam || resending) return;
+    setResending(true);
+    setResendMsg("");
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailParam }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResendMsg("Verification email sent! Check your inbox.");
+      } else {
+        setResendMsg(data.error ?? "Failed to resend. Please try again later.");
+      }
+    } catch {
+      setResendMsg("Network error. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  }, [emailParam, resending]);
 
   useEffect(() => {
     if (!token) return;
@@ -119,7 +145,13 @@ export default function VerifyEmailPage() {
           <div className="space-y-1.5">
             <h1 className="text-2xl font-semibold tracking-tight">Check your email</h1>
             <p className="text-base text-muted-foreground font-light">
-              We sent a verification link to your email address. Click the link to activate your account.
+              We sent a verification link to{" "}
+              {emailParam ? (
+                <span className="font-medium text-foreground">{emailParam}</span>
+              ) : (
+                "your email address"
+              )}
+              . Click the link to activate your account.
             </p>
           </div>
           <div className="w-full max-w-xs p-4 rounded-xl bg-muted/50 border text-left space-y-2">
@@ -130,6 +162,25 @@ export default function VerifyEmailPage() {
               <li>Allow a few minutes for the email to arrive</li>
             </ul>
           </div>
+          {resendMsg && (
+            <p className={`text-sm ${resendMsg.includes("sent") ? "text-green-600" : "text-destructive"}`}>
+              {resendMsg}
+            </p>
+          )}
+          {emailParam && (
+            <Button
+              variant="default"
+              className="w-full max-w-xs h-11"
+              onClick={handleResend}
+              disabled={resending}
+            >
+              {resending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending…</>
+              ) : (
+                <><RefreshCw className="mr-2 h-4 w-4" />Resend verification email</>
+              )}
+            </Button>
+          )}
           <Button
             variant="outline"
             className="w-full max-w-xs h-11"

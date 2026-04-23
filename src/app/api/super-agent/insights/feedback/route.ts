@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import mongoose, { Schema } from "mongoose";
+import { validateBody } from "@/lib/validators";
+import { insightFeedbackSchema } from "@/lib/validators/super-agent";
 
 /* ────────────────────────────────────────────────────────
    Lightweight feedback model (inline — no separate file)
@@ -36,18 +38,8 @@ const InsightFeedback =
    ──────────────────────────────────────────────────────── */
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const body = await req.json();
-
+  const body = await validateBody(req, insightFeedbackSchema);
   const { insightTitle, insightSeverity, insightType, helpful } = body;
-
-  if (
-    typeof insightTitle !== "string" ||
-    typeof insightSeverity !== "string" ||
-    typeof insightType !== "string" ||
-    typeof helpful !== "boolean"
-  ) {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-  }
 
   await connectDB();
 

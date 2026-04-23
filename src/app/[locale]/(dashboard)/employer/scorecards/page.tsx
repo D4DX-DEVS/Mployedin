@@ -14,6 +14,7 @@ import {
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { useScorecards } from "@/hooks/useScorecards";
+import { FeedbackTrendsPanel } from "@/components/features/employer/FeedbackTrendsPanel";
 
 const RECOMMENDATION_COLORS: Record<string, string> = {
   strong_yes: "bg-emerald-100 text-emerald-700 border-emerald-300",
@@ -74,6 +75,9 @@ export default function ScorecardListPage() {
         title="Interview Scorecards"
         description={`${total} total scorecards`}
       />
+
+      {/* Aggregate Feedback Trends */}
+      <FeedbackTrendsPanel />
 
       {scorecards.length === 0 ? (
         <div className="card-base text-center py-16">

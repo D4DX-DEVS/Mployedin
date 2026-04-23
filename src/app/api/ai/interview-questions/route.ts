@@ -6,6 +6,8 @@ import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { connectDB } from "@/lib/db/mongoose";
 import { InterviewQuestion } from "@/models/InterviewQuestion";
+import { validateBody } from "@/lib/validators";
+import { aiInterviewQuestionsSchema } from "@/lib/validators/ai";
 
 const QUESTION_TYPES = ["technical", "behavioral", "culture_fit", "situational"] as const;
 type QuestionType = (typeof QUESTION_TYPES)[number];
@@ -42,18 +44,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
-    const jobTitle = sanitizeAIInput(String(body.jobTitle ?? ""), 200);
-    const candidateName = body.candidateName ? sanitizeAIInput(String(body.candidateName), 200) : undefined;
-    const interviewId = body.interviewId ? String(body.interviewId) : undefined;
-    const skills = Array.isArray(body.skills)
-      ? (body.skills as string[]).slice(0, 15).map((s) => sanitizeAIInput(String(s), 50))
+    const body = await validateBody(req, aiInterviewQuestionsSchema);
+    const jobTitle = sanitizeAIInput(body.jobTitle, 200);
+    const candidateName = body.candidateName ? sanitizeAIInput(body.candidateName, 200) : undefined;
+    const interviewId = body.interviewId ?? undefined;
+    const skills = body.skills
+      ? body.skills.map((s) => sanitizeAIInput(s, 50))
       : [];
-    const experienceYears = Number(body.experienceYears ?? 3);
-    const questionType: QuestionType = QUESTION_TYPES.includes(body.questionType)
-      ? (body.questionType as QuestionType)
-      : "technical";
-    const count = Math.min(Number(body.count ?? 8), 15);
+    const experienceYears = body.experienceYears ?? 3;
+    const questionType: QuestionType = body.questionType ?? "technical";
+    const count = body.count;
 
     if (!jobTitle) {
       return NextResponse.json({ error: "jobTitle is required" }, { status: 400 });
@@ -133,6 +133,7 @@ Output ONLY the JSON array, no markdown code blocks.`;
       { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );
   } catch (err) {
+    if (err instanceof NextResponse) return err;
     console.error("[Interview Questions Error]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }

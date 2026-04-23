@@ -4,6 +4,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import Conversation from "@/models/Conversation";
 import DirectMessage from "@/models/DirectMessage";
 import mongoose from "mongoose";
+import { validateBody } from "@/lib/validators";
+import { dmManageConversationSchema } from "@/lib/validators/dm";
 
 interface AuthCtx { userId: string; }
 
@@ -30,12 +32,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const conv = await assertParticipant(conversationId, ctx.userId);
   if (!conv) return NextResponse.json({ error: "Not found or forbidden" }, { status: 404 });
 
-  const body = await req.json();
-  const action = String(body.action ?? "");
-
-  if (action !== "clear") {
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-  }
+  const body = await validateBody(req, dmManageConversationSchema);
 
   // Delete all messages in this conversation
   await DirectMessage.deleteMany({

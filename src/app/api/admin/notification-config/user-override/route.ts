@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import SystemConfig, { getSystemConfig } from "@/models/SystemConfig";
+import { validateBody } from "@/lib/validators";
+import { notificationUserOverrideCreateSchema, notificationUserOverrideDeleteSchema } from "@/lib/validators/settings";
 
 /**
  * POST /api/admin/notification-config/user-override
@@ -18,18 +20,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await validateBody(req, notificationUserOverrideCreateSchema);
   const { userId, action, reason } = body;
-
-  if (!userId || typeof userId !== "string") {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
-  }
-  if (!["force_unsubscribe", "force_instant", "pause_emails"].includes(action)) {
-    return NextResponse.json({ error: "action must be force_unsubscribe, force_instant, or pause_emails" }, { status: 400 });
-  }
-  if (!reason || typeof reason !== "string") {
-    return NextResponse.json({ error: "reason required" }, { status: 400 });
-  }
 
   await connectDB();
 
@@ -64,12 +56,8 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await validateBody(req, notificationUserOverrideDeleteSchema);
   const { userId } = body;
-
-  if (!userId || typeof userId !== "string") {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
-  }
 
   await connectDB();
 

@@ -49,3 +49,8 @@ SEO-AUDIT.md
 mployedin/.claude
 .claude
 mployedin/ROLES.md
+
+# graphify - knowledge graph (local only, each dev rebuilds)
+graphify-out/
+.code-review-graph
+.code-review-graph

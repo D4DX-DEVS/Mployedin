@@ -4,6 +4,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import NotificationPreference, {
   getOrCreatePreferences,
 } from "@/models/NotificationPreference";
+import { validateBody } from "@/lib/validators";
+import { notificationPreferencesUpdateSchema } from "@/lib/validators/settings";
 
 /**
  * GET /api/user/notification-preferences
@@ -30,35 +32,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
 export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
 
-  const body = await req.json();
-
-  // Validate emailFrequency
-  const validFrequencies = ["instant", "daily", "weekly", "none"];
-  if (body.emailFrequency && !validFrequencies.includes(body.emailFrequency)) {
-    return NextResponse.json(
-      { error: "Invalid emailFrequency" },
-      { status: 400 },
-    );
-  }
-
-  // Validate channels
-  const validChannels = ["in_app", "email", "whatsapp"];
-  if (body.categories) {
-    for (const [key, val] of Object.entries(body.categories)) {
-      const catVal = val as { channels?: string[] };
-      if (catVal.channels) {
-        const invalid = catVal.channels.filter(
-          (c: string) => !validChannels.includes(c),
-        );
-        if (invalid.length > 0) {
-          return NextResponse.json(
-            { error: `Invalid channels in ${key}: ${invalid.join(", ")}` },
-            { status: 400 },
-          );
-        }
-      }
-    }
-  }
+  const body = await validateBody(req, notificationPreferencesUpdateSchema);
 
   // Build $set object for partial updates
   const updateOps: Record<string, unknown> = {};

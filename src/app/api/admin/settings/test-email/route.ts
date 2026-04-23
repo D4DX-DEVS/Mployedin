@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { withAuth } from "@/lib/auth/withAuth";
+import { validateBody } from "@/lib/validators";
+import { smtpTestSchema } from "@/lib/validators/settings";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -9,12 +11,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
-  const smtp = body.smtp;
-
-  if (!smtp?.smtpEmail || !smtp?.smtpAppPassword) {
-    return NextResponse.json({ message: "SMTP email and app password are required" }, { status: 400 });
-  }
+  const { smtp } = await validateBody(req, smtpTestSchema);
 
   // Don't send test if password is masked placeholder
   if (smtp.smtpAppPassword === "••••••••") {

@@ -12,6 +12,8 @@ const statusVariants: Record<
     className: "status-interview",
   },
   selected: { label: "Selected", className: "status-selected" },
+  offer: { label: "Offer", className: "status-premium" },
+  hired: { label: "Hired", className: "status-active" },
   rejected: { label: "Rejected", className: "status-rejected" },
   withdrawn: { label: "Withdrawn", className: "status-withdrawn" },
 

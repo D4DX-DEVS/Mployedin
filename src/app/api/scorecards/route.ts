@@ -8,6 +8,7 @@ import { Employer } from "@/models/Employer";
 import { validateBody } from "@/lib/validators";
 import { scorecardCreateSchema } from "@/lib/validators/scorecards";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { notifyScorecardSubmitted } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -149,6 +150,27 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     },
     req,
   });
+
+  // Notify the candidate about their interview feedback
+  try {
+    const application = await Application.findById(interview.applicationId)
+      .select("jobId")
+      .populate("jobId", "title")
+      .lean();
+    const jobTitle = (application?.jobId as { title?: string })?.title ?? "a position";
+    const companyName = emp ? (await Employer.findById(emp._id).select("companyName").lean())?.companyName ?? "the company" : "the company";
+
+    await notifyScorecardSubmitted(
+      interview.jobSeekerId.toString(),
+      jobTitle,
+      companyName,
+      overallScore,
+      interview.applicationId.toString(),
+    );
+  } catch (err) {
+    // Non-blocking — scorecard was already saved
+    console.error("[scorecard] Failed to notify candidate:", err);
+  }
 
   return NextResponse.json(
     { scorecard: scorecard.toObject() },

@@ -28,8 +28,9 @@ export default async function JobSeekerPage({
   // Lean query — only fields needed for the home page
   const seeker = await JobSeeker.findOne({ userId })
     .select(
-      "_id skills preferredCountries preferredRoles preferredSalary preferredJobType " +
-        "experience education languages summary profileCompleteness cvFileUrl cv"
+      "_id userId skills preferredCountries preferredRoles preferredSalary preferredJobType " +
+        "experience education languages summary profileCompleteness cvFileUrl cv " +
+        "nationality currentLocation linkedin socialLinks"
     )
     .lean();
 

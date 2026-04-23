@@ -198,14 +198,14 @@ export default function TeamActivityLogsPage() {
               value: members.length,
               icon: Users,
               color: "text-primary",
-              bg: "bg-primary/5 border-primary/10",
+              bg: "bg-white border-border dark:bg-card dark:border-border",
             },
             {
               label: "Total Activities",
               value: total,
               icon: Activity,
               color: "text-emerald-600",
-              bg: "bg-emerald-50 border-emerald-100 dark:bg-emerald-500/10 dark:border-emerald-500/20",
+              bg: "bg-white border-border dark:bg-card dark:border-border",
             },
             {
               label: "Today",
@@ -215,14 +215,14 @@ export default function TeamActivityLogsPage() {
               ).length,
               icon: Calendar,
               color: "text-blue-600",
-              bg: "bg-blue-50 border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20",
+              bg: "bg-white border-border dark:bg-card dark:border-border",
             },
             {
               label: "Login Events",
               value: logs.filter((l) => l.action.startsWith("login")).length,
               icon: LogIn,
               color: "text-amber-600",
-              bg: "bg-amber-50 border-amber-100 dark:bg-amber-500/10 dark:border-amber-500/20",
+              bg: "bg-white border-border dark:bg-card dark:border-border",
             },
           ].map((s) => (
             <div

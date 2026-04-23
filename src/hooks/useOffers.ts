@@ -28,6 +28,7 @@ export interface OffersFilters {
   page: number;
   limit: number;
   status?: string;
+  jobId?: string;
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ async function fetchOffers(filters: OffersFilters): Promise<OffersResponse> {
   params.set("page", String(filters.page));
   params.set("limit", String(filters.limit));
   if (filters.status && filters.status !== "all") params.set("status", filters.status);
+  if (filters.jobId && filters.jobId !== "all") params.set("jobId", filters.jobId);
 
   const res = await fetch(`/api/offers?${params}`);
   if (!res.ok) throw new Error("Failed to fetch offers");
@@ -68,6 +70,34 @@ export function useWithdrawOffer() {
     mutationFn: async (offerId: string) => {
       const res = await fetch(`/api/offers/${offerId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to withdraw offer");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: offerKeys.lists() });
+    },
+  });
+}
+
+/** Create a new offer */
+export function useCreateOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      applicationId: string;
+      salary: { amount: number; currency: string; period: string };
+      startDate: string;
+      benefits?: string;
+      notes?: string;
+    }) => {
+      const res = await fetch("/api/offers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Failed to create offer");
+      }
+      return res.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: offerKeys.lists() });

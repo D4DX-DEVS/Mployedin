@@ -51,6 +51,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const scoreMin = searchParams.get("scoreMin") ?? "";
   const scoreMax = searchParams.get("scoreMax") ?? "";
   const fetchJobs = searchParams.get("fetchJobs") === "true";
+  const employerIdParam = searchParams.get("employerId") ?? "";
+  const sourceParam = searchParams.get("source") ?? "";
+  const autoAppliedParam = searchParams.get("autoApplied") ?? "";
+  const sortBy = searchParams.get("sortBy") ?? "appliedAt";
+  const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+  const fetchEmployers = searchParams.get("fetchEmployers") === "true";
+  const fetchStats = searchParams.get("fetchStats") === "true";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -145,6 +152,29 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     if (!isNaN(parsedMin) && parsedMin > 0) scoreFilter.$gte = parsedMin;
     if (!isNaN(parsedMax) && parsedMax < 100) scoreFilter.$lte = parsedMax;
     if (Object.keys(scoreFilter).length > 0) query.aiMatchScore = scoreFilter;
+  }
+
+  // Employer filter (admin/super_agent only)
+  if (employerIdParam && (ctx.role === "admin" || ctx.role === "super_agent")) {
+    const empJobs = await Job.find({ employerId: employerIdParam }).select("_id").lean();
+    const empJobIds = empJobs.map((j) => j._id);
+    if (query.jobId?.$in) {
+      query.jobId.$in = query.jobId.$in.filter((id: unknown) => empJobIds.some((ej: unknown) => String(ej) === String(id)));
+    } else if (!query.jobId) {
+      query.jobId = { $in: empJobIds };
+    }
+  }
+
+  // Source filter
+  if (sourceParam) {
+    query.source = sourceParam;
+  }
+
+  // Auto-applied filter
+  if (autoAppliedParam === "true") {
+    query.autoApplied = true;
+  } else if (autoAppliedParam === "false") {
+    query.autoApplied = { $ne: true };
   }
 
   // Experience filter — filter by jobSeeker's totalExperienceYears
@@ -250,9 +280,17 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const skip = (page - 1) * limit;
+  const allowedSortFields: Record<string, string> = {
+    appliedAt: "appliedAt",
+    aiMatchScore: "aiMatchScore",
+    status: "status",
+    createdAt: "createdAt",
+  };
+  const sortField = allowedSortFields[sortBy] ?? "appliedAt";
+
   const [applications, total] = await Promise.all([
     Application.find(query)
-      .sort({ appliedAt: -1 })
+      .sort({ [sortField]: sortOrder })
       .skip(skip)
       .limit(limit)
       .populate({
@@ -345,6 +383,40 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
+  // Fetch all employers for the filter dropdown (admin/super_agent only)
+  let allEmployers: Array<{ _id: string; companyName: string }> = [];
+  if (fetchEmployers && (ctx.role === "admin" || ctx.role === "super_agent")) {
+    allEmployers = await Employer.find({})
+      .select("companyName")
+      .sort({ companyName: 1 })
+      .limit(500)
+      .lean();
+  }
+
+  // Fetch aggregate stats (admin/super_agent only)
+  let stats: Record<string, unknown> | null = null;
+  if (fetchStats && (ctx.role === "admin" || ctx.role === "super_agent")) {
+    const [statusCounts, sourceCounts, avgScore, todayCount, weekCount] = await Promise.all([
+      Application.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+      Application.aggregate([{ $group: { _id: "$source", count: { $sum: 1 } } }]),
+      Application.aggregate([
+        { $match: { aiMatchScore: { $exists: true, $ne: null } } },
+        { $group: { _id: null, avg: { $avg: "$aiMatchScore" }, scored: { $sum: 1 } } },
+      ]),
+      Application.countDocuments({ appliedAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) } }),
+      Application.countDocuments({ appliedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }),
+    ]);
+    stats = {
+      byStatus: Object.fromEntries(statusCounts.map((s) => [s._id, s.count])),
+      bySource: Object.fromEntries(sourceCounts.map((s) => [s._id ?? "unknown", s.count])),
+      avgAiScore: Math.round(avgScore[0]?.avg ?? 0),
+      scoredCount: avgScore[0]?.scored ?? 0,
+      todayCount,
+      weekCount,
+      totalAll: statusCounts.reduce((sum, s) => sum + s.count, 0),
+    };
+  }
+
   return NextResponse.json({
     applications: applications.map((app) => ({
       ...app,
@@ -355,6 +427,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     ...(fetchJobs ? { employerJobs } : {}),
+    ...(fetchEmployers ? { allEmployers } : {}),
+    ...(fetchStats ? { stats } : {}),
   });
 }
 

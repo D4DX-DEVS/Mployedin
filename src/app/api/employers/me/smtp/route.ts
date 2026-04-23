@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { Employer } from "@/models/Employer";
 import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { validateBody } from "@/lib/validators";
+import { employerSmtpConfigSchema } from "@/lib/validators/settings";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -50,12 +52,8 @@ async function putHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Premium subscription required" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await validateBody(req, employerSmtpConfigSchema);
   const smtp = body.smtp;
-
-  if (!smtp || typeof smtp !== "object") {
-    return NextResponse.json({ error: "smtp object is required" }, { status: 400 });
-  }
 
   const update: Record<string, unknown> = {};
   if (smtp.smtpEmail !== undefined) update["smtpOverride.smtpEmail"] = smtp.smtpEmail;

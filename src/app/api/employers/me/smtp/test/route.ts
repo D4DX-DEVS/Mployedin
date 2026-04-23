@@ -3,6 +3,8 @@ import nodemailer from "nodemailer";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
+import { validateBody } from "@/lib/validators";
+import { smtpTestSchema } from "@/lib/validators/settings";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -21,12 +23,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Premium subscription required" }, { status: 403 });
   }
 
-  const body = await req.json();
-  const smtp = body.smtp;
-
-  if (!smtp?.smtpEmail || !smtp?.smtpAppPassword) {
-    return NextResponse.json({ message: "SMTP email and app password are required" }, { status: 400 });
-  }
+  const { smtp } = await validateBody(req, smtpTestSchema);
 
   if (smtp.smtpAppPassword === "••••••••") {
     return NextResponse.json({ message: "Please enter the actual app password before testing" }, { status: 400 });

@@ -11,13 +11,25 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
-  const visaStatus = searchParams.get("status");
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "10");
   const skip = (page - 1) * limit;
 
+  // --- Filters ---
+  const visaStatus = searchParams.get("visaStatus") || searchParams.get("status");
+  const commissionPaid = searchParams.get("commissionPaid");
+  const search = searchParams.get("search");
+  const agentId = searchParams.get("agentId");
+  const employerId = searchParams.get("employerId");
+  const currency = searchParams.get("currency");
+  const salaryMin = searchParams.get("salaryMin");
+  const salaryMax = searchParams.get("salaryMax");
+  const dateFrom = searchParams.get("dateFrom");
+  const dateTo = searchParams.get("dateTo");
+
   const query: Record<string, unknown> = {};
 
+  // Role-based scoping
   if (ctx.role === "employer") query.employerId = ctx.userId;
   else if (ctx.role === "agent") {
     const Agent = (await import("@/models/Agent")).default;
@@ -27,42 +39,114 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
   else if (ctx.role === "job_seeker") query.jobSeekerId = ctx.userId;
 
+  // Filter: visa status
   if (visaStatus && visaStatus !== "all") {
     query.visaStatus = visaStatus;
   }
 
-  const [placements, total] = await Promise.all([
+  // Filter: commission paid
+  if (commissionPaid === "true") query.commissionPaid = true;
+  else if (commissionPaid === "false") query.commissionPaid = false;
+
+  // Filter: agent (admin only)
+  if (agentId && ctx.role === "admin") query.agentId = agentId;
+
+  // Filter: employer (admin only)
+  if (employerId && ctx.role === "admin") query.employerId = employerId;
+
+  // Filter: currency
+  if (currency && currency !== "all") query.currency = currency;
+
+  // Filter: salary range
+  if (salaryMin || salaryMax) {
+    const salaryQuery: Record<string, number> = {};
+    if (salaryMin) salaryQuery.$gte = Number(salaryMin);
+    if (salaryMax) salaryQuery.$lte = Number(salaryMax);
+    query.salary = salaryQuery;
+  }
+
+  // Filter: date range (placedAt)
+  if (dateFrom || dateTo) {
+    const dateQuery: Record<string, Date> = {};
+    if (dateFrom) dateQuery.$gte = new Date(dateFrom);
+    if (dateTo) dateQuery.$lte = new Date(dateTo);
+    query.placedAt = dateQuery;
+  }
+
+  const [placements, total, aggregation] = await Promise.all([
     Placement.find(query)
       .populate("jobId", "title location")
       .populate("jobSeekerId", "userId")
       .populate({ path: "jobSeekerId", populate: { path: "userId", select: "name email" } })
+      .populate("employerId", "companyName")
+      .populate("agentId", "userId")
+      .populate({ path: "agentId", populate: { path: "userId", select: "name" } })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean(),
     Placement.countDocuments(query),
+    // Aggregate salary totals grouped by currency
+    Placement.aggregate([
+      { $match: query },
+      { $group: { _id: "$currency", totalSalary: { $sum: "$salary" }, count: { $sum: 1 } } },
+    ]),
   ]);
 
+  // Build salary totals by currency
+  const salaryByCurrency: Record<string, number> = {};
+  let totalSalaryValue = 0;
+  for (const g of aggregation) {
+    const cur = g._id || "AED";
+    salaryByCurrency[cur] = g.totalSalary;
+    totalSalaryValue += g.totalSalary;
+  }
+
+  // Search filter: apply post-populate for candidate/company text search
+  let filtered = placements;
+  if (search) {
+    const q = search.toLowerCase();
+    filtered = placements.filter((p) => {
+      const seeker = p.jobSeekerId as { userId?: { name?: string; email?: string } } | null;
+      const emp = p.employerId as { companyName?: string } | null;
+      const name = seeker?.userId?.name?.toLowerCase() ?? "";
+      const email = seeker?.userId?.email?.toLowerCase() ?? "";
+      const company = emp?.companyName?.toLowerCase() ?? "";
+      return name.includes(q) || email.includes(q) || company.includes(q);
+    });
+  }
+
   // Flatten for UI consumption
-  const formatted = placements.map((p) => {
+  const formatted = filtered.map((p) => {
     const job = p.jobId as { title?: string; location?: string } | null;
     const seeker = p.jobSeekerId as { userId?: { name?: string; email?: string } } | null;
+    const emp = p.employerId as { companyName?: string } | null;
+    const agt = p.agentId as { userId?: { name?: string } } | null;
     return {
       _id: p._id,
       jobTitle: job?.title,
       candidateName: seeker?.userId?.name,
       candidateEmail: seeker?.userId?.email,
+      companyName: emp?.companyName,
+      agentName: agt?.userId?.name,
       startDate: p.startDate,
-      salary: p.salary ? { amount: p.salary, currency: p.currency ?? "AED" } : null,
-      status: p.visaStatus ?? "active",
+      placedAt: p.placedAt,
+      salary: p.salary,
+      currency: p.currency ?? "AED",
+      visaStatus: p.visaStatus ?? "pending",
       commissionPaid: p.commissionPaid,
+      commissionAmount: p.commissionAmount,
+      notes: p.notes,
       createdAt: p.createdAt,
     };
   });
 
   return NextResponse.json({
     placements: formatted,
-    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    total: search ? filtered.length : total,
+    totalSalaryValue,
+    salaryByCurrency,
+    pagination: { page, limit, total: search ? filtered.length : total, pages: Math.ceil((search ? filtered.length : total) / limit) },
   }, {
     headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },
   });

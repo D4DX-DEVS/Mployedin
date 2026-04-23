@@ -9,9 +9,12 @@ import { CompanyUser } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
+import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { getFirebaseAdminAuth } from "@/lib/firebase/admin";
 import type { CompanyRole } from "@/models/CompanyUser";
 import logger from "@/lib/logger";
+import { fetchLinkedInExtras } from "@/lib/auth/linkedin-profile";
+import { encrypt } from "@/lib/security/encryption";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -182,6 +185,18 @@ export const authConfig: NextAuthConfig = {
               meta: { email, provider: "firebase-google" },
             });
 
+            // Send welcome email for new Firebase/Google users (fire-and-forget)
+            const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+            const dashboardUrl = `${baseUrl}/en/job-seeker/dashboard`;
+            sendEmail({
+              to: email,
+              ...EmailTemplates.jobSeekerWelcome(dbUser.name || "there", dashboardUrl),
+              source: "registration",
+              category: "system",
+            }).catch((err) =>
+              console.error("[Firebase Registration] Failed to send welcome email:", err)
+            );
+
             return {
               id: dbUser._id.toString(),
               email: dbUser.email,
@@ -338,8 +353,18 @@ export const authConfig: NextAuthConfig = {
           // Link LinkedIn to existing account (auto-link — both sides verify email)
           await User.findByIdAndUpdate(dbUser._id, {
             linkedinSub: account.providerAccountId,
+            isEmailVerified: true,
+            emailVerificationToken: undefined,
             ...(!dbUser.avatar && token.picture ? { avatar: token.picture } : {}),
           });
+          dbUser.isEmailVerified = true;
+        } else if (account.provider === "linkedin" && !dbUser.isEmailVerified) {
+          // Existing linked user still unverified — LinkedIn verified the email via OAuth
+          await User.findByIdAndUpdate(dbUser._id, {
+            isEmailVerified: true,
+            emailVerificationToken: undefined,
+          });
+          dbUser.isEmailVerified = true;
         }
 
         // Ensure JobSeeker profile exists for OAuth users (needed for onboarding pre-fill)
@@ -361,12 +386,39 @@ export const authConfig: NextAuthConfig = {
             });
           }
           token.isOnboarded = existingJS?.isOnboarded ?? false;
+
+          // Fetch additional LinkedIn profile data via REST API (headline, location, LinkedIn URL)
+          if (account.provider === "linkedin" && account.access_token) {
+            try {
+              // Store encrypted access token for AI profile import during onboarding
+              await User.findByIdAndUpdate(dbUser._id, {
+                linkedinAccessToken: encrypt(account.access_token),
+              });
+
+              const extras = await fetchLinkedInExtras(account.access_token);
+              const jsUpdate: Record<string, unknown> = {};
+              if (extras.headline) jsUpdate.headline = extras.headline;
+              if (extras.location) jsUpdate.currentLocation = extras.location;
+              if (extras.linkedInUrl) {
+                jsUpdate.socialLinks = [{ label: "LinkedIn", url: extras.linkedInUrl }];
+              }
+              if (Object.keys(jsUpdate).length > 0) {
+                await JobSeeker.findOneAndUpdate(
+                  { userId: dbUser._id },
+                  { $set: jsUpdate },
+                );
+              }
+            } catch (err) {
+              logger.debug({ err }, "LinkedIn extras fetch failed — OIDC-only mode");
+            }
+          }
         }
 
         token.id = dbUser._id.toString();
         token.role = dbUser.role;
         token.locale = dbUser.locale;
         token.provider = account.provider;
+        token.isEmailVerified = dbUser.isEmailVerified ?? true;
         token.permissionMode = dbUser.permissionMode ?? "role_default";
         token.customPermissions = dbUser.customPermissions ?? undefined;
 
@@ -378,6 +430,20 @@ export const authConfig: NextAuthConfig = {
           resource: "auth",
           meta: { email: dbUser.email, provider: account.provider },
         });
+
+        // Send welcome email for new OAuth users (fire-and-forget)
+        if (isNewUser && dbUser.email) {
+          const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+          const dashboardUrl = `${baseUrl}/en/job-seeker/dashboard`;
+          sendEmail({
+            to: dbUser.email,
+            ...EmailTemplates.jobSeekerWelcome(dbUser.name || "there", dashboardUrl),
+            source: "registration",
+            category: "system",
+          }).catch((err) =>
+            console.error("[OAuth Registration] Failed to send welcome email:", err)
+          );
+        }
       }
 
       // Resolve companyUserRole for employers — only when not already cached

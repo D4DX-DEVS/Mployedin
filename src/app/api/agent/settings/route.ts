@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Agent from "@/models/Agent";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { agentSettingsUpdateSchema } from "@/lib/validators/settings";
 
 interface AuthCtx {
   userId: string;
@@ -37,19 +39,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
 
-  let body: { country?: string; currencyCode?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+  const body = await validateBody(req, agentSettingsUpdateSchema);
 
   const updates: Record<string, unknown> = {};
 
   if (body.country != null) {
-    if (typeof body.country !== "string" || body.country.length > 5) {
-      return NextResponse.json({ error: "Invalid country code" }, { status: 400 });
-    }
     updates.country = body.country;
   }
 

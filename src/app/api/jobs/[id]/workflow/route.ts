@@ -6,6 +6,8 @@ import { Employer } from "@/models/Employer";
 import { logActivity } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { workflowUpdateSchema } from "@/lib/validators/misc";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -57,15 +59,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await validateBody(req, workflowUpdateSchema);
   const { stages, settings } = body;
-
-  if (!Array.isArray(stages) || stages.length === 0) {
-    return NextResponse.json({ error: "At least one stage is required" }, { status: 400 });
-  }
-  if (stages.length > 20) {
-    return NextResponse.json({ error: "Maximum 20 stages allowed" }, { status: 400 });
-  }
 
   job.workflow = { stages, settings: settings ?? DEFAULT_SETTINGS };
   await job.save();

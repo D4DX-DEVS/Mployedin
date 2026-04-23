@@ -23,6 +23,7 @@ export interface IUser extends Document {
   lockUntil?: Date;
   authProvider: "credentials" | "google" | "linkedin";
   linkedinSub?: string;
+  linkedinAccessToken?: string;
   avatar?: string;
   phone?: string;
   lastLogin?: Date;
@@ -73,6 +74,7 @@ const UserSchema = new Schema<IUser>(
       default: "credentials",
     },
     linkedinSub: { type: String, sparse: true },
+    linkedinAccessToken: { type: String, select: false },
     avatar: { type: String },
     phone: { type: String },
     lastLogin: { type: Date },
@@ -84,6 +86,7 @@ const UserSchema = new Schema<IUser>(
         delete ret.passwordHash;
         delete ret.emailVerificationToken;
         delete ret.passwordResetToken;
+        delete ret.linkedinAccessToken;
         delete ret.failedLoginAttempts;
         delete ret.lockUntil;
         return ret;

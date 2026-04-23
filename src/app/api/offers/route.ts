@@ -44,6 +44,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   if (status) query.status = status;
 
+  const jobId = searchParams.get("jobId") ?? "";
+  if (jobId) query.jobId = jobId;
+
   const skip = (page - 1) * limit;
   const [offers, total] = await Promise.all([
     Offer.find(query)
@@ -107,14 +110,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const jobSeeker = await JobSeeker.findById(application.jobSeekerId).select("userId").lean();
   if (jobSeeker) {
     const jobTitle = (application.jobId as unknown as { title?: string })?.title ?? "a position";
+    const salaryText = `${salary.currency} ${Number(salary.amount).toLocaleString()} / ${salary.period}`;
+    const startText = new Date(startDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     await notify({
       userId: String(jobSeeker.userId),
       type: "application_status_update",
       title: "Job Offer Received",
-      message: `You have received an offer for ${jobTitle}. Review and respond to the offer.`,
+      message: `You have received an offer for ${jobTitle}.\n\nSalary: ${salaryText}\nStart Date: ${startText}${benefits ? `\nBenefits: ${benefits}` : ""}\n\nPlease review and respond to this offer.`,
       link: `/en/job-seeker/offers`,
       sendEmail: true,
-      metadata: { offerId: String(offer._id), applicationId },
+      metadata: { offerId: String(offer._id), applicationId, salary: salaryText, startDate: startText },
     }).catch(() => {
       /* non-blocking */
     });

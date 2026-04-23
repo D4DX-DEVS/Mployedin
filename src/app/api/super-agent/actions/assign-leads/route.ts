@@ -5,6 +5,8 @@ import SuperAgent from "@/models/SuperAgent";
 import Agent from "@/models/Agent";
 import Lead from "@/models/Lead";
 import AuditLog from "@/models/AuditLog";
+import { validateBody } from "@/lib/validators";
+import { assignLeadsSchema } from "@/lib/validators/super-agent";
 
 /**
  * POST /api/super-agent/actions/assign-leads
@@ -15,18 +17,14 @@ import AuditLog from "@/models/AuditLog";
  * Body: { fromAgentUserId: string, toAgentUserId: string, maxLeads?: number }
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const body = await req.json();
-  const { fromAgentUserId, toAgentUserId, maxLeads = 5 } = body;
-
-  if (!fromAgentUserId || !toAgentUserId) {
-    return NextResponse.json({ error: "fromAgentUserId and toAgentUserId required" }, { status: 400 });
-  }
+  const body = await validateBody(req, assignLeadsSchema);
+  const { fromAgentUserId, toAgentUserId, maxLeads } = body;
 
   if (fromAgentUserId === toAgentUserId) {
     return NextResponse.json({ error: "Cannot reassign to the same agent" }, { status: 400 });
   }
 
-  const limit = Math.min(Math.max(1, Number(maxLeads) || 5), 20); // 1-20
+  const limit = maxLeads;
 
   await connectDB();
 

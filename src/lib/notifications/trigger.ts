@@ -198,3 +198,23 @@ export async function notifyMention(
     metadata: { applicationId, authorName },
   });
 }
+
+export async function notifyScorecardSubmitted(
+  jobSeekerId: string,
+  jobTitle: string,
+  companyName: string,
+  overallScore: number,
+  applicationId: string
+): Promise<void> {
+  const scoreLabel =
+    overallScore >= 4 ? "Excellent" : overallScore >= 3 ? "Good" : "Reviewed";
+  await notify({
+    userId: jobSeekerId,
+    type: "interview_update",
+    title: "Interview Feedback Available",
+    message: `Your interview for "${jobTitle}" at ${companyName} has been evaluated. Score: ${scoreLabel} (${overallScore.toFixed(1)}/5).`,
+    link: `/en/job-seeker/applications`,
+    sendEmail: true,
+    metadata: { jobTitle, companyName, overallScore, applicationId },
+  });
+}

@@ -6,6 +6,8 @@ import { Employer } from "@/models/Employer";
 import { logActivity } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
+import { validateBody } from "@/lib/validators";
+import { matchingWeightsSchema } from "@/lib/validators/misc";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -53,12 +55,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const body = await validateBody(req, matchingWeightsSchema);
   const { weights } = body;
-
-  if (!weights || typeof weights !== "object") {
-    return NextResponse.json({ error: "Weights object is required" }, { status: 400 });
-  }
 
   // Validate total = 100
   const total = Object.values(weights as Record<string, number>).reduce((a: number, b: number) => a + b, 0);

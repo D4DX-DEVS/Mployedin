@@ -6,6 +6,8 @@ import User from "@/models/User";
 import mongoose from "mongoose";
 import type { UserRole } from "@/models/User";
 import { triggerRealtimeEvent } from "@/lib/realtime";
+import { validateBody } from "@/lib/validators";
+import { customerCareTicketSchema } from "@/lib/validators/dm";
 
 interface AuthCtx {
   userId: string;
@@ -84,20 +86,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     );
   }
 
-  const body = await req.json();
-  const message = String(body.message ?? "").trim();
-  const category = String(body.category ?? "other");
-
-  if (!message || message.length > 2000) {
-    return NextResponse.json(
-      { error: "Message is required and must be under 2000 characters" },
-      { status: 400 }
-    );
-  }
-
-  if (!VALID_CATEGORIES.includes(category as typeof VALID_CATEGORIES[number])) {
-    return NextResponse.json({ error: "Invalid category" }, { status: 400 });
-  }
+  const body = await validateBody(req, customerCareTicketSchema);
+  const message = body.message;
+  const category = body.category;
 
   // Find the first admin user to pair as the support agent
   const adminUser = await User.findOne({ role: "admin" })

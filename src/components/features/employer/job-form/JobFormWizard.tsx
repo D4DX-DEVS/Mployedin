@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useForm, FormProvider, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence } from "framer-motion";
-import { Copy, Sparkles, FileText, ChevronRight, X } from "lucide-react";
+import { Copy, Sparkles, FileText, ChevronRight, X, Image as ImageIcon } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -266,6 +267,17 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
         try {
           localStorage.removeItem(getDraftStorageKey());
         } catch { /* ignore */ }
+        toast.success("Job posted successfully!", {
+          description: "Share it as a poster on LinkedIn & social media.",
+          action: {
+            label: "Create Poster",
+            onClick: () => {
+              // Navigate with poster query param to auto-open dialog
+              router.push(`/${locale}/employer/jobs/${jobId}?poster=1`);
+            },
+          },
+          duration: 8000,
+        });
         router.push(`/${locale}/employer/jobs/${jobId}`);
       } else {
         const err = (await res.json()) as { error?: string };

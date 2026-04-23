@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle } from "lucide-react";
+import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, useSaveAsTemplate, useJobTemplates, type Job } from "@/hooks/useJobs";
 import { useDebounce } from "@/hooks/useDebounce";
+import { JobPosterDialog } from "@/components/features/employer/jobs/JobPosterDialog";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
@@ -44,6 +45,7 @@ export default function EmployerJobsPage() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
   const [cloningJobId, setCloningJobId] = useState<string | null>(null);
+  const [posterJob, setPosterJob] = useState<Job | null>(null);
   const [pendingJobAction, setPendingJobAction] = useState<{ jobId: string; action: PendingJobAction } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
   const debouncedLocation = useDebounce(locationFilter, 300);
@@ -663,6 +665,12 @@ export default function EmployerJobsPage() {
                         </Button>
                       )}
                       {can("jobs", "create") && (
+                        <Button size="sm" variant="outline" title="Create Poster" className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
+                          onClick={() => setPosterJob(job)}>
+                          <ImageIcon className="h-4 w-4" /> Poster
+                        </Button>
+                      )}
+                      {can("jobs", "create") && (
                         <Button size="sm" variant="outline" title="Clone" className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
                           onClick={() => { void handleCloneJob(job); }}
                           disabled={cloningJobId === job._id}>
@@ -738,6 +746,15 @@ export default function EmployerJobsPage() {
         onPageChange={setPage}
         onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
+
+      {posterJob && (
+        <JobPosterDialog
+          open={!!posterJob}
+          onOpenChange={(open) => { if (!open) setPosterJob(null); }}
+          job={posterJob}
+          locale={locale}
+        />
+      )}
     </div>
   );
 }

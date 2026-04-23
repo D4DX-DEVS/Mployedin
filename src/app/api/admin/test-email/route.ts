@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { sendEmail } from "@/lib/communications/email";
+import { validateBody } from "@/lib/validators";
+import { testEmailSchema } from "@/lib/validators/settings";
 
 /**
  * POST /api/admin/test-email
@@ -12,12 +14,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
-  const to = body.to;
-
-  if (!to || typeof to !== "string" || !to.includes("@")) {
-    return NextResponse.json({ error: "Valid email required" }, { status: 400 });
-  }
+  const { to } = await validateBody(req, testEmailSchema);
 
   try {
     const result = await sendEmail({

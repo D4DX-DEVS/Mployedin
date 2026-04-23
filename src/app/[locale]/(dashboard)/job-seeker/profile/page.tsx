@@ -364,6 +364,41 @@ export default function JobSeekerProfilePage() {
     { id: "languages", label: "Languages & Links", icon: LanguagesIcon },
   ];
 
+  // Scroll-spy: highlight active section in Quick Links
+  const [activeSection, setActiveSection] = useState<string>("");
+  const clickLockRef = useRef<string | null>(null);
+  useEffect(() => {
+    const ids = sectionRefs.map((s) => s.id);
+    const elements = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+    if (elements.length === 0) return;
+    const visibleSet = new Map<string, IntersectionObserverEntry>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            visibleSet.set(entry.target.id, entry);
+          } else {
+            visibleSet.delete(entry.target.id);
+          }
+        }
+        // If click-locked, keep that section active while it's visible
+        if (clickLockRef.current && visibleSet.has(clickLockRef.current)) return;
+        clickLockRef.current = null;
+        // Pick the topmost visible section (by document order)
+        for (const id of ids) {
+          if (visibleSet.has(id)) {
+            setActiveSection(id);
+            return;
+          }
+        }
+      },
+      { rootMargin: "-10% 0px -70% 0px", threshold: 0 },
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   if (loading) {
     return (
       <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4">
@@ -756,15 +791,26 @@ export default function JobSeekerProfilePage() {
       {/* ── Main Content with Quick Links Sidebar ─────────────────────── */}
       <div className="flex gap-4">
         {/* Quick Links Sidebar — desktop only */}
-        <div className="hidden lg:block w-48 shrink-0">
-          <div className="card-base p-3 sticky top-20">
+        <div className="hidden lg:block w-48 shrink-0 self-stretch">
+          <div className="card-base p-3 sticky top-24">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick links</p>
             <nav className="space-y-0.5">
               {sectionRefs.map((s) => (
                 <a
                   key={s.id}
                   href={`#${s.id}`}
-                  className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    clickLockRef.current = s.id;
+                    setActiveSection(s.id);
+                    document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors",
+                    activeSection === s.id
+                      ? "text-primary font-semibold bg-primary/10"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  )}
                 >
                   <s.icon className="w-3.5 h-3.5" />
                   {s.label}

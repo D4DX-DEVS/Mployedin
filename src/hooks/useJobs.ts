@@ -21,7 +21,7 @@ export interface Job {
   description?: string;
   workflowMode?: string;
   updatedAt?: string;
-  employerId?: { companyName?: string };
+  employerId?: { companyName?: string; logo?: string; industry?: string };
   applicantIds?: string[];
   applicationCount?: number;
   createdAt: string;

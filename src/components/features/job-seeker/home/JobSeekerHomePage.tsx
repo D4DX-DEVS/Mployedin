@@ -63,6 +63,11 @@ type ProfileData = {
   languages?: Array<unknown>;
   cvFileUrl?: string;
   cv?: { originalUrl?: string };
+  userId?: string;
+  nationality?: string;
+  currentLocation?: string;
+  linkedin?: string;
+  socialLinks?: Array<{ label?: string; url?: string }>;
 };
 
 type SuggestionItem = {
@@ -132,7 +137,18 @@ export function JobSeekerHomePage({
   const t = useTranslations("jobSeekerHome");
   const isAr = locale === "ar";
 
-  const completion = profile?.profileCompleteness ?? 0;
+  // Compute completeness live from actual profile fields (same formula as profile page)
+  const completion = profile ? Math.min(100, [
+    profile.userId                                                           ? 10 : 0,
+    profile.nationality                                                      ? 10 : 0,
+    profile.currentLocation                                                  ? 5  : 0,
+    profile.summary                                                          ? 10 : 0,
+    (profile.skills?.length ?? 0) > 0                                       ? 20 : 0,
+    (profile.experience?.length ?? 0) > 0                                   ? 20 : 0,
+    (profile.education?.length ?? 0) > 0                                    ? 15 : 0,
+    (profile.languages?.length ?? 0) > 0                                    ? 5  : 0,
+    (profile.linkedin || profile.socialLinks?.some((l) => l.label?.toLowerCase() === "linkedin")) ? 5 : 0,
+  ].reduce((a, b) => a + b, 0)) : 0;
   const [aiFillInput, setAiFillInput] = useState("");
   const [aiFillLoading, setAiFillLoading] = useState(false);
   const [aiFillResult, setAiFillResult] = useState<{ section: string; message: string } | null>(null);

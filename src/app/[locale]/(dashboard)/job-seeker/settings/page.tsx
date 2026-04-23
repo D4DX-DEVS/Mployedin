@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -24,6 +25,7 @@ import {
   FileText,
   Settings2,
   Save,
+  ArrowLeft,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -328,6 +330,7 @@ function getCsrfToken(): string {
 
 export default function JobSeekerSettingsPage() {
   const { data: session, update: updateSession } = useSession();
+  const router = useRouter();
   const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, type: "success", message: "" });
@@ -513,6 +516,18 @@ export default function JobSeekerSettingsPage() {
         onSubmit={handleSubmit(onSubmit)}
         className="w-full max-w-4xl mx-auto px-6 py-8 space-y-6"
       >
+        {/* ── Back Button ────────────────────────────────────────────── */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="-ml-2 gap-1.5 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+
         {/* ── Profile Header Card ────────────────────────────────────────── */}
         <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
           {/* gradient stripe */}

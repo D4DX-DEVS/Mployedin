@@ -5,6 +5,8 @@ import SuperAgent from "@/models/SuperAgent";
 import Agent from "@/models/Agent";
 import Notification from "@/models/Notification";
 import AuditLog from "@/models/AuditLog";
+import { validateBody } from "@/lib/validators";
+import { sendReminderSchema } from "@/lib/validators/super-agent";
 
 /**
  * POST /api/super-agent/actions/send-reminder
@@ -14,15 +16,11 @@ import AuditLog from "@/models/AuditLog";
  * Body: { agentUserIds: string[], message?: string }
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const body = await req.json();
+  const body = await validateBody(req, sendReminderSchema);
   const { agentUserIds, message } = body;
 
-  if (!Array.isArray(agentUserIds) || agentUserIds.length === 0) {
-    return NextResponse.json({ error: "agentUserIds array required" }, { status: 400 });
-  }
-
   // Cap to 10 agents per request
-  const targetIds = agentUserIds.slice(0, 10);
+  const targetIds = agentUserIds;
 
   await connectDB();
 

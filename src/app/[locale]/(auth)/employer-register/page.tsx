@@ -104,7 +104,7 @@ export default function EmployerRegisterPage() {
         setError(data.message ?? "Registration failed.");
         return;
       }
-      router.push("/en/login?registered=employer");
+      router.push(`/en/verify-email?email=${encodeURIComponent(step3.contactEmail)}`);
     } finally {
       setLoading(false);
     }

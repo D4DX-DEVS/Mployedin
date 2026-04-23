@@ -44,6 +44,8 @@ export function sanitizeChatMessages(
 export const AI_TOKEN_LIMITS: Record<string, number> = {
   chat: 2000,
   job_description: 3000,
+  poster_design: 2000,
+  poster_layout: 4000,
   cv_extract: 16000,
   report: 2000,
   nl_search: 1000,

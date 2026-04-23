@@ -3,9 +3,13 @@ import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import JobSeeker from "@/models/JobSeeker";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
+import { sendEmail, EmailTemplates } from "@/lib/communications/email";
+import { validateBody } from "@/lib/validators";
+import { jobSeekerRegisterSchema } from "@/lib/validators/misc";
 
 export const runtime = "nodejs";
 
@@ -19,18 +23,9 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    const body = await req.json();
-    const { name, email, password } = body as { name?: string; email?: string; password?: string };
+    const { name, email, password } = await validateBody(req, jobSeekerRegisterSchema);
 
-    if (!name?.trim() || !email?.trim() || !password) {
-      return NextResponse.json({ message: "Name, email, and password are required." }, { status: 400 });
-    }
-
-    if (password.length < 8) {
-      return NextResponse.json({ message: "Password must be at least 8 characters." }, { status: 400 });
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = email;
 
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
@@ -39,12 +34,18 @@ export async function POST(req: NextRequest) {
 
     const hashed = await bcrypt.hash(password, 12);
 
+    // Generate email verification token
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
     const user = await User.create({
       name: name.trim(),
       email: normalizedEmail,
       passwordHash: hashed,
       role: "job_seeker",
       isActive: true,
+      isEmailVerified: false,
+      emailVerificationToken: hashedToken,
     });
 
     // Create empty JobSeeker profile — filled in during onboarding
@@ -76,8 +77,22 @@ export async function POST(req: NextRequest) {
       req,
     });
 
-    return NextResponse.json({ success: true, message: "Account created successfully." }, { status: 201 });
+    // Send verification email (fire-and-forget — don't block registration)
+    const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}`;
+    sendEmail({ to: normalizedEmail, ...EmailTemplates.verifyEmail(name.trim(), verifyUrl) }).catch((err) =>
+      console.error("[Registration] Failed to send verification email:", err)
+    );
+
+    // Send welcome email (fire-and-forget)
+    const dashboardUrl = `${baseUrl}/en/job-seeker/dashboard`;
+    sendEmail({ to: normalizedEmail, ...EmailTemplates.jobSeekerWelcome(name.trim(), dashboardUrl), source: "registration", category: "system" }).catch((err) =>
+      console.error("[Registration] Failed to send welcome email:", err)
+    );
+
+    return NextResponse.json({ success: true, message: "Account created successfully. Please check your email to verify your account.", email: normalizedEmail }, { status: 201 });
   } catch (err) {
+    if (err instanceof NextResponse) return err;
     console.error("job-seeker-register error:", err);
     return NextResponse.json({ message: "Server error." }, { status: 500 });
   }

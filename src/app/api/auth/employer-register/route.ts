@@ -214,6 +214,12 @@ export async function POST(req: NextRequest) {
       console.error("[Registration] Failed to send verification email:", err)
     );
 
+    // Send welcome email (fire-and-forget)
+    const dashboardUrl = `${baseUrl}/en/employer/dashboard`;
+    sendEmail({ to: contactEmail, ...EmailTemplates.employerSelfWelcome(contactName, companyName, dashboardUrl), source: "registration", category: "system" }).catch((err) =>
+      console.error("[Registration] Failed to send welcome email:", err)
+    );
+
     return NextResponse.json(
       {
         success: true,

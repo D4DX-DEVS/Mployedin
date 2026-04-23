@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { DollarSign, CalendarDays, Clock3, CircleCheckBig, ArrowRight, Eye, X, Sparkles, FileText } from "lucide-react";
+import { useParams, useSearchParams } from "next/navigation";
+import { DollarSign, CalendarDays, Clock3, CircleCheckBig, ArrowRight, Eye, X, Sparkles, FileText, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,13 +36,16 @@ function getStatusColor(status: OfferStatus): string {
 
 export default function EmployerOffersPage() {
   const { locale } = useParams<{ locale: string }>();
+  const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [jobFilter, setJobFilter] = useState(searchParams.get("jobId") ?? "all");
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
   const [detailOffer, setDetailOffer] = useState<Offer | null>(null);
+  const [jobOptions, setJobOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: "All Jobs" }]);
 
-  const { data, isLoading: loading, error, refetch } = useOffers({ page, limit, status: statusFilter });
+  const { data, isLoading: loading, error, refetch } = useOffers({ page, limit, status: statusFilter, jobId: jobFilter !== "all" ? jobFilter : undefined });
   const withdrawMutation = useWithdrawOffer();
 
   const offers = data?.offers ?? [];
@@ -53,7 +56,20 @@ export default function EmployerOffersPage() {
     document.title = "Offers · MPLOYEDIN";
   }, []);
 
-  useEffect(() => { setPage(1); }, [statusFilter]);
+  // Fetch employer jobs for the filter dropdown
+  useEffect(() => {
+    fetch("/api/jobs?limit=100&fields=title")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data) return;
+        const jobs = data.jobs ?? data.items ?? [];
+        const opts = jobs.map((j: { _id: string; title: string }) => ({ value: j._id, label: j.title }));
+        setJobOptions([{ value: "all", label: "All Jobs" }, ...opts]);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { setPage(1); }, [statusFilter, jobFilter]);
 
   async function handleWithdraw(offerId: string) {
     try {
@@ -183,11 +199,18 @@ export default function EmployerOffersPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter decisions</p>
             <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Focus on the offers that need action now.</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Status is the only server-backed filter on this page, so the view stays honest while still giving you a sharper workspace.
+              Filter by job role and offer status to find the decisions that need your attention.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <SearchableSelect
+              className="w-full min-w-[220px] sm:w-60"
+              options={jobOptions}
+              value={jobFilter}
+              onValueChange={setJobFilter}
+              placeholder="All Jobs"
+            />
             <SearchableSelect
               className="w-full min-w-[220px] sm:w-60"
               options={STATUS_OPTIONS}
