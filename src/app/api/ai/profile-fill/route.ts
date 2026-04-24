@@ -7,6 +7,7 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { validateBody } from "@/lib/validators";
 import { aiProfileFillSchema } from "@/lib/validators/ai";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 type SectionId = "summary" | "skills" | "experience" | "education" | "languages";
 
@@ -159,6 +160,14 @@ ${sectionPrompt}`;
     completeness = Math.min(100, completeness);
     await JobSeeker.updateOne({ userId: ctx.userId }, { $set: { profileCompleteness: completeness } });
   }
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "ai.profile_fill",
+    resource: "ai",
+    meta: { section: sectionId },
+    req,
+  });
 
   return NextResponse.json({
     section: sectionId,

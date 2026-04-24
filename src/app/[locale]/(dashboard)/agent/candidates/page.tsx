@@ -19,6 +19,9 @@ import {
   Users,
 } from "lucide-react";
 import { useSearchParams, usePathname } from "next/navigation";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 interface ApplicationItem {
   _id: string;
@@ -49,11 +52,12 @@ export default function AgentCandidatesPage() {
   const locale = pathname?.split("/")[1] ?? "en";
   const searchParams = useSearchParams();
   const initialJobId = searchParams.get("jobId") ?? "";
+  const initialStatus = searchParams.get("status") ?? "";
 
   const pagination = usePagination();
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [jobIdFilter, setJobIdFilter] = useState(initialJobId);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -105,6 +109,26 @@ export default function AgentCandidatesPage() {
   const shortlistedCount = applications.filter((app) => ["shortlisted", "interview_scheduled", "selected", "offer", "hired"].includes(app.status)).length;
   const interviewCount = applications.filter((app) => app.status === "interview_scheduled").length;
   const highMatchCount = applications.filter((app) => (app.aiMatchScore ?? 0) >= 80).length;
+
+  // Derive the filtered job title from the first loaded application
+  const filteredJobTitle = jobIdFilter && applications.length > 0
+    ? applications[0]?.jobId?.title ?? null
+    : null;
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Candidate", key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { userId?: { name?: string } })?.userId?.name ?? "" },
+    { header: "Job", key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
+    { header: "Status", key: "status" },
+    { header: "AI Match", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "" },
+    { header: "Applied", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: applications as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "agent-candidates",
+    title: "Agent Candidates",
+  });
 
   return (
     <div className="page-container agent-legacy-surface space-y-6">
@@ -181,7 +205,7 @@ export default function AgentCandidatesPage() {
         <div className="mt-5 flex flex-wrap gap-2">
           {jobIdFilter && (
             <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-10 rounded-xl border-transparent px-4 hover:opacity-90">
-              Clear job filter
+              {filteredJobTitle ? `✕ ${filteredJobTitle}` : "Clear job filter"}
             </Button>
           )}
           {STATUS_OPTIONS.map((status) => {
@@ -217,6 +241,12 @@ export default function AgentCandidatesPage() {
             {pagination.total} applications across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}
           </div>
         </div>
+        <TableToolbar
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mt-4"
+        />
         <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
           {loading ? (
             <div className="flex justify-center py-16">
@@ -239,7 +269,6 @@ export default function AgentCandidatesPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>AI Match</TableHead>
                   <TableHead>Applied</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -262,44 +291,6 @@ export default function AgentCandidatesPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{new Date(app.appliedAt ?? app.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1.5">
-                        {app.status === "applied" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 rounded-xl text-xs"
-                            disabled={updatingId === app._id}
-                            onClick={() => handleStatusUpdate(app._id, "shortlisted")}
-                          >
-                            Shortlist
-                          </Button>
-                        )}
-                        {(app.status === "applied" || app.status === "shortlisted") && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 rounded-xl text-xs"
-                            disabled={updatingId === app._id}
-                            onClick={() => handleStatusUpdate(app._id, "interview_scheduled")}
-                          >
-                            Schedule
-                          </Button>
-                        )}
-                        {app.status !== "rejected" && app.status !== "hired" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 rounded-xl text-xs text-destructive hover:text-destructive"
-                            disabled={updatingId === app._id}
-                            onClick={() => handleStatusUpdate(app._id, "rejected")}
-                            aria-label={`Reject application for ${app.jobSeekerId?.userId?.name ?? "candidate"}`}
-                          >
-                            Reject
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

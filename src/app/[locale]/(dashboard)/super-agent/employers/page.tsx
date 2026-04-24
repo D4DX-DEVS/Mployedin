@@ -5,11 +5,15 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Building2, Check, Copy, DollarSign, Link2, Search, ShieldCheck, UserPlus, Users } from "lucide-react";
+import {
+  ArrowUpDown, Building2, ChevronDown, ChevronUp, DollarSign,
+  Filter, Link2, RotateCcw, Search, ShieldCheck, SlidersHorizontal, UserPlus, Users,
+} from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   SuperAgentDataTableShell,
   SuperAgentEmptyState,
@@ -18,6 +22,10 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatCurrency } from "@/lib/currency";
+import { ReferralLinkDialog } from "@/components/features/super-agent/ReferralLinkDialog";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 interface Employer {
   _id: string;
@@ -33,14 +41,64 @@ interface Employer {
   isAgentVerified?: boolean;
 }
 
+/* ── Filter types ── */
+interface Filters {
+  search: string;
+  industry: string;
+  location: string;
+  status: string;
+  verified: string;
+  sortBy: string;
+  sortOrder: string;
+}
+
+const INITIAL_FILTERS: Filters = {
+  search: "", industry: "", location: "", status: "", verified: "",
+  sortBy: "name", sortOrder: "asc",
+};
+
+interface Facets {
+  industries: string[];
+  locations: string[];
+}
+
+const STATUS_OPTIONS = [
+  { value: "", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+];
+
+const VERIFIED_OPTIONS = [
+  { value: "", label: "All" },
+  { value: "verified", label: "Verified" },
+  { value: "unverified", label: "Not Verified" },
+];
+
+const SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "email", label: "Email" },
+  { value: "createdAt", label: "Date Joined" },
+];
+
+function countActiveFilters(f: Filters): number {
+  let count = 0;
+  if (f.industry) count++;
+  if (f.location) count++;
+  if (f.status) count++;
+  if (f.verified) count++;
+  if (f.sortBy !== "name" || f.sortOrder !== "asc") count++;
+  return count;
+}
+
 export default function SuperAgentEmployersPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [facets, setFacets] = useState<Facets>({ industries: [], locations: [] });
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [onboardOpen, setOnboardOpen] = useState(false);
-  const [referralLink, setReferralLink] = useState("");
-  const [referralCopied, setReferralCopied] = useState(false);
+  const [referralDialogOpen, setReferralDialogOpen] = useState(false);
   const [currencyCode, setCurrencyCode] = useState("AED");
 
   useEffect(() => {
@@ -64,23 +122,71 @@ export default function SuperAgentEmployersPage() {
   const loadEmployers = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (search) params.set("search", search);
+      const params = new URLSearchParams({ page: String(page), limit: String(limit), distinct: "true" });
+      if (filters.search) params.set("search", filters.search);
+      if (filters.industry) params.set("industry", filters.industry);
+      if (filters.location) params.set("location", filters.location);
+      if (filters.status) params.set("status", filters.status);
+      if (filters.verified) params.set("verified", filters.verified);
+      if (filters.sortBy) params.set("sortBy", filters.sortBy);
+      if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
+
       const res = await fetch(`/api/employers?${params}`);
       if (res.ok) {
         const data = await res.json();
         setEmployers(data.employers ?? []);
         updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? data.employers?.length ?? 0);
+        if (data.facets) setFacets(data.facets);
       }
     } finally {
       setLoading(false);
     }
-  }, [search, page, limit, updateTotal]);
+  }, [filters, page, limit, updateTotal]);
 
   useEffect(() => {
     const t = setTimeout(loadEmployers, 300);
     return () => clearTimeout(t);
   }, [loadEmployers]);
+
+  /* ── Filter helpers ── */
+  const updateFilter = useCallback((key: keyof Filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    resetPage();
+  }, [resetPage]);
+
+  const resetFilters = useCallback(() => {
+    setFilters(INITIAL_FILTERS);
+    resetPage();
+  }, [resetPage]);
+
+  /* ── Column sort ── */
+  const toggleSort = useCallback((field: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      sortBy: field,
+      sortOrder: prev.sortBy === field && prev.sortOrder === "asc" ? "desc" : "asc",
+    }));
+    resetPage();
+  }, [resetPage]);
+
+  const activeFilterCount = countActiveFilters(filters);
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Company", key: "companyName", formatter: (_v, row) => String((row as unknown as Employer).companyName ?? (row as unknown as Employer).name ?? "") },
+    { header: "Email", key: "email" },
+    { header: "Industry", key: "industry" },
+    { header: "Location", key: "location" },
+    { header: "Agent", key: "assignedAgent", formatter: (_v, row) => (row.assignedAgent as { name?: string })?.name ?? "Unassigned" },
+    { header: "Active", key: "isActive", formatter: (v) => v ? "Yes" : "No" },
+    { header: "Jobs", key: "jobCount" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: employers as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "super-agent-employers",
+    title: "Employer Relationships",
+  });
 
   const stats = useMemo(() => ({
     total: employers.length,
@@ -103,19 +209,26 @@ export default function SuperAgentEmployersPage() {
     loadEmployers();
   };
 
-  const handleGetReferralLink = async () => {
-    const res = await fetch("/api/referral");
-    if (res.ok) {
-      const data = await res.json();
-      setReferralLink(data.referralLink);
-    }
-  };
-
-  const handleCopyReferral = () => {
-    navigator.clipboard.writeText(referralLink);
-    setReferralCopied(true);
-    setTimeout(() => setReferralCopied(false), 2000);
-  };
+  /* ── Sortable Header Cell ── */
+  function SortHeader({ field, children }: { field: string; children: React.ReactNode }) {
+    const active = filters.sortBy === field;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(field)}
+        className="group inline-flex items-center gap-1 text-muted-foreground/80 hover:text-foreground transition-colors"
+      >
+        {children}
+        {active ? (
+          filters.sortOrder === "asc"
+            ? <ChevronUp className="h-3.5 w-3.5 text-primary" />
+            : <ChevronDown className="h-3.5 w-3.5 text-primary" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+        )}
+      </button>
+    );
+  }
 
   return (
     <div className="page-container space-y-6">
@@ -134,7 +247,7 @@ export default function SuperAgentEmployersPage() {
             Onboard Employer
           </button>
           <button
-            onClick={handleGetReferralLink}
+            onClick={() => setReferralDialogOpen(true)}
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
           >
             <Link2 className="h-3.5 w-3.5" />
@@ -179,25 +292,189 @@ export default function SuperAgentEmployersPage() {
       <SuperAgentSection
         eyebrow="Accounts"
         title="Review employer ownership and account health"
-        description="The search box and pagination still use the same existing employer endpoint."
+        description="Filter by industry, location, status, and verification to narrow down the employer list."
       >
-        <div className="mb-4 relative w-full max-w-xs min-w-0">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-          <Input
-            aria-label="Search employers"
-            placeholder="Search employers..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-            className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
-          />
+        {/* ── Search Row + Advanced Toggle ── */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+          <div className="relative w-full max-w-xs min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+            <Input
+              aria-label="Search employers"
+              placeholder="Search employers..."
+              value={filters.search}
+              onChange={(e) => updateFilter("search", e.target.value)}
+              className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
+            />
+          </div>
+
+          {/* Status quick filter */}
+          <div className="w-full max-w-[180px]">
+            <SearchableSelect
+              options={STATUS_OPTIONS}
+              value={filters.status}
+              onValueChange={(v) => updateFilter("status", v)}
+              placeholder="All statuses"
+            />
+          </div>
+
+          {/* Industry quick filter (if facets loaded) */}
+          {facets.industries.length > 0 && (
+            <div className="w-full max-w-[200px]">
+              <SearchableSelect
+                options={[{ value: "", label: "All industries" }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
+                value={filters.industry}
+                onValueChange={(v) => updateFilter("industry", v)}
+                placeholder="All industries"
+                searchPlaceholder="Search industry..."
+              />
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className={`flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all ${showAdvanced ? "border-primary/30 bg-primary/10 text-primary" : "border-border/70 bg-background/85 text-muted-foreground hover:border-border hover:bg-secondary/80"}`}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Advanced
+              {activeFilterCount > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1.5 text-[11px] font-semibold text-primary">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {(activeFilterCount > 0 || filters.search) && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-4 text-sm text-muted-foreground hover:border-border hover:bg-secondary/80 transition-all"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* ── Advanced Filter Panel ── */}
+        {showAdvanced && (
+          <div className="mb-4 rounded-2xl border border-border/60 bg-background/90 p-5 shadow-sm animate-in slide-in-from-top-2 duration-200">
+            <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Filter className="h-4 w-4" />
+              Advanced Filters
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {/* Industry */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Industry</label>
+                <SearchableSelect
+                  options={[{ value: "", label: "All industries" }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
+                  value={filters.industry}
+                  onValueChange={(v) => updateFilter("industry", v)}
+                  placeholder="All industries"
+                  searchPlaceholder="Search industry..."
+                />
+              </div>
+
+              {/* Location */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Location</label>
+                <SearchableSelect
+                  options={[{ value: "", label: "All locations" }, ...facets.locations.map((l) => ({ value: l, label: l }))]}
+                  value={filters.location}
+                  onValueChange={(v) => updateFilter("location", v)}
+                  placeholder="All locations"
+                  searchPlaceholder="Search location..."
+                />
+              </div>
+
+              {/* Status */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Status</label>
+                <SearchableSelect
+                  options={STATUS_OPTIONS}
+                  value={filters.status}
+                  onValueChange={(v) => updateFilter("status", v)}
+                  placeholder="All"
+                />
+              </div>
+
+              {/* Verification */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Verification</label>
+                <SearchableSelect
+                  options={VERIFIED_OPTIONS}
+                  value={filters.verified}
+                  onValueChange={(v) => updateFilter("verified", v)}
+                  placeholder="All"
+                />
+              </div>
+
+              {/* Sort By */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+                <SearchableSelect
+                  options={SORT_OPTIONS}
+                  value={filters.sortBy}
+                  onValueChange={(v) => updateFilter("sortBy", v)}
+                  placeholder="Name"
+                />
+              </div>
+
+              {/* Sort Order */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
+                <SearchableSelect
+                  options={[
+                    { value: "asc", label: "Ascending" },
+                    { value: "desc", label: "Descending" },
+                  ]}
+                  value={filters.sortOrder}
+                  onValueChange={(v) => updateFilter("sortOrder", v)}
+                  placeholder="Ascending"
+                />
+              </div>
+            </div>
+
+            {/* Quick Filter Chips */}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
+              {[
+                { label: "Active Only", action: () => updateFilter("status", "active") },
+                { label: "Inactive", action: () => updateFilter("status", "inactive") },
+                { label: "Verified", action: () => updateFilter("verified", "verified") },
+                { label: "Not Verified", action: () => updateFilter("verified", "unverified") },
+                { label: "Newest First", action: () => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); } },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={chip.action}
+                  className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <TableToolbar
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mb-4"
+        />
 
         <SuperAgentDataTableShell>
           <Table>
             <TableHeader>
               <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
-                <TableHead className="py-4 text-muted-foreground/80">Company</TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Contact</TableHead>
+                <TableHead className="py-4 text-muted-foreground/80"><SortHeader field="name">Company</SortHeader></TableHead>
+                <TableHead className="py-4 text-muted-foreground/80"><SortHeader field="email">Contact</SortHeader></TableHead>
                 <TableHead className="py-4 text-muted-foreground/80">Industry</TableHead>
                 <TableHead className="py-4 text-muted-foreground/80">Location</TableHead>
                 <TableHead className="py-4 text-muted-foreground/80">Agent</TableHead>
@@ -219,7 +496,7 @@ export default function SuperAgentEmployersPage() {
                     <SuperAgentEmptyState
                       icon={<Building2 className="h-7 w-7" />}
                       title="No employers found"
-                      description="Broaden the search to review more employer accounts in your region."
+                      description="Broaden the search or adjust filters to see more employer accounts."
                     />
                   </TableCell>
                 </TableRow>
@@ -233,7 +510,7 @@ export default function SuperAgentEmployersPage() {
                   <TableCell className="py-4">
                     <div className="flex items-center gap-1.5">
                       {em.isAgentVerified && (
-                        <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ Verified</span>
+                        <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">Verified</span>
                       )}
                       <StatusBadge status={em.isActive ? "active" : "inactive"} />
                     </div>
@@ -257,24 +534,10 @@ export default function SuperAgentEmployersPage() {
         onSubmit={handleOnboard}
       />
 
-      {referralLink && (
-        <section className="workspace-panel-surface rounded-[28px] p-5">
-          <div className="flex items-center gap-3">
-            <Link2 className="h-5 w-5 text-sky-600" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-foreground">Your Referral Link</p>
-              <p className="mt-1 text-xs text-muted-foreground break-all">{referralLink}</p>
-            </div>
-            <button
-              onClick={handleCopyReferral}
-              className="inline-flex h-9 items-center gap-2 rounded-xl bg-sky-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-sky-700"
-            >
-              {referralCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {referralCopied ? "Copied!" : "Copy"}
-            </button>
-          </div>
-        </section>
-      )}
+      <ReferralLinkDialog
+        open={referralDialogOpen}
+        onClose={() => setReferralDialogOpen(false)}
+      />
     </div>
   );
 }

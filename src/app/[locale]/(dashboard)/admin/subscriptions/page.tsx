@@ -12,6 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useUserSearch, type SearchUser } from "@/hooks/useUserSearch";
 import { useSubscriptionPlans, type SubscriptionPlanItem } from "@/hooks/useSubscriptionPlans";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 import {
   useUserSubscription,
   useSubscriptionHistory,
@@ -72,6 +75,18 @@ export default function AdminSubscriptionsPage() {
     [searchResults],
   );
 
+  const exportColumns: ExportColumn<SearchUser>[] = [
+    { header: "Name", key: "name" as keyof SearchUser },
+    { header: "Role", key: "role" as keyof SearchUser, formatter: (v) => v === "employer" ? "Employer" : "Job Seeker" },
+    { header: "Company", key: "companyName" as keyof SearchUser, formatter: (v) => String(v || "—") },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: filteredResults as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "subscriptions-users",
+    title: "Subscription Users",
+  });
+
   return (
     <div className="page-container space-y-6">
       <PageHeader
@@ -85,18 +100,14 @@ export default function AdminSubscriptionsPage() {
           Search User
         </h3>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-          {isSearching && (
-            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-          )}
-        </div>
+        <TableToolbar
+          search={searchQuery}
+          onSearchChange={(v) => setSearchQuery(v)}
+          searchPlaceholder="Search by name or email…"
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        />
 
         {/* Search Results */}
         {filteredResults.length > 0 && !selectedUser && (

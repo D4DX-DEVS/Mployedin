@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import { useDebounce } from "@/hooks/useDebounce";
+import type { ExportColumn } from "@/lib/export";
 
 interface Interview {
   _id: string;
@@ -30,6 +34,8 @@ interface Interview {
 export default function InterviewsPage() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
 
   useEffect(() => {
@@ -40,6 +46,7 @@ export default function InterviewsPage() {
     setLoading(true);
     try {
       const params = pagination.paginationParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
       const res = await fetch(`/api/interviews?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -50,7 +57,7 @@ export default function InterviewsPage() {
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, pagination.limit]);
+  }, [pagination.page, pagination.limit, debouncedSearch]);
 
   useEffect(() => { fetchInterviews(); }, [fetchInterviews]);
 
@@ -58,11 +65,50 @@ export default function InterviewsPage() {
   const upcoming = interviews.filter((i) => new Date(i.scheduledAt) >= now && i.status !== "cancelled");
   const past = interviews.filter((i) => new Date(i.scheduledAt) < now || i.status === "cancelled");
 
+  const exportData = interviews.map((iv) => ({
+    jobTitle: iv.jobTitle ?? "",
+    company: iv.companyName ?? "",
+    type: iv.type,
+    scheduledAt: new Date(iv.scheduledAt).toLocaleString(),
+    duration: `${iv.duration} min`,
+    status: iv.status,
+    outcome: iv.outcome ?? "",
+    response: iv.candidateResponse ?? "",
+  }));
+
+  const exportColumns = [
+    { header: "Job Title", key: "jobTitle" },
+    { header: "Company", key: "company" },
+    { header: "Type", key: "type" },
+    { header: "Scheduled At", key: "scheduledAt" },
+    { header: "Duration", key: "duration" },
+    { header: "Status", key: "status" },
+    { header: "Outcome", key: "outcome" },
+    { header: "Response", key: "response" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: exportData as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "my-interviews",
+    title: "My Interviews",
+  });
+
   return (
     <div className="page-container">
       <PageHeader
         title="Interviews"
         description={`${upcoming.length} upcoming · ${past.length} completed`}
+      />
+
+      <TableToolbar
+        search={searchTerm}
+        onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
+        searchPlaceholder="Search by job title or company\u2026"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        className="mb-4"
       />
 
       {loading ? (

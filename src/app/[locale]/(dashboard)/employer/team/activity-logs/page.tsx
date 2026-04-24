@@ -27,7 +27,10 @@ import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
+import { useTableExport } from "@/hooks/useTableExport";
+import type { ExportColumn } from "@/lib/export";
 
 /* ─── Types ─── */
 interface TeamMember {
@@ -131,6 +134,21 @@ export default function TeamActivityLogsPage() {
 
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } =
     usePagination(25);
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Timestamp", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "\u2014" },
+    { header: "Actor", key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.name ?? "System" },
+    { header: "Email", key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.email ?? "\u2014" },
+    { header: "Action", key: "action", formatter: (v) => String(v ?? "\u2014") },
+    { header: "Resource", key: "resource", formatter: (v) => String(v ?? "\u2014") },
+    { header: "IP Address", key: "ipAddress", formatter: (v) => String(v ?? "\u2014") },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: logs as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "activity-logs",
+    title: "Team Activity Logs",
+  });
 
   useEffect(() => {
     document.title = "Team Activity Logs · MPLOYEDIN";
@@ -249,6 +267,13 @@ export default function TeamActivityLogsPage() {
           ))}
         </div>
       )}
+
+      {/* Export Toolbar */}
+      <TableToolbar
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-end">

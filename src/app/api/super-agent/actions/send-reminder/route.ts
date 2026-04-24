@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import SuperAgent from "@/models/SuperAgent";
 import Agent from "@/models/Agent";
 import Notification from "@/models/Notification";
-import AuditLog from "@/models/AuditLog";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { sendReminderSchema } from "@/lib/validators/super-agent";
 
@@ -58,16 +58,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   await Notification.insertMany(notifications);
 
   // Audit trail
-  await AuditLog.create({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+  await logActivity({
+    ...actorFromCtx(ctx),
     action: "super_agent.send_reminder",
-    resource: "notification",
+    resource: "notifications",
     meta: {
       targetAgentUserIds: validIds,
       reminderType: "performance",
       count: validIds.length,
     },
+    req,
   });
 
   return NextResponse.json({

@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import mongoose, { Schema } from "mongoose";
 import { validateBody } from "@/lib/validators";
 import { insightFeedbackSchema } from "@/lib/validators/super-agent";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /* ────────────────────────────────────────────────────────
    Lightweight feedback model (inline — no separate file)
@@ -49,6 +50,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     insightSeverity: insightSeverity.slice(0, 20),
     insightType: insightType.slice(0, 20),
     helpful,
+  });
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "super_agent.insight_feedback",
+    resource: "insights",
+    meta: { insightTitle, insightType, helpful },
+    req,
   });
 
   return NextResponse.json({ ok: true });

@@ -24,31 +24,51 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "10", 10)));
   const status = searchParams.get("status") ?? "";
   const applicationId = searchParams.get("applicationId") ?? "";
+  const employerIdParam = searchParams.get("employerId") ?? "";
+  const jobIdParam = searchParams.get("jobId") ?? "";
+  const typeParam = searchParams.get("type") ?? "";
+  const outcomeParam = searchParams.get("outcome") ?? "";
+  const search = searchParams.get("search") ?? "";
+  const dateFrom = searchParams.get("dateFrom") ?? "";
+  const dateTo = searchParams.get("dateTo") ?? "";
+  const sortBy = searchParams.get("sortBy") ?? "scheduledAt";
+  const sortOrder = searchParams.get("sortOrder") === "desc" ? -1 : 1;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: Record<string, any> = {};
+  // Track role-level employer scope for sub-filtering
+  let scopedEmployerIds: unknown[] | null = null;
 
   if (ctx.role === "job_seeker") {
     const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!seeker) return NextResponse.json({ interviews: [] });
+    if (!seeker) return NextResponse.json({ interviews: [], total: 0, statusCounts: {} });
     query.jobSeekerId = seeker._id;
   } else if (ctx.role === "employer") {
     const { Employer } = await import("@/models/Employer");
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp) return NextResponse.json({ interviews: [] });
+    if (!emp) return NextResponse.json({ interviews: [], total: 0, statusCounts: {} });
     query.employerId = emp._id;
   } else if (ctx.role === "agent") {
     const { Agent } = await import("@/models/Agent");
     const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
-    if (!agent) return NextResponse.json({ interviews: [] });
-    query.employerId = { $in: agent.assignedEmployerIds };
+    if (!agent) return NextResponse.json({ interviews: [], total: 0, statusCounts: {} });
+    scopedEmployerIds = agent.assignedEmployerIds ?? [];
+    // Match interviews for assigned employers OR directly linked to this agent
+    query.$or = [
+      { employerId: { $in: scopedEmployerIds } },
+      { agentId: agent._id },
+    ];
   } else if (ctx.role === "super_agent") {
-    // Super agents see interviews for employers assigned to their agents
     const { Agent } = await import("@/models/Agent");
-    const agents = await Agent.find({ supervisorId: ctx.userId }).select("assignedEmployerIds").lean();
+    const agents = await Agent.find({ superAgentId: ctx.userId }).select("_id assignedEmployerIds").lean();
     const allEmployerIds = agents.flatMap((a) => a.assignedEmployerIds ?? []);
-    if (allEmployerIds.length > 0) {
-      query.employerId = { $in: allEmployerIds };
+    const allAgentIds = agents.map((a) => a._id);
+    if (allEmployerIds.length > 0 || allAgentIds.length > 0) {
+      scopedEmployerIds = allEmployerIds;
+      query.$or = [
+        ...(allEmployerIds.length > 0 ? [{ employerId: { $in: allEmployerIds } }] : []),
+        ...(allAgentIds.length > 0 ? [{ agentId: { $in: allAgentIds } }] : []),
+      ];
     }
   }
   // admin: query stays {} — sees all
@@ -56,11 +76,92 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   if (status) query.status = status;
   if (applicationId) query.applicationId = applicationId;
 
-  const skip = (page - 1) * limit;
+  // Employer sub-filter (must be within scope)
+  if (employerIdParam) {
+    const { isValidObjectId } = await import("@/lib/security/sanitize");
+    if (isValidObjectId(employerIdParam)) {
+      // If agent/super_agent has $or scope, replace it with a scoped employer+agentId filter
+      if (query.$or) {
+        delete query.$or;
+        query.employerId = employerIdParam;
+      } else {
+        query.employerId = employerIdParam;
+      }
+    }
+  }
 
-  const [interviews, total] = await Promise.all([
+  // Job filter
+  if (jobIdParam) {
+    const { isValidObjectId } = await import("@/lib/security/sanitize");
+    if (isValidObjectId(jobIdParam)) {
+      query.jobId = jobIdParam;
+    }
+  }
+
+  // Type filter
+  if (typeParam && ["video", "offline", "hybrid"].includes(typeParam)) {
+    query.type = typeParam;
+  }
+
+  // Outcome filter
+  if (outcomeParam && ["passed", "failed", "hold", "no_show"].includes(outcomeParam)) {
+    query.outcome = outcomeParam;
+  }
+
+  // Date range filter
+  if (dateFrom || dateTo) {
+    query.scheduledAt = {};
+    if (dateFrom) query.scheduledAt.$gte = new Date(dateFrom);
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      query.scheduledAt.$lte = end;
+    }
+  }
+
+  // Text search on candidate name (requires lookup)
+  let seekerIdFilter: unknown[] | null = null;
+  if (search) {
+    const User = (await import("@/models/User")).default;
+    const matchingUsers = await User.find({
+      name: { $regex: search, $options: "i" },
+    }).select("_id").lean();
+    const userIds = matchingUsers.map((u) => u._id);
+    if (userIds.length > 0) {
+      const matchingSeekers = await JobSeeker.find({ userId: { $in: userIds } }).select("_id").lean();
+      seekerIdFilter = matchingSeekers.map((s) => s._id);
+    }
+    // Also search job titles
+    const matchingJobs = await Job.find({
+      title: { $regex: search, $options: "i" },
+    }).select("_id").lean();
+    const jobIds = matchingJobs.map((j) => j._id);
+
+    if (seekerIdFilter && jobIds.length > 0) {
+      query.$or = [
+        { jobSeekerId: { $in: seekerIdFilter } },
+        { jobId: { $in: jobIds } },
+      ];
+    } else if (seekerIdFilter) {
+      query.jobSeekerId = { $in: seekerIdFilter };
+    } else if (jobIds.length > 0) {
+      query.jobId = { $in: jobIds };
+    } else {
+      // No matches found for search
+      return NextResponse.json({ interviews: [], total: 0, page, limit, statusCounts: { scheduled: 0, confirmed: 0, completed: 0, cancelled: 0, rescheduled: 0 } });
+    }
+  }
+
+  const skip = (page - 1) * limit;
+  const sortObj: Record<string, 1 | -1> = { [sortBy]: sortOrder as 1 | -1 };
+
+  // Build base query without status for aggregate counts
+  const baseQuery = { ...query };
+  delete baseQuery.status;
+
+  const [interviews, total, statusAgg] = await Promise.all([
     Interview.find(query)
-      .sort({ scheduledAt: 1 })
+      .sort(sortObj)
       .skip(skip)
       .limit(limit)
       .populate("jobId", "title requirements")
@@ -72,7 +173,16 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
       })
       .lean(),
     Interview.countDocuments(query),
+    Interview.aggregate([
+      { $match: baseQuery },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
   ]);
+
+  const statusCounts: Record<string, number> = {};
+  for (const s of statusAgg) {
+    statusCounts[s._id] = s.count;
+  }
 
   const enriched = interviews.map((iv) => {
     const job = iv.jobId as unknown as {
@@ -80,7 +190,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
       title?: string;
       requirements?: { skills?: string[]; experienceMin?: number };
     } | null;
-    const employer = iv.employerId as unknown as { companyName?: string } | null;
+    const employer = iv.employerId as unknown as { _id?: unknown; companyName?: string } | null;
     const seeker = iv.jobSeekerId as unknown as {
       _id?: unknown;
       skills?: string[];
@@ -99,6 +209,12 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
             requirements: job.requirements,
           }
         : undefined,
+      employerId: employer
+        ? {
+            _id: employer._id,
+            companyName: employer.companyName,
+          }
+        : undefined,
       jobSeekerId: seeker
         ? {
             _id: seeker._id,
@@ -111,7 +227,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     };
   });
 
-  return NextResponse.json({ interviews: enriched, total, page, limit });
+  return NextResponse.json({ interviews: enriched, total, page, limit, statusCounts });
 }
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
@@ -199,12 +315,20 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   const job = app.jobId as unknown as { _id?: unknown; title?: string };
 
+  // Auto-resolve agentId from employer if not provided
+  let resolvedAgentId = body.agentId;
+  if (!resolvedAgentId) {
+    const { Employer } = await import("@/models/Employer");
+    const emp = await Employer.findById(app.employerId).select("agentId").lean();
+    if (emp?.agentId) resolvedAgentId = String(emp.agentId);
+  }
+
   const interview = await Interview.create({
     applicationId,
     jobId: job?._id ?? app.jobId,
     jobSeekerId: app.jobSeekerId,
     employerId: app.employerId ?? body.employerId,
-    agentId: body.agentId,
+    agentId: resolvedAgentId,
     type,
     scheduledAt: new Date(scheduledAt),
     duration: duration ?? 30,
@@ -217,9 +341,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   });
 
   // Increment agent performance counter
-  if (body.agentId) {
+  if (resolvedAgentId) {
     const { incrementAgentCounter } = await import("@/lib/agentPerformance");
-    incrementAgentCounter(String(body.agentId), "interviewsScheduled");
+    incrementAgentCounter(String(resolvedAgentId), "interviewsScheduled");
   }
 
   await Application.findByIdAndUpdate(applicationId, {

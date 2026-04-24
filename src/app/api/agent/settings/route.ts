@@ -20,7 +20,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
   const profile = await Agent.findOne({ userId: ctx.userId })
-    .select("country currencyCode commissionRate")
+    .select("country currencyCode commissionRate timezone workingHoursStart workingHoursEnd workingDays")
     .lean();
 
   return NextResponse.json({
@@ -28,6 +28,10 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
       country: profile?.country ?? "",
       currencyCode: profile?.currencyCode ?? "AED",
       commissionRate: profile?.commissionRate ?? 0,
+      timezone: profile?.timezone ?? "Asia/Dubai",
+      workingHoursStart: profile?.workingHoursStart ?? "09:00",
+      workingHoursEnd: profile?.workingHoursEnd ?? "18:00",
+      workingDays: profile?.workingDays ?? ["Mon", "Tue", "Wed", "Thu", "Fri"],
     },
   });
 }
@@ -55,6 +59,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     updates.currencyCode = body.currencyCode;
   }
 
+  if (body.timezone != null) updates.timezone = body.timezone;
+  if (body.workingHoursStart != null) updates.workingHoursStart = body.workingHoursStart;
+  if (body.workingHoursEnd != null) updates.workingHoursEnd = body.workingHoursEnd;
+  if (body.workingDays != null) updates.workingDays = body.workingDays;
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
@@ -64,7 +73,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     { $set: updates },
     { new: true }
   )
-    .select("country currencyCode commissionRate")
+    .select("country currencyCode commissionRate timezone workingHoursStart workingHoursEnd workingDays")
     .lean();
 
   if (!profile) {
@@ -76,6 +85,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
       country: profile.country ?? "",
       currencyCode: profile.currencyCode ?? "AED",
       commissionRate: profile.commissionRate ?? 0,
+      timezone: profile.timezone ?? "Asia/Dubai",
+      workingHoursStart: profile.workingHoursStart ?? "09:00",
+      workingHoursEnd: profile.workingHoursEnd ?? "18:00",
+      workingDays: profile.workingDays ?? ["Mon", "Tue", "Wed", "Thu", "Fri"],
     },
   });
 }

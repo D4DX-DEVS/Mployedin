@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import SystemConfig, { getSystemConfig } from "@/models/SystemConfig";
 import { validateBody } from "@/lib/validators";
 import { notificationUserOverrideCreateSchema, notificationUserOverrideDeleteSchema } from "@/lib/validators/settings";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /**
  * POST /api/admin/notification-config/user-override
@@ -48,6 +49,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     { new: true, upsert: true },
   );
 
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "admin.user_override.create",
+    resource: "settings",
+    meta: { targetUserId: userId, action, reason },
+    req,
+  });
+
   return NextResponse.json({ success: true, config });
 });
 
@@ -69,6 +78,14 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     },
     { new: true },
   );
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "admin.user_override.delete",
+    resource: "settings",
+    meta: { targetUserId: userId },
+    req,
+  });
 
   return NextResponse.json({ success: true, config });
 });

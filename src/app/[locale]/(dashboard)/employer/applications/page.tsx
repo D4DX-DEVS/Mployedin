@@ -32,6 +32,8 @@ import { FeatureGate } from "@/components/shared/FeatureGate";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import { AIEmailDraftButton } from "@/components/shared/AIEmailDraftButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -51,8 +53,10 @@ import {
 } from "@/hooks/useApplications";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useTableExport } from "@/hooks/useTableExport";
 import { useScorecardsByApplicationIds } from "@/hooks/useScorecards";
 import type { Scorecard } from "@/hooks/useScorecards";
+import type { ExportColumn } from "@/lib/export";
 
 interface Applicant {
   _id: string;
@@ -250,6 +254,22 @@ export default function EmployerApplicationsPage() {
   const applicationIds = applications.map((a) => a._id);
   const scorecardsQuery = useScorecardsByApplicationIds(applicationIds);
   const scorecardMap: Record<string, Scorecard> = scorecardsQuery.data ?? {};
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Candidate", key: "jobSeekerId", formatter: (_v, r) => { const a = r as Record<string, any>; const u = a.jobSeekerId?.userId; return typeof u === "object" && u?.name ? u.name : `Candidate #${String(a._id).slice(-4)}`; } },
+    { header: "Job", key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title ?? "Untitled" },
+    { header: "Status", key: "status", formatter: (v) => String(v ?? "—") },
+    { header: "AI Match", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
+    { header: "Skills", key: "jobSeekerId", formatter: (_v, r) => ((r as Record<string, any>).jobSeekerId?.skills ?? []).slice(0, 5).join(", ") },
+    { header: "Location", key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.currentLocation ?? "—" },
+    { header: "Applied", key: "appliedAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: applications as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "applications",
+    title: "Applications",
+  });
 
   useEffect(() => {
     document.title = selectedJob
@@ -650,6 +670,13 @@ export default function EmployerApplicationsPage() {
       </section>
 
       <section className="workspace-panel-surface rounded-[22px] p-3 sm:p-4">
+
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="mb-3"
+          />
 
           {/* Primary filter row: Job selector + search + status + toggle */}
           <div className="grid gap-2 xl:grid-cols-[minmax(180px,1fr)_minmax(0,1.8fr)_minmax(160px,0.7fr)_auto_auto]">
@@ -1824,6 +1851,18 @@ function ApplicationDetailsPanel({
                       Reject
                     </Button>
                   ) : null}
+                  <AIEmailDraftButton
+                    applicationId={app._id}
+                    candidateName={candidateName}
+                    defaultContext={
+                      app.status === "applied" ? "after_application" :
+                      app.status === "shortlisted" ? "after_shortlist" :
+                      app.status === "interview_scheduled" ? "after_interview" :
+                      app.status === "rejected" ? "after_rejection" :
+                      app.status === "offer" ? "after_offer" :
+                      "follow_up_general"
+                    }
+                  />
                 </div>
 
                 {onChangeStatus ? (

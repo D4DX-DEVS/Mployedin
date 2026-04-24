@@ -6,6 +6,9 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 import { CheckCircle2, Clock, Circle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +76,24 @@ export default function TaskBoardPage() {
   ) ?? 0;
   const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+  const allTasks = data?.phases.flatMap((p) => p.tasks.map((t) => ({ ...t, phase: p.name }))) ?? [];
+
+  type FlatTask = Task & { phase: string };
+  const exportColumns: ExportColumn<FlatTask>[] = [
+    { header: "Task ID", key: "id" as keyof FlatTask },
+    { header: "Phase", key: "phase" as keyof FlatTask },
+    { header: "Title", key: "title" as keyof FlatTask },
+    { header: "Status", key: "status" as keyof FlatTask },
+    { header: "Verified", key: "verified" as keyof FlatTask, formatter: (v) => v ? "Yes" : "No" },
+    { header: "Completed At", key: "completedAt" as keyof FlatTask, formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: allTasks as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "tasks",
+    title: "Task Board",
+  });
+
   return (
     <div className="page-container">
       <PageHeader
@@ -84,6 +105,12 @@ export default function TaskBoardPage() {
             Refresh
           </Button>
         }
+      />
+
+      <TableToolbar
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
       />
 
       {/* Overall progress */}

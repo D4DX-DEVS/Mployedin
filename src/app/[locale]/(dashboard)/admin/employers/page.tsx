@@ -7,6 +7,9 @@ import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -59,6 +62,20 @@ export default function AdminEmployersPage() {
   const [verifyItem, setVerifyItem] = useState<Employer | null>(null);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  const exportColumns: ExportColumn<Employer>[] = [
+    { header: "Company", key: "companyName" },
+    { header: "Email", key: "email" },
+    { header: "Industry", key: "industry" },
+    { header: "Status", key: "status", formatter: (v, r) => r.status ?? (r.isActive !== false ? "active" : "inactive") },
+    { header: "Joined", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: employers as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "employers",
+    title: "Employers",
+  });
 
   const fetchEmployers = useCallback(async () => {
     setLoading(true);
@@ -153,15 +170,14 @@ export default function AdminEmployersPage() {
         )}
       </div>
 
-      <div className="relative w-64">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-        <Input
-          placeholder="Search employer…"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-          className="pl-9 h-9"
-        />
-      </div>
+      <TableToolbar
+        search={search}
+        onSearchChange={(v) => { setSearch(v); resetPage(); }}
+        searchPlaceholder="Search employer…"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
 
       <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
         <Table>

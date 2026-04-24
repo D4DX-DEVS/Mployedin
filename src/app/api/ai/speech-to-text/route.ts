@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth/config";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { logActivity } from "@/lib/audit/log";
 
 // Soniox real-time Speech-to-Text via WebSocket
 const SONIOX_WS_URL = "wss://stt-rt.soniox.com/transcribe-websocket";
@@ -429,6 +430,15 @@ Rules:
         )
         .join(" ")
         .trim() ?? "";
+
+    await logActivity({
+      actorId: session.user.id!,
+      actorRole: userRole,
+      action: "ai.speech_to_text",
+      resource: "ai",
+      meta: { language: speechLangCode },
+      req,
+    });
 
     return NextResponse.json(
       { transcript: cleanTranscript(rawTranscript), language: speechLangCode },

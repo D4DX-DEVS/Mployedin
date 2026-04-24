@@ -20,6 +20,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 import { Search, Inbox, AlertCircle, Loader2 } from "lucide-react";
 
 interface AgentProfile {
@@ -72,6 +75,21 @@ export default function AdminAgentsPage() {
   const [editStateIds, setEditStateIds] = useState<string[]>([]);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
+
+  const exportColumns: ExportColumn<Agent>[] = [
+    { header: "Name", key: "name" },
+    { header: "Email", key: "email" },
+    { header: "Super Agent", key: "agentProfile" as keyof Agent, formatter: (_v, r) => (r as unknown as Agent).agentProfile?.superAgentName ?? "—" },
+    { header: "Commission %", key: "agentProfile" as keyof Agent, formatter: (_v, r) => String((r as unknown as Agent).agentProfile?.commissionRate ?? 0) },
+    { header: "Status", key: "isActive", formatter: (v) => v !== false ? "Active" : "Inactive" },
+    { header: "Joined", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: agents as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "agents",
+    title: "Agents",
+  });
 
   // Fetch super agents for dropdown
   useEffect(() => {
@@ -239,15 +257,14 @@ export default function AdminAgentsPage() {
         )}
       </div>
 
-      <div className="relative w-64">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-        <Input
-          placeholder="Search …"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-          className="pl-9 h-9"
-        />
-      </div>
+      <TableToolbar
+        search={search}
+        onSearchChange={(v) => { setSearch(v); resetPage(); }}
+        searchPlaceholder="Search agent…"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
 
       <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
         <Table>

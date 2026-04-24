@@ -6,9 +6,10 @@ import { parseAIJson } from "@/lib/ai/gemini";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { validateBody } from "@/lib/validators";
 import { aiApplicationSearchSchema } from "@/lib/validators/ai";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 
-const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent"];
+const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent", "agent"];
 const APP_STATUSES = new Set(["applied", "shortlisted", "interview_scheduled", "selected", "offer", "hired", "rejected", "withdrawn"]);
 const SOURCE_TYPES = new Set(["easy_apply", "full_form", "direct", "auto_apply"]);
 const SCORE_BANDS = new Set(["all", "excellent", "good", "average", "low"]);
@@ -127,6 +128,14 @@ User query: "${safeQuery}"`;
 
     const rawFilters = parseAIJson<RawAppSearchFilters>(await routeGenerate(prompt, "nl_search"));
     const filters = normalizeAppSearchFilters(rawFilters);
+
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "ai.application_search_filter",
+      resource: "ai",
+      meta: { query: safeQuery },
+      req,
+    });
 
     return NextResponse.json({
       query: safeQuery,

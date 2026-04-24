@@ -101,18 +101,20 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     // Agent sees applications for their jobs + jobs from assigned employers
     const { Agent } = await import("@/models/Agent");
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
-    if (!agentDoc) return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });
-    const jobFilter: Record<string, unknown> = {
-      $or: [
-        { agentId: agentDoc._id },
-        ...(agentDoc.assignedEmployerIds?.length
-          ? [{ employerId: { $in: agentDoc.assignedEmployerIds } }]
-          : []),
-      ],
-    };
-    const agentJobs = await Job.find(jobFilter).select("_id").lean();
-    accessibleJobIds = agentJobs.map((j) => j._id);
-    query.jobId = { $in: accessibleJobIds };
+    if (agentDoc) {
+      const jobFilter: Record<string, unknown> = {
+        $or: [
+          { agentId: agentDoc._id },
+          ...(agentDoc.assignedEmployerIds?.length
+            ? [{ employerId: { $in: agentDoc.assignedEmployerIds } }]
+            : []),
+        ],
+      };
+      const agentJobs = await Job.find(jobFilter).select("_id").lean();
+      accessibleJobIds = agentJobs.map((j) => j._id);
+      query.jobId = { $in: accessibleJobIds };
+    }
+    // If no Agent doc, skip filtering (consistent with jobs API)
   }
 
   if (status) query.status = status;
@@ -124,7 +126,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });
       }
     }
-    query.jobId = jobId;
+    query.jobId = new mongoose.Types.ObjectId(jobId);
   }
 
   // Date range filter on appliedAt

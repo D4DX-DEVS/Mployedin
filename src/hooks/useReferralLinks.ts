@@ -27,10 +27,28 @@ export interface ReferralLinkItem {
   updatedAt: string;
 }
 
+export type ReferralLinkStatus = "active" | "expired" | "maxed" | "inactive";
+export type ReferralCreatorRole = "agent" | "super_agent";
+export type ReferralSortField = "createdAt" | "usedCount" | "code" | "label";
+
 export interface ReferralLinksFilters {
   page: number;
   limit: number;
   search?: string;
+  status?: ReferralLinkStatus;
+  creatorRole?: ReferralCreatorRole;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: ReferralSortField;
+  sortOrder?: "asc" | "desc";
+}
+
+export interface ReferralLinksStats {
+  totalLinks: number;
+  activeLinks: number;
+  totalRegistrations: number;
+  myLinks: number;
+  agentLinks: number;
 }
 
 interface ReferralLinksResponse {
@@ -39,6 +57,7 @@ interface ReferralLinksResponse {
   page: number;
   limit: number;
   totalPages: number;
+  stats: ReferralLinksStats;
 }
 
 interface CreateReferralLinkPayload {
@@ -75,11 +94,18 @@ export function useReferralLinks(filters: ReferralLinksFilters) {
       params.set("page", String(filters.page));
       params.set("limit", String(filters.limit));
       if (filters.search) params.set("search", filters.search);
+      if (filters.status) params.set("status", filters.status);
+      if (filters.creatorRole) params.set("creatorRole", filters.creatorRole);
+      if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+      if (filters.dateTo) params.set("dateTo", filters.dateTo);
+      if (filters.sortBy) params.set("sortBy", filters.sortBy);
+      if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
       const res = await fetch(`/api/referral-links?${params}`);
       if (!res.ok) throw new Error("Failed to fetch referral links");
       return res.json();
     },
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchOnMount: "always",
     placeholderData: (prev) => prev,
   });
 }

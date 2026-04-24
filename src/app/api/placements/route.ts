@@ -180,6 +180,29 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     incrementAgentCounter(String(body.agentId), "placementsCompleted");
   }
 
+  // Notify super agent about new placement
+  if (body.agentId) {
+    const { getSuperAgentUserId, notifySuperAgentPlacement } = await import("@/lib/notifications/trigger");
+    const saUserId = await getSuperAgentUserId(body.agentId);
+    if (saUserId) {
+      // Resolve candidate name, job title, and company name
+      const [User, Job, Employer] = await Promise.all([
+        import("@/models/User").then(m => m.default),
+        import("@/models/Job").then(m => m.default),
+        import("@/models/Employer").then(m => m.default),
+      ]);
+      const [jsUser, jobDoc, empDoc] = await Promise.all([
+        jobSeekerId ? User.findById(jobSeekerId).select("name").lean() : null,
+        jobId ? Job.findById(jobId).select("title").lean() : null,
+        employerId ? Employer.findById(employerId).select("companyName").lean() : null,
+      ]);
+      const candidateName = (jsUser as { name?: string })?.name ?? "A candidate";
+      const jobTitle = (jobDoc as { title?: string })?.title ?? "a position";
+      const companyName = (empDoc as { companyName?: string })?.companyName ?? "a company";
+      notifySuperAgentPlacement(saUserId, candidateName, jobTitle, companyName, String(placement._id), ctx.locale).catch(() => {});
+    }
+  }
+
   await logActivity({
     ...actorFromCtx(ctx),
     action: "placement.create",

@@ -61,6 +61,13 @@ import {
   Link2,
   Scale,
   LayoutTemplate,
+  Hash,
+  Gift,
+  CheckSquare,
+  CalendarDays,
+  ShieldCheck,
+  Upload,
+  History,
   type LucideProps,
 } from "lucide-react";
 import type { FC } from "react";
@@ -121,7 +128,14 @@ export type IconName =
   | "Link2"
   | "Scale"
   | "Activity"
-  | "LayoutTemplate";
+  | "LayoutTemplate"
+  | "Hash"
+  | "Gift"
+  | "CheckSquare"
+  | "CalendarDays"
+  | "ShieldCheck"
+  | "Upload"
+  | "History";
 
 const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   LayoutDashboard,
@@ -180,6 +194,13 @@ const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   Scale,
   Activity,
   LayoutTemplate,
+  Hash,
+  Gift,
+  CheckSquare,
+  CalendarDays,
+  ShieldCheck,
+  Upload,
+  History,
 };
 
 /** Resolve an icon name to its Lucide component. Falls back to a square placeholder. */

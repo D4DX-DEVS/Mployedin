@@ -10,6 +10,7 @@ import { Application } from "@/models/Application";
 import { JobSeeker } from "@/models/JobSeeker";
 import { validateBody } from "@/lib/validators";
 import { aiScreenCandidatesSchema } from "@/lib/validators/ai";
+import { logActivity } from "@/lib/audit/log";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 
@@ -170,6 +171,16 @@ Output ONLY a JSON array, no markdown code blocks, sorted by score descending.`;
         { status: 502 }
       );
     }
+
+    await logActivity({
+      actorId: userId,
+      actorRole: userRole,
+      action: "ai.candidate_screening",
+      resource: "applications",
+      resourceId: jobId,
+      meta: { totalReviewed: candidateSummaries.length },
+      req,
+    });
 
     return NextResponse.json(
       {

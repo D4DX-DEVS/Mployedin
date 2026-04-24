@@ -210,12 +210,17 @@ export function UserProfileDropdown({
           <DropdownMenuSeparator />
 
           {/* Settings */}
-          {(userRole === "job_seeker" || userRole === "employer") && (
+          {(userRole === "job_seeker" || userRole === "employer" || userRole === "super_agent" || userRole === "agent") && (
             <DropdownMenuItem
               className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
               onSelect={() => {
-                const settingsPath = userRole === "job_seeker" ? `/${locale}/job-seeker/settings` : `/${locale}/employer/settings`;
-                router.push(settingsPath);
+                const pathMap: Record<string, string> = {
+                  job_seeker: `/${locale}/job-seeker/settings`,
+                  employer: `/${locale}/employer/settings`,
+                  super_agent: `/${locale}/super-agent/settings`,
+                  agent: `/${locale}/agent/settings`,
+                };
+                router.push(pathMap[userRole] ?? `/${locale}/settings`);
               }}
             >
               <Settings className="h-4 w-4" />

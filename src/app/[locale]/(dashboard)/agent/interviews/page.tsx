@@ -10,53 +10,179 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, CalendarCheck2, CheckCircle, Edit2, Inbox, Sparkles, XCircle } from "lucide-react";
+import { ArrowRight, CalendarCheck2, CheckCircle, Edit2, Inbox, Search, Sparkles, Video, MapPin, Phone, XCircle, RotateCcw, Filter, X } from "lucide-react";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
+
+/* ── Types ─────────────────────────────────────────────────────────── */
 
 interface Interview {
   _id: string;
-  jobSeekerId?: { fullName?: string };
-  jobId?: { title?: string };
-  employerId?: { companyName?: string };
+  jobSeekerId?: { _id?: string; fullName?: string; email?: string };
+  jobId?: { _id?: string; title?: string };
+  employerId?: { _id?: string; companyName?: string };
   scheduledAt: string;
   type?: string;
   status: string;
+  outcome?: string;
+  duration?: number;
+  interviewRound?: number;
+  candidateResponse?: string;
   notes?: string;
+  location?: string;
+  meetLink?: string;
 }
+
+interface EmployerOption { _id: string; companyName: string; }
+interface JobOption { _id: string; title: string; }
 
 const INTERVIEW_FIELDS: CrudField[] = [
   { name: "scheduledAt", label: "Scheduled At", type: "date", required: true, min: new Date().toISOString().slice(0, 10) },
   { name: "type", label: "Type", type: "select", options: [
-    { value: "video", label: "Video" }, { value: "in-person", label: "In-Person" }, { value: "phone", label: "Phone" },
+    { value: "video", label: "Video" }, { value: "offline", label: "In-Person" }, { value: "hybrid", label: "Hybrid" },
   ]},
   { name: "notes", label: "Notes", type: "textarea" },
 ];
 
+const STATUS_OPTIONS = [
+  { value: "", label: "All Statuses" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+  { value: "rescheduled", label: "Rescheduled" },
+];
+
+const TYPE_OPTIONS = [
+  { value: "", label: "All Types" },
+  { value: "video", label: "Video" },
+  { value: "offline", label: "In-Person" },
+  { value: "hybrid", label: "Hybrid" },
+];
+
+const OUTCOME_OPTIONS = [
+  { value: "", label: "All Outcomes" },
+  { value: "passed", label: "Passed" },
+  { value: "failed", label: "Failed" },
+  { value: "hold", label: "On Hold" },
+  { value: "no_show", label: "No Show" },
+];
+
+const typeIcon = (type?: string) => {
+  switch (type) {
+    case "video": return <Video className="h-3.5 w-3.5" />;
+    case "offline": return <MapPin className="h-3.5 w-3.5" />;
+    case "hybrid": return <Phone className="h-3.5 w-3.5" />;
+    default: return <MapPin className="h-3.5 w-3.5" />;
+  }
+};
+
+const selectClass = "h-10 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20";
+
+/* ── Page Component ─────────────────────────────────────────────────── */
+
 export default function AgentInterviewsPage() {
   const { can } = usePermissions();
   const pagination = usePagination();
+
+  /* Data state */
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+
+  /* Filter options (fetched) */
+  const [employers, setEmployers] = useState<EmployerOption[]>([]);
+  const [jobs, setJobs] = useState<JobOption[]>([]);
+
+  /* Filter state */
   const [status, setStatus] = useState("");
+  const [employerFilter, setEmployerFilter] = useState("");
+  const [jobFilter, setJobFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [outcomeFilter, setOutcomeFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  /* Modal state */
   const [modalOpen, setModalOpen] = useState(false);
   const [editInterview, setEditInterview] = useState<Interview | null>(null);
 
+  /* Debounce search */
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  /* Fetch employer options */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/employers?limit=200");
+        if (res.ok) {
+          const data = await res.json();
+          const list = (data.employers ?? []).map((e: { _id: string; companyName?: string; name?: string }) => ({
+            _id: e._id,
+            companyName: e.companyName ?? e.name ?? "Unknown",
+          }));
+          setEmployers(list);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  /* Fetch job options (scoped to selected employer or all) */
+  useEffect(() => {
+    (async () => {
+      try {
+        const params = new URLSearchParams({ limit: "200" });
+        if (employerFilter) params.set("employerId", employerFilter);
+        const res = await fetch(`/api/jobs?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          const list = (data.jobs ?? []).map((j: { _id: string; title?: string }) => ({
+            _id: j._id,
+            title: j.title ?? "Untitled",
+          }));
+          setJobs(list);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, [employerFilter]);
+
+  /* Fetch interviews */
   const fetchInterviews = useCallback(async () => {
     setLoading(true);
-    const params = pagination.paginationParams();
-    if (status) params.set("status", status);
-    const res = await fetch(`/api/interviews?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setInterviews(data.items ?? data.interviews ?? []);
-      pagination.updateTotal(data.total ?? data.totalCount ?? 0);
-    }
+    try {
+      const params = pagination.paginationParams();
+      if (status) params.set("status", status);
+      if (employerFilter) params.set("employerId", employerFilter);
+      if (jobFilter) params.set("jobId", jobFilter);
+      if (typeFilter) params.set("type", typeFilter);
+      if (outcomeFilter) params.set("outcome", outcomeFilter);
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+
+      const res = await fetch(`/api/interviews?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setInterviews(data.items ?? data.interviews ?? []);
+        pagination.updateTotal(data.total ?? data.totalCount ?? 0);
+        if (data.statusCounts) setStatusCounts(data.statusCounts);
+      }
+    } catch { /* ignore */ }
     setLoading(false);
-  }, [status, pagination.page, pagination.limit]);
+  }, [status, employerFilter, jobFilter, typeFilter, outcomeFilter, debouncedSearch, dateFrom, dateTo, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchInterviews(); }, [fetchInterviews]);
 
-  useEffect(() => { pagination.resetPage(); }, [status]);
+  /* Reset page on filter change */
+  useEffect(() => { pagination.resetPage(); }, [status, employerFilter, jobFilter, typeFilter, outcomeFilter, debouncedSearch, dateFrom, dateTo]);
 
+  /* Actions */
   const updateInterviewStatus = async (id: string, newStatus: string) => {
     const res = await fetch(`/api/interviews/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }),
@@ -74,13 +200,47 @@ export default function AgentInterviewsPage() {
     fetchInterviews();
   };
 
-  const scheduledCount = interviews.filter((interview) => interview.status === "scheduled").length;
-  const completedCount = interviews.filter((interview) => interview.status === "completed").length;
-  const cancelledCount = interviews.filter((interview) => interview.status === "cancelled").length;
-  const noShowCount = interviews.filter((interview) => interview.status === "no-show").length;
+  const clearAllFilters = () => {
+    setStatus("");
+    setEmployerFilter("");
+    setJobFilter("");
+    setTypeFilter("");
+    setOutcomeFilter("");
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const hasActiveFilters = status || employerFilter || jobFilter || typeFilter || outcomeFilter || debouncedSearch || dateFrom || dateTo;
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Candidate", key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { fullName?: string })?.fullName ?? "" },
+    { header: "Job", key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
+    { header: "Employer", key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
+    { header: "Type", key: "type" },
+    { header: "Scheduled", key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: "Round", key: "interviewRound" },
+    { header: "Status", key: "status" },
+    { header: "Outcome", key: "outcome" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: interviews as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "agent-interviews",
+    title: "Agent Interviews",
+  });
+
+  /* Counts from API */
+  const scheduledCount = (statusCounts.scheduled ?? 0) + (statusCounts.confirmed ?? 0);
+  const completedCount = statusCounts.completed ?? 0;
+  const cancelledCount = statusCounts.cancelled ?? 0;
+  const rescheduledCount = statusCounts.rescheduled ?? 0;
+  const totalAll = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
   return (
     <div className="page-container agent-legacy-surface space-y-6">
+      {/* ── Hero Section ───────────────────────────────────────────── */}
       <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
@@ -88,104 +248,303 @@ export default function AgentInterviewsPage() {
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Interviews</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Keep interview schedules current, mark outcomes quickly, and stay aligned with candidates and employer teams.</p>
           </div>
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Calendar</p><p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} interviews</p><p className="text-xs text-muted-foreground">Scheduled and historical interview activity in your scope.</p></div>
+          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Calendar</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{totalAll} interviews</p>
+            <p className="text-xs text-muted-foreground">Scheduled and historical interview activity in your scope.</p>
+          </div>
         </div>
+
+        {/* KPI Cards */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scheduled</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{scheduledCount}</p><p className="mt-1 text-xs text-muted-foreground">Upcoming interview sessions still on the calendar.</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><CalendarCheck2 className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Completed</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completedCount}</p><p className="mt-1 text-xs text-muted-foreground">Meetings that already reached a final outcome.</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><CheckCircle className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Cancelled</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{cancelledCount}</p><p className="mt-1 text-xs text-muted-foreground">Sessions cancelled before they could happen.</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><XCircle className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">No show</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{noShowCount}</p><p className="mt-1 text-xs text-muted-foreground">Interviews where attendance broke down.</p></div><div className="workspace-tone-rose rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div></div>
+          <button type="button" onClick={() => setStatus(status === "scheduled" ? "" : "scheduled")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "scheduled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scheduled</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{scheduledCount}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Upcoming interview sessions still on the calendar.</p>
+              </div>
+              <div className="workspace-tone-sky rounded-2xl p-2.5"><CalendarCheck2 className="h-5 w-5" /></div>
+            </div>
+          </button>
+          <button type="button" onClick={() => setStatus(status === "completed" ? "" : "completed")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "completed" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Completed</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completedCount}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Meetings that already reached a final outcome.</p>
+              </div>
+              <div className="workspace-tone-emerald rounded-2xl p-2.5"><CheckCircle className="h-5 w-5" /></div>
+            </div>
+          </button>
+          <button type="button" onClick={() => setStatus(status === "cancelled" ? "" : "cancelled")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "cancelled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Cancelled</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{cancelledCount}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Sessions cancelled before they could happen.</p>
+              </div>
+              <div className="workspace-tone-amber rounded-2xl p-2.5"><XCircle className="h-5 w-5" /></div>
+            </div>
+          </button>
+          <button type="button" onClick={() => setStatus(status === "rescheduled" ? "" : "rescheduled")} className={`workspace-glass-panel rounded-2xl p-4 text-left transition-all ${status === "rescheduled" ? "ring-2 ring-primary/40" : "hover:ring-1 hover:ring-border"}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Rescheduled</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{rescheduledCount}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Interviews that were moved to a new time slot.</p>
+              </div>
+              <div className="workspace-tone-rose rounded-2xl p-2.5"><RotateCcw className="h-5 w-5" /></div>
+            </div>
+          </button>
         </div>
       </section>
 
+      {/* ── Filter Section ─────────────────────────────────────────── */}
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter interviews</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Focus on the interview status that needs a response</h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter interviews</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Narrow down to what matters</h2>
+          </div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />Clear all
+            </Button>
+          )}
         </div>
-        <div className="mt-5 max-w-xs">
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="h-11 w-full rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
-          >
-            <option value="">All Statuses</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="no-show">No Show</option>
-          </select>
+
+        {/* Search bar */}
+        <div className="relative mt-5 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search candidate name or job title..."
+            className="h-10 w-full rounded-xl border border-border bg-background/70 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/20"
+          />
         </div>
+
+        {/* Filter row */}
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {/* Status */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectClass}>
+              {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
+          {/* Employer */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Employer</label>
+            <select value={employerFilter} onChange={(e) => { setEmployerFilter(e.target.value); setJobFilter(""); }} className={selectClass}>
+              <option value="">All Employers</option>
+              {employers.map((emp) => <option key={emp._id} value={emp._id}>{emp.companyName}</option>)}
+            </select>
+          </div>
+
+          {/* Job */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Job</label>
+            <select value={jobFilter} onChange={(e) => setJobFilter(e.target.value)} className={selectClass}>
+              <option value="">All Jobs</option>
+              {jobs.map((j) => <option key={j._id} value={j._id}>{j.title}</option>)}
+            </select>
+          </div>
+
+          {/* Type */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Type</label>
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className={selectClass}>
+              {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+
+          {/* Outcome */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Outcome</label>
+            <select value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value)} className={selectClass}>
+              {OUTCOME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Date range – separate row for breathing room */}
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-md">
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">From date</label>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={selectClass} />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">To date</label>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={selectClass} />
+          </div>
+        </div>
+
+        {/* Active filter pills */}
+        {hasActiveFilters && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {status && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Filter className="h-3 w-3" />Status: {STATUS_OPTIONS.find(o => o.value === status)?.label}
+                <button type="button" onClick={() => setStatus("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {employerFilter && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Filter className="h-3 w-3" />Employer: {employers.find(e => e._id === employerFilter)?.companyName}
+                <button type="button" onClick={() => { setEmployerFilter(""); setJobFilter(""); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {jobFilter && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Filter className="h-3 w-3" />Job: {jobs.find(j => j._id === jobFilter)?.title}
+                <button type="button" onClick={() => setJobFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {typeFilter && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Filter className="h-3 w-3" />Type: {TYPE_OPTIONS.find(o => o.value === typeFilter)?.label}
+                <button type="button" onClick={() => setTypeFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {outcomeFilter && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Filter className="h-3 w-3" />Outcome: {OUTCOME_OPTIONS.find(o => o.value === outcomeFilter)?.label}
+                <button type="button" onClick={() => setOutcomeFilter("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {(dateFrom || dateTo) && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Filter className="h-3 w-3" />Date: {dateFrom || "..."} – {dateTo || "..."}
+                <button type="button" onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {debouncedSearch && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Search className="h-3 w-3" />Search: &quot;{debouncedSearch}&quot;
+                <button type="button" onClick={() => setSearch("")} className="ml-0.5 hover:text-primary/70"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+          </div>
+        )}
       </section>
 
+      {/* ── Results Table ──────────────────────────────────────────── */}
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Keep each interview updated as decisions land</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{pagination.total} interviews across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}</div></div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Keep each interview updated as decisions land</h2>
+          </div>
+          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
+            <ArrowRight className="h-3.5 w-3.5 text-primary" />{pagination.total} interviews across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}
+          </div>
+        </div>
+
+        <TableToolbar
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mt-4"
+        />
+
         <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
-        <Table>
-          <TableHeader>
-            <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-              <TableHead>Candidate</TableHead>
-              <TableHead>Job</TableHead>
-              <TableHead>Employer</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Scheduled</TableHead>
-              <TableHead>Status</TableHead>
-              {can("interviews", "update") && (
-                <TableHead>Actions</TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 7 }).map((_, j) => (
-                    <TableCell key={j}>
-                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : interviews.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={7} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-sm">No interviews found</span>
-                  </div>
-                </TableCell>
+          <Table>
+            <TableHeader>
+              <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
+                <TableHead>Candidate</TableHead>
+                <TableHead>Job</TableHead>
+                <TableHead>Employer</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Scheduled</TableHead>
+                <TableHead>Round</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Outcome</TableHead>
+                {can("interviews", "update") && <TableHead>Actions</TableHead>}
               </TableRow>
-            ) : interviews.map((iv) => (
-              <TableRow key={iv._id} className="hover:bg-secondary/50">
-                <TableCell className="font-medium text-foreground">{iv.jobSeekerId?.fullName ?? "—"}</TableCell>
-                <TableCell className="text-foreground/80">{iv.jobId?.title ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{iv.employerId?.companyName ?? "—"}</TableCell>
-                <TableCell className="capitalize text-muted-foreground">{iv.type ?? "in-person"}</TableCell>
-                <TableCell className="text-muted-foreground">{new Date(iv.scheduledAt).toLocaleString()}</TableCell>
-                <TableCell><StatusBadge status={iv.status} /></TableCell>
-                {can("interviews", "update") && (
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="xs" onClick={() => { setEditInterview(iv); setModalOpen(true); }} title="Edit" aria-label={`Edit interview for ${iv.jobSeekerId?.fullName ?? "candidate"}`}>
-                        <Edit2 className="h-3.5 w-3.5 text-primary" />
-                      </Button>
-                      {iv.status === "scheduled" && (
-                        <>
-                          <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "completed")} title="Mark completed" aria-label={`Mark interview for ${iv.jobSeekerId?.fullName ?? "candidate"} completed`}>
-                            <CheckCircle className="h-3.5 w-3.5 text-[hsl(var(--status-selected))]" />
-                          </Button>
-                          <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "cancelled")} title="Cancel" aria-label={`Cancel interview for ${iv.jobSeekerId?.fullName ?? "candidate"}`}>
-                            <XCircle className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
-                        </>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    {Array.from({ length: 9 }).map((_, j) => (
+                      <TableCell key={j}>
+                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : interviews.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={9} className="h-32 text-center">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                      <Inbox className="h-8 w-8 text-muted-foreground" />
+                      <span className="text-sm">{hasActiveFilters ? "No interviews match your filters" : "No interviews found"}</span>
+                      {hasActiveFilters && (
+                        <Button variant="ghost" size="sm" onClick={clearAllFilters} className="mt-1 gap-1 text-xs">
+                          <X className="h-3 w-3" />Clear filters
+                        </Button>
                       )}
                     </div>
                   </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </TableRow>
+              ) : interviews.map((iv) => (
+                <TableRow key={iv._id} className="hover:bg-secondary/50">
+                  <TableCell>
+                    <div>
+                      <p className="font-medium text-foreground">{iv.jobSeekerId?.fullName ?? "—"}</p>
+                      {iv.jobSeekerId?.email && <p className="text-xs text-muted-foreground">{iv.jobSeekerId.email}</p>}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-foreground/80 max-w-[180px] truncate" title={iv.jobId?.title}>{iv.jobId?.title ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{iv.employerId?.companyName ?? "—"}</TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground">
+                      {typeIcon(iv.type)}
+                      {iv.type === "offline" ? "In-Person" : iv.type ?? "—"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
+                    <div>
+                      <p className="text-sm">{new Date(iv.scheduledAt).toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground/70">{new Date(iv.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{iv.duration ? ` · ${iv.duration}min` : ""}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center text-muted-foreground">{iv.interviewRound ?? 1}</TableCell>
+                  <TableCell><StatusBadge status={iv.status} /></TableCell>
+                  <TableCell>
+                    {iv.outcome ? (
+                      <StatusBadge status={iv.outcome === "no_show" ? "no-show" : iv.outcome} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground/50">—</span>
+                    )}
+                  </TableCell>
+                  {can("interviews", "update") && (
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="xs" onClick={() => { setEditInterview(iv); setModalOpen(true); }} title="Edit" aria-label={`Edit interview for ${iv.jobSeekerId?.fullName ?? "candidate"}`}>
+                          <Edit2 className="h-3.5 w-3.5 text-primary" />
+                        </Button>
+                        {(iv.status === "scheduled" || iv.status === "confirmed") && (
+                          <>
+                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "completed")} title="Mark completed" aria-label={`Mark interview completed`}>
+                              <CheckCircle className="h-3.5 w-3.5 text-[hsl(var(--status-selected))]" />
+                            </Button>
+                            <Button variant="ghost" size="xs" onClick={() => updateInterviewStatus(iv._id, "cancelled")} title="Cancel" aria-label={`Cancel interview`}>
+                              <XCircle className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </section>
 

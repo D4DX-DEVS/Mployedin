@@ -306,27 +306,16 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     incrementAgentCounter(String(agentId), "vacanciesPosted");
   }
 
-  // 8C.3: Notify super agent when job needs approval
-  if (approvalStatus === "pending" && agentId) {
-    const agentDoc = await Agent.findById(agentId).select("superAgentId userId").lean();
-    if (agentDoc?.superAgentId) {
-      const saDoc = await SuperAgent.findById(agentDoc.superAgentId).select("userId").lean();
-      if (saDoc?.userId) {
-        const agentUser = await import("@/models/User").then(m =>
-          m.default.findById(agentDoc.userId).select("name").lean()
-        );
-        const agentName = (agentUser as { name?: string })?.name ?? "An agent";
-
-        await notify({
-          userId: String(saDoc.userId),
-          type: "job_posted",
-          title: "New Job Pending Approval",
-          message: `${agentName} submitted "${title}" for approval.`,
-          link: `/${ctx.locale}/super-agent/approvals`,
-          sendEmail: true,
-          metadata: { jobId: String(job._id), agentId },
-        }).catch(() => {});
-      }
+  // Notify super agent when a new job is posted under their agent network
+  if (agentId) {
+    const { getSuperAgentUserId, notifySuperAgentNewJob } = await import("@/lib/notifications/trigger");
+    const saUserId = await getSuperAgentUserId(agentId);
+    if (saUserId) {
+      const emp = employerId
+        ? await Employer.findById(employerId).select("companyName").lean()
+        : null;
+      const empName = (emp as { companyName?: string })?.companyName ?? "An employer";
+      notifySuperAgentNewJob(saUserId, empName, title, String(job._id), ctx.locale).catch(() => {});
     }
   }
 

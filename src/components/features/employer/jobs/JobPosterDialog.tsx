@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -362,6 +363,7 @@ export function JobPosterDialog({
             <ImageIcon className="w-5 h-5" />
             Create Job Poster
           </DialogTitle>
+          <DialogDescription className="sr-only">Design and download a shareable poster for this job listing.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

@@ -31,8 +31,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const safe = escapeRegex(search);
     filter.$or = [
       { companyName: { $regex: safe, $options: "i" } },
-      { contactName: { $regex: safe, $options: "i" } },
-      { email: { $regex: safe, $options: "i" } },
+      { contactPerson: { $regex: safe, $options: "i" } },
+      { contactEmail: { $regex: safe, $options: "i" } },
     ];
   }
 

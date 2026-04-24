@@ -4,6 +4,7 @@ import ContactSubmission from "@/models/ContactSubmission";
 import { validateBody } from "@/lib/validators";
 import { contactSchema } from "@/lib/validators/misc";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { logActivity } from "@/lib/audit/log";
 
 /**
  * Public contact form submission — NO AUTH required.
@@ -57,6 +58,14 @@ export async function POST(req: NextRequest) {
       subject: (subject ?? "").trim(),
       message: message.trim(),
       ipAddress,
+    });
+
+    await logActivity({
+      action: "contact.submission_create",
+      resource: "contact_submissions",
+      resourceId: submission._id.toString(),
+      meta: { email: email.trim().toLowerCase(), subject: (subject ?? "").trim() },
+      req,
     });
 
     return NextResponse.json(

@@ -8,6 +8,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { InterviewQuestion } from "@/models/InterviewQuestion";
 import { validateBody } from "@/lib/validators";
 import { aiInterviewQuestionsSchema } from "@/lib/validators/ai";
+import { logActivity } from "@/lib/audit/log";
 
 const QUESTION_TYPES = ["technical", "behavioral", "culture_fit", "situational"] as const;
 type QuestionType = (typeof QUESTION_TYPES)[number];
@@ -127,6 +128,15 @@ Output ONLY the JSON array, no markdown code blocks.`;
         // Don't fail the request – still return the generated questions
       }
     }
+
+    await logActivity({
+      actorId: (session.user as unknown as { id: string }).id,
+      actorRole: userRole,
+      action: "ai.interview_questions_generate",
+      resource: "ai",
+      meta: { jobTitle, questionType, count: questions.length },
+      req,
+    });
 
     return NextResponse.json(
       { questions, jobTitle, questionType, count: questions.length, savedId },

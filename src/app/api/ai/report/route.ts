@@ -15,6 +15,7 @@ import { sanitizeAIInput, redactPII } from "@/lib/ai/sanitize";
 import { validateBody } from "@/lib/validators";
 import { aiReportSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 const LEADING_REPORT_PHRASES = [
   "here is the analytics report based on the live platform data",
@@ -390,6 +391,14 @@ Formatting rules:
   }
 
   const report = normalizeReportOutput(redactPII(aiOutput));
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "ai.report_generate",
+    resource: "ai",
+    meta: { query: safeQuery },
+    req,
+  });
 
   return NextResponse.json({
     query: safeQuery,

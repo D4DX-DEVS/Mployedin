@@ -92,7 +92,7 @@ function RecruiterViews({ stats }: { stats?: DashboardStats }) {
 
 // ── AICoach ───────────────────────────────────────────────────────────────────
 
-const AI_COACH_ITEMS = [
+const AI_COACH_FALLBACK = [
   {
     suggestion: "Adding 3 more skills to your profile increases matches by a third",
     href: "/job-seeker/skills",
@@ -110,7 +110,44 @@ const AI_COACH_ITEMS = [
   },
 ];
 
+interface CoachInsight {
+  type: "tip" | "alert" | "opportunity" | "metric";
+  title: string;
+  body: string;
+  href?: string;
+  action?: string;
+}
+
+function insightToCoachItem(insight: CoachInsight) {
+  const hrefMap: Record<string, string> = {
+    tip: "/job-seeker/profile",
+    alert: "/job-seeker/applications",
+    opportunity: "/job-seeker/jobs",
+    metric: "/job-seeker",
+  };
+  return {
+    suggestion: insight.body || insight.title,
+    href: insight.href || hrefMap[insight.type] || "/job-seeker",
+    action: insight.action || (insight.type === "opportunity" ? "Explore" : "View"),
+  };
+}
+
 function AICoach() {
+  const { data, isLoading } = useQuery<{ insights: CoachInsight[] }>({
+    queryKey: ["ai-coach-insights"],
+    queryFn: async () => {
+      const res = await fetch("/api/ai/daily-insights");
+      if (!res.ok) throw new Error("Failed to load insights");
+      return res.json();
+    },
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+
+  const items = data?.insights?.length
+    ? data.insights.slice(0, 3).map(insightToCoachItem)
+    : AI_COACH_FALLBACK;
+
   return (
     <div className="card-base p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -118,14 +155,17 @@ function AICoach() {
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           AI Coach
         </h4>
+        {isLoading && (
+          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
+        )}
       </div>
       <div className="space-y-3">
-        {AI_COACH_ITEMS.map((item) => (
-          <div key={item.action} className="rounded-lg bg-violet-50 border border-violet-100 p-3 transition-all duration-150 hover:border-violet-200 hover:shadow-sm">
-            <p className="text-xs text-violet-900">{item.suggestion}</p>
+        {items.map((item) => (
+          <div key={item.action} className="rounded-lg bg-violet-50 border border-violet-100 p-3 transition-all duration-150 hover:border-violet-200 hover:shadow-sm dark:bg-violet-500/10 dark:border-violet-500/20">
+            <p className="text-xs text-violet-900 dark:text-violet-200">{item.suggestion}</p>
             <Link
               href={item.href}
-              className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-violet-600 hover:underline"
+              className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-violet-600 hover:underline dark:text-violet-400"
             >
               {item.action}
               <ExternalLink className="h-2.5 w-2.5" />

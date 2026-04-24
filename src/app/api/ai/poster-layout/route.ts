@@ -6,6 +6,7 @@ import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { POSTER_LAYOUT_PROMPT } from "@/lib/ai/assistantPrompts";
 import { z } from "zod";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /* ── request schema ────────────────────────────────────────── */
 const inputSchema = z.object({
@@ -153,6 +154,13 @@ Return ONLY valid JSON.`;
       .slice(0, 6);
     if (result.colorPalette.length === 0) result.colorPalette = undefined;
   }
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "ai.poster_layout_generate",
+    resource: "ai",
+    req,
+  });
 
   return NextResponse.json(result);
 });

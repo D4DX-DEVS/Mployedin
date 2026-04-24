@@ -8,8 +8,11 @@ import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, BriefcaseBusiness, Building2, Check, Copy, Edit2, Globe2, Link2, Loader2, MapPin, Plus, Search, Sparkles, Trash2, UserPlus } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, ChevronUp, Copy, Edit2, ExternalLink, Globe2, Link2, Loader2, MapPin, Power, PowerOff, Search, Sparkles, Tag, Trash2, UserPlus, Users } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 interface Employer {
   _id: string;
@@ -49,6 +52,21 @@ export default function AgentEmployersPage() {
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [referralLink, setReferralLink] = useState("");
   const [referralCopied, setReferralCopied] = useState(false);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralError, setReferralError] = useState("");
+  const [referralData, setReferralData] = useState<{
+    linkId: string;
+    referralCode: string;
+    isActive: boolean;
+    usedCount: number;
+    maxUses: number;
+    label: string;
+    registrations: Array<{ companyName: string; email: string; country?: string; city?: string; registeredAt: string }>;
+    expiresAt: string | null;
+    createdAt: string;
+  } | null>(null);
+  const [referralExpanded, setReferralExpanded] = useState(false);
+  const [togglingActive, setTogglingActive] = useState(false);
 
   const loadEmployers = useCallback(async () => {
     setLoading(true);
@@ -106,10 +124,49 @@ export default function AgentEmployersPage() {
   };
 
   const handleGetReferralLink = async () => {
-    const res = await fetch("/api/referral");
-    if (res.ok) {
-      const data = await res.json();
-      setReferralLink(data.referralLink);
+    setReferralLoading(true);
+    setReferralError("");
+    try {
+      const res = await fetch("/api/referral");
+      if (res.ok) {
+        const data = await res.json();
+        setReferralLink(data.referralLink);
+        setReferralData({
+          linkId: data.linkId,
+          referralCode: data.referralCode,
+          isActive: data.isActive,
+          usedCount: data.usedCount,
+          maxUses: data.maxUses,
+          label: data.label,
+          registrations: data.registrations ?? [],
+          expiresAt: data.expiresAt,
+          createdAt: data.createdAt,
+        });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setReferralError(data.error || "Failed to get referral link");
+      }
+    } catch {
+      setReferralError("Network error — please try again");
+    } finally {
+      setReferralLoading(false);
+    }
+  };
+
+  const handleToggleReferralActive = async () => {
+    if (!referralData) return;
+    setTogglingActive(true);
+    try {
+      const res = await fetch(`/api/referral-links/${referralData.linkId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !referralData.isActive }),
+      });
+      if (res.ok) {
+        setReferralData((prev) => prev ? { ...prev, isActive: !prev.isActive } : prev);
+      }
+    } finally {
+      setTogglingActive(false);
     }
   };
 
@@ -122,6 +179,21 @@ export default function AgentEmployersPage() {
   const activeEmployers = employers.filter((employer) => employer.isActive).length;
   const inactiveEmployers = employers.filter((employer) => !employer.isActive).length;
   const industriesCount = new Set(employers.map((employer) => employer.industry).filter(Boolean)).size;
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Company", key: "companyName", formatter: (_v, row) => String((row as unknown as Employer).companyName ?? (row as unknown as Employer).name ?? "") },
+    { header: "Email", key: "email" },
+    { header: "Industry", key: "industry" },
+    { header: "Location", key: "location" },
+    { header: "Active", key: "isActive", formatter: (v) => v ? "Yes" : "No" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: employers as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "agent-employers",
+    title: "Agent Employers",
+  });
 
   return (
     <div className="page-container agent-legacy-surface space-y-6">
@@ -157,10 +229,11 @@ export default function AgentEmployersPage() {
               </button>
               <button
                 onClick={handleGetReferralLink}
-                className="inline-flex h-9 items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
+                disabled={referralLoading}
+                className="inline-flex h-9 items-center gap-2 rounded-xl border border-border px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary disabled:opacity-50"
               >
-                <Link2 className="h-3.5 w-3.5" />
-                Get Referral Link
+                {referralLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                {referralLoading ? "Loading..." : "Get Referral Link"}
               </button>
             </div>
           </div>
@@ -218,6 +291,126 @@ export default function AgentEmployersPage() {
         </div>
       </section>
 
+      {/* Referral link display — immediately visible after clicking "Get Referral Link" */}
+      {referralError && (
+        <section className="rounded-[28px] border border-red-200 bg-red-50 p-4 dark:border-red-800/40 dark:bg-red-950/20">
+          <p className="text-sm text-red-600 dark:text-red-400">{referralError}</p>
+        </section>
+      )}
+
+      {referralData && (
+        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
+          {/* Link URL + Copy */}
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400">
+              <Link2 className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">Your Referral Link</p>
+                {referralData.label && (
+                  <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                    <Tag className="h-2.5 w-2.5" />{referralData.label}
+                  </span>
+                )}
+                {referralData.isActive ? (
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">Active</span>
+                ) : (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-400">Disabled</span>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground break-all font-mono">{referralLink}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleCopyReferral}
+                className="inline-flex h-9 items-center gap-2 rounded-xl bg-sky-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-sky-700"
+              >
+                {referralCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {referralCopied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+              <p className="text-lg font-semibold text-foreground">{referralData.usedCount}</p>
+              <p className="text-[10px] text-muted-foreground">Registrations</p>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+              <p className="text-lg font-semibold text-foreground">{referralData.maxUses || "∞"}</p>
+              <p className="text-[10px] text-muted-foreground">Max Uses</p>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
+              <p className="text-lg font-semibold text-foreground font-mono">{referralData.referralCode}</p>
+              <p className="text-[10px] text-muted-foreground">Referral Code</p>
+            </div>
+          </div>
+
+          {/* Actions row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleToggleReferralActive}
+              disabled={togglingActive}
+              className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                referralData.isActive
+                  ? "border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950/20"
+                  : "border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800 dark:hover:bg-green-950/20"
+              }`}
+            >
+              {referralData.isActive ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+              {togglingActive ? "Updating..." : referralData.isActive ? "Disable Link" : "Enable Link"}
+            </button>
+            <button
+              onClick={() => setReferralExpanded(!referralExpanded)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              <Users className="h-3.5 w-3.5" />
+              {referralData.usedCount} Registration{referralData.usedCount !== 1 ? "s" : ""}
+              {referralExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
+            <Link
+              href="./referral-links"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/20"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Manage All Links
+            </Link>
+          </div>
+
+          {/* Registrations expandable */}
+          {referralExpanded && (
+            <div className="border-t border-border pt-4">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Employers Joined via This Link ({referralData.registrations.length})
+              </p>
+              {referralData.registrations.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No employers have registered through this link yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {referralData.registrations.map((reg, i) => (
+                    <div key={i} className="flex items-center gap-3 rounded-xl bg-secondary/40 px-4 py-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">{reg.companyName}</p>
+                        <p className="text-xs text-muted-foreground">{reg.email}</p>
+                      </div>
+                      <div className="text-right text-xs text-muted-foreground">
+                        {reg.country && <p>{reg.city ? `${reg.city}, ` : ""}{reg.country}</p>}
+                        <p>{new Date(reg.registeredAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
@@ -228,15 +421,14 @@ export default function AgentEmployersPage() {
         </div>
 
         <div className="mt-5 max-w-xl">
-          <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search employers"
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
-            />
-          </div>
+          <TableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search employers"
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+          />
         </div>
       </section>
 
@@ -345,25 +537,6 @@ export default function AgentEmployersPage() {
         fields={ONBOARD_FIELDS}
         onSubmit={handleOnboard}
       />
-
-      {referralLink && (
-        <section className="workspace-panel-surface rounded-[28px] p-5">
-          <div className="flex items-center gap-3">
-            <Link2 className="h-5 w-5 text-sky-600" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-foreground">Your Referral Link</p>
-              <p className="mt-1 text-xs text-muted-foreground break-all">{referralLink}</p>
-            </div>
-            <button
-              onClick={handleCopyReferral}
-              className="inline-flex h-9 items-center gap-2 rounded-xl bg-sky-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-sky-700"
-            >
-              {referralCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {referralCopied ? "Copied!" : "Copy"}
-            </button>
-          </div>
-        </section>
-      )}
     </div>
   );
 }

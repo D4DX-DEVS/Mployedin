@@ -25,6 +25,7 @@ import Banner from "@/models/Banner";
 import ContactSubmission from "@/models/ContactSubmission";
 import Testimonial from "@/models/Testimonial";
 import AuditLog from "@/models/AuditLog";
+import { logActivity } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
 
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
@@ -519,6 +520,15 @@ Use this data to answer questions about team performance, identify underperforme
       console.error("[AI Chat] OpenRouter error:", upstream.status, err);
       return NextResponse.json({ error: "AI service error" }, { status: 502 });
     }
+
+    await logActivity({
+      actorId: session.user.id!,
+      actorRole: userRole,
+      action: "ai.chat_request",
+      resource: "ai",
+      meta: { messageCount: messages.length, currentPage },
+      req,
+    });
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({

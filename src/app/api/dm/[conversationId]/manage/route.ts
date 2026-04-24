@@ -6,6 +6,7 @@ import DirectMessage from "@/models/DirectMessage";
 import mongoose from "mongoose";
 import { validateBody } from "@/lib/validators";
 import { dmManageConversationSchema } from "@/lib/validators/dm";
+import { logActivity } from "@/lib/audit/log";
 
 interface AuthCtx { userId: string; }
 
@@ -45,6 +46,14 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     unreadCounts: {},
   });
 
+  await logActivity({
+    actorId: ctx.userId,
+    action: "dm.conversation_clear",
+    resource: "conversations",
+    resourceId: conversationId,
+    req,
+  });
+
   return NextResponse.json({ success: true });
 }
 
@@ -69,6 +78,14 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   });
 
   await Conversation.findByIdAndDelete(conversationId);
+
+  await logActivity({
+    actorId: ctx.userId,
+    action: "dm.conversation_delete",
+    resource: "conversations",
+    resourceId: conversationId,
+    req,
+  });
 
   return NextResponse.json({ success: true });
 }

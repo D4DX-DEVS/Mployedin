@@ -16,6 +16,9 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 import { Inbox } from "lucide-react";
 
 interface Commission {
@@ -196,6 +199,22 @@ export default function AdminCommissionsPage() {
   const displayCurrency = currencyFilter || summaryCurrency;
   const hasActiveFilters = Boolean(status || typeFilter || searchTerm || dateFrom || dateTo || currencyFilter);
 
+  const exportColumns: ExportColumn<Commission>[] = [
+    { header: "Agent", key: "agentId" as keyof Commission, formatter: (_v, r) => (r as unknown as Commission).agentId?.fullName ?? "—" },
+    { header: "Type", key: "type", formatter: (v) => String(v ?? "—") },
+    { header: "Amount", key: "amount", formatter: (v) => String(v ?? 0) },
+    { header: "Currency", key: "currency", formatter: (v) => String(v ?? "AED") },
+    { header: "Rate %", key: "rate", formatter: (v) => v != null ? `${v}%` : "—" },
+    { header: "Status", key: "status" },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: commissions as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "commissions",
+    title: "Commissions",
+  });
+
   return (
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
@@ -295,18 +314,15 @@ export default function AdminCommissionsPage() {
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <div>
-            <label htmlFor="admin-commissions-search" className="sr-only">Search by agent name</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="admin-commissions-search"
-                className="h-11 rounded-xl border-border bg-secondary/65 pl-9"
-                placeholder="Search agent…"
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); resetPage(); }}
-              />
-            </div>
+          <div className="xl:col-span-5">
+            <TableToolbar
+              search={searchTerm}
+              onSearchChange={(v) => { setSearchTerm(v); resetPage(); }}
+              searchPlaceholder="Search agent…"
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
           </div>
 
           <div>

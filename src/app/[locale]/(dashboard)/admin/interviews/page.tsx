@@ -12,6 +12,9 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 interface Interview {
   _id: string;
@@ -206,6 +209,22 @@ export default function AdminInterviewOversightPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const exportColumns: ExportColumn<Interview>[] = [
+    { header: "Candidate", key: "jobSeeker" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).jobSeeker?.name ?? "—" },
+    { header: "Employer", key: "employer" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).employer?.companyName ?? "—" },
+    { header: "Job", key: "job" as keyof Interview, formatter: (_v, r) => (r as unknown as Interview).job?.title ?? "—" },
+    { header: "Type", key: "type" },
+    { header: "Status", key: "status" },
+    { header: "Scheduled", key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
+    { header: "Duration (min)", key: "duration", formatter: (v) => String(v ?? "—") },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: interviews as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "interviews",
+    title: "Interviews",
+  });
+
   return (
     <div className="page-container space-y-6">
       <PageHeader
@@ -239,15 +258,14 @@ export default function AdminInterviewOversightPage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="relative min-w-0">
-            <label htmlFor="admin-interviews-search" className="sr-only">Search interviews</label>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="admin-interviews-search"
-              placeholder="Search candidate or company…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm shadow-none"
+          <div className="xl:col-span-4">
+            <TableToolbar
+              search={search}
+              onSearchChange={(v) => { setSearch(v); resetPage(); }}
+              searchPlaceholder="Search candidate or company…"
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
             />
           </div>
           <div>

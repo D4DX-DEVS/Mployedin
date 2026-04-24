@@ -14,6 +14,9 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 import { Search, Inbox } from "lucide-react";
 
 interface JobSeeker {
@@ -43,6 +46,20 @@ export default function AdminJobSeekersPage() {
   const [search, setSearch] = useState("");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [editItem, setEditItem] = useState<JobSeeker | null>(null);
+
+  const exportColumns: ExportColumn<JobSeeker>[] = [
+    { header: "Name", key: "fullName", formatter: (v, r) => String(v || (r as unknown as JobSeeker).userId?.name || "—") },
+    { header: "Email", key: "email", formatter: (v, r) => String(v ?? (r as unknown as JobSeeker).userId?.email ?? "—") },
+    { header: "Nationality", key: "nationality", formatter: (v) => String(v ?? "—") },
+    { header: "Status", key: "status", formatter: (v) => String(v ?? "active") },
+    { header: "Joined", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: jobSeekers as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "job-seekers",
+    title: "Job Seekers",
+  });
 
   const fetchJobSeekers = useCallback(async () => {
     setLoading(true);
@@ -89,15 +106,14 @@ export default function AdminJobSeekersPage() {
       {ConfirmDialogNode}
       <PageHeader title="Job Seekers" description="Browse and manage all candidate profiles" />
 
-      <div className="relative w-64">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-        <Input
-          placeholder="Search …"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-          className="pl-9 h-9"
-        />
-      </div>
+      <TableToolbar
+        search={search}
+        onSearchChange={(v) => { setSearch(v); resetPage(); }}
+        searchPlaceholder="Search job seeker…"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
 
       <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
         <Table>

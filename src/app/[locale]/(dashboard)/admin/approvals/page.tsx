@@ -10,11 +10,14 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 interface Job {
   _id: string;
@@ -152,6 +155,23 @@ export default function AdminApprovalsPage() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
+  const exportColumns: ExportColumn<Job>[] = [
+    { header: "Title", key: "title" },
+    { header: "Employer", key: "employerId" as keyof Job, formatter: (_v, r) => (r as unknown as Job).employerId?.companyName ?? "—" },
+    { header: "Agent", key: "agentId" as keyof Job, formatter: (_v, r) => getAgentName(r as unknown as Job) ?? "—" },
+    { header: "Status", key: "status" },
+    { header: "Approval", key: "poster" as keyof Job, formatter: (_v, r) => getApproval(r as unknown as Job) },
+    { header: "Location", key: "location", formatter: (v) => formatLocation(v as Job["location"]) },
+    { header: "Applicants", key: "applicantsCount", formatter: (v) => String(v ?? 0) },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: jobs as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "approvals",
+    title: "Job Approvals",
+  });
+
   const pending = jobs.filter((j) => getApproval(j) === "pending").length;
   const active = jobs.filter((j) => j.status === "active").length;
 
@@ -200,17 +220,15 @@ export default function AdminApprovalsPage() {
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <div className="relative min-w-0">
-            <label htmlFor="approvals-search" className="sr-only">Search</label>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="approvals-search"
-              placeholder="Search by job title…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm shadow-none"
-            />
-          </div>
+          <TableToolbar
+            search={search}
+            onSearchChange={(v) => { setSearch(v); resetPage(); }}
+            searchPlaceholder="Search by job title…"
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="xl:col-span-3"
+          />
           <div>
             <label htmlFor="approvals-status" className="sr-only">Status</label>
             <SearchableSelect id="approvals-status" className="h-11 w-full rounded-xl border-border bg-secondary/65" options={STATUS_OPTIONS} value={status} onValueChange={(v) => { setStatus(v); resetPage(); }} placeholder="All statuses" />
@@ -316,6 +334,7 @@ export default function AdminApprovalsPage() {
                   {selectedJob.title}
                   <StatusBadge status={getApproval(selectedJob)} />
                 </DialogTitle>
+                <DialogDescription className="sr-only">Review details and approval status for this job listing.</DialogDescription>
               </DialogHeader>
 
               <div className="space-y-5 pt-2">

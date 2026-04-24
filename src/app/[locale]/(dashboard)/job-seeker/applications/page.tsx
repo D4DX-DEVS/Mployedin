@@ -14,6 +14,9 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 interface ApplicationJob {
   _id: string;
@@ -163,6 +166,29 @@ export default function ApplicationsPage() {
 
   const hasActiveFilters = !!debouncedSearch || !!dateFrom || !!dateTo;
 
+  const exportData = applications.map((app) => ({
+    jobTitle: app.jobId?.title ?? "",
+    company: typeof app.jobId?.employerId === "object" ? (app.jobId.employerId as { companyName?: string })?.companyName ?? "" : "",
+    status: app.status,
+    aiMatchScore: app.aiMatchScore ?? 0,
+    appliedAt: new Date(app.appliedAt).toLocaleDateString(),
+  }));
+
+  const exportColumns = [
+    { header: "Job Title", key: "jobTitle" },
+    { header: "Company", key: "company" },
+    { header: "Status", key: "status" },
+    { header: "Match Score", key: "aiMatchScore" },
+    { header: "Applied Date", key: "appliedAt" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: exportData as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "my-applications",
+    title: "My Applications",
+  });
+
   const activeStatus = STATUS_TABS.find((tab) => tab.value === activeTab) ?? STATUS_TABS[0];
   const pageSummary = pagination.totalPages > 0 ? `${pagination.page}/${pagination.totalPages}` : `${pagination.page}`;
   const activeApplicationsCount = applications.filter((application) => !TERMINAL_STATUSES.includes(application.status)).length;
@@ -308,6 +334,12 @@ export default function ApplicationsPage() {
         </div>
 
         <div className="px-3.5 py-3 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="mb-3"
+          />
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeTab}

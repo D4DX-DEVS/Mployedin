@@ -12,15 +12,19 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Inbox, Sparkles, CalendarDays, CircleCheckBig, RotateCcw, ArrowRight, Clock3,
   CalendarClock, CheckCircle2, XCircle, AlertTriangle, Forward, FileText,
-  Send, Ban,
+  Send, Ban, Loader2, BookOpen,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { AIInterviewQuestionsPanel } from "@/components/features/employer/AIInterviewQuestionsPanel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useInterviews, useUpdateInterview, useScheduleNextRound } from "@/hooks/useInterviews";
 import { useCreateOffer } from "@/hooks/useOffers";
 import type { Interview } from "@/hooks/useInterviews";
+import type { ExportColumn } from "@/lib/export";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 
 interface AIQuestionsTarget {
   interviewId: string;
@@ -37,6 +41,22 @@ type ModalType =
   | { kind: "next-round"; interview: Interview }
   | { kind: "offer"; interview: Interview };
 
+interface PrepBriefResult {
+  interviewId: string;
+  candidateName: string;
+  jobTitle: string;
+  round: number;
+  type: string;
+  duration: number;
+  candidateSummary: string;
+  keyStrengths: string[];
+  areasToProbe: string[];
+  suggestedQuestions: { question: string; purpose: string; followUp: string }[];
+  redFlags: string[];
+  interviewStrategy: string;
+  timeAllocation: { intro: number; technical: number; behavioral: number; questions: number; closing: number };
+}
+
 export default function EmployerInterviewsPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
@@ -46,6 +66,8 @@ export default function EmployerInterviewsPage() {
   const [status, setStatus] = useState("");
   const [aiTarget, setAiTarget] = useState<AIQuestionsTarget | null>(null);
   const [modal, setModal] = useState<ModalType>({ kind: "none" });
+  const [prepBrief, setPrepBrief] = useState<PrepBriefResult | null>(null);
+  const [loadingPrepBriefId, setLoadingPrepBriefId] = useState<string | null>(null);
 
   const { data, isLoading: loading, error, refetch } = useInterviews({ page, limit, status: status || undefined });
   const updateMutation = useUpdateInterview();
@@ -59,6 +81,23 @@ export default function EmployerInterviewsPage() {
   const upcomingCount = interviews.filter((iv) => new Date(iv.scheduledAt).getTime() > now && ["scheduled", "confirmed", "rescheduled"].includes(iv.status)).length;
   const completedCount = interviews.filter((iv) => iv.status === "completed").length;
   const attentionCount = interviews.filter((iv) => iv.status === "rescheduled" || iv.status === "cancelled").length;
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Candidate", key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.fullName ?? "Candidate" },
+    { header: "Email", key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.email ?? "—" },
+    { header: "Role", key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title ?? "Untitled role" },
+    { header: "Round", key: "interviewRound", formatter: (v) => `R${v ?? 1}` },
+    { header: "Type", key: "type", formatter: (v) => String(v ?? "in-person") },
+    { header: "Scheduled", key: "scheduledAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
+    { header: "Status", key: "status", formatter: (v) => String(v ?? "—") },
+    { header: "Outcome", key: "outcome", formatter: (v) => String(v ?? "—") },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: interviews as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "interviews",
+    title: "Interviews",
+  });
 
   function formatDateTime(value: string): { date: string; time: string } {
     const date = new Date(value);
@@ -108,6 +147,27 @@ export default function EmployerInterviewsPage() {
       case "hold": return { label: "On Hold", color: "text-amber-700 bg-amber-50 border-amber-200" };
       case "no_show": return { label: "No Show", color: "text-gray-700 bg-gray-50 border-gray-200" };
       default: return null;
+    }
+  }
+
+  async function generatePrepBrief(interviewId: string) {
+    setLoadingPrepBriefId(interviewId);
+    try {
+      const res = await fetch("/api/ai/interview-prep-brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interviewId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Failed" }));
+        throw new Error(err.error ?? "Prep brief generation failed");
+      }
+      const data: PrepBriefResult = await res.json();
+      setPrepBrief(data);
+    } catch {
+      // silent — user can retry
+    } finally {
+      setLoadingPrepBriefId(null);
     }
   }
 
@@ -254,6 +314,13 @@ export default function EmployerInterviewsPage() {
           <p className="text-sm text-muted-foreground">{interviews.length} interviews on this page</p>
         </div>
 
+        <TableToolbar
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mt-4"
+        />
+
         <div className="workspace-subtle-surface mt-5 overflow-x-auto rounded-3xl border border-border">
           <Table>
             <TableHeader>
@@ -346,16 +413,33 @@ export default function EmployerInterviewsPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 rounded-xl px-3 text-xs font-semibold text-sky-700 hover:bg-sky-50 hover:text-sky-800"
-                        onClick={() => openAIQuestions(iv)}
-                        title="Generate AI interview questions"
-                      >
-                        <Sparkles className="me-1 h-3.5 w-3.5" />
-                        Questions
-                      </Button>
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 rounded-xl px-3 text-xs font-semibold text-sky-700 hover:bg-sky-50 hover:text-sky-800"
+                          onClick={() => openAIQuestions(iv)}
+                          title="Generate AI interview questions"
+                        >
+                          <Sparkles className="me-1 h-3.5 w-3.5" />
+                          Questions
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 rounded-xl px-3 text-xs font-semibold text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                          onClick={() => generatePrepBrief(iv._id)}
+                          disabled={loadingPrepBriefId === iv._id}
+                          title="AI interview prep brief"
+                        >
+                          {loadingPrepBriefId === iv._id ? (
+                            <Loader2 className="me-1 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <BookOpen className="me-1 h-3.5 w-3.5" />
+                          )}
+                          Prep Brief
+                        </Button>
+                      </div>
                     </TableCell>
                     {can("interviews", "update") ? (
                       <TableCell>
@@ -431,6 +515,114 @@ export default function EmployerInterviewsPage() {
         onPageChange={setPage}
         onLimitChange={(l) => { setLimit(l); setPage(1); }}
       />
+
+      {/* ── AI Prep Brief Dialog ──────────────────────────────────────── */}
+      <Dialog open={Boolean(prepBrief)} onOpenChange={(open) => { if (!open) setPrepBrief(null); }}>
+        <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto rounded-[24px] border-border bg-background p-0">
+          {prepBrief && (
+            <>
+              <DialogHeader className="border-b border-border px-6 py-5">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-violet-500" />
+                  <DialogTitle className="text-lg font-semibold">Interview Prep Brief</DialogTitle>
+                </div>
+                <DialogDescription className="mt-1 text-sm text-muted-foreground">
+                  {prepBrief.candidateName} — {prepBrief.jobTitle} (Round {prepBrief.round}, {prepBrief.duration}min {prepBrief.type})
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 px-6 py-5">
+                {/* Candidate Summary */}
+                <div className="workspace-glass-panel rounded-2xl p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Candidate Summary</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{prepBrief.candidateSummary}</p>
+                </div>
+
+                {/* Strategy */}
+                <div className="workspace-glass-panel rounded-2xl p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Interview Strategy</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{prepBrief.interviewStrategy}</p>
+                </div>
+
+                {/* Time Allocation */}
+                {prepBrief.timeAllocation && (
+                  <div className="workspace-glass-panel rounded-2xl p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Time Allocation ({prepBrief.duration} min)</p>
+                    <div className="mt-3 flex gap-1.5">
+                      {Object.entries(prepBrief.timeAllocation).map(([key, mins]) => (
+                        <div
+                          key={key}
+                          className="flex flex-1 flex-col items-center rounded-xl bg-violet-50 p-2 dark:bg-violet-500/10"
+                          style={{ flex: mins }}
+                        >
+                          <span className="text-lg font-semibold text-violet-700 dark:text-violet-300">{mins}m</span>
+                          <span className="text-[10px] capitalize text-muted-foreground">{key}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Key Strengths */}
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Key Strengths to Explore</p>
+                    <ul className="mt-2 space-y-1.5">
+                      {prepBrief.keyStrengths.map((s) => (
+                        <li key={s} className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Areas to Probe */}
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">Areas to Probe</p>
+                    <ul className="mt-2 space-y-1.5">
+                      {prepBrief.areasToProbe.map((a) => (
+                        <li key={a} className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
+                          <span>{a}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Suggested Questions */}
+                <div className="workspace-glass-panel rounded-2xl p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Suggested Questions</p>
+                  <div className="mt-3 space-y-3">
+                    {prepBrief.suggestedQuestions.map((q, i) => (
+                      <div key={i} className="rounded-xl border border-border bg-background/60 p-3">
+                        <p className="text-sm font-medium text-foreground">{i + 1}. {q.question}</p>
+                        <p className="mt-1 text-xs text-muted-foreground"><span className="font-semibold">Purpose:</span> {q.purpose}</p>
+                        <p className="text-xs text-muted-foreground"><span className="font-semibold">Follow-up:</span> {q.followUp}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Red Flags */}
+                {prepBrief.redFlags.length > 0 && (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-500/20 dark:bg-rose-500/10">
+                    <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">Red Flags to Watch</p>
+                    <ul className="mt-2 space-y-1.5">
+                      {prepBrief.redFlags.map((r) => (
+                        <li key={r} className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
+                          <span>{r}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

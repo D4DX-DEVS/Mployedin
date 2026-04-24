@@ -10,15 +10,15 @@ import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 import {
   Search, Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users,
   Eye, Building2, MapPin, DollarSign, Clock, Calendar, Globe, UserCheck,
-  Wand2, CheckCircle,
+  Wand2, CheckCircle, ArrowRight,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -91,6 +91,34 @@ function getSourceLabel(job: Job) {
   if (agent && superAgent) return `${agent} · ${superAgent}`;
   if (agent) return agent;
   return "Employer";
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
+  draft: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-500/30",
+  paused: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-500/30",
+  closed: "bg-muted text-muted-foreground",
+  expired: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-500/30",
+};
+
+const JOB_SUMMARY_MAX_LENGTH = 180;
+
+function formatSalary(job: Job): string | null {
+  const min = job.salary?.min ?? 0;
+  const max = job.salary?.max ?? 0;
+  const currency = job.salary?.currency ?? "USD";
+  if (min <= 0 && max <= 0) return null;
+  if (min > 0 && max > 0) return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
+  return `${Math.max(min, max).toLocaleString()} ${currency}`;
+}
+
+function getJobSummary(job: Job): string | null {
+  if (!job.description) return null;
+  const parser = new DOMParser();
+  const plainText = parser.parseFromString(job.description, "text/html").body.textContent?.replace(/\s+/g, " ").trim() ?? "";
+  if (!plainText) return null;
+  if (plainText.length <= JOB_SUMMARY_MAX_LENGTH) return plainText;
+  return `${plainText.slice(0, JOB_SUMMARY_MAX_LENGTH - 3).trimEnd()}...`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -186,6 +214,23 @@ export default function AdminJobsPage() {
   const totalApplicants = jobs.reduce((sum, j) => sum + (j.applicantsCount ?? 0), 0);
 
   const hasActiveFilters = search || status !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || workMode !== "all" || employmentType !== "all" || locationFilter || skillsFilter;
+
+  const exportColumns: ExportColumn<Job>[] = [
+    { header: "Title", key: "title" },
+    { header: "Employer", key: "employerId" as keyof Job, formatter: (_v, r) => (r as unknown as Job).employerId?.companyName ?? "—" },
+    { header: "Source", key: "agentId" as keyof Job, formatter: (_v, r) => getSourceLabel(r as unknown as Job) },
+    { header: "Status", key: "status" },
+    { header: "Location", key: "location", formatter: (v) => formatLocation(v as Job["location"]) },
+    { header: "Category", key: "category", formatter: (v) => String(v ?? "—") },
+    { header: "Applicants", key: "applicantsCount", formatter: (v) => String(v ?? 0) },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: jobs as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "jobs",
+    title: "Jobs",
+  });
 
   function resetFilters() {
     setSearch("");
@@ -299,15 +344,14 @@ export default function AdminJobsPage() {
       {/* Filters */}
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="relative min-w-0">
-            <label htmlFor="admin-jobs-search" className="sr-only">Search jobs</label>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="admin-jobs-search"
-              placeholder="Search by job title..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm shadow-none"
+          <div className="xl:col-span-4">
+            <TableToolbar
+              search={search}
+              onSearchChange={(v) => { setSearch(v); resetPage(); }}
+              searchPlaceholder="Search by job title…"
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
             />
           </div>
           <div>
@@ -445,110 +489,144 @@ export default function AdminJobsPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Job Cards */}
       {loading ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="workspace-panel-surface h-20 animate-pulse rounded-[28px]" />
+            <div key={i} className="workspace-panel-surface h-40 animate-pulse rounded-[28px]" />
           ))}
         </div>
+      ) : jobs.length === 0 ? (
+        <div className="workspace-panel-surface rounded-[28px] px-6 py-16 text-center">
+          <div className="workspace-muted-pill mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
+            <Inbox className="h-7 w-7" />
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{hasActiveFilters ? "No matching jobs" : "No jobs yet"}</p>
+          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+            {hasActiveFilters ? "No jobs match the current search." : "No job postings found on the platform."}
+          </h3>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+            {hasActiveFilters
+              ? "Adjust the filters, remove a keyword, or try the AI search box to broaden the results."
+              : "When employers or agents post jobs, they will appear here."}
+          </p>
+          {hasActiveFilters && (
+            <Button
+              onClick={resetFilters}
+              variant="outline"
+              className="mt-6 h-11 rounded-xl border-border bg-background/70 px-4 text-sm"
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
       ) : (
-        <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                  <TableHead>Job</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-center">Applicants</TableHead>
-                  <TableHead className="pe-6">Posted</TableHead>
-                  <TableHead className="w-[60px] text-center">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {jobs.map((job) => (
-                    <TableRow key={job._id} className="border-border/70">
-                      {/* Job: title + category + company */}
-                      <TableCell className="max-w-[280px]">
-                        <div>
-                          <p className="truncate font-medium text-foreground">{job.title}</p>
-                          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                            {job.employerId?.companyName && (
-                              <span className="flex items-center gap-1">
-                                <Building2 className="h-3 w-3" />
-                                {job.employerId.companyName}
-                              </span>
-                            )}
-                            {job.category && (
-                              <>
-                                <span className="text-border">·</span>
-                                <span>{job.category}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
+        <div className="space-y-4">
+          {jobs.map((job) => {
+            const posted = new Date(job.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            const salaryLabel = formatSalary(job);
+            const jobSummary = getJobSummary(job);
 
-                      {/* Source: who posted */}
-                      <TableCell className="text-xs text-muted-foreground">{getSourceLabel(job)}</TableCell>
+            return (
+              <article
+                key={job._id}
+                className="workspace-panel-surface rounded-[28px] p-3.5 transition-all hover:-translate-y-0.5 hover:border-border sm:p-4"
+              >
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
+                  {/* Left: Job metadata */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{job.title}</h3>
+                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2.5 py-0.5 text-xs font-medium capitalize`}>{job.status}</Badge>
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {job.employerId?.companyName && (
+                        <span className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">
+                          <Building2 className="h-3 w-3" />
+                          {job.employerId.companyName}
+                        </span>
+                      )}
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job.location)}</span>
+                      {job.category && (
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
+                      )}
+                      {salaryLabel && (
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{salaryLabel}</span>
+                      )}
+                      {(job.vacancies ?? 0) > 0 && (
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">
+                          {job.vacancies} opening{job.vacancies === 1 ? "" : "s"}
+                        </span>
+                      )}
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">Posted {posted}</span>
+                    </div>
 
-                      {/* Location */}
-                      <TableCell className="text-xs text-muted-foreground">{formatLocation(job.location)}</TableCell>
-
-                      {/* Status */}
-                      <TableCell>
-                        <StatusBadge status={job.status} />
-                      </TableCell>
-
-                      {/* Applicants */}
-                      <TableCell className="text-center text-muted-foreground">{job.applicantsCount ?? 0}</TableCell>
-
-                      {/* Posted date */}
-                      <TableCell className="pe-6 text-xs text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</TableCell>
-
-                      {/* Actions */}
-                      <TableCell className="w-[60px]">
-                        <div className="flex items-center justify-center">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedJob(job)} title="View details">
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">View details</span>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                {jobs.length === 0 && (
-                  <TableRow className="border-border/70">
-                    <TableCell colSpan={7} className="px-6 py-14 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">No jobs found</p>
-                          <p className="mt-1 text-sm text-muted-foreground">Adjust the filters to widen the view.</p>
-                        </div>
+                    {(job.requirements?.skills?.length ?? 0) > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {job.requirements!.skills!.slice(0, 4).map((s) => (
+                          <Badge key={s} variant="outline" className="rounded-full border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-normal text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{s}</Badge>
+                        ))}
                       </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                    )}
 
-          <div className="border-t border-border/80 px-4 py-3 sm:px-5">
-            <PaginationControls
-              page={page}
-              totalPages={totalPages}
-              total={total}
-              limit={limit}
-              onPageChange={setPage}
-              onLimitChange={setLimit}
-              className="text-muted-foreground"
-            />
-          </div>
-        </section>
+                    {jobSummary && (
+                      <p className="mt-2.5 line-clamp-2 max-w-3xl text-sm leading-5 text-muted-foreground">{jobSummary}</p>
+                    )}
+
+                    <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
+                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Source</p>
+                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{getSourceLabel(job)}</p>
+                      </div>
+                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Applicants</p>
+                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{job.applicantsCount ?? 0}</p>
+                      </div>
+                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Capacity</p>
+                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{job.vacancies ?? "Open"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Action buttons panel */}
+                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-2 rounded-[20px] border border-border p-2.5 xl:self-start">
+                    <div className="workspace-muted-pill flex items-center justify-between gap-3 rounded-2xl border border-border px-3 py-2">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Next actions</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Manage this role in one place.</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        size="sm"
+                        className="col-span-2 h-10 gap-2 rounded-xl bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
+                        onClick={() => setSelectedJob(job)}
+                      >
+                        <Eye className="h-4 w-4" />
+                        View Details
+                        <ArrowRight className="ml-auto h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
       )}
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        limit={limit}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+        className="text-muted-foreground"
+      />
 
       {/* Job detail dialog */}
       <Dialog open={!!selectedJob} onOpenChange={(open) => { if (!open) setSelectedJob(null); }}>
@@ -562,6 +640,7 @@ export default function AdminJobsPage() {
                     {selectedJob.title}
                     <StatusBadge status={selectedJob.status} />
                   </DialogTitle>
+                  <DialogDescription className="sr-only">View full details for this job listing.</DialogDescription>
                 </DialogHeader>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                   {selectedJob.employerId?.companyName && (

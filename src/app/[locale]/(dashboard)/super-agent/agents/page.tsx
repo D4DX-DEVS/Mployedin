@@ -5,9 +5,13 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Activity, BriefcaseBusiness, Search, Target, Users2 } from "lucide-react";
+import {
+  Activity, ArrowUpDown, BriefcaseBusiness, ChevronDown, ChevronUp,
+  Filter, RotateCcw, Search, SlidersHorizontal, Target, Users2,
+} from "lucide-react";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   SuperAgentDataTableShell,
   SuperAgentEmptyState,
@@ -18,6 +22,9 @@ import {
 import { SuperAgentInsightsPanel } from "@/components/features/super-agent/InsightsPanel";
 import { AIExplainButton } from "@/components/shared/AIExplainButton";
 import { cn } from "@/lib/utils";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 interface AgentRow {
   _id: string;
@@ -30,16 +37,93 @@ interface AgentRow {
   avgResponseHours: number;
 }
 
+/* ── Filter types ── */
+interface Filters {
+  search: string;
+  performance: string;
+  leadsMin: string;
+  leadsMax: string;
+  convRateMin: string;
+  convRateMax: string;
+  sortBy: string;
+  sortOrder: string;
+}
+
+const INITIAL_FILTERS: Filters = {
+  search: "", performance: "",
+  leadsMin: "", leadsMax: "",
+  convRateMin: "", convRateMax: "",
+  sortBy: "name", sortOrder: "asc",
+};
+
+const PERFORMANCE_OPTIONS = [
+  { value: "", label: "All agents" },
+  { value: "high_performer", label: "High Performers (≥50% conv.)" },
+  { value: "needs_attention", label: "Needs Attention (<15% conv.)" },
+  { value: "slow_response", label: "Slow Response (>48h avg.)" },
+  { value: "no_activity", label: "No Activity (0 leads)" },
+];
+
+const LEADS_RANGE_OPTIONS = [
+  { value: "", label: "Any" },
+  { value: "0-5", label: "0 – 5" },
+  { value: "6-15", label: "6 – 15" },
+  { value: "16-50", label: "16 – 50" },
+  { value: "51+", label: "51+" },
+];
+
+const CONV_RATE_OPTIONS = [
+  { value: "", label: "Any" },
+  { value: "0-25", label: "0 – 25%" },
+  { value: "26-50", label: "26 – 50%" },
+  { value: "51-75", label: "51 – 75%" },
+  { value: "76-100", label: "76 – 100%" },
+];
+
+const SORT_OPTIONS = [
+  { value: "name", label: "Name" },
+  { value: "leadsCount", label: "Leads" },
+  { value: "conversions", label: "Conversions" },
+  { value: "placements", label: "Placements" },
+  { value: "conversionRate", label: "Conversion Rate" },
+  { value: "avgResponseHours", label: "Response Time" },
+];
+
+function countActiveFilters(f: Filters): number {
+  let count = 0;
+  if (f.performance) count++;
+  if (f.leadsMin || f.leadsMax) count++;
+  if (f.convRateMin || f.convRateMax) count++;
+  if (f.sortBy !== "name" || f.sortOrder !== "asc") count++;
+  return count;
+}
+
+function parseRange(value: string): { min: string; max: string } {
+  if (!value) return { min: "", max: "" };
+  if (value.endsWith("+")) return { min: value.replace("+", ""), max: "" };
+  const [min, max] = value.split("-");
+  return { min: min ?? "", max: max ?? "" };
+}
+
 export default function SuperAgentAgentsPage() {
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (search) params.set("search", search);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.performance) params.set("performance", filters.performance);
+    if (filters.leadsMin) params.set("leadsMin", filters.leadsMin);
+    if (filters.leadsMax) params.set("leadsMax", filters.leadsMax);
+    if (filters.convRateMin) params.set("convRateMin", filters.convRateMin);
+    if (filters.convRateMax) params.set("convRateMax", filters.convRateMax);
+    if (filters.sortBy) params.set("sortBy", filters.sortBy);
+    if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
+
     const res = await fetch(`/api/super-agent/agents?${params}`);
     if (res.ok) {
       const data = await res.json();
@@ -47,9 +131,42 @@ export default function SuperAgentAgentsPage() {
       updateTotal(data.total ?? data.items?.length ?? 0);
     }
     setLoading(false);
-  }, [search, page, limit, updateTotal]);
+  }, [filters, page, limit, updateTotal]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
+
+  /* ── Filter helpers ── */
+  const updateFilter = useCallback((key: keyof Filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    resetPage();
+  }, [resetPage]);
+
+  const resetFilters = useCallback(() => {
+    setFilters(INITIAL_FILTERS);
+    resetPage();
+  }, [resetPage]);
+
+  const handleLeadsRange = useCallback((value: string) => {
+    const { min, max } = parseRange(value);
+    setFilters((prev) => ({ ...prev, leadsMin: min, leadsMax: max }));
+    resetPage();
+  }, [resetPage]);
+
+  const handleConvRateRange = useCallback((value: string) => {
+    const { min, max } = parseRange(value);
+    setFilters((prev) => ({ ...prev, convRateMin: min, convRateMax: max }));
+    resetPage();
+  }, [resetPage]);
+
+  /* ── Column sort ── */
+  const toggleSort = useCallback((field: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      sortBy: field,
+      sortOrder: prev.sortBy === field && prev.sortOrder === "asc" ? "desc" : "asc",
+    }));
+    resetPage();
+  }, [resetPage]);
 
   /* ── Performance badge logic ── */
   function getPerformanceBadge(agent: AgentRow) {
@@ -66,6 +183,34 @@ export default function SuperAgentAgentsPage() {
     }
     return badges;
   }
+
+  /* ── Derived values ── */
+  const activeFilterCount = countActiveFilters(filters);
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Name", key: "name" },
+    { header: "Email", key: "email" },
+    { header: "Leads", key: "leadsCount" },
+    { header: "Conversions", key: "conversions" },
+    { header: "Placements", key: "placements" },
+    { header: "Conv. Rate", key: "conversionRate", formatter: (v) => `${v ?? 0}%` },
+    { header: "Avg Response (h)", key: "avgResponseHours" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: agents as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "super-agent-agents",
+    title: "Agent Performance",
+  });
+
+  // Reconstruct the selected range value for the dropdown
+  const leadsRangeValue = filters.leadsMin || filters.leadsMax
+    ? (filters.leadsMax ? `${filters.leadsMin}-${filters.leadsMax}` : `${filters.leadsMin}+`)
+    : "";
+  const convRateValue = filters.convRateMin || filters.convRateMax
+    ? (filters.convRateMax ? `${filters.convRateMin}-${filters.convRateMax}` : `${filters.convRateMin}+`)
+    : "";
 
   const kpis = [
     {
@@ -98,6 +243,27 @@ export default function SuperAgentAgentsPage() {
     },
   ];
 
+  /* ── Sortable Header Cell ── */
+  function SortHeader({ field, children }: { field: string; children: React.ReactNode }) {
+    const active = filters.sortBy === field;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(field)}
+        className="group inline-flex items-center gap-1 text-muted-foreground/80 hover:text-foreground transition-colors"
+      >
+        {children}
+        {active ? (
+          filters.sortOrder === "asc"
+            ? <ChevronUp className="h-3.5 w-3.5 text-primary" />
+            : <ChevronDown className="h-3.5 w-3.5 text-primary" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+        )}
+      </button>
+    );
+  }
+
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
@@ -117,31 +283,165 @@ export default function SuperAgentAgentsPage() {
       <SuperAgentSection
         eyebrow="Team review"
         title="Compare output across your assigned agents"
-        description="Search by name or email, then review lead volume, conversions, placements, and conversion progress without changing the underlying reporting logic."
+        description="Search by name or email, filter by performance level, leads volume, and conversion rate."
       >
-        <div className="mb-4 flex gap-3">
+        {/* ── Search Row + Advanced Toggle ── */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
           <div className="relative w-full max-w-xs min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
             <Input
               aria-label="Search agents"
               placeholder="Search agents..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+              value={filters.search}
+              onChange={(e) => updateFilter("search", e.target.value)}
               className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
             />
           </div>
+
+          {/* Performance quick filter */}
+          <div className="w-full max-w-[220px]">
+            <SearchableSelect
+              options={PERFORMANCE_OPTIONS}
+              value={filters.performance}
+              onValueChange={(v) => updateFilter("performance", v)}
+              placeholder="All agents"
+              searchPlaceholder="Filter performance..."
+            />
+          </div>
+
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className={`flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all ${showAdvanced ? "border-primary/30 bg-primary/10 text-primary" : "border-border/70 bg-background/85 text-muted-foreground hover:border-border hover:bg-secondary/80"}`}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Advanced
+              {activeFilterCount > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1.5 text-[11px] font-semibold text-primary">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {(activeFilterCount > 0 || filters.search || filters.performance) && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-4 text-sm text-muted-foreground hover:border-border hover:bg-secondary/80 transition-all"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* ── Advanced Filter Panel ── */}
+        {showAdvanced && (
+          <div className="mb-4 rounded-2xl border border-border/60 bg-background/90 p-5 shadow-sm animate-in slide-in-from-top-2 duration-200">
+            <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Filter className="h-4 w-4" />
+              Advanced Filters
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {/* Leads Range */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Leads Count</label>
+                <SearchableSelect
+                  options={LEADS_RANGE_OPTIONS}
+                  value={leadsRangeValue}
+                  onValueChange={handleLeadsRange}
+                  placeholder="Any"
+                />
+              </div>
+
+              {/* Conversion Rate Range */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Conversion Rate</label>
+                <SearchableSelect
+                  options={CONV_RATE_OPTIONS}
+                  value={convRateValue}
+                  onValueChange={handleConvRateRange}
+                  placeholder="Any"
+                />
+              </div>
+
+              {/* Sort By */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+                <SearchableSelect
+                  options={SORT_OPTIONS}
+                  value={filters.sortBy}
+                  onValueChange={(v) => updateFilter("sortBy", v)}
+                  placeholder="Name"
+                />
+              </div>
+
+              {/* Sort Order */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
+                <SearchableSelect
+                  options={[
+                    { value: "asc", label: "Ascending" },
+                    { value: "desc", label: "Descending" },
+                  ]}
+                  value={filters.sortOrder}
+                  onValueChange={(v) => updateFilter("sortOrder", v)}
+                  placeholder="Ascending"
+                />
+              </div>
+            </div>
+
+            {/* Quick Filter Chips */}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
+              {[
+                { label: "Top Performers", action: () => updateFilter("performance", "high_performer") },
+                { label: "Needs Attention", action: () => updateFilter("performance", "needs_attention") },
+                { label: "Slow Responders", action: () => updateFilter("performance", "slow_response") },
+                { label: "No Activity", action: () => updateFilter("performance", "no_activity") },
+                { label: "High Volume (50+ leads)", action: () => handleLeadsRange("51+") },
+                { label: "Best Converters (75%+)", action: () => handleConvRateRange("76-100") },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={chip.action}
+                  className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <TableToolbar
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mb-4"
+        />
+
+        <TableToolbar
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mb-4"
+        />
 
         <SuperAgentDataTableShell>
           <Table>
             <TableHeader>
               <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
-                <TableHead className="py-4 text-muted-foreground/80">Agent</TableHead>
+                <TableHead className="py-4 text-muted-foreground/80"><SortHeader field="name">Agent</SortHeader></TableHead>
                 <TableHead className="py-4 text-muted-foreground/80">Email</TableHead>
-                <TableHead className="py-4 text-right text-muted-foreground/80">Leads</TableHead>
-                <TableHead className="py-4 text-right text-muted-foreground/80">Conversions</TableHead>
-                <TableHead className="py-4 text-right text-muted-foreground/80">Placements</TableHead>
-                <TableHead className="py-4 text-right text-muted-foreground/80">Conv. Rate</TableHead>
+                <TableHead className="py-4 text-right text-muted-foreground/80"><SortHeader field="leadsCount">Leads</SortHeader></TableHead>
+                <TableHead className="py-4 text-right text-muted-foreground/80"><SortHeader field="conversions">Conversions</SortHeader></TableHead>
+                <TableHead className="py-4 text-right text-muted-foreground/80"><SortHeader field="placements">Placements</SortHeader></TableHead>
+                <TableHead className="py-4 text-right text-muted-foreground/80"><SortHeader field="conversionRate">Conv. Rate</SortHeader></TableHead>
                 <TableHead className="py-4 text-muted-foreground/80">Progress</TableHead>
                 <TableHead className="py-4 w-10" />
               </TableRow>
@@ -161,7 +461,7 @@ export default function SuperAgentAgentsPage() {
                     <SuperAgentEmptyState
                       icon={<Users2 className="h-7 w-7" />}
                       title="No agents found"
-                      description="Try a broader search or wait for your roster data to populate."
+                      description="Try a broader search or adjust filters to see more results."
                     />
                   </TableCell>
                 </TableRow>

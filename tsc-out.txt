@@ -1,0 +1,6 @@
+﻿error TS6053: File 'C:/Users/moham/OneDrive/Desktop/Mployedin/mployedin/.next/types/cache-life.d.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in 'C:/Users/moham/OneDrive/Desktop/Mployedin/mployedin/tsconfig.json'
+error TS6053: File 'C:/Users/moham/OneDrive/Desktop/Mployedin/mployedin/.next/types/validator.ts' not found.
+  The file is in the program because:
+    Matched by include pattern '.next/types/**/*.ts' in 'C:/Users/moham/OneDrive/Desktop/Mployedin/mployedin/tsconfig.json'

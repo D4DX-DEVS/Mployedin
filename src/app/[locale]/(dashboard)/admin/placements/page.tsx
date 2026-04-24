@@ -16,6 +16,9 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 
 interface Placement {
@@ -179,6 +182,23 @@ export default function AdminPlacementsPage() {
   const pendingVisa = placements.filter(p => p.visaStatus === "pending").length;
   const unpaidCommissions = placements.filter(p => !p.commissionPaid).length;
 
+  const exportColumns: ExportColumn<Placement>[] = [
+    { header: "Candidate", key: "candidateName", formatter: (v) => String(v ?? "—") },
+    { header: "Company", key: "companyName", formatter: (v) => String(v ?? "—") },
+    { header: "Job Title", key: "jobTitle", formatter: (v) => String(v ?? "—") },
+    { header: "Agent", key: "agentName", formatter: (v) => String(v ?? "—") },
+    { header: "Salary", key: "salary", formatter: (v, r) => `${v ?? 0} ${(r as unknown as Placement).currency ?? "AED"}` },
+    { header: "Visa Status", key: "visaStatus" },
+    { header: "Commission Paid", key: "commissionPaid", formatter: (v) => v ? "Yes" : "No" },
+    { header: "Start Date", key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: placements as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "placements",
+    title: "Placements",
+  });
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -226,10 +246,14 @@ export default function AdminPlacementsPage() {
       {/* Filters */}
       <div className="card-base space-y-3">
         <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-            <Input placeholder="Search candidate or company…" value={search} onChange={(e) => { setSearch(e.target.value); resetPage(); }} className="pl-9 h-9" />
-          </div>
+          <TableToolbar
+            search={search}
+            onSearchChange={(v) => { setSearch(v); resetPage(); }}
+            searchPlaceholder="Search candidate or company…"
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+          />
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <select value={visaFilter} onChange={e => { setVisaFilter(e.target.value); resetPage(); }} className="input-field">

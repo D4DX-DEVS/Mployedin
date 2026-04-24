@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -30,6 +31,9 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 function formatDate(d: string | undefined): string {
   if (!d) return "—";
@@ -57,6 +61,7 @@ function statusLabel(s: ReturnType<typeof linkStatus>): string {
 }
 
 export default function AgentReferralLinksPage() {
+  const { locale } = useParams<{ locale: string }>();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
   const [search, setSearch] = useState("");
@@ -82,7 +87,7 @@ export default function AgentReferralLinksPage() {
 
   const baseUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/register/employer?ref=`
+      ? `${window.location.origin}/${locale || "en"}/employer-register?ref=`
       : "";
 
   const handleCopy = useCallback((code: string) => {
@@ -116,6 +121,23 @@ export default function AgentReferralLinksPage() {
   // Stats
   const activeLinks = links.filter((l) => linkStatus(l) === "active").length;
   const totalRegistrations = links.reduce((s, l) => s + l.usedCount, 0);
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Code", key: "code" },
+    { header: "Label", key: "label" },
+    { header: "Active", key: "isActive", formatter: (v) => v ? "Yes" : "No" },
+    { header: "Used", key: "usedCount" },
+    { header: "Max Uses", key: "maxUses" },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: "Expires", key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: links as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "agent-referral-links",
+    title: "Agent Referral Links",
+  });
 
   return (
     <div className="page-container agent-legacy-surface space-y-6">
@@ -235,15 +257,14 @@ export default function AgentReferralLinksPage() {
       {/* Search */}
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="max-w-xl">
-          <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); pagination.resetPage(); }}
-              placeholder="Search by code or label..."
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
-            />
-          </div>
+          <TableToolbar
+            search={search}
+            onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
+            searchPlaceholder="Search by code or label..."
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+          />
         </div>
       </section>
 

@@ -5,12 +5,19 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2, Coins, ReceiptText, Settings2, Wallet } from "lucide-react";
+import { CalendarDays, CheckCircle2, Coins, ReceiptText, Search, Settings2, SlidersHorizontal, Wallet, X } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   SuperAgentDataTableShell,
   SuperAgentEmptyState,
@@ -19,6 +26,9 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatCurrency } from "@/lib/currency";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 interface Commission {
   _id: string;
@@ -35,6 +45,12 @@ export default function SuperAgentCommissionsPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [currencyFilter, setCurrencyFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   // Override rate settings
@@ -83,6 +99,11 @@ export default function SuperAgentCommissionsPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (statusFilter) params.set("status", statusFilter);
+    if (searchQuery.trim()) params.set("search", searchQuery.trim());
+    if (typeFilter) params.set("type", typeFilter);
+    if (currencyFilter) params.set("currency", currencyFilter);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
     const res = await fetch(`/api/commissions?${params}`);
     if (res.ok) {
       const data = await res.json();
@@ -90,7 +111,7 @@ export default function SuperAgentCommissionsPage() {
       updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
     }
     setLoading(false);
-  }, [statusFilter, page, limit, updateTotal]);
+  }, [statusFilter, searchQuery, typeFilter, currencyFilter, dateFrom, dateTo, page, limit, updateTotal]);
 
   useEffect(() => { fetchCommissions(); }, [fetchCommissions]);
 
@@ -104,6 +125,23 @@ export default function SuperAgentCommissionsPage() {
   };
 
   const totalAmount = commissions.reduce((sum, commission) => sum + (commission.amount ?? 0), 0);
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Agent", key: "agentId", formatter: (_v, row) => { const a = row.agentId as { fullName?: string; userId?: { name?: string } }; return a?.fullName ?? a?.userId?.name ?? ""; } },
+    { header: "Type", key: "type" },
+    { header: "Notes", key: "notes" },
+    { header: "Amount", key: "amount" },
+    { header: "Currency", key: "currency" },
+    { header: "Status", key: "status" },
+    { header: "Date", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: commissions as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "super-agent-commissions",
+    title: "Commission Management",
+  });
 
   const kpis = [
     {
@@ -152,6 +190,7 @@ export default function SuperAgentCommissionsPage() {
         title="Configure the regional override and filter payout status"
         description="Adjust the commission override rate and move between payout states without changing the current backend behavior."
       >
+        {/* Override rate row */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/70 bg-secondary/50 p-4">
             <div className="flex items-center gap-2">
@@ -175,9 +214,47 @@ export default function SuperAgentCommissionsPage() {
             </Button>
             {rateMessage ? <span className="text-xs text-muted-foreground">{rateMessage}</span> : null}
           </div>
+        </div>
 
-          <div className="flex flex-wrap gap-2">
-            {(["", "pending", "approved", "paid"] as const).map((s) => (
+        {/* Search + Quick Filters row */}
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by agent name..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); resetPage(); }}
+              className="h-10 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => { setSearchQuery(""); resetPage(); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className={`rounded-xl border-border/70 text-sm ${showAdvanced ? "bg-primary/10 text-primary border-primary/30" : "bg-background/85 text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}`}
+            >
+              <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
+              Filters
+              {(typeFilter || currencyFilter || dateFrom || dateTo) && (
+                <span className="ml-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                  {[typeFilter, currencyFilter, dateFrom, dateTo].filter(Boolean).length}
+                </span>
+              )}
+            </Button>
+
+            {/* Status pill buttons */}
+            {(["", "pending", "approved", "paid", "disputed"] as const).map((s) => (
               <Button
                 key={s}
                 onClick={() => { setStatusFilter(s); resetPage(); }}
@@ -192,7 +269,91 @@ export default function SuperAgentCommissionsPage() {
           </div>
         </div>
 
+        {/* Advanced filters panel */}
+        {showAdvanced && (
+          <div className="mt-3 flex flex-wrap items-end gap-3 rounded-2xl border border-border/70 bg-secondary/40 p-4 animate-in slide-in-from-top-1 fade-in duration-200">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">Type</Label>
+              <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); resetPage(); }}>
+                <SelectTrigger className="h-9 w-36 rounded-xl bg-background/85 text-sm shadow-none">
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="placement">Placement</SelectItem>
+                  <SelectItem value="override">Override</SelectItem>
+                  <SelectItem value="bonus">Bonus</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">Currency</Label>
+              <Select value={currencyFilter} onValueChange={(v) => { setCurrencyFilter(v === "all" ? "" : v); resetPage(); }}>
+                <SelectTrigger className="h-9 w-32 rounded-xl bg-background/85 text-sm shadow-none">
+                  <SelectValue placeholder="All currencies" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All currencies</SelectItem>
+                  <SelectItem value="AED">AED</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="SAR">SAR</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" /> From
+              </Label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
+                className="h-9 w-40 rounded-xl bg-background/85 text-sm shadow-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" /> To
+              </Label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
+                className="h-9 w-40 rounded-xl bg-background/85 text-sm shadow-none"
+              />
+            </div>
+
+            {(typeFilter || currencyFilter || dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setTypeFilter("");
+                  setCurrencyFilter("");
+                  setDateFrom("");
+                  setDateTo("");
+                  resetPage();
+                }}
+                className="h-9 rounded-xl text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="mr-1 h-3 w-3" />
+                Clear filters
+              </Button>
+            )}
+          </div>
+        )}
+
         <div className="mt-4">
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="mb-4"
+          />
           <SuperAgentDataTableShell>
             <Table>
               <TableHeader>

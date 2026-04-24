@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -8,11 +9,15 @@ import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, Building2, Edit2, Inbox, Search, Sparkles, Target, Trash2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, AlertCircle, Edit2, Flame, Inbox, Loader2, MessageSquare, Search, Sparkles, Trash2, XCircle } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 type LeadStatus = "new" | "contacted" | "interested" | "negotiating" | "converted" | "lost";
 
@@ -32,13 +37,21 @@ interface Lead {
 
 const STAGES: LeadStatus[] = ["new", "contacted", "interested", "negotiating", "converted", "lost"];
 
-const STAGE_COLORS: Record<LeadStatus, string> = {
-  new: "workspace-subtle-surface",
-  contacted: "border-[hsl(var(--status-applied))]/20 bg-[hsl(var(--status-applied-bg))]/85",
-  interested: "border-[hsl(var(--status-shortlisted))]/20 bg-[hsl(var(--status-shortlisted-bg))]/85",
-  negotiating: "border-[hsl(var(--status-interview))]/20 bg-[hsl(var(--status-interview-bg))]/85",
-  converted: "border-[hsl(var(--status-selected))]/20 bg-[hsl(var(--status-selected-bg))]/85",
-  lost: "border-[hsl(var(--status-rejected))]/20 bg-[hsl(var(--status-rejected-bg))]/85",
+interface LeadScoreResult {
+  lead: { id: string; companyName: string };
+  score: number;
+  temperature: "hot" | "warm" | "cold";
+  reasoning: string;
+  nextAction: string;
+  suggestedFollowUpDays: number;
+  draftMessage: string;
+  riskFactors: string[];
+}
+
+const TEMP_STYLES: Record<string, string> = {
+  hot: "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
+  warm: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
+  cold: "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300",
 };
 
 const LEAD_FIELDS: CrudField[] = [
@@ -59,18 +72,22 @@ export default function AgentLeadsPage() {
   const pagination = usePagination();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"kanban" | "table">("kanban");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editLead, setEditLead] = useState<Lead | null>(null);
+  const [scoringLeadId, setScoringLeadId] = useState<string | null>(null);
+  const [scoreResult, setScoreResult] = useState<LeadScoreResult | null>(null);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
-    const params = pagination.paginationParams();
-    if (statusFilter) params.set("status", statusFilter);
+    const params = new URLSearchParams();
     if (search) params.set("search", search);
+    const pp = pagination.paginationParams();
+    pp.forEach((v, k) => params.set(k, v));
+    if (statusFilter) params.set("status", statusFilter);
+
     const res = await fetch(`/api/leads?${params}`);
     const data = await res.json();
     setLeads(data.items ?? []);
@@ -112,11 +129,46 @@ export default function AgentLeadsPage() {
   const openEdit = (lead: Lead) => { setEditLead(lead); setModalOpen(true); };
   const openAdd = () => { setEditLead(null); setModalOpen(true); };
 
-  const byStage = (stage: LeadStatus) => leads.filter((l) => l.status === stage);
-  const newLeads = byStage("new").length;
-  const negotiatingLeads = byStage("negotiating").length;
-  const convertedLeads = byStage("converted").length;
-  const lostLeads = byStage("lost").length;
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Company", key: "companyName" },
+    { header: "Contact", key: "contactPerson" },
+    { header: "Email", key: "contactEmail" },
+    { header: "Phone", key: "contactPhone" },
+    { header: "Country", key: "country" },
+    { header: "Industry", key: "industry" },
+    { header: "Stage", key: "status" },
+    { header: "Follow Up", key: "followUpAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: leads as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "agent-leads",
+    title: "Agent Leads",
+  });
+
+  const scoreLead = async (leadId: string) => {
+    setScoringLeadId(leadId);
+    try {
+      const res = await fetch("/api/ai/lead-score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Scoring failed" }));
+        throw new Error(err.error ?? "Failed to score lead");
+      }
+      const data: LeadScoreResult = await res.json();
+      setScoreResult(data);
+      toast.success(`Lead scored: ${data.temperature} (${data.score}/100)`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "AI scoring failed");
+    } finally {
+      setScoringLeadId(null);
+    }
+  };
 
   return (
     <div className="page-container agent-legacy-surface space-y-6">
@@ -126,7 +178,7 @@ export default function AgentLeadsPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><Sparkles className="h-3.5 w-3.5" />Agent workspace</div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Lead Pipeline</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Track employer leads from first contact through conversion and keep your next follow-up visible in either kanban or table view.</p>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">Track employer leads from first contact through conversion and keep your next follow-up visible in table view.</p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left"><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline size</p><p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} leads</p><p className="text-xs text-muted-foreground">Current employer opportunities in your managed desk.</p></div>
@@ -137,85 +189,40 @@ export default function AgentLeadsPage() {
             ) : null}
           </div>
         </div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">New</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{newLeads}</p><p className="mt-1 text-xs text-muted-foreground">Fresh accounts waiting for the first touch.</p></div><div className="workspace-tone-sky rounded-2xl p-2.5"><Target className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Negotiating</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{negotiatingLeads}</p><p className="mt-1 text-xs text-muted-foreground">Accounts moving toward a commercial decision.</p></div><div className="workspace-tone-amber rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Converted</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{convertedLeads}</p><p className="mt-1 text-xs text-muted-foreground">Leads already turned into successful employer accounts.</p></div><div className="workspace-tone-emerald rounded-2xl p-2.5"><ArrowRight className="h-5 w-5" /></div></div></div>
-          <div className="workspace-glass-panel rounded-2xl p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Lost</p><p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{lostLeads}</p><p className="mt-1 text-xs text-muted-foreground">Leads that have fallen out of the active funnel.</p></div><div className="workspace-tone-rose rounded-2xl p-2.5"><Trash2 className="h-5 w-5" /></div></div></div>
-        </div>
+      
       </section>
 
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter leads</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Search the funnel and switch the way you review it</h2>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Search the funnel and filter by stage</h2>
         </div>
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search leads" value={search} onChange={(e) => setSearch(e.target.value)} className="h-11 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none" />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-11 rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
-          >
-            <option value="">All stages</option>
-            {STAGES.map((s) => (
-              <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-            ))}
-          </select>
-          <div className="ml-auto flex gap-2">
-            {(["kanban", "table"] as const).map((v) => (
-              <Button key={v} onClick={() => setView(v)} size="sm" variant="outline" aria-pressed={view === v} className={view === v ? "workspace-tone-sky h-11 rounded-xl border-transparent px-4 hover:opacity-90" : "workspace-muted-pill h-11 rounded-xl px-4 hover:bg-card"}>
-                {v === "kanban" ? "Kanban" : "Table"}
-              </Button>
-            ))}
-          </div>
+          <TableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search leads"
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            right={
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="h-11 rounded-xl border border-border bg-background/70 px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+              >
+                <option value="">All stages</option>
+                {STAGES.map((s) => (
+                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                ))}
+              </select>
+            }
+          />
         </div>
       </section>
 
       {loading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">Loading…</div>
-      ) : view === "kanban" ? (
-        <section className="grid grid-cols-1 gap-3 items-start sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-          {STAGES.map((stage) => (
-            <div key={stage} className={`rounded-[24px] border border-border p-3 space-y-2 shadow-[0_18px_44px_-38px_rgba(15,23,42,0.25)] ${STAGE_COLORS[stage]}`}>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{stage}</span>
-                <span className="workspace-muted-pill rounded-full px-1.5 py-0.5 text-xs font-bold">{byStage(stage).length}</span>
-              </div>
-              {byStage(stage).map((lead) => (
-                <div key={lead._id} className="workspace-panel-surface rounded-2xl p-3 shadow-sm space-y-2 text-sm">
-                  <p className="truncate font-semibold text-foreground">{lead.companyName}</p>
-                  <p className="truncate text-xs text-muted-foreground">{lead.contactPerson}</p>
-                  {lead.country && <p className="text-xs text-muted-foreground">{lead.country}</p>}
-                  <div className="flex gap-1 pt-1 flex-wrap">
-                    {STAGES.filter((s) => s !== stage && s !== "lost").map((s) => (
-                      <Button key={s} variant="outline" size="xs"
-                        disabled={updating === lead._id}
-                        onClick={() => updateStatus(lead._id, s)}
-                        className="h-auto rounded-lg px-1.5 py-0.5 text-[10px]">
-                        → {s}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="flex gap-1 pt-1">
-                    {can("leads", "update") && (
-                      <Button variant="ghost" size="xs" onClick={() => openEdit(lead)} className="text-xs text-primary" aria-label={`Edit ${lead.companyName}`}>Edit</Button>
-                    )}
-                    {can("leads", "delete") && (
-                      <Button variant="ghost" size="xs" onClick={() => handleDelete(lead._id)} className="text-xs text-destructive" aria-label={`Delete ${lead.companyName}`}>Delete</Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {byStage(stage).length === 0 && (
-                <p className="py-2 text-center text-xs text-muted-foreground">Empty</p>
-              )}
-            </div>
-          ))}
-        </section>
       ) : (
         <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Review lead details in a compact table</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{pagination.total} leads across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}</div></div>
@@ -229,13 +236,14 @@ export default function AgentLeadsPage() {
                 <TableHead>Industry</TableHead>
                 <TableHead>Stage</TableHead>
                 <TableHead>Follow Up</TableHead>
+                <TableHead>AI</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {leads.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={7} className="h-32 text-center">
+                  <TableCell colSpan={8} className="h-32 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <Inbox className="h-8 w-8 text-muted-foreground" />
                       <span className="text-sm">No leads found</span>
@@ -256,6 +264,22 @@ export default function AgentLeadsPage() {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {lead.followUpAt ? new Date(lead.followUpAt).toLocaleDateString() : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => scoreLead(lead._id)}
+                      disabled={scoringLeadId === lead._id}
+                      title="AI Score"
+                      aria-label={`AI score ${lead.companyName}`}
+                    >
+                      {scoringLeadId === lead._id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                      ) : (
+                        <Flame className="h-3.5 w-3.5 text-amber-500" />
+                      )}
+                    </Button>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -316,6 +340,70 @@ export default function AgentLeadsPage() {
         } : undefined}
         onSubmit={handleSave}
       />
+
+      {/* AI Lead Score Result Dialog */}
+      <Dialog open={Boolean(scoreResult)} onOpenChange={(open) => { if (!open) setScoreResult(null); }}>
+        <DialogContent className="max-w-lg rounded-[24px] border-border bg-background p-0">
+          {scoreResult && (
+            <>
+              <DialogHeader className="border-b border-border px-6 py-5">
+                <div className="flex items-center gap-3">
+                  <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-wider ${TEMP_STYLES[scoreResult.temperature] ?? ""}`}>
+                    <Flame className="h-3 w-3" />
+                    {scoreResult.temperature} — {scoreResult.score}/100
+                  </div>
+                  <DialogTitle className="text-lg font-semibold text-foreground">
+                    {scoreResult.lead.companyName}
+                  </DialogTitle>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">{scoreResult.reasoning}</p>
+              </DialogHeader>
+              <div className="space-y-4 px-6 py-5">
+                <div className="workspace-glass-panel rounded-2xl p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recommended Next Action</p>
+                  <p className="mt-2 text-sm font-medium text-foreground">{scoreResult.nextAction}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Follow up in <span className="font-semibold text-foreground">{scoreResult.suggestedFollowUpDays}</span> days
+                  </p>
+                </div>
+
+                <div className="workspace-glass-panel rounded-2xl p-4">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-sky-500" />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Draft Follow-up Message</p>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground leading-6">{scoreResult.draftMessage}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-3 h-8 rounded-lg text-xs"
+                    onClick={() => {
+                      navigator.clipboard.writeText(scoreResult.draftMessage);
+                      toast.success("Message copied to clipboard");
+                    }}
+                  >
+                    Copy message
+                  </Button>
+                </div>
+
+                {scoreResult.riskFactors.length > 0 && (
+                  <div className="workspace-glass-panel rounded-2xl p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Risk Factors</p>
+                    <ul className="mt-2 space-y-1.5">
+                      {scoreResult.riskFactors.map((risk) => (
+                        <li key={risk} className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
+                          <span>{risk}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -207,3 +207,38 @@ export function useCandidateDetail(id: string) {
     enabled: !!id,
   });
 }
+
+// ── AI Screening Types ─────────────────────────────────────────────
+export interface ScreenedCandidate {
+  id: string;
+  name: string;
+  score: number;
+  recommendation: "shortlist" | "consider" | "pass";
+  strengths: string[];
+  gaps: string[];
+  summary: string;
+}
+
+export interface ScreenCandidatesResponse {
+  candidates: ScreenedCandidate[];
+  jobTitle: string;
+  totalReviewed: number;
+}
+
+/** Run AI screening for all applicants on a job */
+export function useScreenCandidates() {
+  return useMutation({
+    mutationFn: async ({ jobId, maxCandidates = 10 }: { jobId: string; maxCandidates?: number }): Promise<ScreenCandidatesResponse> => {
+      const res = await fetch("/api/ai/screen-candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId, maxCandidates }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Screening failed" }));
+        throw new Error(err.error ?? "Failed to screen candidates");
+      }
+      return res.json();
+    },
+  });
+}

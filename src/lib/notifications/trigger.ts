@@ -25,7 +25,11 @@ export type NotificationType =
   | "job_rejected"
   | "lead_converted"
   | "mention"
-  | "system";
+  | "system"
+  | "agent_joined"
+  | "employer_registered"
+  | "placement_completed"
+  | "new_job_posted";
 
 interface NotifyPayload {
   userId: string;
@@ -216,5 +220,89 @@ export async function notifyScorecardSubmitted(
     link: `/en/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, companyName, overallScore, applicationId },
+  });
+}
+
+// ─── Super-agent helper: resolve userId from agentId ───
+export async function getSuperAgentUserId(agentId: string): Promise<string | null> {
+  const Agent = (await import("@/models/Agent")).default;
+  const SuperAgent = (await import("@/models/SuperAgent")).default;
+  const agentDoc = await Agent.findById(agentId).select("superAgentId").lean();
+  if (!agentDoc?.superAgentId) return null;
+  const saDoc = await SuperAgent.findById(agentDoc.superAgentId).select("userId").lean();
+  return saDoc?.userId ? String(saDoc.userId) : null;
+}
+
+// ─── Super-agent notification helpers ───
+
+export async function notifySuperAgentNewJob(
+  superAgentUserId: string,
+  employerName: string,
+  jobTitle: string,
+  jobId: string,
+  locale = "en",
+): Promise<void> {
+  await notify({
+    userId: superAgentUserId,
+    type: "new_job_posted",
+    title: "New Job Posted",
+    message: `${employerName} posted a new job: "${jobTitle}".`,
+    link: `/${locale}/super-agent/jobs`,
+    sendEmail: false,
+    metadata: { jobId, employerName, jobTitle },
+  });
+}
+
+export async function notifySuperAgentAgentJoined(
+  superAgentUserId: string,
+  agentName: string,
+  agentUserId: string,
+  locale = "en",
+): Promise<void> {
+  await notify({
+    userId: superAgentUserId,
+    type: "agent_joined",
+    title: "New Agent Joined Your Team",
+    message: `${agentName} has been added to your team.`,
+    link: `/${locale}/super-agent/agents`,
+    sendEmail: true,
+    metadata: { agentUserId },
+  });
+}
+
+export async function notifySuperAgentEmployerRegistered(
+  superAgentUserId: string,
+  companyName: string,
+  agentName: string,
+  employerId: string,
+  locale = "en",
+): Promise<void> {
+  await notify({
+    userId: superAgentUserId,
+    type: "employer_registered",
+    title: "New Employer Registered",
+    message: `${companyName} registered via ${agentName}'s referral.`,
+    link: `/${locale}/super-agent/employers`,
+    sendEmail: true,
+    metadata: { companyName, employerId },
+  });
+}
+
+export async function notifySuperAgentPlacement(
+  superAgentUserId: string,
+  candidateName: string,
+  jobTitle: string,
+  companyName: string,
+  placementId: string,
+  locale = "en",
+): Promise<void> {
+  await notify({
+    userId: superAgentUserId,
+    type: "placement_completed",
+    title: "New Placement Completed",
+    message: `${candidateName} was placed as "${jobTitle}" at ${companyName}.`,
+    link: `/${locale}/super-agent/placements`,
+    sendEmail: true,
+    metadata: { placementId, candidateName, jobTitle, companyName },
   });
 }

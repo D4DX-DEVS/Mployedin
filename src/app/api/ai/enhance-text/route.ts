@@ -5,6 +5,7 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { validateBody } from "@/lib/validators";
 import { aiEnhanceTextSchema } from "@/lib/validators/ai";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   if (ctx.role !== "job_seeker") {
@@ -42,6 +43,13 @@ ${text}`;
   if (!enhanced) {
     return NextResponse.json({ error: "Failed to enhance text" }, { status: 500 });
   }
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "ai.enhance_text",
+    resource: "ai",
+    req,
+  });
 
   return NextResponse.json({ enhanced });
 });

@@ -10,6 +10,7 @@ import type { UserRole } from "@/models/User";
 import { triggerRealtimeEvent } from "@/lib/realtime";
 import { validateBody } from "@/lib/validators";
 import { dmStartConversationSchema } from "@/lib/validators/dm";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 interface AuthCtx { userId: string; role: UserRole; }
 
@@ -54,22 +55,41 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // Backfill missing avatars — older conversations may have been created
   // before the avatar field was correctly populated.
   const missingAvatarIds = new Set<string>();
+  const missingAvatarRoles = new Map<string, string>();
   for (const conv of conversations) {
     for (const p of conv.participantDetails ?? []) {
-      if (!p.avatar) missingAvatarIds.add(p.userId.toString());
+      if (!p.avatar) {
+        missingAvatarIds.add(p.userId.toString());
+        missingAvatarRoles.set(p.userId.toString(), p.role);
+      }
     }
   }
 
   if (missingAvatarIds.size > 0) {
-    const users = await User.find({
-      _id: { $in: [...missingAvatarIds].map((id) => new mongoose.Types.ObjectId(id)) },
-    })
+    const ids = [...missingAvatarIds].map((id) => new mongoose.Types.ObjectId(id));
+
+    const users = await User.find({ _id: { $in: ids } })
       .select("_id avatar")
       .lean();
 
     const avatarMap = new Map<string, string>();
     for (const u of users) {
       if (u.avatar) avatarMap.set(u._id.toString(), u.avatar);
+    }
+
+    // For employer users still missing avatar, fall back to Employer.logo
+    const stillMissingEmployerIds = [...missingAvatarIds]
+      .filter((id) => !avatarMap.has(id) && missingAvatarRoles.get(id) === "employer");
+
+    if (stillMissingEmployerIds.length > 0) {
+      const employers = await Employer.find({
+        userId: { $in: stillMissingEmployerIds.map((id) => new mongoose.Types.ObjectId(id)) },
+      })
+        .select("userId logo")
+        .lean();
+      for (const emp of employers) {
+        if (emp.logo) avatarMap.set(emp.userId.toString(), emp.logo);
+      }
     }
 
     for (const conv of conversations) {
@@ -186,6 +206,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       await triggerRealtimeEvent(recipientObjectId.toString(), "new-conversation", { conversation }).catch(() => {});
     }
   }
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "dm.conversation_create",
+    resource: "conversations",
+    resourceId: (conversation as unknown as { _id: { toString(): string } })._id.toString(),
+    meta: { recipientId },
+    req,
+  });
 
   return NextResponse.json({ conversation });
 }

@@ -7,7 +7,7 @@ import type { CompanyRole } from "@/models/CompanyUser";
 type Resource = Parameters<typeof canAccess>[1];
 type Action = Parameters<typeof canAccess>[2];
 
-interface AuthContext {
+export interface AuthContext {
   userId: string;
   role: UserRole;
   locale: string;

@@ -5,14 +5,17 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { useCandidates, usePublishedJobs, useStartConversation, useAiMatch } from "@/hooks/useCandidates";
+import { useCandidates, usePublishedJobs, useStartConversation, useAiMatch, useScreenCandidates } from "@/hooks/useCandidates";
 import { useDebounce } from "@/hooks/useDebounce";
-import type { Candidate, CandidateJob } from "@/hooks/useCandidates";
+import { useTableExport } from "@/hooks/useTableExport";
+import type { Candidate, CandidateJob, ScreenedCandidate } from "@/hooks/useCandidates";
+import type { ExportColumn } from "@/lib/export";
 import {
   filterCandidatesByScore,
   getAutoReviewCandidateIds,
@@ -28,6 +31,7 @@ import {
   Briefcase,
   CheckCheck,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   Eye,
   FileText,
@@ -36,12 +40,14 @@ import {
   MessageSquare,
   MoreHorizontal,
   Search,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Star,
   Target,
   Trophy,
   Users,
+  XCircle,
   Zap,
 } from "lucide-react";
 
@@ -643,6 +649,128 @@ function CandidateInsightsDialog({
   );
 }
 
+/* ── AI Screening Results Panel ──────────────────────────────────── */
+const RECOMMENDATION_STYLES: Record<string, string> = {
+  shortlist: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
+  consider: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
+  pass: "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
+};
+
+interface ScreeningPanelProps {
+  results: ScreenedCandidate[];
+  jobTitle: string;
+  totalReviewed: number;
+  onClose: () => void;
+}
+
+function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: ScreeningPanelProps) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const shortlistCount = results.filter((c) => c.recommendation === "shortlist").length;
+  const considerCount = results.filter((c) => c.recommendation === "consider").length;
+  const passCount = results.filter((c) => c.recommendation === "pass").length;
+
+  return (
+    <section className="workspace-panel-surface rounded-[24px] p-4 sm:p-5 space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-sky-600" />
+            <h2 className="text-lg font-semibold text-foreground">AI Screening Results</h2>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Screened <span className="font-semibold text-foreground">{totalReviewed}</span> candidates for <span className="font-semibold text-foreground">{jobTitle}</span>
+          </p>
+        </div>
+        <Button size="sm" variant="outline" className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs" onClick={onClose}>
+          <XCircle className="mr-2 h-3.5 w-3.5" />
+          Dismiss
+        </Button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="workspace-glass-panel rounded-2xl p-3 text-center">
+          <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{shortlistCount}</p>
+          <p className="text-xs font-medium text-muted-foreground">Shortlist</p>
+        </div>
+        <div className="workspace-glass-panel rounded-2xl p-3 text-center">
+          <p className="text-2xl font-semibold text-amber-600 dark:text-amber-400">{considerCount}</p>
+          <p className="text-xs font-medium text-muted-foreground">Consider</p>
+        </div>
+        <div className="workspace-glass-panel rounded-2xl p-3 text-center">
+          <p className="text-2xl font-semibold text-rose-600 dark:text-rose-400">{passCount}</p>
+          <p className="text-xs font-medium text-muted-foreground">Pass</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {results.map((candidate, idx) => {
+          const isExpanded = expandedId === candidate.id;
+          return (
+            <div
+              key={candidate.id}
+              className={`overflow-hidden rounded-[18px] border transition-colors ${RECOMMENDATION_STYLES[candidate.recommendation] ?? "border-border bg-background"}`}
+            >
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                onClick={() => setExpandedId(isExpanded ? null : candidate.id)}
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/5 text-xs font-bold dark:bg-white/10">
+                  #{idx + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-semibold">{candidate.name}</span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${scoreBadgeClass(candidate.score)}`}>
+                      {candidate.score}%
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs opacity-80">{candidate.summary}</p>
+                </div>
+                <span className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                  {candidate.recommendation}
+                </span>
+                <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+              </button>
+
+              {isExpanded && (
+                <div className="border-t border-current/10 px-4 py-3 space-y-3">
+                  {candidate.strengths.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold">Strengths</p>
+                      <ul className="mt-1 space-y-1">
+                        {candidate.strengths.map((s) => (
+                          <li key={s} className="flex items-start gap-2 text-xs">
+                            <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            <span>{s}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {candidate.gaps.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold">Gaps</p>
+                      <ul className="mt-1 space-y-1">
+                        {candidate.gaps.map((g) => (
+                          <li key={g} className="flex items-start gap-2 text-xs">
+                            <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-rose-500" />
+                            <span>{g}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function EmployerCandidatesPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
@@ -673,6 +801,11 @@ export default function EmployerCandidatesPage() {
   const [reviewListIds, setReviewListIds] = useState<Set<string>>(new Set());
   const [matchFeedback, setMatchFeedback] = useState<MatchFeedback | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [screeningResults, setScreeningResults] = useState<{
+    candidates: ScreenedCandidate[];
+    jobTitle: string;
+    totalReviewed: number;
+  } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
   const normalizedLocationFilter = normalizeText(locationFilter);
   const normalizedSkillsFilter = useMemo(
@@ -696,12 +829,28 @@ export default function EmployerCandidatesPage() {
   } = useCandidates({ page, limit, search: debouncedSearch, jobId: selectedJob || undefined });
   const startDmMutation = useStartConversation();
   const aiMatchMutation = useAiMatch();
+  const screenMutation = useScreenCandidates();
 
   const candidates = localCandidates ?? candidatesData?.candidates ?? [];
   const total = candidatesData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const selectedJobData: CandidateJob | undefined = jobs.find((j) => j._id === selectedJob);
   const detailCandidate = candidates.find((candidate) => candidate._id === detailCandidateId) ?? null;
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Name", key: "fullName", formatter: (v, r) => String(v ?? (r as Record<string, any>).userId?.name ?? "Unknown") },
+    { header: "Location", key: "currentLocation", formatter: (v) => String(v ?? "—") },
+    { header: "Experience (yrs)", key: "totalExperienceYears", formatter: (v) => v != null ? String(v) : "—" },
+    { header: "Skills", key: "skills", formatter: (v) => Array.isArray(v) ? v.slice(0, 5).join(", ") : "—" },
+    { header: "AI Match", key: "matchScore", formatter: (v) => v != null ? `${v}%` : "—" },
+    { header: "Availability", key: "availabilityStatus", formatter: (v) => String(v ?? "—") },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: candidates as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "candidates",
+    title: "Candidates",
+  });
 
   const structuredCandidates = useMemo(() => {
     return candidates.filter((candidate) => {
@@ -922,6 +1071,23 @@ export default function EmployerCandidatesPage() {
     });
   };
 
+  const runAIScreening = async () => {
+    if (!selectedJob) {
+      setMatchFeedback({ type: "info", message: "Choose a published job before running AI screening." });
+      return;
+    }
+    setScreeningResults(null);
+    setMatchFeedback(null);
+    try {
+      const data = await screenMutation.mutateAsync({ jobId: selectedJob, maxCandidates: 20 });
+      setScreeningResults(data);
+      toast.success(`AI screened ${data.totalReviewed} candidates for ${data.jobTitle}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "AI screening failed. Try again later.";
+      setMatchFeedback({ type: "error", message });
+    }
+  };
+
   const toggleReviewList = (id: string) => {
     setReviewListIds((prev) => {
       const next = new Set(prev);
@@ -1089,16 +1255,36 @@ export default function EmployerCandidatesPage() {
             </div>
           </div>
 
-          <Button
-            onClick={runAIMatch}
-            disabled={!selectedJob || !!matchProgress || structuredCandidates.length === 0}
-            className="h-9 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
-          >
-            {matchProgress ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
-            {matchProgress ? `Scoring ${matchProgress.done}/${matchProgress.total}` : "Run AI Match"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={runAIMatch}
+              disabled={!selectedJob || !!matchProgress || structuredCandidates.length === 0}
+              className="h-9 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+            >
+              {matchProgress ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
+              {matchProgress ? `Scoring ${matchProgress.done}/${matchProgress.total}` : "Run AI Match"}
+            </Button>
+            <Button
+              onClick={runAIScreening}
+              disabled={!selectedJob || screenMutation.isPending}
+              variant="outline"
+              className="h-9 rounded-xl border-border bg-background/80 px-4 text-sm font-semibold"
+            >
+              {screenMutation.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
+              {screenMutation.isPending ? "Screening..." : "Screen with AI"}
+            </Button>
+          </div>
         </div>
       </section>
+
+      {screeningResults && (
+        <AIScreeningResultsPanel
+          results={screeningResults.candidates}
+          jobTitle={screeningResults.jobTitle}
+          totalReviewed={screeningResults.totalReviewed}
+          onClose={() => setScreeningResults(null)}
+        />
+      )}
 
       {hasLoadError && (
         <div className="rounded-[24px] border border-destructive/20 bg-destructive/5 p-4 shadow-[0_16px_40px_-36px_rgba(220,38,38,0.45)]">
@@ -1381,6 +1567,12 @@ export default function EmployerCandidatesPage() {
             </div>
           ) : null}
         </section>
+
+      <TableToolbar
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
 
       {loading ? (
         <div className="space-y-2">

@@ -2,14 +2,29 @@ import { z } from "zod";
 import { commonSchemas } from "./index";
 
 /** PATCH /api/agent/settings & /api/super-agent/settings */
+const VALID_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 export const agentSettingsUpdateSchema = z.object({
   country: z.string().max(5).trim().optional(),
   currencyCode: z.string().max(5).trim().optional(),
+  timezone: z.string().max(50).trim().optional(),
+  workingHoursStart: z.string().regex(TIME_REGEX, "Invalid time format").optional(),
+  workingHoursEnd: z.string().regex(TIME_REGEX, "Invalid time format").optional(),
+  workingDays: z.array(z.enum(VALID_DAYS)).max(7).optional(),
 });
 
 /** PATCH /api/super-agent/profile */
 export const superAgentProfileUpdateSchema = z.object({
   overrideRate: z.number().min(0).max(100).optional(),
+  name: z.string().min(1).max(80).trim().optional(),
+  phone: z.string().max(20).trim().optional(),
+});
+
+/** PATCH /api/agent/profile */
+export const agentProfileUpdateSchema = z.object({
+  name: z.string().min(1).max(80).trim().optional(),
+  phone: z.string().max(20).trim().optional(),
 });
 
 /** PATCH /api/user/notification-preferences */

@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  serverExternalPackages: ["mongoose", "bcryptjs", "pdf-parse", "mammoth"],
+  serverExternalPackages: ["mongoose", "bcryptjs", "pdf-parse", "mammoth", "jsdom", "isomorphic-dompurify", "dompurify"],
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

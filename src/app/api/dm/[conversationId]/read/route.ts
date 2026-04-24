@@ -5,6 +5,7 @@ import Conversation from "@/models/Conversation";
 import DirectMessage from "@/models/DirectMessage";
 import { triggerRealtimeEvent } from "@/lib/realtime";
 import mongoose from "mongoose";
+import { logActivity } from "@/lib/audit/log";
 
 /**
  * PATCH /api/dm/[conversationId]/read
@@ -44,6 +45,14 @@ async function patchHandler(req: NextRequest, ctx: { userId: string }, params?: 
   if (senderId) {
     await triggerRealtimeEvent(senderId, "messages-read", { conversationId }).catch(() => {});
   }
+
+  await logActivity({
+    actorId: ctx.userId,
+    action: "dm.conversation_read",
+    resource: "conversations",
+    resourceId: conversationId,
+    req,
+  });
 
   return NextResponse.json({ ok: true });
 }

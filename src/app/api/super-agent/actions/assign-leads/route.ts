@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import SuperAgent from "@/models/SuperAgent";
 import Agent from "@/models/Agent";
 import Lead from "@/models/Lead";
-import AuditLog from "@/models/AuditLog";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { assignLeadsSchema } from "@/lib/validators/super-agent";
 
@@ -71,17 +71,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   );
 
   // Audit trail
-  await AuditLog.create({
-    actorId: ctx.userId,
-    actorRole: ctx.role,
+  await logActivity({
+    ...actorFromCtx(ctx),
     action: "super_agent.assign_leads",
-    resource: "lead",
+    resource: "leads",
     meta: {
       fromAgentUserId,
       toAgentUserId,
       leadIds: leadIds.map(String),
       count: leadsToMove.length,
     },
+    req,
   });
 
   return NextResponse.json({

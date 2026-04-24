@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -87,6 +88,13 @@ Return ONLY the summary text. No quotes, no labels, no extra formatting.`;
     completeness = Math.min(100, completeness);
     await JobSeeker.updateOne({ userId: ctx.userId }, { $set: { profileCompleteness: completeness } });
   }
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "ai.generate_summary",
+    resource: "ai",
+    req,
+  });
 
   return NextResponse.json({ summary });
 });

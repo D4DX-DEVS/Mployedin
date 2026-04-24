@@ -8,6 +8,7 @@ import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import mongoose from "mongoose";
 import { validateBody } from "@/lib/validators";
 import { dmSendMessageSchema } from "@/lib/validators/dm";
+import { logActivity } from "@/lib/audit/log";
 
 async function assertParticipant(conversationId: string, userId: string) {
   const conv = await Conversation.findById(conversationId).lean();
@@ -98,6 +99,15 @@ async function postHandler(req: NextRequest, ctx: { userId: string }, params?: R
       createdAt: msg.createdAt.toISOString(),
     });
   }
+
+  await logActivity({
+    actorId: ctx.userId,
+    action: "dm.message_send",
+    resource: "direct_messages",
+    resourceId: msg._id.toString(),
+    meta: { conversationId },
+    req,
+  });
 
   return NextResponse.json({ message: msg }, { status: 201 });
 }

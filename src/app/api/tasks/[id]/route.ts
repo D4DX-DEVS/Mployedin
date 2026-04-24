@@ -3,6 +3,7 @@ import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { auth } from "@/lib/auth/config";
 import type { UserRole } from "@/models/User";
+import { logActivity } from "@/lib/audit/log";
 
 const TASKS_PATH = path.join(process.cwd(), "tasks.json");
 
@@ -50,6 +51,16 @@ export async function PATCH(
     }
 
     await writeFile(TASKS_PATH, JSON.stringify(data, null, 2), "utf-8");
+
+    await logActivity({
+      actorId: session.user.id!,
+      actorRole: role,
+      action: "task.update",
+      resource: "tasks",
+      resourceId: id,
+      changes: { after: body },
+      req,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

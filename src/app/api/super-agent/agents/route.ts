@@ -10,6 +10,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search");
+  const performance = searchParams.get("performance"); // high_performer | needs_attention | slow_response | no_activity
+  const leadsMin = searchParams.get("leadsMin");
+  const leadsMax = searchParams.get("leadsMax");
+  const convRateMin = searchParams.get("convRateMin");
+  const convRateMax = searchParams.get("convRateMax");
+  const sortBy = searchParams.get("sortBy") || "name"; // name | leadsCount | conversions | placements | conversionRate | avgResponseHours
+  const sortOrder = searchParams.get("sortOrder") || "asc";
+  const distinct = searchParams.get("distinct"); // return facets when "true"
 
   // Find the SuperAgent profile for the logged-in user
   const saProfile = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
@@ -40,7 +48,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     .select("agentId status convertedAt activityLog createdAt")
     .lean();
 
-  const items = users.map((u) => {
+  let items = users.map((u) => {
     const agentLeads = leads.filter((l) => l.agentId?.toString() === u._id.toString());
     const converted = agentLeads.filter((l) => l.status === "converted").length;
 
@@ -68,5 +76,42 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     };
   });
 
-  return NextResponse.json({ items, total: items.length });
+  // ── Performance filter ──
+  if (performance) {
+    items = items.filter((a) => {
+      switch (performance) {
+        case "high_performer": return a.conversionRate >= 50;
+        case "needs_attention": return a.conversionRate < 15 && a.leadsCount > 0;
+        case "slow_response": return a.avgResponseHours > 48 && a.leadsCount > 0;
+        case "no_activity": return a.leadsCount === 0;
+        default: return true;
+      }
+    });
+  }
+
+  // ── Leads range filter ──
+  if (leadsMin) items = items.filter((a) => a.leadsCount >= parseInt(leadsMin));
+  if (leadsMax) items = items.filter((a) => a.leadsCount <= parseInt(leadsMax));
+
+  // ── Conversion rate range filter ──
+  if (convRateMin) items = items.filter((a) => a.conversionRate >= parseInt(convRateMin));
+  if (convRateMax) items = items.filter((a) => a.conversionRate <= parseInt(convRateMax));
+
+  // ── Sorting ──
+  const VALID_SORT_FIELDS = new Set(["name", "leadsCount", "conversions", "placements", "conversionRate", "avgResponseHours"]);
+  const sortField = VALID_SORT_FIELDS.has(sortBy) ? sortBy : "name";
+  const dir = sortOrder === "desc" ? -1 : 1;
+  items.sort((a, b) => {
+    const va = (a as Record<string, unknown>)[sortField];
+    const vb = (b as Record<string, unknown>)[sortField];
+    if (typeof va === "string" && typeof vb === "string") return va.localeCompare(vb) * dir;
+    return ((va as number) - (vb as number)) * dir;
+  });
+
+  // ── Facets (for filter dropdowns) ──
+  const facets = distinct === "true" ? {
+    performanceLevels: ["high_performer", "needs_attention", "slow_response", "no_activity"],
+  } : undefined;
+
+  return NextResponse.json({ items, total: items.length, ...(facets ? { facets } : {}) });
 }, { resource: "users", action: "read" });

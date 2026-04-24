@@ -120,6 +120,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean() as { _id?: unknown } | null;
     if (agent?._id) agentId = String(agent._id);
   }
+  // Auto-resolve agentId from employer when called by non-agent roles
+  if (!agentId && candidates.length > 0 && candidates[0].applicationId) {
+    const firstApp = await Application.findById(candidates[0].applicationId).select("employerId").lean();
+    if (firstApp?.employerId) {
+      const { Employer } = await import("@/models/Employer");
+      const emp = await Employer.findById(firstApp.employerId).select("agentId").lean();
+      if (emp?.agentId) agentId = String(emp.agentId);
+    }
+  }
 
   let slotCursor = new Date(baseTime);
 

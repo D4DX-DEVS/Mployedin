@@ -20,6 +20,7 @@ import {
   Briefcase,
   AlertTriangle,
   RefreshCw,
+  Download,
   Filter,
   Clock,
   ArrowDownRight,
@@ -162,6 +163,45 @@ export default function EmployerAnalyticsPage() {
     }
   };
 
+  const handleExportCSV = () => {
+    let csvRows: string[] = [];
+
+    if (activeTab === "pipeline" && data && pipeline) {
+      csvRows = [
+        "Stage,Count,Conversion %",
+        ...FUNNEL_STAGES.map((s) => {
+          const count = (data.conversion as unknown as Record<string, number>)[s] ?? 0;
+          const pct = data.conversion.applied > 0 ? ((count / data.conversion.applied) * 100).toFixed(1) : "0";
+          return `${STAGE_NAMES[s] || s},${count},${pct}%`;
+        }),
+      ];
+    } else if (activeTab === "historical" && historical) {
+      csvRows = [
+        "Date,Applications",
+        ...(historical.trend ?? []).map((m) =>
+          `${m.date},${m.count}`
+        ),
+      ];
+    } else if (activeTab === "performance" && performance) {
+      csvRows = [
+        "Job Title,Views,Applications,Conversion %",
+        ...(performance.jobs ?? []).map((j) =>
+          `"${j.title}",${j.views},${j.applications},${j.conversionRate ?? "N/A"}%`
+        ),
+      ];
+    } else {
+      csvRows = ["No data available for export"];
+    }
+
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `analytics-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (activeTab === "pipeline") {
@@ -297,6 +337,13 @@ export default function EmployerAnalyticsPage() {
                   <RefreshCw
                     className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
                   />
+                </button>
+                <button
+                  onClick={handleExportCSV}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-emerald-700 dark:hover:text-emerald-300"
+                  title="Export CSV"
+                >
+                  <Download className="h-4 w-4" />
                 </button>
               </div>
             </div>

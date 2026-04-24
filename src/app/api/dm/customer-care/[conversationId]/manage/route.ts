@@ -7,6 +7,7 @@ import type { UserRole } from "@/models/User";
 import { triggerRealtimeEvent } from "@/lib/realtime";
 import { validateBody } from "@/lib/validators";
 import { customerCareManageSchema } from "@/lib/validators/dm";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 interface AuthCtx {
   userId: string;
@@ -89,6 +90,15 @@ async function patchHandler(
       }
     ).catch(() => {});
   }
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "dm.customer_care_manage",
+    resource: "conversations",
+    resourceId: conversationId,
+    changes: { after: { status, assignedTo, priority } },
+    req,
+  });
 
   return NextResponse.json({ conversation: conversation.toObject() });
 }

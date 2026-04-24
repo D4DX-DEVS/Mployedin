@@ -13,8 +13,11 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useScorecards } from "@/hooks/useScorecards";
+import { useTableExport } from "@/hooks/useTableExport";
 import { FeedbackTrendsPanel } from "@/components/features/employer/FeedbackTrendsPanel";
+import type { ExportColumn } from "@/lib/export";
 
 const RECOMMENDATION_COLORS: Record<string, string> = {
   strong_yes: "bg-emerald-100 text-emerald-700 border-emerald-300",
@@ -49,6 +52,20 @@ export default function ScorecardListPage() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Candidate", key: "_id", formatter: (v) => `Candidate #${String(v).slice(-4)}` },
+    { header: "Interview Date", key: "interviewId", formatter: (_v, r) => new Date((r as Record<string, any>).interviewId?.scheduledAt).toLocaleDateString() },
+    { header: "Overall Score", key: "overallScore", formatter: (v) => `${Number(v).toFixed(1)}/5` },
+    { header: "Recommendation", key: "recommendation", formatter: (v) => RECOMMENDATION_LABELS[String(v)] ?? String(v) },
+    { header: "Evaluated", key: "createdAt", formatter: (v) => new Date(String(v)).toLocaleDateString() },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: scorecards as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "scorecards",
+    title: "Interview Scorecards",
+  });
+
   useEffect(() => {
     document.title = "Interview Scorecards · MPLOYEDIN";
   }, []);
@@ -78,6 +95,12 @@ export default function ScorecardListPage() {
 
       {/* Aggregate Feedback Trends */}
       <FeedbackTrendsPanel />
+
+      <TableToolbar
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
 
       {scorecards.length === 0 ? (
         <div className="card-base text-center py-16">

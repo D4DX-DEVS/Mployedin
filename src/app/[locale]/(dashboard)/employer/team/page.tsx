@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock, Pencil, Activity } from "lucide-react";
 import Link from "next/link";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +22,10 @@ import {
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { useTeam, useInviteTeamMember, useUpdateTeamMember, useRemoveTeamMember } from "@/hooks/useTeam";
+import { usePagination } from "@/hooks/usePagination";
+import { useTableExport } from "@/hooks/useTableExport";
 import type { CompanyRole, MemberStatus, TeamMember } from "@/hooks/useTeam";
+import type { ExportColumn } from "@/lib/export";
 import { useJobs } from "@/hooks/useJobs";
 import { FormMultiSelect } from "@/components/shared/AppForm";
 
@@ -62,6 +67,7 @@ export default function TeamManagementPage() {
   const [inviteData, setInviteData] = useState({ email: "", companyRole: "hiring_manager" as CompanyRole, jobAccess: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   // Job access edit modal
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
@@ -134,6 +140,36 @@ export default function TeamManagementPage() {
   const activeCount = members.filter((m) => m.status === "active").length;
   const pendingCount = members.filter((m) => m.status === "pending").length;
   const totalCount = members.length;
+
+  // Client-side search, pagination, export
+  const filteredMembers = useMemo(() => {
+    if (!search.trim()) return members;
+    const q = search.toLowerCase();
+    return members.filter((m) =>
+      (m.user?.name ?? "").toLowerCase().includes(q) ||
+      m.email.toLowerCase().includes(q) ||
+      m.companyRole.toLowerCase().includes(q)
+    );
+  }, [members, search]);
+
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal } = usePagination(10);
+  useEffect(() => { updateTotal(filteredMembers.length); }, [filteredMembers.length, updateTotal]);
+  useEffect(() => { setPage(1); }, [search, setPage]);
+  const pagedMembers = filteredMembers.slice((page - 1) * limit, page * limit);
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Name", key: "user", formatter: (_v, r) => (r as Record<string, any>).user?.name ?? "Pending Invite" },
+    { header: "Email", key: "email", formatter: (v) => String(v ?? "—") },
+    { header: "Role", key: "companyRole", formatter: (v) => ROLE_LABELS[String(v) as CompanyRole] ?? String(v) },
+    { header: "Status", key: "status", formatter: (v) => String(v ?? "—") },
+    { header: "Joined", key: "acceptedAt", formatter: (v, r) => v ? new Date(String(v)).toLocaleDateString() : (r as Record<string, any>).invitedAt ? `Invited ${new Date(String((r as Record<string, any>).invitedAt)).toLocaleDateString()}` : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: filteredMembers as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "team-members",
+    title: "Team Members",
+  });
 
   const stats = [
     { label: "Active Members", value: activeCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-background border-border/60 dark:bg-card" },

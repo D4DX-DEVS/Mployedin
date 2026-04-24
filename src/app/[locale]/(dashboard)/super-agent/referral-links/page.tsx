@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, Fragment } from "react";
+import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -8,7 +9,11 @@ import { usePagination } from "@/hooks/usePagination";
 import {
   useReferralLinks,
   useCreateReferralLink,
+  useUpdateReferralLink,
   ReferralLinkItem,
+  ReferralLinkStatus,
+  ReferralCreatorRole,
+  ReferralSortField,
 } from "@/hooks/useReferralLinks";
 import {
   SuperAgentDataTableShell,
@@ -24,11 +29,15 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  Filter,
   Hash,
   Link2,
   Loader2,
   Plus,
+  Power,
+  PowerOff,
   Search,
+  Sparkles,
   Tag,
   User,
   Users,
@@ -42,6 +51,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 function formatDate(d: string | undefined): string {
   if (!d) return "—";
@@ -74,29 +86,56 @@ function creatorName(link: ReferralLinkItem): string {
 }
 
 export default function SuperAgentReferralLinksPage() {
+  const { locale } = useParams<{ locale: string }>();
   const pagination = usePagination();
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [copyMap, setCopyMap] = useState<Record<string, boolean>>({});
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Filter state
+  const [statusFilter, setStatusFilter] = useState<ReferralLinkStatus | "">("");
+  const [creatorRoleFilter, setCreatorRoleFilter] = useState<ReferralCreatorRole | "">("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortBy, setSortBy] = useState<ReferralSortField | "">("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "">("");
+
+  // AI search state
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState("");
 
   // Create form state
   const [newLabel, setNewLabel] = useState("");
   const [newMaxUses, setNewMaxUses] = useState("");
   const [newExpiresAt, setNewExpiresAt] = useState("");
 
-  const filters = { page: pagination.page, limit: pagination.limit, search };
+  const filters = {
+    page: pagination.page,
+    limit: pagination.limit,
+    search: search || undefined,
+    status: statusFilter || undefined,
+    creatorRole: creatorRoleFilter || undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+    sortBy: sortBy || undefined,
+    sortOrder: sortOrder || undefined,
+  };
 
   const { data, isLoading } = useReferralLinks(filters);
   const createMutation = useCreateReferralLink();
+  const updateMutation = useUpdateReferralLink();
 
   const links = data?.links ?? [];
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 0;
+  const stats = data?.stats ?? { totalLinks: 0, activeLinks: 0, totalRegistrations: 0, myLinks: 0, agentLinks: 0 };
 
   const baseUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/register/employer?ref=`
+      ? `${window.location.origin}/${locale || "en"}/employer-register?ref=`
       : "";
 
   const handleCopy = useCallback((code: string) => {
@@ -117,11 +156,70 @@ export default function SuperAgentReferralLinksPage() {
     setNewExpiresAt("");
   };
 
-  // Stats
-  const activeLinks = links.filter((l) => linkStatus(l) === "active").length;
-  const totalRegistrations = links.reduce((s, l) => s + l.usedCount, 0);
-  const myLinks = links.filter((l) => l.creatorRole === "super_agent").length;
-  const agentLinks = links.filter((l) => l.creatorRole === "agent").length;
+  const handleClearFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setCreatorRoleFilter("");
+    setDateFrom("");
+    setDateTo("");
+    setSortBy("");
+    setSortOrder("");
+    setAiSummary("");
+    pagination.resetPage();
+  };
+
+  const hasActiveFilters = statusFilter || creatorRoleFilter || dateFrom || dateTo || sortBy || search;
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Code", key: "code" },
+    { header: "Creator", key: "createdBy", formatter: (_v, row) => creatorName(row as unknown as ReferralLinkItem) },
+    { header: "Label", key: "label" },
+    { header: "Active", key: "isActive", formatter: (v) => v ? "Yes" : "No" },
+    { header: "Used", key: "usedCount" },
+    { header: "Max Uses", key: "maxUses" },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: "Expires", key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: links as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "super-agent-referral-links",
+    title: "Referral Links",
+  });
+
+  const handleAiSearch = async () => {
+    if (!aiQuery.trim()) return;
+    setAiLoading(true);
+    setAiSummary("");
+    try {
+      const res = await fetch("/api/ai/referral-search-filters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: aiQuery.trim() }),
+      });
+      if (!res.ok) throw new Error("AI search failed");
+      const data = await res.json();
+      const f = data.filters;
+
+      // Apply AI-generated filters
+      if (f.search) setSearch(f.search);
+      if (f.status) setStatusFilter(f.status);
+      if (f.creatorRole) setCreatorRoleFilter(f.creatorRole);
+      if (f.dateFrom) setDateFrom(f.dateFrom);
+      if (f.dateTo) setDateTo(f.dateTo);
+      if (f.sortBy) setSortBy(f.sortBy);
+      if (f.sortOrder) setSortOrder(f.sortOrder);
+      if (f.summary) setAiSummary(f.summary);
+
+      setFiltersOpen(true);
+      pagination.resetPage();
+    } catch {
+      setAiSummary("Could not process your query. Try rephrasing.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   return (
     <div className="page-container space-y-6">
@@ -133,10 +231,10 @@ export default function SuperAgentReferralLinksPage() {
 
       <SuperAgentMetricsGrid
         items={[
-          { label: "Total Links", value: total, icon: <Link2 className="h-5 w-5" />, helper: "All referral links" },
-          { label: "Active Links", value: activeLinks, icon: <Check className="h-5 w-5" />, helper: "Currently active" },
-          { label: "Total Registrations", value: totalRegistrations, icon: <Users className="h-5 w-5" />, helper: "Users registered via links" },
-          { label: "Your Links / Agent Links", value: `${myLinks} / ${agentLinks}`, icon: <User className="h-5 w-5" />, helper: "Breakdown by owner" },
+          { label: "Total Links", value: stats.totalLinks, icon: <Link2 className="h-5 w-5" />, helper: "All referral links" },
+          { label: "Active Links", value: stats.activeLinks, icon: <Check className="h-5 w-5" />, helper: "Currently active" },
+          { label: "Total Registrations", value: stats.totalRegistrations, icon: <Users className="h-5 w-5" />, helper: "Users registered via links" },
+          { label: "Your Links / Agent Links", value: `${stats.myLinks} / ${stats.agentLinks}`, icon: <User className="h-5 w-5" />, helper: "Breakdown by owner" },
         ]}
       />
 
@@ -181,22 +279,156 @@ export default function SuperAgentReferralLinksPage() {
         )}
       </SuperAgentSection>
 
-      {/* Search */}
+      {/* AI Search + Filters */}
       <SuperAgentSection title="Browse Referral Links">
-        <div className="mt-4 max-w-xl">
-          <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); pagination.resetPage(); }}
-              placeholder="Search by code, label, or creator..."
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
-            />
+        {/* AI Natural Language Search */}
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-xl">
+              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-500" />
+              <Input
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
+                placeholder='Try: "most used links this month" or "expired agent links"'
+                className="h-11 rounded-xl border-border bg-secondary/65 pl-9 pr-24 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
+              />
+              <button
+                onClick={handleAiSearch}
+                disabled={aiLoading || !aiQuery.trim()}
+                className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-7 items-center gap-1.5 rounded-lg bg-purple-600 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+              >
+                {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                AI Search
+              </button>
+            </div>
           </div>
+
+          {aiSummary && (
+            <div className="flex items-start gap-2 rounded-xl bg-purple-50 dark:bg-purple-950/30 px-4 py-2.5">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple-500" />
+              <p className="text-xs text-purple-700 dark:text-purple-300">{aiSummary}</p>
+            </div>
+          )}
+
+          {/* Text search + filter toggle */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); pagination.resetPage(); }}
+                placeholder="Search by code, label, or creator..."
+                className="h-10 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
+              />
+            </div>
+            <button
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className={`inline-flex h-10 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors ${filtersOpen || hasActiveFilters ? "border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300" : "border-border text-muted-foreground hover:text-foreground"}`}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Filters
+              {hasActiveFilters && (
+                <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-sky-600 text-[9px] font-bold text-white">
+                  {[statusFilter, creatorRoleFilter, dateFrom, dateTo, sortBy].filter(Boolean).length}
+                </span>
+              )}
+            </button>
+            {hasActiveFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="inline-flex h-10 items-center gap-1 rounded-xl border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-3 w-3" />
+                Clear All
+              </button>
+            )}
+          </div>
+
+          {/* Filter dropdowns */}
+          {filtersOpen && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 rounded-xl border border-border bg-secondary/30 p-4">
+              <div>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => { setStatusFilter(e.target.value as ReferralLinkStatus | ""); pagination.resetPage(); }}
+                  className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="expired">Expired</option>
+                  <option value="maxed">Limit Reached</option>
+                  <option value="inactive">Disabled</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Creator Role</label>
+                <select
+                  value={creatorRoleFilter}
+                  onChange={(e) => { setCreatorRoleFilter(e.target.value as ReferralCreatorRole | ""); pagination.resetPage(); }}
+                  className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
+                >
+                  <option value="">All Roles</option>
+                  <option value="super_agent">Super Agent</option>
+                  <option value="agent">Agent</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date From</label>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => { setDateFrom(e.target.value); pagination.resetPage(); }}
+                  className="h-9 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date To</label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => { setDateTo(e.target.value); pagination.resetPage(); }}
+                  className="h-9 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Sort By</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => { setSortBy(e.target.value as ReferralSortField | ""); pagination.resetPage(); }}
+                  className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
+                >
+                  <option value="">Newest First</option>
+                  <option value="usedCount">Most Used</option>
+                  <option value="code">Code (A-Z)</option>
+                  <option value="label">Label (A-Z)</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Sort Order</label>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => { setSortOrder(e.target.value as "asc" | "desc" | ""); pagination.resetPage(); }}
+                  className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
+                >
+                  <option value="">Default</option>
+                  <option value="desc">Descending</option>
+                  <option value="asc">Ascending</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       </SuperAgentSection>
 
       {/* Links table */}
+      <TableToolbar
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        className="mb-4"
+      />
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sky-600" /></div>
       ) : links.length === 0 ? (
@@ -227,8 +459,8 @@ export default function SuperAgentReferralLinksPage() {
                 const status = linkStatus(link);
                 const isExpanded = expandedId === link._id;
                 return (
-                  <>
-                    <TableRow key={link._id} className="cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : link._id)}>
+                  <Fragment key={link._id}>
+                    <TableRow className="cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : link._id)}>
                       <TableCell className="font-mono text-sm font-medium">{link.code}</TableCell>
                       <TableCell className="text-sm">{creatorName(link)}</TableCell>
                       <TableCell>
@@ -239,19 +471,48 @@ export default function SuperAgentReferralLinksPage() {
                       <TableCell className="text-sm text-muted-foreground">{link.label || "—"}</TableCell>
                       <TableCell className="text-sm">{link.usedCount}{link.maxUses > 0 ? `/${link.maxUses}` : ""}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{formatDate(link.expiresAt)}</TableCell>
-                      <TableCell><StatusBadge status={status === "active" ? "active" : "inactive"} /></TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          status === "active" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+                          status === "expired" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                          status === "maxed" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                          "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        }`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${
+                            status === "active" ? "bg-emerald-500" :
+                            status === "expired" ? "bg-amber-500" :
+                            status === "maxed" ? "bg-orange-500" :
+                            "bg-red-500"
+                          }`} />
+                          {statusLabel(status)}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={(e) => { e.stopPropagation(); handleCopy(link.code); }}
                             className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted-foreground hover:text-primary"
+                            title="Copy referral URL"
                           >
                             {copyMap[link.code] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                             {copyMap[link.code] ? "Copied" : "Copy"}
                           </button>
                           <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateMutation.mutate({ id: link._id, isActive: !link.isActive });
+                            }}
+                            disabled={updateMutation.isPending}
+                            className={`inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors ${link.isActive ? "border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30" : "border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"}`}
+                            title={link.isActive ? "Deactivate this link" : "Reactivate this link"}
+                          >
+                            {link.isActive ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
+                            {link.isActive ? "Disable" : "Enable"}
+                          </button>
+                          <button
                             onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : link._id); }}
                             className="inline-flex h-7 items-center rounded-md border border-border px-1.5 text-muted-foreground hover:text-foreground"
+                            title="View registrations"
                           >
                             {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                           </button>
@@ -288,7 +549,7 @@ export default function SuperAgentReferralLinksPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </TableBody>

@@ -10,8 +10,11 @@ import {
 import { Users, Briefcase, TrendingUp, Inbox, Sparkles, ArrowRight, CircleCheckBig } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useTableExport } from "@/hooks/useTableExport";
 import { usePlacements, type Placement } from "@/hooks/usePlacements";
+import type { ExportColumn } from "@/lib/export";
 
 export default function EmployerPlacementsPage() {
   const { locale } = useParams<{ locale: string }>();
@@ -38,6 +41,22 @@ export default function EmployerPlacementsPage() {
       }).length,
     };
   }, [placements, total]);
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Candidate", key: "candidateName", formatter: (v) => String(v ?? "Candidate") },
+    { header: "Position", key: "jobTitle", formatter: (v) => String(v ?? "Untitled role") },
+    { header: "Type", key: "type", formatter: (v) => String(v ?? "—") },
+    { header: "Salary", key: "salary", formatter: (_v, r) => { const p = r as Record<string, any>; if (!p.salary) return "Not disclosed"; return `${p.salary.currency} ${p.salary.amount?.toLocaleString()}`; } },
+    { header: "Status", key: "status", formatter: (v) => String(v ?? "—") },
+    { header: "Start Date", key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "Not set" },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: placements as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "placements",
+    title: "Placements",
+  });
 
   function formatDate(value?: string): string {
     if (!value) return "Not set";
@@ -198,6 +217,13 @@ export default function EmployerPlacementsPage() {
           </div>
           <p className="text-sm text-muted-foreground">{placements.length} placements on this page</p>
         </div>
+
+        <TableToolbar
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mt-4"
+        />
 
         <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
           <Table>

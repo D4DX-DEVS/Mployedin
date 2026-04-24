@@ -56,7 +56,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     const employers = profiles.map((p) => {
       const user = p.userId as { _id?: unknown; name?: string; email?: string; isActive?: boolean; createdAt?: Date } | null;
       return {
-        _id: user?._id ?? p._id,
+        _id: p._id,
         name: user?.name,
         email: user?.email,
         companyName: p.companyName,
@@ -74,19 +74,95 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
 
   // Non-agent roles: query User model directly
-  const query: Record<string, unknown> = { role: "employer", isActive: true };
+  const industry = searchParams.get("industry") ?? "";
+  const status = searchParams.get("status") ?? ""; // active | inactive
+  const verified = searchParams.get("verified") ?? ""; // verified | unverified
+  const location = searchParams.get("location") ?? "";
+  const sortBy = searchParams.get("sortBy") ?? "name";
+  const sortOrder = searchParams.get("sortOrder") ?? "asc";
+  const distinct = searchParams.get("distinct");
+
+  const query: Record<string, unknown> = { role: "employer" };
+  if (status === "active") query.isActive = true;
+  else if (status === "inactive") query.isActive = false;
+  else query.isActive = true; // default to active
+
+  // Build employer profile filter for industry/location/verified
+  const empFilter: Record<string, unknown> = {};
+  if (industry) empFilter.industry = { $regex: escapeRegex(industry), $options: "i" };
+  if (location) empFilter.address = { $regex: escapeRegex(location), $options: "i" };
+  if (verified === "verified") empFilter.isAgentVerified = true;
+  else if (verified === "unverified") empFilter.isAgentVerified = { $ne: true };
+
+  // Search spans both User (name, email) AND Employer (companyName, industry)
+  // We need to find userIds from Employer matches and merge with User-level matches
   if (search) {
     const safe = escapeRegex(search);
+    // Find employer profiles matching companyName or industry
+    const empSearchFilter: Record<string, unknown> = {
+      ...empFilter,
+      $or: [
+        { companyName: { $regex: safe, $options: "i" } },
+        { companyEmail: { $regex: safe, $options: "i" } },
+        { industry: { $regex: safe, $options: "i" } },
+      ],
+    };
+    const matchingByCompany = await Employer.find(empSearchFilter).select("userId").lean();
+    const companyUserIds = matchingByCompany.map((p) => p.userId);
+
+    // User-level search (name, email) combined with employer-level companyName matches
     query.$or = [
       { name: { $regex: safe, $options: "i" } },
       { email: { $regex: safe, $options: "i" } },
+      ...(companyUserIds.length > 0 ? [{ _id: { $in: companyUserIds } }] : []),
     ];
   }
+
+  // If we have employer-level filters (without search), find matching userIds first
+  let userIdConstraint: unknown[] | null = null;
+  if (!search && (industry || location || verified)) {
+    const matchingProfiles = await Employer.find(empFilter).select("userId").lean();
+    userIdConstraint = matchingProfiles.map((p) => p.userId);
+    if (userIdConstraint.length === 0) {
+      const facets = distinct === "true" ? await getEmployerFacets() : undefined;
+      return NextResponse.json({
+        employers: [],
+        pagination: { page, limit, total: 0, pages: 0 },
+        ...(facets ? { facets } : {}),
+      });
+    }
+    query._id = { $in: userIdConstraint };
+  } else if (search && !query.$or) {
+    // fallback: no matches at all
+  } else if (!search && (industry || location || verified)) {
+    // already handled above
+  }
+
+  // When search is active AND we also have employer-level filters, narrow by those too
+  if (search && (industry || location || verified)) {
+    const filteredProfiles = await Employer.find(empFilter).select("userId").lean();
+    const filteredUserIds = filteredProfiles.map((p) => p.userId);
+    if (filteredUserIds.length === 0) {
+      const facets = distinct === "true" ? await getEmployerFacets() : undefined;
+      return NextResponse.json({
+        employers: [],
+        pagination: { page, limit, total: 0, pages: 0 },
+        ...(facets ? { facets } : {}),
+      });
+    }
+    // Intersect: user must match search AND be in filtered employer set
+    query._id = { ...(query._id as object ?? {}), $in: filteredUserIds };
+  }
+
+  // Sorting
+  const VALID_SORT = new Set(["name", "email", "createdAt"]);
+  const sortField = VALID_SORT.has(sortBy) ? sortBy : "name";
+  const sortDir = sortOrder === "desc" ? -1 : 1;
 
   const [users, total] = await Promise.all([
     User.find(query)
       .select("name email isActive createdAt")
-      .sort({ name: 1 })
+      .sort({ [sortField]: sortDir })
       .skip(skip)
       .limit(limit)
       .lean(),
@@ -96,30 +172,60 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Attach verificationDocs and domainVerified from Employer model
   const userIds = users.map((u) => u._id);
   const employerProfiles = await Employer.find({ userId: { $in: userIds } })
-    .select("userId companyName industry verificationDocs domainVerified verificationLevel isAgentVerified")
+    .select("userId companyName industry address verificationDocs domainVerified verificationLevel isAgentVerified agentId")
+    .populate("agentId", "userId")
     .lean();
 
   const profileMap = new Map(
     employerProfiles.map((e) => [String(e.userId), e])
   );
 
+  // Look up agent user names for assignedAgent display
+  const agentUserIdSet = new Set(
+    employerProfiles.filter((e) => e.agentId).map((e) => {
+      const agent = e.agentId as { userId?: unknown } | undefined;
+      return agent?.userId ? String(agent.userId) : null;
+    }).filter(Boolean) as string[]
+  );
+  const agentUsers = agentUserIdSet.size > 0
+    ? await User.find({ _id: { $in: [...agentUserIdSet] } }).select("name").lean()
+    : [];
+  const agentNameMap = new Map(agentUsers.map((u) => [String(u._id), u.name]));
+
   const employers = users.map((u) => {
     const profile = profileMap.get(String(u._id));
+    const agentProfile = profile?.agentId as { userId?: unknown } | undefined;
+    const agentUserId = agentProfile?.userId ? String(agentProfile.userId) : null;
     return {
       ...u,
       companyName: profile?.companyName,
       industry: profile?.industry,
+      location: profile?.address,
       verificationDocs: profile?.verificationDocs ?? [],
       domainVerified: profile?.domainVerified ?? false,
       verificationLevel: profile?.verificationLevel,
       isAgentVerified: profile?.isAgentVerified ?? false,
+      assignedAgent: agentUserId ? { name: agentNameMap.get(agentUserId) ?? "Unknown" } : undefined,
     };
   });
+
+  // Facets for filter dropdowns
+  const facets = distinct === "true" ? await getEmployerFacets() : undefined;
 
   return NextResponse.json({
     employers,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    ...(facets ? { facets } : {}),
   });
+}
+
+// Helper: get distinct facet values for employer filters
+async function getEmployerFacets() {
+  const [industries, locations] = await Promise.all([
+    Employer.distinct("industry").then((vals: (string | null | undefined)[]) => vals.filter(Boolean).sort()),
+    Employer.distinct("address").then((vals: (string | null | undefined)[]) => vals.filter(Boolean).sort()),
+  ]);
+  return { industries, locations };
 }
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
@@ -187,6 +293,17 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       $addToSet: { assignedEmployerIds: employer._id },
       $inc: { "performance.employersCreated": 1 },
     });
+
+    // Notify super agent about new employer created by their agent
+    const { getSuperAgentUserId, notifySuperAgentEmployerRegistered } = await import("@/lib/notifications/trigger");
+    const saUserId = await getSuperAgentUserId(agentId);
+    if (saUserId) {
+      const creatorUser = await User.findById(ctx.userId).select("name").lean();
+      const agentName = (creatorUser as { name?: string })?.name ?? "An agent";
+      notifySuperAgentEmployerRegistered(
+        saUserId, companyName || name, agentName, String(employer._id), ctx.locale,
+      ).catch(() => {});
+    }
   }
 
   // Send welcome email (fire-and-forget)

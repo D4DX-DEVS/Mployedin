@@ -136,6 +136,7 @@ export function typeToCategory(
     case "job_posted":
     case "job_approved":
     case "job_rejected":
+    case "new_job_posted":
       return "jobs";
     case "profile_update":
       return "profile_views";
@@ -145,6 +146,9 @@ export function typeToCategory(
     case "lead_converted":
     case "mention":
     case "message":
+    case "agent_joined":
+    case "employer_registered":
+    case "placement_completed":
       return "system";
     default:
       return "system";

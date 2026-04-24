@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Notification from "@/models/Notification";
 import { validateBody } from "@/lib/validators";
 import { notificationUpdateSchema } from "@/lib/validators/misc";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /**
  * GET /api/notifications
@@ -43,6 +44,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
 
   if (body.markAllRead) {
     await Notification.updateMany({ userId: ctx.userId, isRead: false }, { isRead: true });
+    await logActivity({ ...actorFromCtx(ctx), action: "notification.mark_all_read", resource: "notifications", req });
     return NextResponse.json({ success: true });
   }
 
@@ -53,6 +55,8 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     { _id: { $in: ids }, userId: ctx.userId },
     { isRead: true, readAt: new Date() }
   );
+
+  await logActivity({ ...actorFromCtx(ctx), action: "notification.mark_read", resource: "notifications", meta: { count: ids.length }, req });
 
   return NextResponse.json({ success: true, updated: ids.length });
 });

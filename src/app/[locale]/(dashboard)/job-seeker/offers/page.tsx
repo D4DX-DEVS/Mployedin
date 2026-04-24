@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Check, X, Calendar, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
+import type { ExportColumn } from "@/lib/export";
 
 interface OfferJob {
   _id: string;
@@ -34,29 +40,35 @@ export default function OffersPage() {
   const [loading, setLoading] = useState(true);
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [declineReason, setDeclineReason] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
+  const pagination = usePagination();
 
   useEffect(() => {
     document.title = "My Offers · MPLOYEDIN";
   }, []);
 
-  useEffect(() => {
-    fetchOffers();
-  }, []);
-
-  async function fetchOffers() {
+  const fetchOffers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/offers");
+      const params = pagination.paginationParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      const res = await fetch(`/api/offers?${params}`);
       if (res.ok) {
         const data = await res.json();
         setOffers(data.offers);
+        pagination.updateTotal(data.pagination?.total ?? data.total ?? data.offers?.length ?? 0);
       }
     } catch (err) {
       console.error("Error fetching offers:", err);
     } finally {
       setLoading(false);
     }
-  }
+  }, [pagination.page, pagination.limit, debouncedSearch]);
+
+  useEffect(() => {
+    fetchOffers();
+  }, [fetchOffers]);
 
   async function handleAcceptOffer(offerId: string) {
     try {
@@ -126,9 +138,44 @@ export default function OffersPage() {
   const isExpired = (offer: Offer) =>
     new Date(offer.expiresAt) < new Date() && offer.status === "pending";
 
+  const exportData = offers.map((o) => ({
+    jobTitle: o.jobId?.title ?? "",
+    salary: `${o.salary.currency} ${o.salary.amount.toLocaleString()} / ${o.salary.period === "monthly" ? "month" : "year"}`,
+    startDate: new Date(o.startDate).toLocaleDateString(),
+    status: o.status,
+    expiresAt: new Date(o.expiresAt).toLocaleDateString(),
+    benefits: o.benefits ?? "",
+  }));
+
+  const exportColumns = [
+    { header: "Job Title", key: "jobTitle" },
+    { header: "Salary", key: "salary" },
+    { header: "Start Date", key: "startDate" },
+    { header: "Status", key: "status" },
+    { header: "Expires At", key: "expiresAt" },
+    { header: "Benefits", key: "benefits" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: exportData as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "my-offers",
+    title: "My Offers",
+  });
+
   return (
     <div className="page-container">
       <PageHeader title="Job Offers" description="Offers you have received" />
+
+      <TableToolbar
+        search={searchTerm}
+        onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
+        searchPlaceholder="Search by job title\u2026"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        className="mb-4"
+      />
 
       {loading ? (
         <div className="space-y-3">
@@ -270,6 +317,15 @@ export default function OffersPage() {
           ))}
         </div>
       )}
+
+      <PaginationControls
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        limit={pagination.limit}
+        onPageChange={pagination.setPage}
+        onLimitChange={pagination.setLimit}
+      />
     </div>
   );
 }

@@ -29,6 +29,9 @@ import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 type JobStatus = "all" | "active" | "draft" | "closed" | "expired";
 
@@ -198,6 +201,22 @@ export default function SuperAgentApprovalsPage() {
 
   const tableHeaders = ["Job Title", "Employer", "Posted By", "Location", "Status", "Date", ""];
 
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Title", key: "title" },
+    { header: "Employer", key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string; name?: string })?.companyName ?? (row.employerId as { name?: string })?.name ?? "" },
+    { header: "Posted By", key: "postedByAgent", formatter: (_v, row) => (row.postedByAgent as { name?: string })?.name ?? "Employer" },
+    { header: "Location", key: "location", formatter: (_v, row) => formatLocation((row as unknown as RegionalJob).location) },
+    { header: "Status", key: "status" },
+    { header: "Date", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: jobs as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "super-agent-approvals",
+    title: "Regional Jobs",
+  });
+
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
@@ -266,6 +285,13 @@ export default function SuperAgentApprovalsPage() {
             )}
           </div>
         </div>
+
+        <TableToolbar
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mb-4"
+        />
 
         <SuperAgentDataTableShell>
           {loading ? (

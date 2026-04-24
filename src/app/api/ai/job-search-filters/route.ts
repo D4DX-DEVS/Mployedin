@@ -6,6 +6,7 @@ import { parseAIJson } from "@/lib/ai/gemini";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { validateBody } from "@/lib/validators";
 import { aiJobSearchSchema } from "@/lib/validators/ai";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 
 const ALLOWED_ROLES: UserRole[] = ["employer", "agent", "admin", "super_agent"];
@@ -109,6 +110,14 @@ User query: "${safeQuery}"`;
 
     const rawFilters = parseAIJson<RawJobSearchFilters>(await routeGenerate(prompt, "nl_search"));
     const filters = normalizeJobSearchFilters(rawFilters);
+
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "ai.job_search_filter",
+      resource: "ai",
+      meta: { query: safeQuery },
+      req,
+    });
 
     return NextResponse.json({
       query: safeQuery,

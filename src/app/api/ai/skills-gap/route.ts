@@ -10,6 +10,7 @@ import { sanitizeAIInput, redactPII } from "@/lib/ai/sanitize";
 import { validateBody } from "@/lib/validators";
 import { aiSkillsGapSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 type GapPriority = "high" | "medium" | "low";
 
@@ -305,6 +306,14 @@ Analyse the skill gap. Return ONLY a JSON object (no markdown):
     lastTargetRole: normalizedRole,
     lastAnalysisAt: progressData?.lastAnalysisAt ? new Date(progressData.lastAnalysisAt).toISOString() : new Date().toISOString(),
   };
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "ai.skills_gap_analyze",
+    resource: "ai",
+    meta: { targetRole: normalizedRole },
+    req,
+  });
 
   return NextResponse.json({
     analysis,

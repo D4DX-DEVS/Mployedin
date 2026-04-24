@@ -6,7 +6,6 @@ import Job from "@/models/Job";
 import User from "@/models/User";
 import {
   Activity,
-  AlertCircle,
   ArrowRight,
   Briefcase,
   CheckCircle2,
@@ -44,7 +43,6 @@ interface RecentJobRow {
   _id: string;
   title: string;
   status: string;
-  approvalStatus?: string;
   createdAt: Date | string;
 }
 
@@ -69,7 +67,6 @@ interface AdminStats {
   activeJobs: number;
   jobsCreatedThisMonth: number;
   jobsCreatedPreviousMonth: number;
-  pendingApprovals: number;
   totalApplications: number;
   applicationsThisMonth: number;
   applicationsPreviousMonth: number;
@@ -335,7 +332,6 @@ async function getAdminStats(): Promise<AdminStats> {
     activeJobs,
     jobsCreatedThisMonth,
     jobsCreatedPreviousMonth,
-    pendingApprovals,
     totalApplications,
     applicationsThisMonth,
     applicationsPreviousMonth,
@@ -359,7 +355,6 @@ async function getAdminStats(): Promise<AdminStats> {
     Job.countDocuments({ status: "active" }),
     Job.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
     Job.countDocuments({ createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
-    Job.countDocuments({ "poster.approvalStatus": "pending" }),
     Application.countDocuments(),
     Application.countDocuments(getApplicationDateFilter(thirtyDaysAgo)),
     Application.countDocuments(getApplicationDateFilter(sixtyDaysAgo, thirtyDaysAgo)),
@@ -403,7 +398,6 @@ async function getAdminStats(): Promise<AdminStats> {
         $project: {
           title: 1,
           status: 1,
-          approvalStatus: "$poster.approvalStatus",
           createdAt: 1,
         },
       },
@@ -471,7 +465,6 @@ async function getAdminStats(): Promise<AdminStats> {
     activeJobs,
     jobsCreatedThisMonth,
     jobsCreatedPreviousMonth,
-    pendingApprovals,
     totalApplications,
     applicationsThisMonth,
     applicationsPreviousMonth,
@@ -552,22 +545,16 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       trendClassName: getTrendClassName(applicationsTrend.direction),
     },
     {
-      label: "Pending Approvals",
-      value: stats.pendingApprovals.toLocaleString(),
-      detail: stats.pendingApprovals > 0
-        ? `${stats.pendingApprovals} jobs are waiting for admin review.`
-        : "Approval queue is clear right now.",
-      insight: stats.pendingApprovals > 3
-        ? "Backlog is large enough to slow employer activation."
-        : "Queue pressure is currently contained.",
-      toneClassName: stats.pendingApprovals > 0
-        ? "bg-amber-500 text-white ring-amber-400/30 dark:bg-amber-600 dark:text-white dark:ring-amber-400/30"
-        : "bg-slate-500 text-white ring-slate-400/30 dark:bg-slate-600 dark:text-white dark:ring-slate-400/30",
-      icon: AlertCircle,
-      trend: stats.pendingApprovals > 0
-        ? { direction: "down", label: `${stats.pendingApprovals} awaiting action now` }
-        : { direction: "up", label: "Queue clear" },
-      trendClassName: getTrendClassName(stats.pendingApprovals > 0 ? "down" : "up", true),
+      label: "Total Interviews",
+      value: stats.totalInterviews.toLocaleString(),
+      detail: `${stats.totalInterviews} interviews have been scheduled across the platform.`,
+      insight: stats.totalInterviews > 0
+        ? "Interview pipeline is active and progressing."
+        : "No interviews scheduled yet — encourage employer engagement.",
+      toneClassName: "bg-amber-500 text-white ring-amber-400/30 dark:bg-amber-600 dark:text-white dark:ring-amber-400/30",
+      icon: Activity,
+      trend: { direction: stats.totalInterviews > 0 ? "up" : "flat", label: `${stats.totalInterviews} total` },
+      trendClassName: getTrendClassName(stats.totalInterviews > 0 ? "up" : "flat"),
     },
   ];
 
@@ -612,15 +599,13 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
 
   const quickActions: QuickAction[] = [
     {
-      label: "Job Approvals",
+      label: "Jobs Overview",
       href: `/${locale}/admin/jobs`,
-      desc: "Clear the review queue before employer launches stall.",
-      badge: stats.pendingApprovals > 0 ? `${stats.pendingApprovals} pending` : "Queue clear",
-      icon: AlertCircle,
-      iconClassName: "bg-amber-50 text-amber-600",
-      badgeClassName: stats.pendingApprovals > 0
-        ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200"
-        : "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200",
+      desc: "Monitor role quality, demand, and activity across the platform.",
+      badge: `${stats.activeJobs} active`,
+      icon: Briefcase,
+      iconClassName: "bg-emerald-50 text-emerald-600",
+      badgeClassName: "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200",
     },
     {
       label: "User Management",
@@ -634,7 +619,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
     {
       label: "Jobs Management",
       href: `/${locale}/admin/jobs`,
-      desc: "Audit role quality, demand, and approval state from one queue.",
+      desc: "Audit role quality, demand, and activity from one queue.",
       badge: `${stats.jobsWithoutApplications} low-demand roles`,
       icon: Briefcase,
       iconClassName: "bg-emerald-50 text-emerald-600",
@@ -684,15 +669,13 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
     })),
     ...stats.recentJobs.map((job) => ({
       id: `job-${job._id}`,
-      title: `${job.title} entered the admin queue`,
-      detail: `${formatStatusLabel(job.status)}${job.approvalStatus ? ` · ${formatStatusLabel(job.approvalStatus)} approval` : ""}`,
+      title: `${job.title} was posted`,
+      detail: `${formatStatusLabel(job.status)}`,
       href: `/${locale}/admin/jobs`,
       timestamp: new Date(job.createdAt),
       timestampLabel: formatDateLabel(job.createdAt),
       icon: Briefcase,
-      toneClassName: job.approvalStatus === "pending"
-        ? "bg-amber-50 text-amber-600"
-        : "bg-emerald-50 text-emerald-600",
+      toneClassName: "bg-emerald-50 text-emerald-600",
     })),
     ...stats.recentApplications.map((application) => ({
       id: `application-${application._id}`,
@@ -757,13 +740,13 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
               Admin Dashboard
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-              Platform overview, approval pressure, and operational shortcuts in a more action-oriented workspace that tells admin teams where to move next.
+              Platform overview, operational metrics, and shortcuts in a more action-oriented workspace that tells admin teams where to move next.
             </p>
           </div>
 
           <div className={`${adminStatPanelClassName} sm:min-w-[320px]`}>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">System watch</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.pendingApprovals} approvals waiting</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{stats.activeJobs} active jobs</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               {stats.totalApplications} platform applications are currently moving through the funnel.
             </p>
@@ -819,18 +802,18 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-foreground">Quick Actions</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Jump straight into the admin flows that keep approvals, governance, and platform quality moving.
+                Jump straight into the admin flows that keep governance and platform quality moving.
               </p>
             </div>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {quickActions.map((action) => {
+            {quickActions.map((action, idx) => {
               const Icon = action.icon;
 
               return (
                 <Link
-                  key={action.href}
+                  key={`${action.href}-${idx}`}
                   href={action.href}
                   className={`${adminInteractiveCardClassName} group flex min-h-[176px] flex-col justify-between p-6`}
                   data-surface="light-card"
@@ -901,7 +884,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-foreground">Platform Insights</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Turn raw volume into next-step decisions before approvals, demand, or conversion slip out of view.
+                Turn raw volume into next-step decisions before demand or conversion slip out of view.
               </p>
             </div>
             <div className="rounded-2xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-right text-sky-700 shadow-sm dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200">

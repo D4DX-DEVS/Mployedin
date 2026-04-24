@@ -5,6 +5,7 @@ import { getSystemConfig } from "@/models/SystemConfig";
 import SystemConfig from "@/models/SystemConfig";
 import { validateBody } from "@/lib/validators";
 import { notificationConfigUpdateSchema } from "@/lib/validators/settings";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /**
  * GET /api/admin/notification-config
@@ -79,6 +80,14 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     { $set: updates },
     { new: true, upsert: true },
   );
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "admin.notification_config.update",
+    resource: "settings",
+    changes: { after: updates },
+    req,
+  });
 
   return NextResponse.json({ success: true, config });
 });

@@ -1,0 +1,16 @@
+▲ Next.js 16.2.2 (Turbopack)
+- Environments: .env
+- Experiments (use with caution):
+  · optimizePackageImports
+
+  Creating an optimized production build ...
+
+---STDERR---
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/(.*)
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+
+> Build error occurred
+Error: ENOENT: no such file or directory, open 'C:\Users\moham\OneDrive\Desktop\Mployedin\mployedin\.next\turbopack'
+    at ignore-listed frames

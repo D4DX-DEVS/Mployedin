@@ -10,14 +10,14 @@ import {
   Search, Inbox, Sparkles, Calendar, Building2, ArrowUpDown,
   TrendingUp, Users, FileText, Brain, ChevronDown, ChevronUp,
   Filter, BarChart3, Zap, AlertTriangle, CheckCircle, Info, Target,
-  RefreshCw, Wand2,
+  RefreshCw, Wand2, User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -181,6 +181,22 @@ export default function AdminApplicationsPage() {
 
   // Active filter count
   const activeFilters = [status, employerId, source, scoreRange, dateFrom, dateTo].filter(Boolean).length;
+
+  const exportColumns: ExportColumn<Application>[] = [
+    { header: "Applicant", key: "jobSeekerId" as keyof Application, formatter: (_v, r) => { const a = r as unknown as Application; return a.jobSeekerId?.fullName ?? a.jobSeekerId?.userId?.name ?? "—"; } },
+    { header: "Job", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.title ?? "—" },
+    { header: "Company", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.employerId?.companyName ?? "—" },
+    { header: "Status", key: "status" },
+    { header: "Source", key: "source", formatter: (v) => sourceLabel(v as string) },
+    { header: "AI Score", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
+    { header: "Applied", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: applications as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "applications",
+    title: "Applications",
+  });
 
   /* ---- Fetch applications ---- */
   const fetchApplications = useCallback(async () => {
@@ -496,19 +512,17 @@ export default function AdminApplicationsPage() {
 
       {/* ───── Filters ───── */}
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5 space-y-3">
+        <TableToolbar
+          search={search}
+          onSearchChange={(v) => { setSearch(v); resetPage(); }}
+          searchPlaceholder="Search applicant, job, company, skills…"
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mb-3"
+        />
         {/* Primary row */}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="relative min-w-0">
-            <label htmlFor="admin-apps-search" className="sr-only">Search</label>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="admin-apps-search"
-              placeholder="Search applicant, job, company, skills…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm shadow-none"
-            />
-          </div>
           <div>
             <label htmlFor="admin-apps-status" className="sr-only">Status</label>
             <SearchableSelect
@@ -670,117 +684,135 @@ export default function AdminApplicationsPage() {
         )}
       </section>
 
-      {/* ───── Table ───── */}
+      {/* ───── Applications ───── */}
       {loading ? (
-        <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
-          <div className="bg-muted/30 px-4 py-3 h-10 animate-pulse" />
+        <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="border-t px-4 py-3 h-14 animate-pulse" />
+            <div key={i} className="h-20 animate-pulse rounded-[20px] border border-border/60 bg-background/70" />
           ))}
         </div>
+      ) : applications.length === 0 ? (
+        <div className="workspace-panel-surface rounded-[24px] px-6 py-16 text-center">
+          <div className="workspace-muted-pill mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
+            <Inbox className="h-7 w-7" />
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{activeFilters ? "No matching applications" : "No applications yet"}</p>
+          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+            {activeFilters ? "No applications match the current filters." : "No applications found on the platform."}
+          </h3>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+            {activeFilters
+              ? "Try widening the score range, status, or search terms to bring more applicants back into view."
+              : "Applications will appear here once candidates apply to jobs across the platform."}
+          </p>
+          {activeFilters > 0 && (
+            <Button onClick={clearAllFilters} variant="outline" className="mt-6 h-11 rounded-xl border-border bg-background/70 px-4 text-sm">
+              Clear filters
+            </Button>
+          )}
+        </div>
       ) : (
-        <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead>Applicant</TableHead>
-                <TableHead>Job</TableHead>
-                <TableHead>
-                  <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("appliedAt")}>
-                    Employer
-                    <Building2 className="h-3 w-3 text-muted-foreground" />
-                  </button>
-                </TableHead>
-                <TableHead>
-                  <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("status")}>
-                    Status
-                    <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-                  </button>
-                </TableHead>
-                <TableHead>
-                  <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("aiMatchScore")}>
-                    AI Score
-                    <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-                  </button>
-                </TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>
-                  <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("appliedAt")}>
-                    Applied
-                    <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
-                  </button>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {applications.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    <Inbox className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                    No applications found
-                  </TableCell>
-                </TableRow>
-              ) : applications.map((app) => {
-                const seeker = app.jobSeekerId;
-                const job = app.jobId;
-                const employer = job?.employerId;
+        <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
+          {/* Column headers – desktop */}
+          <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
+            <span>Candidate</span>
+            <span>Role, Match, Skills</span>
+            <span className="text-right">
+              <button type="button" className="inline-flex items-center gap-1" onClick={() => toggleSort("appliedAt")}>
+                Applied <ArrowUpDown className="h-3 w-3" />
+              </button>
+            </span>
+          </div>
 
-                return (
-                  <TableRow key={app._id}>
-                    {/* Applicant */}
-                    <TableCell>
-                      <div className="font-medium">{seeker?.fullName ?? seeker?.userId?.name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground">{seeker?.email ?? seeker?.userId?.email ?? ""}</div>
-                      {seeker?.skills && seeker.skills.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {seeker.skills.slice(0, 3).map((s) => (
-                            <Badge key={s} variant="outline" className="text-[9px] px-1 py-0">{s}</Badge>
-                          ))}
-                          {seeker.skills.length > 3 && (
-                            <span className="text-[9px] text-muted-foreground">+{seeker.skills.length - 3}</span>
-                          )}
-                        </div>
+          <div className="divide-y divide-border/60">
+            {applications.map((app) => {
+              const seeker = app.jobSeekerId;
+              const job = app.jobId;
+              const employer = job?.employerId;
+              const candidateName = seeker?.fullName ?? seeker?.userId?.name ?? "Unknown";
+              const jobLocation = job?.location
+                ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", "))
+                : null;
+              const locationExp = [jobLocation, seeker?.totalExperienceYears ? `${seeker.totalExperienceYears}+ yrs` : null].filter(Boolean).join(" · ");
+              const topSkills = seeker?.skills?.slice(0, 3) ?? [];
+              const appliedDate = new Date(app.appliedAt ?? app.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+              const aiScoreLabel = app.aiMatchScore != null ? `${app.aiMatchScore}% match` : null;
+              const aiScoreColor = app.aiMatchScore != null
+                ? app.aiMatchScore >= 80 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                  : app.aiMatchScore >= 60 ? "bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400"
+                  : app.aiMatchScore >= 40 ? "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+                  : "bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400"
+                : "";
+
+              return (
+                <article
+                  key={app._id}
+                  className="grid gap-2 px-4 py-2.5 transition-all duration-200 bg-transparent hover:bg-background/70 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center"
+                >
+                  {/* Candidate */}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 shadow-inner dark:text-sky-300">
+                      <User className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-sm font-semibold tracking-tight text-foreground sm:text-base">{candidateName}</span>
+                        <StatusBadge status={app.status} />
+                      </div>
+                      {employer?.companyName && (
+                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Building2 className="h-3 w-3" />
+                          {employer.companyName}
+                        </p>
                       )}
-                    </TableCell>
+                    </div>
+                  </div>
 
-                    {/* Job */}
-                    <TableCell>
-                      <div className="text-foreground/80 font-medium">{job?.title ?? "—"}</div>
-                      {job?.location && (
-                        <div className="text-[10px] text-muted-foreground">
-                          {job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", ")}
-                        </div>
+                  {/* Role, Match, Skills */}
+                  <div className="min-w-0 sm:px-1">
+                    <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                      <span className="truncate text-[13px] font-medium text-foreground">{job?.title ?? "—"}</span>
+                      {locationExp && (
+                        <>
+                          <span className="hidden text-border sm:inline">•</span>
+                          <span className="truncate text-[11px] text-muted-foreground">{locationExp}</span>
+                        </>
                       )}
-                    </TableCell>
+                    </div>
 
-                    {/* Employer */}
-                    <TableCell>
-                      <div className="text-sm">{employer?.companyName ?? "—"}</div>
-                    </TableCell>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                      {aiScoreLabel && (
+                        <Badge className={`${aiScoreColor} rounded-full px-2 py-0.5 text-[10px] font-semibold`}>
+                          {aiScoreLabel}
+                        </Badge>
+                      )}
+                      {topSkills.map((skill) => (
+                        <span key={skill} className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                          {skill}
+                        </span>
+                      ))}
+                      {topSkills.length === 0 && !aiScoreLabel && (
+                        <span className="text-[11px] text-muted-foreground">No skills listed</span>
+                      )}
+                    </div>
 
-                    {/* Status */}
-                    <TableCell><StatusBadge status={app.status} /></TableCell>
-
-                    {/* AI Score */}
-                    <TableCell><ScoreBadge score={app.aiMatchScore} /></TableCell>
-
-                    {/* Source */}
-                    <TableCell>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                      <span>Applied {appliedDate}</span>
                       <Badge variant={app.autoApplied ? "warning" : "secondary"} className="text-[10px]">
                         {sourceLabel(app.source)}
                       </Badge>
-                    </TableCell>
+                    </div>
+                  </div>
 
-                    {/* Applied date */}
-                    <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {new Date(app.appliedAt ?? app.createdAt).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                  {/* Sort indicator */}
+                  <div className="flex items-center gap-2 sm:justify-end">
+                    <ScoreBadge score={app.aiMatchScore} />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

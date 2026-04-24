@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -13,6 +13,7 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   Building2,
+  Eye,
   Inbox,
   Loader2,
   Plus,
@@ -20,12 +21,17 @@ import {
   ShieldCheck,
   Sparkles,
   Users,
-  Edit2,
-  Eye,
-  XCircle,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
 
 interface JobItem {
   _id: string;
@@ -45,10 +51,37 @@ interface EmployerOption {
   companyName?: string;
 }
 
+interface AiFilters {
+  search?: string;
+  status?: string;
+  skills?: string[];
+  employer?: string;
+  summary?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
+const STATUS_TABS = ["", "draft", "active", "closed"] as const;
+
+const AI_SUGGESTIONS = [
+  "Show active jobs with most applicants",
+  "Draft jobs that need review",
+  "Jobs posted this week",
+  "Roles in Kochi with high applicant count",
+];
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
+
 export default function AgentJobsPage() {
   const pathname = usePathname();
   const locale = pathname?.split("/")[1] ?? "en";
   const pagination = usePagination();
+
+  /* ----- Job list state ----- */
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -56,7 +89,17 @@ export default function AgentJobsPage() {
   const [employerFilter, setEmployerFilter] = useState("");
   const [employers, setEmployers] = useState<EmployerOption[]>([]);
 
-  // Load assigned employers for filter dropdown
+  /* ----- AI search state ----- */
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState("");
+  const [activeAiFilters, setActiveAiFilters] = useState<AiFilters | null>(null);
+
+  const aiInputRef = useRef<HTMLInputElement>(null);
+
+  /* ---------------------------------------------------------------- */
+  /*  Load employers for filter                                       */
+  /* ---------------------------------------------------------------- */
   useEffect(() => {
     fetch("/api/employers?limit=200")
       .then((r) => r.ok ? r.json() : { employers: [] })
@@ -70,6 +113,9 @@ export default function AgentJobsPage() {
       .catch(() => {});
   }, []);
 
+  /* ---------------------------------------------------------------- */
+  /*  Load jobs                                                       */
+  /* ---------------------------------------------------------------- */
   const loadJobs = useCallback(async () => {
     setLoading(true);
     try {
@@ -95,60 +141,95 @@ export default function AgentJobsPage() {
 
   useEffect(() => { pagination.resetPage(); }, [search, statusFilter, employerFilter]);
 
-  const handleCloseJob = async (id: string) => {
-    if (!confirm("Close this job? It will no longer accept applications.")) return;
-    await fetch(`/api/jobs/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "closed" }),
-    });
-    loadJobs();
+  /* ---------------------------------------------------------------- */
+  /*  AI search handler                                               */
+  /* ---------------------------------------------------------------- */
+  const handleAiSearch = async (query?: string) => {
+    const q = (query ?? aiQuery).trim();
+    if (!q) return;
+    setAiLoading(true);
+    setAiSummary("");
+    try {
+      const res = await fetch("/api/ai/job-search-filters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q }),
+      });
+      if (!res.ok) throw new Error("AI search failed");
+      const data = await res.json();
+      const filters: AiFilters = data.filters ?? {};
+      setActiveAiFilters(filters);
+      setAiSummary(data.summary ?? `AI search: "${q}"`);
+
+      // Apply extracted filters
+      if (filters.search) setSearch(filters.search);
+      if (filters.status) setStatusFilter(filters.status);
+      if (filters.employer) {
+        const match = employers.find(
+          (e) => e.companyName?.toLowerCase().includes(filters.employer!.toLowerCase())
+        );
+        if (match) setEmployerFilter(match._id);
+      }
+    } catch {
+      setAiSummary("AI search could not process the query. Try a different phrasing.");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
+  const clearAiFilters = () => {
+    setActiveAiFilters(null);
+    setAiSummary("");
+    setAiQuery("");
+    setSearch("");
+    setStatusFilter("");
+    setEmployerFilter("");
+  };
+
+  /* ---------------------------------------------------------------- */
+  /*  Helpers                                                         */
+  /* ---------------------------------------------------------------- */
   const locationText = (loc?: JobItem["location"]) => {
     if (!loc) return "—";
     if (loc.isRemote) return "Remote";
     return [loc.city, loc.country].filter(Boolean).join(", ") || "—";
   };
 
-  const activeJobs = jobs.filter((job) => job.status === "active").length;
-  const draftJobs = jobs.filter((job) => job.status === "draft").length;
-  const uniqueEmployers = new Set(jobs.map((job) => job.employerId?._id ?? job.employerId).filter(Boolean)).size;
-  const totalApplicants = jobs.reduce((sum, job) => sum + (job.applicationCount ?? job.applicantIds?.length ?? 0), 0);
+  /* ----- Summary cards ----- */
+  const activeJobs = jobs.filter((j) => j.status === "active").length;
+  const draftJobs = jobs.filter((j) => j.status === "draft").length;
+  const uniqueEmployers = new Set(jobs.map((j) => j.employerId?._id ?? j.employerId).filter(Boolean)).size;
+  const totalApplicants = jobs.reduce((sum, j) => sum + (j.applicationCount ?? j.applicantIds?.length ?? 0), 0);
 
   const summaryCards = [
-    {
-      label: "Active",
-      value: activeJobs,
-      description: "Roles currently open for applications.",
-      icon: ShieldCheck,
-      tone: "workspace-tone-emerald",
-    },
-    {
-      label: "Drafts",
-      value: draftJobs,
-      description: "Jobs waiting for review or completion.",
-      icon: BriefcaseBusiness,
-      tone: "workspace-tone-amber",
-    },
-    {
-      label: "Employers",
-      value: uniqueEmployers,
-      description: "Companies with jobs in your portfolio.",
-      icon: Building2,
-      tone: "workspace-tone-sky",
-    },
-    {
-      label: "Applicants",
-      value: totalApplicants,
-      description: "Candidate volume across the current results.",
-      icon: Users,
-      tone: "workspace-tone-indigo",
-    },
+    { label: "Active", value: activeJobs, description: "Roles currently open for applications.", icon: ShieldCheck, tone: "workspace-tone-emerald" },
+    { label: "Drafts", value: draftJobs, description: "Jobs waiting for review or completion.", icon: BriefcaseBusiness, tone: "workspace-tone-amber" },
+    { label: "Employers", value: uniqueEmployers, description: "Companies with jobs in your portfolio.", icon: Building2, tone: "workspace-tone-sky" },
+    { label: "Applicants", value: totalApplicants, description: "Candidate volume across the current results.", icon: Users, tone: "workspace-tone-indigo" },
   ];
 
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Title", key: "title" },
+    { header: "Employer", key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
+    { header: "Location", key: "location", formatter: (_v, row) => { const loc = (row as unknown as JobItem).location; if (!loc) return ""; if (loc.isRemote) return "Remote"; return [loc.city, loc.country].filter(Boolean).join(", "); } },
+    { header: "Status", key: "status" },
+    { header: "Applicants", key: "applicationCount", formatter: (_v, row) => String((row as unknown as JobItem).applicationCount ?? (row as unknown as JobItem).applicantIds?.length ?? 0) },
+    { header: "Posted", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: jobs as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "agent-jobs",
+    title: "Agent Jobs",
+  });
+
+  /* ================================================================ */
+  /*  RENDER                                                          */
+  /* ================================================================ */
   return (
     <div className="page-container agent-legacy-surface space-y-6">
+      {/* ──────── HERO ──────── */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
@@ -179,10 +260,10 @@ export default function AgentJobsPage() {
           </div>
         </div>
 
+        {/* KPI cards */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {summaryCards.map((card) => {
             const Icon = card.icon;
-
             return (
               <div key={card.label} className="workspace-glass-panel rounded-2xl p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -191,9 +272,7 @@ export default function AgentJobsPage() {
                     <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{card.value}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{card.description}</p>
                   </div>
-                  <div className={`rounded-2xl p-2.5 ${card.tone}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
+                  <div className={`rounded-2xl p-2.5 ${card.tone}`}><Icon className="h-5 w-5" /></div>
                 </div>
               </div>
             );
@@ -201,6 +280,72 @@ export default function AgentJobsPage() {
         </div>
       </section>
 
+      {/* ──────── AI SEARCH ──────── */}
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-sky-500/20">
+            <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold text-foreground">AI-Powered Search</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Describe what you&apos;re looking for in plain language and let AI set the right filters.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="relative">
+            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-500/60" />
+            <Input
+              ref={aiInputRef}
+              value={aiQuery}
+              onChange={(e) => setAiQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
+              placeholder='e.g. "active remote jobs posted this week"'
+              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 pr-24 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
+              disabled={aiLoading}
+            />
+            <Button
+              onClick={() => handleAiSearch()}
+              disabled={aiLoading || !aiQuery.trim()}
+              size="sm"
+              className="absolute right-1.5 top-1/2 h-8 -translate-y-1/2 gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-medium text-white hover:bg-violet-700"
+            >
+              {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              Search
+            </Button>
+          </div>
+
+          {/* Suggestions */}
+          {!activeAiFilters && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {AI_SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => { setAiQuery(s); handleAiSearch(s); }}
+                  className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* AI summary banner */}
+          {aiSummary && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50/60 px-3 py-2 dark:border-violet-800/40 dark:bg-violet-950/30">
+              <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-400" />
+              <p className="flex-1 text-xs text-violet-700 dark:text-violet-300">{aiSummary}</p>
+              <button onClick={clearAiFilters} className="shrink-0 rounded p-0.5 hover:bg-violet-200/60 dark:hover:bg-violet-800/40">
+                <X className="h-3.5 w-3.5 text-violet-500" />
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ──────── MANUAL FILTERS ──────── */}
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
@@ -211,19 +356,20 @@ export default function AgentJobsPage() {
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+          {/* Text search */}
           <div className="relative min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search jobs"
+              placeholder="Search jobs by title, location..."
               className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
             />
           </div>
+          {/* Status tabs */}
           <div className="flex flex-wrap gap-2">
-            {["", "draft", "active", "closed"].map((value) => {
+            {STATUS_TABS.map((value) => {
               const isSelected = statusFilter === value;
-
               return (
                 <Button
                   key={value || "all"}
@@ -241,6 +387,7 @@ export default function AgentJobsPage() {
             })}
           </div>
 
+          {/* Employer filter */}
           {employers.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -259,6 +406,7 @@ export default function AgentJobsPage() {
         </div>
       </section>
 
+      {/* ──────── JOB TABLE ──────── */}
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -272,6 +420,12 @@ export default function AgentJobsPage() {
         </div>
 
         <div className="mt-5 overflow-hidden rounded-[24px] border border-border bg-card">
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="px-4 pt-4"
+          />
           {loading ? (
             <div className="flex justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-sky-600" />
@@ -298,75 +452,51 @@ export default function AgentJobsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {jobs.map((job) => (
-                  <TableRow key={job._id} className="hover:bg-secondary/60">
-                    <TableCell className="font-medium text-foreground">{job.title}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {job.employerId?.companyName ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {locationText(job.location)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={job.status} />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {job.applicationCount ?? job.applicantIds?.length ?? 0}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(job.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Link href={`/${locale}/agent/candidates?jobId=${job._id}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-9 rounded-xl px-2.5"
-                            title="View Candidates"
-                            aria-label={`View candidates for ${job.title}`}
-                          >
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </Link>
-                        <Link href={`/${locale}/agent/jobs/${job._id}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-9 rounded-xl px-2.5"
-                            title="View Job"
-                            aria-label={`View ${job.title}`}
-                          >
-                            <Eye className="h-4 w-4 text-sky-600" />
-                          </Button>
-                        </Link>
-                        <Link href={`/${locale}/agent/jobs/new?edit=${job._id}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-9 rounded-xl px-2.5"
-                            title="Edit"
-                            aria-label={`Edit ${job.title}`}
-                          >
-                            <Edit2 className="h-4 w-4 text-sky-600" />
-                          </Button>
-                        </Link>
-                        {job.status === "active" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-9 rounded-xl px-2.5"
-                            onClick={() => handleCloseJob(job._id)}
-                            title="Close Job"
-                            aria-label={`Close ${job.title}`}
-                          >
-                            <XCircle className="h-4 w-4 text-rose-500" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {jobs.map((job) => {
+                  const appCount = job.applicationCount ?? job.applicantIds?.length ?? 0;
+
+                  return (
+                    <TableRow key={job._id} className="hover:bg-secondary/60">
+                      <TableCell className="font-medium text-foreground">{job.title}</TableCell>
+                      <TableCell className="text-muted-foreground">{job.employerId?.companyName ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{locationText(job.location)}</TableCell>
+                      <TableCell><StatusBadge status={job.status} /></TableCell>
+                      <TableCell className="text-muted-foreground">{appCount}</TableCell>
+                      <TableCell className="text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* View candidates — redirects to candidates page */}
+                          <Link href={`/${locale}/agent/candidates?jobId=${job._id}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-9 rounded-xl px-2.5"
+                              title="View Candidates"
+                              aria-label={`View candidates for ${job.title}`}
+                            >
+                              <Users className="h-4 w-4 text-muted-foreground" />
+                              {appCount > 0 && (
+                                <span className="ml-1 text-xs text-muted-foreground">{appCount}</span>
+                              )}
+                            </Button>
+                          </Link>
+                          {/* View job details */}
+                          <Link href={`/${locale}/agent/jobs/${job._id}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-9 rounded-xl px-2.5"
+                              title="View Job"
+                              aria-label={`View ${job.title}`}
+                            >
+                              <Eye className="h-4 w-4 text-sky-600" />
+                            </Button>
+                          </Link>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

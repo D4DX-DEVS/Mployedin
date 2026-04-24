@@ -1,0 +1,76 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
+import GoogleCalendar, {
+  type CalendarEvent,
+} from "@/components/shared/GoogleCalendar";
+import { Users } from "lucide-react";
+
+export default function AgentCalendarPage() {
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchEvents = useCallback(async (year: number, month: number) => {
+    setLoading(true);
+    try {
+      const start = new Date(year, month, 1).toISOString();
+      const end = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+      const res = await fetch(`/api/interviews?dateFrom=${start}&dateTo=${end}`);
+      if (res.ok) {
+        const data = await res.json();
+        const items = data.items ?? data.interviews ?? [];
+        setEvents(
+          items.map((i: Record<string, unknown>) => ({
+            _id: String(i._id),
+            title: String(i.jobTitle ?? "Interview"),
+            subtitle: String(i.candidateName ?? ""),
+            type: (i.type as CalendarEvent["type"]) ?? "video",
+            status: String(i.status ?? "scheduled"),
+            scheduledAt: String(i.scheduledAt ?? i.createdAt),
+            duration: i.duration as number | undefined,
+            meetLink: i.meetLink as string | undefined,
+            location: i.location as string | undefined,
+          })),
+        );
+      }
+    } catch {
+      toast.error("Failed to load calendar events");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const now = new Date();
+    fetchEvents(now.getFullYear(), now.getMonth());
+  }, [fetchEvents]);
+
+  return (
+    <div className="space-y-6">
+      {/* Hero */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          Calendar
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Visual overview of all your interviews and follow-ups
+        </p>
+      </section>
+
+      <GoogleCalendar
+        events={events}
+        loading={loading}
+        onMonthChange={fetchEvents}
+        renderEventExtra={(e) =>
+          e.subtitle ? (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Users className="h-3 w-3 flex-shrink-0" />
+              {e.subtitle}
+            </p>
+          ) : null
+        }
+      />
+    </div>
+  );
+}

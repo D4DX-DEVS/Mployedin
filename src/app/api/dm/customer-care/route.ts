@@ -8,6 +8,7 @@ import type { UserRole } from "@/models/User";
 import { triggerRealtimeEvent } from "@/lib/realtime";
 import { validateBody } from "@/lib/validators";
 import { customerCareTicketSchema } from "@/lib/validators/dm";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 interface AuthCtx {
   userId: string;
@@ -168,6 +169,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     conversation: conversation.toObject(),
     type: "customer_care",
   }).catch(() => {});
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "dm.customer_care_create",
+    resource: "conversations",
+    resourceId: conversation._id.toString(),
+    meta: { category },
+    req,
+  });
 
   return NextResponse.json({ conversation: conversation.toObject() }, { status: 201 });
 }

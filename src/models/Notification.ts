@@ -17,7 +17,11 @@ export type NotificationType =
   | "message"
   | "system"
   | "payment"
-  | "verification";
+  | "verification"
+  | "agent_joined"
+  | "employer_registered"
+  | "placement_completed"
+  | "new_job_posted";
 
 export type NotificationChannel = "in_app" | "email" | "whatsapp";
 
@@ -61,6 +65,10 @@ const NotificationSchema = new Schema<INotification>(
         "system",
         "payment",
         "verification",
+        "agent_joined",
+        "employer_registered",
+        "placement_completed",
+        "new_job_posted",
       ],
       required: true,
     },

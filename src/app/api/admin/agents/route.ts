@@ -138,6 +138,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       await SuperAgent.findByIdAndUpdate(superAgentId, {
         $addToSet: { agentIds: agentDoc._id },
       });
+
+      // Notify super agent about new team member
+      const saDoc = await SuperAgent.findById(superAgentId).select("userId").lean();
+      if (saDoc?.userId) {
+        const { notifySuperAgentAgentJoined } = await import("@/lib/notifications/trigger");
+        notifySuperAgentAgentJoined(String(saDoc.userId), name, String(user._id)).catch(() => {});
+      }
     }
   } catch (err) {
     await User.findByIdAndDelete(user._id);

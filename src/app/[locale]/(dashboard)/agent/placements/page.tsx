@@ -9,6 +9,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Inbox, Sparkles, UserCheck } from "lucide-react";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 interface Placement {
   _id: string;
@@ -47,6 +50,23 @@ export default function AgentPlacementsPage() {
   const startedCount = placements.filter((placement) => Boolean(placement.startDate)).length;
   const totalCompensation = placements.reduce((sum, placement) => sum + (placement.salary ?? 0), 0);
 
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Candidate", key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { fullName?: string })?.fullName ?? "" },
+    { header: "Job", key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
+    { header: "Employer", key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
+    { header: "Salary", key: "salary" },
+    { header: "Currency", key: "currency" },
+    { header: "Status", key: "status" },
+    { header: "Start Date", key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: placements as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "agent-placements",
+    title: "Agent Placements",
+  });
+
   return (
     <div className="page-container agent-legacy-surface space-y-6">
       <section className="workspace-hero-surface agent-legacy-hero overflow-hidden rounded-[28px] p-6 sm:p-7">
@@ -68,6 +88,12 @@ export default function AgentPlacementsPage() {
 
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Review every active and historical placement record</h2></div><div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium"><ArrowRight className="h-3.5 w-3.5 text-primary" />{pagination.total} placements across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}</div></div>
+        <TableToolbar
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mt-4"
+        />
         <div className="workspace-subtle-surface mt-5 overflow-hidden rounded-[24px]">
         <Table>
           <TableHeader>

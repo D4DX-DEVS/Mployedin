@@ -7,6 +7,7 @@ import { sanitizeAIInput, redactPII } from "@/lib/ai/sanitize";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { POSTER_DESIGN_PROMPT } from "@/lib/ai/assistantPrompts";
 import { z } from "zod";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 const posterInputSchema = z.object({
   title: z.string().min(3).max(200).trim(),
@@ -134,6 +135,13 @@ Vacancies: ${body.vacancies ?? 1}
     /^#[0-9A-Fa-f]{6}$/.test(design.accentColor) ? design.accentColor : "#6366F1";
   design.contentPriority = (design.contentPriority ?? []).slice(0, 6);
   design.socialCaption = (design.socialCaption ?? "").slice(0, 500);
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "ai.poster_content_generate",
+    resource: "ai",
+    req,
+  });
 
   return NextResponse.json({ design });
 });

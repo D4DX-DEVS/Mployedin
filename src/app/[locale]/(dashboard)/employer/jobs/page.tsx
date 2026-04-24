@@ -9,11 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useTableExport } from "@/hooks/useTableExport";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, useSaveAsTemplate, useJobTemplates, type Job } from "@/hooks/useJobs";
 import { useDebounce } from "@/hooks/useDebounce";
 import { JobPosterDialog } from "@/components/features/employer/jobs/JobPosterDialog";
+import type { ExportColumn } from "@/lib/export";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-500/30",
@@ -99,6 +102,23 @@ export default function EmployerJobsPage() {
   const pausedJobs = jobs.filter((job) => job.status === "paused").length;
   const hiddenSalaryJobs = jobs.filter((job) => job.showSalary === false).length;
   const totalOpenings = jobs.reduce((sum, job) => sum + (job.vacancies ?? 0), 0);
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Title", key: "title", formatter: (v) => String(v ?? "") },
+    { header: "Status", key: "status", formatter: (v) => String(v ?? "—") },
+    { header: "Location", key: "location", formatter: (_v, r) => { const j = r as Record<string, any>; if (!j.location) return "Not set"; if (typeof j.location === "string") return j.location; if (j.location.isRemote) return "Remote"; return [j.location.city, j.location.country].filter(Boolean).join(", ") || "Not set"; } },
+    { header: "Salary Min", key: "salary", formatter: (_v, r) => String((r as Record<string, any>).salary?.min ?? "") },
+    { header: "Salary Max", key: "salary", formatter: (_v, r) => String((r as Record<string, any>).salary?.max ?? "") },
+    { header: "Currency", key: "salary", formatter: (_v, r) => String((r as Record<string, any>).salary?.currency ?? "USD") },
+    { header: "Vacancies", key: "vacancies", formatter: (v) => String(v ?? 0) },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: jobs as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "jobs",
+    title: "Job Postings",
+  });
 
   async function handleCloneJob(job: Job) {
     setCloningJobId(job._id);
@@ -558,6 +578,11 @@ export default function EmployerJobsPage() {
         </div>
       ) : (
         <div className="space-y-4">
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+          />
           {jobs.map((job) => {
             const posted = new Date(job.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
             const expires = job.expiresAt ? new Date(job.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;

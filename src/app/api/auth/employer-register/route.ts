@@ -125,11 +125,16 @@ export async function POST(req: NextRequest) {
           referrerAgentId = agentRef._id.toString();
           isAgentVerified = true;
           verifiedByAgentId = agentRef.userId.toString();
+          // Also match the ReferralLink doc if it exists (created by /api/referral)
+          const fallbackRl = await ReferralLink.findOne({ code: referralCode });
+          if (fallbackRl) matchedReferralLink = { _id: fallbackRl._id.toString() };
         } else {
           const saRef = await SuperAgent.findOne({ referralCode }).select("userId").lean();
           if (saRef) {
             isAgentVerified = true;
             verifiedByAgentId = saRef.userId.toString();
+            const fallbackRl = await ReferralLink.findOne({ code: referralCode });
+            if (fallbackRl) matchedReferralLink = { _id: fallbackRl._id.toString() };
           }
         }
       }
@@ -177,6 +182,20 @@ export async function POST(req: NextRequest) {
         $addToSet: { assignedEmployerIds: employer._id },
         $inc: { "performance.employersCreated": 1 },
       });
+
+      // Notify super agent about new employer in their network
+      const { getSuperAgentUserId, notifySuperAgentEmployerRegistered } = await import("@/lib/notifications/trigger");
+      const saUserId = await getSuperAgentUserId(referrerAgentId);
+      if (saUserId) {
+        const agentDoc = await Agent.findById(referrerAgentId).select("userId").lean();
+        const agentUser = agentDoc?.userId
+          ? await User.findById(agentDoc.userId).select("name").lean()
+          : null;
+        const agentName = (agentUser as { name?: string })?.name ?? "An agent";
+        notifySuperAgentEmployerRegistered(
+          saUserId, companyName || "A company", agentName, String(employer._id),
+        ).catch(() => {});
+      }
     }
 
     // Auto-create CompanyUser with owner role

@@ -12,6 +12,7 @@ import { validateBody } from "@/lib/validators";
 import { aiMatchSchema } from "@/lib/validators/ai";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
   const cleaned = (values ?? [])
@@ -156,6 +157,15 @@ Return a JSON object ONLY (no markdown) with this exact structure:
       matchGaps: matchData.gaps ?? [],
     });
   }
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "ai.match_analyze",
+    resource: "ai",
+    resourceId: jobId,
+    meta: { score: matchData.score },
+    req,
+  });
 
   return NextResponse.json({ jobId, ...matchData });
 });

@@ -6,6 +6,7 @@ import NotificationPreference, {
 } from "@/models/NotificationPreference";
 import { validateBody } from "@/lib/validators";
 import { notificationPreferencesUpdateSchema } from "@/lib/validators/settings";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 /**
  * GET /api/user/notification-preferences
@@ -68,6 +69,14 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     { $set: updateOps },
     { new: true, upsert: true },
   );
+
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "notification_preferences.update",
+    resource: "notification_preferences",
+    changes: { after: updateOps },
+    req,
+  });
 
   return NextResponse.json({ success: true, data: prefs });
 });

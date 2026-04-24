@@ -21,6 +21,9 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { PermissionEditor } from "@/components/shared/PermissionEditor";
 import { usePagination } from "@/hooks/usePagination";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import { AlertCircle, Loader2 } from "lucide-react";
 
@@ -73,6 +76,22 @@ export default function AdminUsersPage() {
   const [permSaving, setPermSaving] = useState(false);
 
   useEffect(() => { document.title = "User Management · MPLOYEDIN"; }, []);
+
+  const exportColumns: ExportColumn<User>[] = [
+    { header: "Name", key: "name" },
+    { header: "Email", key: "email" },
+    { header: "Role", key: "role" },
+    { header: "Status", key: "isActive", formatter: (v) => v ? "Active" : "Inactive" },
+    { header: "Locale", key: "locale" },
+    { header: "Last Login", key: "lastLoginAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: "Joined", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: users as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "users",
+    title: "Users",
+  });
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -207,15 +226,15 @@ export default function AdminUsersPage() {
       {/* Filters */}
       <div className="card-base p-4 lg:p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div className="flex gap-3 flex-wrap flex-1 w-full m:w-auto">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or email…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="ps-10 shadow-none border-border/80 bg-background/50 focus:bg-background transition-colors"
-            />
-          </div>
+          <TableToolbar
+            search={search}
+            onSearchChange={(v) => { setSearch(v); resetPage(); }}
+            searchPlaceholder="Search by name or email…"
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="flex-1 w-full"
+          />
           <SearchableSelect
             className="w-[140px]"
             options={[

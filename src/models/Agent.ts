@@ -29,6 +29,10 @@ export interface IAgent extends Document {
   commissionRate?: number; // percentage
   country?: string;
   currencyCode?: string;
+  timezone?: string;
+  workingHoursStart?: string;
+  workingHoursEnd?: string;
+  workingDays?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -65,6 +69,10 @@ const AgentSchema = new Schema<IAgent>(
     commissionRate: { type: Number, default: 0 },
     country: { type: String, default: "" },
     currencyCode: { type: String, default: "AED" },
+    timezone: { type: String, default: "Asia/Dubai" },
+    workingHoursStart: { type: String, default: "09:00" },
+    workingHoursEnd: { type: String, default: "18:00" },
+    workingDays: { type: [String], default: ["Mon", "Tue", "Wed", "Thu", "Fri"] },
   },
   { timestamps: true }
 );

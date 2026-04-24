@@ -9,6 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 
 interface AuditLogEntry {
   _id: string;
@@ -43,6 +46,22 @@ export default function AuditLogsPage() {
 
   useEffect(() => { document.title = "Audit Logs · MPLOYEDIN"; }, []);
 
+  const exportColumns: ExportColumn<AuditLogEntry>[] = [
+    { header: "Timestamp", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "—" },
+    { header: "Actor", key: "actorId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).actorId?.name ?? "System" },
+    { header: "Email", key: "actorId" as keyof AuditLogEntry, formatter: (_v, r) => (r as unknown as AuditLogEntry).actorId?.email ?? "—" },
+    { header: "Action", key: "action" },
+    { header: "Resource", key: "resource" },
+    { header: "IP Address", key: "ipAddress" },
+    { header: "Country", key: "country", formatter: (v) => String(v ?? "—") },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: logs as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "audit-logs",
+    title: "Audit Logs",
+  });
+
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
@@ -70,6 +89,12 @@ export default function AuditLogsPage() {
       <PageHeader
         title="Audit Logs"
         description={`${total.toLocaleString()} log entries · read-only`}
+      />
+
+      <TableToolbar
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
       />
 
       {/* Filters */}

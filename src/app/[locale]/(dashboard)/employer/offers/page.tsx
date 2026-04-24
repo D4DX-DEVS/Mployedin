@@ -11,8 +11,11 @@ import {
 } from "@/components/ui/table";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useOffers, useWithdrawOffer } from "@/hooks/useOffers";
+import { useTableExport } from "@/hooks/useTableExport";
 import type { Offer, OfferStatus } from "@/hooks/useOffers";
+import type { ExportColumn } from "@/lib/export";
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All Statuses" },
@@ -93,6 +96,22 @@ export default function EmployerOffersPage() {
   const acceptedCount = offers.filter((o) => o.status === "accepted").length;
   const expiringSoonCount = offers.filter((offer) => isExpiring(offer)).length;
   const respondedCount = offers.filter((offer) => offer.respondedAt).length;
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Candidate", key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.name || `Candidate #${String((r as Record<string, any>)._id).slice(-4)}` },
+    { header: "Role", key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title || "Untitled role" },
+    { header: "Salary", key: "salary", formatter: (_v, r) => { const o = r as Record<string, any>; return `${o.salary?.currency} ${o.salary?.amount?.toLocaleString()}`; } },
+    { header: "Start Date", key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "Not set" },
+    { header: "Status", key: "status", formatter: (v) => String(v ?? "—") },
+    { header: "Expires", key: "expiresAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "Not set" },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: offers as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "offers",
+    title: "Offers",
+  });
 
   function formatDate(value?: string): string {
     if (!value) return "Not set";
@@ -278,6 +297,13 @@ export default function EmployerOffersPage() {
             </div>
             <p className="text-sm text-muted-foreground">{offers.length} offers on this page</p>
           </div>
+
+          <TableToolbar
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            className="mt-4"
+          />
 
           <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
             <Table>

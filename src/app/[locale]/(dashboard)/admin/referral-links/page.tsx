@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,9 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { usePagination } from "@/hooks/usePagination";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
 import {
   useReferralLinks,
   useUpdateReferralLink,
@@ -64,6 +68,7 @@ function creatorEmail(link: ReferralLinkItem): string {
 }
 
 export default function AdminReferralLinksPage() {
+  const { locale } = useParams<{ locale: string }>();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -80,7 +85,7 @@ export default function AdminReferralLinksPage() {
 
   const baseUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/register/employer?ref=`
+      ? `${window.location.origin}/${locale || "en"}/employer-register?ref=`
       : "";
 
   const handleCopy = useCallback((code: string) => {
@@ -96,6 +101,23 @@ export default function AdminReferralLinksPage() {
   // Stats
   const activeLinks = links.filter((l) => linkStatus(l) === "active").length;
   const totalRegistrations = links.reduce((s, l) => s + l.usedCount, 0);
+
+  const exportColumns: ExportColumn<ReferralLinkItem>[] = [
+    { header: "Code", key: "code" as keyof ReferralLinkItem },
+    { header: "Creator", key: "createdBy" as keyof ReferralLinkItem, formatter: (_v, r) => creatorName(r as unknown as ReferralLinkItem) },
+    { header: "Role", key: "creatorRole" as keyof ReferralLinkItem, formatter: (v) => v === "super_agent" ? "Super Agent" : "Agent" },
+    { header: "Label", key: "label" as keyof ReferralLinkItem, formatter: (v) => String(v || "—") },
+    { header: "Used", key: "usedCount" as keyof ReferralLinkItem, formatter: (v, r) => { const l = r as unknown as ReferralLinkItem; return `${v}${l.maxUses > 0 ? ` / ${l.maxUses}` : ""}`; } },
+    { header: "Status", key: "isActive" as keyof ReferralLinkItem, formatter: (_v, r) => statusLabel(linkStatus(r as unknown as ReferralLinkItem)) },
+    { header: "Expires", key: "expiresAt" as keyof ReferralLinkItem, formatter: (v) => formatDate(v as string) },
+    { header: "Created", key: "createdAt" as keyof ReferralLinkItem, formatter: (v) => formatDate(v as string) },
+  ];
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: links as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "referral-links",
+    title: "Referral Links",
+  });
 
   return (
     <div className="space-y-6">
@@ -122,17 +144,14 @@ export default function AdminReferralLinksPage() {
       </div>
 
       {/* Search */}
-      <div className="flex items-center gap-3">
-        <div className="relative max-w-md flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-            placeholder="Search by code, label, or creator..."
-            className="h-10 pl-9"
-          />
-        </div>
-      </div>
+      <TableToolbar
+        search={search}
+        onSearchChange={(v) => { setSearch(v); resetPage(); }}
+        searchPlaceholder="Search by code, label, or creator…"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
 
       {/* Table */}
       {isLoading ? (

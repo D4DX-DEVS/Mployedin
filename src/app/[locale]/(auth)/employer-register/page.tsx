@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Building2, FileCheck, CheckCircle, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
 import { FormInput, FormSelect, FormFileDrop } from "@/components/shared/AppForm";
 
@@ -69,6 +69,8 @@ const VERIFICATION_LEVELS: { value: VerificationLevel; label: string; descriptio
 
 export default function EmployerRegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const referralCode = searchParams.get("ref") ?? "";
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -97,6 +99,7 @@ export default function EmployerRegisterPage() {
       if (step2.tradeLicenseFile) form.append("tradeLicense", step2.tradeLicenseFile);
       if (step2.mohCertFile) form.append("mohCert", step2.mohCertFile);
       Object.entries(step3).forEach(([k, v]) => { if (k !== "confirmPassword") form.append(k, v); });
+      if (referralCode) form.append("referralCode", referralCode);
 
       const res = await fetch("/api/auth/employer-register", { method: "POST", body: form });
       if (!res.ok) {

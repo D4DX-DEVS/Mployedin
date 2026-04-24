@@ -1,13 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CalendarClock, ShieldCheck, Trophy, Users2 } from "lucide-react";
+import {
+  ArrowUpDown, CalendarClock, ChevronDown, ChevronUp, DollarSign,
+  Filter, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Trophy, Users2,
+} from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   SuperAgentDataTableShell,
   SuperAgentEmptyState,
@@ -15,57 +21,272 @@ import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
+import { useTableExport } from "@/hooks/useTableExport";
+import { TableToolbar } from "@/components/shared/TableToolbar";
+import type { ExportColumn } from "@/lib/export";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+type VisaStatus = "not_required" | "pending" | "approved" | "rejected" | "stamped";
 
 interface Placement {
   _id: string;
-  jobSeekerId?: { fullName?: string };
-  jobId?: { title?: string };
-  employerId?: { companyName?: string };
-  status: string;
+  candidateName?: string;
+  candidateEmail?: string;
+  jobTitle?: string;
+  companyName?: string;
+  agentName?: string;
+  visaStatus?: string;
+  commissionPaid?: boolean;
+  commissionAmount?: number;
   salary?: number;
   currency?: string;
   startDate?: string;
+  placedAt?: string;
+  notes?: string;
   createdAt: string;
+  /* legacy field names from old shape */
+  jobSeekerId?: { fullName?: string };
+  jobId?: { title?: string };
+  employerId?: { companyName?: string };
+  status?: string;
 }
+
+interface AgentOption { _id: string; name: string; email: string; }
+
+interface Filters {
+  visaStatus: string;
+  search: string;
+  commissionPaid: string;
+  currency: string;
+  salaryMin: string;
+  salaryMax: string;
+  dateFrom: string;
+  dateTo: string;
+  agentId: string;
+  employerId: string;
+  sortBy: string;
+  sortOrder: string;
+}
+
+const INITIAL_FILTERS: Filters = {
+  visaStatus: "", search: "", commissionPaid: "", currency: "",
+  salaryMin: "", salaryMax: "", dateFrom: "", dateTo: "",
+  agentId: "", employerId: "", sortBy: "createdAt", sortOrder: "desc",
+};
+
+const VISA_STATUSES: VisaStatus[] = ["not_required", "pending", "approved", "rejected", "stamped"];
+
+const VISA_LABELS: Record<VisaStatus, string> = {
+  not_required: "Not Required",
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+  stamped: "Stamped",
+};
+
+const CURRENCY_OPTIONS = [
+  { value: "", label: "All currencies" },
+  { value: "AED", label: "AED" },
+  { value: "USD", label: "USD" },
+  { value: "EUR", label: "EUR" },
+  { value: "GBP", label: "GBP" },
+  { value: "SAR", label: "SAR" },
+  { value: "QAR", label: "QAR" },
+  { value: "KWD", label: "KWD" },
+  { value: "BHD", label: "BHD" },
+  { value: "OMR", label: "OMR" },
+  { value: "EGP", label: "EGP" },
+  { value: "INR", label: "INR" },
+];
+
+const SORT_OPTIONS = [
+  { value: "createdAt", label: "Date Created" },
+  { value: "placedAt", label: "Placed Date" },
+  { value: "startDate", label: "Start Date" },
+  { value: "salary", label: "Salary" },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function countActiveFilters(f: Filters): number {
+  let count = 0;
+  if (f.commissionPaid) count++;
+  if (f.currency) count++;
+  if (f.salaryMin || f.salaryMax) count++;
+  if (f.dateFrom || f.dateTo) count++;
+  if (f.agentId) count++;
+  if (f.employerId) count++;
+  if (f.sortBy !== "createdAt" || f.sortOrder !== "desc") count++;
+  return count;
+}
+
+function getCandidateName(p: Placement): string {
+  return p.candidateName ?? p.jobSeekerId?.fullName ?? "—";
+}
+function getJobTitle(p: Placement): string {
+  return p.jobTitle ?? p.jobId?.title ?? "—";
+}
+function getCompanyName(p: Placement): string {
+  return p.companyName ?? p.employerId?.companyName ?? "—";
+}
+function getVisaStatus(p: Placement): string {
+  return p.visaStatus ?? p.status ?? "pending";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page Component                                                     */
+/* ------------------------------------------------------------------ */
 
 export default function SuperAgentPlacementsPage() {
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
-  const { page, limit, total, totalPages, setPage, setLimit, updateTotal } = usePagination();
+  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [agents, setAgents] = useState<AgentOption[]>([]);
+  const [employers, setEmployers] = useState<{ _id: string; companyName: string }[]>([]);
+  const [salaryByCurrency, setSalaryByCurrency] = useState<Record<string, number>>({});
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
+  /* -- Fetch agents for filter dropdown -- */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/super-agent/agents?limit=200");
+        if (res.ok) {
+          const data = await res.json();
+          setAgents(data.agents?.map((a: { _id: string; name: string; email: string }) => ({
+            _id: a._id, name: a.name, email: a.email,
+          })) ?? []);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  /* -- Fetch employers for filter dropdown -- */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/employers?limit=200&fields=companyName");
+        if (res.ok) {
+          const data = await res.json();
+          const list = data.employers ?? data.items ?? [];
+          setEmployers(list.map((e: { _id: string; companyName?: string }) => ({
+            _id: e._id, companyName: e.companyName ?? "Unknown",
+          })));
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  /* -- Fetch placements -- */
   const fetchPlacements = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    const res = await fetch(`/api/placements?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setPlacements(data.items ?? data.placements ?? []);
-      updateTotal(data.total ?? data.totalCount ?? ((data.totalPages ?? 1) * limit));
-    }
+    if (filters.visaStatus) params.set("visaStatus", filters.visaStatus);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.commissionPaid) params.set("commissionPaid", filters.commissionPaid);
+    if (filters.currency) params.set("currency", filters.currency);
+    if (filters.salaryMin) params.set("salaryMin", filters.salaryMin);
+    if (filters.salaryMax) params.set("salaryMax", filters.salaryMax);
+    if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+    if (filters.dateTo) params.set("dateTo", filters.dateTo);
+    if (filters.agentId) params.set("agentId", filters.agentId);
+    if (filters.employerId) params.set("employerId", filters.employerId);
+
+    try {
+      const res = await fetch(`/api/placements?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPlacements(data.items ?? data.placements ?? []);
+        updateTotal(data.total ?? data.totalCount ?? ((data.totalPages ?? data.pagination?.pages ?? 1) * limit));
+        if (data.salaryByCurrency) setSalaryByCurrency(data.salaryByCurrency);
+      }
+    } catch { /* ignore */ }
     setLoading(false);
-  }, [page, limit, updateTotal]);
+  }, [filters, page, limit, updateTotal]);
 
   useEffect(() => { fetchPlacements(); }, [fetchPlacements]);
 
-  const upcomingStarts = useMemo(() => placements.filter((placement) => {
-    if (!placement.startDate) return false;
-    const start = new Date(placement.startDate).getTime();
+  /* -- Filter helpers -- */
+  const updateFilter = useCallback((key: keyof Filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    resetPage();
+  }, [resetPage]);
+
+  const resetFilters = useCallback(() => {
+    setFilters(INITIAL_FILTERS);
+    resetPage();
+  }, [resetPage]);
+
+  /* -- Column sort -- */
+  const toggleSort = useCallback((field: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      sortBy: field,
+      sortOrder: prev.sortBy === field && prev.sortOrder === "desc" ? "asc" : "desc",
+    }));
+    resetPage();
+  }, [resetPage]);
+
+  /* -- Computed counts -- */
+  const visaCounts = useMemo(() => {
+    return VISA_STATUSES.reduce((acc, s) => {
+      acc[s] = placements.filter((p) => getVisaStatus(p) === s).length;
+      return acc;
+    }, {} as Record<VisaStatus, number>);
+  }, [placements]);
+
+  const upcomingStarts = useMemo(() => placements.filter((p) => {
+    const d = p.startDate;
+    if (!d) return false;
+    const start = new Date(d).getTime();
     if (Number.isNaN(start)) return false;
     const now = Date.now();
-    const twoWeeks = 14 * 24 * 60 * 60 * 1000;
-    return start >= now && start <= now + twoWeeks;
+    return start >= now && start <= now + 14 * 24 * 60 * 60 * 1000;
   }).length, [placements]);
 
   const employerCount = useMemo(
-    () => new Set(placements.map((placement) => placement.employerId?.companyName).filter(Boolean)).size,
-    [placements]
+    () => new Set(placements.map((p) => getCompanyName(p)).filter((n) => n !== "—")).size,
+    [placements],
   );
+
+  const totalSalary = useMemo(
+    () => Object.entries(salaryByCurrency).map(([cur, val]) => `${cur} ${val.toLocaleString()}`).join(" · ") || "—",
+    [salaryByCurrency],
+  );
+
+  const activeFilterCount = countActiveFilters(filters);
+
+  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
+    { header: "Candidate", key: "candidateName", formatter: (_v, row) => getCandidateName(row as unknown as Placement) },
+    { header: "Job", key: "jobTitle", formatter: (_v, row) => getJobTitle(row as unknown as Placement) },
+    { header: "Employer", key: "companyName", formatter: (_v, row) => getCompanyName(row as unknown as Placement) },
+    { header: "Agent", key: "agentName" },
+    { header: "Visa Status", key: "visaStatus", formatter: (_v, row) => getVisaStatus(row as unknown as Placement) },
+    { header: "Salary", key: "salary" },
+    { header: "Currency", key: "currency" },
+    { header: "Commission Paid", key: "commissionPaid", formatter: (v) => v ? "Yes" : "No" },
+    { header: "Start Date", key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: "Placed At", key: "placedAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+  ];
+
+  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
+    data: placements as unknown as Record<string, unknown>[],
+    columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "super-agent-placements",
+    title: "Placements",
+  });
 
   const kpis = [
     {
       label: "Placements",
-      value: placements.length,
-      helper: "Visible placement records returned for the current page.",
+      value: total,
+      helper: "Total placement records matching current filters.",
       icon: <Trophy className="h-5 w-5" />,
       toneClassName: "workspace-tone-sky",
     },
@@ -77,10 +298,10 @@ export default function SuperAgentPlacementsPage() {
       toneClassName: "workspace-tone-emerald",
     },
     {
-      label: "Active Statuses",
-      value: placements.filter((placement) => placement.status === "active" || placement.status === "placed").length,
-      helper: "Visible placements already marked active or fully placed.",
-      icon: <ShieldCheck className="h-5 w-5" />,
+      label: "Commission Paid",
+      value: placements.filter((p) => p.commissionPaid).length,
+      helper: "Placements on this page where commission has been paid.",
+      icon: <DollarSign className="h-5 w-5" />,
       toneClassName: "workspace-tone-indigo",
     },
     {
@@ -92,13 +313,41 @@ export default function SuperAgentPlacementsPage() {
     },
   ];
 
+  /* ---------------------------------------------------------------- */
+  /*  Sortable Header Cell                                            */
+  /* ---------------------------------------------------------------- */
+
+  function SortHeader({ field, children }: { field: string; children: React.ReactNode }) {
+    const active = filters.sortBy === field;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(field)}
+        className="group inline-flex items-center gap-1 text-muted-foreground/80 hover:text-foreground transition-colors"
+      >
+        {children}
+        {active ? (
+          filters.sortOrder === "asc"
+            ? <ChevronUp className="h-3.5 w-3.5 text-primary" />
+            : <ChevronDown className="h-3.5 w-3.5 text-primary" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+        )}
+      </button>
+    );
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Render                                                          */
+  /* ---------------------------------------------------------------- */
+
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
         title="Placements"
         description="Track successful candidate placements made by your team, monitor start timing, and keep employer delivery visible from one polished review surface."
         summaryTitle="Placement flow"
-        summaryDescription="This page keeps the existing placements endpoint and pagination logic intact while moving the UI onto the modern workspace pattern."
+        summaryDescription="Filter by visa status, salary range, date, commission, and more. The API handles every combination server-side."
       />
 
       <SuperAgentMetricsGrid items={kpis} />
@@ -106,45 +355,313 @@ export default function SuperAgentPlacementsPage() {
       <SuperAgentSection
         eyebrow="Placements"
         title="Review successful hiring outcomes"
-        description="Use the same data and status badges, now presented in the updated super-agent table shell."
+        description="Visa status toggles, keyword search, and advanced filters all drive the same placement query."
       >
+        {/* ---- Visa Status Strip ---- */}
+        <div className="flex flex-col gap-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {VISA_STATUSES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => updateFilter("visaStatus", filters.visaStatus === s ? "" : s)}
+                aria-pressed={filters.visaStatus === s}
+                className={`rounded-2xl border px-4 py-3 text-left transition-all ${filters.visaStatus === s ? "border-primary/35 bg-primary/10 shadow-sm shadow-primary/15" : "border-border/70 bg-background/85 hover:border-border hover:bg-secondary/80"}`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{VISA_LABELS[s]}</p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{visaCounts[s]}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* ---- Search Row + Toggle ---- */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+            {/* Text Search */}
+            <div className="relative w-full min-w-0 max-w-xs">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+              <Input
+                aria-label="Search placements"
+                placeholder="Search candidate, company, email..."
+                value={filters.search}
+                onChange={(e) => updateFilter("search", e.target.value)}
+                className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
+              />
+            </div>
+
+            {/* Commission Toggle */}
+            <div className="flex items-center gap-2">
+              {[
+                { value: "", label: "All" },
+                { value: "true", label: "Commission Paid" },
+                { value: "false", label: "Unpaid" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => updateFilter("commissionPaid", filters.commissionPaid === opt.value ? "" : opt.value)}
+                  aria-pressed={filters.commissionPaid === opt.value}
+                  className={`rounded-xl border px-3.5 py-2 text-xs font-medium transition-all ${
+                    filters.commissionPaid === opt.value
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-border/70 bg-background/85 text-muted-foreground hover:border-border hover:bg-secondary/80"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Advanced Toggle + Reset */}
+            <div className="flex items-center gap-2 sm:ml-auto">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className={`flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all ${showAdvanced ? "border-primary/30 bg-primary/10 text-primary" : "border-border/70 bg-background/85 text-muted-foreground hover:border-border hover:bg-secondary/80"}`}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Advanced
+                {activeFilterCount > 0 && (
+                  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1.5 text-[11px] font-semibold text-primary">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+
+              {(activeFilterCount > 0 || filters.visaStatus || filters.search || filters.commissionPaid) && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-4 text-sm text-muted-foreground hover:border-border hover:bg-secondary/80 transition-all"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* ---- Salary Summary Banner ---- */}
+          {Object.keys(salaryByCurrency).length > 0 && (
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-50/40 px-4 py-2.5 text-sm text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300">
+              <DollarSign className="h-4 w-4 shrink-0" />
+              <span>Total salary value: <strong>{totalSalary}</strong></span>
+            </div>
+          )}
+
+          {/* ---- Advanced Filter Panel ---- */}
+          {showAdvanced && (
+            <div className="rounded-2xl border border-border/60 bg-background/90 p-5 shadow-sm animate-in slide-in-from-top-2 duration-200">
+              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Filter className="h-4 w-4" />
+                Advanced Filters
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {/* Currency */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Currency</label>
+                  <SearchableSelect
+                    options={CURRENCY_OPTIONS}
+                    value={filters.currency}
+                    onValueChange={(v) => updateFilter("currency", v)}
+                    placeholder="All currencies"
+                    searchPlaceholder="Search currency..."
+                  />
+                </div>
+
+                {/* Salary Min */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Salary Min</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="e.g. 5000"
+                    value={filters.salaryMin}
+                    onChange={(e) => updateFilter("salaryMin", e.target.value)}
+                    className="h-10 rounded-xl text-sm"
+                  />
+                </div>
+
+                {/* Salary Max */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Salary Max</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="e.g. 30000"
+                    value={filters.salaryMax}
+                    onChange={(e) => updateFilter("salaryMax", e.target.value)}
+                    className="h-10 rounded-xl text-sm"
+                  />
+                </div>
+
+                {/* Agent */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Agent</label>
+                  <SearchableSelect
+                    options={[{ value: "", label: "All agents" }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))]}
+                    value={filters.agentId}
+                    onValueChange={(v) => updateFilter("agentId", v)}
+                    placeholder="All agents"
+                    searchPlaceholder="Search agent..."
+                  />
+                </div>
+
+                {/* Employer */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Employer</label>
+                  <SearchableSelect
+                    options={[{ value: "", label: "All employers" }, ...employers.map((e) => ({ value: e._id, label: e.companyName }))]}
+                    value={filters.employerId}
+                    onValueChange={(v) => updateFilter("employerId", v)}
+                    placeholder="All employers"
+                    searchPlaceholder="Search employer..."
+                  />
+                </div>
+
+                {/* Placed Date From */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Placed From</label>
+                  <DateTimePicker
+                    value={filters.dateFrom}
+                    onChange={(v) => updateFilter("dateFrom", v)}
+                    placeholder="Start date"
+                    mode="date"
+                  />
+                </div>
+
+                {/* Placed Date To */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Placed To</label>
+                  <DateTimePicker
+                    value={filters.dateTo}
+                    onChange={(v) => updateFilter("dateTo", v)}
+                    placeholder="End date"
+                    mode="date"
+                  />
+                </div>
+
+                {/* Sort By */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+                  <SearchableSelect
+                    options={SORT_OPTIONS}
+                    value={filters.sortBy}
+                    onValueChange={(v) => updateFilter("sortBy", v)}
+                    placeholder="Date Created"
+                  />
+                </div>
+
+                {/* Sort Order */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
+                  <SearchableSelect
+                    options={[
+                      { value: "desc", label: "Newest first" },
+                      { value: "asc", label: "Oldest first" },
+                    ]}
+                    value={filters.sortOrder}
+                    onValueChange={(v) => updateFilter("sortOrder", v)}
+                    placeholder="Newest first"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Filter Chips */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
+                {[
+                  { label: "Visa Pending", action: () => updateFilter("visaStatus", "pending") },
+                  { label: "Commission Unpaid", action: () => updateFilter("commissionPaid", "false") },
+                  { label: "This Month", action: () => {
+                    const d = new Date();
+                    updateFilter("dateFrom", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
+                  }},
+                  { label: "High Salary (10k+)", action: () => updateFilter("salaryMin", "10000") },
+                  { label: "Visa Approved", action: () => updateFilter("visaStatus", "approved") },
+                  { label: "Stamped", action: () => updateFilter("visaStatus", "stamped") },
+                ].map((chip) => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={chip.action}
+                    className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ---- Table ---- */}
+        <TableToolbar
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          className="mb-4"
+        />
         <SuperAgentDataTableShell>
           <Table>
             <TableHeader>
               <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
-                <TableHead className="py-4 text-muted-foreground/80">Candidate</TableHead>
+                <TableHead className="py-4"><SortHeader field="candidateName">Candidate</SortHeader></TableHead>
                 <TableHead className="py-4 text-muted-foreground/80">Job</TableHead>
                 <TableHead className="py-4 text-muted-foreground/80">Employer</TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Status</TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Start Date</TableHead>
+                <TableHead className="py-4 text-muted-foreground/80">Visa Status</TableHead>
+                <TableHead className="py-4"><SortHeader field="salary">Salary</SortHeader></TableHead>
+                <TableHead className="py-4 text-muted-foreground/80">Commission</TableHead>
+                <TableHead className="py-4"><SortHeader field="startDate">Start Date</SortHeader></TableHead>
+                <TableHead className="py-4"><SortHeader field="placedAt">Placed</SortHeader></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="border-border/50">
-                    {Array.from({ length: 5 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : placements.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="p-0">
+                  <TableCell colSpan={8} className="p-0">
                     <SuperAgentEmptyState
                       icon={<Trophy className="h-7 w-7" />}
                       title="No placements yet"
-                      description="Placements will appear here once your team closes successful hires."
+                      description={filters.search || filters.visaStatus || activeFilterCount > 0
+                        ? "No placements match the current filters. Try adjusting your criteria."
+                        : "Placements will appear here once your team closes successful hires."}
                     />
                   </TableCell>
                 </TableRow>
               ) : placements.map((p) => (
                 <TableRow key={p._id} className="border-border/50 hover:bg-accent/25">
-                  <TableCell className="py-4 font-medium text-foreground">{p.jobSeekerId?.fullName ?? "—"}</TableCell>
-                  <TableCell className="py-4 text-foreground/85">{p.jobId?.title ?? "—"}</TableCell>
-                  <TableCell className="py-4 text-muted-foreground">{p.employerId?.companyName ?? "—"}</TableCell>
-                  <TableCell className="py-4"><StatusBadge status={p.status} /></TableCell>
+                  <TableCell className="py-4">
+                    <div>
+                      <p className="font-medium text-foreground">{getCandidateName(p)}</p>
+                      {p.candidateEmail && <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4 text-foreground/85">{getJobTitle(p)}</TableCell>
+                  <TableCell className="py-4 text-muted-foreground">{getCompanyName(p)}</TableCell>
+                  <TableCell className="py-4"><StatusBadge status={getVisaStatus(p)} /></TableCell>
+                  <TableCell className="py-4 text-foreground/85 tabular-nums">
+                    {p.salary ? `${(p.currency ?? "AED")} ${p.salary.toLocaleString()}` : "—"}
+                  </TableCell>
+                  <TableCell className="py-4">
+                    {p.commissionPaid ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                        <ShieldCheck className="h-3 w-3" /> Paid{p.commissionAmount ? ` · ${p.commissionAmount.toLocaleString()}` : ""}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Unpaid</span>
+                    )}
+                  </TableCell>
                   <TableCell className="py-4 text-muted-foreground">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell className="py-4 text-muted-foreground">{p.placedAt ? new Date(p.placedAt).toLocaleDateString() : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

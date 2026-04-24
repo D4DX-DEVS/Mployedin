@@ -135,7 +135,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     req,
   });
 
-  return NextResponse.json({ offer }, { status: 201 });
+  // Re-fetch with populated relations to match GET response shape
+  const populated = await Offer.findById(offer._id)
+    .populate("jobId", "title location")
+    .populate("applicationId", "status")
+    .populate("jobSeekerId", "name")
+    .lean();
+
+  return NextResponse.json({ offer: populated }, { status: 201 });
 }
 
 export const GET = withAuth(getHandler, { resource: "applications", action: "read" });

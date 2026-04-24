@@ -4,9 +4,11 @@ import { withAuth } from "@/lib/auth/withAuth";
 import ReferralLink from "@/models/ReferralLink";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import mongoose from "mongoose";
 import crypto from "crypto";
 import { validateBody } from "@/lib/validators";
 import { referralLinkCreateSchema } from "@/lib/validators/referral-links";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 
 interface AuthCtx {
   userId: string;
@@ -24,6 +26,8 @@ function generateCode(): string {
  * - agent: own links
  * - super_agent: own links + agents under them
  * - admin: all links
+ *
+ * Query params: page, limit, search, status, creatorRole, dateFrom, dateTo, sortBy, sortOrder
  */
 async function handleGet(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
@@ -31,31 +35,43 @@ async function handleGet(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1"));
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") ?? "20")));
   const search = url.searchParams.get("search")?.trim();
+  const statusFilter = url.searchParams.get("status")?.trim();
+  const creatorRoleFilter = url.searchParams.get("creatorRole")?.trim();
+  const dateFrom = url.searchParams.get("dateFrom")?.trim();
+  const dateTo = url.searchParams.get("dateTo")?.trim();
+  const sortBy = url.searchParams.get("sortBy")?.trim() || "createdAt";
+  const sortOrder = url.searchParams.get("sortOrder")?.trim() === "asc" ? 1 : -1;
   const skip = (page - 1) * limit;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let filter: Record<string, any> = {};
+  let ownerFilter: Record<string, any> = {};
 
   if (ctx.role === "agent") {
-    filter.createdBy = ctx.userId;
+    ownerFilter.createdBy = new mongoose.Types.ObjectId(ctx.userId);
   } else if (ctx.role === "super_agent") {
-    // Own links + agents under this super-agent
-    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id agentIds").lean();
-    if (!sa) return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
+    let sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id agentIds").lean();
+    // Auto-create super-agent profile if missing (data integrity recovery)
+    if (!sa) {
+      const created = await SuperAgent.create({ userId: ctx.userId });
+      sa = { _id: created._id, agentIds: [] } as typeof sa;
+    }
 
-    // Get userIds of agents under this super-agent
     const agentUserIds: string[] = [];
     if (sa.agentIds?.length) {
       const agents = await Agent.find({ _id: { $in: sa.agentIds } }).select("userId").lean();
       agentUserIds.push(...agents.map((a) => a.userId.toString()));
     }
-    filter.createdBy = { $in: [ctx.userId, ...agentUserIds] };
+    ownerFilter.createdBy = { $in: [new mongoose.Types.ObjectId(ctx.userId), ...agentUserIds.map((id) => new mongoose.Types.ObjectId(id))] };
   } else if (ctx.role === "admin") {
-    // Admin sees all — no filter
+    // Admin sees all
   } else {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const filter: Record<string, any> = { ...ownerFilter };
+
+  // Text search
   if (search) {
     filter.$or = [
       { code: { $regex: search, $options: "i" } },
@@ -63,15 +79,103 @@ async function handleGet(req: NextRequest, ctx: AuthCtx) {
     ];
   }
 
-  const [links, total] = await Promise.all([
+  // Status filter (computed from isActive, expiresAt, maxUses/usedCount)
+  const VALID_STATUSES = new Set(["active", "expired", "maxed", "inactive"]);
+  if (statusFilter && VALID_STATUSES.has(statusFilter)) {
+    const now = new Date();
+    switch (statusFilter) {
+      case "active":
+        filter.isActive = true;
+        filter.$and = [
+          { $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: now } }] },
+          { $or: [{ maxUses: 0 }, { $expr: { $lt: ["$usedCount", "$maxUses"] } }] },
+        ];
+        break;
+      case "expired":
+        filter.isActive = true;
+        filter.expiresAt = { $lte: now };
+        break;
+      case "maxed":
+        filter.isActive = true;
+        filter.maxUses = { $gt: 0 };
+        filter.$expr = { $gte: ["$usedCount", "$maxUses"] };
+        break;
+      case "inactive":
+        filter.isActive = false;
+        break;
+    }
+  }
+
+  // Creator role filter
+  const VALID_ROLES = new Set(["agent", "super_agent"]);
+  if (creatorRoleFilter && VALID_ROLES.has(creatorRoleFilter)) {
+    filter.creatorRole = creatorRoleFilter;
+  }
+
+  // Date range filter
+  if (dateFrom || dateTo) {
+    filter.createdAt = {};
+    if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      filter.createdAt.$lte = end;
+    }
+  }
+
+  // Validate sort field
+  const VALID_SORT_FIELDS = new Set(["createdAt", "usedCount", "code", "label"]);
+  const safeSortBy = VALID_SORT_FIELDS.has(sortBy) ? sortBy : "createdAt";
+
+  // Run queries: paginated list + total + aggregate stats (scoped to owner filter only)
+  const [links, total, statsAgg] = await Promise.all([
     ReferralLink.find(filter)
-      .sort({ createdAt: -1 })
+      .sort({ [safeSortBy]: sortOrder })
       .skip(skip)
       .limit(limit)
       .populate("createdBy", "name email")
       .lean(),
     ReferralLink.countDocuments(filter),
+    ReferralLink.aggregate([
+      { $match: ownerFilter },
+      {
+        $group: {
+          _id: null,
+          totalLinks: { $sum: 1 },
+          totalRegistrations: { $sum: "$usedCount" },
+          activeLinks: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$isActive", true] },
+                    { $or: [
+                      { $eq: [{ $ifNull: ["$expiresAt", null] }, null] },
+                      { $gt: ["$expiresAt", new Date()] },
+                    ] },
+                    { $or: [
+                      { $eq: [{ $ifNull: ["$maxUses", 0] }, 0] },
+                      { $lt: ["$usedCount", "$maxUses"] },
+                    ] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          myLinks: {
+            $sum: { $cond: [{ $eq: ["$createdBy", new mongoose.Types.ObjectId(ctx.userId)] }, 1, 0] },
+          },
+          agentLinks: {
+            $sum: { $cond: [{ $eq: ["$creatorRole", "agent"] }, 1, 0] },
+          },
+        },
+      },
+    ]),
   ]);
+
+  const stats = statsAgg[0] ?? { totalLinks: 0, activeLinks: 0, totalRegistrations: 0, myLinks: 0, agentLinks: 0 };
 
   return NextResponse.json({
     links,
@@ -79,6 +183,13 @@ async function handleGet(req: NextRequest, ctx: AuthCtx) {
     page,
     limit,
     totalPages: Math.ceil(total / limit),
+    stats: {
+      totalLinks: stats.totalLinks,
+      activeLinks: stats.activeLinks,
+      totalRegistrations: stats.totalRegistrations,
+      myLinks: stats.myLinks,
+      agentLinks: stats.agentLinks,
+    },
   });
 }
 
@@ -122,12 +233,20 @@ async function handlePost(req: NextRequest, ctx: AuthCtx) {
   let superAgentId: string | undefined;
 
   if (ctx.role === "agent") {
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!agent) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
+    let agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    // Auto-create agent profile if missing (data integrity recovery)
+    if (!agent) {
+      const created = await Agent.create({ userId: ctx.userId });
+      agent = { _id: created._id };
+    }
     agentId = agent._id.toString();
   } else {
-    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!sa) return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
+    let sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
+    // Auto-create super-agent profile if missing (data integrity recovery)
+    if (!sa) {
+      const created = await SuperAgent.create({ userId: ctx.userId });
+      sa = { _id: created._id };
+    }
     superAgentId = sa._id.toString();
   }
 
@@ -147,9 +266,18 @@ async function handlePost(req: NextRequest, ctx: AuthCtx) {
     expiresAt,
   });
 
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "referral_link.create",
+    resource: "referral_links",
+    resourceId: link._id.toString(),
+    meta: { code, label, maxUses, creatorRole: ctx.role },
+    req,
+  });
+
   return NextResponse.json({
     link,
-    referralUrl: `${baseUrl}/register/employer?ref=${code}`,
+    referralUrl: `${baseUrl}/en/employer-register?ref=${code}`,
   }, { status: 201 });
 }
 

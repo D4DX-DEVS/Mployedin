@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BarChart3, Coins, Target, Users2 } from "lucide-react";
+import { BarChart3, Coins, Target, TrendingDown, TrendingUp, Users2 } from "lucide-react";
 import {
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
@@ -16,10 +16,28 @@ interface Stats {
   totalCommissions: number;
 }
 
+interface AgentBreakdown {
+  name: string;
+  leads: number;
+  placements: number;
+  conversionRate: number;
+  commission: number;
+}
+
+interface MonthlyTrend {
+  month: string;
+  leads: number;
+  placements: number;
+  revenue: number;
+  trend: number;
+}
+
 export default function SuperAgentReportsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [currencyCode, setCurrencyCode] = useState("AED");
+  const [agentBreakdown, setAgentBreakdown] = useState<AgentBreakdown[]>([]);
+  const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrend[]>([]);
 
   useEffect(() => {
     fetch("/api/super-agent/settings")
@@ -33,7 +51,13 @@ export default function SuperAgentReportsPage() {
   useEffect(() => {
     fetch("/api/super-agent/reports")
       .then((r) => r.ok ? r.json() : null)
-      .then((data) => data && setStats(data))
+      .then((data) => {
+        if (data) {
+          setStats(data);
+          if (data.agentBreakdown) setAgentBreakdown(data.agentBreakdown);
+          if (data.monthlyTrends) setMonthlyTrends(data.monthlyTrends);
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -88,14 +112,99 @@ export default function SuperAgentReportsPage() {
         <SuperAgentMetricsGrid items={kpis} />
       )}
 
+      {/* Agent Comparison */}
       <SuperAgentSection
-        eyebrow="Insights"
-        title="Performance insights"
-        description="Detailed charts and month-over-month breakdowns can be added here as your team generates more reporting data."
+        eyebrow="Agent comparison"
+        title="Agent Performance Breakdown"
+        description="Compare individual agent performance metrics across your team."
       >
-        <div className="rounded-2xl border border-border/70 bg-secondary/50 p-5 text-sm leading-6 text-muted-foreground">
-          Detailed charts and month-over-month breakdowns will appear here as your team builds data.
-        </div>
+        {agentBreakdown.length === 0 ? (
+          <div className="rounded-2xl border border-border/70 bg-secondary/50 p-5 text-sm leading-6 text-muted-foreground">
+            Agent comparison data will appear once agents generate activity.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {agentBreakdown.map((agent) => (
+              <div key={agent.name} className="workspace-glass-panel rounded-2xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                      {agent.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{agent.name}</p>
+                      <p className="text-xs text-muted-foreground">{agent.leads} leads · {agent.placements} placements</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-right">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Conversion</p>
+                      <p className={`text-sm font-semibold ${agent.conversionRate >= 30 ? "text-emerald-600" : agent.conversionRate >= 15 ? "text-amber-600" : "text-red-500"}`}>
+                        {agent.conversionRate}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Commission</p>
+                      <p className="text-sm font-semibold text-foreground">{formatCurrency(agent.commission, currencyCode)}</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Performance bar */}
+                <div className="mt-3 flex gap-1">
+                  <div className="h-2 rounded-full bg-sky-400" style={{ width: `${Math.min(100, agent.leads * 2)}%` }} title="Leads" />
+                  <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${Math.min(100, agent.placements * 5)}%` }} title="Placements" />
+                  <div className="h-2 rounded-full bg-amber-400" style={{ width: `${Math.min(100, agent.conversionRate)}%` }} title="Conversion" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SuperAgentSection>
+
+      {/* Monthly Trends */}
+      <SuperAgentSection
+        eyebrow="Trends"
+        title="Monthly Trends"
+        description="Track key metrics month over month to spot patterns and seasonality."
+      >
+        {monthlyTrends.length === 0 ? (
+          <div className="rounded-2xl border border-border/70 bg-secondary/50 p-5 text-sm leading-6 text-muted-foreground">
+            Monthly trends will appear after the first full month of data.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50">
+                  <th className="py-2 text-left font-medium text-muted-foreground">Month</th>
+                  <th className="py-2 text-right font-medium text-muted-foreground">Leads</th>
+                  <th className="py-2 text-right font-medium text-muted-foreground">Placements</th>
+                  <th className="py-2 text-right font-medium text-muted-foreground">Revenue</th>
+                  <th className="py-2 text-right font-medium text-muted-foreground">Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyTrends.map((m) => (
+                  <tr key={m.month} className="border-b border-border/30">
+                    <td className="py-3 font-medium text-foreground">{m.month}</td>
+                    <td className="py-3 text-right text-muted-foreground">{m.leads}</td>
+                    <td className="py-3 text-right text-muted-foreground">{m.placements}</td>
+                    <td className="py-3 text-right text-muted-foreground">{formatCurrency(m.revenue, currencyCode)}</td>
+                    <td className="py-3 text-right">
+                      {m.trend > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-600"><TrendingUp className="h-3.5 w-3.5" /> +{m.trend}%</span>
+                      ) : m.trend < 0 ? (
+                        <span className="inline-flex items-center gap-1 text-red-500"><TrendingDown className="h-3.5 w-3.5" /> {m.trend}%</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </SuperAgentSection>
     </div>
   );

@@ -5,6 +5,7 @@ import User from "@/models/User";
 import JobSeeker from "@/models/JobSeeker";
 import { decrypt } from "@/lib/security/encryption";
 import { importLinkedInProfile } from "@/lib/ai/linkedin-import";
+import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import logger from "@/lib/logger";
 
 export const runtime = "nodejs";
@@ -144,6 +145,18 @@ async function handler(
       },
       "LinkedIn AI profile import completed",
     );
+
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "linkedin.profile_import",
+      resource: "job_seekers",
+      meta: {
+        fieldsImported: Object.keys(update),
+        experienceCount: imported.experience?.length ?? 0,
+        educationCount: imported.education?.length ?? 0,
+        skillsCount: imported.skills?.length ?? 0,
+      },
+    });
 
     return NextResponse.json({
       success: true,
