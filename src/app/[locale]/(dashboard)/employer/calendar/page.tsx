@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import GoogleCalendar, {
   type CalendarEvent,
@@ -10,6 +11,9 @@ import GoogleCalendar, {
 import { Briefcase } from "lucide-react";
 
 export default function EmployerCalendarPage() {
+  const router = useRouter();
+  const params = useParams();
+  const locale = (params?.locale as string) ?? "en";
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,6 +88,15 @@ export default function EmployerCalendarPage() {
             ),
             jobTitle: String(job?.title ?? ""),
             status: String(a.status ?? "shortlisted"),
+            matchScore:
+              typeof a.aiMatchScore === "number"
+                ? a.aiMatchScore
+                : typeof a.matchScore === "number"
+                  ? a.matchScore
+                  : undefined,
+            matchStrengths: Array.isArray(a.matchStrengths)
+              ? (a.matchStrengths as string[])
+              : undefined,
           };
         },
       );

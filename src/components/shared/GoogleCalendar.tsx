@@ -45,6 +45,8 @@ export interface BookingCandidate {
   candidateName: string;
   jobTitle: string;
   status: string;
+  matchScore?: number;
+  matchStrengths?: string[];
 }
 
 export interface BookingPayload {
@@ -68,6 +70,10 @@ interface GoogleCalendarProps {
   onBookInterview?: (payload: BookingPayload) => Promise<void>;
   /** Fetch eligible candidates for booking (applications with interview-ready status) */
   fetchCandidates?: (search: string) => Promise<BookingCandidate[]>;
+  /** Pre-fill with a specific application — skips candidate selection step */
+  prefilledApplicationId?: string;
+  /** Pre-filled candidate data (required when prefilledApplicationId is set) */
+  prefilledCandidate?: BookingCandidate;
 }
 
 /* ================================================================== */
@@ -815,19 +821,26 @@ function BookingModal({
   onClose,
   onSubmit,
   fetchCandidates,
+  prefilledCandidate,
 }: {
   date: Date;
   events: CalendarEvent[];
   onClose: () => void;
   onSubmit: (payload: BookingPayload) => Promise<void>;
   fetchCandidates?: (search: string) => Promise<BookingCandidate[]>;
+  prefilledCandidate?: BookingCandidate;
 }) {
-  // Step: "candidate" → "details"
-  const [step, setStep] = useState<"candidate" | "details">(
-    fetchCandidates ? "candidate" : "details",
+  // Step: "candidate" → "details" → "confirmation"
+  const initialStep = prefilledCandidate
+    ? "details"
+    : fetchCandidates
+      ? "candidate"
+      : "details";
+  const [step, setStep] = useState<"candidate" | "details" | "confirmation">(
+    initialStep,
   );
   const [selectedCandidate, setSelectedCandidate] =
-    useState<BookingCandidate | null>(null);
+    useState<BookingCandidate | null>(prefilledCandidate ?? null);
 
   // Candidate search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -905,7 +918,7 @@ function BookingModal({
     }
   }, [timeSlots, time]);
 
-  const handleSubmit = async () => {
+  const handleGoToConfirmation = () => {
     if (!selectedCandidate && fetchCandidates) {
       setError("Please select a candidate first");
       return;
@@ -914,6 +927,11 @@ function BookingModal({
       setError("This time conflicts with an existing interview");
       return;
     }
+    setError("");
+    setStep("confirmation");
+  };
+
+  const handleSubmit = async () => {
     setError("");
     setSubmitting(true);
     try {
@@ -953,7 +971,7 @@ function BookingModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div className="flex items-center gap-2">
-            {step === "details" && fetchCandidates && (
+            {step === "details" && fetchCandidates && !prefilledCandidate && (
               <button
                 onClick={() => setStep("candidate")}
                 className="rounded-lg p-1 hover:bg-muted"
@@ -961,8 +979,20 @@ function BookingModal({
                 <ArrowLeft className="h-4 w-4 text-muted-foreground" />
               </button>
             )}
+            {step === "confirmation" && (
+              <button
+                onClick={() => setStep("details")}
+                className="rounded-lg p-1 hover:bg-muted"
+              >
+                <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
             <h3 className="text-base font-semibold text-foreground">
-              {step === "candidate" ? "Select Candidate" : "Book Interview"}
+              {step === "candidate"
+                ? "Select Candidate"
+                : step === "details"
+                  ? "Interview Details"
+                  : "Confirm Booking"}
             </h3>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-muted">
@@ -1027,9 +1057,24 @@ function BookingModal({
                         <Briefcase className="h-3 w-3 flex-shrink-0" />
                         {c.jobTitle}
                       </p>
-                      <span className="mt-1 inline-block rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
-                        {c.status.replace(/_/g, " ")}
-                      </span>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="inline-block rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                          {c.status.replace(/_/g, " ")}
+                        </span>
+                        {c.matchScore != null && (
+                          <span
+                            className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                              c.matchScore >= 80
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                : c.matchScore >= 50
+                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                  : "bg-red-500/15 text-red-600 dark:text-red-400"
+                            }`}
+                          >
+                            {c.matchScore}% match
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -1223,14 +1268,130 @@ function BookingModal({
                 size="sm"
                 className="flex-1"
                 disabled={
-                  submitting ||
                   conflicts.length > 0 ||
                   timeSlots.length === 0 ||
                   (!!fetchCandidates && !selectedCandidate)
                 }
+                onClick={handleGoToConfirmation}
+              >
+                Review & Confirm
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 3: Confirmation ── */}
+        {step === "confirmation" && (
+          <div className="space-y-4 p-5">
+            {/* Candidate */}
+            {selectedCandidate && (
+              <div className="flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/20 p-3">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <User className="h-4 w-4 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    {selectedCandidate.candidateName}
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                    <Briefcase className="h-3 w-3 flex-shrink-0" />
+                    {selectedCandidate.jobTitle}
+                  </p>
+                </div>
+                {selectedCandidate.matchScore != null && (
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      selectedCandidate.matchScore >= 80
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : selectedCandidate.matchScore >= 50
+                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          : "bg-red-500/15 text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {selectedCandidate.matchScore}% match
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Details summary */}
+            <div className="space-y-2.5 rounded-xl bg-muted/30 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Date</span>
+                <span className="text-xs font-semibold text-foreground">
+                  {date.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+              <div className="h-px bg-border/50" />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Time</span>
+                <span className="text-xs font-semibold text-foreground">
+                  {selectedTimeLabel} – {endTimeLabel}
+                </span>
+              </div>
+              <div className="h-px bg-border/50" />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Duration</span>
+                <span className="text-xs font-semibold text-foreground">
+                  {duration} minutes
+                </span>
+              </div>
+              <div className="h-px bg-border/50" />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Type</span>
+                <span className="flex items-center gap-1.5 text-xs font-semibold capitalize text-foreground">
+                  {type === "video" ? (
+                    <Video className="h-3 w-3 text-sky-500" />
+                  ) : type === "offline" ? (
+                    <MapPin className="h-3 w-3 text-emerald-500" />
+                  ) : (
+                    <Phone className="h-3 w-3 text-violet-500" />
+                  )}
+                  {type === "video"
+                    ? "Video Call"
+                    : type === "offline"
+                      ? "In Person"
+                      : "Hybrid"}
+                </span>
+              </div>
+              {notes.trim() && (
+                <>
+                  <div className="h-px bg-border/50" />
+                  <div>
+                    <span className="text-xs text-muted-foreground">Notes</span>
+                    <p className="mt-1 text-xs text-foreground">
+                      {notes.trim()}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Error */}
+            {error && <p className="text-xs text-destructive">{error}</p>}
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => setStep("details")}
+              >
+                Back
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1"
+                disabled={submitting}
                 onClick={handleSubmit}
               >
-                {submitting ? "Booking..." : "Book Interview"}
+                {submitting ? "Booking..." : "Confirm & Book"}
               </Button>
             </div>
           </div>
@@ -1252,6 +1413,8 @@ export default function GoogleCalendar({
   bookingEnabled,
   onBookInterview,
   fetchCandidates,
+  prefilledApplicationId,
+  prefilledCandidate,
 }: GoogleCalendarProps) {
   const [view, setView] = useState<CalendarViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -1468,7 +1631,8 @@ export default function GoogleCalendar({
           events={events}
           onClose={() => setShowBooking(false)}
           onSubmit={onBookInterview}
-          fetchCandidates={fetchCandidates}
+          fetchCandidates={prefilledCandidate ? undefined : fetchCandidates}
+          prefilledCandidate={prefilledCandidate}
         />
       )}
     </div>

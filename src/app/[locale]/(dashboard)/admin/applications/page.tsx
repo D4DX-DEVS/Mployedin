@@ -688,7 +688,7 @@ export default function AdminApplicationsPage() {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-[20px] border border-border/60 bg-background/70" />
+            <div key={i} className="h-24 animate-pulse rounded-[20px] border border-border/60 bg-background/70" />
           ))}
         </div>
       ) : applications.length === 0 ? (
@@ -714,7 +714,7 @@ export default function AdminApplicationsPage() {
       ) : (
         <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
           {/* Column headers – desktop */}
-          <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
+          <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
             <span>Candidate</span>
             <span>Role, Match, Skills</span>
             <span className="text-right">
@@ -747,12 +747,12 @@ export default function AdminApplicationsPage() {
               return (
                 <article
                   key={app._id}
-                  className="grid gap-2 px-4 py-2.5 transition-all duration-200 bg-transparent hover:bg-background/70 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center"
+                  className="grid gap-3 px-5 py-4 transition-all duration-200 bg-transparent hover:bg-background/70 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center"
                 >
                   {/* Candidate */}
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 shadow-inner dark:text-sky-300">
-                      <User className="h-4 w-4" />
+                  <div className="flex min-w-0 items-center gap-3.5">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 shadow-inner dark:text-sky-300">
+                      <User className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -760,8 +760,8 @@ export default function AdminApplicationsPage() {
                         <StatusBadge status={app.status} />
                       </div>
                       {employer?.companyName && (
-                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <Building2 className="h-3 w-3" />
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Building2 className="h-3.5 w-3.5" />
                           {employer.companyName}
                         </p>
                       )}
@@ -769,36 +769,36 @@ export default function AdminApplicationsPage() {
                   </div>
 
                   {/* Role, Match, Skills */}
-                  <div className="min-w-0 sm:px-1">
-                    <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                      <span className="truncate text-[13px] font-medium text-foreground">{job?.title ?? "—"}</span>
+                  <div className="min-w-0 sm:px-2">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <span className="truncate text-sm font-medium text-foreground">{job?.title ?? "—"}</span>
                       {locationExp && (
                         <>
-                          <span className="hidden text-border sm:inline">•</span>
-                          <span className="truncate text-[11px] text-muted-foreground">{locationExp}</span>
+                          <span className="hidden text-border sm:inline">·</span>
+                          <span className="truncate text-xs text-muted-foreground">{locationExp}</span>
                         </>
                       )}
                     </div>
 
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       {aiScoreLabel && (
-                        <Badge className={`${aiScoreColor} rounded-full px-2 py-0.5 text-[10px] font-semibold`}>
+                        <Badge className={`${aiScoreColor} rounded-full px-2.5 py-0.5 text-[11px] font-semibold`}>
                           {aiScoreLabel}
                         </Badge>
                       )}
                       {topSkills.map((skill) => (
-                        <span key={skill} className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground">
+                        <span key={skill} className="rounded-full border border-border bg-background/70 px-2.5 py-0.5 text-xs text-muted-foreground">
                           {skill}
                         </span>
                       ))}
                       {topSkills.length === 0 && !aiScoreLabel && (
-                        <span className="text-[11px] text-muted-foreground">No skills listed</span>
+                        <span className="text-xs text-muted-foreground">No skills listed</span>
                       )}
                     </div>
 
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
                       <span>Applied {appliedDate}</span>
-                      <Badge variant={app.autoApplied ? "warning" : "secondary"} className="text-[10px]">
+                      <Badge variant={app.autoApplied ? "warning" : "secondary"} className="text-[11px]">
                         {sourceLabel(app.source)}
                       </Badge>
                     </div>
