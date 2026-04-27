@@ -77,18 +77,23 @@ export async function POST(req: NextRequest) {
       req,
     });
 
-    // Send verification email (fire-and-forget — don't block registration)
+    // Send emails — await to prevent Next.js from terminating before delivery
     const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
     const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}`;
-    sendEmail({ to: normalizedEmail, ...EmailTemplates.verifyEmail(name.trim(), verifyUrl) }).catch((err) =>
-      console.error("[Registration] Failed to send verification email:", err)
-    );
-
-    // Send welcome email (fire-and-forget)
     const dashboardUrl = `${baseUrl}/en/job-seeker/dashboard`;
-    sendEmail({ to: normalizedEmail, ...EmailTemplates.jobSeekerWelcome(name.trim(), dashboardUrl), source: "registration", category: "system" }).catch((err) =>
-      console.error("[Registration] Failed to send welcome email:", err)
-    );
+
+    // Send both emails in parallel, but await them before responding
+    const [verifyResult, welcomeResult] = await Promise.allSettled([
+      sendEmail({ to: normalizedEmail, ...EmailTemplates.verifyEmail(name.trim(), verifyUrl), source: "registration", category: "system" }),
+      sendEmail({ to: normalizedEmail, ...EmailTemplates.jobSeekerWelcome(name.trim(), dashboardUrl), source: "registration", category: "system" }),
+    ]);
+
+    if (verifyResult.status === "rejected") {
+      console.error("[Registration] Failed to send verification email:", verifyResult.reason);
+    }
+    if (welcomeResult.status === "rejected") {
+      console.error("[Registration] Failed to send welcome email:", welcomeResult.reason);
+    }
 
     return NextResponse.json({ success: true, message: "Account created successfully. Please check your email to verify your account.", email: normalizedEmail }, { status: 201 });
   } catch (err) {

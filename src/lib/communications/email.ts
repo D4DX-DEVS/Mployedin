@@ -263,19 +263,24 @@ export const EmailTemplates = {
   verifyEmail: (userName: string, verifyUrl: string) => ({
     subject: "Verify Your Email – MPLOYEDIN",
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #0D6FD8 0%, #0A5BB8 100%); padding: 32px 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">MPLOYEDIN</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Your Career, Amplified</p>
         </div>
-        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Dear <strong>${userName}</strong>,</p>
-          <p>Thank you for registering on MPLOYEDIN. Please verify your email address by clicking the button below:</p>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${verifyUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Verify Email</a>
+        <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Thank you for joining MPLOYEDIN! Please verify your email address to unlock full access to job recommendations, applications, and profile visibility to employers.</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${verifyUrl}" style="background: #0D6FD8; color: white; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block; box-shadow: 0 2px 4px rgba(13,111,216,0.3);">Verify My Email</a>
           </div>
-          <p style="color: #6b7280; font-size: 14px;">If the button doesn't work, copy and paste this link:<br><a href="${verifyUrl}">${verifyUrl}</a></p>
-          <p style="color: #6b7280; font-size: 14px;">This link expires in 24 hours.</p>
-          <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
+          <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin: 24px 0;">
+            <p style="margin: 0; font-size: 13px; color: #6b7280;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="margin: 8px 0 0; font-size: 13px; word-break: break-all;"><a href="${verifyUrl}" style="color: #0D6FD8;">${verifyUrl}</a></p>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px; margin-top: 24px;">This link expires in 24 hours. If you didn't create an account on MPLOYEDIN, you can safely ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+          <p style="color: #6b7280; font-size: 13px; text-align: center; margin: 0;">MPLOYEDIN — Connecting Talent with Opportunity</p>
         </div>
       </div>
     `,
@@ -308,24 +313,43 @@ export const EmailTemplates = {
   jobSeekerWelcome: (name: string, dashboardUrl: string) => ({
     subject: "Welcome to MPLOYEDIN – Let's Find Your Next Opportunity!",
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #0D6FD8 0%, #0A5BB8 100%); padding: 32px 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">MPLOYEDIN</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Your Career, Amplified</p>
         </div>
-        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Dear <strong>${name}</strong>,</p>
-          <p>Welcome to <strong>MPLOYEDIN</strong>! We're excited to have you on board.</p>
-          <p>Here's how to get started:</p>
-          <ul style="color: #374151; line-height: 1.8;">
-            <li><strong>Complete your profile</strong> – Add your skills, experience, and preferences so employers can find you.</li>
-            <li><strong>Browse jobs</strong> – Explore opportunities that match your skills and interests.</li>
-            <li><strong>Get matched</strong> – Our AI will recommend the best jobs for you automatically.</li>
-          </ul>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${dashboardUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Go to Dashboard</a>
+        <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${name}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Welcome aboard! You've just joined a community of professionals finding their next career move through MPLOYEDIN.</p>
+          
+          <div style="background: #f0f7ff; border-left: 4px solid #0D6FD8; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 24px 0;">
+            <p style="margin: 0 0 12px; font-weight: 600; color: #111827; font-size: 15px;">Get started in 3 steps:</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; vertical-align: top; width: 32px;"><span style="background: #0D6FD8; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-block; text-align: center; line-height: 24px; font-size: 13px; font-weight: 600;">1</span></td>
+                <td style="padding: 8px 0; padding-left: 12px; font-size: 14px; color: #374151;"><strong>Complete your profile</strong> — Add skills, experience & preferences so employers find you</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; vertical-align: top;"><span style="background: #0D6FD8; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-block; text-align: center; line-height: 24px; font-size: 13px; font-weight: 600;">2</span></td>
+                <td style="padding: 8px 0; padding-left: 12px; font-size: 14px; color: #374151;"><strong>Browse jobs</strong> — Explore opportunities matched to your skills</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; vertical-align: top;"><span style="background: #0D6FD8; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-block; text-align: center; line-height: 24px; font-size: 13px; font-weight: 600;">3</span></td>
+                <td style="padding: 8px 0; padding-left: 12px; font-size: 14px; color: #374151;"><strong>Get matched</strong> — Our AI recommends the best jobs for you automatically</td>
+              </tr>
+            </table>
           </div>
-          <p style="color: #6b7280; font-size: 14px;">If you have any questions, feel free to reach out to our support team.</p>
-          <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${dashboardUrl}" style="background: #0D6FD8; color: white; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block; box-shadow: 0 2px 4px rgba(13,111,216,0.3);">Go to My Dashboard</a>
+          </div>
+
+          <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin: 24px 0;">
+            <p style="margin: 0; font-size: 14px; color: #92400e;"><strong>Pro tip:</strong> Profiles with a photo, 5+ skills, and work experience get 3x more views from employers.</p>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+          <p style="color: #6b7280; font-size: 13px; text-align: center; margin: 0;">MPLOYEDIN — Connecting Talent with Opportunity</p>
         </div>
       </div>
     `,
@@ -334,24 +358,39 @@ export const EmailTemplates = {
   employerSelfWelcome: (contactName: string, companyName: string, dashboardUrl: string) => ({
     subject: `Welcome to MPLOYEDIN – ${companyName} Is Ready to Hire!`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #0D6FD8 0%, #0A5BB8 100%); padding: 32px 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">MPLOYEDIN</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Hire Smarter, Faster</p>
         </div>
-        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Dear <strong>${contactName}</strong>,</p>
-          <p>Welcome to <strong>MPLOYEDIN</strong>! Your company <strong>${companyName}</strong> is now registered and ready to start hiring top talent.</p>
-          <p>Here's what you can do next:</p>
-          <ul style="color: #374151; line-height: 1.8;">
-            <li><strong>Post your first job</strong> – Create a job listing and reach thousands of qualified candidates.</li>
-            <li><strong>Browse candidates</strong> – Search our database of job seekers matched to your needs.</li>
-            <li><strong>Set up your team</strong> – Invite team members to collaborate on hiring.</li>
-          </ul>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="${dashboardUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Go to Dashboard</a>
+        <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${contactName}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;"><strong>${companyName}</strong> is now registered on MPLOYEDIN. You're ready to start connecting with top talent.</p>
+
+          <div style="background: #f0f7ff; border-left: 4px solid #0D6FD8; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 24px 0;">
+            <p style="margin: 0 0 12px; font-weight: 600; color: #111827; font-size: 15px;">What you can do now:</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; vertical-align: top; width: 32px;"><span style="background: #0D6FD8; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-block; text-align: center; line-height: 24px; font-size: 13px; font-weight: 600;">1</span></td>
+                <td style="padding: 8px 0; padding-left: 12px; font-size: 14px; color: #374151;"><strong>Post your first job</strong> — Reach thousands of qualified candidates instantly</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; vertical-align: top;"><span style="background: #0D6FD8; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-block; text-align: center; line-height: 24px; font-size: 13px; font-weight: 600;">2</span></td>
+                <td style="padding: 8px 0; padding-left: 12px; font-size: 14px; color: #374151;"><strong>Browse candidates</strong> — Search our database of job seekers matched to your needs</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; vertical-align: top;"><span style="background: #0D6FD8; color: white; border-radius: 50%; width: 24px; height: 24px; display: inline-block; text-align: center; line-height: 24px; font-size: 13px; font-weight: 600;">3</span></td>
+                <td style="padding: 8px 0; padding-left: 12px; font-size: 14px; color: #374151;"><strong>Invite your team</strong> — Add colleagues to collaborate on hiring decisions</td>
+              </tr>
+            </table>
           </div>
-          <p style="color: #6b7280; font-size: 14px;">If you have any questions, feel free to reach out to our support team.</p>
-          <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${dashboardUrl}" style="background: #0D6FD8; color: white; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block; box-shadow: 0 2px 4px rgba(13,111,216,0.3);">Go to Dashboard</a>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+          <p style="color: #6b7280; font-size: 13px; text-align: center; margin: 0;">MPLOYEDIN — Connecting Talent with Opportunity</p>
         </div>
       </div>
     `,
