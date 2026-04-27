@@ -6,6 +6,7 @@ import Link from "next/link";
 import { signIn, getSession } from "next-auth/react";
 import { signInWithPopup } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import { Loader2 } from "lucide-react";
 export default function RegisterPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
+  const t = useTranslations("auth");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,7 +35,7 @@ export default function RegisterPage() {
 
       const res = await signIn("firebase", { idToken, redirect: false });
       if (res?.error) {
-        setError("Google sign-in failed. Please try again.");
+        setError(t("googleSignInFailed"));
         return;
       }
 
@@ -47,7 +49,7 @@ export default function RegisterPage() {
         router.replace(`/${locale}/${redirects[role] ?? "job-seeker"}`);
       }
     } catch {
-      setError("Google sign-in failed. Please try again.");
+      setError(t("googleSignInFailed"));
     } finally {
       setGoogleLoading(false);
     }
@@ -58,11 +60,11 @@ export default function RegisterPage() {
     setError("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("passwordsDoNotMatch"));
       return;
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t("passwordTooShort"));
       return;
     }
 
@@ -78,17 +80,15 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.message ?? "Registration failed. Please try again.");
+      setError(data.message ?? t("registrationFailed"));
       return;
     }
 
-    // Redirect to verify-email page so user confirms their email first
     router.push(`/${locale}/verify-email?email=${encodeURIComponent(email)}`);
   }
 
   return (
     <div className="w-full flex flex-col gap-8">
-      {/* Mobile Logo */}
       <div className="lg:hidden flex flex-col gap-2">
         <div className="inline-flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shadow-sm">
@@ -99,19 +99,17 @@ export default function RegisterPage() {
       </div>
 
       <div className="space-y-1.5">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Create your account</h1>
-        <p className="text-base text-muted-foreground font-light">
-          Find your next opportunity with AI-powered matching.
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">{t("createYourAccount")}</h1>
+        <p className="text-base text-muted-foreground font-light">{t("registerSubtitle")}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
+          <Label htmlFor="name" className="text-sm font-medium">{t("fullName")}</Label>
           <Input
             id="name"
             type="text"
-            placeholder="John Smith"
+            placeholder={t("fullNamePlaceholder")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -121,7 +119,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
+          <Label htmlFor="email" className="text-sm font-medium">{t("emailAddressLabel")}</Label>
           <Input
             id="email"
             type="email"
@@ -135,11 +133,11 @@ export default function RegisterPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+          <Label htmlFor="password" className="text-sm font-medium">{t("password")}</Label>
           <Input
             id="password"
             type="password"
-            placeholder="Min. 8 characters"
+            placeholder={t("minChars")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -149,11 +147,11 @@ export default function RegisterPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</Label>
+          <Label htmlFor="confirmPassword" className="text-sm font-medium">{t("confirmPassword")}</Label>
           <Input
             id="confirmPassword"
             type="password"
-            placeholder="Repeat your password"
+            placeholder={t("confirmPasswordPlaceholder")}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
@@ -174,7 +172,7 @@ export default function RegisterPage() {
           disabled={loading}
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          Create Account
+          {t("createAccount")}
         </Button>
       </form>
 
@@ -183,7 +181,7 @@ export default function RegisterPage() {
           <span className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-4 text-muted-foreground/60 font-medium tracking-wider">or continue with</span>
+          <span className="bg-background px-4 text-muted-foreground/60 font-medium tracking-wider">{t("orContinueWith")}</span>
         </div>
       </div>
 
@@ -226,16 +224,16 @@ export default function RegisterPage() {
       </div>
 
       <p className="text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
+        {t("alreadyHaveAccount")}{" "}
         <Link href={`/${locale}/login`} className="text-primary hover:text-primary/80 font-semibold transition-colors">
-          Sign in
+          {t("signIn")}
         </Link>
       </p>
 
       <p className="text-center text-xs text-muted-foreground">
-        Hiring?{" "}
+        {t("hiringQuestion")}{" "}
         <Link href={`/${locale}/employer-register`} className="text-muted-foreground hover:text-foreground font-medium underline transition-colors">
-          Register as an employer
+          {t("registerAsEmployer")}
         </Link>
       </p>
     </div>

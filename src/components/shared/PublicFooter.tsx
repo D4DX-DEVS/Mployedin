@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ArrowRight, Mail, MapPin } from "lucide-react";
 
 type FooterVariant = "full" | "embedded";
@@ -49,36 +50,36 @@ function InstagramIcon({ className }: SocialIconProps) {
 }
 
 export default function PublicFooter({ locale, variant = "full" }: PublicFooterProps) {
-  const isAr = locale === "ar";
+  const t = useTranslations("footer");
   const year = new Date().getFullYear();
   const isEmbedded = variant === "embedded";
 
   const platformSection: FooterSection = {
-    title: isAr ? "المنصة" : "Platform",
+    title: t("platform"),
     links: [
-      { href: `/${locale}/jobs`, label: isAr ? "اكتشف الوظائف" : "Discover jobs" },
-      { href: `/${locale}/register`, label: isAr ? "أنشئ ملفك" : "Build your profile" },
-      { href: `/${locale}/employer-register`, label: isAr ? "حلول التوظيف" : "Hiring solutions" },
-      { href: `/${locale}/login`, label: isAr ? "مساحة العمل" : "Workspace login" },
+      { href: `/${locale}/jobs`, label: t("discoverJobs") },
+      { href: `/${locale}/register`, label: t("buildProfile") },
+      { href: `/${locale}/employer-register`, label: t("hiringSolutions") },
+      { href: `/${locale}/login`, label: t("workspaceLogin") },
     ],
   };
 
   const resourcesSection: FooterSection = {
-    title: isAr ? "الموارد" : "Resources",
+    title: t("resources"),
     links: [
-      { href: `/${locale}/blog`, label: isAr ? "المدونة" : "Blog" },
-      { href: `/${locale}/faq`, label: isAr ? "الأسئلة الشائعة" : "FAQ" },
-      { href: `/${locale}/contact`, label: isAr ? "تحدث معنا" : "Talk to us" },
+      { href: `/${locale}/blog`, label: t("blogLink") },
+      { href: `/${locale}/faq`, label: t("faqLink") },
+      { href: `/${locale}/contact`, label: t("talkToUs") },
     ],
   };
 
   const companySection: FooterSection = {
-    title: isAr ? "الشركة" : "Company",
+    title: t("company"),
     links: [
-      { href: `/${locale}/privacy`, label: isAr ? "الخصوصية" : "Privacy" },
-      { href: `/${locale}/cookies`, label: isAr ? "الكوكيز" : "Cookies" },
-      { href: `/${locale}/contact`, label: isAr ? "الدعم" : "Support" },
-      { href: `/${locale}`, label: isAr ? "الصفحة الرئيسية" : "Homepage" },
+      { href: `/${locale}/privacy`, label: t("privacy") },
+      { href: `/${locale}/cookies`, label: t("cookies") },
+      { href: `/${locale}/contact`, label: t("support") },
+      { href: `/${locale}`, label: t("homepage") },
     ],
   };
 
@@ -87,9 +88,9 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
     : [platformSection, resourcesSection, companySection];
 
   const platformHighlights = [
-    isAr ? "مطابقة مدعومة بالذكاء الاصطناعي" : "AI-powered matching",
-    isAr ? "فرز أسرع للمرشحين" : "Faster candidate screening",
-    isAr ? "توظيف خليجي أكثر ذكاءً" : "Smarter Gulf hiring",
+    t("aiMatching"),
+    t("fasterScreening"),
+    t("smarterHiring"),
   ];
 
   return (
@@ -102,13 +103,11 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
           <div className="space-y-5">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/55">
-                {isAr ? "منصة توظيف رقمية" : "Digital hiring platform"}
+                {t("digitalPlatform")}
               </p>
               <Image src="/logo.png" alt="Mployedin" width={156} height={42} className="mt-3 h-10 w-auto object-contain brightness-0 invert" style={{ width: "auto" }} />
               <p className="mt-4 max-w-xl text-sm leading-6 text-white/72 sm:text-[15px]">
-                {isAr
-                  ? "مبلويدين تربط فرق التوظيف والمواهب ببحث أسرع، مطابقة أذكى، وتجربة توظيف أكثر وضوحًا عبر أسواق الخليج."
-                  : "MPLOYEDIN brings job discovery, AI matching, and employer workflows into one cleaner hiring experience for Gulf markets."}
+                {t("description")}
               </p>
             </div>
 
@@ -130,7 +129,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
                 href={`/${locale}/jobs`}
                 className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[hsl(var(--brand-blue-dark))] transition-transform hover:-translate-y-0.5"
               >
-                {isAr ? "تصفح الوظائف" : "Browse jobs"}
+                {t("browseJobs")}
                 <ArrowRight className="h-4 w-4" />
               </Link>
               {!isEmbedded && (
@@ -138,7 +137,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
                   href={`/${locale}/employer-register`}
                   className="inline-flex h-10 items-center rounded-full border border-white/18 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
                 >
-                  {isAr ? "لأصحاب العمل" : "For employers"}
+                  {t("forEmployers")}
                 </Link>
               )}
             </div>
@@ -163,7 +162,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
 
             <div className="flex flex-wrap items-center gap-3">
               <span id={`footer-social-${locale}-${variant}`} className="text-sm font-medium text-white/78">
-                {isAr ? "تابعنا" : "Follow us"}
+                {t("followUs")}
               </span>
               <nav aria-labelledby={`footer-social-${locale}-${variant}`} className="flex items-center gap-3">
                 <a
@@ -208,17 +207,17 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
 
         <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-4 text-sm text-white/60 sm:flex-row sm:items-center sm:justify-between">
           <p>
-            &copy; {year} MPLOYEDIN. {isAr ? "جميع الحقوق محفوظة." : "All rights reserved."}
+            &copy; {year} MPLOYEDIN. {t("allRights")}
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link href={`/${locale}/privacy`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              {isAr ? "الخصوصية" : "Privacy"}
+              {t("privacy")}
             </Link>
             <Link href={`/${locale}/cookies`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              {isAr ? "الكوكيز" : "Cookies"}
+              {t("cookies")}
             </Link>
             <Link href={`/${locale}/contact`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-              {isAr ? "الدعم" : "Support"}
+              {t("support")}
             </Link>
           </div>
         </div>

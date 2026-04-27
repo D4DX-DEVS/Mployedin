@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Cookie } from "lucide-react";
 
 export default function CookiePolicyPage() {
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
   const isAr = locale === "ar";
-  const t = (en: string, ar: string) => (isAr ? ar : en);
+  const t = useTranslations("landing");
 
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(true);
@@ -43,7 +44,7 @@ export default function CookiePolicyPage() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Cookie className="h-7 w-7" />
           </div>
-          <h1 className="text-4xl font-bold">{t("Cookie Policy", "سياسة ملفات تعريف الارتباط")}</h1>
+          <h1 className="text-4xl font-bold">{t("cookiesHeading")}</h1>
         </div>
 
         {body ? (
@@ -53,7 +54,7 @@ export default function CookiePolicyPage() {
           />
         ) : (
           <div className="text-center text-muted-foreground py-10">
-            <p>{t("Cookie policy content is being prepared.", "محتوى سياسة ملفات تعريف الارتباط قيد الإعداد.")}</p>
+            <p>{t("cookiesPreparing")}</p>
           </div>
         )}
       </div>

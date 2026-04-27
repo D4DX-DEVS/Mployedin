@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   FileText,
   Calendar,
@@ -19,32 +20,12 @@ type Priority = "urgent" | "medium" | "suggestion";
 
 interface Action {
   icon: React.ElementType;
-  text: string;
+  textKey: string;
+  textValues?: Record<string, string | number | Date>;
   href: string;
   priority: Priority;
-  actionLabel: string;
+  actionLabelKey: string;
 }
-
-const priorityConfig: Record<Priority, { label: string; icon: React.ElementType; badgeBg: string; badgeText: string }> = {
-  urgent: {
-    label: "URGENT",
-    icon: Flame,
-    badgeBg: "bg-red-100 dark:bg-red-950/30",
-    badgeText: "text-red-600 dark:text-red-400",
-  },
-  medium: {
-    label: "MEDIUM",
-    icon: AlertTriangle,
-    badgeBg: "bg-amber-50 dark:bg-amber-950/30",
-    badgeText: "text-amber-600 dark:text-amber-400",
-  },
-  suggestion: {
-    label: "SUGGESTION",
-    icon: Lightbulb,
-    badgeBg: "bg-sky-100 dark:bg-sky-900/60",
-    badgeText: "text-sky-900 dark:text-sky-100",
-  },
-};
 
 interface PriorityActionsProps {
   activeJobs: number;
@@ -63,75 +44,101 @@ export function PriorityActions({
   placements,
   locale,
 }: PriorityActionsProps) {
+  const t = useTranslations("employerDashboard.priorityActions");
+
+  const priorityConfig: Record<Priority, { labelKey: string; icon: React.ElementType; badgeBg: string; badgeText: string }> = {
+    urgent: {
+      labelKey: "urgent",
+      icon: Flame,
+      badgeBg: "bg-red-100 dark:bg-red-950/30",
+      badgeText: "text-red-600 dark:text-red-400",
+    },
+    medium: {
+      labelKey: "medium",
+      icon: AlertTriangle,
+      badgeBg: "bg-amber-50 dark:bg-amber-950/30",
+      badgeText: "text-amber-600 dark:text-amber-400",
+    },
+    suggestion: {
+      labelKey: "suggestion",
+      icon: Lightbulb,
+      badgeBg: "bg-sky-100 dark:bg-sky-900/60",
+      badgeText: "text-sky-900 dark:text-sky-100",
+    },
+  };
+
   const actions: Action[] = [];
 
   if (newApplications > 0) {
     actions.push({
       icon: FileText,
-      text: `Review ${newApplications} new application${newApplications !== 1 ? "s" : ""}`,
+      textKey: newApplications !== 1 ? "reviewNewAppsPlural" : "reviewNewApps",
+      textValues: { count: newApplications },
       href: `/${locale}/employer/applications?status=applied`,
       priority: "urgent",
-      actionLabel: "Review Candidates",
+      actionLabelKey: "reviewCandidates",
     });
   }
 
   if (scheduledInterviews === 0 && totalApplications > 0) {
     actions.push({
       icon: Calendar,
-      text: `Schedule ${totalApplications > 5 ? totalApplications : ""} interview${totalApplications !== 1 ? "s" : ""} — review and set up times`,
+      textKey: totalApplications !== 1 ? "scheduleCountInterviews" : "scheduleInterviewsAction",
+      textValues: { count: totalApplications },
       href: `/${locale}/employer/applications`,
       priority: "suggestion",
-      actionLabel: "Schedule Interviews",
+      actionLabelKey: "scheduleInterviews",
     });
   }
 
   if (activeJobs === 0) {
     actions.push({
       icon: Briefcase,
-      text: "Post your first job to start receiving applications",
+      textKey: "postFirstJob",
       href: `/${locale}/employer/jobs/new`,
       priority: "urgent",
-      actionLabel: "Post a Job",
+      actionLabelKey: "postAJob",
     });
   }
 
   if (activeJobs > 0 && totalApplications === 0) {
     actions.push({
       icon: TrendingUp,
-      text: "Improve response time to increase interview rate",
+      textKey: "improveResponseTime",
       href: `/${locale}/employer/jobs`,
       priority: "medium",
-      actionLabel: "View Insights",
+      actionLabelKey: "viewInsights",
     });
   }
 
   if (totalApplications > 2 && placements === 0) {
     actions.push({
       icon: Sparkles,
-      text: "Move top-matched candidates forward in the pipeline",
+      textKey: "moveTopMatched",
       href: `/${locale}/employer/applications`,
       priority: "medium",
-      actionLabel: "View Pipeline",
+      actionLabelKey: "viewPipeline",
     });
   }
 
   if (scheduledInterviews > 0) {
     actions.push({
       icon: Calendar,
-      text: `${scheduledInterviews} interview${scheduledInterviews !== 1 ? "s" : ""} coming up — prepare questions`,
+      textKey: scheduledInterviews !== 1 ? "interviewsComingPlural" : "interviewsComing",
+      textValues: { count: scheduledInterviews },
       href: `/${locale}/employer/interviews`,
       priority: "medium",
-      actionLabel: "View Interviews",
+      actionLabelKey: "viewInterviews",
     });
   }
 
   if (totalApplications > 0) {
     actions.push({
       icon: MessageSquare,
-      text: "Message candidates directly to speed up hiring",
+      textKey: "messageCandidates",
       href: `/${locale}/employer/messages`,
       priority: "suggestion",
-      actionLabel: "Message Now",
+      actionLabelKey: "messageNow",
     });
   }
 
@@ -143,13 +150,13 @@ export function PriorityActions({
       <div className="border-b border-border/60 px-5 py-5 sm:px-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
           <Flame className="h-3.5 w-3.5" />
-          Priority actions
+          {t("priorityActionsLabel")}
         </div>
         <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-          Focus the next recruiter move where it matters most.
+          {t("focusNextMove")}
         </h2>
         <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Recruiter actions stay tied to live activity, so the dashboard stays useful instead of decorative.
+          {t("actionsTiedToActivity")}
         </p>
       </div>
 
@@ -162,7 +169,7 @@ export function PriorityActions({
 
           return (
             <div
-              key={`${action.href}-${action.text}`}
+              key={`${action.href}-${action.textKey}`}
               className={cn(
                 "flex flex-col gap-3.5 rounded-[22px] border p-3.5 transition-all xl:flex-row xl:items-center xl:gap-3 xl:p-4",
                 isUrgent && idx === 0
@@ -177,7 +184,7 @@ export function PriorityActions({
                   config.badgeText
                 )}>
                   <PriorityIcon className="h-3 w-3" />
-                  {config.label}
+                  {t(config.labelKey)}
                 </div>
 
                 <div className={cn(
@@ -189,10 +196,10 @@ export function PriorityActions({
 
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {idx === 0 ? "Recommended next" : "Keep momentum"}
+                    {idx === 0 ? t("recommendedNext") : t("keepMomentum")}
                   </p>
                   <span className="mt-1.5 block text-sm leading-5 text-foreground/85">
-                    {action.text}
+                    {t(action.textKey, action.textValues)}
                   </span>
                 </div>
               </div>
@@ -206,7 +213,7 @@ export function PriorityActions({
                     : "border border-border bg-background/80 text-foreground/85 hover:border-sky-500/25 hover:text-sky-700 dark:hover:text-sky-300"
                 )}
               >
-                {action.actionLabel}
+                {t(action.actionLabelKey)}
                 <ChevronRight className="h-3 w-3" />
               </Link>
             </div>

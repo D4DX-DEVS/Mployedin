@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 
 interface FAQ {
@@ -17,7 +18,7 @@ export default function FAQPage() {
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
   const isAr = locale === "ar";
-  const t = (en: string, ar: string) => (isAr ? ar : en);
+  const t = useTranslations("landing");
 
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,23 +47,14 @@ export default function FAQPage() {
   return (
     <div className="py-12">
       <div className="container mx-auto px-4 max-w-3xl">
-        {/* Header */}
         <div className="text-center mb-12">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
             <HelpCircle className="h-7 w-7" />
           </div>
-          <h1 className="text-4xl font-bold">
-            {t("Frequently Asked Questions", "الأسئلة الشائعة")}
-          </h1>
-          <p className="mt-3 text-muted-foreground">
-            {t(
-              "Find answers to common questions about MPLOYEDIN",
-              "ابحث عن إجابات للأسئلة الشائعة حول مبلويدين"
-            )}
-          </p>
+          <h1 className="text-4xl font-bold">{t("faqHeading")}</h1>
+          <p className="mt-3 text-muted-foreground">{t("faqSubtitle2")}</p>
         </div>
 
-        {/* Category Tabs */}
         {categories.length > 2 && (
           <div className="flex flex-wrap gap-2 mb-8 justify-center">
             {categories.map((cat) => (
@@ -75,17 +67,14 @@ export default function FAQPage() {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 }`}
               >
-                {cat === "all" ? t("All", "الكل") : cat}
+                {cat === "all" ? t("allCategories2") : cat}
               </button>
             ))}
           </div>
         )}
 
-        {/* FAQ List */}
         {filtered.length === 0 ? (
-          <p className="text-center text-muted-foreground py-10">
-            {t("No FAQs found.", "لم يتم العثور على أسئلة.")}
-          </p>
+          <p className="text-center text-muted-foreground py-10">{t("noFaqsFound")}</p>
         ) : (
           <div className="space-y-3">
             {filtered.map((faq) => (

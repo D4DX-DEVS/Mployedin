@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Search, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ export default function BlogListingPage() {
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
   const isAr = locale === "ar";
-  const t = (en: string, ar: string) => (isAr ? ar : en);
+  const t = useTranslations("landing");
 
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,40 +60,29 @@ export default function BlogListingPage() {
   return (
     <div className="py-12">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold">{t("Blog", "المدونة")}</h1>
-          <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-            {t(
-              "Insights, tips, and updates from the world of recruitment",
-              "رؤى ونصائح وتحديثات من عالم التوظيف"
-            )}
-          </p>
+          <h1 className="text-4xl font-bold">{t("blogHeading")}</h1>
+          <p className="mt-3 text-muted-foreground max-w-xl mx-auto">{t("blogSubtitle")}</p>
         </div>
 
-        {/* Search */}
         <form onSubmit={handleSearch} className="relative max-w-md mx-auto mb-10">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={t("Search articles...", "ابحث في المقالات...")}
+            placeholder={t("searchArticlesPlaceholder")}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-10"
           />
         </form>
 
-        {/* Loading */}
         {loading && (
           <div className="flex justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
         )}
 
-        {/* Posts Grid */}
         {!loading && posts.length === 0 && (
-          <p className="text-center text-muted-foreground py-20">
-            {t("No articles found.", "لم يتم العثور على مقالات.")}
-          </p>
+          <p className="text-center text-muted-foreground py-20">{t("noArticlesFound")}</p>
         )}
 
         {!loading && posts.length > 0 && (
@@ -144,27 +134,16 @@ export default function BlogListingPage() {
               ))}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center gap-2 mt-10">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  {t("Previous", "السابق")}
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                  {t("previousPage")}
                 </Button>
                 <span className="flex items-center px-3 text-sm text-muted-foreground">
                   {page} / {totalPages}
                 </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  {t("Next", "التالي")}
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+                  {t("nextPage")}
                 </Button>
               </div>
             )}

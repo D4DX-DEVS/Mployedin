@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   Briefcase,
   FileText,
@@ -11,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 
 interface PipelineStage {
-  label: string;
+  labelKey: string;
   value: number;
   icon: React.ElementType;
   color: string;
@@ -36,9 +37,11 @@ export function HiringPipeline({
   hired,
   locale,
 }: HiringPipelineProps) {
+  const t = useTranslations("employerDashboard.hiringPipeline");
+
   const stages: PipelineStage[] = [
     {
-      label: "Active Jobs",
+      labelKey: "activeJobs",
       value: activeJobs,
       icon: Briefcase,
       color: "text-primary",
@@ -46,7 +49,7 @@ export function HiringPipeline({
       href: `/${locale}/employer/jobs`,
     },
     {
-      label: "New Applications",
+      labelKey: "newApplications",
       value: newApplications,
       icon: FileText,
       color: "text-amber-600",
@@ -54,7 +57,7 @@ export function HiringPipeline({
       href: `/${locale}/employer/applications?status=applied`,
     },
     {
-      label: "In Review",
+      labelKey: "inReview",
       value: inReview,
       icon: FileText,
       color: "text-cyan-600",
@@ -62,7 +65,7 @@ export function HiringPipeline({
       href: `/${locale}/employer/applications?status=shortlisted`,
     },
     {
-      label: "Interviews",
+      labelKey: "interviews",
       value: interviews,
       icon: Calendar,
       color: "text-violet-600",
@@ -70,7 +73,7 @@ export function HiringPipeline({
       href: `/${locale}/employer/interviews`,
     },
     {
-      label: "Hired",
+      labelKey: "hired",
       value: hired,
       icon: UserCheck,
       color: "text-emerald-600",
@@ -85,7 +88,7 @@ export function HiringPipeline({
     <div className="card-base p-0 overflow-hidden">
       <div className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Hiring Pipeline
+          {t("title")}
         </h2>
       </div>
 
@@ -95,44 +98,23 @@ export function HiringPipeline({
           {stages.map((stage, idx) => {
             const Icon = stage.icon;
             return (
-              <div key={stage.label} className="flex items-center flex-1 min-w-0">
+              <div key={stage.labelKey} className="flex items-center flex-1 min-w-0">
                 <Link
                   href={stage.href}
                   className={cn(
-                    "flex-1 rounded-xl p-3 sm:p-4 transition-all group hover:shadow-md",
-                    stage.bgColor,
-                    "hover:scale-[1.02]"
+                    "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all group hover:bg-muted/50 flex-1 min-w-0",
                   )}
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={cn("p-1.5 rounded-lg bg-white/70 dark:bg-white/10", stage.color)}>
-                      <Icon className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="text-[11px] font-medium text-muted-foreground truncate">
-                      {stage.label}
-                    </span>
+                  <div className={cn("p-2 rounded-lg", stage.bgColor, stage.color)}>
+                    <Icon className="h-4 w-4" />
                   </div>
-                  <p className={cn("text-2xl sm:text-3xl font-bold", stage.color)}>
-                    {stage.value}
-                  </p>
-                  {/* Mini bar showing proportion */}
-                  <div className="mt-2 h-1 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
-                    <div
-                      className={cn("h-full rounded-full transition-all duration-700", {
-                        "bg-primary": idx === 0,
-                        "bg-amber-500": idx === 1,
-                        "bg-cyan-500": idx === 2,
-                        "bg-violet-500": idx === 3,
-                        "bg-emerald-500": idx === 4,
-                      })}
-                      style={{
-                        width: `${Math.max((stage.value / total) * 100, stage.value > 0 ? 8 : 0)}%`,
-                      }}
-                    />
-                  </div>
+                  <span className="text-lg font-bold text-foreground">{stage.value}</span>
+                  <span className="text-[10px] font-medium text-muted-foreground text-center leading-tight truncate w-full">
+                    {t(stage.labelKey)}
+                  </span>
                 </Link>
                 {idx < stages.length - 1 && (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0 mx-0.5 hidden sm:block" />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0 mx-0.5" />
                 )}
               </div>
             );

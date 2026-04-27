@@ -16,8 +16,6 @@ import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  SuperAgentDataTableShell,
-  SuperAgentEmptyState,
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
@@ -684,55 +682,59 @@ export default function SuperAgentLeadsPage() {
             onExportPdf={handleExportPdf}
             className="mb-4"
           />
-          <SuperAgentDataTableShell>
+          <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
-                  <TableHead className="py-4"><SortHeader field="companyName">Company</SortHeader></TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Contact</TableHead>
-                  <TableHead className="py-4"><SortHeader field="country">Country</SortHeader></TableHead>
-                  <TableHead className="py-4"><SortHeader field="industry">Industry</SortHeader></TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Source</TableHead>
-                  <TableHead className="py-4"><SortHeader field="status">Stage</SortHeader></TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Agent</TableHead>
-                  <TableHead className="py-4"><SortHeader field="followUpAt">Follow-up</SortHeader></TableHead>
-                  <TableHead className="py-4"><SortHeader field="createdAt">Date</SortHeader></TableHead>
+                <TableRow className="bg-background/60 hover:bg-background/60">
+                  <TableHead><SortHeader field="companyName">Company</SortHeader></TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead><SortHeader field="country">Country</SortHeader></TableHead>
+                  <TableHead><SortHeader field="industry">Industry</SortHeader></TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead><SortHeader field="status">Stage</SortHeader></TableHead>
+                  <TableHead>Agent</TableHead>
+                  <TableHead><SortHeader field="followUpAt">Follow-up</SortHeader></TableHead>
+                  <TableHead><SortHeader field="createdAt">Date</SortHeader></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i} className="border-border/50">
+                    <TableRow key={i}>
                       {Array.from({ length: 9 }).map((_, j) => (
-                        <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
+                        <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : leads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="p-0">
-                      <SuperAgentEmptyState
-                        icon={<Target className="h-7 w-7" />}
-                        title="No leads found"
-                        description="Try another search, adjust filters, or use AI search to explore your pipeline."
-                      />
+                    <TableCell colSpan={9} className="py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+                          <Target className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-foreground">No leads found</p>
+                          <p className="mt-1 text-sm text-muted-foreground">Try another search, adjust filters, or use AI search to explore your pipeline.</p>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : leads.map((lead) => {
                   const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
                   return (
-                    <TableRow key={lead._id} className="border-border/50 hover:bg-accent/25">
-                      <TableCell className="py-4 font-medium text-foreground">{lead.companyName}</TableCell>
-                      <TableCell className="py-4">
+                    <TableRow key={lead._id} className="bg-transparent">
+                      <TableCell className="font-medium text-foreground">{lead.companyName}</TableCell>
+                      <TableCell>
                         <div className="text-foreground/85">{lead.contactPerson}</div>
                         {lead.contactEmail && <div className="text-xs text-muted-foreground/70">{lead.contactEmail}</div>}
                       </TableCell>
-                      <TableCell className="py-4 text-muted-foreground">{lead.country ?? "—"}</TableCell>
-                      <TableCell className="py-4 text-muted-foreground">{lead.industry ?? "—"}</TableCell>
-                      <TableCell className="py-4 text-xs text-muted-foreground">{lead.source ?? "—"}</TableCell>
-                      <TableCell className="py-4"><StatusBadge status={lead.status} /></TableCell>
-                      <TableCell className="py-4 text-xs text-muted-foreground">{lead.agentId?.userId?.name ?? "—"}</TableCell>
-                      <TableCell className="py-4 text-xs">
+                      <TableCell className="text-muted-foreground">{lead.country ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{lead.industry ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{lead.source ?? "—"}</TableCell>
+                      <TableCell><StatusBadge status={lead.status} /></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{lead.agentId?.userId?.name ?? "—"}</TableCell>
+                      <TableCell className="text-xs">
                         {lead.followUpAt ? (
                           <span className={isOverdue ? "font-medium text-red-600 dark:text-red-400" : "text-muted-foreground"}>
                             {new Date(lead.followUpAt).toLocaleDateString()}
@@ -742,13 +744,13 @@ export default function SuperAgentLeadsPage() {
                           <span className="text-muted-foreground/50">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="py-4 text-xs text-muted-foreground">{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{new Date(lead.createdAt).toLocaleDateString()}</TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
-          </SuperAgentDataTableShell>
+          </div>
         </div>
 
         <div className="mt-4">

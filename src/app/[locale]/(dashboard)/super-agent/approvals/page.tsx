@@ -23,8 +23,6 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import {
-  SuperAgentDataTableShell,
-  SuperAgentEmptyState,
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
@@ -293,55 +291,59 @@ export default function SuperAgentApprovalsPage() {
           className="mb-4"
         />
 
-        <SuperAgentDataTableShell>
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
           {loading ? (
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
+                <TableRow className="bg-background/60 hover:bg-background/60">
                   {tableHeaders.map((h, i) => (
-                    <TableHead key={i} className={`py-4 text-muted-foreground/80 ${i === tableHeaders.length - 1 ? "text-right" : ""}`}>{h}</TableHead>
+                    <TableHead key={i} className={i === tableHeaders.length - 1 ? "text-right" : ""}>{h}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="border-border/50">
+                  <TableRow key={i}>
                     {tableHeaders.map((_, j) => (
-                      <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
+                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           ) : jobs.length === 0 ? (
-            <SuperAgentEmptyState
-              icon={<Briefcase className="h-7 w-7" />}
-              title="No jobs found"
-              description="No jobs match your current filters. Try adjusting the filters or check back later."
-            />
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+                <Briefcase className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-base font-semibold text-foreground">No jobs found</p>
+                <p className="mt-1 text-sm text-muted-foreground">No jobs match your current filters. Try adjusting the filters or check back later.</p>
+              </div>
+            </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
-                  <TableHead className="py-4 text-muted-foreground/80">Job Title</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Employer</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Posted By</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Location</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Status</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Date</TableHead>
-                  <TableHead className="py-4 text-right text-muted-foreground/80" />
+                <TableRow className="bg-background/60 hover:bg-background/60">
+                  <TableHead>Job Title</TableHead>
+                  <TableHead>Employer</TableHead>
+                  <TableHead>Posted By</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {jobs.map((job) => (
-                  <TableRow key={job._id} className="border-border/50 hover:bg-accent/25">
-                    <TableCell className="py-4 font-medium text-foreground">{job.title}</TableCell>
-                    <TableCell className="py-4 text-muted-foreground">{job.employerId?.companyName ?? job.employerId?.name ?? "—"}</TableCell>
-                    <TableCell className="py-4 text-muted-foreground">{job.postedByAgent?.name ?? "Employer"}</TableCell>
-                    <TableCell className="py-4 text-muted-foreground">{formatLocation(job.location)}</TableCell>
-                    <TableCell className="py-4"><StatusBadge status={job.status ?? "draft"} /></TableCell>
-                    <TableCell className="py-4 text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell className="py-4">
+                  <TableRow key={job._id} className="bg-transparent">
+                    <TableCell className="font-medium text-foreground">{job.title}</TableCell>
+                    <TableCell className="text-muted-foreground">{job.employerId?.companyName ?? job.employerId?.name ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{job.postedByAgent?.name ?? "Employer"}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatLocation(job.location)}</TableCell>
+                    <TableCell><StatusBadge status={job.status ?? "draft"} /></TableCell>
+                    <TableCell className="text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
                       <div className="flex items-center justify-end">
                         <Button
                           variant="ghost"
@@ -359,7 +361,7 @@ export default function SuperAgentApprovalsPage() {
               </TableBody>
             </Table>
           )}
-        </SuperAgentDataTableShell>
+        </div>
 
         {/* Pagination controls */}
         {!loading && jobs.length > 0 && (

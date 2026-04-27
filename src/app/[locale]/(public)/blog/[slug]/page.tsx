@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ArrowLeft, Calendar, User, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -25,7 +26,7 @@ export default function BlogDetailPage() {
   const locale = parts[1] || "en";
   const slug = parts[parts.length - 1];
   const isAr = locale === "ar";
-  const t = (en: string, ar: string) => (isAr ? ar : en);
+  const t = useTranslations("landing");
 
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,9 +55,9 @@ export default function BlogDetailPage() {
   if (notFound || !post) {
     return (
       <div className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold mb-4">{t("Article Not Found", "المقال غير موجود")}</h1>
+        <h1 className="text-2xl font-bold mb-4">{t("articleNotFoundHeading")}</h1>
         <Link href={`/${locale}/blog`}>
-          <Button variant="outline">{t("Back to Blog", "العودة إلى المدونة")}</Button>
+          <Button variant="outline">{t("backToBlogLink")}</Button>
         </Link>
       </div>
     );
@@ -68,13 +69,11 @@ export default function BlogDetailPage() {
   return (
     <article className="py-12">
       <div className="container mx-auto px-4 max-w-4xl">
-        {/* Back */}
         <Link href={`/${locale}/blog`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
           <ArrowLeft className="h-4 w-4 mr-1.5" />
-          {t("Back to Blog", "العودة إلى المدونة")}
+          {t("backToBlogLink")}
         </Link>
 
-        {/* Cover */}
         {post.coverImage && (
           <img
             src={post.coverImage}
@@ -83,10 +82,8 @@ export default function BlogDetailPage() {
           />
         )}
 
-        {/* Title */}
         <h1 className="text-3xl sm:text-4xl font-bold leading-tight">{title}</h1>
 
-        {/* Meta */}
         <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-muted-foreground">
           {post.author && (
             <span className="flex items-center gap-1.5">
@@ -106,7 +103,6 @@ export default function BlogDetailPage() {
           )}
         </div>
 
-        {/* Tags */}
         {post.tags?.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-4">
             {post.tags.map((tag) => (
@@ -118,7 +114,6 @@ export default function BlogDetailPage() {
           </div>
         )}
 
-        {/* Body */}
         <div
           className="mt-10 prose prose-neutral dark:prose-invert max-w-none"
           dangerouslySetInnerHTML={{ __html: body }}

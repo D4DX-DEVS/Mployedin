@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Users, Eye, Pencil, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -20,19 +21,21 @@ interface ActiveJobsListProps {
 }
 
 export function ActiveJobsList({ jobs, locale }: ActiveJobsListProps) {
+  const t = useTranslations("employerDashboard.activeJobsList");
+
   if (jobs.length === 0) return null;
 
   return (
     <div className="card-base p-0 overflow-hidden">
       <div className="px-5 pt-5 pb-2 sm:px-6 sm:pt-6 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Active Jobs
+          {t("activeJobs")}
         </h2>
         <Link
           href={`/${locale}/employer/jobs`}
           className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
         >
-          View all <ChevronRight className="h-3 w-3" />
+          {t("viewAll")} <ChevronRight className="h-3 w-3" />
         </Link>
       </div>
 
@@ -62,15 +65,15 @@ export function ActiveJobsList({ jobs, locale }: ActiveJobsListProps) {
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   {job.location?.city && (
-                    <span>{job.location.city}{job.location.isRemote ? " (Remote)" : ""}</span>
+                    <span>{job.location.city}{job.location.isRemote ? ` ${t("remote")}` : ""}</span>
                   )}
                   <span className="flex items-center gap-1">
                     <Users className="h-3 w-3" />
-                    {job.applicantCount} applicant{job.applicantCount !== 1 ? "s" : ""}
+                    {job.applicantCount} {job.applicantCount !== 1 ? t("applicants") : t("applicant")}
                   </span>
                   {job.avgMatchScore > 0 && (
                     <span className={cn("font-medium", matchColor)}>
-                      {Math.round(job.avgMatchScore)}% avg match
+                      {Math.round(job.avgMatchScore)}% {t("avgMatch")}
                     </span>
                   )}
                 </div>

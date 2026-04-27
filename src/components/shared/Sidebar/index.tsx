@@ -294,53 +294,23 @@ export function Sidebar({
             : "h-16 border-b border-slate-800"
         )}
       >
-        {displayImage && !imageLoadFailed ? (
-          <div
-            className={cn(
-              "overflow-hidden bg-card shrink-0",
-              usesModernWorkspaceShell
-                ? usesLightWorkspaceSidebar
-                  ? "h-12 w-12 rounded-2xl border border-sky-100 bg-white shadow-[0_20px_40px_-28px_rgba(2,132,199,0.55)] ring-4 ring-white/70"
-                  : "h-12 w-12 rounded-2xl border border-border shadow-[0_20px_40px_-28px_rgba(2,132,199,0.34)] ring-4 ring-background/70"
-                : "w-9 h-9 rounded-xl shadow-lg ring-1 ring-white/20"
-            )}
-          >
-            <Image
-              src={displayImage}
-              alt={companyLogo ? "Company logo" : "Profile image"}
-              width={40}
-              height={40}
-              className={cn("w-full h-full", companyLogo ? "object-contain" : "object-cover")}
-              onError={() => setImageLoadFailed(true)}
-              unoptimized
-              priority
-            />
-          </div>
-        ) : !companyLogo && status === "loading" ? (
-          <div
-            className={cn(
-              "animate-pulse shrink-0",
-              usesModernWorkspaceShell
-                ? usesLightWorkspaceSidebar
-                  ? "h-12 w-12 rounded-2xl border border-sky-100/80 bg-white/80 ring-4 ring-white/70"
-                  : "h-12 w-12 rounded-2xl border border-border bg-card/80 ring-4 ring-background/70"
-                : "w-9 h-9 rounded-xl bg-slate-700/70 ring-1 ring-white/20"
-            )}
+        <div
+          className={cn(
+            "overflow-hidden shrink-0",
+            usesModernWorkspaceShell
+              ? "h-12 w-12 rounded-2xl border border-border shadow-[0_20px_40px_-28px_rgba(2,132,199,0.34)] ring-4 ring-background/70 bg-white dark:bg-slate-800"
+              : "w-9 h-9 rounded-xl shadow-lg ring-1 ring-white/20 bg-white dark:bg-slate-800"
+          )}
+        >
+          <Image
+            src="/logo.png"
+            alt="Mployedin"
+            width={48}
+            height={48}
+            className="w-full h-full object-contain p-1 dark:brightness-0 dark:invert"
+            priority
           />
-        ) : (
-          <div
-            className={cn(
-              "flex items-center justify-center font-bold shrink-0",
-              usesModernWorkspaceShell
-                ? usesLightWorkspaceSidebar
-                  ? "h-12 w-12 rounded-2xl bg-[linear-gradient(135deg,_rgba(14,165,233,0.98),_rgba(37,99,235,0.94))] text-white shadow-[0_22px_42px_-24px_rgba(37,99,235,0.7)] ring-4 ring-white/70 text-xl"
-                  : "h-12 w-12 rounded-2xl bg-[linear-gradient(135deg,_rgba(14,165,233,0.98),_rgba(37,99,235,0.94))] text-white shadow-[0_22px_42px_-24px_rgba(37,99,235,0.7)] ring-4 ring-background/70 text-xl"
-                : "w-9 h-9 rounded-xl bg-primary text-primary-foreground shadow-lg text-lg ring-1 ring-white/20"
-            )}
-          >
-            M
-          </div>
-        )}
+        </div>
         <div className="min-w-0">
           <span
             className={cn(

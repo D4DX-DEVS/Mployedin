@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Button } from "@/components/ui/button";
 
@@ -13,13 +14,15 @@ interface PublicHeaderProps {
 
 export default function PublicHeader({ locale }: PublicHeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const isAr = locale === "ar";
+  const tNav = useTranslations("nav");
+  const tLanding = useTranslations("landing");
+  const tAuth = useTranslations("auth");
 
   const navLinks = [
-    { href: `/${locale}`, label: isAr ? "الرئيسية" : "Home" },
-    { href: `/${locale}/blog`, label: isAr ? "المدونة" : "Blog" },
-    { href: `/${locale}/faq`, label: isAr ? "الأسئلة الشائعة" : "FAQ" },
-    { href: `/${locale}/contact`, label: isAr ? "اتصل بنا" : "Contact" },
+    { href: `/${locale}`, label: tNav("home") },
+    { href: `/${locale}/blog`, label: tLanding("blog") },
+    { href: `/${locale}/faq`, label: tLanding("faqTitle") },
+    { href: `/${locale}/contact`, label: tLanding("contactTitle") },
   ];
 
   return (
@@ -53,12 +56,12 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
           </Link>
           <Link href={`/${locale}/login`}>
             <Button variant="ghost" size="sm">
-              {isAr ? "تسجيل الدخول" : "Login"}
+              {tAuth("login")}
             </Button>
           </Link>
           <Link href={`/${locale}/register`}>
             <Button size="sm">
-              {isAr ? "سجل الآن" : "Get Started"}
+              {tLanding("getStartedBtn")}
             </Button>
           </Link>
         </div>
@@ -101,12 +104,12 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
             <div className="flex gap-2">
               <Link href={`/${locale}/login`} className="flex-1">
                 <Button variant="outline" size="sm" className="w-full">
-                  {isAr ? "تسجيل الدخول" : "Login"}
+                  {tAuth("login")}
                 </Button>
               </Link>
               <Link href={`/${locale}/register`} className="flex-1">
                 <Button size="sm" className="w-full">
-                  {isAr ? "سجل الآن" : "Get Started"}
+                  {tLanding("getStartedBtn")}
                 </Button>
               </Link>
             </div>

@@ -13,8 +13,6 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  SuperAgentDataTableShell,
-  SuperAgentEmptyState,
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
@@ -425,51 +423,48 @@ export default function SuperAgentAgentsPage() {
           className="mb-4"
         />
 
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          className="mb-4"
-        />
-
-        <SuperAgentDataTableShell>
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
-                <TableHead className="py-4 text-muted-foreground/80"><SortHeader field="name">Agent</SortHeader></TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Email</TableHead>
-                <TableHead className="py-4 text-right text-muted-foreground/80"><SortHeader field="leadsCount">Leads</SortHeader></TableHead>
-                <TableHead className="py-4 text-right text-muted-foreground/80"><SortHeader field="conversions">Conversions</SortHeader></TableHead>
-                <TableHead className="py-4 text-right text-muted-foreground/80"><SortHeader field="placements">Placements</SortHeader></TableHead>
-                <TableHead className="py-4 text-right text-muted-foreground/80"><SortHeader field="conversionRate">Conv. Rate</SortHeader></TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Progress</TableHead>
-                <TableHead className="py-4 w-10" />
+              <TableRow className="bg-background/60 hover:bg-background/60">
+                <TableHead><SortHeader field="name">Agent</SortHeader></TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="text-right"><SortHeader field="leadsCount">Leads</SortHeader></TableHead>
+                <TableHead className="text-right"><SortHeader field="conversions">Conversions</SortHeader></TableHead>
+                <TableHead className="text-right"><SortHeader field="placements">Placements</SortHeader></TableHead>
+                <TableHead className="text-right"><SortHeader field="conversionRate">Conv. Rate</SortHeader></TableHead>
+                <TableHead>Progress</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="border-border/50">
+                  <TableRow key={i}>
                     {Array.from({ length: 8 }).map((_, j) => (
-                      <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
+                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : agents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="p-0">
-                    <SuperAgentEmptyState
-                      icon={<Users2 className="h-7 w-7" />}
-                      title="No agents found"
-                      description="Try a broader search or adjust filters to see more results."
-                    />
+                  <TableCell colSpan={8} className="py-16 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+                        <Users2 className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold text-foreground">No agents found</p>
+                        <p className="mt-1 text-sm text-muted-foreground">Try a broader search or adjust filters to see more results.</p>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : agents.map((a) => {
                 const badges = getPerformanceBadge(a);
                 return (
-                <TableRow key={a._id} className="border-border/50 hover:bg-accent/25">
-                  <TableCell className="py-4">
+                <TableRow key={a._id} className="bg-transparent">
+                  <TableCell>
                     <div className="flex flex-col gap-1">
                       <span className="font-medium text-foreground">{a.name}</span>
                       {badges.length > 0 && (
@@ -483,16 +478,16 @@ export default function SuperAgentAgentsPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="py-4 text-xs text-muted-foreground">{a.email}</TableCell>
-                  <TableCell className="py-4 text-right text-foreground/85">{a.leadsCount ?? 0}</TableCell>
-                  <TableCell className="py-4 text-right font-medium text-emerald-600">{a.conversions ?? 0}</TableCell>
-                  <TableCell className="py-4 text-right font-medium text-primary">{a.placements ?? 0}</TableCell>
-                  <TableCell className="py-4 text-right text-foreground/85">
+                  <TableCell className="text-xs text-muted-foreground">{a.email}</TableCell>
+                  <TableCell className="text-right text-foreground/85">{a.leadsCount ?? 0}</TableCell>
+                  <TableCell className="text-right font-medium text-emerald-600">{a.conversions ?? 0}</TableCell>
+                  <TableCell className="text-right font-medium text-primary">{a.placements ?? 0}</TableCell>
+                  <TableCell className="text-right text-foreground/85">
                     {a.leadsCount > 0
                       ? `${Math.round((a.conversions / a.leadsCount) * 100)}%`
                       : "—"}
                   </TableCell>
-                  <TableCell className="py-4">
+                  <TableCell>
                     <div className="h-2 w-32 overflow-hidden rounded-full bg-muted/75">
                       <div
                         className="h-full rounded-full bg-primary"
@@ -500,7 +495,7 @@ export default function SuperAgentAgentsPage() {
                       />
                     </div>
                   </TableCell>
-                  <TableCell className="py-4">
+                  <TableCell>
                     <AIExplainButton
                       rowData={{
                         name: a.name,
@@ -519,7 +514,7 @@ export default function SuperAgentAgentsPage() {
               })}
             </TableBody>
           </Table>
-        </SuperAgentDataTableShell>
+        </div>
 
         <div className="mt-4">
           <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

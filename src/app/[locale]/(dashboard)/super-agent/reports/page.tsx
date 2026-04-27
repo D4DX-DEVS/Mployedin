@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { BarChart3, Coins, Target, TrendingDown, TrendingUp, Users2 } from "lucide-react";
 import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
@@ -172,25 +175,25 @@ export default function SuperAgentReportsPage() {
             Monthly trends will appear after the first full month of data.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50">
-                  <th className="py-2 text-left font-medium text-muted-foreground">Month</th>
-                  <th className="py-2 text-right font-medium text-muted-foreground">Leads</th>
-                  <th className="py-2 text-right font-medium text-muted-foreground">Placements</th>
-                  <th className="py-2 text-right font-medium text-muted-foreground">Revenue</th>
-                  <th className="py-2 text-right font-medium text-muted-foreground">Trend</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-background/60 hover:bg-background/60">
+                  <TableHead>Month</TableHead>
+                  <TableHead className="text-right">Leads</TableHead>
+                  <TableHead className="text-right">Placements</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
+                  <TableHead className="text-right">Trend</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {monthlyTrends.map((m) => (
-                  <tr key={m.month} className="border-b border-border/30">
-                    <td className="py-3 font-medium text-foreground">{m.month}</td>
-                    <td className="py-3 text-right text-muted-foreground">{m.leads}</td>
-                    <td className="py-3 text-right text-muted-foreground">{m.placements}</td>
-                    <td className="py-3 text-right text-muted-foreground">{formatCurrency(m.revenue, currencyCode)}</td>
-                    <td className="py-3 text-right">
+                  <TableRow key={m.month} className="bg-transparent">
+                    <TableCell className="font-medium text-foreground">{m.month}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{m.leads}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{m.placements}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{formatCurrency(m.revenue, currencyCode)}</TableCell>
+                    <TableCell className="text-right">
                       {m.trend > 0 ? (
                         <span className="inline-flex items-center gap-1 text-emerald-600"><TrendingUp className="h-3.5 w-3.5" /> +{m.trend}%</span>
                       ) : m.trend < 0 ? (
@@ -198,11 +201,11 @@ export default function SuperAgentReportsPage() {
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </SuperAgentSection>

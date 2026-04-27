@@ -19,8 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  SuperAgentDataTableShell,
-  SuperAgentEmptyState,
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
@@ -354,50 +352,54 @@ export default function SuperAgentCommissionsPage() {
             onExportPdf={handleExportPdf}
             className="mb-4"
           />
-          <SuperAgentDataTableShell>
+          <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
-                  <TableHead className="py-4 text-muted-foreground/80">Agent</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Type</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Notes</TableHead>
-                  <TableHead className="py-4 text-right text-muted-foreground/80">Amount</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Status</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Date</TableHead>
-                  <TableHead className="py-4 text-muted-foreground/80">Actions</TableHead>
+                <TableRow className="bg-background/60 hover:bg-background/60">
+                  <TableHead>Agent</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i} className="border-border/50">
+                    <TableRow key={i}>
                       {Array.from({ length: 7 }).map((_, j) => (
-                        <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
+                        <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : commissions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="p-0">
-                      <SuperAgentEmptyState
-                        icon={<Coins className="h-7 w-7" />}
-                        title="No commissions found"
-                        description="Change the status filter or wait for payout records to appear."
-                      />
+                    <TableCell colSpan={7} className="py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+                          <Coins className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-foreground">No commissions found</p>
+                          <p className="mt-1 text-sm text-muted-foreground">Change the status filter or wait for payout records to appear.</p>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : commissions.map((c) => (
-                    <TableRow key={c._id} className="border-border/50 hover:bg-accent/25">
-                    <TableCell className="py-4">
+                    <TableRow key={c._id} className="bg-transparent">
+                    <TableCell>
                         <div className="font-medium text-foreground">{c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—"}</div>
                         <div className="text-xs text-muted-foreground">{c.agentId?.userId?.email ?? ""}</div>
                     </TableCell>
-                      <TableCell className="py-4 capitalize text-muted-foreground">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
-                      <TableCell className="max-w-xs truncate py-4 text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
-                      <TableCell className="py-4 text-right font-semibold text-foreground">{formatCurrency(c.amount, c.currency ?? currencyCode)}</TableCell>
-                    <TableCell className="py-4"><StatusBadge status={c.status} /></TableCell>
-                      <TableCell className="py-4 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell className="py-4">
+                      <TableCell className="capitalize text-muted-foreground">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
+                      <TableCell className="max-w-xs truncate text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
+                      <TableCell className="text-right font-semibold text-foreground">{formatCurrency(c.amount, c.currency ?? currencyCode)}</TableCell>
+                    <TableCell><StatusBadge status={c.status} /></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
                       {c.status === "pending" && (
                         <Button variant="ghost" size="sm" className="h-7 text-xs text-green-700" onClick={() => updateStatus(c._id, "approved")}>
                           Approve
@@ -414,7 +416,7 @@ export default function SuperAgentCommissionsPage() {
                 ))}
               </TableBody>
             </Table>
-          </SuperAgentDataTableShell>
+          </div>
         </div>
 
         <div className="mt-4">

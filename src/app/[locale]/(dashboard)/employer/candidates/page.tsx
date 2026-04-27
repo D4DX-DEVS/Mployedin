@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
@@ -60,7 +61,7 @@ const AI_SEARCH_SUGGESTIONS = [
 ];
 
 const AVAILABILITY_OPTIONS = [
-  { value: "all", label: "Any availability" },
+  { value: "all", label: "Any availability" as string },
   { value: "immediately", label: "Available now" },
   { value: "within_month", label: "Within 1 month" },
   { value: "within_3_months", label: "Within 3 months" },
@@ -219,7 +220,7 @@ function getCandidateDisplayName(candidate: Candidate): string {
   }
 
   const accountName = candidate.userId?.name?.trim();
-  return accountName || "Unknown candidate";
+  return accountName || "Unknown candidate"; // dynamic fallback, translated via caller
 }
 
 interface CandidateCardProps {
@@ -247,6 +248,7 @@ function CandidateMatchCard({
   onToggleReviewList,
   onOpenInsights,
 }: CandidateCardProps) {
+  const t = useTranslations("employerCandidates");
   const currentRole = candidate.experience?.find((entry) => entry.isCurrent)?.jobTitle ?? null;
   const matchedSkills = getMatchedSkills(candidate, selectedJobData);
   const missingSkills = getMissingSkills(candidate, selectedJobData);
@@ -256,14 +258,14 @@ function CandidateMatchCard({
   const messageRecipientId = candidate.userId?._id;
   const hasSecondaryActions = Boolean(candidate.cv?.originalUrl || candidate.userId?._id || candidate._id);
   const availabilityLabel = candidate.availabilityStatus === "immediately"
-    ? "Available now"
+    ? t("availableNow")
     : candidate.availabilityStatus === "within_month"
-      ? "Within 1 month"
+      ? t("withinMonth")
       : candidate.availabilityStatus === "within_3_months"
-        ? "Within 3 months"
+        ? t("within3Months")
         : candidate.availabilityStatus === "not_available"
-          ? "Not available"
-          : "Availability unknown";
+          ? t("notAvailable")
+          : t("availabilityUnknown");
 
   const primaryMeta = [candidate.currentLocation, candidate.totalExperienceYears != null ? `${candidate.totalExperienceYears}+ yrs` : null]
     .filter(Boolean)
@@ -314,7 +316,7 @@ function CandidateMatchCard({
                 </span>
               ) : null}
             </div>
-            <p className="truncate text-sm text-muted-foreground">{currentRole ?? "Role not specified"}</p>
+            <p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
           </div>
         </div>
 
@@ -333,7 +335,7 @@ function CandidateMatchCard({
                 </span>
               );
             })}
-            {overflowSkillCount > 0 ? <span>+{overflowSkillCount} more</span> : null}
+            {overflowSkillCount > 0 ? <span>+{overflowSkillCount} {t("moreSuffix")}</span> : null}
             {selectedJobData && matchedSkills.length === 0 && missingSkills.length > 0 ? (
               <span className="text-amber-700 dark:text-amber-300">{missingSkills.length} gap{missingSkills.length === 1 ? "" : "s"}</span>
             ) : null}
@@ -343,7 +345,7 @@ function CandidateMatchCard({
         <div className="flex flex-wrap items-center gap-2 sm:justify-end" onClick={stopRowClick} onKeyDown={stopRowClick}>
           {hasAnyScore ? (
             <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${scoreBadgeClass(candidate.matchScore)}`}>
-              {candidate.matchScore != null ? `${candidate.matchScore}% AI match` : "Unscored"}
+              {candidate.matchScore != null ? `${candidate.matchScore}% ${t("aiMatchSuffix")}` : t("unscored")}
             </span>
           ) : null}
           <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${availabilityTone(candidate.availabilityStatus)}`}>
@@ -436,6 +438,7 @@ function CandidateInsightsDialog({
   onStartMessage,
   onToggleReviewList,
 }: CandidateInsightsDialogProps) {
+  const t = useTranslations("employerCandidates");
   if (!candidate) {
     return null;
   }
@@ -467,7 +470,7 @@ function CandidateInsightsDialog({
                     ) : null}
                   </div>
                   <DialogDescription className="mt-1 text-sm text-muted-foreground">
-                    {currentRole ?? "Role not specified"}
+                    {currentRole ?? t("roleNotSpecified")}
                     {candidate.currentLocation ? ` • ${candidate.currentLocation}` : ""}
                     {candidate.totalExperienceYears != null ? ` • ${candidate.totalExperienceYears}+ years experience` : ""}
                   </DialogDescription>
@@ -774,6 +777,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
 export default function EmployerCandidatesPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const t = useTranslations("employerCandidates");
 
   const [selectedJob, setSelectedJob] = useState("");
   const [page, setPage] = useState(1);
@@ -978,7 +982,7 @@ export default function EmployerCandidatesPage() {
   }, [debouncedSearch, selectedJob]);
 
   useEffect(() => {
-    document.title = "Candidate Matching · MPLOYEDIN";
+    document.title = t("heroTitle") + " · MPLOYEDIN";
   }, []);
 
   useEffect(() => {
@@ -998,7 +1002,7 @@ export default function EmployerCandidatesPage() {
       setMatchFeedback({
         type: "info",
         message: !selectedJob
-          ? "Choose a published job before running AI match."
+          ? t("chooseJobBeforeMatch")
           : "There are no candidates on this page to score yet.",
       });
       return;
@@ -1125,7 +1129,7 @@ export default function EmployerCandidatesPage() {
   };
 
   const matchHelperText = !selectedJob
-    ? "Choose a published job to enable AI scoring."
+    ? t("chooseJobForScoring")
     : structuredCandidates.length === 0
       ? "No candidates are available on this page yet."
       : "AI matching scores the candidates currently visible after your search and filters.";
@@ -1230,9 +1234,9 @@ export default function EmployerCandidatesPage() {
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-[1.7rem] font-semibold tracking-tight text-foreground">Candidate Matching</h1>
+              <h1 className="text-[1.7rem] font-semibold tracking-tight text-foreground">{t("heroTitle")}</h1>
               <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur">
-                {selectedJobData ? `Benchmark: ${selectedJobData.title}` : "Talent pool view"}
+                {selectedJobData ? `Benchmark: ${selectedJobData.title}` : t("talentPoolView")}
               </span>
               {isRefreshingCandidates ? (
                 <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-700 backdrop-blur dark:text-sky-300">
@@ -1242,10 +1246,10 @@ export default function EmployerCandidatesPage() {
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               {[
-                { label: "Candidates", value: total },
-                { label: "Scored", value: scoredCount },
-                { label: "High Match", value: visibleHighMatchCount },
-                { label: "Available", value: readyNowCount },
+                { label: t("statCandidates"), value: total },
+                { label: t("statScored"), value: scoredCount },
+                { label: t("statHighMatch"), value: visibleHighMatchCount },
+                { label: t("statAvailable"), value: readyNowCount },
               ].map((stat) => (
                   <span key={stat.label} aria-label={`${stat.value} ${stat.label}`} className="inline-flex items-center gap-1.5">
                   <span className="font-semibold text-foreground">{stat.value}</span>
@@ -1262,7 +1266,7 @@ export default function EmployerCandidatesPage() {
               className="h-9 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
             >
               {matchProgress ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
-              {matchProgress ? `Scoring ${matchProgress.done}/${matchProgress.total}` : "Run AI Match"}
+              {matchProgress ? `${t("scoringProgress")} ${matchProgress.done}/${matchProgress.total}` : t("runAiMatch")}
             </Button>
             <Button
               onClick={runAIScreening}
@@ -1271,7 +1275,7 @@ export default function EmployerCandidatesPage() {
               className="h-9 rounded-xl border-border bg-background/80 px-4 text-sm font-semibold"
             >
               {screenMutation.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
-              {screenMutation.isPending ? "Screening..." : "Screen with AI"}
+              {screenMutation.isPending ? t("screeningInProgress") : t("screenWithAi")}
             </Button>
           </div>
         </div>
@@ -1332,8 +1336,8 @@ export default function EmployerCandidatesPage() {
           <section className="workspace-panel-surface rounded-[24px] p-4 backdrop-blur">
           <div className="flex items-center justify-between gap-3">
             <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter and act</p>
-                <p className="mt-1 text-sm text-muted-foreground">Search, compare against a role, then open the best profiles quickly.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterAndActLabel")}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("filterAndActDescription")}</p>
             </div>
             <Button
               size="sm"
@@ -1342,7 +1346,7 @@ export default function EmployerCandidatesPage() {
               onClick={() => setShowAdvancedFilters((current) => !current)}
             >
               <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />
-              {showAdvancedFilters ? "Hide filters" : `Advanced${advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ""}`}
+              {showAdvancedFilters ? t("advancedFilters") : `${t("advancedFilters")}${advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ""}`}
             </Button>
           </div>
 
@@ -1352,7 +1356,7 @@ export default function EmployerCandidatesPage() {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search candidates, skills, role, or company"
+                placeholder={t("searchPlaceholder")}
                 className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
               />
             </div>
@@ -1361,7 +1365,7 @@ export default function EmployerCandidatesPage() {
               <SearchableSelect
                 className="h-10 w-full rounded-xl border-border bg-background/70"
                 options={[
-                  { value: "none", label: "No job selected" },
+                  { value: "none", label: t("noJobSelected") },
                   ...jobs.map((job) => ({ value: job._id, label: job.title })),
                 ]}
                 value={selectedJob || "none"}
@@ -1397,7 +1401,7 @@ export default function EmployerCandidatesPage() {
               <Input
                 value={aiQuery}
                 onChange={(event) => setAiQuery(event.target.value)}
-                placeholder="AI search: e.g. high match React candidates in Dubai ready now"
+                placeholder={t("aiSearchPlaceholder")}
                 className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
@@ -1416,7 +1420,7 @@ export default function EmployerCandidatesPage() {
                 disabled={!aiQuery.trim() || isApplyingAiSearch}
               >
                 {isApplyingAiSearch ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
-                {isApplyingAiSearch ? "Applying AI search..." : "Apply AI Search"}
+                {isApplyingAiSearch ? t("applyingAiSearch") : t("applyAiSearch")}
               </Button>
               <Button
                 size="sm"
@@ -1584,10 +1588,10 @@ export default function EmployerCandidatesPage() {
         <div className="rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] px-6 py-12 text-center shadow-[0_20px_48px_-42px_rgba(15,23,42,0.28)]">
           <Users className="mx-auto mb-4 h-12 w-12 text-slate-300" />
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Candidate view</p>
-          <h3 className="mt-3 text-xl font-semibold text-slate-950">No candidates match this view</h3>
+          <h3 className="mt-3 text-xl font-semibold text-slate-950">{t("noCandidatesMatch")}</h3>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
             {hasSearchRefinements
-              ? "Adjust the search, loosen the filters, or try the AI search box to broaden the review queue."
+              ? t("adjustSearchHint")
               : "No job seeker profiles exist yet, or the selected role does not have candidates on this page."}
           </p>
         </div>

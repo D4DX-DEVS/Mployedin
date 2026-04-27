@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   ArrowRight,
   FileText,
@@ -12,10 +13,10 @@ import {
 import { useEffect, useRef } from "react";
 
 interface PipelineStage {
-  label: string;
+  labelKey: string;
   value: number;
   subCount: number;
-  subLabel: string;
+  subLabelKey: string;
   icon: React.ElementType;
   href: string;
   iconClass: string;
@@ -41,42 +42,44 @@ export function InteractivePipeline({
   offersSent,
   locale,
 }: InteractivePipelineProps) {
+  const t = useTranslations("employerDashboard.interactivePipeline");
+
   const stages: PipelineStage[] = [
     {
-      label: "Applied",
+      labelKey: "applied",
       value: totalApplications,
       subCount: newApplications,
-      subLabel: "New",
+      subLabelKey: "new",
       icon: FileText,
       href: `/${locale}/employer/applications?status=applied`,
       iconClass: "text-sky-600 bg-sky-50 dark:text-sky-300 dark:bg-sky-500/15",
       borderClass: "border-sky-200 hover:border-sky-300 dark:border-sky-500/30",
     },
     {
-      label: "Screening",
+      labelKey: "screening",
       value: inReview,
       subCount: inReview,
-      subLabel: "In Review",
+      subLabelKey: "inReview",
       icon: ClipboardCheck,
       href: `/${locale}/employer/applications?status=shortlisted`,
       iconClass: "text-violet-600 bg-violet-50 dark:text-violet-300 dark:bg-violet-500/15",
       borderClass: "border-violet-200 hover:border-violet-300 dark:border-violet-500/30",
     },
     {
-      label: "Interviews",
+      labelKey: "interviews",
       value: interviews,
       subCount: interviews,
-      subLabel: "Scheduled",
+      subLabelKey: "scheduled",
       icon: Calendar,
       href: `/${locale}/employer/interviews`,
       iconClass: "text-amber-600 bg-amber-50 dark:text-amber-300 dark:bg-amber-500/15",
       borderClass: "border-amber-200 hover:border-amber-300 dark:border-amber-500/30",
     },
     {
-      label: "Offers",
+      labelKey: "offers",
       value: offers,
       subCount: offersSent,
-      subLabel: "Sent",
+      subLabelKey: "sent",
       icon: Gift,
       href: `/${locale}/employer/offers`,
       iconClass: "text-emerald-600 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-500/15",
@@ -92,15 +95,15 @@ export function InteractivePipeline({
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
-              Hiring pipeline
+              {t("hiringPipeline")}
             </div>
             <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-              Track candidate movement across the funnel.
+              {t("trackMovement")}
             </h2>
           </div>
 
           <p className="max-w-xl text-sm leading-6 text-muted-foreground md:text-right">
-            Each stage links into the live employer workflow for quick review and follow-up.
+            {t("stageLinksDesc")}
           </p>
         </div>
       </div>
@@ -113,17 +116,17 @@ export function InteractivePipeline({
 
             return (
               <Link
-                key={stage.label}
+                key={stage.labelKey}
                 href={stage.href}
                 className={`group rounded-[24px] border bg-background/80 p-4 shadow-[0_20px_50px_-42px_rgba(15,23,42,0.42)] transition-all hover:-translate-y-0.5 hover:shadow-[0_28px_65px_-42px_rgba(2,132,199,0.24)] sm:p-5 ${stage.borderClass}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Stage {idx + 1}
+                      {t("stage", { number: idx + 1 })}
                     </p>
                     <p className="mt-2 text-lg font-semibold text-foreground">
-                      {stage.label}
+                      {t(stage.labelKey)}
                     </p>
                   </div>
 
@@ -140,11 +143,11 @@ export function InteractivePipeline({
                         className="text-3xl font-semibold tracking-tight text-foreground"
                       />
                       <span className="text-xs font-medium text-muted-foreground">
-                        candidates
+                        {t("candidates")}
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {stage.subCount} {stage.subLabel.toLowerCase()}
+                      {stage.subCount} {t(stage.subLabelKey).toLowerCase()}
                     </p>
                   </div>
 
@@ -159,7 +162,7 @@ export function InteractivePipeline({
                 </div>
 
                 <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                  Open the {stage.label.toLowerCase()} queue to review candidates and keep momentum moving.
+                  {t("openQueueDesc", { stage: t(stage.labelKey).toLowerCase() })}
                 </p>
               </Link>
             );

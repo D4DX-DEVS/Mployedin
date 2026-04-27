@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Bot,
   TrendingDown,
@@ -14,8 +15,10 @@ import { cn } from "@/lib/utils";
 interface Insight {
   icon: React.ElementType;
   iconColor: string;
-  title: string;
-  description: string;
+  titleKey: string;
+  titleValues?: Record<string, string | number | Date>;
+  descKey: string;
+  descValues?: Record<string, string | number | Date>;
   type: "warning" | "success" | "info";
 }
 
@@ -42,77 +45,79 @@ export function AIInsightsPanel({
   hasJobsWithNoApps,
   hasJobsWithoutSalary,
 }: AIInsightsPanelProps) {
+  const t = useTranslations("employerDashboard.aiInsights");
+
   const insights: Insight[] = [];
 
-  // Match quality insight (our USP vs Naukri/Indeed)
   if (totalApplications > 0) {
     if (avgMatchScore >= 70) {
       insights.push({
         icon: Target,
         iconColor: "text-emerald-500",
-        title: `Candidate quality is strong (${Math.round(avgMatchScore)}%)`,
-        description: `${highMatchCount} high-match candidate${highMatchCount !== 1 ? "s" : ""} — move them forward quickly`,
+        titleKey: "qualityStrong",
+        titleValues: { score: Math.round(avgMatchScore) },
+        descKey: highMatchCount !== 1 ? "highMatchMovePlural" : "highMatchMove",
+        descValues: { count: highMatchCount },
         type: "success",
       });
     } else if (avgMatchScore >= 50) {
       insights.push({
         icon: Target,
         iconColor: "text-amber-500",
-        title: `Candidate quality is medium (${Math.round(avgMatchScore)}%)`,
-        description: "Refine job requirements or add specific skills to attract better-matched candidates",
+        titleKey: "qualityMedium",
+        titleValues: { score: Math.round(avgMatchScore) },
+        descKey: "refineSuggestion",
         type: "warning",
       });
     } else if (avgMatchScore > 0) {
       insights.push({
         icon: Target,
         iconColor: "text-red-500",
-        title: `Low candidate match quality (${Math.round(avgMatchScore)}%)`,
-        description: "Review job descriptions — they may not align with the talent pool",
+        titleKey: "qualityLow",
+        titleValues: { score: Math.round(avgMatchScore) },
+        descKey: "reviewDescriptions",
         type: "warning",
       });
     }
   }
 
-  // Top candidate highlight
   if (topMatchScore >= 80) {
     insights.push({
       icon: Sparkles,
       iconColor: "text-primary",
-      title: `Top candidate: ${Math.round(topMatchScore)}% match`,
-      description: "Don't lose this candidate — schedule an interview soon",
+      titleKey: "topCandidate",
+      titleValues: { score: Math.round(topMatchScore) },
+      descKey: "dontLose",
       type: "success",
     });
   }
 
-  // Job performance insight (Indeed-style)
   if (hasJobsWithNoApps && activeJobCount > 0) {
     insights.push({
       icon: TrendingDown,
       iconColor: "text-red-500",
-      title: "Some jobs are underperforming",
-      description: "Add salary range and detailed skills to increase visibility by up to 30%",
+      titleKey: "underperforming",
+      descKey: "addSalarySkills",
       type: "warning",
     });
   }
 
-  // Salary visibility tip
   if (hasJobsWithoutSalary) {
     insights.push({
       icon: TrendingUp,
       iconColor: "text-amber-500",
-      title: "Show salary to boost applications",
-      description: "Jobs with visible salary ranges get 30–50% more applicants",
+      titleKey: "showSalary",
+      descKey: "salaryRange",
       type: "warning",
     });
   }
 
-  // Speed-to-hire insight
   if (totalApplications > 0 && hiredCount === 0) {
     insights.push({
       icon: Zap,
       iconColor: "text-violet-500",
-      title: "Speed matters in hiring",
-      description: "Top candidates are off the market within 10 days — review your pipeline daily",
+      titleKey: "speedMatters",
+      descKey: "topCandidatesOffMarket",
       type: "info",
     });
   }
@@ -126,10 +131,10 @@ export function AIInsightsPanel({
       <div className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6 flex items-center gap-2">
         <Bot className="h-4 w-4 text-primary" />
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          AI Insights
+          {t("title")}
         </h2>
         <span className="ml-auto text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">
-          Powered by AI
+          {t("poweredByAI")}
         </span>
       </div>
 
@@ -151,10 +156,10 @@ export function AIInsightsPanel({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground">
-                  {insight.title}
+                  {t(insight.titleKey, insight.titleValues)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  {insight.description}
+                  {t(insight.descKey, insight.descValues)}
                 </p>
               </div>
               <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 mt-0.5" />

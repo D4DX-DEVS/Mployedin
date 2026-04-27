@@ -12,13 +12,12 @@ import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection, SuperAgentEmptyState,
+  SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import {
   Search, RotateCcw, Calendar, Video, MapPin, Phone, Clock,
   Users, CheckCircle2, XCircle, CalendarDays,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -125,7 +124,7 @@ export default function SuperAgentInterviewsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="page-container space-y-6">
       <SuperAgentPageIntro
         title="Interviews"
         description="Team-wide interview overview. Monitor interview schedules, completion rates, and outcomes across all your agents."
@@ -133,87 +132,119 @@ export default function SuperAgentInterviewsPage() {
 
       <SuperAgentMetricsGrid items={metricsItems} />
 
-      {/* Filters */}
-      <SuperAgentSection title="Search & Filter">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <SuperAgentSection
+        eyebrow="Schedule"
+        title="Interview tracking"
+        description="Filter by status, type, or search to narrow down the interview list."
+      >
+        {/* ── Search Row ── */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+          <div className="relative w-full max-w-xs min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
             <Input
+              aria-label="Search interviews"
               placeholder="Search by candidate, job, or company..."
               value={filters.search}
               onChange={(e) => updateFilter("search", e.target.value)}
-              className="pl-9"
+              className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
             />
           </div>
-          <SearchableSelect options={STATUS_OPTIONS} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder="Status" className="w-36" />
-          <SearchableSelect options={TYPE_OPTIONS} value={filters.type} onValueChange={(v) => updateFilter("type", v)} placeholder="Type" className="w-32" />
-          <Button variant="ghost" size="sm" onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}>
-            <RotateCcw className="mr-1 h-4 w-4" /> Reset
-          </Button>
+
+          <div className="w-full max-w-[180px]">
+            <SearchableSelect options={STATUS_OPTIONS} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder="All statuses" />
+          </div>
+
+          <div className="w-full max-w-[180px]">
+            <SearchableSelect options={TYPE_OPTIONS} value={filters.type} onValueChange={(v) => updateFilter("type", v)} placeholder="All types" />
+          </div>
+
+          {(filters.search || filters.status !== "all" || filters.type !== "all") && (
+            <button
+              type="button"
+              onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}
+              className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-4 text-sm text-muted-foreground hover:border-border hover:bg-secondary/80 transition-all"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </button>
+          )}
+        </div>
+
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-background/60 hover:bg-background/60">
+                <TableHead className="min-w-[180px]">Candidate</TableHead>
+                <TableHead className="min-w-[180px]">Job</TableHead>
+                <TableHead>Agent</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Scheduled</TableHead>
+                <TableHead>Duration</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: 7 }).map((_, j) => (
+                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : interviews.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-16 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+                        <Calendar className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold text-foreground">No interviews found</p>
+                        <p className="mt-1 text-sm text-muted-foreground">No interviews match the current filters</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : interviews.map((i) => (
+                <TableRow key={i._id} className="bg-transparent">
+                  <TableCell>
+                    <p className="font-medium text-foreground">{i.candidateName}</p>
+                    {i.candidateEmail && <p className="text-xs text-muted-foreground">{i.candidateEmail}</p>}
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-sm">{i.jobTitle}</p>
+                    {i.companyName && <p className="text-xs text-muted-foreground">{i.companyName}</p>}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{i.agentName || "—"}</TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center gap-1 text-sm capitalize">
+                      {typeIcon(i.type)} {i.type}
+                    </span>
+                  </TableCell>
+                  <TableCell><StatusBadge status={i.status} /></TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(i.scheduledAt).toLocaleDateString()}{" "}
+                    <span className="text-xs">{new Date(i.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{i.duration ? `${i.duration} min` : "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="mt-4">
+          <PaginationControls
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            limit={pagination.limit}
+            total={pagination.total}
+            onPageChange={pagination.setPage}
+            onLimitChange={pagination.setLimit}
+          />
         </div>
       </SuperAgentSection>
-
-      {/* Table */}
-      <SuperAgentSection title="All Interviews" description={`${pagination.total} interviews found`}>
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
-        ) : interviews.length === 0 ? (
-          <SuperAgentEmptyState icon={<Calendar className="h-10 w-10" />} title="No interviews found" description="No interviews match the current filters" />
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Candidate</TableHead>
-                  <TableHead>Job</TableHead>
-                  <TableHead>Agent</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Scheduled</TableHead>
-                  <TableHead>Duration</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {interviews.map((i) => (
-                  <TableRow key={i._id}>
-                    <TableCell>
-                      <p className="font-medium text-foreground">{i.candidateName}</p>
-                      {i.candidateEmail && <p className="text-xs text-muted-foreground">{i.candidateEmail}</p>}
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{i.jobTitle}</p>
-                      {i.companyName && <p className="text-xs text-muted-foreground">{i.companyName}</p>}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{i.agentName || "—"}</TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1 text-sm capitalize">
-                        {typeIcon(i.type)} {i.type}
-                      </span>
-                    </TableCell>
-                    <TableCell><StatusBadge status={i.status} /></TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(i.scheduledAt).toLocaleDateString()}{" "}
-                      <span className="text-xs">{new Date(i.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{i.duration ? `${i.duration} min` : "—"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </SuperAgentSection>
-
-      <PaginationControls
-        page={pagination.page}
-        totalPages={pagination.totalPages}
-        limit={pagination.limit}
-        total={pagination.total}
-        onPageChange={pagination.setPage}
-        onLimitChange={pagination.setLimit}
-      />
     </div>
   );
 }

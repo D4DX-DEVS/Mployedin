@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   LogOut,
   KeyRound,
@@ -33,12 +34,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const ROLE_LABELS: Record<string, { en: string; ar: string }> = {
-  admin: { en: "Admin", ar: "مدير" },
-  super_agent: { en: "Super Agent", ar: "وكيل كبير" },
-  agent: { en: "Agent", ar: "وكيل" },
-  employer: { en: "Employer", ar: "صاحب عمل" },
-  job_seeker: { en: "Job Seeker", ar: "باحث عن عمل" },
+const ROLE_KEYS: Record<string, string> = {
+  admin: "admin",
+  super_agent: "superAgent",
+  agent: "agent",
+  employer: "employer",
+  job_seeker: "jobSeeker",
 };
 
 interface UserProfileDropdownProps {
@@ -67,13 +68,14 @@ export function UserProfileDropdown({
   const { data: session } = useSession();
   const userImage = session?.user?.image;
   const router = useRouter();
-
+  const t = useTranslations("profileDropdown");
   const isAr = locale === "ar";
-  const roleBadge = ROLE_LABELS[userRole] ?? { en: userRole, ar: userRole };
+
+  const roleKey = ROLE_KEYS[userRole] ?? userRole;
 
   const formatLastLogin = useCallback(
     (dateStr?: string) => {
-      if (!dateStr) return isAr ? "غير متوفر" : "N/A";
+      if (!dateStr) return t("notAvailable");
       const d = new Date(dateStr);
       return d.toLocaleDateString(isAr ? "ar-AE" : "en-US", {
         day: "numeric",
@@ -83,7 +85,7 @@ export function UserProfileDropdown({
         minute: "2-digit",
       });
     },
-    [isAr]
+    [isAr, t]
   );
 
   const handleResetPassword = async () => {
@@ -110,16 +112,13 @@ export function UserProfileDropdown({
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      // Race signOut against a timeout so the user is never stuck
       await Promise.race([
         signOut({ redirect: false }),
         new Promise((resolve) => setTimeout(resolve, 4000)),
       ]);
     } catch {
-      // Even if signOut fails, navigate to login — the server session
-      // will be invalidated on next request anyway.
+      // Even if signOut fails, navigate to login
     } finally {
-      // Hard navigation clears all client state; no router.refresh() needed
       window.location.href = `/${locale}/login`;
     }
   };
@@ -153,7 +152,6 @@ export function UserProfileDropdown({
           className="w-72 bg-background z-50 shadow-xl border border-border/60 rounded-xl overflow-hidden p-1"
           sideOffset={8}
         >
-          {/* User info header */}
           <DropdownMenuLabel className="font-normal">
             <button
               type="button"
@@ -185,22 +183,20 @@ export function UserProfileDropdown({
 
           <DropdownMenuSeparator />
 
-          {/* Role */}
           <div className="px-2 py-1.5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Shield className="h-3.5 w-3.5" />
-              <span>{isAr ? "الدور" : "Role"}</span>
+              <span>{t("role")}</span>
               <span className="ml-auto inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                {isAr ? roleBadge.ar : roleBadge.en}
+                {t(roleKey)}
               </span>
             </div>
           </div>
 
-          {/* Last Login */}
           <div className="px-2 py-1.5">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
-              <span>{isAr ? "آخر تسجيل دخول" : "Last Login"}</span>
+              <span>{t("lastLogin")}</span>
               <span className="ml-auto text-xs">
                 {formatLastLogin(lastLogin)}
               </span>
@@ -209,7 +205,6 @@ export function UserProfileDropdown({
 
           <DropdownMenuSeparator />
 
-          {/* Settings */}
           {(userRole === "job_seeker" || userRole === "employer" || userRole === "super_agent" || userRole === "agent") && (
             <DropdownMenuItem
               className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
@@ -224,28 +219,26 @@ export function UserProfileDropdown({
               }}
             >
               <Settings className="h-4 w-4" />
-              <span className="font-medium text-sm">{isAr ? "الإعدادات" : "Settings"}</span>
+              <span className="font-medium text-sm">{t("settings")}</span>
             </DropdownMenuItem>
           )}
 
-          {/* Reset Password */}
           <DropdownMenuItem
             className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
             onSelect={() => { setResetOpen(true); setResetStatus("idle"); }}
           >
             <KeyRound className="h-4 w-4" />
-            <span className="font-medium text-sm">{isAr ? "إعادة تعيين كلمة المرور" : "Reset Password"}</span>
+            <span className="font-medium text-sm">{t("resetPassword")}</span>
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
 
-          {/* Logout */}
           <DropdownMenuItem
             className="cursor-pointer gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 rounded-md transition-colors"
             onSelect={() => setLogoutOpen(true)}
           >
             <LogOut className="h-4 w-4" />
-            <span className="font-medium text-sm">{isAr ? "تسجيل الخروج" : "Logout"}</span>
+            <span className="font-medium text-sm">{t("logout")}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -259,11 +252,9 @@ export function UserProfileDropdown({
                 <AlertTriangle className="h-4 w-4 text-destructive" />
               </div>
               <div className="pt-0.5">
-                <DialogTitle>{isAr ? "تسجيل الخروج" : "Log Out"}</DialogTitle>
+                <DialogTitle>{t("logOut")}</DialogTitle>
                 <DialogDescription className="mt-1">
-                  {isAr
-                    ? "هل أنت متأكد أنك تريد تسجيل الخروج من حسابك؟"
-                    : "Are you sure you want to log out of your account?"}
+                  {t("logoutConfirm")}
                 </DialogDescription>
               </div>
             </div>
@@ -275,7 +266,7 @@ export function UserProfileDropdown({
               onClick={() => setLogoutOpen(false)}
               disabled={loggingOut}
             >
-              {isAr ? "إلغاء" : "Cancel"}
+              {t("cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -286,12 +277,12 @@ export function UserProfileDropdown({
               {loggingOut ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  {isAr ? "جاري الخروج..." : "Logging out..."}
+                  {t("loggingOut")}
                 </>
               ) : (
                 <>
                   <LogOut className="h-3.5 w-3.5" />
-                  {isAr ? "تسجيل الخروج" : "Log Out"}
+                  {t("logOut")}
                 </>
               )}
             </Button>
@@ -304,12 +295,10 @@ export function UserProfileDropdown({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {isAr ? "إعادة تعيين كلمة المرور" : "Reset Password"}
+              {t("resetTitle")}
             </DialogTitle>
             <DialogDescription>
-              {isAr
-                ? "سيتم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني"
-                : "A password reset link will be sent to your email address"}
+              {t("resetDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -321,14 +310,12 @@ export function UserProfileDropdown({
 
             {resetStatus === "success" && (
               <p className="text-sm text-green-600">
-                {isAr
-                  ? "تم إرسال رابط إعادة التعيين! تحقق من بريدك الإلكتروني."
-                  : "Reset link sent! Check your email."}
+                {t("resetSuccess")}
               </p>
             )}
             {resetStatus === "error" && (
               <p className="text-sm text-destructive">
-                {isAr ? "حدث خطأ. حاول مرة أخرى." : "Something went wrong. Please try again."}
+                {t("resetError")}
               </p>
             )}
           </div>
@@ -339,17 +326,11 @@ export function UserProfileDropdown({
               onClick={() => setResetOpen(false)}
               disabled={loading}
             >
-              {resetStatus === "success" ? (isAr ? "إغلاق" : "Close") : (isAr ? "إلغاء" : "Cancel")}
+              {resetStatus === "success" ? t("close") : t("cancel")}
             </Button>
             {resetStatus !== "success" && (
               <Button onClick={handleResetPassword} disabled={loading}>
-                {loading
-                  ? isAr
-                    ? "جاري الإرسال..."
-                    : "Sending..."
-                  : isAr
-                    ? "إرسال رابط إعادة التعيين"
-                    : "Send Reset Link"}
+                {loading ? t("sending") : t("sendResetLink")}
               </Button>
             )}
           </DialogFooter>

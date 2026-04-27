@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  const isAr = locale === "ar";
+  await params;
+  const t = await getTranslations("landing");
   return {
-    title: isAr ? "مدونة MPLOYEDIN — رؤى سوق العمل الخليجي" : "Blog – Gulf Recruitment Insights | MPLOYEDIN",
-    description: isAr
-      ? "آخر الرؤى والاتجاهات في سوق العمل العالمي، ونصائح التوظيف الذكي، وأخبار الموارد البشرية"
-      : "Latest global job market trends, recruitment tips, AI hiring insights, and HR news from the MPLOYEDIN team.",
+    title: `${t("blogHeading")} | MPLOYEDIN`,
+    description: t("blogSubtitle"),
   };
 }
 

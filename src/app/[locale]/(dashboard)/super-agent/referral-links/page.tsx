@@ -16,8 +16,6 @@ import {
   ReferralSortField,
 } from "@/hooks/useReferralLinks";
 import {
-  SuperAgentDataTableShell,
-  SuperAgentEmptyState,
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
@@ -432,15 +430,19 @@ export default function SuperAgentReferralLinksPage() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sky-600" /></div>
       ) : links.length === 0 ? (
-        <SuperAgentDataTableShell>
-          <SuperAgentEmptyState
-            icon={<Link2 className="h-6 w-6 text-muted-foreground" />}
-            title="No referral links yet"
-            description="Create your first referral link or wait for agents to create theirs."
-          />
-        </SuperAgentDataTableShell>
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+              <Link2 className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-foreground">No referral links yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Create your first referral link or wait for agents to create theirs.</p>
+            </div>
+          </div>
+        </div>
       ) : (
-        <SuperAgentDataTableShell>
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow>
@@ -554,7 +556,7 @@ export default function SuperAgentReferralLinksPage() {
               })}
             </TableBody>
           </Table>
-        </SuperAgentDataTableShell>
+        </div>
       )}
 
       <PaginationControls

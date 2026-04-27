@@ -15,8 +15,6 @@ import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
-  SuperAgentDataTableShell,
-  SuperAgentEmptyState,
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
@@ -602,56 +600,62 @@ export default function SuperAgentPlacementsPage() {
           onExportPdf={handleExportPdf}
           className="mb-4"
         />
-        <SuperAgentDataTableShell>
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
-                <TableHead className="py-4"><SortHeader field="candidateName">Candidate</SortHeader></TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Job</TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Employer</TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Visa Status</TableHead>
-                <TableHead className="py-4"><SortHeader field="salary">Salary</SortHeader></TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Commission</TableHead>
-                <TableHead className="py-4"><SortHeader field="startDate">Start Date</SortHeader></TableHead>
-                <TableHead className="py-4"><SortHeader field="placedAt">Placed</SortHeader></TableHead>
+              <TableRow className="bg-background/60 hover:bg-background/60">
+                <TableHead className="min-w-[180px]"><SortHeader field="candidateName">Candidate</SortHeader></TableHead>
+                <TableHead>Job</TableHead>
+                <TableHead>Employer</TableHead>
+                <TableHead>Visa Status</TableHead>
+                <TableHead><SortHeader field="salary">Salary</SortHeader></TableHead>
+                <TableHead>Commission</TableHead>
+                <TableHead><SortHeader field="startDate">Start Date</SortHeader></TableHead>
+                <TableHead><SortHeader field="placedAt">Placed</SortHeader></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="border-border/50">
+                  <TableRow key={i}>
                     {Array.from({ length: 8 }).map((_, j) => (
-                      <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
+                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : placements.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="p-0">
-                    <SuperAgentEmptyState
-                      icon={<Trophy className="h-7 w-7" />}
-                      title="No placements yet"
-                      description={filters.search || filters.visaStatus || activeFilterCount > 0
-                        ? "No placements match the current filters. Try adjusting your criteria."
-                        : "Placements will appear here once your team closes successful hires."}
-                    />
+                  <TableCell colSpan={8} className="py-16 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+                        <Trophy className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold text-foreground">No placements yet</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {filters.search || filters.visaStatus || activeFilterCount > 0
+                            ? "No placements match the current filters. Try adjusting your criteria."
+                            : "Placements will appear here once your team closes successful hires."}
+                        </p>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : placements.map((p) => (
-                <TableRow key={p._id} className="border-border/50 hover:bg-accent/25">
-                  <TableCell className="py-4">
+                <TableRow key={p._id} className="bg-transparent">
+                  <TableCell>
                     <div>
                       <p className="font-medium text-foreground">{getCandidateName(p)}</p>
                       {p.candidateEmail && <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>}
                     </div>
                   </TableCell>
-                  <TableCell className="py-4 text-foreground/85">{getJobTitle(p)}</TableCell>
-                  <TableCell className="py-4 text-muted-foreground">{getCompanyName(p)}</TableCell>
-                  <TableCell className="py-4"><StatusBadge status={getVisaStatus(p)} /></TableCell>
-                  <TableCell className="py-4 text-foreground/85 tabular-nums">
+                  <TableCell className="text-foreground/85">{getJobTitle(p)}</TableCell>
+                  <TableCell className="text-muted-foreground">{getCompanyName(p)}</TableCell>
+                  <TableCell><StatusBadge status={getVisaStatus(p)} /></TableCell>
+                  <TableCell className="text-foreground/85 tabular-nums">
                     {p.salary ? `${(p.currency ?? "AED")} ${p.salary.toLocaleString()}` : "—"}
                   </TableCell>
-                  <TableCell className="py-4">
+                  <TableCell>
                     {p.commissionPaid ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                         <ShieldCheck className="h-3 w-3" /> Paid{p.commissionAmount ? ` · ${p.commissionAmount.toLocaleString()}` : ""}
@@ -660,13 +664,13 @@ export default function SuperAgentPlacementsPage() {
                       <span className="text-xs text-muted-foreground">Unpaid</span>
                     )}
                   </TableCell>
-                  <TableCell className="py-4 text-muted-foreground">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
-                  <TableCell className="py-4 text-muted-foreground">{p.placedAt ? new Date(p.placedAt).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{p.placedAt ? new Date(p.placedAt).toLocaleDateString() : "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        </SuperAgentDataTableShell>
+        </div>
 
         <div className="mt-4">
           <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

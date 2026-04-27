@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = await params;
-  const isAr = locale === "ar";
+  await params;
+  const t = await getTranslations("landing");
   return {
-    title: isAr ? "سياسة ملفات تعريف الارتباط | MPLOYEDIN" : "Cookie Policy | MPLOYEDIN",
-    description: isAr
-      ? "سياسة ملفات تعريف الارتباط لمنصة MPLOYEDIN — ما هي ملفات تعريف الارتباط التي نستخدمها ولماذا"
-      : "MPLOYEDIN cookie policy — what cookies we use and why.",
+    title: `${t("cookiesHeading")} | MPLOYEDIN`,
+    description: t("cookiesPreparing"),
     robots: { index: false, follow: true },
   };
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 export const metadata: Metadata = {
   title: "Maintenance",
@@ -13,6 +14,7 @@ export default async function MaintenancePage({
 }) {
   const { locale } = await params;
   const isAr = locale === "ar";
+  const t = await getTranslations("maintenance");
 
   return (
     <div
@@ -20,7 +22,6 @@ export default async function MaintenancePage({
       dir={isAr ? "rtl" : "ltr"}
     >
       <div className="mx-auto max-w-md space-y-6">
-        {/* Icon */}
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-blue-600">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -38,27 +39,18 @@ export default async function MaintenancePage({
           </svg>
         </div>
 
-        <h1 className="text-3xl font-bold text-slate-900">
-          {isAr ? "الموقع تحت الصيانة" : "Under Maintenance"}
-        </h1>
-
-        <p className="text-lg text-slate-600">
-          {isAr
-            ? "نعمل حالياً على تحسين المنصة. سنعود قريباً، شكراً لصبرك."
-            : "We're currently performing scheduled maintenance to improve our platform. We'll be back shortly — thank you for your patience."}
-        </p>
+        <h1 className="text-3xl font-bold text-slate-900">{t("title")}</h1>
+        <p className="text-lg text-slate-600">{t("subtitle")}</p>
 
         <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
-          {isAr
-            ? "إذا كنت مسؤول النظام، يمكنك تسجيل الدخول لإيقاف وضع الصيانة."
-            : "If you are an administrator, you can sign in to disable maintenance mode."}
+          {t("adminHint")}
         </div>
 
         <Link
           href={`/${locale}/login`}
           className="inline-block rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
         >
-          {isAr ? "تسجيل دخول المسؤول" : "Admin Sign In"}
+          {t("adminSignIn")}
         </Link>
       </div>
 

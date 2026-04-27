@@ -15,8 +15,6 @@ import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  SuperAgentDataTableShell,
-  SuperAgentEmptyState,
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
   SuperAgentSection,
@@ -469,45 +467,49 @@ export default function SuperAgentEmployersPage() {
           className="mb-4"
         />
 
-        <SuperAgentDataTableShell>
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-border/60 bg-secondary/65 hover:bg-secondary/65">
-                <TableHead className="py-4 text-muted-foreground/80"><SortHeader field="name">Company</SortHeader></TableHead>
-                <TableHead className="py-4 text-muted-foreground/80"><SortHeader field="email">Contact</SortHeader></TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Industry</TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Location</TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Agent</TableHead>
-                <TableHead className="py-4 text-muted-foreground/80">Status</TableHead>
+              <TableRow className="bg-background/60 hover:bg-background/60">
+                <TableHead className="min-w-[180px]"><SortHeader field="name">Company</SortHeader></TableHead>
+                <TableHead className="min-w-[180px]"><SortHeader field="email">Contact</SortHeader></TableHead>
+                <TableHead>Industry</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Agent</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="border-border/50">
+                  <TableRow key={i}>
                     {Array.from({ length: 6 }).map((_, j) => (
-                      <TableCell key={j} className="py-4"><div className="h-4 w-3/4 animate-pulse rounded bg-muted/75" /></TableCell>
+                      <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : employers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="p-0">
-                    <SuperAgentEmptyState
-                      icon={<Building2 className="h-7 w-7" />}
-                      title="No employers found"
-                      description="Broaden the search or adjust filters to see more employer accounts."
-                    />
+                  <TableCell colSpan={6} className="py-16 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
+                        <Building2 className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold text-foreground">No employers found</p>
+                        <p className="mt-1 text-sm text-muted-foreground">Broaden the search or adjust filters to see more employer accounts.</p>
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : employers.map((em) => (
-                <TableRow key={em._id} className="border-border/50 hover:bg-accent/25">
-                  <TableCell className="py-4 font-medium text-foreground">{em.companyName ?? em.name}</TableCell>
-                  <TableCell className="py-4 text-xs text-muted-foreground">{em.email}</TableCell>
-                  <TableCell className="py-4 text-muted-foreground">{em.industry ?? "—"}</TableCell>
-                  <TableCell className="py-4 text-muted-foreground">{em.location ?? "—"}</TableCell>
-                  <TableCell className="py-4 text-muted-foreground">{em.assignedAgent?.name ?? "Unassigned"}</TableCell>
-                  <TableCell className="py-4">
+                <TableRow key={em._id} className="bg-transparent">
+                  <TableCell className="font-medium text-foreground">{em.companyName ?? em.name}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{em.email}</TableCell>
+                  <TableCell className="text-muted-foreground">{em.industry ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{em.location ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{em.assignedAgent?.name ?? "Unassigned"}</TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-1.5">
                       {em.isAgentVerified && (
                         <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">Verified</span>
@@ -519,7 +521,7 @@ export default function SuperAgentEmployersPage() {
               ))}
             </TableBody>
           </Table>
-        </SuperAgentDataTableShell>
+        </div>
 
         <div className="mt-4">
           <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

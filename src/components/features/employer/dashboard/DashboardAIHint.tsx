@@ -1,12 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Bot, Sparkles, Briefcase, Users, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AIQuickAction {
   icon: React.ElementType;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
 }
 
 interface DashboardAIHintProps {
@@ -16,32 +17,31 @@ interface DashboardAIHintProps {
 }
 
 export function DashboardAIHint({ hasJobs, hasApplications, hasInterviews }: DashboardAIHintProps) {
-  // Show contextual hint based on state
-  let hint: string;
+  const t = useTranslations("employerDashboard.dashboardAIHint");
+
+  let hintKey: string;
   let actions: AIQuickAction[];
 
   if (!hasJobs) {
-    hint = "Describe a role in plain English and I'll create the full job posting";
+    hintKey = "describeRole";
     actions = [
-      { icon: Briefcase, label: "Create a job", description: "via voice or text" },
+      { icon: Briefcase, labelKey: "createJob", descKey: "viaVoiceOrText" },
     ];
   } else if (hasApplications) {
-    hint = "I can screen candidates, generate interview questions, or compare applicants";
+    hintKey = "screenCandidates";
     actions = [
-      { icon: Users, label: "Screen candidates", description: "rank by fit" },
-      { icon: MessageSquare, label: "Interview prep", description: "AI questions" },
+      { icon: Users, labelKey: "screenByFit", descKey: "rankByFit" },
+      { icon: MessageSquare, labelKey: "interviewPrep", descKey: "aiQuestions" },
     ];
   } else {
-    hint = "I can help you improve job descriptions or prepare for interviews";
+    hintKey = "improveJobs";
     actions = [
-      { icon: Briefcase, label: "Improve jobs", description: "+20% visibility" },
-      { icon: MessageSquare, label: "Interview prep", description: "AI questions" },
+      { icon: Briefcase, labelKey: "improveJobsLabel", descKey: "improveVisibility" },
+      { icon: MessageSquare, labelKey: "interviewPrep", descKey: "aiQuestions" },
     ];
   }
 
-  // Trigger the floating widget by dispatching a custom event
   const openAI = () => {
-    // Find and click the floating AI button
     const btn = document.querySelector<HTMLButtonElement>('[aria-label="Open Recruitment AI"]');
     btn?.click();
   };
@@ -57,24 +57,24 @@ export function DashboardAIHint({ hasJobs, hasApplications, hasInterviews }: Das
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="text-sm font-semibold text-foreground">AI Hiring Assistant</span>
+            <span className="text-sm font-semibold text-foreground">{t("aiHiringAssistant")}</span>
             <Sparkles className="h-3.5 w-3.5 text-amber-500" />
           </div>
-          <p className="text-xs text-muted-foreground truncate">{hint}</p>
+          <p className="text-xs text-muted-foreground truncate">{t(hintKey)}</p>
         </div>
         <div className="hidden sm:flex items-center gap-2">
           {actions.map((a) => {
             const Icon = a.icon;
             return (
               <div
-                key={a.label}
+                key={a.labelKey}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg",
                   "bg-muted/50 group-hover:bg-primary/10 transition-colors"
                 )}
               >
                 <Icon className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-medium text-foreground">{a.label}</span>
+                <span className="text-xs font-medium text-foreground">{t(a.labelKey)}</span>
               </div>
             );
           })}

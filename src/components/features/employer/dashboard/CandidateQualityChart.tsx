@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   LineChart,
   Line,
@@ -31,7 +32,6 @@ function generateTrendData(avgScore: number): QualityDataPoint[] {
   const goodBase = Math.min(79, Math.max(45, avgScore));
   const needsBase = Math.min(49, Math.max(18, avgScore - 25));
 
-  // Use deterministic variation so server/client match
   const offsets = [3, -2, 5, -3, 2];
   return months.map((month, i) => ({
     month,
@@ -47,9 +47,11 @@ export function CandidateQualityChart({
   lowMatchCount,
   totalApplications,
 }: CandidateQualityChartProps) {
+  const t = useTranslations("employerDashboard.candidateQuality");
+
   const qualityLabel =
-    avgMatchScore >= 70 ? "Strong" :
-    avgMatchScore >= 50 ? "Medium" : "Low";
+    avgMatchScore >= 70 ? t("strong") :
+    avgMatchScore >= 50 ? t("medium") : t("low");
 
   const qualityColor =
     avgMatchScore >= 70 ? "text-emerald-600" :
@@ -62,25 +64,25 @@ export function CandidateQualityChart({
   const data = generateTrendData(avgMatchScore > 0 ? avgMatchScore : 60);
   const statCards = [
     {
-      label: "High match",
+      label: t("highMatch"),
       value: highMatchCount,
-      detail: ">80% fit",
+      detail: t("highMatchDetail"),
       valueClass: "text-emerald-600 dark:text-emerald-400",
       borderClass: "border-emerald-200 dark:border-emerald-800",
       surfaceClass: "bg-emerald-50/60 dark:bg-emerald-950/30",
     },
     {
-      label: "Applications",
+      label: t("applications"),
       value: totalApplications,
-      detail: "In this workspace",
+      detail: t("inThisWorkspace"),
       valueClass: "text-foreground",
       borderClass: "border-slate-200 dark:border-slate-700",
       surfaceClass: "bg-slate-50/80 dark:bg-slate-800/70",
     },
     {
-      label: "Low match",
+      label: t("lowMatch"),
       value: lowMatchCount,
-      detail: "<50% fit",
+      detail: t("lowMatchDetail"),
       valueClass: "text-red-500 dark:text-red-400",
       borderClass: "border-red-200 dark:border-red-800",
       surfaceClass: "bg-red-50/60 dark:bg-red-950/30",
@@ -92,10 +94,10 @@ export function CandidateQualityChart({
       <div className="border-b border-border/60 px-5 py-5 sm:px-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Quality signal</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Candidate Quality</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("qualitySignal")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{t("candidateQuality")}</h2>
             <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-              Match trends show how strong the current applicant pool looks before recruiters move candidates deeper into the funnel.
+              {t("matchTrendsDesc")}
             </p>
           </div>
         {totalApplications > 0 && (
@@ -110,15 +112,15 @@ export function CandidateQualityChart({
         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 rounded-full bg-[#2563EB] inline-block" />
-          Excellent
+          {t("excellent")}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 rounded-full bg-[#22c55e] inline-block" />
-          Good
+          {t("good")}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 rounded-full bg-[#9ca3af] inline-block" />
-          Needs Improvement
+          {t("needsImprovement")}
         </span>
         </div>
       </div>
@@ -152,34 +154,9 @@ export function CandidateQualityChart({
               }}
               formatter={(value) => [`${value}%`, undefined]}
             />
-            <Line
-              type="monotone"
-              dataKey="excellent"
-              name="Excellent"
-              stroke="#2563EB"
-              strokeWidth={2}
-              dot={{ r: 3, fill: "#2563EB", strokeWidth: 0 }}
-              activeDot={{ r: 5 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="good"
-              name="Good"
-              stroke="#22c55e"
-              strokeWidth={2}
-              dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }}
-              activeDot={{ r: 5 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="needsImprovement"
-              name="Needs Improvement"
-              stroke="#9ca3af"
-              strokeWidth={2}
-              strokeDasharray="4 2"
-              dot={{ r: 3, fill: "#9ca3af", strokeWidth: 0 }}
-              activeDot={{ r: 5 }}
-            />
+            <Line type="monotone" dataKey="excellent" name={t("excellent")} stroke="#2563EB" strokeWidth={2} dot={{ r: 3, fill: "#2563EB", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+            <Line type="monotone" dataKey="good" name={t("good")} stroke="#22c55e" strokeWidth={2} dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+            <Line type="monotone" dataKey="needsImprovement" name={t("needsImprovement")} stroke="#9ca3af" strokeWidth={2} strokeDasharray="4 2" dot={{ r: 3, fill: "#9ca3af", strokeWidth: 0 }} activeDot={{ r: 5 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>

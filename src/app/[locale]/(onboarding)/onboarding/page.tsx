@@ -286,6 +286,23 @@ export default function JobSeekerOnboardingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, userName]);
 
+  // ── Auto-trigger AI import for LinkedIn users ────────────────────────────
+  const aiImportTriggered = useRef(false);
+  useEffect(() => {
+    if (
+      isLinkedIn &&
+      profileLoaded &&
+      !aiImported &&
+      !aiImporting &&
+      !aiImportTriggered.current &&
+      status === "authenticated"
+    ) {
+      aiImportTriggered.current = true;
+      handleAiImport();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLinkedIn, profileLoaded, aiImported, aiImporting, status]);
+
   // ── AI-powered LinkedIn profile import ──────────────────────────────────
   const handleAiImport = useCallback(async () => {
     setAiImporting(true);
@@ -415,6 +432,11 @@ export default function JobSeekerOnboardingPage() {
     salaryCurrency: "AED",
     gender: "",
   });
+
+  // Scroll to top whenever step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
 
   // Close industry dropdown on outside click
   useEffect(() => {
@@ -644,39 +666,38 @@ export default function JobSeekerOnboardingPage() {
                       We imported your info from LinkedIn. Please verify and complete the remaining fields.
                     </div>
                   )}
-                  {/* AI Import from LinkedIn button */}
-                  {isLinkedIn && !aiImported && (
+                  {/* AI Import from LinkedIn — auto-triggered */}
+                  {isLinkedIn && !aiImported && aiImporting && (
                     <div className="mt-3">
+                      <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium shadow-md">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Importing your LinkedIn profile with AI — please wait...
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1.5 text-center">
+                        AI is analyzing your LinkedIn profile to fill experience, education, skills &amp; more
+                      </p>
+                    </div>
+                  )}
+                  {isLinkedIn && !aiImported && !aiImporting && aiImportError && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                        <X className="w-4 h-4 shrink-0" />
+                        Auto-import failed: {aiImportError}
+                      </div>
                       <button
                         type="button"
-                        disabled={aiImporting}
                         onClick={handleAiImport}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-medium shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-medium shadow-md transition-all"
                       >
-                        {aiImporting ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            AI is importing your LinkedIn profile...
-                          </>
-                        ) : (
-                          <>
-                            <Wand2 className="w-4 h-4" />
-                            Auto-fill all steps from LinkedIn with AI
-                          </>
-                        )}
+                        <Wand2 className="w-4 h-4" />
+                        Retry auto-fill from LinkedIn
                       </button>
-                      {aiImportError && (
-                        <p className="text-xs text-red-500 mt-1.5">{aiImportError}</p>
-                      )}
-                      <p className="text-xs text-gray-400 mt-1.5 text-center">
-                        AI will analyze your LinkedIn profile and fill experience, education, skills &amp; more
-                      </p>
                     </div>
                   )}
                   {aiImported && (
                     <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-purple-50 border border-purple-200 text-sm text-purple-800">
                       <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
-                      AI has pre-filled your profile from LinkedIn! Please review each step.
+                      Your profile has been auto-filled from LinkedIn! Please verify the details below and edit if needed.
                     </div>
                   )}
                   <div className="mt-3 flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">

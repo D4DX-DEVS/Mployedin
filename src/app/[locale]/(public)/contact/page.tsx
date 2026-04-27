@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { MapPin, Phone, Mail, Send, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,7 @@ import { Input } from "@/components/ui/input";
 export default function ContactPage() {
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
-  const isAr = locale === "ar";
-  const t = (en: string, ar: string) => (isAr ? ar : en);
+  const t = useTranslations("landing");
 
   const [form, setForm] = useState({
     name: "",
@@ -51,19 +51,12 @@ export default function ContactPage() {
   return (
     <div className="py-12">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold">{t("Contact Us", "اتصل بنا")}</h1>
-          <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-            {t(
-              "Have questions? We'd love to hear from you. Send us a message and we'll respond within 24 hours.",
-              "هل لديك أسئلة؟ يسعدنا سماعك. أرسل لنا رسالة وسنرد خلال 24 ساعة."
-            )}
-          </p>
+          <h1 className="text-4xl font-bold">{t("contactHeading")}</h1>
+          <p className="mt-3 text-muted-foreground max-w-xl mx-auto">{t("contactSubtitle")}</p>
         </div>
 
         <div className="grid gap-10 lg:grid-cols-5">
-          {/* Contact Info */}
           <div className="lg:col-span-2 space-y-6">
             <div className="rounded-xl border bg-card p-6 space-y-6">
               <div className="flex items-start gap-4">
@@ -71,10 +64,8 @@ export default function ContactPage() {
                   <MapPin className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{t("Address", "العنوان")}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t("Dubai, United Arab Emirates", "دبي، الإمارات العربية المتحدة")}
-                  </p>
+                  <h3 className="font-semibold">{t("addressLabel")}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{t("addressValue")}</p>
                 </div>
               </div>
 
@@ -83,10 +74,8 @@ export default function ContactPage() {
                   <Phone className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{t("Phone", "الهاتف")}</h3>
-                  <p className="text-sm text-muted-foreground mt-1" dir="ltr">
-                    +971 4 XXX XXXX
-                  </p>
+                  <h3 className="font-semibold">{t("phoneLabel2")}</h3>
+                  <p className="text-sm text-muted-foreground mt-1" dir="ltr">+971 4 XXX XXXX</p>
                 </div>
               </div>
 
@@ -95,39 +84,26 @@ export default function ContactPage() {
                   <Mail className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{t("Email", "البريد الإلكتروني")}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    info@mployedin.com
-                  </p>
+                  <h3 className="font-semibold">{t("emailLabel2")}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">info@mployedin.com</p>
                 </div>
               </div>
             </div>
 
-            {/* Optional map placeholder */}
             <div className="rounded-xl border bg-muted/30 h-52 flex items-center justify-center">
-              <span className="text-sm text-muted-foreground">
-                {t("Map Location", "موقع الخريطة")}
-              </span>
+              <span className="text-sm text-muted-foreground">{t("mapLocation")}</span>
             </div>
           </div>
 
-          {/* Contact Form */}
           <div className="lg:col-span-3">
             <div className="rounded-xl border bg-card p-6">
               {success ? (
                 <div className="text-center py-10">
                   <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
-                  <h3 className="text-xl font-semibold">
-                    {t("Message Sent!", "تم إرسال الرسالة!")}
-                  </h3>
-                  <p className="text-muted-foreground mt-2">
-                    {t(
-                      "Thank you for contacting us. We'll get back to you shortly.",
-                      "شكراً لتواصلك معنا. سنعود إليك قريباً."
-                    )}
-                  </p>
+                  <h3 className="text-xl font-semibold">{t("messageSentHeading")}</h3>
+                  <p className="text-muted-foreground mt-2">{t("messageSentBody")}</p>
                   <Button className="mt-6" onClick={() => setSuccess(false)}>
-                    {t("Send Another Message", "إرسال رسالة أخرى")}
+                    {t("sendAnotherMessage")}
                   </Button>
                 </div>
               ) : (
@@ -142,61 +118,32 @@ export default function ContactPage() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="text-sm font-medium mb-1.5 block">
-                        {t("Full Name", "الاسم الكامل")} <span className="text-destructive">*</span>
+                        {t("fullNameLabel")} <span className="text-destructive">*</span>
                       </label>
-                      <Input
-                        name="name"
-                        value={form.name}
-                        onChange={handleChange}
-                        required
-                        placeholder={t("John Doe", "محمد أحمد")}
-                      />
+                      <Input name="name" value={form.name} onChange={handleChange} required placeholder={t("fullNamePlaceholder")} />
                     </div>
                     <div>
                       <label className="text-sm font-medium mb-1.5 block">
-                        {t("Email", "البريد الإلكتروني")} <span className="text-destructive">*</span>
+                        {t("emailLabel2")} <span className="text-destructive">*</span>
                       </label>
-                      <Input
-                        type="email"
-                        name="email"
-                        value={form.email}
-                        onChange={handleChange}
-                        required
-                        placeholder="you@example.com"
-                      />
+                      <Input type="email" name="email" value={form.email} onChange={handleChange} required placeholder="you@example.com" />
                     </div>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="text-sm font-medium mb-1.5 block">
-                        {t("Phone / Mobile", "الهاتف / الجوال")}
-                      </label>
-                      <Input
-                        type="tel"
-                        name="phone"
-                        value={form.phone}
-                        onChange={handleChange}
-                        placeholder="+971 50 XXX XXXX"
-                        dir="ltr"
-                      />
+                      <label className="text-sm font-medium mb-1.5 block">{t("phoneMobile")}</label>
+                      <Input type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="+971 50 XXX XXXX" dir="ltr" />
                     </div>
                     <div>
-                      <label className="text-sm font-medium mb-1.5 block">
-                        {t("Subject", "الموضوع")}
-                      </label>
-                      <Input
-                        name="subject"
-                        value={form.subject}
-                        onChange={handleChange}
-                        placeholder={t("How can we help?", "كيف يمكننا المساعدة؟")}
-                      />
+                      <label className="text-sm font-medium mb-1.5 block">{t("subjectField")}</label>
+                      <Input name="subject" value={form.subject} onChange={handleChange} placeholder={t("subjectPlaceholder")} />
                     </div>
                   </div>
 
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">
-                      {t("Message", "الرسالة")} <span className="text-destructive">*</span>
+                      {t("messageField")} <span className="text-destructive">*</span>
                     </label>
                     <textarea
                       name="message"
@@ -204,7 +151,7 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       rows={5}
-                      placeholder={t("Tell us what you need...", "أخبرنا بما تحتاج...")}
+                      placeholder={t("messagePlaceholder")}
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
                     />
                   </div>
@@ -213,12 +160,12 @@ export default function ContactPage() {
                     {submitting ? (
                       <span className="flex items-center gap-2">
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        {t("Sending...", "جاري الإرسال...")}
+                        {t("sendingMessage")}
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
                         <Send className="h-4 w-4" />
-                        {t("Send Message", "إرسال الرسالة")}
+                        {t("sendMessageBtn")}
                       </span>
                     )}
                   </Button>

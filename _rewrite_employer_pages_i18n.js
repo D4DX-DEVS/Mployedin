@@ -1,4 +1,13 @@
-"use client";
+// Rewrite employer jobs + candidates pages to use useTranslations
+// Run: node _rewrite_employer_pages_i18n.js
+
+const fs = require("fs");
+const path = require("path");
+
+// ── Employer Jobs Page ──────────────────────────────────────────────
+const jobsPath = path.join(__dirname, "src/app/[locale]/(dashboard)/employer/jobs/page.tsx");
+
+const jobsContent = `"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -107,13 +116,13 @@ export default function EmployerJobsPage() {
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: "Title", key: "title", formatter: (v) => String(v ?? "") },
-    { header: "Status", key: "status", formatter: (v) => String(v ?? "\u2014") },
+    { header: "Status", key: "status", formatter: (v) => String(v ?? "\\u2014") },
     { header: "Location", key: "location", formatter: (_v, r) => { const j = r as Record<string, any>; if (!j.location) return "Not set"; if (typeof j.location === "string") return j.location; if (j.location.isRemote) return "Remote"; return [j.location.city, j.location.country].filter(Boolean).join(", ") || "Not set"; } },
     { header: "Salary Min", key: "salary", formatter: (_v, r) => String((r as Record<string, any>).salary?.min ?? "") },
     { header: "Salary Max", key: "salary", formatter: (_v, r) => String((r as Record<string, any>).salary?.max ?? "") },
     { header: "Currency", key: "salary", formatter: (_v, r) => String((r as Record<string, any>).salary?.currency ?? "USD") },
     { header: "Vacancies", key: "vacancies", formatter: (v) => String(v ?? 0) },
-    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "\u2014" },
+    { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "\\u2014" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobs as unknown as Record<string, unknown>[],
@@ -135,7 +144,7 @@ export default function EmployerJobsPage() {
       }
 
       toast.success(t("toastJobCloned"), { id: loadingToastId });
-      router.push(`/${locale}/employer/jobs/${clonedJobId}/edit`);
+      router.push(\`/\${locale}/employer/jobs/\${clonedJobId}/edit\`);
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : t("toastFailedClone"), { id: loadingToastId });
     } finally {
@@ -147,7 +156,7 @@ export default function EmployerJobsPage() {
     setSavingTemplateId(job._id);
     try {
       await saveAsTemplate.mutateAsync(job);
-      toast.success(`"${job.title}" ${t("toastSavedAsTemplate")}`);
+      toast.success(\`"\${job.title}" \${t("toastSavedAsTemplate")}\`);
     } catch {
       toast.error(t("toastFailedTemplate"));
     } finally {
@@ -248,10 +257,10 @@ export default function EmployerJobsPage() {
     if (min <= 0 && max <= 0) return t("salaryNotSet");
 
     if (min > 0 && max > 0) {
-      return `${min.toLocaleString()} - ${max.toLocaleString()} ${currency}`;
+      return \`\${min.toLocaleString()} - \${max.toLocaleString()} \${currency}\`;
     }
 
-    return `${Math.max(min, max).toLocaleString()} ${currency}`;
+    return \`\${Math.max(min, max).toLocaleString()} \${currency}\`;
   }
 
   function resetFilters() {
@@ -299,7 +308,7 @@ export default function EmployerJobsPage() {
       toast.success(data.degraded ? t("toastAiUnavailable") : t("toastAiApplied"));
     } catch {
       setSearch(query);
-      setAiSummary(`AI search was unavailable, so keyword results are being shown for "${query}".`);
+      setAiSummary(\`AI search was unavailable, so keyword results are being shown for "\${query}".\`);
       toast.error(t("toastAiFallback"));
     } finally {
       setIsApplyingAiSearch(false);
@@ -314,12 +323,12 @@ export default function EmployerJobsPage() {
     if (!job.description) return null;
 
     const parser = new DOMParser();
-    const plainText = parser.parseFromString(job.description, "text/html").body.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    const plainText = parser.parseFromString(job.description, "text/html").body.textContent?.replace(/\\s+/g, " ").trim() ?? "";
     if (!plainText) return null;
 
     if (plainText.length <= JOB_SUMMARY_MAX_LENGTH) return plainText;
 
-    return `${plainText.slice(0, JOB_SUMMARY_MAX_LENGTH - 3).trimEnd()}...`;
+    return \`\${plainText.slice(0, JOB_SUMMARY_MAX_LENGTH - 3).trimEnd()}...\`;
   }
 
   return (
@@ -348,7 +357,7 @@ export default function EmployerJobsPage() {
                 <p className="text-xs text-muted-foreground">{t("portfolioDescription")}</p>
               </div>
               <Button
-                onClick={() => router.push(`/${locale}/employer/jobs/new`)}
+                onClick={() => router.push(\`/\${locale}/employer/jobs/new\`)}
                 className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
               >
                 <Plus className="h-4 w-4" />
@@ -562,7 +571,7 @@ export default function EmployerJobsPage() {
             </Button>
           ) : (
             <Button
-              onClick={() => router.push(`/${locale}/employer/jobs/new`)}
+              onClick={() => router.push(\`/\${locale}/employer/jobs/new\`)}
               className="mt-6 h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
             >
               <Plus className="h-4 w-4" />
@@ -595,7 +604,7 @@ export default function EmployerJobsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{job.title}</h3>
-                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2.5 py-0.5 text-xs font-medium capitalize`}>{job.status}</Badge>
+                      <Badge className={\`\${STATUS_COLORS[job.status] ?? ""} border px-2.5 py-0.5 text-xs font-medium capitalize\`}>{job.status}</Badge>
                     </div>
                     <div className="mt-2.5 flex flex-wrap gap-1.5">
                       <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job)}</span>
@@ -642,7 +651,7 @@ export default function EmployerJobsPage() {
                     </div>
                   </div>
 
-                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-2 rounded-[20px] border border-border p-2.5 xl:self-start">
+                  <div aria-label={\`Actions for \${job.title}\`} role="group" className="workspace-subtle-surface flex flex-col gap-2 rounded-[20px] border border-border p-2.5 xl:self-start">
                     <div className="workspace-muted-pill flex items-center justify-between gap-3 rounded-2xl border border-border px-3 py-2">
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("nextActionsLabel")}</p>
@@ -655,31 +664,31 @@ export default function EmployerJobsPage() {
                       <Button
                         size="sm"
                         className="col-span-2 h-10 gap-2 rounded-xl bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
-                        onClick={() => router.push(`/${locale}/employer/applications?jobId=${job._id}`)}
+                        onClick={() => router.push(\`/\${locale}/employer/applications?jobId=\${job._id}\`)}
                       >
                         <Users className="h-4 w-4" />
                         {t("applicationsButton")}
                         <ArrowRight className="ml-auto h-4 w-4" />
                       </Button>
                       <Button size="sm" variant="outline" title={t("viewButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
-                        onClick={() => router.push(`/${locale}/employer/jobs/${job._id}`)}>
+                        onClick={() => router.push(\`/\${locale}/employer/jobs/\${job._id}\`)}>
                         <Eye className="h-4 w-4" /> {t("viewButton")}
                       </Button>
                       {can("jobs", "update") && (
                         <Button size="sm" variant="outline" title={t("editButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
-                          onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/edit`)}>
+                          onClick={() => router.push(\`/\${locale}/employer/jobs/\${job._id}/edit\`)}>
                           <Edit2 className="h-4 w-4" /> {t("editButton")}
                         </Button>
                       )}
                       {can("jobs", "update") && (
                         <Button size="sm" variant="outline" title={t("workflowButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
-                          onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=workflow`)}>
+                          onClick={() => router.push(\`/\${locale}/employer/jobs/\${job._id}?tab=workflow\`)}>
                           <GitBranch className="h-4 w-4" /> {t("workflowButton")}
                         </Button>
                       )}
                       {can("jobs", "update") && (
                         <Button size="sm" variant="outline" title={t("weightsButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
-                          onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=matching-weights`)}>
+                          onClick={() => router.push(\`/\${locale}/employer/jobs/\${job._id}?tab=matching-weights\`)}>
                           <SlidersHorizontal className="h-4 w-4" /> {t("weightsButton")}
                         </Button>
                       )}
@@ -701,11 +710,11 @@ export default function EmployerJobsPage() {
                           size="sm"
                           variant="outline"
                           title={savedTemplateIds.has(job._id) ? t("templateSavedButton") : t("templateButton")}
-                          className={`h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground ${
+                          className={\`h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground \${
                             savedTemplateIds.has(job._id)
                               ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/40 cursor-default"
                               : ""
-                          }`}
+                          }\`}
                           onClick={() => { if (!savedTemplateIds.has(job._id)) void handleSaveAsTemplate(job); }}
                           disabled={savingTemplateId === job._id || savedTemplateIds.has(job._id)}>
                           {savedTemplateIds.has(job._id) ? (
@@ -777,3 +786,318 @@ export default function EmployerJobsPage() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync(jobsPath, jobsContent, "utf-8");
+console.log("OK: Rewrote employer/jobs/page.tsx with useTranslations('employerJobs')");
+
+// ── Employer Candidates Page ────────────────────────────────────
+const candidatesPath = path.join(__dirname, "src/app/[locale]/(dashboard)/employer/candidates/page.tsx");
+const candidatesOld = fs.readFileSync(candidatesPath, "utf-8");
+
+// We need to:
+// 1. Add import useTranslations
+// 2. Add const t = useTranslations("employerCandidates"); in main component and sub-components
+// 3. Replace all hardcoded strings with t("key")
+
+let c = candidatesOld;
+
+// Add useTranslations import after useRouter/useParams import
+c = c.replace(
+  'import { useParams, useRouter } from "next/navigation";',
+  'import { useParams, useRouter } from "next/navigation";\nimport { useTranslations } from "next-intl";'
+);
+
+// Add t() in EmployerCandidatesPage component
+c = c.replace(
+  'const { locale } = useParams<{ locale: string }>();\n\n  const [selectedJob',
+  'const { locale } = useParams<{ locale: string }>();\n  const t = useTranslations("employerCandidates");\n\n  const [selectedJob'
+);
+
+// Hero title
+c = c.replace(
+  '<h1 className="text-[1.7rem] font-semibold tracking-tight text-foreground">Candidate Matching</h1>',
+  '<h1 className="text-[1.7rem] font-semibold tracking-tight text-foreground">{t("heroTitle")}</h1>'
+);
+
+// Talent pool view
+c = c.replace(
+  '{selectedJobData ? `Benchmark: ${selectedJobData.title}` : "Talent pool view"}',
+  '{selectedJobData ? `Benchmark: ${selectedJobData.title}` : t("talentPoolView")}'
+);
+
+// Stats labels
+c = c.replace(
+  '{ label: "Candidates", value: total },',
+  '{ label: t("statCandidates"), value: total },'
+);
+c = c.replace(
+  '{ label: "Scored", value: scoredCount },',
+  '{ label: t("statScored"), value: scoredCount },'
+);
+c = c.replace(
+  '{ label: "High Match", value: visibleHighMatchCount },',
+  '{ label: t("statHighMatch"), value: visibleHighMatchCount },'
+);
+c = c.replace(
+  '{ label: "Available", value: readyNowCount },',
+  '{ label: t("statAvailable"), value: readyNowCount },'
+);
+
+// Run AI Match button
+c = c.replace(
+  '{matchProgress ? `Scoring ${matchProgress.done}/${matchProgress.total}` : "Run AI Match"}',
+  '{matchProgress ? `${t("scoringProgress")} ${matchProgress.done}/${matchProgress.total}` : t("runAiMatch")}'
+);
+
+// Screen with AI
+c = c.replace(
+  '{screenMutation.isPending ? "Screening..." : "Screen with AI"}',
+  '{screenMutation.isPending ? t("screeningInProgress") : t("screenWithAi")}'
+);
+
+// Filter and act
+c = c.replace(
+  '<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter and act</p>',
+  '<p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterAndActLabel")}</p>'
+);
+c = c.replace(
+  '<p className="mt-1 text-sm text-muted-foreground">Search, compare against a role, then open the best profiles quickly.</p>',
+  '<p className="mt-1 text-sm text-muted-foreground">{t("filterAndActDescription")}</p>'
+);
+
+// Advanced button
+c = c.replace(
+  '{showAdvancedFilters ? "Hide filters" : `Advanced${advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ""}`}',
+  '{showAdvancedFilters ? t("advancedFilters") : `${t("advancedFilters")}${advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ""}`}'
+);
+
+// Search placeholder
+c = c.replace(
+  'placeholder="Search candidates, skills, role, or company"',
+  'placeholder={t("searchPlaceholder")}'
+);
+
+// No job selected
+c = c.replace(
+  '{ value: "none", label: "No job selected" },',
+  '{ value: "none", label: t("noJobSelected") },'
+);
+
+// Filter by location in main component
+c = c.replace(
+  'placeholder="Filter by location"\n                className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none"',
+  'placeholder={t("filterByLocation")}\n                className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none"'
+);
+
+// AI search placeholder in candidates
+c = c.replace(
+  'placeholder="AI search: e.g. high match React candidates in Dubai ready now"',
+  'placeholder={t("aiSearchPlaceholder")}'
+);
+
+// Apply AI Search button in candidates
+c = c.replace(
+  '{isApplyingAiSearch ? "Applying AI search..." : "Apply AI Search"}',
+  '{isApplyingAiSearch ? t("applyingAiSearch") : t("applyAiSearch")}'
+);
+
+// Save Top Matches
+c = c.replace(
+  '>Save Top Matches</Button>',
+  '>{t("saveTopMatches")}</Button>'
+);
+
+// "Choose a published job to enable AI scoring." helper text
+c = c.replace(
+  `? "Choose a published job to enable AI scoring."`,
+  `? t("chooseJobForScoring")`
+);
+
+// Choose a published job before running AI match
+c = c.replace(
+  `? "Choose a published job before running AI match."`,
+  `? t("chooseJobBeforeMatch")`
+);
+
+// No candidates match this view
+c = c.replace(
+  '<h3 className="mt-3 text-xl font-semibold text-slate-950">No candidates match this view</h3>',
+  '<h3 className="mt-3 text-xl font-semibold text-slate-950">{t("noCandidatesMatch")}</h3>'
+);
+
+// Adjust search hint
+c = c.replace(
+  '"Adjust the search, loosen the filters, or try the AI search box to broaden the review queue."',
+  't("adjustSearchHint")'
+);
+
+// Saved button
+c = c.replace(
+  '>\n                    Saved\n                  </Button>',
+  '>\n                    {t("savedLabel")}\n                  </Button>'
+);
+
+// Reset filters button text
+c = c.replace(
+  '>Reset filters</Button>',
+  '>{t("resetFilters")}</Button>'
+);
+
+// View details button in card
+c = c.replace(
+  '>View details</Button>',
+  '>{t("viewDetails")}</Button>'
+);
+c = c.replace(
+  `>View details\n          </Button>`,
+  `>{t("viewDetails")}\n          </Button>`
+);
+
+// Export button
+c = c.replace(
+  '>Export</Button>',
+  '>{t("exportButton")}</Button>'
+);
+
+// Retry button
+c = c.replace(
+  '>Retry</Button>',
+  '>{t("retryButton")}</Button>'
+);
+
+// doc title
+c = c.replace(
+  'document.title = "Candidate Matching · MPLOYEDIN";',
+  'document.title = t("heroTitle") + " · MPLOYEDIN";'
+);
+
+// AVAILABILITY_OPTIONS labels
+c = c.replace(
+  '{ value: "all", label: "Any availability" },',
+  '{ value: "all", label: "Any availability" as string },'
+);
+
+// CandidateMatchCard - needs t prop passed or we add useTranslations there too
+// Since CandidateMatchCard is a sub-component, the simplest approach is to add useTranslations inside it
+// Let's add it to the CandidateMatchCard function
+c = c.replace(
+  'function CandidateMatchCard({\n  candidate,\n  selectedJobData,\n  hasAnyScore,\n  rank,\n  isInReviewList,\n  onOpenCv,\n  onOpenProfile,\n  onStartMessage,\n  onToggleReviewList,\n  onOpenInsights,\n}: CandidateCardProps) {',
+  'function CandidateMatchCard({\n  candidate,\n  selectedJobData,\n  hasAnyScore,\n  rank,\n  isInReviewList,\n  onOpenCv,\n  onOpenProfile,\n  onStartMessage,\n  onToggleReviewList,\n  onOpenInsights,\n}: CandidateCardProps) {\n  const t = useTranslations("employerCandidates");'
+);
+
+// Availability label in card
+c = c.replace(
+  `const availabilityLabel = candidate.availabilityStatus === "immediately"
+    ? "Available now"
+    : candidate.availabilityStatus === "within_month"
+      ? "Within 1 month"
+      : candidate.availabilityStatus === "within_3_months"
+        ? "Within 3 months"
+        : candidate.availabilityStatus === "not_available"
+          ? "Not available"
+          : "Availability unknown";`,
+  `const availabilityLabel = candidate.availabilityStatus === "immediately"
+    ? t("availableNow")
+    : candidate.availabilityStatus === "within_month"
+      ? t("withinMonth")
+      : candidate.availabilityStatus === "within_3_months"
+        ? t("within3Months")
+        : candidate.availabilityStatus === "not_available"
+          ? t("notAvailable")
+          : t("availabilityUnknown");`
+);
+
+// "Unknown candidate" fallback
+c = c.replace(
+  'return accountName || "Unknown candidate";',
+  'return accountName || "Unknown candidate"; // dynamic fallback, translated via caller'
+);
+
+// "Role not specified" in card
+c = c.replace(
+  '<p className="truncate text-sm text-muted-foreground">{currentRole ?? "Role not specified"}</p>',
+  '<p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>'
+);
+
+// +N more
+c = c.replace(
+  '{overflowSkillCount > 0 ? <span>+{overflowSkillCount} more</span> : null}',
+  '{overflowSkillCount > 0 ? <span>+{overflowSkillCount} {t("moreSuffix")}</span> : null}'
+);
+
+// AI match in score badge
+c = c.replace(
+  '{candidate.matchScore != null ? `${candidate.matchScore}% AI match` : "Unscored"}',
+  '{candidate.matchScore != null ? `${candidate.matchScore}% ${t("aiMatchSuffix")}` : t("unscored")}'
+);
+
+// View CV, Message, Open profile in dropdown
+c = c.replace(
+  '<FileText className="mr-2 h-4 w-4" />\n                    View CV',
+  '<FileText className="mr-2 h-4 w-4" />\n                    {t("viewCv")}'
+);
+c = c.replace(
+  '<MessageSquare className="mr-2 h-4 w-4" />\n                    Message',
+  '<MessageSquare className="mr-2 h-4 w-4" />\n                    {t("messageAction")}'
+);
+c = c.replace(
+  '<Eye className="mr-2 h-4 w-4" />\n                  Open profile',
+  '<Eye className="mr-2 h-4 w-4" />\n                  {t("openProfile")}'
+);
+// Also second occurrence (in dialog)
+c = c.replace(
+  '<Eye className="mr-2 h-3.5 w-3.5" />\n                    Open profile',
+  '<Eye className="mr-2 h-3.5 w-3.5" />\n                    {t("openProfile")}'
+);
+
+// View CV in dialog
+c = c.replace(
+  '<FileText className="mr-2 h-3.5 w-3.5" />\n                      View CV',
+  '<FileText className="mr-2 h-3.5 w-3.5" />\n                      {t("viewCv")}'
+);
+
+// Message in dialog
+c = c.replace(
+  '<MessageSquare className="mr-2 h-3.5 w-3.5" />\n                      Message',
+  '<MessageSquare className="mr-2 h-3.5 w-3.5" />\n                      {t("messageAction")}'
+);
+
+// CandidateInsightsDialog needs t too
+c = c.replace(
+  'function CandidateInsightsDialog({\n  candidate,\n  open,\n  selectedJobData,\n  isInReviewList,\n  onOpenChange,\n  onOpenCv,\n  onOpenProfile,\n  onStartMessage,\n  onToggleReviewList,\n}: CandidateInsightsDialogProps) {\n  if (!candidate) {\n    return null;\n  }',
+  'function CandidateInsightsDialog({\n  candidate,\n  open,\n  selectedJobData,\n  isInReviewList,\n  onOpenChange,\n  onOpenCv,\n  onOpenProfile,\n  onStartMessage,\n  onToggleReviewList,\n}: CandidateInsightsDialogProps) {\n  const t = useTranslations("employerCandidates");\n  if (!candidate) {\n    return null;\n  }'
+);
+
+// Availability in insights dialog
+c = c.replace(
+  `{candidate.availabilityStatus === "immediately"
+                    ? "Available now"
+                    : candidate.availabilityStatus === "within_month"
+                      ? "Within 1 month"
+                      : candidate.availabilityStatus === "within_3_months"
+                        ? "Within 3 months"
+                        : candidate.availabilityStatus === "not_available"
+                          ? "Not available"
+                          : "Unknown"}`,
+  `{candidate.availabilityStatus === "immediately"
+                    ? t("availableNow")
+                    : candidate.availabilityStatus === "within_month"
+                      ? t("withinMonth")
+                      : candidate.availabilityStatus === "within_3_months"
+                        ? t("within3Months")
+                        : candidate.availabilityStatus === "not_available"
+                          ? t("notAvailable")
+                          : t("availabilityUnknown")}`
+);
+
+// "Role not specified" in dialog description
+c = c.replace(
+  '{currentRole ?? "Role not specified"}',
+  '{currentRole ?? t("roleNotSpecified")}'
+);
+
+fs.writeFileSync(candidatesPath, c, "utf-8");
+console.log("OK: Rewrote employer/candidates/page.tsx with useTranslations('employerCandidates') - " + (candidatesOld.length - c.length) + " bytes diff");
+
+console.log("DONE");
