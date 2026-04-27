@@ -185,10 +185,10 @@ export const authConfig: NextAuthConfig = {
               meta: { email, provider: "firebase-google" },
             });
 
-            // Send welcome email for new Firebase/Google users (fire-and-forget)
+            // Send welcome email for new Firebase/Google users
             const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
             const dashboardUrl = `${baseUrl}/en/job-seeker/dashboard`;
-            sendEmail({
+            await sendEmail({
               to: email,
               ...EmailTemplates.jobSeekerWelcome(dbUser.name || "there", dashboardUrl),
               source: "registration",
@@ -431,11 +431,11 @@ export const authConfig: NextAuthConfig = {
           meta: { email: dbUser.email, provider: account.provider },
         });
 
-        // Send welcome email for new OAuth users (fire-and-forget)
+        // Send welcome email for new OAuth users
         if (isNewUser && dbUser.email) {
           const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
           const dashboardUrl = `${baseUrl}/en/job-seeker/dashboard`;
-          sendEmail({
+          await sendEmail({
             to: dbUser.email,
             ...EmailTemplates.jobSeekerWelcome(dbUser.name || "there", dashboardUrl),
             source: "registration",

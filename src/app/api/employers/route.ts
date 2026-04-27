@@ -306,17 +306,17 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Send welcome email (fire-and-forget)
+  // Send welcome email
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
   const loginUrl = `${baseUrl}/login`;
   const creatorName = ctx.role === "agent" || ctx.role === "super_agent" ? "Your MPLOYEDIN Agent" : "MPLOYEDIN Admin";
-  sendEmail({
+  await sendEmail({
     to: email,
     ...EmailTemplates.employerWelcome(name, email, password, creatorName, loginUrl),
     userId: user._id.toString(),
     source: "employer-onboard",
     category: "onboarding",
-  }).catch(() => {});
+  }).catch((err) => console.error("[Employer Create] Failed to send welcome email:", err));
 
   await logActivity({
     ...actorFromCtx(ctx),
