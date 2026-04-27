@@ -48,6 +48,10 @@ SEO-AUDIT.md
 
 mployedin/.claude
 .claude
+
+# analysis/graph tools (not needed at runtime)
+graphify-out/
+.code-review-graph/
 mployedin/ROLES.md
 
 # graphify - knowledge graph (local only, each dev rebuilds)
