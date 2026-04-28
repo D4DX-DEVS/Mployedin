@@ -419,7 +419,7 @@ export default function CVBuilderPage() {
       )}
 
       {/* ── Split layout: Editor (left) + Live Preview (right) ── */}
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
 
         {/* ────── LEFT: EDITOR PANEL ────── */}
         <div className={`transition-all duration-300 ${previewExpanded ? "hidden" : "w-full lg:w-[55%]"}`}>

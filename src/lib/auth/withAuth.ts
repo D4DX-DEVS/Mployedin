@@ -88,7 +88,11 @@ export function withAuth(
     } catch (err) {
       // validateBody() throws a NextResponse on validation failure — surface it directly
       if (err instanceof NextResponse) return err;
-      throw err;
+      console.error("[withAuth] Unhandled error in route handler:", err);
+      return NextResponse.json(
+        { error: "Internal server error" },
+        { status: 500 }
+      );
     }
   };
 }

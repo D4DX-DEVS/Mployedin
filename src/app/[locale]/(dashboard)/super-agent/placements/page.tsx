@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/table";
 import {
   ArrowUpDown, CalendarClock, ChevronDown, ChevronUp, DollarSign,
-  Filter, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Trophy, Users2,
+  RotateCcw, ShieldCheck, Trophy, Users2,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -144,7 +144,7 @@ export default function SuperAgentPlacementsPage() {
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [employers, setEmployers] = useState<{ _id: string; companyName: string }[]>([]);
   const [salaryByCurrency, setSalaryByCurrency] = useState<Record<string, number>>({});
@@ -371,23 +371,20 @@ export default function SuperAgentPlacementsPage() {
               </button>
             ))}
           </div>
+        </div>
 
-          {/* ---- Search Row + Toggle ---- */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-            {/* Text Search */}
-            <div className="relative w-full min-w-0 max-w-xs">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-              <Input
-                aria-label="Search placements"
-                placeholder="Search candidate, company, email..."
-                value={filters.search}
-                onChange={(e) => updateFilter("search", e.target.value)}
-                className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
-              />
-            </div>
-
-            {/* Commission Toggle */}
+        {/* ---- Merged Filters via TableToolbar ---- */}
+        <TableToolbar
+          search={filters.search}
+          onSearchChange={(v) => updateFilter("search", v)}
+          searchPlaceholder="Search candidate, company, email..."
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          hasActiveFilters={activeFilterCount > 0 || !!filters.visaStatus || !!filters.commissionPaid}
+          actions={
             <div className="flex items-center gap-2">
+              {/* Commission Toggle */}
               {[
                 { value: "", label: "All" },
                 { value: "true", label: "Commission Paid" },
@@ -401,203 +398,86 @@ export default function SuperAgentPlacementsPage() {
                   className={`rounded-xl border px-3.5 py-2 text-xs font-medium transition-all ${
                     filters.commissionPaid === opt.value
                       ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border/70 bg-background/85 text-muted-foreground hover:border-border hover:bg-secondary/80"
+                      : "border-border/70 bg-card text-muted-foreground hover:border-border hover:bg-secondary/80"
                   }`}
                 >
                   {opt.label}
                 </button>
               ))}
-            </div>
-
-            {/* Advanced Toggle + Reset */}
-            <div className="flex items-center gap-2 sm:ml-auto">
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className={`flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all ${showAdvanced ? "border-primary/30 bg-primary/10 text-primary" : "border-border/70 bg-background/85 text-muted-foreground hover:border-border hover:bg-secondary/80"}`}
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-                Advanced
-                {activeFilterCount > 0 && (
-                  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1.5 text-[11px] font-semibold text-primary">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
-
               {(activeFilterCount > 0 || filters.visaStatus || filters.search || filters.commissionPaid) && (
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-4 text-sm text-muted-foreground hover:border-border hover:bg-secondary/80 transition-all"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Reset
+                <button type="button" onClick={resetFilters} className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all">
+                  <RotateCcw className="h-3.5 w-3.5" /> Reset
                 </button>
               )}
             </div>
-          </div>
-
-          {/* ---- Salary Summary Banner ---- */}
-          {Object.keys(salaryByCurrency).length > 0 && (
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-50/40 px-4 py-2.5 text-sm text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300">
-              <DollarSign className="h-4 w-4 shrink-0" />
-              <span>Total salary value: <strong>{totalSalary}</strong></span>
-            </div>
-          )}
-
-          {/* ---- Advanced Filter Panel ---- */}
-          {showAdvanced && (
-            <div className="rounded-2xl border border-border/60 bg-background/90 p-5 shadow-sm animate-in slide-in-from-top-2 duration-200">
-              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Filter className="h-4 w-4" />
-                Advanced Filters
-              </div>
+          }
+          filterContent={
+            <div className="space-y-4">
+              {/* Salary Summary */}
+              {Object.keys(salaryByCurrency).length > 0 && (
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-50/40 px-4 py-2.5 text-sm text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300">
+                  <DollarSign className="h-4 w-4 shrink-0" />
+                  <span>Total salary value: <strong>{totalSalary}</strong></span>
+                </div>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {/* Currency */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Currency</label>
-                  <SearchableSelect
-                    options={CURRENCY_OPTIONS}
-                    value={filters.currency}
-                    onValueChange={(v) => updateFilter("currency", v)}
-                    placeholder="All currencies"
-                    searchPlaceholder="Search currency..."
-                  />
+                  <SearchableSelect options={CURRENCY_OPTIONS} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder="All currencies" searchPlaceholder="Search currency..." />
                 </div>
-
-                {/* Salary Min */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Salary Min</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="e.g. 5000"
-                    value={filters.salaryMin}
-                    onChange={(e) => updateFilter("salaryMin", e.target.value)}
-                    className="h-10 rounded-xl text-sm"
-                  />
+                  <Input type="number" min={0} placeholder="e.g. 5000" value={filters.salaryMin} onChange={(e) => updateFilter("salaryMin", e.target.value)} className="h-10 rounded-xl text-sm" />
                 </div>
-
-                {/* Salary Max */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Salary Max</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="e.g. 30000"
-                    value={filters.salaryMax}
-                    onChange={(e) => updateFilter("salaryMax", e.target.value)}
-                    className="h-10 rounded-xl text-sm"
-                  />
+                  <Input type="number" min={0} placeholder="e.g. 30000" value={filters.salaryMax} onChange={(e) => updateFilter("salaryMax", e.target.value)} className="h-10 rounded-xl text-sm" />
                 </div>
-
-                {/* Agent */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Agent</label>
-                  <SearchableSelect
-                    options={[{ value: "", label: "All agents" }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))]}
-                    value={filters.agentId}
-                    onValueChange={(v) => updateFilter("agentId", v)}
-                    placeholder="All agents"
-                    searchPlaceholder="Search agent..."
-                  />
+                  <SearchableSelect options={[{ value: "", label: "All agents" }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))]} value={filters.agentId} onValueChange={(v) => updateFilter("agentId", v)} placeholder="All agents" searchPlaceholder="Search agent..." />
                 </div>
-
-                {/* Employer */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Employer</label>
-                  <SearchableSelect
-                    options={[{ value: "", label: "All employers" }, ...employers.map((e) => ({ value: e._id, label: e.companyName }))]}
-                    value={filters.employerId}
-                    onValueChange={(v) => updateFilter("employerId", v)}
-                    placeholder="All employers"
-                    searchPlaceholder="Search employer..."
-                  />
+                  <SearchableSelect options={[{ value: "", label: "All employers" }, ...employers.map((e) => ({ value: e._id, label: e.companyName }))]} value={filters.employerId} onValueChange={(v) => updateFilter("employerId", v)} placeholder="All employers" searchPlaceholder="Search employer..." />
                 </div>
-
-                {/* Placed Date From */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Placed From</label>
-                  <DateTimePicker
-                    value={filters.dateFrom}
-                    onChange={(v) => updateFilter("dateFrom", v)}
-                    placeholder="Start date"
-                    mode="date"
-                  />
+                  <DateTimePicker value={filters.dateFrom} onChange={(v) => updateFilter("dateFrom", v)} placeholder="Start date" mode="date" />
                 </div>
-
-                {/* Placed Date To */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Placed To</label>
-                  <DateTimePicker
-                    value={filters.dateTo}
-                    onChange={(v) => updateFilter("dateTo", v)}
-                    placeholder="End date"
-                    mode="date"
-                  />
+                  <DateTimePicker value={filters.dateTo} onChange={(v) => updateFilter("dateTo", v)} placeholder="End date" mode="date" />
                 </div>
-
-                {/* Sort By */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Sort By</label>
-                  <SearchableSelect
-                    options={SORT_OPTIONS}
-                    value={filters.sortBy}
-                    onValueChange={(v) => updateFilter("sortBy", v)}
-                    placeholder="Date Created"
-                  />
+                  <SearchableSelect options={SORT_OPTIONS} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder="Date Created" />
                 </div>
-
-                {/* Sort Order */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
-                  <SearchableSelect
-                    options={[
-                      { value: "desc", label: "Newest first" },
-                      { value: "asc", label: "Oldest first" },
-                    ]}
-                    value={filters.sortOrder}
-                    onValueChange={(v) => updateFilter("sortOrder", v)}
-                    placeholder="Newest first"
-                  />
+                  <SearchableSelect options={[{ value: "desc", label: "Newest first" }, { value: "asc", label: "Oldest first" }]} value={filters.sortOrder} onValueChange={(v) => updateFilter("sortOrder", v)} placeholder="Newest first" />
                 </div>
               </div>
 
               {/* Quick Filter Chips */}
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
                 {[
                   { label: "Visa Pending", action: () => updateFilter("visaStatus", "pending") },
                   { label: "Commission Unpaid", action: () => updateFilter("commissionPaid", "false") },
-                  { label: "This Month", action: () => {
-                    const d = new Date();
-                    updateFilter("dateFrom", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
-                  }},
+                  { label: "This Month", action: () => { const d = new Date(); updateFilter("dateFrom", `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`); } },
                   { label: "High Salary (10k+)", action: () => updateFilter("salaryMin", "10000") },
                   { label: "Visa Approved", action: () => updateFilter("visaStatus", "approved") },
                   { label: "Stamped", action: () => updateFilter("visaStatus", "stamped") },
                 ].map((chip) => (
-                  <button
-                    key={chip.label}
-                    type="button"
-                    onClick={chip.action}
-                    className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
-                  >
+                  <button key={chip.label} type="button" onClick={chip.action} className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all">
                     {chip.label}
                   </button>
                 ))}
               </div>
             </div>
-          )}
-        </div>
-
-        {/* ---- Table ---- */}
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
+          }
           className="mb-4"
         />
         <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">

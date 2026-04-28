@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   ArrowUpDown, Building2, ChevronDown, ChevronUp, DollarSign,
-  Filter, Link2, RotateCcw, Search, ShieldCheck, SlidersHorizontal, UserPlus, Users,
+  Link2, RotateCcw, ShieldCheck, UserPlus, Users,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -92,7 +91,7 @@ export default function SuperAgentEmployersPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+
   const [facets, setFacets] = useState<Facets>({ industries: [], locations: [] });
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [onboardOpen, setOnboardOpen] = useState(false);
@@ -292,178 +291,130 @@ export default function SuperAgentEmployersPage() {
         title="Review employer ownership and account health"
         description="Filter by industry, location, status, and verification to narrow down the employer list."
       >
-        {/* ── Search Row + Advanced Toggle ── */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-          <div className="relative w-full max-w-xs min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-            <Input
-              aria-label="Search employers"
-              placeholder="Search employers..."
-              value={filters.search}
-              onChange={(e) => updateFilter("search", e.target.value)}
-              className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
-            />
-          </div>
-
-          {/* Status quick filter */}
-          <div className="w-full max-w-[180px]">
-            <SearchableSelect
-              options={STATUS_OPTIONS}
-              value={filters.status}
-              onValueChange={(v) => updateFilter("status", v)}
-              placeholder="All statuses"
-            />
-          </div>
-
-          {/* Industry quick filter (if facets loaded) */}
-          {facets.industries.length > 0 && (
-            <div className="w-full max-w-[200px]">
-              <SearchableSelect
-                options={[{ value: "", label: "All industries" }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
-                value={filters.industry}
-                onValueChange={(v) => updateFilter("industry", v)}
-                placeholder="All industries"
-                searchPlaceholder="Search industry..."
-              />
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 sm:ml-auto">
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className={`flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all ${showAdvanced ? "border-primary/30 bg-primary/10 text-primary" : "border-border/70 bg-background/85 text-muted-foreground hover:border-border hover:bg-secondary/80"}`}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Advanced
-              {activeFilterCount > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1.5 text-[11px] font-semibold text-primary">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-
-            {(activeFilterCount > 0 || filters.search) && (
+        {/* ── Search + Advanced Toggle via TableToolbar ── */}
+        <TableToolbar
+          search={filters.search}
+          onSearchChange={(v) => updateFilter("search", v)}
+          searchPlaceholder="Search employers..."
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          hasActiveFilters={activeFilterCount > 0}
+          actions={
+            (activeFilterCount > 0 || filters.search) ? (
               <button
                 type="button"
                 onClick={resetFilters}
-                className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-4 text-sm text-muted-foreground hover:border-border hover:bg-secondary/80 transition-all"
+                className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Reset
               </button>
-            )}
-          </div>
-        </div>
+            ) : undefined
+          }
+          filterContent={
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                {/* Industry */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Industry</label>
+                  <SearchableSelect
+                    options={[{ value: "", label: "All industries" }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
+                    value={filters.industry}
+                    onValueChange={(v) => updateFilter("industry", v)}
+                    placeholder="All industries"
+                    searchPlaceholder="Search industry..."
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
 
-        {/* ── Advanced Filter Panel ── */}
-        {showAdvanced && (
-          <div className="mb-4 rounded-2xl border border-border/60 bg-background/90 p-5 shadow-sm animate-in slide-in-from-top-2 duration-200">
-            <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Filter className="h-4 w-4" />
-              Advanced Filters
+                {/* Location */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Location</label>
+                  <SearchableSelect
+                    options={[{ value: "", label: "All locations" }, ...facets.locations.map((l) => ({ value: l, label: l }))]}
+                    value={filters.location}
+                    onValueChange={(v) => updateFilter("location", v)}
+                    placeholder="All locations"
+                    searchPlaceholder="Search location..."
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
+
+                {/* Status */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Status</label>
+                  <SearchableSelect
+                    options={STATUS_OPTIONS}
+                    value={filters.status}
+                    onValueChange={(v) => updateFilter("status", v)}
+                    placeholder="All"
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
+
+                {/* Verification */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Verification</label>
+                  <SearchableSelect
+                    options={VERIFIED_OPTIONS}
+                    value={filters.verified}
+                    onValueChange={(v) => updateFilter("verified", v)}
+                    placeholder="All"
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
+
+                {/* Sort By */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+                  <SearchableSelect
+                    options={SORT_OPTIONS}
+                    value={filters.sortBy}
+                    onValueChange={(v) => updateFilter("sortBy", v)}
+                    placeholder="Name"
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
+
+                {/* Sort Order */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
+                  <SearchableSelect
+                    options={[
+                      { value: "asc", label: "Ascending" },
+                      { value: "desc", label: "Descending" },
+                    ]}
+                    value={filters.sortOrder}
+                    onValueChange={(v) => updateFilter("sortOrder", v)}
+                    placeholder="Ascending"
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Filter Chips */}
+              <div className="flex flex-wrap gap-2">
+                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
+                {[
+                  { label: "Active Only", action: () => updateFilter("status", "active") },
+                  { label: "Inactive", action: () => updateFilter("status", "inactive") },
+                  { label: "Verified", action: () => updateFilter("verified", "verified") },
+                  { label: "Not Verified", action: () => updateFilter("verified", "unverified") },
+                  { label: "Newest First", action: () => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); } },
+                ].map((chip) => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={chip.action}
+                    className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
             </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {/* Industry */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Industry</label>
-                <SearchableSelect
-                  options={[{ value: "", label: "All industries" }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
-                  value={filters.industry}
-                  onValueChange={(v) => updateFilter("industry", v)}
-                  placeholder="All industries"
-                  searchPlaceholder="Search industry..."
-                />
-              </div>
-
-              {/* Location */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Location</label>
-                <SearchableSelect
-                  options={[{ value: "", label: "All locations" }, ...facets.locations.map((l) => ({ value: l, label: l }))]}
-                  value={filters.location}
-                  onValueChange={(v) => updateFilter("location", v)}
-                  placeholder="All locations"
-                  searchPlaceholder="Search location..."
-                />
-              </div>
-
-              {/* Status */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Status</label>
-                <SearchableSelect
-                  options={STATUS_OPTIONS}
-                  value={filters.status}
-                  onValueChange={(v) => updateFilter("status", v)}
-                  placeholder="All"
-                />
-              </div>
-
-              {/* Verification */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Verification</label>
-                <SearchableSelect
-                  options={VERIFIED_OPTIONS}
-                  value={filters.verified}
-                  onValueChange={(v) => updateFilter("verified", v)}
-                  placeholder="All"
-                />
-              </div>
-
-              {/* Sort By */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Sort By</label>
-                <SearchableSelect
-                  options={SORT_OPTIONS}
-                  value={filters.sortBy}
-                  onValueChange={(v) => updateFilter("sortBy", v)}
-                  placeholder="Name"
-                />
-              </div>
-
-              {/* Sort Order */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
-                <SearchableSelect
-                  options={[
-                    { value: "asc", label: "Ascending" },
-                    { value: "desc", label: "Descending" },
-                  ]}
-                  value={filters.sortOrder}
-                  onValueChange={(v) => updateFilter("sortOrder", v)}
-                  placeholder="Ascending"
-                />
-              </div>
-            </div>
-
-            {/* Quick Filter Chips */}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
-              {[
-                { label: "Active Only", action: () => updateFilter("status", "active") },
-                { label: "Inactive", action: () => updateFilter("status", "inactive") },
-                { label: "Verified", action: () => updateFilter("verified", "verified") },
-                { label: "Not Verified", action: () => updateFilter("verified", "unverified") },
-                { label: "Newest First", action: () => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); } },
-              ].map((chip) => (
-                <button
-                  key={chip.label}
-                  type="button"
-                  onClick={chip.action}
-                  className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
+          }
           className="mb-4"
         />
 

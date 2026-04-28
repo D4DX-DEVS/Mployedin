@@ -2,19 +2,19 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import {
-  Search, RotateCcw, Users, MapPin, Briefcase, GraduationCap,
-  Star, Eye, Mail, Phone, Globe,
+  RotateCcw, Users, Briefcase, GraduationCap,
+  Star, Eye, Mail, Phone, Globe, MapPin,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -116,55 +116,50 @@ export default function SuperAgentJobSeekersPage() {
 
       <SuperAgentMetricsGrid items={metricsItems} />
 
-      <SuperAgentSection
-        eyebrow="Directory"
+      <TableToolbar
         title="Browse regional candidates"
         description="Search by name, email, or skills. Filter by country and experience level."
-      >
-        {/* ── Search Row ── */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-          <div className="relative w-full max-w-xs min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-            <Input
-              aria-label="Search job seekers"
-              placeholder="Search by name, email, or skills..."
-              value={filters.search}
-              onChange={(e) => updateFilter("search", e.target.value)}
-              className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
-            />
-          </div>
-
-          <div className="w-full max-w-[180px]">
+        search={filters.search}
+        onSearchChange={(v) => updateFilter("search", v)}
+        searchPlaceholder="Search by name, email, or skills..."
+        hasActiveFilters={filters.country !== "all" || filters.experienceMin !== "all"}
+        actions={
+          (filters.search || filters.country !== "all" || filters.experienceMin !== "all") ? (
+            <button
+              type="button"
+              onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}
+              className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </button>
+          ) : undefined
+        }
+        filterContent={
+          <div className="flex flex-wrap items-center gap-3">
             <SearchableSelect
               options={countryOptions}
               value={filters.country}
               onValueChange={(v) => updateFilter("country", v)}
               placeholder="All countries"
+              className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
-          </div>
-
-          <div className="w-full max-w-[180px]">
             <SearchableSelect
               options={EXPERIENCE_OPTIONS}
               value={filters.experienceMin}
               onValueChange={(v) => updateFilter("experienceMin", v)}
               placeholder="All experience"
+              className="h-11 w-[180px] rounded-xl border-border bg-card"
             />
           </div>
+        }
+      />
 
-          {(filters.search || filters.country !== "all" || filters.experienceMin !== "all") && (
-            <button
-              type="button"
-              onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}
-              className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-4 text-sm text-muted-foreground hover:border-border hover:bg-secondary/80 transition-all"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset
-            </button>
-          )}
-        </div>
-
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+      <SuperAgentSection
+        eyebrow="Directory"
+        title="Candidates"
+      >
+        <div className="overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">

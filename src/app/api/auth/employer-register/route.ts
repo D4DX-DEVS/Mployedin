@@ -71,16 +71,24 @@ export async function POST(req: NextRequest) {
     const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
 
-    // Create user
-    const user = await User.create({
-      name: contactName,
-      email: contactEmail,
-      passwordHash: hashed,
-      role: "employer",
-      isActive: true,
-      isEmailVerified: false,
-      emailVerificationToken: hashedToken,
-    });
+    // Create user — catch duplicate key error for race condition safety
+    let user;
+    try {
+      user = await User.create({
+        name: contactName,
+        email: contactEmail,
+        passwordHash: hashed,
+        role: "employer",
+        isActive: true,
+        isEmailVerified: false,
+        emailVerificationToken: hashedToken,
+      });
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && "code" in err && (err as { code: number }).code === 11000) {
+        return NextResponse.json({ message: "Email already registered." }, { status: 409 });
+      }
+      throw err;
+    }
 
     // Create employer profile
     const referralCode = get("referralCode");

@@ -353,142 +353,117 @@ export default function SuperAgentAgentsPage() {
         description="Search by name or email, filter by performance level, leads volume, and conversion rate."
       >
         {/* ── Search Row + Advanced Toggle ── */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-          <div className="relative w-full max-w-xs min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-            <Input
-              aria-label="Search agents"
-              placeholder="Search agents..."
-              value={filters.search}
-              onChange={(e) => updateFilter("search", e.target.value)}
-              className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
-            />
-          </div>
-
-          {/* Performance quick filter */}
-          <div className="w-full max-w-[220px]">
-            <SearchableSelect
-              options={PERFORMANCE_OPTIONS}
-              value={filters.performance}
-              onValueChange={(v) => updateFilter("performance", v)}
-              placeholder="All agents"
-              searchPlaceholder="Filter performance..."
-            />
-          </div>
-
-          <div className="flex items-center gap-2 sm:ml-auto">
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className={`flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all ${showAdvanced ? "border-primary/30 bg-primary/10 text-primary" : "border-border/70 bg-background/85 text-muted-foreground hover:border-border hover:bg-secondary/80"}`}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Advanced
-              {activeFilterCount > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1.5 text-[11px] font-semibold text-primary">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-
-            {(activeFilterCount > 0 || filters.search || filters.performance) && (
+        <TableToolbar
+          search={filters.search}
+          onSearchChange={(v) => updateFilter("search", v)}
+          searchPlaceholder="Search agents..."
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          hasActiveFilters={activeFilterCount > 0 || filters.performance !== ""}
+          actions={
+            (activeFilterCount > 0 || filters.search || filters.performance) ? (
               <button
                 type="button"
                 onClick={resetFilters}
-                className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-4 text-sm text-muted-foreground hover:border-border hover:bg-secondary/80 transition-all"
+                className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Reset
               </button>
-            )}
-          </div>
-        </div>
+            ) : undefined
+          }
+          filterContent={
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                {/* Performance */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Performance</label>
+                  <SearchableSelect
+                    options={PERFORMANCE_OPTIONS}
+                    value={filters.performance}
+                    onValueChange={(v) => updateFilter("performance", v)}
+                    placeholder="All agents"
+                    searchPlaceholder="Filter performance..."
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
 
-        {/* ── Advanced Filter Panel ── */}
-        {showAdvanced && (
-          <div className="mb-4 rounded-2xl border border-border/60 bg-background/90 p-5 shadow-sm animate-in slide-in-from-top-2 duration-200">
-            <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Filter className="h-4 w-4" />
-              Advanced Filters
+                {/* Leads Range */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Leads Count</label>
+                  <SearchableSelect
+                    options={LEADS_RANGE_OPTIONS}
+                    value={leadsRangeValue}
+                    onValueChange={handleLeadsRange}
+                    placeholder="Any"
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
+
+                {/* Conversion Rate Range */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Conversion Rate</label>
+                  <SearchableSelect
+                    options={CONV_RATE_OPTIONS}
+                    value={convRateValue}
+                    onValueChange={handleConvRateRange}
+                    placeholder="Any"
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
+
+                {/* Sort By */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+                  <SearchableSelect
+                    options={SORT_OPTIONS}
+                    value={filters.sortBy}
+                    onValueChange={(v) => updateFilter("sortBy", v)}
+                    placeholder="Name"
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
+
+                {/* Sort Order */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
+                  <SearchableSelect
+                    options={[
+                      { value: "asc", label: "Ascending" },
+                      { value: "desc", label: "Descending" },
+                    ]}
+                    value={filters.sortOrder}
+                    onValueChange={(v) => updateFilter("sortOrder", v)}
+                    placeholder="Ascending"
+                    className="h-11 rounded-xl border-border bg-card"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Filter Chips */}
+              <div className="flex flex-wrap gap-2">
+                <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
+                {[
+                  { label: "Top Performers", action: () => updateFilter("performance", "high_performer") },
+                  { label: "Needs Attention", action: () => updateFilter("performance", "needs_attention") },
+                  { label: "Slow Responders", action: () => updateFilter("performance", "slow_response") },
+                  { label: "No Activity", action: () => updateFilter("performance", "no_activity") },
+                  { label: "High Volume (50+ leads)", action: () => handleLeadsRange("51+") },
+                  { label: "Best Converters (75%+)", action: () => handleConvRateRange("76-100") },
+                ].map((chip) => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={chip.action}
+                    className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
             </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {/* Leads Range */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Leads Count</label>
-                <SearchableSelect
-                  options={LEADS_RANGE_OPTIONS}
-                  value={leadsRangeValue}
-                  onValueChange={handleLeadsRange}
-                  placeholder="Any"
-                />
-              </div>
-
-              {/* Conversion Rate Range */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Conversion Rate</label>
-                <SearchableSelect
-                  options={CONV_RATE_OPTIONS}
-                  value={convRateValue}
-                  onValueChange={handleConvRateRange}
-                  placeholder="Any"
-                />
-              </div>
-
-              {/* Sort By */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Sort By</label>
-                <SearchableSelect
-                  options={SORT_OPTIONS}
-                  value={filters.sortBy}
-                  onValueChange={(v) => updateFilter("sortBy", v)}
-                  placeholder="Name"
-                />
-              </div>
-
-              {/* Sort Order */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
-                <SearchableSelect
-                  options={[
-                    { value: "asc", label: "Ascending" },
-                    { value: "desc", label: "Descending" },
-                  ]}
-                  value={filters.sortOrder}
-                  onValueChange={(v) => updateFilter("sortOrder", v)}
-                  placeholder="Ascending"
-                />
-              </div>
-            </div>
-
-            {/* Quick Filter Chips */}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
-              {[
-                { label: "Top Performers", action: () => updateFilter("performance", "high_performer") },
-                { label: "Needs Attention", action: () => updateFilter("performance", "needs_attention") },
-                { label: "Slow Responders", action: () => updateFilter("performance", "slow_response") },
-                { label: "No Activity", action: () => updateFilter("performance", "no_activity") },
-                { label: "High Volume (50+ leads)", action: () => handleLeadsRange("51+") },
-                { label: "Best Converters (75%+)", action: () => handleConvRateRange("76-100") },
-              ].map((chip) => (
-                <button
-                  key={chip.label}
-                  type="button"
-                  onClick={chip.action}
-                  className="rounded-lg border border-border/60 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
+          }
           className="mb-4"
         />
 

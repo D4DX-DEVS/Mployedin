@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Commission from "@/models/Commission";
+import SystemSettings from "@/models/SystemSettings";
 import { validateBody } from "@/lib/validators";
 import { commissionCreateSchema } from "@/lib/validators/commissions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -89,12 +90,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     },
   ]);
 
-  const summary = { pending: 0, approved: 0, paid: 0, disputed: 0, currency: (currency && currency !== "all") ? currency : "AED" };
+  const summary = { pending: 0, approved: 0, paid: 0, disputed: 0, currency: (currency && currency !== "all") ? currency : ((await SystemSettings.findOne().lean())?.defaultCurrency ?? "AED") };
   for (const row of summaryAgg) {
     const s = row._id as string;
     if (s === "pending" || s === "approved" || s === "paid" || s === "disputed") {
       summary[s] = row.total;
-      summary.currency = row.currency ?? "AED";
+      summary.currency = row.currency ?? summary.currency;
     }
   }
 
@@ -110,10 +111,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const body = await validateBody(req, commissionCreateSchema);
   const { type, amount, currency, rate, agentId, superAgentId, placementId, notes } = body;
 
+  const defaultCurrency = (await SystemSettings.findOne().lean())?.defaultCurrency ?? "AED";
+
   const commission = await Commission.create({
     type,
     amount,
-    currency: currency ?? "AED",
+    currency: currency ?? defaultCurrency,
     rate,
     agentId,
     superAgentId,
@@ -127,7 +130,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     action: "commission.create",
     resource: "commissions",
     resourceId: String(commission._id),
-    meta: { type, amount, currency: currency ?? "AED", placementId },
+    meta: { type, amount, currency: currency ?? defaultCurrency, placementId },
     req,
   });
 

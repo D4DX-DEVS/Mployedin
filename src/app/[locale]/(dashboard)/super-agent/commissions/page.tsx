@@ -214,144 +214,79 @@ export default function SuperAgentCommissionsPage() {
           </div>
         </div>
 
-        {/* Search + Quick Filters row */}
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by agent name..."
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); resetPage(); }}
-              className="h-10 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => { setSearchQuery(""); resetPage(); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label="Clear search"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className={`rounded-xl border-border/70 text-sm ${showAdvanced ? "bg-primary/10 text-primary border-primary/30" : "bg-background/85 text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}`}
-            >
-              <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
-              Filters
+        {/* Search + Quick Filters + Advanced row */}
+        <TableToolbar
+          search={searchQuery}
+          onSearchChange={(v) => { setSearchQuery(v); resetPage(); }}
+          searchPlaceholder="Search by agent name..."
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          hasActiveFilters={!!(statusFilter || typeFilter || currencyFilter || dateFrom || dateTo)}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {(["", "pending", "approved", "paid", "disputed"] as const).map((s) => (
+                <Button
+                  key={s}
+                  onClick={() => { setStatusFilter(s); resetPage(); }}
+                  aria-pressed={statusFilter === s}
+                  variant={statusFilter === s ? "default" : "outline"}
+                  size="sm"
+                  className={statusFilter === s ? "rounded-xl" : "rounded-xl border-border/70 bg-card text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}
+                >
+                  {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                </Button>
+              ))}
+            </div>
+          }
+          filterContent={
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs text-muted-foreground">Type</Label>
+                <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); resetPage(); }}>
+                  <SelectTrigger className="h-11 w-36 rounded-xl border-border bg-card text-sm shadow-none">
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    <SelectItem value="placement">Placement</SelectItem>
+                    <SelectItem value="override">Override</SelectItem>
+                    <SelectItem value="bonus">Bonus</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs text-muted-foreground">Currency</Label>
+                <Select value={currencyFilter} onValueChange={(v) => { setCurrencyFilter(v === "all" ? "" : v); resetPage(); }}>
+                  <SelectTrigger className="h-11 w-32 rounded-xl border-border bg-card text-sm shadow-none">
+                    <SelectValue placeholder="All currencies" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All currencies</SelectItem>
+                    <SelectItem value="AED">AED</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="SAR">SAR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> From</Label>
+                <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); resetPage(); }} className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" /> To</Label>
+                <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); resetPage(); }} className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none" />
+              </div>
               {(typeFilter || currencyFilter || dateFrom || dateTo) && (
-                <span className="ml-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                  {[typeFilter, currencyFilter, dateFrom, dateTo].filter(Boolean).length}
-                </span>
+                <Button variant="ghost" size="sm" onClick={() => { setTypeFilter(""); setCurrencyFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }} className="h-11 rounded-xl text-xs text-muted-foreground hover:text-foreground">
+                  <X className="mr-1 h-3 w-3" /> Clear filters
+                </Button>
               )}
-            </Button>
-
-            {/* Status pill buttons */}
-            {(["", "pending", "approved", "paid", "disputed"] as const).map((s) => (
-              <Button
-                key={s}
-                onClick={() => { setStatusFilter(s); resetPage(); }}
-                aria-pressed={statusFilter === s}
-                variant={statusFilter === s ? "default" : "outline"}
-                size="sm"
-                className={statusFilter === s ? "rounded-xl" : "rounded-xl border-border/70 bg-background/85 text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}
-              >
-                {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Advanced filters panel */}
-        {showAdvanced && (
-          <div className="mt-3 flex flex-wrap items-end gap-3 rounded-2xl border border-border/70 bg-secondary/40 p-4 animate-in slide-in-from-top-1 fade-in duration-200">
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground">Type</Label>
-              <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); resetPage(); }}>
-                <SelectTrigger className="h-9 w-36 rounded-xl bg-background/85 text-sm shadow-none">
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
-                  <SelectItem value="placement">Placement</SelectItem>
-                  <SelectItem value="override">Override</SelectItem>
-                  <SelectItem value="bonus">Bonus</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground">Currency</Label>
-              <Select value={currencyFilter} onValueChange={(v) => { setCurrencyFilter(v === "all" ? "" : v); resetPage(); }}>
-                <SelectTrigger className="h-9 w-32 rounded-xl bg-background/85 text-sm shadow-none">
-                  <SelectValue placeholder="All currencies" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All currencies</SelectItem>
-                  <SelectItem value="AED">AED</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="SAR">SAR</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                <CalendarDays className="h-3 w-3" /> From
-              </Label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
-                className="h-9 w-40 rounded-xl bg-background/85 text-sm shadow-none"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                <CalendarDays className="h-3 w-3" /> To
-              </Label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
-                className="h-9 w-40 rounded-xl bg-background/85 text-sm shadow-none"
-              />
-            </div>
-
-            {(typeFilter || currencyFilter || dateFrom || dateTo) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setTypeFilter("");
-                  setCurrencyFilter("");
-                  setDateFrom("");
-                  setDateTo("");
-                  resetPage();
-                }}
-                className="h-9 rounded-xl text-xs text-muted-foreground hover:text-foreground"
-              >
-                <X className="mr-1 h-3 w-3" />
-                Clear filters
-              </Button>
-            )}
-          </div>
-        )}
-
-        <div className="mt-4">
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="mb-4"
-          />
+          }
+          className="mt-4 mb-4"
+        />
           <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
             <Table>
               <TableHeader>
@@ -417,7 +352,6 @@ export default function SuperAgentCommissionsPage() {
               </TableBody>
             </Table>
           </div>
-        </div>
 
         <div className="mt-4">
           <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

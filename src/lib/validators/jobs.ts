@@ -9,7 +9,15 @@ const screeningQuestionSchema = z.object({
   options: z.array(z.string().max(200)).max(20).optional(),
   placeholder: z.string().max(200).optional(),
   order: z.number().int().min(0).default(0),
-});
+}).refine(
+  (q) => {
+    if (["select", "radio"].includes(q.type)) {
+      return q.options && q.options.length > 0;
+    }
+    return true;
+  },
+  { message: "select/radio questions must have at least 1 option" }
+);
 
 const locationSchema = z.object({
   country: z.string().min(1).max(100),

@@ -27,20 +27,18 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
-  Filter,
   Hash,
   Link2,
   Loader2,
   Plus,
   Power,
   PowerOff,
-  Search,
   Sparkles,
-  Tag,
   User,
   Users,
   X,
 } from "lucide-react";
+
 import {
   Table,
   TableBody,
@@ -90,7 +88,7 @@ export default function SuperAgentReferralLinksPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [copyMap, setCopyMap] = useState<Record<string, boolean>>({});
-  const [filtersOpen, setFiltersOpen] = useState(false);
+
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<ReferralLinkStatus | "">("");
@@ -166,7 +164,7 @@ export default function SuperAgentReferralLinksPage() {
     pagination.resetPage();
   };
 
-  const hasActiveFilters = statusFilter || creatorRoleFilter || dateFrom || dateTo || sortBy || search;
+  const hasActiveFilters = !!(statusFilter || creatorRoleFilter || dateFrom || dateTo || sortBy || search);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: "Code", key: "code" },
@@ -210,7 +208,6 @@ export default function SuperAgentReferralLinksPage() {
       if (f.sortOrder) setSortOrder(f.sortOrder);
       if (f.summary) setAiSummary(f.summary);
 
-      setFiltersOpen(true);
       pagination.resetPage();
     } catch {
       setAiSummary("Could not process your query. Try rephrasing.");
@@ -309,124 +306,78 @@ export default function SuperAgentReferralLinksPage() {
             </div>
           )}
 
-          {/* Text search + filter toggle */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); pagination.resetPage(); }}
-                placeholder="Search by code, label, or creator..."
-                className="h-10 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
-              />
-            </div>
-            <button
-              onClick={() => setFiltersOpen(!filtersOpen)}
-              className={`inline-flex h-10 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors ${filtersOpen || hasActiveFilters ? "border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300" : "border-border text-muted-foreground hover:text-foreground"}`}
-            >
-              <Filter className="h-3.5 w-3.5" />
-              Filters
-              {hasActiveFilters && (
-                <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-sky-600 text-[9px] font-bold text-white">
-                  {[statusFilter, creatorRoleFilter, dateFrom, dateTo, sortBy].filter(Boolean).length}
-                </span>
-              )}
-            </button>
-            {hasActiveFilters && (
-              <button
-                onClick={handleClearFilters}
-                className="inline-flex h-10 items-center gap-1 rounded-xl border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="h-3 w-3" />
-                Clear All
-              </button>
-            )}
-          </div>
-
-          {/* Filter dropdowns */}
-          {filtersOpen && (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 rounded-xl border border-border bg-secondary/30 p-4">
-              <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => { setStatusFilter(e.target.value as ReferralLinkStatus | ""); pagination.resetPage(); }}
-                  className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
+          {/* Merged search + filters via TableToolbar */}
+          <TableToolbar
+            search={search}
+            onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
+            searchPlaceholder="Search by code, label, or creator..."
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            hasActiveFilters={hasActiveFilters}
+            actions={
+              hasActiveFilters ? (
+                <button
+                  onClick={handleClearFilters}
+                  className="inline-flex h-9 items-center gap-1 rounded-xl border border-border px-3 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <option value="">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="expired">Expired</option>
-                  <option value="maxed">Limit Reached</option>
-                  <option value="inactive">Disabled</option>
-                </select>
+                  <X className="h-3 w-3" /> Clear All
+                </button>
+              ) : undefined
+            }
+            filterContent={
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</label>
+                  <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as ReferralLinkStatus | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="expired">Expired</option>
+                    <option value="maxed">Limit Reached</option>
+                    <option value="inactive">Disabled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Creator Role</label>
+                  <select value={creatorRoleFilter} onChange={(e) => { setCreatorRoleFilter(e.target.value as ReferralCreatorRole | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
+                    <option value="">All Roles</option>
+                    <option value="super_agent">Super Agent</option>
+                    <option value="agent">Agent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date From</label>
+                  <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); pagination.resetPage(); }} className="h-9 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date To</label>
+                  <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); pagination.resetPage(); }} className="h-9 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Sort By</label>
+                  <select value={sortBy} onChange={(e) => { setSortBy(e.target.value as ReferralSortField | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
+                    <option value="">Newest First</option>
+                    <option value="usedCount">Most Used</option>
+                    <option value="code">Code (A-Z)</option>
+                    <option value="label">Label (A-Z)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Sort Order</label>
+                  <select value={sortOrder} onChange={(e) => { setSortOrder(e.target.value as "asc" | "desc" | ""); pagination.resetPage(); }} className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
+                    <option value="">Default</option>
+                    <option value="desc">Descending</option>
+                    <option value="asc">Ascending</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Creator Role</label>
-                <select
-                  value={creatorRoleFilter}
-                  onChange={(e) => { setCreatorRoleFilter(e.target.value as ReferralCreatorRole | ""); pagination.resetPage(); }}
-                  className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
-                >
-                  <option value="">All Roles</option>
-                  <option value="super_agent">Super Agent</option>
-                  <option value="agent">Agent</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date From</label>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => { setDateFrom(e.target.value); pagination.resetPage(); }}
-                  className="h-9 rounded-lg text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date To</label>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => { setDateTo(e.target.value); pagination.resetPage(); }}
-                  className="h-9 rounded-lg text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Sort By</label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => { setSortBy(e.target.value as ReferralSortField | ""); pagination.resetPage(); }}
-                  className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
-                >
-                  <option value="">Newest First</option>
-                  <option value="usedCount">Most Used</option>
-                  <option value="code">Code (A-Z)</option>
-                  <option value="label">Label (A-Z)</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Sort Order</label>
-                <select
-                  value={sortOrder}
-                  onChange={(e) => { setSortOrder(e.target.value as "asc" | "desc" | ""); pagination.resetPage(); }}
-                  className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
-                >
-                  <option value="">Default</option>
-                  <option value="desc">Descending</option>
-                  <option value="asc">Ascending</option>
-                </select>
-              </div>
-            </div>
-          )}
+            }
+            className="mb-4"
+          />
         </div>
       </SuperAgentSection>
 
       {/* Links table */}
-      <TableToolbar
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        className="mb-4"
-      />
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-sky-600" /></div>
       ) : links.length === 0 ? (

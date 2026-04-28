@@ -26,11 +26,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+
 import {
   Briefcase,
   Building2,
@@ -39,7 +35,6 @@ import {
   Globe,
   Loader2,
   MapPin,
-  Search,
   DollarSign,
   GraduationCap,
   Clock,
@@ -47,12 +42,8 @@ import {
   X,
   FileText,
   Activity,
-  Filter,
   Sparkles,
   Send,
-  SlidersHorizontal,
-  ArrowUpDown,
-  ChevronDown,
   Laptop,
   Tag,
   Pause,
@@ -186,7 +177,7 @@ export default function SuperAgentJobsPage() {
   const [aiActive, setAiActive] = useState(false);
 
   /* ── Advanced filters panel ── */
-  const [showAdvanced, setShowAdvanced] = useState(false);
+
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -311,7 +302,7 @@ export default function SuperAgentJobsPage() {
     resetPage();
   };
 
-  const hasFilters =
+  const hasFilters = !!(
     searchQuery ||
     dateFrom ||
     dateTo ||
@@ -326,7 +317,7 @@ export default function SuperAgentJobsPage() {
     currency ||
     experienceMin ||
     experienceMax ||
-    aiActive;
+    aiActive);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -533,129 +524,104 @@ export default function SuperAgentJobsPage() {
         eyebrow="Jobs"
         title="Regional job listings"
         description="Browse all jobs in your region. Use filters to narrow down results."
-        actions={
-          <div className="flex items-center gap-2">
-            {hasFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs text-muted-foreground">
-                <X className="h-3.5 w-3.5 mr-1" /> Clear all
-                {activeFilterCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-[10px]">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
-            )}
-          </div>
-        }
       >
-        {/* ── Primary Filters Row ── */}
-        <div className="mb-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Text search */}
-            <div className="relative flex-1 min-w-[200px] max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search job title or keyword…"
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-9 h-9 text-sm"
-              />
-            </div>
-
-            {/* Status */}
-            <Select
-              value={jobStatus}
-              onValueChange={(v) => {
-                setJobStatus(v as JobStatus);
-                resetPage();
-              }}
-            >
-              <SelectTrigger className="h-9 w-[150px] text-sm">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="pending_approval">Pending</SelectItem>
-                <SelectItem value="paused">Paused</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Employment Type */}
-            <Select
-              value={employmentType}
-              onValueChange={(v) => {
-                setEmploymentType(v as EmploymentType);
-                resetPage();
-              }}
-            >
-              <SelectTrigger className="h-9 w-[150px] text-sm">
-                <SelectValue placeholder="Job Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="full_time">Full Time</SelectItem>
-                <SelectItem value="part_time">Part Time</SelectItem>
-                <SelectItem value="contract">Contract</SelectItem>
-                <SelectItem value="internship">Internship</SelectItem>
-                <SelectItem value="freelance">Freelance</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Work Mode */}
-            <Select
-              value={workMode}
-              onValueChange={(v) => {
-                setWorkMode(v as WorkMode);
-                resetPage();
-              }}
-            >
-              <SelectTrigger className="h-9 w-[140px] text-sm">
-                <SelectValue placeholder="Work Mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Modes</SelectItem>
-                <SelectItem value="onsite">On-site</SelectItem>
-                <SelectItem value="hybrid">Hybrid</SelectItem>
-                <SelectItem value="remote">Remote</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Advanced filter toggle */}
-            <Button
-              variant={showAdvanced ? "secondary" : "outline"}
-              size="sm"
-              className="h-9 gap-1.5 text-sm"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              More Filters
-              {showAdvanced ? (
-                <ChevronDown className="h-3 w-3 rotate-180 transition-transform" />
-              ) : (
-                <ChevronDown className="h-3 w-3 transition-transform" />
-              )}
-            </Button>
-
-            {/* Sort */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1.5 text-sm">
-                  <ArrowUpDown className="h-3.5 w-3.5" />
-                  Sort
+        {/* ── Merged Filters via TableToolbar ── */}
+        <TableToolbar
+          search={searchQuery}
+          onSearchChange={handleSearchChange}
+          searchPlaceholder="Search job title or keyword…"
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          hasActiveFilters={hasFilters}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Status quick-filter pills */}
+              {([
+                { key: "all" as const, label: "All", count: counts.total, icon: Briefcase },
+                { key: "active" as const, label: "Active", count: counts.active, icon: CheckCircle2 },
+                { key: "draft" as const, label: "Draft", count: counts.draft, icon: FileText },
+                { key: "pending_approval" as const, label: "Pending", count: counts.pending, icon: AlertCircle },
+                { key: "paused" as const, label: "Paused", count: counts.paused, icon: Pause },
+                { key: "closed" as const, label: "Closed", count: counts.closed, icon: X },
+                { key: "expired" as const, label: "Expired", count: counts.expired, icon: Clock },
+              ] as const).map(({ key, label, count, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => { setJobStatus(key); resetPage(); }}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    jobStatus === key
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-border/60 bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-3 w-3" />
+                  {label}
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                    jobStatus === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+                  }`}>{count}</span>
+                </button>
+              ))}
+              {hasFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs text-muted-foreground">
+                  <X className="h-3.5 w-3.5 mr-1" /> Clear all
+                  {activeFilterCount > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-[10px]">{activeFilterCount}</Badge>
+                  )}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-3" align="end">
-                <div className="space-y-3">
+              )}
+            </div>
+          }
+          filterContent={
+            <div className="space-y-4">
+              {/* Row 1: Status / Employment Type / Work Mode / Sort */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Status</label>
+                  <Select value={jobStatus} onValueChange={(v) => { setJobStatus(v as JobStatus); resetPage(); }}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="pending_approval">Pending</SelectItem>
+                      <SelectItem value="paused">Paused</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                      <SelectItem value="expired">Expired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Employment Type</label>
+                  <Select value={employmentType} onValueChange={(v) => { setEmploymentType(v as EmploymentType); resetPage(); }}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Job Type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="full_time">Full Time</SelectItem>
+                      <SelectItem value="part_time">Part Time</SelectItem>
+                      <SelectItem value="contract">Contract</SelectItem>
+                      <SelectItem value="internship">Internship</SelectItem>
+                      <SelectItem value="freelance">Freelance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Work Mode</label>
+                  <Select value={workMode} onValueChange={(v) => { setWorkMode(v as WorkMode); resetPage(); }}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Work Mode" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Modes</SelectItem>
+                      <SelectItem value="onsite">On-site</SelectItem>
+                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                      <SelectItem value="remote">Remote</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Sort By</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Sort By</label>
                     <Select value={sortBy} onValueChange={(v) => { setSortBy(v as SortBy); resetPage(); }}>
-                      <SelectTrigger className="mt-1 h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="createdAt">Date Created</SelectItem>
                         <SelectItem value="title">Title</SelectItem>
@@ -666,11 +632,9 @@ export default function SuperAgentJobsPage() {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Order</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Order</label>
                     <Select value={sortOrder} onValueChange={(v) => { setSortOrder(v as SortOrder); resetPage(); }}>
-                      <SelectTrigger className="mt-1 h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="desc">Newest First</SelectItem>
                         <SelectItem value="asc">Oldest First</SelectItem>
@@ -678,68 +642,35 @@ export default function SuperAgentJobsPage() {
                     </Select>
                   </div>
                 </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* ── Advanced Filters Panel ── */}
-          {showAdvanced && (
-            <div className="rounded-xl border border-border/60 bg-secondary/20 p-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">Advanced Filters</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {/* Location - Country */}
+              {/* Row 2: Advanced fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Country</label>
                   <div className="relative">
                     <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      placeholder="e.g. India, UAE"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      className="h-8 pl-8 text-sm"
-                    />
+                    <Input placeholder="e.g. India, UAE" value={country} onChange={(e) => setCountry(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
-
-                {/* Location - City */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">City</label>
                   <div className="relative">
                     <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      placeholder="e.g. Kochi, Dubai"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="h-8 pl-8 text-sm"
-                    />
+                    <Input placeholder="e.g. Kochi, Dubai" value={city} onChange={(e) => setCity(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
-
-                {/* Skills */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Skills (comma-separated)</label>
                   <div className="relative">
                     <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      placeholder="e.g. React, Node.js"
-                      value={skills}
-                      onChange={(e) => setSkills(e.target.value)}
-                      className="h-8 pl-8 text-sm"
-                    />
+                    <Input placeholder="e.g. React, Node.js" value={skills} onChange={(e) => setSkills(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
-
-                {/* Currency */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Currency</label>
                   <Select value={currency || "any"} onValueChange={(v) => setCurrency(v === "any" ? "" : v)}>
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="Any" />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="any">Any Currency</SelectItem>
                       <SelectItem value="AED">AED</SelectItem>
@@ -755,216 +686,123 @@ export default function SuperAgentJobsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
-                {/* Salary Min */}
+              {/* Row 3: Salary / Experience / Dates */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Salary Min</label>
                   <div className="relative">
                     <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      placeholder="Min salary"
-                      value={salaryMin}
-                      onChange={(e) => setSalaryMin(e.target.value)}
-                      className="h-8 pl-8 text-sm"
-                    />
+                    <Input type="number" placeholder="Min salary" value={salaryMin} onChange={(e) => setSalaryMin(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
-
-                {/* Salary Max */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Salary Max</label>
                   <div className="relative">
                     <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      placeholder="Max salary"
-                      value={salaryMax}
-                      onChange={(e) => setSalaryMax(e.target.value)}
-                      className="h-8 pl-8 text-sm"
-                    />
+                    <Input type="number" placeholder="Max salary" value={salaryMax} onChange={(e) => setSalaryMax(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
-
-                {/* Experience Min */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Experience Min (yrs)</label>
                   <div className="relative">
                     <GraduationCap className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={experienceMin}
-                      onChange={(e) => setExperienceMin(e.target.value)}
-                      className="h-8 pl-8 text-sm"
-                      min="0"
-                    />
+                    <Input type="number" placeholder="0" value={experienceMin} onChange={(e) => setExperienceMin(e.target.value)} className="h-9 pl-8 text-sm" min="0" />
                   </div>
                 </div>
-
-                {/* Experience Max */}
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Experience Max (yrs)</label>
                   <div className="relative">
                     <GraduationCap className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      placeholder="20"
-                      value={experienceMax}
-                      onChange={(e) => setExperienceMax(e.target.value)}
-                      className="h-8 pl-8 text-sm"
-                      min="0"
-                    />
+                    <Input type="number" placeholder="20" value={experienceMax} onChange={(e) => setExperienceMax(e.target.value)} className="h-9 pl-8 text-sm" min="0" />
                   </div>
                 </div>
               </div>
 
-              {/* Date range */}
-              <div className="flex flex-wrap items-center gap-3 pt-1">
+              {/* Date range + Apply */}
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                   <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="h-8 w-[140px] text-sm"
-                  />
+                  <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9 w-[140px] text-sm" />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="h-8 w-[140px] text-sm"
-                  />
+                  <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9 w-[140px] text-sm" />
                 </div>
-
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="h-8 gap-1.5 text-xs ml-auto"
-                  onClick={() => {
-                    resetPage();
-                    loadJobs();
-                  }}
-                >
-                  <Filter className="h-3 w-3" />
+                <Button variant="default" size="sm" className="h-9 gap-1.5 text-xs ml-auto" onClick={() => { resetPage(); loadJobs(); }}>
                   Apply Filters
                 </Button>
               </div>
+
+              {/* Active filter badges */}
+              {hasFilters && (
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/40">
+                  {jobStatus !== "all" && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      Status: {jobStatus.replace("_", " ")}
+                      <button onClick={() => setJobStatus("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  )}
+                  {employmentType !== "all" && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      Type: {formatEmploymentType(employmentType)}
+                      <button onClick={() => setEmploymentType("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  )}
+                  {workMode !== "all" && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      Mode: {workMode}
+                      <button onClick={() => setWorkMode("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  )}
+                  {country && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      Country: {country}
+                      <button onClick={() => setCountry("")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  )}
+                  {city && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      City: {city}
+                      <button onClick={() => setCity("")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  )}
+                  {skills && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      Skills: {skills}
+                      <button onClick={() => setSkills("")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  )}
+                  {(salaryMin || salaryMax) && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      Salary: {salaryMin || "0"}–{salaryMax || "∞"} {currency}
+                      <button onClick={() => { setSalaryMin(""); setSalaryMax(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  )}
+                  {(experienceMin || experienceMax) && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      Exp: {experienceMin || "0"}–{experienceMax || "∞"} yrs
+                      <button onClick={() => { setExperienceMin(""); setExperienceMax(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  )}
+                  {(dateFrom || dateTo) && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      Date: {dateFrom || "…"} → {dateTo || "…"}
+                      <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  )}
+                  {searchQuery && (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      Search: &quot;{searchQuery}&quot;
+                      <button onClick={() => setSearchQuery("")} className="ml-0.5"><X className="h-3 w-3" /></button>
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-
-          {/* ── Active filter badges ── */}
-          {hasFilters && (
-            <div className="flex flex-wrap gap-1.5">
-              {jobStatus !== "all" && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  Status: {jobStatus.replace("_", " ")}
-                  <button onClick={() => setJobStatus("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
-                </Badge>
-              )}
-              {employmentType !== "all" && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  Type: {formatEmploymentType(employmentType)}
-                  <button onClick={() => setEmploymentType("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
-                </Badge>
-              )}
-              {workMode !== "all" && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  Mode: {workMode}
-                  <button onClick={() => setWorkMode("all")} className="ml-0.5"><X className="h-3 w-3" /></button>
-                </Badge>
-              )}
-              {country && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  Country: {country}
-                  <button onClick={() => setCountry("")} className="ml-0.5"><X className="h-3 w-3" /></button>
-                </Badge>
-              )}
-              {city && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  City: {city}
-                  <button onClick={() => setCity("")} className="ml-0.5"><X className="h-3 w-3" /></button>
-                </Badge>
-              )}
-              {skills && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  Skills: {skills}
-                  <button onClick={() => setSkills("")} className="ml-0.5"><X className="h-3 w-3" /></button>
-                </Badge>
-              )}
-              {(salaryMin || salaryMax) && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  Salary: {salaryMin || "0"}–{salaryMax || "∞"} {currency}
-                  <button onClick={() => { setSalaryMin(""); setSalaryMax(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
-                </Badge>
-              )}
-              {(experienceMin || experienceMax) && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  Exp: {experienceMin || "0"}–{experienceMax || "∞"} yrs
-                  <button onClick={() => { setExperienceMin(""); setExperienceMax(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
-                </Badge>
-              )}
-              {(dateFrom || dateTo) && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  Date: {dateFrom || "…"} → {dateTo || "…"}
-                  <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="ml-0.5"><X className="h-3 w-3" /></button>
-                </Badge>
-              )}
-              {searchQuery && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  Search: &quot;{searchQuery}&quot;
-                  <button onClick={() => setSearchQuery("")} className="ml-0.5"><X className="h-3 w-3" /></button>
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── Status quick-filter pills ── */}
-        <div className="mb-4 flex flex-wrap gap-1.5">
-          {([
-            { key: "all" as const, label: "All", count: counts.total, icon: Briefcase },
-            { key: "active" as const, label: "Active", count: counts.active, icon: CheckCircle2 },
-            { key: "draft" as const, label: "Draft", count: counts.draft, icon: FileText },
-            { key: "pending_approval" as const, label: "Pending", count: counts.pending, icon: AlertCircle },
-            { key: "paused" as const, label: "Paused", count: counts.paused, icon: Pause },
-            { key: "closed" as const, label: "Closed", count: counts.closed, icon: X },
-            { key: "expired" as const, label: "Expired", count: counts.expired, icon: Clock },
-          ] as const).map(({ key, label, count, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => {
-                setJobStatus(key);
-                resetPage();
-              }}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                jobStatus === key
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-border/60 bg-background/80 text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-3 w-3" />
-              {label}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${
-                jobStatus === key
-                  ? "bg-primary-foreground/20 text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}>
-                {count}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* ── Table ── */}
-        <TableToolbar
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
+          }
           className="mb-4"
         />
         <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">

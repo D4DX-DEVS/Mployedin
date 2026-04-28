@@ -283,11 +283,11 @@ export default function OffersPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         size="sm"
                         onClick={() => handleAcceptOffer(offer._id)}
-                        className="flex-1"
+                        className="flex-1 sm:flex-none"
                       >
                         <Check className="w-4 h-4 mr-2" />
                         Accept Offer
@@ -296,6 +296,7 @@ export default function OffersPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => setRespondingId(offer._id)}
+                        className="flex-1 sm:flex-none"
                       >
                         <X className="w-4 h-4 mr-2" />
                         Decline

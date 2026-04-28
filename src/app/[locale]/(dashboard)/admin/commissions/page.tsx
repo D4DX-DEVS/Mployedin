@@ -20,6 +20,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { Inbox } from "lucide-react";
+import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 
 interface Commission {
   _id: string;
@@ -33,14 +34,14 @@ interface Commission {
   createdAt: string;
 }
 
+const CURRENCY_FORM_OPTIONS = SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: `${c.code} — ${c.label}` }));
+
 const ADD_FIELDS: CrudField[] = [
   { name: "type", label: "Type", type: "select", required: true, options: [
     { value: "placement", label: "Placement" }, { value: "override", label: "Override" }, { value: "bonus", label: "Bonus" }
   ]},
   { name: "amount", label: "Amount", type: "number", required: true },
-  { name: "currency", label: "Currency", type: "select", options: [
-    { value: "AED", label: "AED" }, { value: "USD", label: "USD" }, { value: "EUR", label: "EUR" }, { value: "SAR", label: "SAR" }
-  ]},
+  { name: "currency", label: "Currency", type: "select", options: CURRENCY_FORM_OPTIONS },
   { name: "rate", label: "Rate (%)", type: "number" },
   { name: "notes", label: "Notes", type: "textarea" },
 ];
@@ -62,16 +63,7 @@ const TYPE_OPTIONS = [
 
 const CURRENCY_OPTIONS = [
   { value: "all", label: "All currencies" },
-  { value: "AED", label: "AED — United Arab Emirates" },
-  { value: "SAR", label: "SAR — Saudi Arabia" },
-  { value: "QAR", label: "QAR — Qatar" },
-  { value: "KWD", label: "KWD — Kuwait" },
-  { value: "BHD", label: "BHD — Bahrain" },
-  { value: "OMR", label: "OMR — Oman" },
-  { value: "INR", label: "INR — India" },
-  { value: "USD", label: "USD — United States" },
-  { value: "GBP", label: "GBP — United Kingdom" },
-  { value: "EUR", label: "EUR — Europe" },
+  ...SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: `${c.code} — ${c.label}` })),
 ];
 
 export default function AdminCommissionsPage() {
@@ -90,6 +82,17 @@ export default function AdminCommissionsPage() {
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Commission | null>(null);
+
+  // Fetch platform default currency from settings
+  useEffect(() => {
+    fetch("/api/admin/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        const dc = data.settings?.defaultCurrency ?? "AED";
+        setSummary((s) => ({ ...s, currency: dc }));
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchCommissions = useCallback(async () => {
     setLoading(true);

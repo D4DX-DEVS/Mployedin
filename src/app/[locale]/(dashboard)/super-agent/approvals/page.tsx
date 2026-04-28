@@ -142,7 +142,7 @@ export default function SuperAgentApprovalsPage() {
     resetPage();
   };
 
-  const hasFilters = searchQuery || dateFrom || dateTo || jobStatus !== "all";
+  const hasFilters = !!(searchQuery || dateFrom || dateTo || jobStatus !== "all");
 
   const openDetail = async (jobId: string) => {
     setDetailLoading(true);
@@ -231,63 +231,54 @@ export default function SuperAgentApprovalsPage() {
         title="Regional job listings"
         description="Browse all jobs in your region. Use filters to narrow down by status, date, or keyword."
       >
-        {/* Filter controls */}
-        <div className="mb-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex-1 min-w-[200px] max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search job title or employer…"
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-9 h-9 text-sm"
-              />
-            </div>
-            <Select value={jobStatus} onValueChange={(v) => { setJobStatus(v as JobStatus); resetPage(); }}>
-              <SelectTrigger className="h-9 w-[140px] text-sm">
-                <SelectValue placeholder="Job Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-9 w-[140px] text-sm"
-              />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-9 w-[140px] text-sm"
-              />
-            </div>
-            {hasFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs text-muted-foreground">
-                <X className="h-3.5 w-3.5 mr-1" /> Clear filters
-              </Button>
-            )}
-          </div>
-        </div>
-
+        {/* Filter controls + Export */}
         <TableToolbar
+          search={searchQuery}
+          onSearchChange={handleSearchChange}
+          searchPlaceholder="Search job title or employer…"
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
+          hasActiveFilters={hasFilters}
+          actions={hasFilters ? (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs text-muted-foreground">
+              <X className="h-3.5 w-3.5 mr-1" /> Clear filters
+            </Button>
+          ) : undefined}
+          filterContent={
+            <div className="flex flex-wrap items-center gap-3">
+              <Select value={jobStatus} onValueChange={(v) => { setJobStatus(v as JobStatus); resetPage(); }}>
+                <SelectTrigger className="h-11 w-[160px] rounded-xl border-border bg-card text-sm">
+                  <SelectValue placeholder="Job Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-muted-foreground whitespace-nowrap">From</label>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="h-11 w-[160px] rounded-xl border-border bg-card text-sm shadow-none"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="h-11 w-[160px] rounded-xl border-border bg-card text-sm shadow-none"
+                />
+              </div>
+            </div>
+          }
           className="mb-4"
         />
 

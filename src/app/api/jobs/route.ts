@@ -38,11 +38,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
-  const search = searchParams.get("search") ?? "";
+  const search = (searchParams.get("search") ?? "").slice(0, 500);
   const status = searchParams.get("status") ?? "";
   const approvalStatus = searchParams.get("approvalStatus") ?? "";
-  const category = searchParams.get("category") ?? "";
-  const location = searchParams.get("location") ?? "";
+  const category = (searchParams.get("category") ?? "").slice(0, 200);
+  const location = (searchParams.get("location") ?? "").slice(0, 200);
   const currency = searchParams.get("currency") ?? "";
   const workMode = searchParams.get("workMode") ?? "";
   const showSalary = searchParams.get("showSalary") ?? "";
@@ -73,12 +73,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   } else if (myJobs && ctx.role === "employer") {
     // Employer fetching their own jobs — scope to their employerId, no status filter
     const empDoc = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    // DEBUG: temporary logging to diagnose production vs local mismatch
-    console.log("[jobs/GET] employer lookup", {
-      ctxUserId: ctx.userId,
-      empDocFound: !!empDoc,
-      empDocId: empDoc?._id?.toString() ?? null,
-    });
+
     if (empDoc) {
       query.employerId = empDoc._id;
 
@@ -133,8 +128,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (employerId) query.employerId = employerId;
 
   const skip = (page - 1) * limit;
-  // DEBUG: log final query
-  console.log("[jobs/GET] final query", JSON.stringify(query));
   const [jobs, total] = await Promise.all([
     Job.find(query)
       .sort(search ? { score: { $meta: "textScore" } } : { createdAt: -1 })
@@ -144,9 +137,6 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .lean(),
     Job.countDocuments(query),
   ]);
-  // DEBUG: log result count
-  console.log("[jobs/GET] results", { total, jobsReturned: jobs.length });
-
   // Aggregate real application counts from Application collection for managed job views
   if (canFilterManagedJobs && jobs.length > 0) {
     const jobIds = jobs.map((j) => j._id);

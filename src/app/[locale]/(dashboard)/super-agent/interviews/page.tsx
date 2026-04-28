@@ -2,21 +2,20 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import {
-  Search, RotateCcw, Calendar, Video, MapPin, Phone, Clock,
-  Users, CheckCircle2, XCircle, CalendarDays,
+  RotateCcw, Calendar, Video, MapPin, Phone, Clock,
+  CheckCircle2, XCircle,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -132,45 +131,50 @@ export default function SuperAgentInterviewsPage() {
 
       <SuperAgentMetricsGrid items={metricsItems} />
 
-      <SuperAgentSection
-        eyebrow="Schedule"
+      <TableToolbar
         title="Interview tracking"
         description="Filter by status, type, or search to narrow down the interview list."
-      >
-        {/* ── Search Row ── */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-          <div className="relative w-full max-w-xs min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-            <Input
-              aria-label="Search interviews"
-              placeholder="Search by candidate, job, or company..."
-              value={filters.search}
-              onChange={(e) => updateFilter("search", e.target.value)}
-              className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
-            />
-          </div>
-
-          <div className="w-full max-w-[180px]">
-            <SearchableSelect options={STATUS_OPTIONS} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder="All statuses" />
-          </div>
-
-          <div className="w-full max-w-[180px]">
-            <SearchableSelect options={TYPE_OPTIONS} value={filters.type} onValueChange={(v) => updateFilter("type", v)} placeholder="All types" />
-          </div>
-
-          {(filters.search || filters.status !== "all" || filters.type !== "all") && (
+        search={filters.search}
+        onSearchChange={(v) => updateFilter("search", v)}
+        searchPlaceholder="Search by candidate, job, or company..."
+        hasActiveFilters={filters.status !== "all" || filters.type !== "all"}
+        actions={
+          (filters.search || filters.status !== "all" || filters.type !== "all") ? (
             <button
               type="button"
               onClick={() => { setFilters(INITIAL_FILTERS); pagination.resetPage(); }}
-              className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-4 text-sm text-muted-foreground hover:border-border hover:bg-secondary/80 transition-all"
+              className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Reset
             </button>
-          )}
-        </div>
+          ) : undefined
+        }
+        filterContent={
+          <div className="flex flex-wrap items-center gap-3">
+            <SearchableSelect
+              options={STATUS_OPTIONS}
+              value={filters.status}
+              onValueChange={(v) => updateFilter("status", v)}
+              placeholder="All statuses"
+              className="h-11 w-[180px] rounded-xl border-border bg-card"
+            />
+            <SearchableSelect
+              options={TYPE_OPTIONS}
+              value={filters.type}
+              onValueChange={(v) => updateFilter("type", v)}
+              placeholder="All types"
+              className="h-11 w-[180px] rounded-xl border-border bg-card"
+            />
+          </div>
+        }
+      />
 
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
+      <SuperAgentSection
+        eyebrow="Schedule"
+        title="Interviews"
+      >
+        <div className="overflow-x-auto rounded-3xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow className="bg-background/60 hover:bg-background/60">

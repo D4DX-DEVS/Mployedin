@@ -52,6 +52,7 @@ export const systemSettingsUpdateSchema = z.object({
   platformName: z.string().max(100).trim().optional(),
   supportEmail: z.string().email().max(254).optional(),
   maintenanceMode: z.boolean().optional(),
+  defaultCurrency: z.string().max(5).trim().optional(),
   smtp: z
     .object({
       smtpEmail: z.string().email().max(254).optional(),

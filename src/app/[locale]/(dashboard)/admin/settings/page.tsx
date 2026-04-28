@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Mail, Send } from "lucide-react";
+import { Eye, EyeOff, Mail, Send, Globe } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencySelect } from "@/components/ui/currency-select";
 
 interface SmtpConfig {
   smtpEmail: string;
@@ -18,6 +19,7 @@ interface SystemSettings {
   platformName: string;
   supportEmail: string;
   maintenanceMode: boolean;
+  defaultCurrency: string;
   smtp: SmtpConfig;
 }
 
@@ -32,6 +34,7 @@ export default function AdminSettingsPage() {
     platformName: "MPLOYEDIN",
     supportEmail: "support@mployedin.com",
     maintenanceMode: false,
+    defaultCurrency: "AED",
     smtp: {
       smtpEmail: "",
       smtpAppPassword: "",
@@ -50,6 +53,7 @@ export default function AdminSettingsPage() {
             platformName: data.settings.platformName ?? "MPLOYEDIN",
             supportEmail: data.settings.supportEmail ?? "support@mployedin.com",
             maintenanceMode: data.settings.maintenanceMode ?? false,
+            defaultCurrency: data.settings.defaultCurrency ?? "AED",
             smtp: {
               smtpEmail: data.settings.smtp?.smtpEmail ?? "",
               smtpAppPassword: data.settings.smtp?.smtpAppPassword ?? "",
@@ -135,6 +139,20 @@ export default function AdminSettingsPage() {
               value={settings.supportEmail}
               onChange={(e) => setSettings((s) => ({ ...s, supportEmail: e.target.value }))}
             />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <Globe className="h-3.5 w-3.5" /> Default Currency
+            </label>
+            <CurrencySelect
+              value={settings.defaultCurrency}
+              onValueChange={(v) => setSettings((s) => ({ ...s, defaultCurrency: v }))}
+              placeholder="Select currency..."
+              className="max-w-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Sets the default currency for new commissions and finance summaries.
+            </p>
           </div>
         </div>
 

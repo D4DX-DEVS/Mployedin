@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/table";
 import {
   Activity, ArrowUpDown, ChevronDown, ChevronUp,
-  CircleSlash, Filter, Handshake, Loader2, RotateCcw, Search, SlidersHorizontal,
+  CircleSlash, Handshake, Loader2, RotateCcw,
   Sparkles, Target, X,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -118,7 +118,7 @@ export default function SuperAgentLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+
   const [facets, setFacets] = useState<Facets>({ countries: [], industries: [], sources: [] });
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
@@ -236,7 +236,6 @@ export default function SuperAgentLeadsPage() {
         setFilters(newFilters);
         setAiSummary(data.summary ?? "");
         setAiDegraded(data.degraded ?? false);
-        if (countActiveFilters(newFilters) > 0) setShowAdvanced(true);
         resetPage();
       }
     } catch { /* ignore */ }
@@ -364,98 +363,70 @@ export default function SuperAgentLeadsPage() {
             ))}
           </div>
 
-          {/* ---- Search Row + AI + Toggle ---- */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-            {/* Text Search */}
-            <div className="relative w-full min-w-0 max-w-xs">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-              <Input
-                aria-label="Search leads"
-                placeholder="Search company, contact, email..."
-                value={filters.search}
-                onChange={(e) => updateFilter("search", e.target.value)}
-                className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
-              />
-            </div>
-
-            {/* AI Search */}
-            <div className="relative flex w-full min-w-0 max-w-sm items-center gap-2">
-              <div className="relative flex-1">
-                <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-500/70" />
-                <Input
-                  ref={aiInputRef}
-                  aria-label="AI-powered search"
-                  placeholder="Ask AI: &quot;Show overdue follow-ups in tech industry&quot;"
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
-                  className="h-11 rounded-xl border-amber-500/20 bg-amber-50/50 pl-9 pr-3 text-sm shadow-none focus:border-amber-500/40 focus:ring-amber-500/20 dark:bg-amber-950/20"
-                />
+        {/* ---- Merged Filters via TableToolbar ---- */}
+        <TableToolbar
+          search={filters.search}
+          onSearchChange={(v) => updateFilter("search", v)}
+          searchPlaceholder="Search company, contact, email..."
+          onExportCsv={handleExportCsv}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+          hasActiveFilters={activeFilterCount > 0 || !!filters.status || !!aiSummary}
+          actions={
+            <div className="flex items-center gap-2">
+              {/* AI Search inline */}
+              <div className="relative flex items-center gap-2">
+                <div className="relative">
+                  <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-500/70" />
+                  <Input
+                    ref={aiInputRef}
+                    aria-label="AI-powered search"
+                    placeholder="Ask AI..."
+                    value={aiQuery}
+                    onChange={(e) => setAiQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
+                    className="h-9 w-56 rounded-xl border-amber-500/20 bg-amber-50/50 pl-9 pr-3 text-sm shadow-none focus:border-amber-500/40 focus:ring-amber-500/20 dark:bg-amber-950/20"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAiSearch}
+                  disabled={aiLoading || !aiQuery.trim()}
+                  className="flex h-9 items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
+                >
+                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  AI
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleAiSearch}
-                disabled={aiLoading || !aiQuery.trim()}
-                className="flex h-11 items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 text-sm font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50 dark:text-amber-400"
-              >
-                {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                AI Search
-              </button>
-            </div>
-
-            {/* Advanced Toggle + Reset */}
-            <div className="flex items-center gap-2 sm:ml-auto">
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className={`flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-medium transition-all ${showAdvanced ? "border-primary/30 bg-primary/10 text-primary" : "border-border/70 bg-background/85 text-muted-foreground hover:border-border hover:bg-secondary/80"}`}
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-                Advanced
-                {activeFilterCount > 0 && (
-                  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1.5 text-[11px] font-semibold text-primary">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
-
               {(activeFilterCount > 0 || filters.status || filters.search || aiSummary) && (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/85 px-4 text-sm text-muted-foreground hover:border-border hover:bg-secondary/80 transition-all"
+                  className="flex h-9 items-center gap-2 rounded-lg border border-border/70 bg-card px-3 text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   Reset
                 </button>
               )}
             </div>
-          </div>
-
-          {/* ---- AI Summary Banner ---- */}
-          {aiSummary && (
-            <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${aiDegraded ? "border-amber-500/20 bg-amber-50/40 text-amber-800 dark:bg-amber-950/20 dark:text-amber-300" : "border-emerald-500/20 bg-emerald-50/40 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300"}`}>
-              <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
-              <div className="flex-1">
-                <p>{aiSummary}</p>
-                {aiDegraded && <p className="mt-1 text-xs opacity-70">AI was unavailable — fell back to keyword search.</p>}
-              </div>
-              <button type="button" onClick={() => setAiSummary("")} className="mt-0.5 shrink-0 opacity-60 hover:opacity-100 transition-opacity">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-
-          {/* ---- Advanced Filter Panel ---- */}
-          {showAdvanced && (
-            <div className="rounded-2xl border border-border/60 bg-background/90 p-5 shadow-sm animate-in slide-in-from-top-2 duration-200">
-              <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Filter className="h-4 w-4" />
-                Advanced Filters
-              </div>
+          }
+          filterContent={
+            <div className="space-y-4">
+              {/* AI Summary Banner */}
+              {aiSummary && (
+                <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${aiDegraded ? "border-amber-500/20 bg-amber-50/40 text-amber-800 dark:bg-amber-950/20 dark:text-amber-300" : "border-emerald-500/20 bg-emerald-50/40 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300"}`}>
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="flex-1">
+                    <p>{aiSummary}</p>
+                    {aiDegraded && <p className="mt-1 text-xs opacity-70">AI was unavailable — fell back to keyword search.</p>}
+                  </div>
+                  <button type="button" onClick={() => setAiSummary("")} className="mt-0.5 shrink-0 opacity-60 hover:opacity-100 transition-opacity">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {/* Country */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Country</label>
                   <SearchableSelect
@@ -466,8 +437,6 @@ export default function SuperAgentLeadsPage() {
                     searchPlaceholder="Search country..."
                   />
                 </div>
-
-                {/* Industry */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Industry</label>
                   <SearchableSelect
@@ -478,8 +447,6 @@ export default function SuperAgentLeadsPage() {
                     searchPlaceholder="Search industry..."
                   />
                 </div>
-
-                {/* Source */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Source</label>
                   <SearchableSelect
@@ -490,8 +457,6 @@ export default function SuperAgentLeadsPage() {
                     searchPlaceholder="Search source..."
                   />
                 </div>
-
-                {/* Agent */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Agent</label>
                   <SearchableSelect
@@ -502,100 +467,48 @@ export default function SuperAgentLeadsPage() {
                     searchPlaceholder="Search agent..."
                   />
                 </div>
-
-                {/* Created Date From */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Created From</label>
-                  <DateTimePicker
-                    value={filters.dateFrom}
-                    onChange={(v) => updateFilter("dateFrom", v)}
-                    placeholder="Start date"
-                    mode="date"
-                  />
+                  <DateTimePicker value={filters.dateFrom} onChange={(v) => updateFilter("dateFrom", v)} placeholder="Start date" mode="date" />
                 </div>
-
-                {/* Created Date To */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Created To</label>
-                  <DateTimePicker
-                    value={filters.dateTo}
-                    onChange={(v) => updateFilter("dateTo", v)}
-                    placeholder="End date"
-                    mode="date"
-                  />
+                  <DateTimePicker value={filters.dateTo} onChange={(v) => updateFilter("dateTo", v)} placeholder="End date" mode="date" />
                 </div>
-
-                {/* Follow-up Date From */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Follow-up From</label>
-                  <DateTimePicker
-                    value={filters.followUpFrom}
-                    onChange={(v) => updateFilter("followUpFrom", v)}
-                    placeholder="Follow-up start"
-                    mode="date"
-                  />
+                  <DateTimePicker value={filters.followUpFrom} onChange={(v) => updateFilter("followUpFrom", v)} placeholder="Follow-up start" mode="date" />
                 </div>
-
-                {/* Follow-up Date To */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Follow-up To</label>
-                  <DateTimePicker
-                    value={filters.followUpTo}
-                    onChange={(v) => updateFilter("followUpTo", v)}
-                    placeholder="Follow-up end"
-                    mode="date"
-                  />
+                  <DateTimePicker value={filters.followUpTo} onChange={(v) => updateFilter("followUpTo", v)} placeholder="Follow-up end" mode="date" />
                 </div>
-
-                {/* Has Notes */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Has Notes</label>
                   <SearchableSelect
-                    options={[
-                      { value: "", label: "Any" },
-                      { value: "true", label: "With notes" },
-                      { value: "false", label: "Without notes" },
-                    ]}
+                    options={[{ value: "", label: "Any" }, { value: "true", label: "With notes" }, { value: "false", label: "Without notes" }]}
                     value={filters.hasNotes}
                     onValueChange={(v) => updateFilter("hasNotes", v)}
                     placeholder="Any"
                   />
                 </div>
-
-                {/* Follow-up Status */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Follow-up Status</label>
                   <SearchableSelect
-                    options={[
-                      { value: "", label: "Any" },
-                      { value: "true", label: "Has follow-up scheduled" },
-                      { value: "overdue", label: "Overdue follow-ups only" },
-                    ]}
+                    options={[{ value: "", label: "Any" }, { value: "true", label: "Has follow-up scheduled" }, { value: "overdue", label: "Overdue follow-ups only" }]}
                     value={filters.hasFollowUp}
                     onValueChange={(v) => updateFilter("hasFollowUp", v)}
                     placeholder="Any"
                   />
                 </div>
-
-                {/* Sort By */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Sort By</label>
-                  <SearchableSelect
-                    options={SORT_OPTIONS}
-                    value={filters.sortBy}
-                    onValueChange={(v) => updateFilter("sortBy", v)}
-                    placeholder="Date Created"
-                  />
+                  <SearchableSelect options={SORT_OPTIONS} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder="Date Created" />
                 </div>
-
-                {/* Sort Order */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Sort Order</label>
                   <SearchableSelect
-                    options={[
-                      { value: "desc", label: "Newest first" },
-                      { value: "asc", label: "Oldest first" },
-                    ]}
+                    options={[{ value: "desc", label: "Newest first" }, { value: "asc", label: "Oldest first" }]}
                     value={filters.sortOrder}
                     onValueChange={(v) => updateFilter("sortOrder", v)}
                     placeholder="Newest first"
@@ -604,7 +517,7 @@ export default function SuperAgentLeadsPage() {
               </div>
 
               {/* Quick Filter Chips */}
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 <span className="text-xs font-medium text-muted-foreground/70 self-center mr-1">Quick:</span>
                 {[
                   { label: "Overdue Follow-ups", action: () => { updateFilter("hasFollowUp", "overdue"); } },
@@ -627,61 +540,25 @@ export default function SuperAgentLeadsPage() {
 
               {/* Active filters strip */}
               {activeFilterCount > 0 && (
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
+                <div className="flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
                   <span className="text-xs text-muted-foreground/70">Active:</span>
-                  {filters.country && (
-                    <FilterChip label={`Country: ${filters.country}`} onRemove={() => updateFilter("country", "")} />
-                  )}
-                  {filters.industry && (
-                    <FilterChip label={`Industry: ${filters.industry}`} onRemove={() => updateFilter("industry", "")} />
-                  )}
-                  {filters.source && (
-                    <FilterChip label={`Source: ${filters.source}`} onRemove={() => updateFilter("source", "")} />
-                  )}
-                  {filters.agentId && (
-                    <FilterChip
-                      label={`Agent: ${agents.find((a) => a._id === filters.agentId)?.name ?? filters.agentId}`}
-                      onRemove={() => updateFilter("agentId", "")}
-                    />
-                  )}
-                  {(filters.dateFrom || filters.dateTo) && (
-                    <FilterChip
-                      label={`Created: ${filters.dateFrom || "…"} → ${filters.dateTo || "…"}`}
-                      onRemove={() => { updateFilter("dateFrom", ""); updateFilter("dateTo", ""); }}
-                    />
-                  )}
-                  {(filters.followUpFrom || filters.followUpTo) && (
-                    <FilterChip
-                      label={`Follow-up: ${filters.followUpFrom || "…"} → ${filters.followUpTo || "…"}`}
-                      onRemove={() => { updateFilter("followUpFrom", ""); updateFilter("followUpTo", ""); }}
-                    />
-                  )}
-                  {filters.hasNotes && (
-                    <FilterChip label={filters.hasNotes === "true" ? "Has notes" : "No notes"} onRemove={() => updateFilter("hasNotes", "")} />
-                  )}
-                  {filters.hasFollowUp && (
-                    <FilterChip label={filters.hasFollowUp === "overdue" ? "Overdue follow-ups" : "Has follow-up"} onRemove={() => updateFilter("hasFollowUp", "")} />
-                  )}
-                  {(filters.sortBy !== "createdAt" || filters.sortOrder !== "desc") && (
-                    <FilterChip
-                      label={`Sort: ${SORT_OPTIONS.find((o) => o.value === filters.sortBy)?.label ?? filters.sortBy} (${filters.sortOrder})`}
-                      onRemove={() => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); }}
-                    />
-                  )}
+                  {filters.country && <FilterChip label={`Country: ${filters.country}`} onRemove={() => updateFilter("country", "")} />}
+                  {filters.industry && <FilterChip label={`Industry: ${filters.industry}`} onRemove={() => updateFilter("industry", "")} />}
+                  {filters.source && <FilterChip label={`Source: ${filters.source}`} onRemove={() => updateFilter("source", "")} />}
+                  {filters.agentId && <FilterChip label={`Agent: ${agents.find((a) => a._id === filters.agentId)?.name ?? filters.agentId}`} onRemove={() => updateFilter("agentId", "")} />}
+                  {(filters.dateFrom || filters.dateTo) && <FilterChip label={`Created: ${filters.dateFrom || "…"} → ${filters.dateTo || "…"}`} onRemove={() => { updateFilter("dateFrom", ""); updateFilter("dateTo", ""); }} />}
+                  {(filters.followUpFrom || filters.followUpTo) && <FilterChip label={`Follow-up: ${filters.followUpFrom || "…"} → ${filters.followUpTo || "…"}`} onRemove={() => { updateFilter("followUpFrom", ""); updateFilter("followUpTo", ""); }} />}
+                  {filters.hasNotes && <FilterChip label={filters.hasNotes === "true" ? "Has notes" : "No notes"} onRemove={() => updateFilter("hasNotes", "")} />}
+                  {filters.hasFollowUp && <FilterChip label={filters.hasFollowUp === "overdue" ? "Overdue follow-ups" : "Has follow-up"} onRemove={() => updateFilter("hasFollowUp", "")} />}
+                  {(filters.sortBy !== "createdAt" || filters.sortOrder !== "desc") && <FilterChip label={`Sort: ${SORT_OPTIONS.find((o) => o.value === filters.sortBy)?.label ?? filters.sortBy} (${filters.sortOrder})`} onRemove={() => { updateFilter("sortBy", "createdAt"); updateFilter("sortOrder", "desc"); }} />}
                 </div>
               )}
             </div>
-          )}
-        </div>
+          }
+          className="mb-4"
+        />
 
         {/* ---- Data Table ---- */}
-        <div className="mt-4">
-          <TableToolbar
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="mb-4"
-          />
           <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
             <Table>
               <TableHeader>

@@ -13,6 +13,7 @@ export interface ISystemSettings extends Document {
   platformName: string;
   supportEmail: string;
   maintenanceMode: boolean;
+  defaultCurrency: string;
   smtp?: ISmtpConfig;
   updatedAt: Date;
 }
@@ -22,6 +23,7 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
     platformName: { type: String, default: "MPLOYEDIN" },
     supportEmail: { type: String, default: "support@mployedin.com" },
     maintenanceMode: { type: Boolean, default: false },
+    defaultCurrency: { type: String, default: "AED" },
     smtp: {
       smtpEmail: { type: String },
       smtpAppPassword: { type: String, select: false },
