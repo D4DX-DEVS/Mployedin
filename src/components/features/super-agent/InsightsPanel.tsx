@@ -307,7 +307,7 @@ export function SuperAgentInsightsPanel() {
   // ── Insight cards ──
 
   return (
-    <div className="workspace-glass-panel rounded-2xl px-4 py-4 text-left sm:min-w-[280px] space-y-0">
+    <div className="workspace-glass-panel rounded-2xl px-4 py-4 text-left sm:min-w-[280px] sm:max-w-[340px] space-y-0">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
@@ -335,7 +335,7 @@ export function SuperAgentInsightsPanel() {
         </div>
       </div>
 
-      <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+      <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
         {visibleInsights.map((insight, idx) => {
           const sev = severityStyles[insight.severity];
           const isVisible = idx < visibleCount;

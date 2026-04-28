@@ -329,7 +329,7 @@ export default function SuperAgentAgentsPage() {
         description="Monitor agent activity, lead conversion, and placement momentum across your team from one clean review surface."
       >
         <SuperAgentInsightsPanel />
-        <div className="flex flex-col gap-3 sm:min-w-[180px]">
+        <div className="flex flex-col gap-3 sm:min-w-[160px] xl:min-w-[180px]">
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Roster</p>
             <p className="mt-1 text-lg font-semibold text-foreground">{total} visible rows</p>
@@ -337,7 +337,7 @@ export default function SuperAgentAgentsPage() {
           </div>
           <Button
             onClick={() => { setCreateError(""); setShowCreate(true); }}
-            className="gap-2"
+            className="gap-2 w-full"
           >
             <Plus className="h-4 w-4" />
             Add Agent

@@ -61,8 +61,8 @@ export function SuperAgentPageIntro({
 }: SuperAgentPageIntroProps) {
   return (
     <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-        <div className="max-w-3xl">
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0 flex-1">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
             {eyebrow}
@@ -72,7 +72,7 @@ export function SuperAgentPageIntro({
         </div>
 
         {summaryTitle || summaryDescription || children ? (
-          <div className="flex w-full max-w-[420px] flex-col gap-3 sm:flex-row sm:flex-wrap xl:justify-end">
+          <div className="flex w-full shrink-0 flex-col gap-3 sm:flex-row xl:w-auto xl:max-w-[52%] xl:flex-nowrap xl:items-start">
             {summaryTitle || summaryDescription ? (
               <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[220px] sm:flex-1">
                 {summaryTitle ? <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{summaryTitle}</p> : null}
