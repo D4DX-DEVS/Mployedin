@@ -44,6 +44,14 @@ export const PATCH = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   const update: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
 
+  // Auto-set convertedAt when status transitions to "converted"
+  if (update.status === "converted") {
+    const current = await Lead.findById(id).select("status").lean() as { status?: string } | null;
+    if (current && current.status !== "converted") {
+      update.convertedAt = new Date();
+    }
+  }
+
   const lead = await Lead.findByIdAndUpdate(id, { $set: update }, { new: true });
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

@@ -66,7 +66,7 @@ export default async function PublicLayout({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
       />
-      <SessionWrapper>
+      <SessionWrapper disableIdleTimeout>
         <DashboardProviders>
           <div className="flex min-h-screen flex-col">
             <PublicHeader locale={locale} />

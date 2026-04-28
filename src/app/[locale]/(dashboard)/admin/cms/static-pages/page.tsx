@@ -4,7 +4,7 @@ import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
 
 const FIELDS: CrudField[] = [
-  { name: "slug", label: "Slug", type: "text", required: true, placeholder: "e.g. privacy-policy, cookie-policy" },
+  { name: "slug", label: "Slug", type: "text", required: true, placeholder: "e.g. privacy-policy, terms-and-conditions, cookie-policy, gdpr" },
   { name: "title", label: "Title (English)", type: "text", required: true, placeholder: "Privacy Policy" },
   { name: "titleAr", label: "Title (Arabic)", type: "text", placeholder: "سياسة الخصوصية" },
   { name: "body", label: "Body (English - HTML)", type: "textarea", required: true, placeholder: "<h2>Privacy Policy</h2><p>...</p>" },
@@ -37,9 +37,11 @@ export default function StaticPagesAdminPage() {
     <CmsPage
       apiUrl="/api/admin/cms/static-pages"
       title="Static Pages"
-      description="Manage Privacy Policy, Cookie Policy and other static pages"
+      description="Manage Privacy Policy, Terms & Conditions, Cookie Policy, GDPR and other static pages"
       columns={COLUMNS}
       fields={FIELDS}
+      editPageBasePath="/admin/cms/static-pages"
+      createPagePath="/admin/cms/static-pages/new"
     />
   );
 }

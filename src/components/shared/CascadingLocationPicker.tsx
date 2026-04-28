@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ export function CascadingLocationPicker({
   readOnly = false,
   error,
 }: CascadingLocationPickerProps) {
+  const tc = useTranslations("common");
   // Data state
   const [countries, setCountries] = useState<LocationItem[]>([]);
   const [states, setStates] = useState<LocationItem[]>([]);
@@ -336,7 +338,7 @@ export function CascadingLocationPicker({
                 <Label className="text-xs text-muted-foreground mb-1">Country</Label>
                 <Select value={selectedCountry} onValueChange={(v) => { setSelectedCountry(v); setSelectedState(""); }}>
                   <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Select country" />
+                    <SelectValue placeholder={tc("selectCountry")} />
                   </SelectTrigger>
                   <SelectContent>
                     {countries.map((c) => (
@@ -350,14 +352,14 @@ export function CascadingLocationPicker({
 
               {/* State select */}
               <div>
-                <Label className="text-xs text-muted-foreground mb-1">State / Region</Label>
+                <Label className="text-xs text-muted-foreground mb-1">{tc("stateRegion")}</Label>
                 <Select
                   value={selectedState}
                   onValueChange={setSelectedState}
                   disabled={!selectedCountry || loadingStates}
                 >
                   <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder={loadingStates ? "Loading..." : "Select state"} />
+                    <SelectValue placeholder={loadingStates ? tc("loading") : tc("selectState")} />
                   </SelectTrigger>
                   <SelectContent>
                     {states.map((s) => (
@@ -384,7 +386,7 @@ export function CascadingLocationPicker({
                     }}
                   >
                     <CheckSquare className="h-3.5 w-3.5" />
-                    {selectedStateIds.includes(selectedState) ? "State selected" : "Select entire state"}
+                    {selectedStateIds.includes(selectedState) ? tc("stateSelected") : tc("selectEntireState")}
                   </Button>
                 )}
               </div>
@@ -395,18 +397,18 @@ export function CascadingLocationPicker({
           {selectedState && !search && (
             <div>
               <Label className="text-xs text-muted-foreground mb-1">
-                Cities
+                {tc("cities")}
                 {loadingCities && <Loader2 className="inline h-3 w-3 ml-1 animate-spin" />}
               </Label>
               <div className="max-h-48 overflow-y-auto rounded border border-border/30 divide-y divide-border/10">
                 {selectedStateIds.includes(selectedState) ? (
                   <div className="px-3 py-4 text-sm text-center text-muted-foreground">
                     <CheckSquare className="h-5 w-5 mx-auto mb-1 text-primary" />
-                    All cities in this state are selected
+                    {tc("allCitiesSelected")}
                   </div>
                 ) : cities.length === 0 && !loadingCities ? (
                   <div className="px-3 py-4 text-sm text-center text-muted-foreground">
-                    No cities found
+                    {tc("noCitiesFound")}
                   </div>
                 ) : (
                   cities.map((city) => {

@@ -40,6 +40,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# PWA - Serwist generated service worker
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
+public/workbox-*.js
+public/workbox-*.js.map
+
 plan.md
 CODEBASE_ANALYSIS.md
 mployedin/RESPONSIVENESS_AUDIT.md

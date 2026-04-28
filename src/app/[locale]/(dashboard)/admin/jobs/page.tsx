@@ -16,7 +16,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import {
-  Search, Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users,
+  Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users,
   Eye, Building2, MapPin, DollarSign, Clock, Calendar, Globe, UserCheck,
   Wand2, CheckCircle, ArrowRight,
 } from "lucide-react";
@@ -283,31 +283,163 @@ export default function AdminJobsPage() {
   }
 
   return (
-    <div className="page-container space-y-6">
-      {/* Hero */}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Recruitment
+    <div className="page-container space-y-5">
+      <TableToolbar
+        title="Job Listings"
+        description="Manage and monitor all job postings across the platform."
+        search={search}
+        onSearchChange={(value) => { setSearch(value); resetPage(); }}
+        searchPlaceholder="Search by job title…"
+        left={(
+          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+            <Sparkles className="h-3.5 w-3.5" />
+            Recruitment control
+          </div>
+        )}
+        right={(
+          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
+            <ArrowRight className="h-3.5 w-3.5 text-primary" />
+            {total.toLocaleString()} jobs across {totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"}
+          </div>
+        )}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        filterContent={(
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label htmlFor="admin-jobs-status-filter" className="sr-only">Status</label>
+                <SearchableSelect
+                  id="admin-jobs-status-filter"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={STATUS_OPTIONS}
+                  value={status}
+                  onValueChange={(value) => { setStatus(value); resetPage(); }}
+                  placeholder="All statuses"
+                />
+              </div>
+              {employers.length > 1 && (
+                <div>
+                  <label htmlFor="admin-jobs-employer-filter" className="sr-only">Employer</label>
+                  <SearchableSelect
+                    id="admin-jobs-employer-filter"
+                    className="h-11 w-full rounded-xl border-border bg-card"
+                    options={employers}
+                    value={selectedEmployer}
+                    onValueChange={(value) => { setSelectedEmployer(value); resetPage(); }}
+                    placeholder="All employers"
+                  />
+                </div>
+              )}
+              {agents.length > 1 && (
+                <div>
+                  <label htmlFor="admin-jobs-agent-filter" className="sr-only">Agent</label>
+                  <SearchableSelect
+                    id="admin-jobs-agent-filter"
+                    className="h-11 w-full rounded-xl border-border bg-card"
+                    options={agents}
+                    value={selectedAgent}
+                    onValueChange={(value) => { setSelectedAgent(value); resetPage(); }}
+                    placeholder="All agents"
+                  />
+                </div>
+              )}
+              <div>
+                <label htmlFor="admin-jobs-workmode-filter" className="sr-only">Work mode</label>
+                <SearchableSelect
+                  id="admin-jobs-workmode-filter"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={WORK_MODE_OPTIONS}
+                  value={workMode}
+                  onValueChange={(value) => { setWorkMode(value); resetPage(); }}
+                  placeholder="All work modes"
+                />
+              </div>
+              <div>
+                <label htmlFor="admin-jobs-type-filter" className="sr-only">Employment type</label>
+                <SearchableSelect
+                  id="admin-jobs-type-filter"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={EMPLOYMENT_TYPE_OPTIONS}
+                  value={employmentType}
+                  onValueChange={(value) => { setEmploymentType(value); resetPage(); }}
+                  placeholder="All types"
+                />
+              </div>
+              <div className="relative min-w-0">
+                <label htmlFor="admin-jobs-location-filter" className="sr-only">Location</label>
+                <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="admin-jobs-location-filter"
+                  placeholder="Filter by location"
+                  value={locationFilter}
+                  onChange={(event) => { setLocationFilter(event.target.value); resetPage(); }}
+                  className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+                />
+              </div>
+              <div className="relative min-w-0">
+                <label htmlFor="admin-jobs-skills-filter" className="sr-only">Skills</label>
+                <Input
+                  id="admin-jobs-skills-filter"
+                  placeholder="Skills, comma separated"
+                  value={skillsFilter}
+                  onChange={(event) => { setSkillsFilter(event.target.value); resetPage(); }}
+                  className="h-11 rounded-xl border-border bg-card text-sm shadow-none"
+                />
+              </div>
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Job Listings
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Manage and monitor all job postings across the platform.
-            </p>
-          </div>
 
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[240px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overview</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{total.toLocaleString()} total jobs</p>
-            <p className="text-xs text-muted-foreground">{totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"}</p>
-          </div>
-        </div>
+            <div className="grid gap-3 xl:grid-cols-[1fr_auto]">
+              <div className="relative min-w-0">
+                <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
+                <Input
+                  placeholder='AI search: e.g. "active remote React jobs in Kochi" or "draft jobs with no applicants"'
+                  value={aiQuery}
+                  onChange={(event) => setAiQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleApplyAiSearch();
+                    }
+                  }}
+                  className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() => { void handleApplyAiSearch(); }}
+                  disabled={!aiQuery.trim() || isApplyingAiSearch}
+                  className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  <Wand2 className="h-4 w-4" />
+                  {isApplyingAiSearch ? "Applying…" : "AI Search"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetFilters}
+                  disabled={!hasActiveFilters && !aiQuery && !aiSummary}
+                  className="h-11 rounded-xl border-border bg-card px-4 text-sm"
+                >
+                  Clear filters
+                </Button>
+              </div>
+            </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            {aiSummary && (
+              <p className="rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
+                <Sparkles className="mr-1.5 inline-block h-3.5 w-3.5" />
+                {aiSummary}
+              </p>
+            )}
+          </div>
+        )}
+        hasActiveFilters={Boolean(hasActiveFilters || aiSummary || aiQuery)}
+      />
+
+      <section className="grid gap-3 sm:grid-cols-3">
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -338,149 +470,6 @@ export default function AdminJobsPage() {
               <div className="workspace-tone-violet rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Filters */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="xl:col-span-4">
-            <TableToolbar
-              search={search}
-              onSearchChange={(v) => { setSearch(v); resetPage(); }}
-              searchPlaceholder="Search by job title…"
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-            />
-          </div>
-          <div>
-            <label htmlFor="admin-jobs-status-filter" className="sr-only">Status</label>
-            <SearchableSelect
-              id="admin-jobs-status-filter"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={STATUS_OPTIONS}
-              value={status}
-              onValueChange={(v) => { setStatus(v); resetPage(); }}
-              placeholder="All statuses"
-            />
-          </div>
-          {employers.length > 1 && (
-            <div>
-              <label htmlFor="admin-jobs-employer-filter" className="sr-only">Employer</label>
-              <SearchableSelect
-                id="admin-jobs-employer-filter"
-                className="h-11 w-full rounded-xl border-border bg-secondary/65"
-                options={employers}
-                value={selectedEmployer}
-                onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }}
-                placeholder="All employers"
-              />
-            </div>
-          )}
-          {agents.length > 1 && (
-            <div>
-              <label htmlFor="admin-jobs-agent-filter" className="sr-only">Agent</label>
-              <SearchableSelect
-                id="admin-jobs-agent-filter"
-                className="h-11 w-full rounded-xl border-border bg-secondary/65"
-                options={agents}
-                value={selectedAgent}
-                onValueChange={(v) => { setSelectedAgent(v); resetPage(); }}
-                placeholder="All agents"
-              />
-            </div>
-          )}
-          <div>
-            <label htmlFor="admin-jobs-workmode-filter" className="sr-only">Work mode</label>
-            <SearchableSelect
-              id="admin-jobs-workmode-filter"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={WORK_MODE_OPTIONS}
-              value={workMode}
-              onValueChange={(v) => { setWorkMode(v); resetPage(); }}
-              placeholder="All work modes"
-            />
-          </div>
-          <div>
-            <label htmlFor="admin-jobs-type-filter" className="sr-only">Employment type</label>
-            <SearchableSelect
-              id="admin-jobs-type-filter"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={EMPLOYMENT_TYPE_OPTIONS}
-              value={employmentType}
-              onValueChange={(v) => { setEmploymentType(v); resetPage(); }}
-              placeholder="All types"
-            />
-          </div>
-          <div className="relative min-w-0">
-            <label htmlFor="admin-jobs-location-filter" className="sr-only">Location</label>
-            <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="admin-jobs-location-filter"
-              placeholder="Filter by location"
-              value={locationFilter}
-              onChange={(e) => { setLocationFilter(e.target.value); resetPage(); }}
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm shadow-none"
-            />
-          </div>
-          <div className="relative min-w-0">
-            <label htmlFor="admin-jobs-skills-filter" className="sr-only">Skills</label>
-            <Input
-              id="admin-jobs-skills-filter"
-              placeholder="Skills, comma separated"
-              value={skillsFilter}
-              onChange={(e) => { setSkillsFilter(e.target.value); resetPage(); }}
-              className="h-11 rounded-xl border-border bg-secondary/65 text-sm shadow-none"
-            />
-          </div>
-        </div>
-
-        {/* AI Search */}
-        <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_auto]">
-          <div className="relative min-w-0">
-            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
-            <Input
-              placeholder='AI search: e.g. "active remote React jobs in Kochi" or "draft jobs with no applicants"'
-              value={aiQuery}
-              onChange={(e) => setAiQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void handleApplyAiSearch();
-                }
-              }}
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm shadow-none"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={() => { void handleApplyAiSearch(); }}
-              disabled={!aiQuery.trim() || isApplyingAiSearch}
-              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              <Wand2 className="h-4 w-4" />
-              {isApplyingAiSearch ? "Applying…" : "AI Search"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={resetFilters}
-              disabled={!hasActiveFilters && !aiQuery && !aiSummary}
-              className="h-11 rounded-xl border-border bg-secondary/65 px-4 text-sm"
-            >
-              Clear filters
-            </Button>
-          </div>
-        </div>
-
-        {aiSummary && (
-          <p className="mt-3 rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
-            <Sparkles className="mr-1.5 inline-block h-3.5 w-3.5" />
-            {aiSummary}
-          </p>
-        )}
       </section>
 
       {errorMessage && (

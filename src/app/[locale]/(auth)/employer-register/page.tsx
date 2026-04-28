@@ -74,6 +74,7 @@ export default function EmployerRegisterPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [step1, setStep1] = useState<Step1Data>({
     companyName: "", industry: "", size: "", website: "", country: "AE", city: "",
@@ -86,6 +87,10 @@ export default function EmployerRegisterPage() {
   });
 
   const handleSubmit = async () => {
+    if (!agreedToTerms) {
+      setError("You must agree to the Terms of Service and Privacy Policy.");
+      return;
+    }
     if (step3.password !== step3.confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -219,6 +224,25 @@ export default function EmployerRegisterPage() {
                   onChange={(e) => setStep3(p => ({ ...p, password: e.target.value }))} />
                 <FormInput label="Confirm Password *" type="password" value={step3.confirmPassword}
                   onChange={(e) => setStep3(p => ({ ...p, confirmPassword: e.target.value }))} />
+              </div>
+              <div className="flex items-start gap-2">
+                <input
+                  id="employer-terms"
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary/40"
+                />
+                <label htmlFor="employer-terms" className="text-xs text-muted-foreground leading-5">
+                  I agree to the{" "}
+                  <a href="/en/terms" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                    Terms of Service
+                  </a>
+                  {" "}and{" "}
+                  <a href="/en/privacy" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
+                    Privacy Policy
+                  </a>
+                </label>
               </div>
               {error && <p className="text-xs text-destructive">{error}</p>}
             </>

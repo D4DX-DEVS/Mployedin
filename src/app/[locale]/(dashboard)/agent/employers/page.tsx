@@ -77,7 +77,7 @@ export default function AgentEmployersPage() {
       if (res.ok) {
         const data = await res.json();
         setEmployers(data.employers ?? []);
-        pagination.updateTotal(data.total ?? data.employers?.length ?? 0);
+        pagination.updateTotal(data.pagination?.total ?? data.total ?? data.employers?.length ?? 0);
       }
     } finally {
       setLoading(false);

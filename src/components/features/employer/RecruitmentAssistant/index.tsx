@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import {
   Bot,
   X,
@@ -191,6 +192,7 @@ export function RecruitmentAssistant() {
   const params = useParams();
   const router = useRouter();
   const locale = (params?.locale as string) ?? "en";
+  const isRtl = locale === "ar";
 
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
@@ -493,10 +495,13 @@ export function RecruitmentAssistant() {
   const panelClass = cn(
     "fixed z-[100] flex flex-col bg-background border border-border/70 shadow-2xl overflow-hidden transition-all duration-300 ease-in-out",
     minimized
-      ? "bottom-6 right-6 h-12 w-48 rounded-full bg-gradient-to-r from-indigo-700 to-primary border-0"
+      ? cn("bottom-6 h-12 w-48 rounded-full bg-gradient-to-r from-indigo-700 to-primary border-0", isRtl ? "left-6" : "right-6")
       : expanded
-        ? "top-0 right-0 bottom-0 w-full md:w-[480px] lg:w-[520px] rounded-none md:rounded-l-2xl md:border-l md:border-y border-r-0"
-        : "bottom-3 right-3 h-[min(600px,calc(100vh-1.5rem))] w-[calc(100vw-1.5rem)] sm:bottom-6 sm:right-6 sm:h-[600px] sm:w-[420px] max-h-[90vh] rounded-2xl"
+        ? cn("top-0 bottom-0 w-full md:w-[480px] lg:w-[520px] rounded-none",
+            isRtl ? "left-0 md:rounded-r-2xl md:border-r md:border-y border-l-0" : "right-0 md:rounded-l-2xl md:border-l md:border-y border-r-0")
+        : cn("bottom-3 h-[min(600px,calc(100vh-1.5rem))] w-[calc(100vw-1.5rem)] sm:h-[600px] sm:w-[420px] max-h-[90vh] rounded-2xl",
+            isRtl ? "left-3 sm:left-6" : "right-3 sm:right-6",
+            isRtl ? "sm:bottom-6" : "sm:bottom-6")
   );
 
   return createPortal(
@@ -505,14 +510,17 @@ export function RecruitmentAssistant() {
       {!open && (
         <button
           onClick={() => { setOpen(true); setMinimized(false); }}
-          className="fixed bottom-6 right-6 z-[99] h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1 group"
+          className={cn(
+            "fixed bottom-6 z-[99] h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1 group",
+            isRtl ? "left-6" : "right-6"
+          )}
           aria-label="Open Recruitment AI"
           title="Ask AI to create jobs, screen candidates, or prepare interviews"
         >
-          <Sparkles className="h-5 w-5 absolute top-2.5 right-2.5 text-white/60 group-hover:text-white/80 transition-colors" />
+          <Sparkles className={cn("h-5 w-5 absolute top-2.5 text-white/60 group-hover:text-white/80 transition-colors", isRtl ? "left-2.5" : "right-2.5")} />
           <Bot className="h-6 w-6" />
           {/* Suggestion pulse indicator */}
-          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+          <span className={cn("absolute -top-1 flex h-3.5 w-3.5", isRtl ? "-left-1" : "-right-1")}>
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-400 border-2 border-white" />
           </span>

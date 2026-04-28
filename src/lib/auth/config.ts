@@ -270,7 +270,7 @@ export const authConfig: NextAuthConfig = {
   session: {
     strategy: "jwt",
     maxAge: 3 * 24 * 60 * 60,    // 3 days max (remember-me sessions)
-    updateAge: 15 * 60,           // re-check DB every 15 min — aligns with reset token window
+    updateAge: 5 * 60,            // re-check DB every 5 min — catches password changes & deactivation quickly
   },
   pages: {
     signIn: "/en/login",
@@ -297,9 +297,9 @@ export const authConfig: NextAuthConfig = {
         token.isOnboarded = ((user as unknown) as { isOnboarded?: boolean }).isOnboarded ?? false;
         token.permissionMode = ((user as unknown) as { permissionMode?: string }).permissionMode ?? "role_default";
         token.customPermissions = ((user as unknown) as { customPermissions?: Record<string, string[]> }).customPermissions ?? undefined;
-        // Set JWT expiry based on rememberMe: 30 days if checked, 1 day otherwise
+        // Set JWT expiry based on rememberMe: 3 days if checked, 1 hour otherwise
         const rememberMe = ((user as unknown) as { rememberMe?: boolean }).rememberMe ?? false;
-        const ttlSeconds = rememberMe ? 3 * 24 * 60 * 60 : 24 * 60 * 60;
+        const ttlSeconds = rememberMe ? 3 * 24 * 60 * 60 : 60 * 60;
         token.exp = Math.floor(Date.now() / 1000) + ttlSeconds;
         // Cache passwordChangedAt in token (seconds) for session invalidation checks
         const pca = ((user as unknown) as { passwordChangedAt?: Date }).passwordChangedAt;

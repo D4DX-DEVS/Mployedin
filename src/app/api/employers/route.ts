@@ -61,6 +61,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         email: user?.email,
         companyName: p.companyName,
         industry: p.industry,
+        location: p.address ?? p.country ?? "",
         isActive: user?.isActive ?? true,
         createdAt: user?.createdAt,
         verificationDocs: p.verificationDocs ?? [],

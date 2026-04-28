@@ -19,6 +19,7 @@ import {
   setMinutes,
 } from "date-fns";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { useTranslations, useLocale } from "next-intl";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,9 @@ export function DateTimePicker({
   required,
   mode = "datetime",
 }: DateTimePickerProps) {
+  const t = useTranslations("calendar");
+  const locale = useLocale();
+  const isRtl = locale === "ar";
   const parsed = value ? new Date(value) : null;
   const [viewMonth, setViewMonth] = React.useState(
     parsed ?? new Date()
@@ -120,20 +124,20 @@ export function DateTimePicker({
   const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
   const calEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
   const days = eachDayOfInterval({ start: calStart, end: calEnd });
-  const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const weekDayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
   const displayValue = React.useMemo(() => {
     if (!value) return "";
     if (mode === "time") {
       const [hh, mm] = value.split(":").map(Number);
-      const period = hh >= 12 ? "PM" : "AM";
-      const h12 = hh % 12 || 12;
-      return `${h12}:${String(mm).padStart(2, "0")} ${period}`;
+      const d = new Date();
+      d.setHours(hh, mm);
+      return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
     }
     if (!parsed || isNaN(parsed.getTime())) return "";
-    if (mode === "date") return format(parsed, "MMM d, yyyy");
-    return format(parsed, "MMM d, yyyy · h:mm a");
-  }, [value, mode, parsed]);
+    if (mode === "date") return parsed.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
+    return `${parsed.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" })} · ${parsed.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit", hour12: true })}`;
+  }, [value, mode, parsed, locale]);
 
   return (
     <div className={className}>
@@ -174,34 +178,35 @@ export function DateTimePicker({
                     onClick={() => setViewMonth(subMonths(viewMonth, 1))}
                     className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-accent transition-colors"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    {isRtl ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                   </button>
                   <span className="text-sm font-semibold">
-                    {format(viewMonth, "MMMM yyyy")}
+                    {viewMonth.toLocaleDateString(locale, { month: "long", year: "numeric" })}
                   </span>
                   <button
                     type="button"
                     onClick={() => setViewMonth(addMonths(viewMonth, 1))}
                     className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-accent transition-colors"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    {isRtl ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                   </button>
                 </div>
 
                 {/* Weekday headers */}
-                <div className="grid grid-cols-7 gap-0">
-                  {weekDays.map((d) => (
+                <div className="grid grid-cols-7 gap-0" role="row">
+                  {weekDayKeys.map((key) => (
                     <div
-                      key={d}
+                      key={key}
+                      role="columnheader"
                       className="h-8 w-8 flex items-center justify-center text-[11px] font-medium text-muted-foreground"
                     >
-                      {d}
+                      {t(`weekdaysMini.${key}`)}
                     </div>
                   ))}
                 </div>
 
                 {/* Day grid */}
-                <div className="grid grid-cols-7 gap-0">
+                <div className="grid grid-cols-7 gap-0" role="grid">
                   {days.map((day) => {
                     const inMonth = isSameMonth(day, viewMonth);
                     const isSelected = selectedDate && isSameDay(day, selectedDate);
@@ -215,6 +220,10 @@ export function DateTimePicker({
                         type="button"
                         disabled={!!disabled}
                         onClick={() => handleSelectDate(day)}
+                        role="gridcell"
+                        aria-selected={!!isSelected}
+                        aria-current={today ? "date" : undefined}
+                        aria-label={day.toLocaleDateString(locale, { month: "long", day: "numeric" })}
                         className={cn(
                           "h-8 w-8 flex items-center justify-center rounded-md text-sm transition-all",
                           !inMonth && "text-muted-foreground/40",
@@ -241,7 +250,7 @@ export function DateTimePicker({
                     }}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Clear
+                    {t("clear")}
                   </button>
                   <div className="flex-1" />
                   <button
@@ -253,7 +262,7 @@ export function DateTimePicker({
                     }}
                     className="text-xs text-primary font-medium hover:text-primary/80 transition-colors"
                   >
-                    Today
+                    {t("today")}
                   </button>
                 </div>
               </div>
@@ -271,7 +280,7 @@ export function DateTimePicker({
                 <div className="flex items-center gap-1.5 mb-2">
                   <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-xs font-medium text-muted-foreground">
-                    Time
+                    {t("time")}
                   </span>
                 </div>
                 <div className="flex gap-1 flex-1 min-h-0">
@@ -310,7 +319,7 @@ export function DateTimePicker({
                           : "text-muted-foreground hover:bg-accent"
                       )}
                     >
-                      AM
+                      {t("am")}
                     </button>
                     <button
                       type="button"
@@ -325,7 +334,7 @@ export function DateTimePicker({
                           : "text-muted-foreground hover:bg-accent"
                       )}
                     >
-                      PM
+                      {t("pm")}
                     </button>
                   </div>
                 </div>
@@ -337,7 +346,7 @@ export function DateTimePicker({
                     onClick={() => setOpen(false)}
                     className="mt-2 h-8 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
                   >
-                    Done
+                    {t("done")}
                   </button>
                 )}
               </div>

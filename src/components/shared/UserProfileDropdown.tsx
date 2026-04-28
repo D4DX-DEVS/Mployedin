@@ -112,6 +112,8 @@ export function UserProfileDropdown({
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
+      // Clear idle timeout tracker
+      localStorage.removeItem("mployedin_last_activity");
       await Promise.race([
         signOut({ redirect: false }),
         new Promise((resolve) => setTimeout(resolve, 4000)),

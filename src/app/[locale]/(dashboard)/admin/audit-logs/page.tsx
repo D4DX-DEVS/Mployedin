@@ -2,15 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Search, Shield, Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 
 interface AuditLogEntry {
@@ -86,63 +84,61 @@ export default function AuditLogsPage() {
 
   return (
     <div className="page-container">
-      <PageHeader
+      <TableToolbar
         title="Audit Logs"
         description={`${total.toLocaleString()} log entries · read-only`}
-      />
-
-      <TableToolbar
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
+        hasActiveFilters={resource !== "all" || !!action || !!country || !!fromDate || !!toDate}
+        filterContent={
+          <div className="flex gap-3 flex-wrap items-center">
+            <SearchableSelect
+              className="h-11 w-44 rounded-xl border-border bg-card"
+              options={[
+                { value: "all", label: "All resources" },
+                ...["users", "jobs", "applications", "interviews", "placements", "offers", "commissions", "employers", "job_seekers", "agents", "super_agents", "leads", "saved_jobs", "messages", "conversation_threads", "settings"].map((r) => ({ value: r, label: r })),
+              ]}
+              value={resource}
+              onValueChange={(v) => { setResource(v); resetPage(); }}
+              placeholder="All resources"
+            />
+            <div className="relative">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Filter by action…"
+                value={action}
+                onChange={(e) => { setAction(e.target.value); resetPage(); }}
+                className="h-11 rounded-xl border-border bg-card ps-10 w-56 text-sm shadow-none"
+              />
+            </div>
+            <div className="relative">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Country code (e.g. AE)"
+                value={country}
+                onChange={(e) => { setCountry(e.target.value.toUpperCase()); resetPage(); }}
+                className="h-11 rounded-xl border-border bg-card ps-10 w-44 text-sm shadow-none uppercase"
+                maxLength={2}
+              />
+            </div>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => { setFromDate(e.target.value); resetPage(); }}
+              className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none"
+              placeholder="From"
+            />
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => { setToDate(e.target.value); resetPage(); }}
+              className="h-11 w-40 rounded-xl border-border bg-card text-sm shadow-none"
+              placeholder="To"
+            />
+          </div>
+        }
       />
-
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <SearchableSelect
-          className="w-44"
-          options={[
-            { value: "all", label: "All resources" },
-            ...["users", "jobs", "applications", "interviews", "placements", "offers", "commissions", "employers", "job_seekers", "agents", "super_agents", "leads", "saved_jobs", "messages", "conversation_threads", "settings"].map((r) => ({ value: r, label: r })),
-          ]}
-          value={resource}
-          onValueChange={(v) => { setResource(v); resetPage(); }}
-          placeholder="All resources"
-        />
-        <div className="relative">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Filter by action…"
-            value={action}
-            onChange={(e) => { setAction(e.target.value); resetPage(); }}
-            className="ps-10 w-56"
-          />
-        </div>
-        <div className="relative">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Country code (e.g. AE)"
-            value={country}
-            onChange={(e) => { setCountry(e.target.value.toUpperCase()); resetPage(); }}
-            className="ps-10 w-44 uppercase"
-            maxLength={2}
-          />
-        </div>
-        <Input
-          type="date"
-          value={fromDate}
-          onChange={(e) => { setFromDate(e.target.value); resetPage(); }}
-          className="w-40"
-          placeholder="From"
-        />
-        <Input
-          type="date"
-          value={toDate}
-          onChange={(e) => { setToDate(e.target.value); resetPage(); }}
-          className="w-40"
-          placeholder="To"
-        />
-      </div>
 
       {/* Logs table */}
       {loading ? (

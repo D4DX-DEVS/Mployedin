@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import {
   Table,
   TableBody,
@@ -18,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, Inbox } from "lucide-react";
+import { Plus, Pencil, Trash2, Inbox, RotateCcw } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 
 export interface CmsColumn {
@@ -28,26 +29,18 @@ export interface CmsColumn {
 }
 
 interface CmsPageProps {
-  /** API base URL e.g. "/api/admin/cms/faqs" */
   apiUrl: string;
-  /** Page title */
   title: string;
-  /** Arabic title */
   titleAr?: string;
-  /** Description */
   description?: string;
-  /** Table columns */
   columns: CmsColumn[];
-  /** Fields for CrudModal */
   fields: CrudField[];
-  /** Resource key for permissions */
   resource?: string;
-  /** Whether to allow create/edit (default: true) */
   allowCreate?: boolean;
-  /** Whether items have isActive field */
   hasStatusFilter?: boolean;
-  /** Extra status filter options */
   statusFilterOptions?: { value: string; label: string }[];
+  editPageBasePath?: string;
+  createPagePath?: string;
 }
 
 export default function CmsPage({
@@ -60,8 +53,12 @@ export default function CmsPage({
   allowCreate = true,
   hasStatusFilter = true,
   statusFilterOptions,
+  editPageBasePath,
+  createPagePath,
 }: CmsPageProps) {
   const { can } = usePermissions();
+  const { locale } = useParams<{ locale: string }>();
+  const router = useRouter();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,11 +89,9 @@ export default function CmsPage({
 
   const handleCreate = async (values: Record<string, string>) => {
     const payload: Record<string, unknown> = { ...values };
-    // Convert boolean-like string values
     if (payload.isActive !== undefined) payload.isActive = payload.isActive === "true";
     if (payload.sortOrder !== undefined) payload.sortOrder = parseInt(String(payload.sortOrder)) || 0;
     if (payload.rating !== undefined) payload.rating = parseInt(String(payload.rating)) || 5;
-
     const r = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -115,7 +110,6 @@ export default function CmsPage({
     if (payload.isActive !== undefined) payload.isActive = payload.isActive === "true";
     if (payload.sortOrder !== undefined) payload.sortOrder = parseInt(String(payload.sortOrder)) || 0;
     if (payload.rating !== undefined) payload.rating = parseInt(String(payload.rating)) || 5;
-
     const r = await fetch(`${apiUrl}/${editItem._id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -155,74 +149,55 @@ export default function CmsPage({
     { value: "inactive", label: "Inactive" },
   ];
 
+  const hasActiveFilters = Boolean(search.trim()) || statusFilter !== "all";
+
   return (
-    <div className="page-container admin-cms-page-container space-y-6" data-admin-workspace="cms-page">
+    <div className="page-container admin-cms-page-container space-y-4" data-admin-workspace="cms-page">
       {ConfirmDialogNode}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              CMS workspace
+
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <TableToolbar
+          title={title}
+          description={description}
+          search={search}
+          onSearchChange={(value) => { setSearch(value); resetPage(); }}
+          actions={allowCreate && can(resource as "cms", "create") ? (
+            <Button
+              onClick={() => createPagePath ? router.push(`/${locale}${createPagePath}`) : setShowAdd(true)}
+              size="sm"
+              className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add New
+            </Button>
+          ) : undefined}
+          filterContent={hasStatusFilter ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-xs font-medium text-muted-foreground">Status</label>
+              <SearchableSelect
+                className="h-8 w-[140px] rounded-lg border-border bg-card text-sm"
+                options={defaultStatusOptions}
+                value={statusFilter}
+                onValueChange={(value) => { setStatusFilter(value); resetPage(); }}
+              />
+              {hasActiveFilters && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setSearch(""); setStatusFilter("all"); resetPage(); }}
+                  className="h-8 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="h-3 w-3" /> Clear
+                </Button>
+              )}
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{title}</h1>
-            {description ? (
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
-            ) : null}
-          </div>
+          ) : undefined}
+          hasActiveFilters={hasActiveFilters}
+          className="rounded-none border-0 bg-transparent shadow-none"
+        />
 
-          {allowCreate && can(resource as "cms", "create") ? (
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[220px]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Content actions</p>
-              <p className="mt-1 text-sm text-muted-foreground">Create a new item without losing your current filters.</p>
-              <Button onClick={() => setShowAdd(true)} className="mt-4 h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
-                <Plus className="h-4 w-4" /> Add New
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      </section>
-
-      {/* Filters */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse content</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Search and filter CMS records</h2>
-        </div>
-
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm min-w-0">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
-            />
-          </div>
-          {hasStatusFilter && (
-            <SearchableSelect
-              className="h-11 w-full rounded-xl border-border bg-secondary/65 sm:w-[160px]"
-              options={defaultStatusOptions}
-              value={statusFilter}
-              onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-            />
-          )}
-        </div>
-      </section>
-
-      {/* Table */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Manage CMS records with consistent spacing</h2>
-          </div>
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-            {total} items across {totalPages} page{totalPages === 1 ? "" : "s"}
-          </div>
-        </div>
-
-        <div className="mt-5 overflow-hidden rounded-[24px] border border-border bg-card">
+        {/* Table */}
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-secondary/70 hover:bg-secondary/70">
@@ -248,10 +223,11 @@ export default function CmsPage({
                 ))
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length + 1} className="h-32 text-center">
+                  <TableCell colSpan={columns.length + 1} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <Inbox className="h-8 w-8" />
-                      <p>No items found</p>
+                      <Inbox className="h-6 w-6 opacity-50" />
+                      <p className="text-sm font-medium text-foreground">No items found</p>
+                      <p className="text-xs">Adjust the filters or add a new entry.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -271,7 +247,16 @@ export default function CmsPage({
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {allowCreate && can(resource as "cms", "update") && (
-                          <Button variant="ghost" size="icon" onClick={() => setEditItem(item)} title="Edit">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              editPageBasePath
+                                ? router.push(`/${locale}${editPageBasePath}/${item._id}/edit`)
+                                : setEditItem(item)
+                            }
+                            title="Edit"
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
@@ -289,7 +274,7 @@ export default function CmsPage({
           </Table>
         </div>
 
-        <div className="mt-4">
+        <div className="border-t border-border/80 px-5 py-3">
           <PaginationControls
             page={page}
             totalPages={totalPages}
@@ -301,7 +286,6 @@ export default function CmsPage({
         </div>
       </section>
 
-      {/* Create Modal */}
       {showAdd && (
         <CrudModal
           open={showAdd}
@@ -312,7 +296,6 @@ export default function CmsPage({
         />
       )}
 
-      {/* Edit Modal */}
       {editItem && (
         <CrudModal
           open={!!editItem}

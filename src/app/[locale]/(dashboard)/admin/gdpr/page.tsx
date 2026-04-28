@@ -4,17 +4,17 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Shield, Search, RotateCcw, Download, Trash2, Eye, FileText,
+  Shield, RotateCcw, Download, Trash2, Eye, FileText,
   UserCheck, Clock, AlertTriangle, CheckCircle2, XCircle,
-  ShieldCheck, Database, Users, CalendarDays, Filter,
+  ShieldCheck, Database, Users, CalendarDays,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -235,40 +235,37 @@ export default function AdminGdprPage() {
 
       {/* Filters */}
       {activeTab !== "retention" && (
-        <section className="workspace-panel-surface rounded-[28px] p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or email..."
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); pagination.resetPage(); }}
-                className="pl-9"
-              />
-            </div>
-            {activeTab === "requests" && (
-              <>
-                <SearchableSelect
-                  options={REQUEST_TYPE_OPTIONS}
-                  value={typeFilter}
-                  onValueChange={(v) => { setTypeFilter(v); pagination.resetPage(); }}
-                  placeholder="Request Type"
-                  className="w-44"
-                />
-                <SearchableSelect
-                  options={STATUS_OPTIONS}
-                  value={statusFilter}
-                  onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}
-                  placeholder="Status"
-                  className="w-36"
-                />
-              </>
-            )}
+        <TableToolbar
+          title="GDPR Data"
+          description={activeTab === "requests" ? "Filter data privacy requests" : "Filter consent logs"}
+          search={search}
+          onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
+          searchPlaceholder="Search by name or email..."
+          hasActiveFilters={typeFilter !== "all" || statusFilter !== "all"}
+          actions={
             <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setTypeFilter("all"); setStatusFilter("all"); pagination.resetPage(); }}>
               <RotateCcw className="mr-1 h-4 w-4" /> Reset
             </Button>
-          </div>
-        </section>
+          }
+          filterContent={activeTab === "requests" ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <SearchableSelect
+                options={REQUEST_TYPE_OPTIONS}
+                value={typeFilter}
+                onValueChange={(v) => { setTypeFilter(v); pagination.resetPage(); }}
+                placeholder="Request Type"
+                className="h-11 w-44 rounded-xl border-border bg-card"
+              />
+              <SearchableSelect
+                options={STATUS_OPTIONS}
+                value={statusFilter}
+                onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}
+                placeholder="Status"
+                className="h-11 w-36 rounded-xl border-border bg-card"
+              />
+            </div>
+          ) : undefined}
+        />
       )}
 
       {/* Content */}

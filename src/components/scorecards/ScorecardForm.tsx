@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -32,20 +33,20 @@ interface ScorecardFormProps {
   };
 }
 
-const SCORE_CRITERIA = [
-  { key: "technicalSkills" as const, label: "Technical Skills", description: "Relevant technical knowledge and skills" },
-  { key: "communication" as const, label: "Communication", description: "Clarity, listening, and expression" },
-  { key: "cultureFit" as const, label: "Culture Fit", description: "Alignment with team values" },
-  { key: "problemSolving" as const, label: "Problem Solving", description: "Analytical thinking and approach" },
-  { key: "motivation" as const, label: "Motivation", description: "Enthusiasm and drive" },
+const SCORE_CRITERIA_KEYS = [
+  { key: "technicalSkills" as const, labelKey: "technicalSkills", descKey: "technicalSkillsDesc" },
+  { key: "communication" as const, labelKey: "communication", descKey: "communicationDesc" },
+  { key: "cultureFit" as const, labelKey: "cultureFit", descKey: "cultureFitDesc" },
+  { key: "problemSolving" as const, labelKey: "problemSolving", descKey: "problemSolvingDesc" },
+  { key: "motivation" as const, labelKey: "motivation", descKey: "motivationDesc" },
 ];
 
-const RECOMMENDATIONS = [
-  { value: "strong_yes", label: "Strong Yes", color: "bg-emerald-100 text-emerald-700 border-emerald-300" },
-  { value: "yes", label: "Yes", color: "bg-green-100 text-green-700 border-green-300" },
-  { value: "neutral", label: "Neutral", color: "bg-amber-100 text-amber-700 border-amber-300" },
-  { value: "no", label: "No", color: "bg-orange-100 text-orange-700 border-orange-300" },
-  { value: "strong_no", label: "Strong No", color: "bg-red-100 text-red-700 border-red-300" },
+const RECOMMENDATION_KEYS = [
+  { value: "strong_yes", labelKey: "strongYes", color: "bg-emerald-100 text-emerald-700 border-emerald-300" },
+  { value: "yes", labelKey: "yes", color: "bg-green-100 text-green-700 border-green-300" },
+  { value: "neutral", labelKey: "neutral", color: "bg-amber-100 text-amber-700 border-amber-300" },
+  { value: "no", labelKey: "no", color: "bg-orange-100 text-orange-700 border-orange-300" },
+  { value: "strong_no", labelKey: "strongNo", color: "bg-red-100 text-red-700 border-red-300" },
 ];
 
 export function ScorecardForm({
@@ -55,6 +56,8 @@ export function ScorecardForm({
   isLoading = false,
   existingScorecard,
 }: ScorecardFormProps) {
+  const t = useTranslations("scorecard");
+  const tc = useTranslations("common");
   const [scores, setScores] = useState<Score>(
     existingScorecard?.scores || {
       technicalSkills: 3,
@@ -110,21 +113,21 @@ export function ScorecardForm({
     <form onSubmit={handleSubmit} className="space-y-6 bg-card border border-border rounded-lg p-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold">Interview Scorecard</h3>
+        <h3 className="text-lg font-semibold">{t("title")}</h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Evaluate the candidate across key dimensions
+          {t("subtitle")}
         </p>
       </div>
 
       {/* Score Criteria */}
       <div className="space-y-4">
-        <h4 className="font-medium text-sm">Score Each Criterion (1-5)</h4>
-        {SCORE_CRITERIA.map((criterion) => (
+        <h4 className="font-medium text-sm">{t("scoreCriteria")}</h4>
+        {SCORE_CRITERIA_KEYS.map((criterion) => (
           <div key={criterion.key}>
             <div className="flex items-center justify-between mb-2">
               <div>
-                <label className="font-medium text-sm">{criterion.label}</label>
-                <p className="text-xs text-muted-foreground">{criterion.description}</p>
+                <label className="font-medium text-sm">{t(criterion.labelKey)}</label>
+                <p className="text-xs text-muted-foreground">{t(criterion.descKey)}</p>
               </div>
               <Badge className={getScoreBadgeColor(scores[criterion.key])}>
                 {scores[criterion.key]}/5
@@ -154,7 +157,7 @@ export function ScorecardForm({
 
       {/* Overall Score Display */}
       <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-        <span className="font-medium">Overall Score</span>
+        <span className="font-medium">{t("overallScore")}</span>
         <span className={`text-2xl font-bold ${getScoreBadgeColor(overallScore)}`}>
           {overallScore.toFixed(1)}/5
         </span>
@@ -162,9 +165,9 @@ export function ScorecardForm({
 
       {/* Recommendation */}
       <div className="space-y-3">
-        <label className="font-medium text-sm">Recommendation</label>
+        <label className="font-medium text-sm">{t("recommendation")}</label>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {RECOMMENDATIONS.map((rec) => (
+          {RECOMMENDATION_KEYS.map((rec) => (
             <button
               key={rec.value}
               type="button"
@@ -175,7 +178,7 @@ export function ScorecardForm({
                   : "bg-muted text-muted-foreground border-muted"
               }`}
             >
-              {rec.label}
+              {t(rec.labelKey)}
             </button>
           ))}
         </div>
@@ -184,12 +187,12 @@ export function ScorecardForm({
       {/* Strengths */}
       <div>
         <label className="font-medium text-sm block mb-2">
-          Strengths <span className="text-muted-foreground text-xs">(max 1000 chars)</span>
+          {t("strengths")} <span className="text-muted-foreground text-xs">{t("maxChars", { max: 1000 })}</span>
         </label>
         <textarea
           value={strengths}
           onChange={(e) => setStrengths(e.target.value.slice(0, 1000))}
-          placeholder="What are the candidate's key strengths?"
+          placeholder={t("strengthsPlaceholder")}
           className="w-full h-20 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
         />
         <div className="text-xs text-muted-foreground text-right mt-1">
@@ -200,12 +203,12 @@ export function ScorecardForm({
       {/* Concerns */}
       <div>
         <label className="font-medium text-sm block mb-2">
-          Concerns <span className="text-muted-foreground text-xs">(max 1000 chars)</span>
+          {t("concerns")} <span className="text-muted-foreground text-xs">{t("maxChars", { max: 1000 })}</span>
         </label>
         <textarea
           value={concerns}
           onChange={(e) => setConcerns(e.target.value.slice(0, 1000))}
-          placeholder="Any concerns or areas for improvement?"
+          placeholder={t("concernsPlaceholder")}
           className="w-full h-20 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
         />
         <div className="text-xs text-muted-foreground text-right mt-1">
@@ -216,12 +219,12 @@ export function ScorecardForm({
       {/* Notes */}
       <div>
         <label className="font-medium text-sm block mb-2">
-          Additional Notes <span className="text-muted-foreground text-xs">(max 3000 chars)</span>
+          {t("additionalNotes")} <span className="text-muted-foreground text-xs">{t("maxChars", { max: 3000 })}</span>
         </label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value.slice(0, 3000))}
-          placeholder="Any additional comments or observations?"
+          placeholder={t("additionalNotesPlaceholder")}
           className="w-full h-24 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
         />
         <div className="text-xs text-muted-foreground text-right mt-1">
@@ -238,7 +241,7 @@ export function ScorecardForm({
             onClick={onCancel}
             disabled={submitting || isLoading}
           >
-            Cancel
+            {tc("cancel")}
           </Button>
         )}
         <Button
@@ -246,7 +249,7 @@ export function ScorecardForm({
           disabled={submitting || isLoading}
           className="min-w-[120px]"
         >
-          {submitting || isLoading ? "Saving..." : "Save Scorecard"}
+          {submitting || isLoading ? tc("saving") : t("saveScorecard")}
         </Button>
       </div>
     </form>

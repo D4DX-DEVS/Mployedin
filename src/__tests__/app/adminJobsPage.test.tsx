@@ -3,6 +3,7 @@
  */
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import AdminJobsPage from "@/app/[locale]/(dashboard)/admin/jobs/page";
 
@@ -39,49 +40,104 @@ describe("AdminJobsPage", () => {
     paginationState.resetPage.mockReset();
     toastErrorMock.mockReset();
     fetchMock.mockReset();
+    fetchMock.mockImplementation(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.startsWith("/api/employers")) {
+        return {
+          ok: true,
+          json: async () => ({ employers: [] }),
+        } as Response;
+      }
+
+      if (url.startsWith("/api/admin/agents")) {
+        return {
+          ok: true,
+          json: async () => ({ agents: [] }),
+        } as Response;
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ items: [], total: 0, totalPages: 1 }),
+      } as Response;
+    });
     global.fetch = fetchMock as unknown as typeof fetch;
   });
 
   it("renders the modern admin jobs workspace with fetched results", async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        items: [
-          {
-            _id: "job-1",
-            title: "Senior Recruiter",
-            employerId: { companyName: "Mployedin" },
-            status: "active",
-            approvalStatus: "approved",
-            category: "Recruitment",
-            location: { city: "Dubai", country: "UAE" },
-            applicantsCount: 8,
-            createdAt: "2026-04-10T00:00:00.000Z",
-          },
-        ],
-        total: 1,
-        totalPages: 1,
-      }),
+    const user = userEvent.setup();
+
+    fetchMock.mockImplementation(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.startsWith("/api/employers")) {
+        return {
+          ok: true,
+          json: async () => ({ employers: [] }),
+        } as Response;
+      }
+
+      if (url.startsWith("/api/admin/agents")) {
+        return {
+          ok: true,
+          json: async () => ({ agents: [] }),
+        } as Response;
+      }
+
+      return {
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              _id: "job-1",
+              title: "Senior Recruiter",
+              employerId: { companyName: "Mployedin" },
+              status: "active",
+              approvalStatus: "approved",
+              category: "Recruitment",
+              location: { city: "Dubai", country: "UAE" },
+              applicantsCount: 8,
+              createdAt: "2026-04-10T00:00:00.000Z",
+            },
+          ],
+          total: 1,
+          totalPages: 1,
+        }),
+      } as Response;
     });
 
     render(<AdminJobsPage />);
 
     expect(screen.getByText(/recruitment control/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /platform jobs/i })).toBeInTheDocument();
-    expect(screen.getByText("All statuses")).toBeInTheDocument();
-    expect(screen.getByText("All approvals")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /job listings/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /filter/i })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText("Senior Recruiter")).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("heading", { name: /filter the jobs you want to review next/i })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Filter by location")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /filter/i }));
+
+    expect(screen.getByPlaceholderText("Filter by location")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Skills, comma separated")).toBeInTheDocument();
     expect(paginationState.updateTotal).toHaveBeenCalledWith(1);
   });
 
   it("shows an error banner when the jobs request fails", async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: false,
+    fetchMock.mockImplementation(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.startsWith("/api/employers") || url.startsWith("/api/admin/agents")) {
+        return {
+          ok: true,
+          json: async () => ({ items: [] }),
+        } as Response;
+      }
+
+      return { ok: false } as Response;
     });
 
     render(<AdminJobsPage />);

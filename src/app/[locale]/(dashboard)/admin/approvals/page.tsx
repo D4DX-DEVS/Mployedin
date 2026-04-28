@@ -213,50 +213,46 @@ export default function AdminApprovalsPage() {
       </section>
 
       {/* Filters */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Find specific jobs</h2>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <TableToolbar
-            search={search}
-            onSearchChange={(v) => { setSearch(v); resetPage(); }}
-            searchPlaceholder="Search by job title…"
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="xl:col-span-3"
-          />
-          <div>
-            <label htmlFor="approvals-status" className="sr-only">Status</label>
-            <SearchableSelect id="approvals-status" className="h-11 w-full rounded-xl border-border bg-secondary/65" options={STATUS_OPTIONS} value={status} onValueChange={(v) => { setStatus(v); resetPage(); }} placeholder="All statuses" />
+      <TableToolbar
+        title="Find specific jobs"
+        search={search}
+        onSearchChange={(v) => { setSearch(v); resetPage(); }}
+        searchPlaceholder="Search by job title…"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        hasActiveFilters={status !== "all" || approvalStatus !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || selectedSuperAgent !== "all"}
+        filterContent={
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div>
+              <label htmlFor="approvals-status" className="sr-only">Status</label>
+              <SearchableSelect id="approvals-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={status} onValueChange={(v) => { setStatus(v); resetPage(); }} placeholder="All statuses" />
+            </div>
+            <div>
+              <label htmlFor="approvals-approval" className="sr-only">Approval</label>
+              <SearchableSelect id="approvals-approval" className="h-11 w-full rounded-xl border-border bg-card" options={APPROVAL_OPTIONS} value={approvalStatus} onValueChange={(v) => { setApprovalStatus(v); resetPage(); }} placeholder="All approvals" />
+            </div>
+            {employers.length > 1 && (
+              <div>
+                <label htmlFor="approvals-employer" className="sr-only">Employer</label>
+                <SearchableSelect id="approvals-employer" className="h-11 w-full rounded-xl border-border bg-card" options={employers} value={selectedEmployer} onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }} placeholder="All employers" />
+              </div>
+            )}
+            {agents.length > 1 && (
+              <div>
+                <label htmlFor="approvals-agent" className="sr-only">Agent</label>
+                <SearchableSelect id="approvals-agent" className="h-11 w-full rounded-xl border-border bg-card" options={agents} value={selectedAgent} onValueChange={(v) => { setSelectedAgent(v); resetPage(); }} placeholder="All agents" />
+              </div>
+            )}
+            {superAgentsList.length > 1 && (
+              <div>
+                <label htmlFor="approvals-sa" className="sr-only">Super Agent</label>
+                <SearchableSelect id="approvals-sa" className="h-11 w-full rounded-xl border-border bg-card" options={superAgentsList} value={selectedSuperAgent} onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }} placeholder="All super agents" />
+              </div>
+            )}
           </div>
-          <div>
-            <label htmlFor="approvals-approval" className="sr-only">Approval</label>
-            <SearchableSelect id="approvals-approval" className="h-11 w-full rounded-xl border-border bg-secondary/65" options={APPROVAL_OPTIONS} value={approvalStatus} onValueChange={(v) => { setApprovalStatus(v); resetPage(); }} placeholder="All approvals" />
-          </div>
-          {employers.length > 1 && (
-            <div>
-              <label htmlFor="approvals-employer" className="sr-only">Employer</label>
-              <SearchableSelect id="approvals-employer" className="h-11 w-full rounded-xl border-border bg-secondary/65" options={employers} value={selectedEmployer} onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }} placeholder="All employers" />
-            </div>
-          )}
-          {agents.length > 1 && (
-            <div>
-              <label htmlFor="approvals-agent" className="sr-only">Agent</label>
-              <SearchableSelect id="approvals-agent" className="h-11 w-full rounded-xl border-border bg-secondary/65" options={agents} value={selectedAgent} onValueChange={(v) => { setSelectedAgent(v); resetPage(); }} placeholder="All agents" />
-            </div>
-          )}
-          {superAgentsList.length > 1 && (
-            <div>
-              <label htmlFor="approvals-sa" className="sr-only">Super Agent</label>
-              <SearchableSelect id="approvals-sa" className="h-11 w-full rounded-xl border-border bg-secondary/65" options={superAgentsList} value={selectedSuperAgent} onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }} placeholder="All super agents" />
-            </div>
-          )}
-        </div>
-      </section>
+        }
+      />
 
       {/* Table */}
       {loading ? (

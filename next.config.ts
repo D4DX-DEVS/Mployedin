@@ -3,6 +3,20 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+// Only load Serwist for production builds — its webpack plugin
+// conflicts with Turbopack used in development.
+let withSerwist: (config: NextConfig) => NextConfig;
+if (process.env.NODE_ENV === "production") {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const withSerwistInit = require("@serwist/next").default;
+  withSerwist = withSerwistInit({
+    swSrc: "src/app/sw.ts",
+    swDest: "public/sw.js",
+  });
+} else {
+  withSerwist = (config) => config;
+}
+
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
@@ -83,6 +97,7 @@ const nextConfig: NextConfig = {
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com https://media.licdn.com https://*.digitaloceanspaces.com",
               "connect-src 'self' https://openrouter.ai https://generativelanguage.googleapis.com https://*.pusher.com wss://*.pusher.com",
+              "worker-src 'self'",
               "frame-src https://www.google.com https://www.youtube.com",
               "base-uri 'self'",
               "form-action 'self'",
@@ -106,10 +121,18 @@ const nextConfig: NextConfig = {
                 { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=3600" },
               ],
             },
+            {
+              // Service worker must never be cached by the browser
+              source: "/sw.js",
+              headers: [
+                { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+                { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+              ],
+            },
           ]
         : []),
     ];
   },
 };
 
-export default withNextIntl(nextConfig);
+export default withSerwist(withNextIntl(nextConfig));

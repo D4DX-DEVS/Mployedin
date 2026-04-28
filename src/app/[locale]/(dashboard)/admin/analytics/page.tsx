@@ -226,37 +226,7 @@ export default function AdminAnalyticsPage() {
   };
 
   return (
-    <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7" aria-label="Analytics overview">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              AI analytics
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Analytics & Insights
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              AI-powered platform analytics for growth, revenue, regional distribution, and team performance from one cleaner admin command surface.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Prompt library</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{ANALYTICS_QUERIES.length} templates ready</p>
-              <p className="text-xs text-muted-foreground">Jump straight into the most common leadership questions.</p>
-            </div>
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Output</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">Excel and PDF export</p>
-              <p className="text-xs text-muted-foreground">Share generated findings as polished spreadsheet or PDF briefings.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
+    <div className="page-container space-y-4">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Analytics templates">
           <div>

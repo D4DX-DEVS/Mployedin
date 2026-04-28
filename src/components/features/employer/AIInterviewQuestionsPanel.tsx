@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useLocale } from "next-intl";
 import {
   X, Sparkles, Loader2, ChevronDown, ChevronUp,
   Copy, Check, Printer, AlertTriangle, Lightbulb, Target,
   History, Clock,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -63,6 +65,8 @@ export function AIInterviewQuestionsPanel({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const locale = useLocale();
+  const isRtl = locale === "ar";
 
   const questions = questionsByType[activeTab] ?? [];
   const history = historyByType[activeTab] ?? [];
@@ -246,7 +250,10 @@ export function AIInterviewQuestionsPanel({
   return createPortal(
     <>
       <div className="fixed inset-0 z-[70]" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-[70] flex flex-col bg-background w-full max-w-xl shadow-2xl border-l border-border/60 overflow-hidden animate-in slide-in-from-right duration-300">
+      <div className={cn(
+        "fixed inset-y-0 z-[70] flex flex-col bg-background w-full max-w-xl shadow-2xl overflow-hidden animate-in duration-300",
+        isRtl ? "left-0 border-r border-border/60 slide-in-from-left" : "right-0 border-l border-border/60 slide-in-from-right"
+      )}>
 
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4 border-b shrink-0">

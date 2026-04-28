@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Search, Filter, CheckCircle2, Clock, AlertCircle, Pencil,
   Trash2, Inbox, CalendarDays, DollarSign, Sparkles, ChevronDown, ChevronUp, X, RotateCcw,
+  Download, FileSpreadsheet, FileText,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
@@ -11,14 +12,16 @@ import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 
 interface Placement {
@@ -200,9 +203,8 @@ export default function AdminPlacementsPage() {
   });
 
   return (
-    <div className="page-container">
+    <div className="page-container space-y-4">
       {ConfirmDialogNode}
-      <PageHeader title="Placement Tracking" description={`${total} placements · ${formatCurrencyBreakdown(salaryByCurrency)}`} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -243,55 +245,72 @@ export default function AdminPlacementsPage() {
         )}
       </div>
 
-      {/* Filters */}
-      <div className="card-base space-y-3">
-        <div className="flex flex-wrap gap-3 items-center">
-          <TableToolbar
-            search={search}
-            onSearchChange={(v) => { setSearch(v); resetPage(); }}
-            searchPlaceholder="Search candidate or company…"
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-          />
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <select value={visaFilter} onChange={e => { setVisaFilter(e.target.value); resetPage(); }} className="input-field">
-              <option value="">All Visa Status</option>
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">Placement Tracking</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">{total} placements · {formatCurrencyBreakdown(salaryByCurrency)}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+                placeholder="Search candidate or company…"
+                className="h-8 w-52 rounded-lg pl-8 text-sm"
+              />
+            </div>
+            <select value={visaFilter} onChange={e => { setVisaFilter(e.target.value); resetPage(); }} className="h-8 rounded-lg border border-border/80 bg-background px-2 text-xs">
+              <option value="">All Visa</option>
               <option value="not_required">Not Required</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
               <option value="stamped">Stamped</option>
             </select>
-            <select value={commissionFilter} onChange={e => { setCommissionFilter(e.target.value); resetPage(); }} className="input-field">
+            <select value={commissionFilter} onChange={e => { setCommissionFilter(e.target.value); resetPage(); }} className="h-8 rounded-lg border border-border/80 bg-background px-2 text-xs">
               <option value="">All Commission</option>
               <option value="true">Paid</option>
               <option value="false">Unpaid</option>
             </select>
-            <select value={currencyFilter} onChange={e => { setCurrencyFilter(e.target.value); resetPage(); }} className="input-field">
+            <select value={currencyFilter} onChange={e => { setCurrencyFilter(e.target.value); resetPage(); }} className="h-8 rounded-lg border border-border/80 bg-background px-2 text-xs">
               <option value="">All Currencies</option>
               <option value="AED">AED</option>
               <option value="USD">USD</option>
               <option value="EUR">EUR</option>
               <option value="SAR">SAR</option>
             </select>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setShowAdvanced(!showAdvanced)}
-            className="ml-auto text-xs text-muted-foreground">
-            {showAdvanced ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
-            Advanced {activeFilterCount > 0 && `(${activeFilterCount})`}
-          </Button>
-          {activeFilterCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs text-red-500 hover:text-red-600">
-              <X className="h-3 w-3 mr-1" /> Clear All
+            <Button variant="ghost" size="sm" onClick={() => setShowAdvanced(!showAdvanced)} className="h-8 rounded-lg text-xs text-muted-foreground">
+              <Filter className="h-3.5 w-3.5" />
+              {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              {activeFilterCount > 0 && `(${activeFilterCount})`}
             </Button>
-          )}
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 rounded-lg text-xs text-red-500 hover:text-red-600">
+                <X className="h-3 w-3" /> Clear
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
+                  <Download className="h-3.5 w-3.5" /> Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel>Export</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />CSV</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />Excel</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* Advanced Filters Row */}
         {showAdvanced && (
-          <div className="flex flex-wrap gap-3 items-end border-t pt-3">
+          <div className="flex flex-wrap gap-3 items-end border-b border-border/80 px-5 py-3">
             <div className="space-y-1">
               <label className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
                 <CalendarDays className="h-3 w-3" /> Date From
@@ -318,83 +337,86 @@ export default function AdminPlacementsPage() {
             </div>
           </div>
         )}
-      </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
-        {loading ? (
-          <>
-            <div className="bg-muted/30 px-4 py-3 h-10 animate-pulse" />
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="border-t px-4 py-3 h-14 animate-pulse" />
-            ))}
-          </>
-        ) : placements.length === 0 ? (
-          <div className="text-center py-12 text-sm text-muted-foreground">
-            <Inbox className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-            No placements found.
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                {["Candidate", "Role", "Company", "Agent", "Salary", "Visa", "Commission", "Date", ""].map((h, i) => (
-                  <TableHead key={i}>{h}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {placements.map((p) => (
-                <TableRow key={p._id}>
-                  <TableCell>
-                    <p className="font-medium">{p.candidateName ?? "—"}</p>
-                    <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{p.jobTitle ?? "—"}</TableCell>
-                  <TableCell>{p.companyName ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{p.agentName ?? "—"}</TableCell>
-                  <TableCell className="font-medium">
-                    {p.salary?.toLocaleString()} <span className="text-xs text-muted-foreground">{p.currency}</span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5">
-                      {VISA_ICONS[p.visaStatus]}
-                      <span className="text-xs capitalize">{p.visaStatus?.replace("_", " ")}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={p.commissionPaid ? "paid" : "pending"} />
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(p.startDate).toLocaleDateString("en-AE")}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      {!p.commissionPaid && can("placements", "update") && (
-                        <Button variant="ghost" size="xs" onClick={() => markCommission(p._id, true)}
-                          className="text-emerald-700 hover:bg-emerald-50">
-                          Mark Paid
-                        </Button>
-                      )}
-                      {can("placements", "update") && (
-                        <Button variant="ghost" size="xs" onClick={() => setEditItem(p)} className="text-blue-600 hover:bg-blue-50" title="Edit">
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      {can("placements", "delete") && (
-                        <Button variant="ghost" size="xs" onClick={() => handleDelete(p._id)} className="text-red-600 hover:bg-red-50" title="Delete">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              {["Candidate", "Role", "Company", "Agent", "Salary", "Visa", "Commission", "Date", ""].map((h, i) => (
+                <TableHead key={i}>{h}</TableHead>
               ))}
-            </TableBody>
-          </Table>
-        )}
-        <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} className="px-4 pb-4 pt-4 border-t mt-4" />
-      </div>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
+                  {Array.from({ length: 9 }).map((_, j) => (
+                    <TableCell key={j}>
+                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : placements.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={9} className="h-32 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Inbox className="h-8 w-8 opacity-40" />
+                    <span className="text-sm">No placements found</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : placements.map((p) => (
+              <TableRow key={p._id}>
+                <TableCell>
+                  <p className="font-medium">{p.candidateName ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{p.jobTitle ?? "—"}</TableCell>
+                <TableCell>{p.companyName ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{p.agentName ?? "—"}</TableCell>
+                <TableCell className="font-medium">
+                  {p.salary?.toLocaleString()} <span className="text-xs text-muted-foreground">{p.currency}</span>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    {VISA_ICONS[p.visaStatus]}
+                    <span className="text-xs capitalize">{p.visaStatus?.replace("_", " ")}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={p.commissionPaid ? "paid" : "pending"} />
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {new Date(p.startDate).toLocaleDateString("en-AE")}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    {!p.commissionPaid && can("placements", "update") && (
+                      <Button variant="ghost" size="xs" onClick={() => markCommission(p._id, true)}
+                        className="text-emerald-700 hover:bg-emerald-50">
+                        Mark Paid
+                      </Button>
+                    )}
+                    {can("placements", "update") && (
+                      <Button variant="ghost" size="xs" onClick={() => setEditItem(p)} className="text-blue-600 hover:bg-blue-50" title="Edit">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {can("placements", "delete") && (
+                      <Button variant="ghost" size="xs" onClick={() => handleDelete(p._id)} className="text-red-600 hover:bg-red-50" title="Delete">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </section>
+
+      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
     </div>
   );
 }

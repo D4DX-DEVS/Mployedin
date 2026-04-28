@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft,
@@ -80,30 +81,31 @@ interface GoogleCalendarProps {
 /*  Constants                                                          */
 /* ================================================================== */
 
-const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const WEEKDAYS_FULL = [
-  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
-];
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-const MONTHS_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+const MONTH_KEYS = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+] as const;
+const MONTH_SHORT_KEYS = [
+  "jan", "feb", "mar", "apr", "may", "jun",
+  "jul", "aug", "sep", "oct", "nov", "dec",
+] as const;
+const WEEKDAY_SHORT_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const WEEKDAY_MINI_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+const WEEKDAY_FULL_KEYS = [
+  "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
+] as const;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 const EVENT_COLORS: Record<string, string> = {
-  video: "bg-sky-500/15 border-sky-500/40 text-sky-700 dark:text-sky-300",
-  offline: "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300",
-  hybrid: "bg-violet-500/15 border-violet-500/40 text-violet-700 dark:text-violet-300",
+  video: "bg-sky-500/10 border-sky-500/30 text-sky-700 dark:text-sky-300 backdrop-blur-sm",
+  offline: "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 backdrop-blur-sm",
+  hybrid: "bg-violet-500/10 border-violet-500/30 text-violet-700 dark:text-violet-300 backdrop-blur-sm",
 };
 
 const EVENT_DOT_COLORS: Record<string, string> = {
-  video: "bg-sky-500",
-  offline: "bg-emerald-500",
-  hybrid: "bg-violet-500",
+  video: "bg-sky-500 shadow-sky-500/40 shadow-sm",
+  offline: "bg-emerald-500 shadow-emerald-500/40 shadow-sm",
+  hybrid: "bg-violet-500 shadow-violet-500/40 shadow-sm",
 };
 
 /* ================================================================== */
@@ -166,15 +168,18 @@ function getWeekDates(date: Date): Date[] {
   });
 }
 
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+function formatTime(date: Date, locale: string) {
+  return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
-function formatHour(hour: number) {
-  if (hour === 0) return "12 AM";
-  if (hour < 12) return `${hour} AM`;
-  if (hour === 12) return "12 PM";
-  return `${hour - 12} PM`;
+function formatHour(hour: number, locale: string) {
+  const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  return d.toLocaleTimeString(locale, { hour: "numeric", hour12: true });
+}
+
+function formatDateLocale(date: Date, locale: string, opts: Intl.DateTimeFormatOptions) {
+  return date.toLocaleDateString(locale, opts);
 }
 
 function typeIcon(type: string, className = "h-3.5 w-3.5") {
@@ -203,6 +208,9 @@ function MiniCalendar({
   onSelect: (d: Date) => void;
   events: CalendarEvent[];
 }) {
+  const t = useTranslations("calendar");
+  const locale = useLocale();
+  const isRtl = locale === "ar";
   const [miniDate, setMiniDate] = useState(
     new Date(currentDate.getFullYear(), currentDate.getMonth(), 1),
   );
@@ -221,35 +229,41 @@ function MiniCalendar({
     [events],
   );
 
+  const PrevIcon = isRtl ? ChevronRight : ChevronLeft;
+  const NextIcon = isRtl ? ChevronLeft : ChevronRight;
+
   return (
-    <div className="select-none">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-semibold text-foreground">
-          {MONTHS_SHORT[month]} {year}
+    <div className="select-none" dir={isRtl ? "rtl" : "ltr"}>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-semibold tracking-wide text-foreground">
+          {t(`monthsShort.${MONTH_SHORT_KEYS[month]}`)} {year}
         </span>
         <div className="flex gap-0.5">
           <button
             onClick={() => setMiniDate(new Date(year, month - 1, 1))}
-            className="rounded p-0.5 hover:bg-muted"
+            className="rounded-lg p-1 hover:bg-muted transition-colors"
+            aria-label={t(`months.${MONTH_KEYS[(month + 11) % 12]}`)}
           >
-            <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
+            <PrevIcon className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
           <button
             onClick={() => setMiniDate(new Date(year, month + 1, 1))}
-            className="rounded p-0.5 hover:bg-muted"
+            className="rounded-lg p-1 hover:bg-muted transition-colors"
+            aria-label={t(`months.${MONTH_KEYS[(month + 1) % 12]}`)}
           >
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <NextIcon className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-0">
-        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+      <div className="grid grid-cols-7 gap-0.5" role="grid" aria-label={t(`months.${MONTH_KEYS[month]}`)}>
+        {WEEKDAY_MINI_KEYS.map((key, i) => (
           <div
             key={i}
-            className="flex h-6 w-6 items-center justify-center text-[10px] font-medium text-muted-foreground"
+            role="columnheader"
+            className="flex h-7 w-7 items-center justify-center text-[10px] font-semibold text-muted-foreground/70"
           >
-            {d}
+            {t(`weekdaysMini.${key}`)}
           </div>
         ))}
         {grid.map(({ date, isCurrentMonth }, i) => {
@@ -263,21 +277,24 @@ function MiniCalendar({
               key={i}
               onClick={() => !isPast && onSelect(date)}
               disabled={isPast}
-              className={`relative flex h-6 w-6 items-center justify-center rounded-full text-[10px] transition-colors disabled:pointer-events-none ${
+              aria-selected={isSelected}
+              aria-current={isToday ? "date" : undefined}
+              aria-label={formatDateLocale(date, locale, { month: "long", day: "numeric" })}
+              className={`relative flex h-7 w-7 items-center justify-center rounded-lg text-[11px] transition-all duration-150 disabled:pointer-events-none ${
                 isPast
-                  ? "text-muted-foreground/30"
+                  ? "text-muted-foreground/25"
                   : !isCurrentMonth
-                    ? "text-muted-foreground/40"
+                    ? "text-muted-foreground/35"
                     : isSelected
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
                       : isToday
-                        ? "bg-primary/15 text-primary font-bold"
-                        : "text-foreground hover:bg-muted"
+                        ? "bg-primary/12 text-primary font-bold ring-1 ring-primary/20"
+                        : "text-foreground hover:bg-muted/60"
               }`}
             >
               {date.getDate()}
               {hasEvt && !isSelected && !isPast && (
-                <span className="absolute bottom-0 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
+                <span className="absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary/70" />
               )}
             </button>
           );
@@ -300,6 +317,8 @@ function EventDetail({
   onClose: () => void;
   renderExtra?: (e: CalendarEvent) => React.ReactNode;
 }) {
+  const t = useTranslations("calendar");
+  const locale = useLocale();
   const dt = new Date(event.scheduledAt);
   const endTime = event.duration
     ? new Date(dt.getTime() + event.duration * 60000)
@@ -319,34 +338,35 @@ function EventDetail({
         <button
           onClick={onClose}
           className="rounded-lg p-1 hover:bg-muted"
+          aria-label={t("cancel")}
         >
           <X className="h-4 w-4 text-muted-foreground" />
         </button>
       </div>
 
-      <div className="mt-3 space-y-2 pl-5">
+      <div className="mt-3 space-y-2 ps-5">
         {event.subtitle && (
           <p className="text-xs text-muted-foreground">{event.subtitle}</p>
         )}
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="h-3 w-3 flex-shrink-0" />
-          {dt.toLocaleDateString("en-US", {
+          {formatDateLocale(dt, locale, {
             weekday: "short",
             month: "short",
             day: "numeric",
           })}{" "}
-          · {formatTime(dt)}
-          {endTime ? ` – ${formatTime(endTime)}` : ""}
-          {event.duration ? ` (${event.duration} min)` : ""}
+          · {formatTime(dt, locale)}
+          {endTime ? ` – ${formatTime(endTime, locale)}` : ""}
+          {event.duration ? ` (${t("min", { count: event.duration })})` : ""}
         </p>
 
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           {typeIcon(event.type, "h-3 w-3 flex-shrink-0")}
           {event.type === "video"
-            ? "Video Call"
+            ? t("videoCall")
             : event.type === "offline"
-              ? "In Person"
-              : "Hybrid"}
+              ? t("inPerson")
+              : t("hybrid")}
         </p>
 
         {event.location && (
@@ -361,10 +381,10 @@ function EventDetail({
             href={event.meetLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+            className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-primary/10 px-3.5 py-2 text-xs font-semibold text-primary hover:bg-primary/20 transition-all duration-150 hover:shadow-sm"
           >
-            <Video className="h-3 w-3" />
-            Join Meeting
+            <Video className="h-3.5 w-3.5" />
+            {t("joinMeeting")}
           </a>
         )}
 
@@ -391,6 +411,8 @@ function MonthView({
   onSelectDate: (d: Date) => void;
   onSelectEvent: (e: CalendarEvent) => void;
 }) {
+  const t = useTranslations("calendar");
+  const locale = useLocale();
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const grid = useMemo(() => getMonthGrid(year, month), [year, month]);
@@ -416,19 +438,20 @@ function MonthView({
   return (
     <div className="flex flex-col">
       {/* Header */}
-      <div className="grid grid-cols-7 border-b border-border/50">
-        {WEEKDAYS_SHORT.map((d) => (
+      <div className="grid grid-cols-7 border-b border-border/50" role="row">
+        {WEEKDAY_SHORT_KEYS.map((key) => (
           <div
-            key={d}
+            key={key}
+            role="columnheader"
             className="py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
           >
-            {d}
+            {t(`weekdaysShort.${key}`)}
           </div>
         ))}
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-7 flex-1">
+      <div className="grid grid-cols-7 flex-1" role="grid" aria-label={t(`months.${MONTH_KEYS[month]}`)}>
         {grid.map(({ date, isCurrentMonth }, i) => {
           const isToday = isSameDay(date, today);
           const isSelected = isSameDay(date, selectedDate);
@@ -442,12 +465,16 @@ function MonthView({
               key={i}
               onClick={() => !isPast && onSelectDate(date)}
               disabled={isPast}
-              className={`group relative min-h-[100px] border-b border-r border-border/30 p-1.5 text-left transition-colors disabled:pointer-events-none ${
-                isPast ? "bg-muted/5 cursor-default" : "hover:bg-muted/30"
-              } ${!isCurrentMonth ? "bg-muted/10" : ""} ${
-                isSelected ? "bg-primary/5 ring-1 ring-inset ring-primary/30" : ""
+              role="gridcell"
+              aria-selected={isSelected}
+              aria-current={isToday ? "date" : undefined}
+              aria-label={formatDateLocale(date, locale, { month: "long", day: "numeric", weekday: "long" })}
+              className={`group relative min-h-[100px] border-b border-e border-border/20 p-1.5 text-start transition-all duration-150 disabled:pointer-events-none ${
+                isPast ? "bg-muted/5 cursor-default" : "hover:bg-muted/20 hover:shadow-inner"
+              } ${!isCurrentMonth ? "bg-muted/8" : ""} ${
+                isSelected ? "bg-primary/5 ring-1 ring-inset ring-primary/25 shadow-inner shadow-primary/5" : ""
               } ${isLastRow ? "border-b-0" : ""} ${
-                (i + 1) % 7 === 0 ? "border-r-0" : ""
+                (i + 1) % 7 === 0 ? "border-e-0" : ""
               }`}
             >
               {/* Day number */}
@@ -476,19 +503,19 @@ function MonthView({
                       ev.stopPropagation();
                       onSelectEvent(e);
                     }}
-                    className={`flex cursor-pointer items-center gap-1 rounded-md border-l-2 px-1.5 py-0.5 text-[10px] font-medium leading-tight transition-opacity hover:opacity-80 ${
-                      isPast ? "opacity-60" : ""
+                    className={`flex cursor-pointer items-center gap-1 rounded-lg border-s-2 px-1.5 py-0.5 text-[10px] font-medium leading-tight transition-all duration-150 hover:opacity-90 hover:shadow-sm hover:translate-x-0.5 ${
+                      isPast ? "opacity-50" : ""
                     } ${EVENT_COLORS[e.type] ?? "bg-primary/10 border-primary/40 text-primary"}`}
                   >
                     <span className="truncate">
-                      {formatTime(new Date(e.scheduledAt)).replace(/\s?(AM|PM)/, "").trim()}{" "}
+                      {formatTime(new Date(e.scheduledAt), locale).replace(/\s?(AM|PM|ص|م)/, "").trim()}{" "}
                       {e.title}
                     </span>
                   </div>
                 ))}
                 {dayEvents.length > 3 && (
                   <p className="px-1 text-[10px] font-medium text-muted-foreground">
-                    +{dayEvents.length - 3} more
+                    {t("more", { count: dayEvents.length - 3 })}
                   </p>
                 )}
               </div>
@@ -517,6 +544,8 @@ function TimeGridView({
   onSelectDate: (d: Date) => void;
   onSelectEvent: (e: CalendarEvent) => void;
 }) {
+  const t = useTranslations("calendar");
+  const locale = useLocale();
   const scrollRef = useRef<HTMLDivElement>(null);
   const today = new Date();
   const isMultiDay = dates.length > 1;
@@ -557,17 +586,19 @@ function TimeGridView({
                 <button
                   key={i}
                   onClick={() => onSelectDate(d)}
-                  className={`flex flex-col items-center border-r border-border/30 py-2.5 transition-colors hover:bg-muted/30 last:border-r-0 ${
+                  aria-selected={isSelected}
+                  aria-current={isToday ? "date" : undefined}
+                  className={`flex flex-col items-center border-e border-border/30 py-3 transition-all duration-150 hover:bg-muted/30 last:border-e-0 ${
                     isSelected ? "bg-primary/5" : ""
                   }`}
                 >
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {WEEKDAYS_SHORT[d.getDay()]}
+                    {t(`weekdaysShort.${WEEKDAY_SHORT_KEYS[d.getDay()]}`)}
                   </span>
                   <span
-                    className={`mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+                    className={`mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
                       isToday
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
                         : "text-foreground"
                     }`}
                   >
@@ -584,8 +615,8 @@ function TimeGridView({
       {!isMultiDay && dates[0] && (
         <div className="border-b border-border/50 px-4 py-3">
           <p className="text-sm font-semibold text-foreground">
-            {WEEKDAYS_FULL[dates[0].getDay()]},{" "}
-            {MONTHS[dates[0].getMonth()]} {dates[0].getDate()}
+            {t(`weekdaysFull.${WEEKDAY_FULL_KEYS[dates[0].getDay()]}`)},{" "}
+            {t(`months.${MONTH_KEYS[dates[0].getMonth()]}`)} {dates[0].getDate()}
           </p>
         </div>
       )}
@@ -594,15 +625,15 @@ function TimeGridView({
       <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="relative flex" style={{ minHeight: `${24 * 60}px` }}>
           {/* Time labels */}
-          <div className="sticky left-0 z-10 w-16 flex-shrink-0 bg-background">
+          <div className="sticky start-0 z-10 w-16 flex-shrink-0 bg-background">
             {HOURS.map((h) => (
               <div
                 key={h}
-                className="relative flex items-start justify-end pr-2"
+                className="relative flex items-start justify-end pe-2"
                 style={{ height: "60px" }}
               >
                 <span className="text-[10px] font-medium text-muted-foreground -mt-1.5">
-                  {h === 0 ? "" : formatHour(h)}
+                  {h === 0 ? "" : formatHour(h, locale)}
                 </span>
               </div>
             ))}
@@ -622,13 +653,13 @@ function TimeGridView({
               return (
                 <div
                   key={colIdx}
-                  className="relative border-r border-border/30 last:border-r-0"
+                  className="relative border-e border-border/30 last:border-e-0"
                 >
                   {/* Hour lines */}
                   {HOURS.map((h) => (
                     <div
                       key={h}
-                      className="border-b border-border/20"
+                      className="border-b border-border/15 hover:bg-muted/20 transition-colors"
                       style={{ height: "60px" }}
                     />
                   ))}
@@ -636,11 +667,11 @@ function TimeGridView({
                   {/* Current time indicator */}
                   {isToday && (
                     <div
-                      className="absolute left-0 right-0 z-20 flex items-center"
+                      className="absolute inset-x-0 z-20 flex items-center"
                       style={{ top: `${nowMinutes}px` }}
                     >
-                      <div className="h-2.5 w-2.5 -ml-1 rounded-full bg-red-500" />
-                      <div className="h-[2px] flex-1 bg-red-500" />
+                      <div className="h-3 w-3 -ms-1.5 rounded-full bg-red-500 shadow-md shadow-red-500/30 ring-2 ring-red-500/20" />
+                      <div className="h-[2px] flex-1 bg-gradient-to-r from-red-500 to-red-500/0" />
                     </div>
                   )}
 
@@ -655,7 +686,7 @@ function TimeGridView({
                       <button
                         key={evt._id}
                         onClick={() => onSelectEvent(evt)}
-                        className={`absolute left-1 right-1 z-10 overflow-hidden rounded-lg border-l-[3px] px-2 py-1 text-left transition-all hover:shadow-md hover:z-30 ${
+                        className={`absolute inset-x-1 z-10 overflow-hidden rounded-xl border-s-[3px] px-2.5 py-1.5 text-start transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:z-30 active:scale-[0.98] ${
                           EVENT_COLORS[evt.type] ??
                           "bg-primary/10 border-primary/40 text-primary"
                         }`}
@@ -670,7 +701,7 @@ function TimeGridView({
                         </p>
                         {heightMin >= 40 && (
                           <p className="truncate text-[10px] opacity-75 leading-tight mt-0.5">
-                            {formatTime(evtDate)}
+                            {formatTime(evtDate, locale)}
                             {evt.subtitle ? ` · ${evt.subtitle}` : ""}
                           </p>
                         )}
@@ -700,6 +731,8 @@ function UpcomingList({
   selectedDate: Date;
   onSelect: (e: CalendarEvent) => void;
 }) {
+  const t = useTranslations("calendar");
+  const locale = useLocale();
   const dayEvents = useMemo(
     () =>
       events
@@ -728,15 +761,16 @@ function UpcomingList({
       {/* Selected day events */}
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-          {selectedDate.toLocaleDateString("en-US", {
+          {formatDateLocale(selectedDate, locale, {
             weekday: "long",
             month: "short",
             day: "numeric",
           })}
         </h3>
         {dayEvents.length === 0 ? (
-          <p className="rounded-xl bg-muted/30 py-6 text-center text-xs text-muted-foreground">
-            No events
+          <p className="rounded-xl bg-muted/20 border border-dashed border-border/40 py-8 text-center text-xs text-muted-foreground">
+            <CalendarDays className="mx-auto mb-2 h-8 w-8 text-muted-foreground/30" />
+            {t("noEvents")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -744,7 +778,7 @@ function UpcomingList({
               <button
                 key={e._id}
                 onClick={() => onSelect(e)}
-                className={`w-full rounded-xl border-l-[3px] p-3 text-left transition-colors hover:bg-muted/40 ${
+                className={`w-full rounded-xl border-s-[3px] p-3 text-start transition-colors hover:bg-muted/40 ${
                   EVENT_COLORS[e.type] ??
                   "bg-primary/5 border-primary/40 text-primary"
                 }`}
@@ -755,8 +789,8 @@ function UpcomingList({
                 </div>
                 <p className="mt-1 flex items-center gap-1 text-[10px] opacity-70">
                   <Clock className="h-2.5 w-2.5" />
-                  {formatTime(new Date(e.scheduledAt))}
-                  {e.duration ? ` · ${e.duration} min` : ""}
+                  {formatTime(new Date(e.scheduledAt), locale)}
+                  {e.duration ? ` · ${t("min", { count: e.duration })}` : ""}
                 </p>
                 {e.subtitle && (
                   <p className="mt-0.5 truncate text-[10px] opacity-60">
@@ -773,7 +807,7 @@ function UpcomingList({
       {upcoming.length > 0 && (
         <div>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
-            Upcoming
+            {t("upcoming")}
           </h3>
           <div className="space-y-1.5">
             {upcoming.map((e) => {
@@ -782,7 +816,7 @@ function UpcomingList({
                 <button
                   key={e._id}
                   onClick={() => onSelect(e)}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/40"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-start transition-colors hover:bg-muted/40"
                 >
                   <div
                     className={`h-2 w-2 flex-shrink-0 rounded-full ${
@@ -794,11 +828,11 @@ function UpcomingList({
                       {e.title}
                     </p>
                     <p className="text-[10px] text-muted-foreground">
-                      {dt.toLocaleDateString("en-US", {
+                      {formatDateLocale(dt, locale, {
                         month: "short",
                         day: "numeric",
                       })}{" "}
-                      · {formatTime(dt)}
+                      · {formatTime(dt, locale)}
                     </p>
                   </div>
                 </button>
@@ -830,6 +864,8 @@ function BookingModal({
   fetchCandidates?: (search: string) => Promise<BookingCandidate[]>;
   prefilledCandidate?: BookingCandidate;
 }) {
+  const t = useTranslations("calendar");
+  const locale = useLocale();
   // Step: "candidate" → "details" → "confirmation"
   const initialStep = prefilledCandidate
     ? "details"
@@ -920,11 +956,11 @@ function BookingModal({
 
   const handleGoToConfirmation = () => {
     if (!selectedCandidate && fetchCandidates) {
-      setError("Please select a candidate first");
+      setError(t("selectCandidate"));
       return;
     }
     if (conflicts.length > 0) {
-      setError("This time conflicts with an existing interview");
+      setError(t("conflictTitle"));
       return;
     }
     setError("");
@@ -945,7 +981,7 @@ function BookingModal({
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to book interview");
+      setError(err instanceof Error ? err.message : t("failedBook"));
     } finally {
       setSubmitting(false);
     }
@@ -955,19 +991,22 @@ function BookingModal({
     const [h, m] = time.split(":").map(Number);
     const d = new Date();
     d.setHours(h, m);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+    return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
   })();
 
   const endTimeLabel = (() => {
     const [h, m] = time.split(":").map(Number);
     const d = new Date();
     d.setHours(h, m + duration);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+    return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
   })();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="animate-in fade-in-0 zoom-in-95 w-full max-w-md rounded-2xl border bg-background shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+      <div
+        className="animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 duration-300 w-full max-w-md rounded-2xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/20"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div className="flex items-center gap-2">
@@ -989,10 +1028,10 @@ function BookingModal({
             )}
             <h3 className="text-base font-semibold text-foreground">
               {step === "candidate"
-                ? "Select Candidate"
+                ? t("selectCandidate")
                 : step === "details"
-                  ? "Interview Details"
-                  : "Confirm Booking"}
+                  ? t("interviewDetails")
+                  : t("confirmBooking")}
             </h3>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-muted">
@@ -1010,8 +1049,8 @@ function BookingModal({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search candidates by name or job title..."
-                className="w-full rounded-lg border bg-background py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder={t("searchCandidates")}
+                className="w-full rounded-lg border bg-background py-2.5 ps-9 pe-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 autoFocus
               />
             </div>
@@ -1019,16 +1058,17 @@ function BookingModal({
             {/* Results */}
             <div className="mt-3 max-h-[320px] space-y-1.5 overflow-y-auto">
               {searchLoading && (
-                <div className="flex items-center justify-center py-8">
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <div className="flex flex-col items-center justify-center gap-2 py-8">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                  <span className="text-[10px] text-muted-foreground">{t("searchCandidates")}...</span>
                 </div>
               )}
 
               {!searchLoading && searchDone && candidates.length === 0 && (
                 <p className="py-8 text-center text-xs text-muted-foreground">
                   {searchQuery
-                    ? "No candidates found"
-                    : "No eligible candidates (shortlisted or applied)"}
+                    ? t("noCandidatesFound")
+                    : t("noCandidatesEligible")}
                 </p>
               )}
 
@@ -1071,7 +1111,7 @@ function BookingModal({
                                   : "bg-red-500/15 text-red-600 dark:text-red-400"
                             }`}
                           >
-                            {c.matchScore}% match
+                            {t("match", { score: c.matchScore })}
                           </span>
                         )}
                       </div>
@@ -1104,7 +1144,7 @@ function BookingModal({
                     onClick={() => setStep("candidate")}
                     className="text-[10px] font-medium text-primary hover:underline"
                   >
-                    Change
+                    {t("change")}
                   </button>
                 )}
               </div>
@@ -1112,9 +1152,9 @@ function BookingModal({
 
             {/* Date display */}
             <div className="rounded-xl bg-muted/40 p-3">
-              <p className="text-xs font-medium text-muted-foreground">Date</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("date")}</p>
               <p className="mt-0.5 text-sm font-semibold text-foreground">
-                {date.toLocaleDateString("en-US", {
+                {formatDateLocale(date, locale, {
                   weekday: "long",
                   month: "long",
                   day: "numeric",
@@ -1126,40 +1166,47 @@ function BookingModal({
             {/* Time selection */}
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                Time
+                {t("timeLabel")}
               </label>
               {timeSlots.length === 0 ? (
                 <p className="text-xs text-destructive">
-                  No available time slots for today
+                  {t("noTimeSlots")}
                 </p>
               ) : (
-                <select
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
+                <div className="grid grid-cols-4 gap-1.5 max-h-[140px] overflow-y-auto rounded-xl border border-border/50 bg-muted/20 p-2">
                   {timeSlots.map((slot) => {
                     const [sh, sm] = slot.split(":").map(Number);
                     const d = new Date();
                     d.setHours(sh, sm);
+                    const label = d.toLocaleTimeString(locale, {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    });
+                    const isActive = time === slot;
                     return (
-                      <option key={slot} value={slot}>
-                        {d.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true,
-                        })}
-                      </option>
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => setTime(slot)}
+                        className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-all duration-150 ${
+                          isActive
+                            ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                            : "bg-background hover:bg-muted text-foreground"
+                        }`}
+                      >
+                        {label}
+                      </button>
                     );
                   })}
-                </select>
+                </div>
               )}
             </div>
 
             {/* Duration */}
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                Duration
+                {t("duration")}
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {([15, 30, 45, 60] as const).map((d) => (
@@ -1172,7 +1219,7 @@ function BookingModal({
                         : "border-border text-muted-foreground hover:bg-muted/50"
                     }`}
                   >
-                    {d} min
+                    {t("min", { count: d })}
                   </button>
                 ))}
               </div>
@@ -1181,27 +1228,27 @@ function BookingModal({
             {/* Type */}
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                Type
+                {t("type")}
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {(["video", "offline", "hybrid"] as const).map((t) => (
+                {(["video", "offline", "hybrid"] as const).map((tp) => (
                   <button
-                    key={t}
-                    onClick={() => setType(t)}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium capitalize transition-colors ${
-                      type === t
+                    key={tp}
+                    onClick={() => setType(tp)}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
+                      type === tp
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border text-muted-foreground hover:bg-muted/50"
                     }`}
                   >
-                    {t === "video" ? (
+                    {tp === "video" ? (
                       <Video className="h-3 w-3" />
-                    ) : t === "offline" ? (
+                    ) : tp === "offline" ? (
                       <MapPin className="h-3 w-3" />
                     ) : (
                       <Phone className="h-3 w-3" />
                     )}
-                    {t}
+                    {tp === "video" ? t("videoCall") : tp === "offline" ? t("inPerson") : t("hybrid")}
                   </button>
                 ))}
               </div>
@@ -1210,7 +1257,7 @@ function BookingModal({
             {/* Notes */}
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                Notes (optional)
+                {t("notes")} ({t("optional")})
               </label>
               <textarea
                 value={notes}
@@ -1218,20 +1265,20 @@ function BookingModal({
                 rows={2}
                 maxLength={500}
                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="Any instructions for the candidate..."
+                placeholder={t("notesPlaceholder")}
               />
             </div>
 
             {/* Summary */}
             <div className="rounded-xl bg-muted/30 p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Summary
+                {t("summary")}
               </p>
               <p className="mt-1 text-xs text-foreground">
                 {selectedCandidate
                   ? `${selectedCandidate.candidateName} · `
                   : ""}
-                {selectedTimeLabel} – {endTimeLabel} · {duration} min · {type}
+                {selectedTimeLabel} – {endTimeLabel} · {t("min", { count: duration })} · {type === "video" ? t("videoCall") : type === "offline" ? t("inPerson") : t("hybrid")}
               </p>
             </div>
 
@@ -1241,32 +1288,36 @@ function BookingModal({
                 <AlertCircle className="h-4 w-4 flex-shrink-0 text-destructive mt-0.5" />
                 <div>
                   <p className="text-xs font-medium text-destructive">
-                    Time conflict detected
+                    {t("conflictTitle")}
                   </p>
                   <p className="mt-0.5 text-[10px] text-destructive/70">
-                    {conflicts.map((c) => c.title).join(", ")} already scheduled
-                    at this time
+                    {t("conflictDesc", { titles: conflicts.map((c) => c.title).join(", ") })}
                   </p>
                 </div>
               </div>
             )}
 
             {/* Error */}
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 px-3 py-2">
+                <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+                <p className="text-xs text-destructive">{error}</p>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-2 pt-1">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
+                className="flex-1 rounded-xl"
                 onClick={onClose}
               >
-                Cancel
+                {t("cancel")}
               </Button>
               <Button
                 size="sm"
-                className="flex-1"
+                className="flex-1 rounded-xl shadow-sm shadow-primary/20"
                 disabled={
                   conflicts.length > 0 ||
                   timeSlots.length === 0 ||
@@ -1274,7 +1325,7 @@ function BookingModal({
                 }
                 onClick={handleGoToConfirmation}
               >
-                Review & Confirm
+                {t("reviewConfirm")}
               </Button>
             </div>
           </div>
@@ -1308,7 +1359,7 @@ function BookingModal({
                           : "bg-red-500/15 text-red-600 dark:text-red-400"
                     }`}
                   >
-                    {selectedCandidate.matchScore}% match
+                    {t("match", { score: selectedCandidate.matchScore })}
                   </span>
                 )}
               </div>
@@ -1317,9 +1368,9 @@ function BookingModal({
             {/* Details summary */}
             <div className="space-y-2.5 rounded-xl bg-muted/30 p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Date</span>
+                <span className="text-xs text-muted-foreground">{t("date")}</span>
                 <span className="text-xs font-semibold text-foreground">
-                  {date.toLocaleDateString("en-US", {
+                  {formatDateLocale(date, locale, {
                     weekday: "short",
                     month: "long",
                     day: "numeric",
@@ -1329,22 +1380,22 @@ function BookingModal({
               </div>
               <div className="h-px bg-border/50" />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Time</span>
+                <span className="text-xs text-muted-foreground">{t("timeLabel")}</span>
                 <span className="text-xs font-semibold text-foreground">
                   {selectedTimeLabel} – {endTimeLabel}
                 </span>
               </div>
               <div className="h-px bg-border/50" />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Duration</span>
+                <span className="text-xs text-muted-foreground">{t("duration")}</span>
                 <span className="text-xs font-semibold text-foreground">
-                  {duration} minutes
+                  {t("minutes", { count: duration })}
                 </span>
               </div>
               <div className="h-px bg-border/50" />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Type</span>
-                <span className="flex items-center gap-1.5 text-xs font-semibold capitalize text-foreground">
+                <span className="text-xs text-muted-foreground">{t("type")}</span>
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                   {type === "video" ? (
                     <Video className="h-3 w-3 text-sky-500" />
                   ) : type === "offline" ? (
@@ -1353,17 +1404,17 @@ function BookingModal({
                     <Phone className="h-3 w-3 text-violet-500" />
                   )}
                   {type === "video"
-                    ? "Video Call"
+                    ? t("videoCall")
                     : type === "offline"
-                      ? "In Person"
-                      : "Hybrid"}
+                      ? t("inPerson")
+                      : t("hybrid")}
                 </span>
               </div>
               {notes.trim() && (
                 <>
                   <div className="h-px bg-border/50" />
                   <div>
-                    <span className="text-xs text-muted-foreground">Notes</span>
+                    <span className="text-xs text-muted-foreground">{t("notes")}</span>
                     <p className="mt-1 text-xs text-foreground">
                       {notes.trim()}
                     </p>
@@ -1373,25 +1424,30 @@ function BookingModal({
             </div>
 
             {/* Error */}
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 px-3 py-2">
+                <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+                <p className="text-xs text-destructive">{error}</p>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-2 pt-1">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
+                className="flex-1 rounded-xl"
                 onClick={() => setStep("details")}
               >
-                Back
+                {t("back")}
               </Button>
               <Button
                 size="sm"
-                className="flex-1"
+                className="flex-1 rounded-xl shadow-sm shadow-primary/20"
                 disabled={submitting}
                 onClick={handleSubmit}
               >
-                {submitting ? "Booking..." : "Confirm & Book"}
+                {submitting ? t("booking") : t("confirmBook")}
               </Button>
             </div>
           </div>
@@ -1416,6 +1472,9 @@ export default function GoogleCalendar({
   prefilledApplicationId,
   prefilledCandidate,
 }: GoogleCalendarProps) {
+  const t = useTranslations("calendar");
+  const locale = useLocale();
+  const isRtl = locale === "ar";
   const [view, setView] = useState<CalendarViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -1477,83 +1536,90 @@ export default function GoogleCalendar({
 
   // Header title
   const headerTitle = useMemo(() => {
-    if (view === "month") return `${MONTHS[month]} ${year}`;
+    if (view === "month") return `${t(`months.${MONTH_KEYS[month]}`)} ${year}`;
     if (view === "week") {
       const start = weekDates[0];
       const end = weekDates[6];
       if (start.getMonth() === end.getMonth()) {
-        return `${MONTHS[start.getMonth()]} ${start.getDate()} – ${end.getDate()}, ${start.getFullYear()}`;
+        return `${t(`months.${MONTH_KEYS[start.getMonth()]}`)} ${start.getDate()} – ${end.getDate()}, ${start.getFullYear()}`;
       }
-      return `${MONTHS_SHORT[start.getMonth()]} ${start.getDate()} – ${MONTHS_SHORT[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
+      return `${t(`monthsShort.${MONTH_SHORT_KEYS[start.getMonth()]}`)} ${start.getDate()} – ${t(`monthsShort.${MONTH_SHORT_KEYS[end.getMonth()]}`)} ${end.getDate()}, ${end.getFullYear()}`;
     }
-    return currentDate.toLocaleDateString("en-US", {
+    return formatDateLocale(currentDate, locale, {
       weekday: "long",
       month: "long",
       day: "numeric",
       year: "numeric",
     });
-  }, [view, month, year, weekDates, currentDate]);
+  }, [view, month, year, weekDates, currentDate, t, locale]);
+
+  const PrevIcon = isRtl ? ChevronRight : ChevronLeft;
+  const NextIcon = isRtl ? ChevronLeft : ChevronRight;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5" dir={isRtl ? "rtl" : "ltr"}>
       {/* ── Toolbar ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={goToToday}>
-            Today
+        <div className="flex items-center gap-2.5">
+          <Button variant="outline" size="sm" onClick={goToToday} className="rounded-xl font-semibold">
+            {t("today")}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => navigate(-1)}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => navigate(1)}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <h2 className="text-base font-semibold text-foreground sm:text-lg">
+          <div className="flex items-center gap-0.5 rounded-xl border border-border/40 bg-muted/20 p-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-lg"
+              onClick={() => navigate(-1)}
+              aria-label={view === "month" ? t(`months.${MONTH_KEYS[(month + 11) % 12]}`) : undefined}
+            >
+              <PrevIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-lg"
+              onClick={() => navigate(1)}
+              aria-label={view === "month" ? t(`months.${MONTH_KEYS[(month + 1) % 12]}`) : undefined}
+            >
+              <NextIcon className="h-4 w-4" />
+            </Button>
+          </div>
+          <h2 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
             {headerTitle}
           </h2>
         </div>
 
         {/* View Switcher */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {bookingEnabled && onBookInterview && !isPastDate(selectedDate) && (
             <Button
               size="sm"
               onClick={() => setShowBooking(true)}
-              className="gap-1.5"
+              className="gap-1.5 rounded-xl shadow-sm shadow-primary/20"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Book Interview</span>
+              <span className="hidden sm:inline">{t("bookInterview")}</span>
             </Button>
           )}
-          <div className="flex items-center rounded-xl border border-border/50 bg-muted/30 p-0.5">
+          <div className="flex items-center rounded-xl border border-border/40 bg-muted/20 p-0.5">
           {(
             [
-              { key: "day", icon: List, label: "Day" },
-              { key: "week", icon: CalendarDays, label: "Week" },
-              { key: "month", icon: LayoutGrid, label: "Month" },
+              { key: "day", icon: List, labelKey: "dayView" },
+              { key: "week", icon: CalendarDays, labelKey: "weekView" },
+              { key: "month", icon: LayoutGrid, labelKey: "monthView" },
             ] as const
-          ).map(({ key, icon: Icon, label }) => (
+          ).map(({ key, icon: Icon, labelKey }) => (
             <button
               key={key}
               onClick={() => setView(key)}
-              className={`flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                 view === key
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{label}</span>
+              <span className="hidden sm:inline">{t(labelKey)}</span>
             </button>
           ))}
         </div>
@@ -1565,8 +1631,21 @@ export default function GoogleCalendar({
         {/* Calendar Area */}
         <div className="workspace-panel-surface overflow-hidden rounded-[20px]">
           {loading ? (
-            <div className="flex items-center justify-center py-32">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <div className="animate-in fade-in-50 duration-500 p-4 space-y-3">
+              {/* Skeleton header row */}
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <div key={i} className="h-6 rounded-lg bg-muted/40 animate-pulse" />
+                ))}
+              </div>
+              {/* Skeleton grid rows */}
+              {Array.from({ length: 5 }).map((_, row) => (
+                <div key={row} className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: 7 }).map((_, col) => (
+                    <div key={col} className="h-[88px] rounded-xl bg-muted/25 animate-pulse" style={{ animationDelay: `${(row * 7 + col) * 30}ms` }} />
+                  ))}
+                </div>
+              ))}
             </div>
           ) : view === "month" ? (
             <MonthView

@@ -21,6 +21,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -59,6 +60,10 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
+    if (!agreedToTerms) {
+      setError(t("mustAgreeToTerms"));
+      return;
+    }
     if (password !== confirmPassword) {
       setError(t("passwordsDoNotMatch"));
       return;
@@ -158,6 +163,26 @@ export default function RegisterPage() {
             autoComplete="new-password"
             className="h-11 px-4 bg-transparent transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/40 rounded-lg"
           />
+        </div>
+
+        <div className="flex items-start gap-2">
+          <input
+            id="terms"
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary/40"
+          />
+          <label htmlFor="terms" className="text-sm text-muted-foreground leading-5">
+            {t("agreeToTerms")}{" "}
+            <Link href={`/${locale}/terms`} className="text-primary hover:underline" target="_blank">
+              {t("termsOfService")}
+            </Link>
+            {" "}{t("and")}{" "}
+            <Link href={`/${locale}/privacy`} className="text-primary hover:underline" target="_blank">
+              {t("privacyPolicyLink")}
+            </Link>
+          </label>
         </div>
 
         {error && (

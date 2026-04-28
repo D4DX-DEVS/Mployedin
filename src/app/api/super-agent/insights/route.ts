@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
 import Lead from "@/models/Lead";
@@ -72,9 +72,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   await connectDB();
 
-  // ── 1. Resolve super-agent scope ──
-  const saProfile = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
-  const assignedAgentDocIds = saProfile?.agentIds ?? [];
+  // ── 1. Resolve super-agent scope (team + regions) ──
+  const scope = await getSuperAgentScope(ctx.userId);
+  const assignedAgentDocIds = scope?.effectiveAgentIds ?? [];
 
   if (assignedAgentDocIds.length === 0) {
     return NextResponse.json({
@@ -392,4 +392,4 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     insights: insights.slice(0, 6), // cap at 6 insights
     generatedAt: new Date().toISOString(),
   });
-}, { resource: "users", action: "read" });
+}, { resource: "agents", action: "read" });

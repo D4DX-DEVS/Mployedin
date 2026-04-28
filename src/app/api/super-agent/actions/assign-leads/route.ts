@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Agent from "@/models/Agent";
 import Lead from "@/models/Lead";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -28,9 +28,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   await connectDB();
 
-  // Verify both agents belong to this super-agent
-  const saProfile = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
-  const assignedAgentDocIds = (saProfile?.agentIds ?? []).map((id: unknown) => String(id));
+  // Verify both agents belong to this super-agent's scope (team + regions)
+  const scope = await getSuperAgentScope(ctx.userId);
+  const assignedAgentDocIds = (scope?.effectiveAgentIds ?? []).map((id: unknown) => String(id));
 
   const agentDocs = await Agent.find({ _id: { $in: assignedAgentDocIds } }).select("userId").lean();
   const rosterUserIds = new Set(agentDocs.map((a) => a.userId.toString()));
@@ -39,9 +39,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: "Both agents must be in your roster" }, { status: 403 });
   }
 
-  // Find unworked leads (status = new) from the source agent, limited
+  // Map userId → Agent doc _id (Lead.agentId references Agent._id, not User._id)
+  const userIdToAgentDocId = new Map(agentDocs.map((a) => [a.userId.toString(), a._id.toString()]));
+  const fromAgentDocId = userIdToAgentDocId.get(fromAgentUserId);
+  const toAgentDocId = userIdToAgentDocId.get(toAgentUserId);
+
+  if (!fromAgentDocId || !toAgentDocId) {
+    return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
+  }
+
+  // Find unworked leads (status = new/contacted) from the source agent, limited
   const leadsToMove = await Lead.find({
-    agentId: fromAgentUserId,
+    agentId: fromAgentDocId,
     status: { $in: ["new", "contacted"] },
   })
     .select("_id")
@@ -58,7 +67,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   await Lead.updateMany(
     { _id: { $in: leadIds } },
     {
-      $set: { agentId: toAgentUserId },
+      $set: { agentId: toAgentDocId },
       $push: {
         activityLog: {
           action: "reassigned",

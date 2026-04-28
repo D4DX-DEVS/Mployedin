@@ -7,7 +7,6 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -233,14 +232,18 @@ export default function AdminInterviewOversightPage() {
       />
 
       {/* Filters */}
-      <section className="card-base space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse &amp; filter</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Find interviews</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Filter by employer, agent, super agent, status, type, date range, or search by candidate.</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 pt-1">
+      <TableToolbar
+        title="Interview Oversight"
+        description="Filter by employer, agent, super agent, status, type, date range, or search by candidate."
+        search={search}
+        onSearchChange={(v) => { setSearch(v); resetPage(); }}
+        searchPlaceholder="Search candidate or company…"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        hasActiveFilters={activeFilterCount > 0}
+        actions={
+          <div className="flex items-center gap-2">
             {activeFilterCount > 0 && (
               <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs text-muted-foreground gap-1.5">
                 <RotateCcw className="h-3 w-3" /> Clear {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""}
@@ -255,112 +258,103 @@ export default function AdminInterviewOversightPage() {
               <Sparkles className="h-3.5 w-3.5" /> AI Insights
             </Button>
           </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="xl:col-span-4">
-            <TableToolbar
-              search={search}
-              onSearchChange={(v) => { setSearch(v); resetPage(); }}
-              searchPlaceholder="Search candidate or company…"
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-            />
-          </div>
-          <div>
-            <label htmlFor="admin-interviews-status" className="sr-only">Status</label>
-            <SearchableSelect
-              id="admin-interviews-status"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={[
-                { value: "all", label: "All statuses" },
-                { value: "scheduled", label: "Scheduled" },
-                { value: "completed", label: "Completed" },
-                { value: "cancelled", label: "Cancelled" },
-                { value: "no_show", label: "No Show" },
-              ]}
-              value={statusFilter}
-              onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-              placeholder="All statuses"
-            />
-          </div>
-          <div>
-            <label htmlFor="admin-interviews-type" className="sr-only">Interview Type</label>
-            <SearchableSelect
-              id="admin-interviews-type"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={[
-                { value: "all", label: "All types" },
-                { value: "video", label: "Video" },
-                { value: "offline", label: "Offline" },
-                { value: "hybrid", label: "Hybrid" },
-              ]}
-              value={typeFilter}
-              onValueChange={(v) => { setTypeFilter(v); resetPage(); }}
-              placeholder="All types"
-            />
-          </div>
-          <div>
-            <label htmlFor="admin-interviews-daterange" className="sr-only">Date Range</label>
-            <SearchableSelect
-              id="admin-interviews-daterange"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={[
-                { value: "all", label: "All dates" },
-                { value: "today", label: "Today" },
-                { value: "3days", label: "Last 3 days" },
-                { value: "7days", label: "Last 7 days" },
-                { value: "30days", label: "Last 30 days" },
-                { value: "90days", label: "Last 90 days" },
-                { value: "upcoming", label: "Upcoming only" },
-              ]}
-              value={dateRange}
-              onValueChange={(v) => { setDateRange(v); resetPage(); }}
-              placeholder="All dates"
-            />
-          </div>
-          {employers.length > 1 && (
+        }
+        filterContent={
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div>
-              <label htmlFor="admin-interviews-employer" className="sr-only">Employer</label>
+              <label htmlFor="admin-interviews-status" className="sr-only">Status</label>
               <SearchableSelect
-                id="admin-interviews-employer"
-                className="h-11 w-full rounded-xl border-border bg-secondary/65"
-                options={employers}
-                value={selectedEmployer}
-                onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }}
-                placeholder="All employers"
+                id="admin-interviews-status"
+                className="h-11 w-full rounded-xl border-border bg-card"
+                options={[
+                  { value: "all", label: "All statuses" },
+                  { value: "scheduled", label: "Scheduled" },
+                  { value: "completed", label: "Completed" },
+                  { value: "cancelled", label: "Cancelled" },
+                  { value: "no_show", label: "No Show" },
+                ]}
+                value={statusFilter}
+                onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+                placeholder="All statuses"
               />
             </div>
-          )}
-          {agents.length > 1 && (
             <div>
-              <label htmlFor="admin-interviews-agent" className="sr-only">Agent</label>
+              <label htmlFor="admin-interviews-type" className="sr-only">Interview Type</label>
               <SearchableSelect
-                id="admin-interviews-agent"
-                className="h-11 w-full rounded-xl border-border bg-secondary/65"
-                options={agents}
-                value={selectedAgent}
-                onValueChange={(v) => { setSelectedAgent(v); resetPage(); }}
-                placeholder="All agents"
+                id="admin-interviews-type"
+                className="h-11 w-full rounded-xl border-border bg-card"
+                options={[
+                  { value: "all", label: "All types" },
+                  { value: "video", label: "Video" },
+                  { value: "offline", label: "Offline" },
+                  { value: "hybrid", label: "Hybrid" },
+                ]}
+                value={typeFilter}
+                onValueChange={(v) => { setTypeFilter(v); resetPage(); }}
+                placeholder="All types"
               />
             </div>
-          )}
-          {superAgents.length > 1 && (
             <div>
-              <label htmlFor="admin-interviews-sa" className="sr-only">Super Agent</label>
+              <label htmlFor="admin-interviews-daterange" className="sr-only">Date Range</label>
               <SearchableSelect
-                id="admin-interviews-sa"
-                className="h-11 w-full rounded-xl border-border bg-secondary/65"
-                options={superAgents}
-                value={selectedSuperAgent}
-                onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }}
-                placeholder="All super agents"
+                id="admin-interviews-daterange"
+                className="h-11 w-full rounded-xl border-border bg-card"
+                options={[
+                  { value: "all", label: "All dates" },
+                  { value: "today", label: "Today" },
+                  { value: "3days", label: "Last 3 days" },
+                  { value: "7days", label: "Last 7 days" },
+                  { value: "30days", label: "Last 30 days" },
+                  { value: "90days", label: "Last 90 days" },
+                  { value: "upcoming", label: "Upcoming only" },
+                ]}
+                value={dateRange}
+                onValueChange={(v) => { setDateRange(v); resetPage(); }}
+                placeholder="All dates"
               />
             </div>
-          )}
-        </div>
-      </section>
+            {employers.length > 1 && (
+              <div>
+                <label htmlFor="admin-interviews-employer" className="sr-only">Employer</label>
+                <SearchableSelect
+                  id="admin-interviews-employer"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={employers}
+                  value={selectedEmployer}
+                  onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }}
+                  placeholder="All employers"
+                />
+              </div>
+            )}
+            {agents.length > 1 && (
+              <div>
+                <label htmlFor="admin-interviews-agent" className="sr-only">Agent</label>
+                <SearchableSelect
+                  id="admin-interviews-agent"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={agents}
+                  value={selectedAgent}
+                  onValueChange={(v) => { setSelectedAgent(v); resetPage(); }}
+                  placeholder="All agents"
+                />
+              </div>
+            )}
+            {superAgents.length > 1 && (
+              <div>
+                <label htmlFor="admin-interviews-sa" className="sr-only">Super Agent</label>
+                <SearchableSelect
+                  id="admin-interviews-sa"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={superAgents}
+                  value={selectedSuperAgent}
+                  onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }}
+                  placeholder="All super agents"
+                />
+              </div>
+            )}
+          </div>
+        }
+      />
 
       {/* AI Insights Panel */}
       {showInsights && (

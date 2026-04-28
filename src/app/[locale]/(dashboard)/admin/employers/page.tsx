@@ -1,25 +1,27 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, UserX } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, UserX, Download, FileSpreadsheet } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 
 interface Employer {
@@ -159,27 +161,45 @@ export default function AdminEmployersPage() {
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container space-y-4">
       {ConfirmDialogNode}
-      <div className="flex items-center justify-between">
-        <PageHeader title="Employers" description="Manage all employer accounts and company profiles" />
-        {can("employers", "create") && (
-          <Button onClick={() => setShowAdd(true)} size="sm">
-            <Plus className="h-4 w-4" /> Add Employer
-          </Button>
-        )}
-      </div>
-
-      <TableToolbar
-        search={search}
-        onSearchChange={(v) => { setSearch(v); resetPage(); }}
-        searchPlaceholder="Search employer…"
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-      />
-
-      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">Employers</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">Manage all employer accounts and company profiles.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+                placeholder="Search employer…"
+                className="h-8 w-52 rounded-lg pl-8 text-sm"
+              />
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
+                  <Download className="h-3.5 w-3.5" /> Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel>Export</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />CSV</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />Excel</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {can("employers", "create") && (
+              <Button onClick={() => setShowAdd(true)} size="sm" className="h-8 rounded-lg">
+                <Plus className="h-3.5 w-3.5" /> Add Employer
+              </Button>
+            )}
+          </div>
+        </div>
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -262,7 +282,7 @@ export default function AdminEmployersPage() {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </section>
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 

@@ -3,8 +3,14 @@
  */
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import BannersAdminPage from "@/app/[locale]/(dashboard)/admin/cms/banners/page";
+
+jest.mock("next/navigation", () => ({
+  useParams: () => ({ locale: "en" }),
+  useRouter: () => ({ push: jest.fn() }),
+}));
 
 const paginationState = {
   page: 1,
@@ -73,6 +79,7 @@ describe("BannersAdminPage", () => {
   });
 
   it("renders the banners page inside the shared admin workspace container and surfaces", async () => {
+    const user = userEvent.setup();
     const view = render(<BannersAdminPage />);
 
     await waitFor(() => {
@@ -81,11 +88,14 @@ describe("BannersAdminPage", () => {
 
     const workspaceRoot = view.container.querySelector('[data-admin-workspace="cms-page"]');
 
-    expect(workspaceRoot).toHaveClass("page-container", "space-y-6", "admin-cms-page-container");
-    expect(screen.getByRole("heading", { name: "Banners" }).closest("section")).toHaveClass("workspace-hero-surface");
-    expect(screen.getByRole("heading", { name: /search and filter cms records/i }).closest("section")).toHaveClass("workspace-panel-surface");
-    expect(screen.getByRole("heading", { name: /manage cms records with consistent spacing/i }).closest("section")).toHaveClass("workspace-panel-surface");
+    expect(workspaceRoot).toHaveClass("page-container", "space-y-4", "admin-cms-page-container");
+    expect(screen.getByRole("heading", { name: "Banners" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add new/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Status filter")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /filter/i }));
+
+    expect(screen.getByLabelText("Status filter")).toBeInTheDocument();
     expect(screen.getByTestId("pagination-controls")).toBeInTheDocument();
   });
 });

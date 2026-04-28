@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import "@/models/City";
+import "@/models/State";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
 import { escapeRegex } from "@/lib/security/sanitize";
@@ -187,6 +189,34 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   if (assignedStateIds !== undefined) profileUpdate.assignedStateIds = assignedStateIds;
   if (agentIds !== undefined) profileUpdate.agentIds = agentIds;
 
+  // Detect region overlap with other super agents
+  let regionConflicts: { superAgentName: string; overlappingCities: number; overlappingStates: number }[] = [];
+  if (assignedCityIds?.length || assignedStateIds?.length) {
+    const otherSAs = await SuperAgent.find({ userId: { $ne: userId } })
+      .select("userId assignedCityIds assignedStateIds")
+      .lean();
+    const saUserIds = otherSAs.map((sa) => sa.userId);
+    const saNameDocs = saUserIds.length > 0
+      ? await User.find({ _id: { $in: saUserIds } }).select("name").lean()
+      : [];
+    const nameMap = new Map(saNameDocs.map((u) => [u._id.toString(), u.name]));
+
+    const citySet = new Set((assignedCityIds ?? []).map(String));
+    const stateSet = new Set((assignedStateIds ?? []).map(String));
+
+    for (const other of otherSAs) {
+      const overlapCities = (other.assignedCityIds ?? []).filter((id: unknown) => citySet.has(String(id))).length;
+      const overlapStates = (other.assignedStateIds ?? []).filter((id: unknown) => stateSet.has(String(id))).length;
+      if (overlapCities > 0 || overlapStates > 0) {
+        regionConflicts.push({
+          superAgentName: nameMap.get(other.userId.toString()) ?? "Unknown",
+          overlappingCities: overlapCities,
+          overlappingStates: overlapStates,
+        });
+      }
+    }
+  }
+
   if (Object.keys(profileUpdate).length > 0) {
     const saDoc = await SuperAgent.findOneAndUpdate(
       { userId },
@@ -216,7 +246,16 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     req,
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({
+    success: true,
+    ...(regionConflicts.length > 0 ? {
+      warnings: [{
+        type: "region_overlap",
+        message: `Region overlap detected with ${regionConflicts.length} other super agent(s).`,
+        conflicts: regionConflicts,
+      }],
+    } : {}),
+  });
 }
 
 export const GET = withAuth(getHandler as unknown as Parameters<typeof withAuth>[0]);

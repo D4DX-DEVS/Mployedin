@@ -4,12 +4,16 @@ import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import "@/models/City";
+import "@/models/State";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
 import { escapeRegex } from "@/lib/security/sanitize";
 import bcrypt from "bcryptjs";
 import { validateBody } from "@/lib/validators";
 import { agentCreateSchema, agentUpdateSchema } from "@/lib/validators/admin";
+import { isRegionSubset } from "@/lib/auth/agentRestrictions";
+import type { RegionInfo } from "@/lib/auth/agentRestrictions";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -110,6 +114,33 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "name, email, and password are required" }, { status: 400 });
   }
 
+  // Validate agent regions are subset of super agent's regions (if assigning to a super agent)
+  if (superAgentId && (assignedCityIds?.length || assignedStateIds?.length)) {
+    const saDoc = await SuperAgent.findById(superAgentId)
+      .select("assignedCityIds assignedStateIds")
+      .lean();
+    if (saDoc) {
+      const saRegion: RegionInfo = {
+        assignedCityIds: saDoc.assignedCityIds ?? [],
+        assignedStateIds: saDoc.assignedStateIds ?? [],
+      };
+      const subset = await isRegionSubset(
+        { cityIds: (assignedCityIds ?? []).map(String), stateIds: (assignedStateIds ?? []).map(String) },
+        saRegion
+      );
+      if (!subset.valid) {
+        return NextResponse.json(
+          {
+            error: "Agent regions must be within the super-agent's assigned territory.",
+            invalidCityIds: subset.invalidCityIds,
+            invalidStateIds: subset.invalidStateIds,
+          },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   const existing = await User.findOne({ email: email.toLowerCase() });
   if (existing) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 });
@@ -174,6 +205,35 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   const { userId, name, email, isActive, superAgentId, commissionRate, assignedCityIds, assignedStateIds } = body;
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
+
+  // Resolve the super agent to validate region subset
+  // Use the provided superAgentId, or fall back to current agent's super agent
+  const effectiveSuperAgentId = superAgentId !== undefined ? superAgentId : undefined;
+  if (effectiveSuperAgentId && (assignedCityIds?.length || assignedStateIds?.length)) {
+    const saDoc = await SuperAgent.findById(effectiveSuperAgentId)
+      .select("assignedCityIds assignedStateIds")
+      .lean();
+    if (saDoc) {
+      const saRegion: RegionInfo = {
+        assignedCityIds: saDoc.assignedCityIds ?? [],
+        assignedStateIds: saDoc.assignedStateIds ?? [],
+      };
+      const subset = await isRegionSubset(
+        { cityIds: (assignedCityIds ?? []).map(String), stateIds: (assignedStateIds ?? []).map(String) },
+        saRegion
+      );
+      if (!subset.valid) {
+        return NextResponse.json(
+          {
+            error: "Agent regions must be within the super-agent's assigned territory.",
+            invalidCityIds: subset.invalidCityIds,
+            invalidStateIds: subset.invalidStateIds,
+          },
+          { status: 400 }
+        );
+      }
+    }
+  }
 
   // Update user fields
   const userUpdate: Record<string, unknown> = {};

@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, CheckCircle2, AlertCircle, Edit2, Flame, Inbox, Loader2, MessageSquare, Search, Sparkles, Trash2, XCircle } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, AlertCircle, Edit2, Flame, Inbox, Loader2, MessageSquare, Search, Sparkles, Trash2, XCircle } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -79,6 +79,7 @@ export default function AgentLeadsPage() {
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [scoringLeadId, setScoringLeadId] = useState<string | null>(null);
   const [scoreResult, setScoreResult] = useState<LeadScoreResult | null>(null);
+  const [convertingLeadId, setConvertingLeadId] = useState<string | null>(null);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -167,6 +168,36 @@ export default function AgentLeadsPage() {
       toast.error(err instanceof Error ? err.message : "AI scoring failed");
     } finally {
       setScoringLeadId(null);
+    }
+  };
+
+  const convertLead = async (lead: Lead) => {
+    if (!lead.contactEmail) {
+      toast.error("Cannot convert: lead has no contact email");
+      return;
+    }
+    const ok = await confirmDialog(
+      `Convert "${lead.companyName}" into an employer account? A new account will be created for ${lead.contactEmail}.`,
+    );
+    if (!ok) return;
+
+    setConvertingLeadId(lead._id);
+    try {
+      const res = await fetch(`/api/leads/${lead._id}/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Conversion failed" }));
+        throw new Error(data.error ?? "Failed to convert lead");
+      }
+      toast.success(`"${lead.companyName}" converted to employer successfully`);
+      fetchLeads();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Lead conversion failed");
+    } finally {
+      setConvertingLeadId(null);
     }
   };
 
@@ -293,6 +324,22 @@ export default function AgentLeadsPage() {
                           <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                         ))}
                       </select>
+                      {lead.status !== "converted" && lead.status !== "lost" && lead.contactEmail && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => convertLead(lead)}
+                          disabled={convertingLeadId === lead._id}
+                          title="Convert to Employer"
+                          aria-label={`Convert ${lead.companyName} to employer`}
+                        >
+                          {convertingLeadId === lead._id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+                          ) : (
+                            <Building2 className="h-3.5 w-3.5 text-emerald-600" />
+                          )}
+                        </Button>
+                      )}
                       {can("leads", "update") && (
                         <Button variant="ghost" size="xs" onClick={() => openEdit(lead)} title="Edit" aria-label={`Edit ${lead.companyName}`}>
                           <Edit2 className="h-3.5 w-3.5 text-primary" />

@@ -25,6 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 type FeedJob = {
   _id: string;
@@ -992,7 +993,10 @@ export function JobSeekerHomePage({
 
       {guideOpen && (
         <div
-          className="fixed inset-0 top-20 z-[90] flex justify-end bg-foreground/15 backdrop-blur-[2px]"
+          className={cn(
+            "fixed inset-0 top-20 z-[90] flex bg-foreground/15 backdrop-blur-[2px]",
+            isAr ? "justify-start" : "justify-end"
+          )}
           onClick={(event) => {
             if (event.target === event.currentTarget) {
               closeGuide();
@@ -1005,7 +1009,10 @@ export function JobSeekerHomePage({
             role="dialog"
             aria-modal="true"
             aria-labelledby="ai-guide-title"
-            className="h-full w-full max-w-xl overflow-y-auto border-l border-border bg-background shadow-2xl"
+            className={cn(
+              "h-full w-full max-w-xl overflow-y-auto bg-background shadow-2xl",
+              isAr ? "border-r border-border" : "border-l border-border"
+            )}
           >
             <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
               <div>

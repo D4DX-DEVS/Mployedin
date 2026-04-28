@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Lead from "@/models/Lead";
 import { escapeRegex } from "@/lib/security/sanitize";
 
@@ -29,8 +30,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const sortBy = searchParams.get("sortBy") ?? "createdAt";
   const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
+  // Dual-scoping: team agents + region-based agents
+  const scope = await getSuperAgentScope(ctx.userId);
+  if (!scope) {
+    return NextResponse.json({ items: [], total: 0, page: 1, totalPages: 0 });
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filter: any = { superAgentId: ctx.userId };
+  const filter: any = {
+    $or: [
+      { superAgentId: scope.saProfileId },
+      { agentId: { $in: scope.effectiveAgentIds } },
+    ],
+  };
 
   if (status && VALID_STATUSES.has(status)) filter.status = status;
   if (agentId) filter.agentId = agentId;
@@ -90,7 +101,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   // Return distinct filter values when requested (for dropdowns)
   if (returnDistinct) {
-    const baseFilter = { superAgentId: ctx.userId };
+    const baseFilter = {
+      $or: [
+        { superAgentId: scope.saProfileId },
+        { agentId: { $in: scope.effectiveAgentIds } },
+      ],
+    };
     const [countries, industries, sources] = await Promise.all([
       Lead.distinct("country", baseFilter),
       Lead.distinct("industry", baseFilter),

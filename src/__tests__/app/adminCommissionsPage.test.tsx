@@ -4,6 +4,7 @@
 import React from "react";
 import { act } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 
 import AdminCommissionsPage from "@/app/[locale]/(dashboard)/admin/commissions/page";
@@ -117,6 +118,8 @@ describe("AdminCommissionsPage", () => {
   });
 
   it("renders the modern commissions workspace shell and fetched results", async () => {
+    const user = userEvent.setup();
+
     await act(async () => {
       render(<AdminCommissionsPage />);
     });
@@ -141,13 +144,13 @@ describe("AdminCommissionsPage", () => {
     expect(screen.getByText("AED 18,000")).toBeInTheDocument();
     expect(screen.getByText("AED 9,500")).toBeInTheDocument();
 
-    expect(screen.getByRole("heading", { level: 1, name: "Commissions" }).closest("section")).toHaveClass("workspace-hero-surface");
-    expect(screen.getByRole("heading", { name: /filter the commissions you want to review next/i }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(screen.getByRole("heading", { name: /review and action agent payouts/i }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(paginationState.updateTotal).toHaveBeenCalledWith(1);
 
-    // All filter controls are present
-    expect(screen.getByPlaceholderText("Search agent…")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Date from")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /filter/i }));
+
     expect(screen.getByLabelText("Date from")).toBeInTheDocument();
     expect(screen.getByLabelText("Date to")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /clear filters/i })).toBeInTheDocument();

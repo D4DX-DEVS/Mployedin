@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
 import { headers } from "next/headers";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
+import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
+import { PWAInstallPrompt } from "@/components/shared/PWAInstallPrompt";
 import "@/app/globals.css";
 import { getThemeInitializationScript } from "@/lib/theme";
 
@@ -26,11 +28,40 @@ const notoMalayalam = Noto_Sans_Malayalam({
   preload: false,
 });
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export const metadata: Metadata = {
   title: "MPLOYEDIN",
   description: "AI-Powered International Recruitment Platform",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "MPLOYEDIN",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   other: {
     "color-scheme": "light dark",
+    "mobile-web-app-capable": "yes",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -44,9 +75,11 @@ export default async function RootLayout({
   // scripts it generates (hydration, RSC payload, etc.), satisfying the
   // nonce-based Content-Security-Policy set by the middleware.
   const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const locale = (await headers()).get("x-locale") ?? "en";
+  const dir = locale === "ar" ? "rtl" : "ltr";
 
   return (
-    <html suppressHydrationWarning>
+    <html lang={locale} dir={dir} suppressHydrationWarning>
       <body
         suppressHydrationWarning
         className={`${inter.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
@@ -62,6 +95,8 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: getThemeInitializationScript() }}
         />
         <ThemeProvider>{children}</ThemeProvider>
+        <ServiceWorkerRegistration />
+        <PWAInstallPrompt />
       </body>
     </html>
   );

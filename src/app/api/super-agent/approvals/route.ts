@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Job from "@/models/Job";
-import SuperAgent from "@/models/SuperAgent";
 import Agent from "@/models/Agent";
 
 interface AuthCtx {
@@ -14,9 +14,9 @@ interface AuthCtx {
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
-  // Find the super agent's managed agents to scope jobs
-  const saProfile = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
-  const agentDocIds = saProfile?.agentIds ?? [];
+  // Dual-scoping: team agents + region-based agents
+  const scope = await getSuperAgentScope(ctx.userId);
+  const agentDocIds = scope?.effectiveAgentIds ?? [];
   const agentDocs = agentDocIds.length > 0
     ? await Agent.find({ _id: { $in: agentDocIds } }).select("assignedEmployerIds").lean()
     : [];

@@ -1,15 +1,23 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Activity, ArrowUpDown, BriefcaseBusiness, ChevronDown, ChevronUp,
   Filter, RotateCcw, Search, SlidersHorizontal, Target, Users2,
+  Plus, AlertCircle, Loader2,
 } from "lucide-react";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
@@ -26,6 +34,7 @@ import type { ExportColumn } from "@/lib/export";
 
 interface AgentRow {
   _id: string;
+  agentId: string;
   name: string;
   email: string;
   leadsCount: number;
@@ -104,11 +113,20 @@ function parseRange(value: string): { min: string; max: string } {
 }
 
 export default function SuperAgentAgentsPage() {
+  const router = useRouter();
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+
+  // Create agent modal state
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", commissionRate: "0" });
+  const [createCityIds, setCreateCityIds] = useState<string[]>([]);
+  const [createStateIds, setCreateStateIds] = useState<string[]>([]);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
@@ -132,6 +150,48 @@ export default function SuperAgentAgentsPage() {
   }, [filters, page, limit, updateTotal]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
+
+  /* ── Create agent handler ── */
+  const handleCreate = async () => {
+    setCreateError("");
+    if (!createForm.name || !createForm.email || !createForm.password) {
+      setCreateError("Name, email, and password are required.");
+      return;
+    }
+    if (createForm.password.length < 8) {
+      setCreateError("Password must be at least 8 characters.");
+      return;
+    }
+    setCreateLoading(true);
+    try {
+      const res = await fetch("/api/super-agent/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: createForm.name.trim(),
+          email: createForm.email.trim(),
+          password: createForm.password,
+          commissionRate: parseFloat(createForm.commissionRate) || 0,
+          assignedCityIds: createCityIds,
+          assignedStateIds: createStateIds,
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json();
+        setCreateError(e.error ?? "Failed to create agent");
+        return;
+      }
+      setShowCreate(false);
+      setCreateForm({ name: "", email: "", password: "", commissionRate: "0" });
+      setCreateCityIds([]);
+      setCreateStateIds([]);
+      fetchAgents();
+    } catch {
+      setCreateError("Network error");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
 
   /* ── Filter helpers ── */
   const updateFilter = useCallback((key: keyof Filters, value: string) => {
@@ -269,10 +329,19 @@ export default function SuperAgentAgentsPage() {
         description="Monitor agent activity, lead conversion, and placement momentum across your team from one clean review surface."
       >
         <SuperAgentInsightsPanel />
-        <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[180px]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Roster</p>
-          <p className="mt-1 text-lg font-semibold text-foreground">{total} visible rows</p>
-          <p className="text-xs text-muted-foreground">Current page and search results stay in sync with pagination.</p>
+        <div className="flex flex-col gap-3 sm:min-w-[180px]">
+          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Roster</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{total} visible rows</p>
+            <p className="text-xs text-muted-foreground">Current page and search results stay in sync with pagination.</p>
+          </div>
+          <Button
+            onClick={() => { setCreateError(""); setShowCreate(true); }}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Agent
+          </Button>
         </div>
       </SuperAgentPageIntro>
 
@@ -463,7 +532,11 @@ export default function SuperAgentAgentsPage() {
               ) : agents.map((a) => {
                 const badges = getPerformanceBadge(a);
                 return (
-                <TableRow key={a._id} className="bg-transparent">
+                <TableRow
+                  key={a._id}
+                  className="bg-transparent cursor-pointer hover:bg-muted/40 transition-colors"
+                  onClick={() => router.push(`agents/${a.agentId}`)}
+                >
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       <span className="font-medium text-foreground">{a.name}</span>
@@ -520,6 +593,86 @@ export default function SuperAgentAgentsPage() {
           <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
         </div>
       </SuperAgentSection>
+
+      {/* ── Create Agent Dialog ──────────────────────────── */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Agent</DialogTitle>
+            <DialogDescription>
+              Create a new agent under your team. Regions must be within your assigned territory.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {createError && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />{createError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Full Name <span className="text-destructive">*</span></Label>
+                <Input
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Agent full name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email <span className="text-destructive">*</span></Label>
+                <Input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="agent@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Password <span className="text-destructive">*</span></Label>
+                <Input
+                  type="text"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="Min 8 characters"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Commission Rate (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={createForm.commissionRate}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, commissionRate: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <CascadingLocationPicker
+              selectedCityIds={createCityIds}
+              selectedStateIds={createStateIds}
+              onChange={(cities, states) => { setCreateCityIds(cities); setCreateStateIds(states); }}
+              label="Assigned Region"
+            />
+
+            <p className="text-xs text-muted-foreground">
+              The agent will be automatically assigned to your team. Their region must fall within your territory.
+            </p>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={() => setShowCreate(false)} disabled={createLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreate} disabled={createLoading}>
+              {createLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {createLoading ? "Creating…" : "Create Agent"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

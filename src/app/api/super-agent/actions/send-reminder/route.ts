@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Agent from "@/models/Agent";
 import Notification from "@/models/Notification";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -24,9 +24,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   await connectDB();
 
-  // Verify all agents belong to this super-agent's roster
-  const saProfile = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
-  const assignedAgentDocIds = (saProfile?.agentIds ?? []).map((id: unknown) => String(id));
+  // Verify all agents belong to this super-agent's scope (team + regions)
+  const scope = await getSuperAgentScope(ctx.userId);
+  const assignedAgentDocIds = (scope?.effectiveAgentIds ?? []).map((id: unknown) => String(id));
 
   const agentDocs = await Agent.find({ _id: { $in: assignedAgentDocIds } }).select("userId").lean();
   const rosterUserIds = new Set(agentDocs.map((a) => a.userId.toString()));

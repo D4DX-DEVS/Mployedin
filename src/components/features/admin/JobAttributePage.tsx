@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Search, Inbox, Sparkles, Tags, CheckCircle2, CircleSlash, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Inbox, SlidersHorizontal, RotateCcw } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 
 interface AttributeItem {
@@ -31,13 +31,9 @@ interface AttributeItem {
 }
 
 interface JobAttributePageProps {
-  /** URL slug matching the API category param, e.g. "salary-periods" */
   category: string;
-  /** Display title, e.g. "Salary Periods" */
   title: string;
-  /** Arabic display title */
   titleAr: string;
-  /** Optional description */
   description?: string;
 }
 
@@ -64,6 +60,7 @@ export default function JobAttributePage({ category, title, titleAr, description
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<AttributeItem | null>(null);
@@ -74,7 +71,6 @@ export default function JobAttributePage({ category, title, titleAr, description
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search) params.set("search", search);
       if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
-
       const res = await fetch(`/api/admin/job-attributes/${category}?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -82,17 +78,13 @@ export default function JobAttributePage({ category, title, titleAr, description
         updateTotal(data.pagination?.total ?? 0);
       }
     } catch {
-      // silently fail — UI shows empty state
+      // silently fail
     }
     setLoading(false);
   }, [category, search, statusFilter, page, limit, updateTotal]);
 
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+  useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const activeItems = items.filter((item) => item.isActive).length;
-  const inactiveItems = items.filter((item) => !item.isActive).length;
   const hasActiveFilters = Boolean(search.trim()) || statusFilter !== "all";
 
   const handleCreate = async (values: Record<string, string>) => {
@@ -103,7 +95,6 @@ export default function JobAttributePage({ category, title, titleAr, description
       isActive: values.isActive !== "false",
     };
     if (values.slug) body.slug = values.slug;
-
     const res = await fetch(`/api/admin/job-attributes/${category}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -125,7 +116,6 @@ export default function JobAttributePage({ category, title, titleAr, description
       isActive: values.isActive !== "false",
     };
     if (values.slug) body.slug = values.slug;
-
     const res = await fetch(`/api/admin/job-attributes/${category}/${editItem._id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -147,156 +137,83 @@ export default function JobAttributePage({ category, title, titleAr, description
   };
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-4">
       {ConfirmDialogNode}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Configuration workspace
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{title}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {description ?? `Manage ${title.toLowerCase()} master data`} {titleAr ? `This section also supports ${titleAr}.` : ""}
-            </p>
-          </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[240px]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Library</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{total.toLocaleString()} records</p>
-              <p className="text-xs text-muted-foreground">Across {totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"} of the current attribute query.</p>
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        {/* Compact header row */}
+        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+            {description && (
+              <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id={`${category}-search`}
+                placeholder={`Search ${title.toLowerCase()}…`}
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+                className="h-9 w-48 rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-56"
+              />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters((v) => !v)}
+              className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filter
+              {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">!</span>}
+            </Button>
             {can("job_attributes", "create") && (
-              <Button onClick={() => setShowAdd(true)} className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
-                <Plus className="h-4 w-4" /> Add New
+              <Button
+                onClick={() => setShowAdd(true)}
+                size="sm"
+                className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add New
               </Button>
             )}
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Visible</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{items.length}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Records loaded on the current page.</p>
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5">
-                <Tags className="h-5 w-5" />
-              </div>
-            </div>
+        {/* Collapsible filter panel */}
+        {showFilters && (
+          <div className="flex flex-wrap items-center gap-3 border-b border-border/60 bg-secondary/30 px-5 py-3">
+            <label htmlFor={`${category}-status`} className="text-xs font-medium text-muted-foreground">Status</label>
+            <SearchableSelect
+              id={`${category}-status`}
+              className="h-8 w-[140px] rounded-lg border-border bg-card text-sm"
+              options={[
+                { value: "all", label: "All" },
+                { value: "active", label: "Active" },
+                { value: "inactive", label: "Inactive" },
+              ]}
+              value={statusFilter}
+              onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+              placeholder="Status"
+            />
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => { setSearch(""); setStatusFilter("all"); resetPage(); }}
+                className="h-8 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RotateCcw className="h-3 w-3" /> Clear
+              </Button>
+            )}
           </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{activeItems}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Visible entries currently enabled for use.</p>
-              </div>
-              <div className="workspace-tone-emerald rounded-2xl p-2.5">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Inactive</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{inactiveItems}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Visible entries currently hidden from downstream forms.</p>
-              </div>
-              <div className="workspace-tone-amber rounded-2xl p-2.5">
-                <CircleSlash className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pages</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{totalPages}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Pagination span for the current attribute search.</p>
-              </div>
-              <div className="workspace-tone-indigo rounded-2xl p-2.5">
-                <Tags className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        )}
 
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse records</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Filter the attribute values you want to manage next</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Search by name or narrow the list by active state without leaving the configuration workspace.</p>
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="grid w-full gap-3 lg:max-w-[620px] lg:grid-cols-[minmax(0,1fr)_160px]">
-            <div className="relative min-w-0">
-              <label htmlFor={`${category}-search`} className="sr-only">Search {title}</label>
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id={`${category}-search`}
-                placeholder={`Search ${title.toLowerCase()}`}
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  resetPage();
-                }}
-                className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none"
-              />
-            </div>
-            <div>
-              <label htmlFor={`${category}-status`} className="sr-only">Filter {title} by status</label>
-              <SearchableSelect
-                id={`${category}-status`}
-                className="h-11 w-full rounded-xl border-border bg-secondary/65"
-                options={[
-                  { value: "all", label: "All" },
-                  { value: "active", label: "Active" },
-                  { value: "inactive", label: "Inactive" },
-                ]}
-                value={statusFilter}
-                onValueChange={(v) => {
-                  setStatusFilter(v);
-                  resetPage();
-                }}
-                placeholder="Status"
-              />
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setSearch("");
-              setStatusFilter("all");
-              resetPage();
-            }}
-            disabled={!hasActiveFilters}
-            className="h-11 rounded-xl border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50"
-          >
-            <RotateCcw className="mr-2 h-4 w-4" /> Clear filters
-          </Button>
-        </div>
-      </section>
-
-      <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
-        <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Attribute library</p>
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-lg font-semibold text-foreground">Review and curate attribute values</h3>
-            <p className="text-sm text-muted-foreground">Showing {items.length.toLocaleString()} record{items.length === 1 ? "" : "s"} on this page.</p>
-          </div>
-        </div>
-
+        {/* Table */}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -324,15 +241,11 @@ export default function JobAttributePage({ category, title, titleAr, description
                 ))
               ) : items.length === 0 ? (
                 <TableRow className="border-border/70 hover:bg-transparent">
-                  <TableCell colSpan={6} className="px-6 py-14 text-center">
-                    <div className="flex flex-col items-center gap-3 text-center">
-                      <div className="workspace-muted-pill rounded-[20px] p-3">
-                        <Inbox className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">No {title.toLowerCase()} found</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Adjust the filters or add a new value to populate this attribute library.</p>
-                      </div>
+                  <TableCell colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <Inbox className="h-6 w-6 text-muted-foreground/50" />
+                      <p className="text-sm font-medium text-foreground">No {title.toLowerCase()} found</p>
+                      <p className="text-xs text-muted-foreground">Adjust the filters or add a new entry.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -367,7 +280,7 @@ export default function JobAttributePage({ category, title, titleAr, description
           </Table>
         </div>
 
-        <div className="border-t border-border/80 px-4 py-3 sm:px-5">
+        <div className="border-t border-border/80 px-5 py-3">
           <PaginationControls
             page={page}
             totalPages={totalPages}
@@ -379,7 +292,6 @@ export default function JobAttributePage({ category, title, titleAr, description
         </div>
       </section>
 
-      {/* Create Modal */}
       <CrudModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
@@ -388,7 +300,6 @@ export default function JobAttributePage({ category, title, titleAr, description
         onSubmit={handleCreate}
       />
 
-      {/* Edit Modal */}
       <CrudModal
         open={!!editItem}
         onClose={() => setEditItem(null)}

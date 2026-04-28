@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Job from "@/models/Job";
-import SuperAgent from "@/models/SuperAgent";
 import Agent from "@/models/Agent";
 
 interface AuthCtx {
@@ -13,10 +13,8 @@ interface AuthCtx {
 async function handler(_req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
-  const saProfile = await SuperAgent.findOne({ userId: ctx.userId })
-    .select("agentIds")
-    .lean();
-  const agentDocIds = saProfile?.agentIds ?? [];
+  const scope = await getSuperAgentScope(ctx.userId);
+  const agentDocIds = scope?.effectiveAgentIds ?? [];
 
   if (agentDocIds.length === 0) {
     return NextResponse.json({ count: 0 });

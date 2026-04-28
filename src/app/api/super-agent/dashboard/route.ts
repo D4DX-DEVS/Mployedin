@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
-import Employer from "@/models/Employer";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
 import Placement from "@/models/Placement";
@@ -19,15 +18,12 @@ interface AuthCtx {
 export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
   await connectDB();
 
-  const saProfile = await SuperAgent.findOne({ userId: ctx.userId })
-    .select("agentIds assignedCityIds assignedStateIds commissions overrideRate")
-    .lean();
-
-  if (!saProfile) {
+  const scope = await getSuperAgentScope(ctx.userId);
+  if (!scope) {
     return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
   }
 
-  const agentDocIds = saProfile.agentIds ?? [];
+  const agentDocIds = scope.effectiveAgentIds;
 
   // Resolve agent user IDs
   const agentDocs = await Agent.find({ _id: { $in: agentDocIds } })
@@ -82,17 +78,17 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
   // Placements
   const totalPlacements = await Placement.countDocuments({
     $or: [
-      { agentId: { $in: agentUserIds } },
-      { superAgentId: ctx.userId },
+      { agentId: { $in: agentDocIds } },
+      { superAgentId: scope.saProfileId },
     ],
   });
 
-  // Leads
+  // Leads — Lead.agentId references Agent doc _id, not User _id
   const totalLeads = await Lead.countDocuments({
-    agentId: { $in: agentUserIds },
+    agentId: { $in: agentDocIds },
   });
   const convertedLeads = await Lead.countDocuments({
-    agentId: { $in: agentUserIds },
+    agentId: { $in: agentDocIds },
     status: "converted",
   });
 
@@ -106,6 +102,12 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
     placementsCompleted: a.performance?.placementsCompleted ?? 0,
   }));
 
+  // Fetch SA commissions
+  const SuperAgent = (await import("@/models/SuperAgent")).default;
+  const saCommissions = await SuperAgent.findOne({ _id: scope.saProfileId })
+    .select("commissions")
+    .lean();
+
   return NextResponse.json({
     kpis: {
       activeAgents,
@@ -116,9 +118,9 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
       totalPlacements,
       totalLeads,
       convertedLeads,
-      commissions: saProfile.commissions ?? { total: 0, pending: 0, paid: 0 },
+      commissions: saCommissions?.commissions ?? { total: 0, pending: 0, paid: 0 },
     },
     applicationBreakdown: statusMap,
     agentPerformance,
   });
-}, { resource: "users", action: "read" });
+}, { resource: "agents", action: "read" });

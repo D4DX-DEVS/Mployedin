@@ -2,16 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Territory from "@/models/Territory";
+import SuperAgent from "@/models/SuperAgent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { z } from "zod";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
+const objectIdRegex = /^[a-f\d]{24}$/i;
+const objectIdStr = z.string().regex(objectIdRegex, "Invalid ObjectId");
+
 const createSchema = z.object({
   name: z.string().min(1).max(100).trim(),
   countries: z.array(z.string()).max(50).optional().default([]),
   superAgentId: z.string().optional(),
+  cityIds: z.array(objectIdStr).max(200).optional().default([]),
+  stateIds: z.array(objectIdStr).max(200).optional().default([]),
 });
 
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
@@ -54,13 +60,28 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
 
-  const { name, countries, superAgentId } = parsed.data;
+  const { name, countries, superAgentId, cityIds, stateIds } = parsed.data;
 
   const territory = await Territory.create({
     name,
     countries,
     superAgentId: superAgentId || null,
+    cityIds,
+    stateIds,
   });
+
+  // Sync territory regions to the assigned super agent
+  if (superAgentId && (cityIds.length > 0 || stateIds.length > 0)) {
+    await SuperAgent.findOneAndUpdate(
+      { userId: superAgentId },
+      {
+        $addToSet: {
+          ...(cityIds.length > 0 ? { assignedCityIds: { $each: cityIds } } : {}),
+          ...(stateIds.length > 0 ? { assignedStateIds: { $each: stateIds } } : {}),
+        },
+      }
+    );
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

@@ -1371,6 +1371,98 @@ body {
   margin-left: 0;
 }
 
+/* ── RTL: Sidebar border flip ── */
+[dir="rtl"] .dashboard-shell .border-r {
+  border-right: 0;
+  border-left: 1px solid hsl(var(--border) / 0.8);
+}
+
+/* ── RTL: Fixed/Absolute positioned elements flip ── */
+[dir="rtl"] .dashboard-shell [class*="left-0"]:not([class*="right-"]) {
+  left: auto;
+  right: 0;
+}
+
+/* ── RTL: Active sidebar indicator ── */
+[dir="rtl"] .dashboard-shell .rounded-r-full {
+  border-radius: 0 0 0 9999px;
+  border-top-left-radius: 9999px;
+  left: 0;
+  right: auto;
+}
+
+/* ── RTL: Text alignment ── */
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+[dir="rtl"] .text-right {
+  text-align: left;
+}
+
+/* ── RTL: Flex direction reversal for icon+text patterns ── */
+[dir="rtl"] .dashboard-shell .flex.items-center.gap-2,
+[dir="rtl"] .dashboard-shell .flex.items-center.gap-3,
+[dir="rtl"] .dashboard-topbar .flex.items-center.gap-2,
+[dir="rtl"] .dashboard-topbar .flex.items-center.gap-3 {
+  flex-direction: row;
+}
+
+/* ── RTL: Margin/Padding logical overrides ── */
+[dir="rtl"] .ml-auto {
+  margin-left: 0;
+  margin-right: auto;
+}
+[dir="rtl"] .mr-auto {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+/* ── RTL: Space utilities flip ── */
+[dir="rtl"] .space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+[dir="rtl"] .space-x-3 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+[dir="rtl"] .space-x-4 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+/* ── RTL: Border-left for blockquotes/accents ── */
+[dir="rtl"] .border-l-2,
+[dir="rtl"] .border-l-4 {
+  border-left: 0;
+  border-right-width: inherit;
+}
+[dir="rtl"] .border-l-2 { border-right-width: 2px; }
+[dir="rtl"] .border-l-4 { border-right-width: 4px; }
+
+[dir="rtl"] .pl-3 { padding-left: 0; padding-right: 0.75rem; }
+[dir="rtl"] .pl-4 { padding-left: 0; padding-right: 1rem; }
+
+/* ── RTL: Transition/Transform for slide animations ── */
+[dir="rtl"] .translate-x-full { --tw-translate-x: -100%; }
+[dir="rtl"] .-translate-x-full { --tw-translate-x: 100%; }
+
+/* ── RTL: Mobile sidebar overlay ── */
+[dir="rtl"] .dashboard-shell aside[class*="fixed"] {
+  left: auto;
+  right: 0;
+}
+
+/* ── RTL: Scroll container direction ── */
+[dir="rtl"] .overflow-x-auto {
+  direction: rtl;
+}
+
+/* ── RTL: Table alignment ── */
+[dir="rtl"] table {
+  text-align: right;
+}
+[dir="rtl"] th {
+  text-align: right;
+}
+
 /* ── LAYOUT CONTAINERS ── */
 @layer components {
 .page-container {

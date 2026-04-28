@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Agent from "@/models/Agent";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
@@ -24,9 +24,9 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const country = url.searchParams.get("country") ?? "";
   const experienceMin = url.searchParams.get("experienceMin") ?? "";
 
-  /* Get agents managed by this super agent */
-  const superAgent = await SuperAgent.findOne({ userId: ctx.userId }).lean();
-  const agentIds = (superAgent as Record<string, unknown>)?.agentIds ?? [];
+  /* Dual-scoping: team agents + region-based agents */
+  const scope = await getSuperAgentScope(ctx.userId);
+  const agentIds = scope?.effectiveAgentIds ?? [];
 
   /* Get job seekers assigned to these agents */
   const agents = await Agent.find({ _id: { $in: agentIds } }).select("assignedJobSeekerIds").lean();

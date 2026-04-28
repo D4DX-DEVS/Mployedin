@@ -14,6 +14,9 @@ export interface NavItem {
   /** Short description shown in command menu */
   description?: string;
   descriptionAr?: string;
+  /** Optional group label for grouping children in the submenu panel */
+  group?: string;
+  groupAr?: string;
   children?: NavItem[];
 }
 
@@ -95,6 +98,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Building2",
                 description: "Company accounts & profiles",
                 descriptionAr: "حسابات وملفات الشركات",
+                group: "Accounts",
+                groupAr: "الحسابات",
               },
               {
                 title: "Job Seekers",
@@ -103,6 +108,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "UserSearch",
                 description: "Candidate profiles & CVs",
                 descriptionAr: "ملفات المرشحين والسير الذاتية",
+                group: "Accounts",
+                groupAr: "الحسابات",
               },
               {
                 title: "Agents",
@@ -111,6 +118,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Star",
                 description: "Recruitment agents & regions",
                 descriptionAr: "وكلاء التوظيف والمناطق",
+                group: "Workforce",
+                groupAr: "القوى العاملة",
               },
               {
                 title: "Super Agents",
@@ -119,6 +128,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Shield",
                 description: "Agent managers & team leads",
                 descriptionAr: "مديرو الوكلاء وقادة الفرق",
+                group: "Workforce",
+                groupAr: "القوى العاملة",
               },
               {
                 title: "Users",
@@ -127,6 +138,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "UserCog",
                 description: "System users & permissions",
                 descriptionAr: "مستخدمو النظام والأذونات",
+                group: "Workforce",
+                groupAr: "القوى العاملة",
               },
               {
                 title: "Referral Links",
@@ -135,6 +148,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Link2",
                 description: "All referral links & analytics",
                 descriptionAr: "جميع روابط الإحالة والتحليلات",
+                group: "Marketing",
+                groupAr: "التسويق",
               },
             ],
           },
@@ -143,8 +158,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             titleAr: "المالية",
             href: p("/admin/commissions"),
             icon: "DollarSign",
-            description: "Commissions & payments",
-            descriptionAr: "العمولات والمدفوعات",
+            description: "Commissions, subscriptions & payments",
+            descriptionAr: "العمولات والاشتراكات والمدفوعات",
             children: [
               {
                 title: "Commissions",
@@ -154,11 +169,35 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 description: "Track & manage commissions",
                 descriptionAr: "تتبع وإدارة العمولات",
               },
+              {
+                title: "Subscription Plans",
+                titleAr: "خطط الاشتراك",
+                href: p("/admin/subscription-plans"),
+                icon: "Crown",
+                description: "Manage subscription tiers & features",
+                descriptionAr: "إدارة مستويات الاشتراك والميزات",
+              },
+              {
+                title: "Subscriptions",
+                titleAr: "الاشتراكات",
+                href: p("/admin/subscriptions"),
+                icon: "CreditCard",
+                description: "Assign & manage user subscriptions",
+                descriptionAr: "تعيين وإدارة اشتراكات المستخدمين",
+              },
+              {
+                title: "Subscription Dashboard",
+                titleAr: "لوحة الاشتراكات",
+                href: p("/admin/subscription-dashboard"),
+                icon: "BarChart2",
+                description: "Overview, revenue & activity stats",
+                descriptionAr: "نظرة عامة والإيرادات وإحصائيات النشاط",
+              },
             ],
           },
           {
-            title: "CMS / Landing Page",
-            titleAr: "نظام إدارة المحتوى",
+            title: "CMS / Content",
+            titleAr: "إدارة المحتوى",
             href: p("/admin/cms"),
             icon: "PanelsTopLeft",
             description: "Manage website content",
@@ -171,6 +210,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "PanelsTopLeft",
                 description: "Content management dashboard",
                 descriptionAr: "لوحة إدارة المحتوى",
+                group: "Overview",
+                groupAr: "نظرة عامة",
               },
               {
                 title: "FAQs",
@@ -179,6 +220,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "HelpCircle",
                 description: "Frequently asked questions",
                 descriptionAr: "الأسئلة المتداولة",
+                group: "Content",
+                groupAr: "المحتوى",
               },
               {
                 title: "Blog Posts",
@@ -187,6 +230,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Newspaper",
                 description: "Articles & news posts",
                 descriptionAr: "المقالات والأخبار",
+                group: "Content",
+                groupAr: "المحتوى",
               },
               {
                 title: "Testimonials",
@@ -195,6 +240,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Quote",
                 description: "Client success stories",
                 descriptionAr: "قصص نجاح العملاء",
+                group: "Content",
+                groupAr: "المحتوى",
               },
               {
                 title: "Banners",
@@ -203,6 +250,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Image",
                 description: "Homepage & promo banners",
                 descriptionAr: "بانرات الصفحة الرئيسية",
+                group: "Media",
+                groupAr: "الوسائط",
               },
               {
                 title: "Videos",
@@ -211,6 +260,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Video",
                 description: "Video content library",
                 descriptionAr: "مكتبة محتوى الفيديو",
+                group: "Media",
+                groupAr: "الوسائط",
               },
               {
                 title: "Static Pages",
@@ -219,6 +270,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "FileText",
                 description: "Privacy, terms & custom pages",
                 descriptionAr: "الخصوصية والشروط والصفحات المخصصة",
+                group: "Pages",
+                groupAr: "الصفحات",
               },
               {
                 title: "Contact Inbox",
@@ -227,16 +280,20 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Mail",
                 description: "Contact form submissions",
                 descriptionAr: "رسائل نموذج الاتصال",
+                group: "Pages",
+                groupAr: "الصفحات",
+              },
+              {
+                title: "Poster Templates",
+                titleAr: "قوالب الإعلانات",
+                href: p("/admin/poster-templates"),
+                icon: "LayoutTemplate",
+                description: "Design poster templates for employers",
+                descriptionAr: "تصميم قوالب الإعلانات لأصحاب العمل",
+                group: "Pages",
+                groupAr: "الصفحات",
               },
             ],
-          },
-          {
-            title: "Poster Templates",
-            titleAr: "قوالب الإعلانات",
-            href: p("/admin/poster-templates"),
-            icon: "LayoutTemplate",
-            description: "Design poster templates for employers",
-            descriptionAr: "تصميم قوالب الإعلانات لأصحاب العمل",
           },
           {
             title: "Job Attributes",
@@ -253,6 +310,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Clock",
                 description: "Monthly, yearly, hourly, etc.",
                 descriptionAr: "شهري، سنوي، بالساعة، إلخ",
+                group: "Compensation",
+                groupAr: "التعويضات",
               },
               {
                 title: "Ownership Types",
@@ -261,6 +320,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Building",
                 description: "Company ownership categories",
                 descriptionAr: "فئات ملكية الشركات",
+                group: "Company",
+                groupAr: "الشركة",
               },
               {
                 title: "Marital Status",
@@ -269,6 +330,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Heart",
                 description: "Marital status options",
                 descriptionAr: "خيارات الحالة الاجتماعية",
+                group: "Personal",
+                groupAr: "شخصي",
               },
               {
                 title: "Result Types",
@@ -277,6 +340,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Award",
                 description: "Academic result categories",
                 descriptionAr: "فئات النتائج الأكاديمية",
+                group: "Education",
+                groupAr: "التعليم",
               },
               {
                 title: "Major Subjects",
@@ -285,6 +350,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "GraduationCap",
                 description: "Fields of study",
                 descriptionAr: "مجالات الدراسة",
+                group: "Education",
+                groupAr: "التعليم",
               },
               {
                 title: "Degree Types",
@@ -293,6 +360,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "ScrollText",
                 description: "BSc, MSc, PhD, etc.",
                 descriptionAr: "بكالوريوس، ماجستير، دكتوراه، إلخ",
+                group: "Education",
+                groupAr: "التعليم",
               },
               {
                 title: "Degree Levels",
@@ -301,6 +370,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "BarChart2",
                 description: "Education level hierarchy",
                 descriptionAr: "تسلسل مستويات التعليم",
+                group: "Education",
+                groupAr: "التعليم",
               },
               {
                 title: "Job Shifts",
@@ -309,6 +380,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Sun",
                 description: "Day, night, rotating shifts",
                 descriptionAr: "نوبات صباحية، مسائية، متناوبة",
+                group: "Employment",
+                groupAr: "التوظيف",
               },
               {
                 title: "Job Types",
@@ -317,6 +390,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Layers",
                 description: "Full-time, part-time, contract",
                 descriptionAr: "دوام كامل، جزئي، عقد",
+                group: "Employment",
+                groupAr: "التوظيف",
               },
               {
                 title: "Job Skills",
@@ -325,6 +400,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Wrench",
                 description: "Skills & competency tags",
                 descriptionAr: "علامات المهارات والكفاءات",
+                group: "Employment",
+                groupAr: "التوظيف",
               },
               {
                 title: "Job Experience",
@@ -333,6 +410,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "TrendingUp",
                 description: "Experience level ranges",
                 descriptionAr: "نطاقات مستوى الخبرة",
+                group: "Employment",
+                groupAr: "التوظيف",
               },
               {
                 title: "Industries",
@@ -341,6 +420,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Factory",
                 description: "Industry sector list",
                 descriptionAr: "قائمة القطاعات الصناعية",
+                group: "Classification",
+                groupAr: "التصنيف",
               },
               {
                 title: "Genders",
@@ -349,6 +430,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "UserCircle",
                 description: "Gender preference options",
                 descriptionAr: "خيارات تفضيل الجنس",
+                group: "Personal",
+                groupAr: "شخصي",
               },
               {
                 title: "Functional Areas",
@@ -357,6 +440,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Grid3x3",
                 description: "Job function categories",
                 descriptionAr: "فئات الوظائف",
+                group: "Classification",
+                groupAr: "التصنيف",
               },
               {
                 title: "Career Levels",
@@ -365,6 +450,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Milestone",
                 description: "Entry, mid, senior levels",
                 descriptionAr: "مستويات مبتدئ، متوسط، أقدم",
+                group: "Classification",
+                groupAr: "التصنيف",
               },
               {
                 title: "Language Levels",
@@ -373,6 +460,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Languages",
                 description: "Language proficiency scale",
                 descriptionAr: "مقياس إتقان اللغة",
+                group: "Classification",
+                groupAr: "التصنيف",
               },
             ],
           },
@@ -411,12 +500,12 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             ],
           },
           {
-            title: "System",
-            titleAr: "النظام",
+            title: "Reports & Analytics",
+            titleAr: "التقارير والتحليلات",
             href: p("/admin/reports"),
-            icon: "Settings",
-            description: "Reports, logs & settings",
-            descriptionAr: "التقارير والسجلات والإعدادات",
+            icon: "BarChart2",
+            description: "Reports, analytics & activity logs",
+            descriptionAr: "التقارير والتحليلات وسجلات النشاط",
             children: [
               {
                 title: "Reports",
@@ -443,53 +532,23 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تتبع جميع أنشطة النظام",
               },
               {
-                title: "Communications",
-                titleAr: "الاتصالات",
-                href: p("/admin/communications"),
-                icon: "MessageSquare",
-                description: "Email & notification logs",
-                descriptionAr: "سجلات البريد والإشعارات",
+                title: "Activity Timeline",
+                titleAr: "سجل الأنشطة",
+                href: p("/admin/activity-timeline"),
+                icon: "History",
+                description: "Visual timeline of all actions",
+                descriptionAr: "سجل مرئي لجميع الإجراءات",
               },
-              {
-                title: "Task Board",
-                titleAr: "لوحة المهام",
-                href: p("/admin/tasks"),
-                icon: "ClipboardList",
-                description: "Internal task management",
-                descriptionAr: "إدارة المهام الداخلية",
-              },
-              {
-                title: "Design System",
-                titleAr: "نظام التصميم",
-                href: p("/admin/design-system"),
-                icon: "Palette",
-                description: "UI component reference",
-                descriptionAr: "مرجع مكونات واجهة المستخدم",
-              },
-              {
-                title: "Subscription Plans",
-                titleAr: "خطط الاشتراك",
-                href: p("/admin/subscription-plans"),
-                icon: "Crown",
-                description: "Manage subscription tiers & features",
-                descriptionAr: "إدارة مستويات الاشتراك والميزات",
-              },
-              {
-                title: "Subscriptions",
-                titleAr: "الاشتراكات",
-                href: p("/admin/subscriptions"),
-                icon: "CreditCard",
-                description: "Assign & manage user subscriptions",
-                descriptionAr: "تعيين وإدارة اشتراكات المستخدمين",
-              },
-              {
-                title: "Subscription Dashboard",
-                titleAr: "لوحة الاشتراكات",
-                href: p("/admin/subscription-dashboard"),
-                icon: "BarChart2",
-                description: "Overview, revenue & activity stats",
-                descriptionAr: "نظرة عامة والإيرادات وإحصائيات النشاط",
-              },
+            ],
+          },
+          {
+            title: "System",
+            titleAr: "النظام",
+            href: p("/admin/settings"),
+            icon: "Settings",
+            description: "Settings & configuration",
+            descriptionAr: "الإعدادات والتكوين",
+            children: [
               {
                 title: "Settings",
                 titleAr: "الإعدادات",
@@ -497,6 +556,18 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Settings",
                 description: "Platform configuration",
                 descriptionAr: "إعدادات المنصة",
+                group: "Configuration",
+                groupAr: "التكوين",
+              },
+              {
+                title: "Communications",
+                titleAr: "الاتصالات",
+                href: p("/admin/communications"),
+                icon: "MessageSquare",
+                description: "Email & notification logs",
+                descriptionAr: "سجلات البريد والإشعارات",
+                group: "Configuration",
+                groupAr: "التكوين",
               },
               {
                 title: "Notification System",
@@ -505,6 +576,18 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Bell",
                 description: "Email automation & monitoring",
                 descriptionAr: "أتمتة البريد الإلكتروني والمراقبة",
+                group: "Configuration",
+                groupAr: "التكوين",
+              },
+              {
+                title: "Task Board",
+                titleAr: "لوحة المهام",
+                href: p("/admin/tasks"),
+                icon: "ClipboardList",
+                description: "Internal task management",
+                descriptionAr: "إدارة المهام الداخلية",
+                group: "Automation",
+                groupAr: "الأتمتة",
               },
               {
                 title: "Workflow Templates",
@@ -513,6 +596,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "GitBranch",
                 description: "Manage hiring workflow presets",
                 descriptionAr: "إدارة قوالب سير عمل التوظيف",
+                group: "Automation",
+                groupAr: "الأتمتة",
               },
               {
                 title: "Matching Weight Templates",
@@ -521,6 +606,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Scale",
                 description: "Manage matching weight presets",
                 descriptionAr: "إدارة قوالب أوزان المطابقة",
+                group: "Automation",
+                groupAr: "الأتمتة",
               },
               {
                 title: "GDPR / Data Privacy",
@@ -529,14 +616,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "ShieldCheck",
                 description: "Data requests, consent & retention",
                 descriptionAr: "طلبات البيانات والموافقة والاحتفاظ",
-              },
-              {
-                title: "System Health",
-                titleAr: "صحة النظام",
-                href: p("/admin/system-health"),
-                icon: "Activity",
-                description: "Real-time platform monitoring",
-                descriptionAr: "مراقبة المنصة في الوقت الفعلي",
+                group: "Compliance",
+                groupAr: "الامتثال",
               },
               {
                 title: "Bulk Import",
@@ -545,14 +626,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Upload",
                 description: "CSV import for users & jobs",
                 descriptionAr: "استيراد CSV للمستخدمين والوظائف",
-              },
-              {
-                title: "Activity Timeline",
-                titleAr: "سجل الأنشطة",
-                href: p("/admin/activity-timeline"),
-                icon: "History",
-                description: "Visual timeline of all actions",
-                descriptionAr: "سجل مرئي لجميع الإجراءات",
+                group: "Data",
+                groupAr: "البيانات",
               },
             ],
           },

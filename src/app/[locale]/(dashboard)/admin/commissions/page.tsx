@@ -8,7 +8,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Plus, Pencil, Trash2, Sparkles, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw, Search, CalendarDays, Globe } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, Clock3, CheckCircle2, WalletCards, ReceiptText, RotateCcw, CalendarDays, Globe, ArrowRight } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -218,41 +218,134 @@ export default function AdminCommissionsPage() {
   return (
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Finance workspace
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Commissions
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Track agent commission records, clear pending approvals, and keep payout operations inside the same polished admin workspace used across recruiting.
-            </p>
+      <TableToolbar
+        title="Commissions"
+        description="Track agent commission records, clear pending approvals, and keep payout operations inside the same admin workspace."
+        search={searchTerm}
+        onSearchChange={(value) => { setSearchTerm(value); resetPage(); }}
+        searchPlaceholder="Search agent…"
+        left={(
+          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+            <Sparkles className="h-3.5 w-3.5" />
+            Finance workspace
           </div>
+        )}
+        right={(
+          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
+            <ArrowRight className="h-3.5 w-3.5 text-primary" />
+            {total.toLocaleString()} commission records across {totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"}
+          </div>
+        )}
+        actions={can("commissions", "create") ? (
+          <Button
+            onClick={() => setShowAdd(true)}
+            className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+          >
+            <Plus className="h-4 w-4" />
+            Add Commission
+          </Button>
+        ) : undefined}
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        filterContent={(
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <div>
+                <label htmlFor="admin-commissions-status-filter" className="sr-only">Filter commissions by status</label>
+                <SearchableSelect
+                  id="admin-commissions-status-filter"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={STATUS_OPTIONS}
+                  value={status || "all"}
+                  onValueChange={(value) => {
+                    setStatus(value === "all" ? "" : value);
+                    resetPage();
+                  }}
+                  placeholder="All statuses"
+                />
+              </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[240px]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Portfolio</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{total.toLocaleString()} commission records</p>
-              <p className="text-xs text-muted-foreground">Across {totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"} in the current query.</p>
+              <div>
+                <label htmlFor="admin-commissions-type-filter" className="sr-only">Filter commissions by type</label>
+                <SearchableSelect
+                  id="admin-commissions-type-filter"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={TYPE_OPTIONS}
+                  value={typeFilter || "all"}
+                  onValueChange={(value) => {
+                    setTypeFilter(value === "all" ? "" : value);
+                    resetPage();
+                  }}
+                  placeholder="All types"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="admin-commissions-currency-filter" className="sr-only">Filter by currency / country</label>
+                <SearchableSelect
+                  id="admin-commissions-currency-filter"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={CURRENCY_OPTIONS}
+                  value={currencyFilter || "all"}
+                  onValueChange={(value) => {
+                    setCurrencyFilter(value === "all" ? "" : value);
+                    resetPage();
+                  }}
+                  placeholder="All currencies"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 xl:col-span-2">
+                <div className="relative flex-1">
+                  <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm"
+                    value={dateFrom}
+                    onChange={(event) => { setDateFrom(event.target.value); resetPage(); }}
+                    aria-label="Date from"
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground">to</span>
+                <div className="relative flex-1">
+                  <Input
+                    type="date"
+                    className="h-11 rounded-xl border-border bg-card text-sm"
+                    value={dateTo}
+                    onChange={(event) => { setDateTo(event.target.value); resetPage(); }}
+                    aria-label="Date to"
+                  />
+                </div>
+              </div>
             </div>
 
-            {can("commissions", "create") ? (
+            <div className="flex justify-end">
               <Button
-                onClick={() => setShowAdd(true)}
-                className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setStatus("");
+                  setTypeFilter("");
+                  setSearchTerm("");
+                  setCurrencyFilter("");
+                  setDateFrom("");
+                  setDateTo("");
+                  resetPage();
+                }}
+                disabled={!hasActiveFilters}
+                className="h-11 rounded-xl border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50"
               >
-                <Plus className="h-4 w-4" />
-                Add Commission
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Clear filters
               </Button>
-            ) : null}
+            </div>
           </div>
-        </div>
+        )}
+        hasActiveFilters={hasActiveFilters}
+      />
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -301,119 +394,6 @@ export default function AdminCommissionsPage() {
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse records</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Filter the commissions you want to review next</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Use filters to narrow approvals, payouts, and completed records without leaving the finance workspace.</p>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="xl:col-span-5">
-            <TableToolbar
-              search={searchTerm}
-              onSearchChange={(v) => { setSearchTerm(v); resetPage(); }}
-              searchPlaceholder="Search agent…"
-              onExportCsv={handleExportCsv}
-              onExportExcel={handleExportExcel}
-              onExportPdf={handleExportPdf}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="admin-commissions-status-filter" className="sr-only">Filter commissions by status</label>
-            <SearchableSelect
-              id="admin-commissions-status-filter"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={STATUS_OPTIONS}
-              value={status || "all"}
-              onValueChange={(value) => {
-                setStatus(value === "all" ? "" : value);
-                resetPage();
-              }}
-              placeholder="All statuses"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="admin-commissions-type-filter" className="sr-only">Filter commissions by type</label>
-            <SearchableSelect
-              id="admin-commissions-type-filter"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={TYPE_OPTIONS}
-              value={typeFilter || "all"}
-              onValueChange={(value) => {
-                setTypeFilter(value === "all" ? "" : value);
-                resetPage();
-              }}
-              placeholder="All types"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="admin-commissions-currency-filter" className="sr-only">Filter by currency / country</label>
-            <SearchableSelect
-              id="admin-commissions-currency-filter"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={CURRENCY_OPTIONS}
-              value={currencyFilter || "all"}
-              onValueChange={(value) => {
-                setCurrencyFilter(value === "all" ? "" : value);
-                resetPage();
-              }}
-              placeholder="All currencies"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="date"
-                className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm"
-                value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
-                aria-label="Date from"
-              />
-            </div>
-            <span className="text-xs text-muted-foreground">to</span>
-            <div className="relative flex-1">
-              <Input
-                type="date"
-                className="h-11 rounded-xl border-border bg-secondary/65 text-sm"
-                value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
-                aria-label="Date to"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-3 flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setStatus("");
-              setTypeFilter("");
-              setSearchTerm("");
-              setCurrencyFilter("");
-              setDateFrom("");
-              setDateTo("");
-              resetPage();
-            }}
-            disabled={!hasActiveFilters}
-            className="h-11 rounded-xl border-border bg-card px-4 text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50"
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Clear filters
-          </Button>
-        </div>
       </section>
 
       {errorMessage ? (

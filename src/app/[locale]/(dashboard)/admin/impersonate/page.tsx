@@ -1,9 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Search, UserCog, Loader2, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Search, UserCog, Loader2, Eye, Inbox } from "lucide-react";
 
 interface UserRow {
   _id: string;
@@ -61,23 +70,19 @@ export default function AdminUserImpersonatePage() {
   };
 
   return (
-    <div className="page-container">
-      <PageHeader
-        title="User Impersonation"
-        description="View the platform as any user for support and debugging"
-      />
-
+    <div className="page-container space-y-4">
       {impersonateResult?.success && impersonateResult.target && (
-        <div className="p-4 rounded-lg bg-amber-50 border border-amber-300 flex items-center justify-between">
+        <div className="flex items-center justify-between rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
           <div>
             <p className="text-sm font-semibold text-amber-800">
               Impersonation session started for {impersonateResult.target.name}
             </p>
-            <p className="text-xs text-amber-600 mt-0.5">
+            <p className="mt-0.5 text-xs text-amber-600">
               Role: {impersonateResult.target.role} · {impersonateResult.target.email}
             </p>
           </div>
-          <button
+          <Button
+            size="sm"
             onClick={async () => {
               await fetch("/api/admin/impersonate", {
                 method: "POST",
@@ -86,79 +91,104 @@ export default function AdminUserImpersonatePage() {
               });
               setImpersonateResult(null);
             }}
-            className="btn-primary h-8 px-3 text-xs bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
+            className="h-8 px-3 text-xs bg-amber-600 hover:bg-amber-700 text-white"
           >
             Exit Impersonation
-          </button>
+          </Button>
         </div>
       )}
 
-      <div className="card-base space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search users by name or email…"
-            className="input-field pl-9"
-          />
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        {/* Compact header row */}
+        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">User Impersonation</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">View the platform as any user for support and debugging.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search users by name or email…"
+                className="h-9 w-48 rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-64"
+              />
+            </div>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/20">
-                <tr>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Email</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Role</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground">Joined</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user._id} className="border-b hover:bg-muted/10 transition-colors">
-                    <td className="p-3 font-medium">{user.name}</td>
-                    <td className="p-3 text-muted-foreground">{user.email}</td>
-                    <td className="p-3"><StatusBadge status={user.role} /></td>
-                    <td className="p-3"><StatusBadge status={user.isActive ? "active" : "inactive"} /></td>
-                    <td className="p-3 text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</td>
-                    <td className="p-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <a href={`../users/${user._id}`} className="btn-ghost h-8 w-8 p-0" title="View profile">
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        </a>
-                        <button
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="border-border/70 hover:bg-transparent">
+                    {Array.from({ length: 6 }).map((_, j) => (
+                      <TableCell key={j}>
+                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : users.length === 0 ? (
+                <TableRow className="border-border/70 hover:bg-transparent">
+                  <TableCell colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <Inbox className="h-6 w-6 text-muted-foreground/50" />
+                      <p className="text-sm font-medium text-foreground">No users found</p>
+                      <p className="text-xs text-muted-foreground">Try adjusting your search.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users.map((user) => (
+                  <TableRow key={user._id} className="border-border/70">
+                    <TableCell className="font-medium text-foreground">{user.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                    <TableCell><StatusBadge status={user.role} /></TableCell>
+                    <TableCell><StatusBadge status={user.isActive ? "active" : "inactive"} /></TableCell>
+                    <TableCell className="text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button variant="ghost" size="xs" asChild title="View profile">
+                          <a href={`../users/${user._id}`}>
+                            <Eye className="h-3.5 w-3.5 text-primary" />
+                          </a>
+                        </Button>
+                        <Button
+                          size="xs"
                           onClick={() => impersonate(user._id)}
                           disabled={impersonating === user._id}
-                          className="btn-outline h-7 px-2.5 text-xs text-amber-700 border-amber-200 bg-amber-50 hover:bg-amber-100 flex items-center gap-1.5"
+                          className="h-7 gap-1 px-2.5 text-xs text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100"
+                          variant="ghost"
                           title="View as this user"
                         >
                           {impersonating === user._id
                             ? <Loader2 className="h-3 w-3 animate-spin" />
                             : <UserCog className="h-3 w-3" />}
                           Impersonate
-                        </button>
+                        </Button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="text-center py-12 text-muted-foreground">No users found</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
     </div>
   );
 }

@@ -51,6 +51,10 @@ export default function LoginPage() {
     }
 
     const params = new URLSearchParams(window.location.search);
+    const reason = params.get("reason");
+    if (reason === "idle") {
+      setError(t("sessionExpiredInactivity"));
+    }
     const oauthError = params.get("error");
     if (oauthError === "OAuthAccountNotLinked") {
       setError(t("oauthAccountNotLinked"));

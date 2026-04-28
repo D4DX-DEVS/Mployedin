@@ -54,6 +54,7 @@ export function UnifiedMessagesPage({
   const searchParams = useSearchParams();
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const isRtl = locale === "ar";
   const queryClient = useQueryClient();
 
   const { data: conversations = [], isLoading: loading } = useConversations();
@@ -204,7 +205,8 @@ export function UnifiedMessagesPage({
         {/* Conversation list — responsive sidebar */}
         <div
           className={cn(
-            "w-full md:w-80 shrink-0 border-r flex flex-col",
+            "w-full md:w-80 shrink-0 flex flex-col",
+            isRtl ? "border-l" : "border-r",
             (activeConvId || pendingRecipientId) ? "hidden md:flex" : "flex"
           )}
         >
@@ -293,9 +295,10 @@ export function UnifiedMessagesPage({
                     key={conv._id}
                     onClick={() => selectConversation(conv._id)}
                     className={cn(
-                      "w-full flex items-center gap-3 px-3 py-3 text-left transition-colors border-b border-border/40",
+                      "w-full flex items-center gap-3 px-3 py-3 transition-colors border-b border-border/40",
+                      isRtl ? "text-right" : "text-left",
                       isActive
-                        ? "bg-primary/5 border-l-2 border-l-primary"
+                        ? cn("bg-primary/5", isRtl ? "border-r-2 border-r-primary" : "border-l-2 border-l-primary")
                         : "hover:bg-muted/40"
                     )}
                   >

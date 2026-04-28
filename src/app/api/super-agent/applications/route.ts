@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Application from "@/models/Application";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
@@ -20,8 +20,9 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const status = url.searchParams.get("status") ?? "";
   const agentFilter = url.searchParams.get("agent") ?? "";
 
-  const superAgent = await SuperAgent.findOne({ userId: ctx.userId }).lean();
-  const agentIds = ((superAgent as Record<string, unknown>)?.agentIds ?? []) as string[];
+  // Dual-scoping: team agents + region-based agents
+  const scope = await getSuperAgentScope(ctx.userId);
+  const agentIds = (scope?.effectiveAgentIds ?? []).map(String);
 
   /* Get agent user IDs for filtering */
   const agents = await Agent.find({ _id: { $in: agentIds } })

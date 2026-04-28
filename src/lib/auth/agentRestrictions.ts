@@ -1,22 +1,50 @@
 /**
- * Agent access restriction utilities.
+ * Agent & Super-Agent access restriction utilities.
  *
  * Agents are assigned to cities/states. These helpers enforce
  * that agents can only view and interact with resources in their assigned region.
+ *
+ * Super-Agents have their own regions (assignedCityIds/assignedStateIds) which
+ * represent their territory. Their effective region is the union of:
+ *   1. Their own assignedCityIds/assignedStateIds (explicit territory)
+ *   2. All regions of their managed agents (inherited via agentIds[])
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db/mongoose";
 import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
 import mongoose from "mongoose";
 
-interface AgentRegionInfo {
+export interface RegionInfo {
   assignedCityIds: mongoose.Types.ObjectId[];
   assignedStateIds: mongoose.Types.ObjectId[];
 }
 
+/**
+ * Combined scope for super-agent data access.
+ * Includes both team-based (agentIds) and region-based scoping.
+ */
+export interface SuperAgentScope {
+  /** The SuperAgent document _id */
+  saProfileId: mongoose.Types.ObjectId;
+  /** Agents explicitly assigned to this SA via agentIds[] */
+  teamAgentIds: mongoose.Types.ObjectId[];
+  /** Agents found via region overlap (not necessarily in agentIds) */
+  regionAgentIds: mongoose.Types.ObjectId[];
+  /** Union of teamAgentIds + regionAgentIds — use this for queries */
+  effectiveAgentIds: mongoose.Types.ObjectId[];
+  /** SA's own assigned city IDs */
+  assignedCityIds: mongoose.Types.ObjectId[];
+  /** SA's own assigned state IDs */
+  assignedStateIds: mongoose.Types.ObjectId[];
+}
+
+/** @deprecated Use RegionInfo instead */
+type AgentRegionInfo = RegionInfo;
+
 /** Get the agent's assigned city and state IDs. */
-export async function getAgentRegion(agentUserId: string): Promise<AgentRegionInfo | null> {
+export async function getAgentRegion(agentUserId: string): Promise<RegionInfo | null> {
   await connectDB();
   const agent = await Agent.findOne({ userId: agentUserId })
     .select("assignedCityIds assignedStateIds")
@@ -29,29 +57,204 @@ export async function getAgentRegion(agentUserId: string): Promise<AgentRegionIn
 }
 
 /**
- * Check if agent has ANY region assigned.
+ * Get the super-agent's effective region: union of own regions + all managed agent regions.
  */
-export function hasRegionAssigned(region: AgentRegionInfo | null): boolean {
+export async function getSuperAgentRegion(saUserId: string): Promise<RegionInfo | null> {
+  await connectDB();
+  const sa = await SuperAgent.findOne({ userId: saUserId })
+    .select("assignedCityIds assignedStateIds agentIds")
+    .lean();
+  if (!sa) return null;
+
+  const ownCities = (sa.assignedCityIds as mongoose.Types.ObjectId[]) ?? [];
+  const ownStates = (sa.assignedStateIds as mongoose.Types.ObjectId[]) ?? [];
+
+  // Collect agent regions to merge
+  const agentIds = (sa.agentIds as mongoose.Types.ObjectId[]) ?? [];
+  let agentCities: mongoose.Types.ObjectId[] = [];
+  let agentStates: mongoose.Types.ObjectId[] = [];
+
+  if (agentIds.length > 0) {
+    const agents = await Agent.find({ _id: { $in: agentIds } })
+      .select("assignedCityIds assignedStateIds")
+      .lean();
+    agentCities = agents.flatMap((a) => (a.assignedCityIds as mongoose.Types.ObjectId[]) ?? []);
+    agentStates = agents.flatMap((a) => (a.assignedStateIds as mongoose.Types.ObjectId[]) ?? []);
+  }
+
+  // Deduplicate using Set of string IDs
+  const allCities = deduplicateIds([...ownCities, ...agentCities]);
+  const allStates = deduplicateIds([...ownStates, ...agentStates]);
+
+  return { assignedCityIds: allCities, assignedStateIds: allStates };
+}
+
+/**
+ * Get the super-agent's OWN region (not including agents' regions).
+ * Used for validating agent region subset checks.
+ */
+export async function getSuperAgentOwnRegion(saUserId: string): Promise<RegionInfo | null> {
+  await connectDB();
+  const sa = await SuperAgent.findOne({ userId: saUserId })
+    .select("assignedCityIds assignedStateIds")
+    .lean();
+  if (!sa) return null;
+  return {
+    assignedCityIds: (sa.assignedCityIds as mongoose.Types.ObjectId[]) ?? [],
+    assignedStateIds: (sa.assignedStateIds as mongoose.Types.ObjectId[]) ?? [],
+  };
+}
+
+/**
+ * Get the super-agent's full data scope: team agents + region-overlapping agents.
+ *
+ * This implements dual-scoping:
+ *  1. Team-based: agents explicitly in the SA's agentIds[]
+ *  2. Region-based: any agents whose assignedCityIds/assignedStateIds overlap
+ *     with the SA's own regions (even if not in agentIds)
+ *
+ * Returns effectiveAgentIds (union of both) for use in resource queries.
+ */
+export async function getSuperAgentScope(saUserId: string): Promise<SuperAgentScope | null> {
+  await connectDB();
+
+  const sa = await SuperAgent.findOne({ userId: saUserId })
+    .select("_id agentIds assignedCityIds assignedStateIds")
+    .lean();
+  if (!sa) return null;
+
+  const teamAgentIds = (sa.agentIds as mongoose.Types.ObjectId[]) ?? [];
+  const assignedCityIds = (sa.assignedCityIds as mongoose.Types.ObjectId[]) ?? [];
+  const assignedStateIds = (sa.assignedStateIds as mongoose.Types.ObjectId[]) ?? [];
+
+  // Find agents whose regions overlap with SA's assigned regions.
+  // Exclude agents that belong to a DIFFERENT super-agent to prevent scope leakage.
+  const regionConditions: Record<string, unknown>[] = [];
+  if (assignedCityIds.length > 0) {
+    regionConditions.push({ assignedCityIds: { $in: assignedCityIds } });
+  }
+  if (assignedStateIds.length > 0) {
+    regionConditions.push({ assignedStateIds: { $in: assignedStateIds } });
+  }
+
+  let regionAgentIds: mongoose.Types.ObjectId[] = [];
+  if (regionConditions.length > 0) {
+    const regionAgents = await Agent.find({
+      $and: [
+        { $or: regionConditions },
+        // Only include agents with no SA or assigned to THIS SA
+        { $or: [
+          { superAgentId: { $exists: false } },
+          { superAgentId: null },
+          { superAgentId: sa._id },
+        ]},
+      ],
+    })
+      .select("_id")
+      .lean();
+    regionAgentIds = regionAgents.map((a) => a._id as mongoose.Types.ObjectId);
+  }
+
+  const effectiveAgentIds = deduplicateIds([...teamAgentIds, ...regionAgentIds]);
+
+  return {
+    saProfileId: sa._id as mongoose.Types.ObjectId,
+    teamAgentIds,
+    regionAgentIds,
+    effectiveAgentIds,
+    assignedCityIds,
+    assignedStateIds,
+  };
+}
+
+/** Deduplicate an array of ObjectIds. */
+function deduplicateIds(ids: mongoose.Types.ObjectId[]): mongoose.Types.ObjectId[] {
+  const seen = new Set<string>();
+  return ids.filter((id) => {
+    const s = id.toString();
+    if (seen.has(s)) return false;
+    seen.add(s);
+    return true;
+  });
+}
+
+/**
+ * Check if a region has ANY assignments.
+ */
+export function hasRegionAssigned(region: RegionInfo | null): boolean {
   if (!region) return false;
   return region.assignedCityIds.length > 0 || region.assignedStateIds.length > 0;
 }
 
 /**
- * Verify that a resource belongs to the agent's region by checking
- * if the resource's cityId or stateId matches the agent's assigned locations.
+ * Expand assignedStateIds to include all cities belonging to those states.
+ * This ensures that assigning a state automatically covers all its cities.
+ */
+export async function expandStatesToCities(
+  region: RegionInfo
+): Promise<Set<string>> {
+  const citySet = new Set(region.assignedCityIds.map((id) => id.toString()));
+
+  if (region.assignedStateIds.length > 0) {
+    const { default: City } = await import("@/models/City");
+    const citiesInStates = await City.find({
+      stateId: { $in: region.assignedStateIds },
+    })
+      .select("_id")
+      .lean();
+    for (const c of citiesInStates) {
+      citySet.add(c._id.toString());
+    }
+  }
+
+  return citySet;
+}
+
+/**
+ * Check if a set of cityIds/stateIds is a subset of another region.
+ * Used to validate agent regions are within their super-agent's territory.
+ * Cities belonging to an assigned parent state are considered valid.
+ */
+export async function isRegionSubset(
+  child: { cityIds: string[]; stateIds: string[] },
+  parent: RegionInfo
+): Promise<{ valid: boolean; invalidCityIds: string[]; invalidStateIds: string[] }> {
+  const parentStateSet = new Set(parent.assignedStateIds.map((id) => id.toString()));
+
+  // Expand parent's states to include all their cities
+  const parentCitySet = await expandStatesToCities(parent);
+
+  const invalidCityIds = child.cityIds.filter((id) => !parentCitySet.has(id));
+  const invalidStateIds = child.stateIds.filter((id) => !parentStateSet.has(id));
+
+  return {
+    valid: invalidCityIds.length === 0 && invalidStateIds.length === 0,
+    invalidCityIds,
+    invalidStateIds,
+  };
+}
+
+/**
+ * Verify that a resource belongs to the user's region by checking
+ * if the resource's cityId or stateId matches the assigned locations.
+ * Works for both agents and super-agents.
  * Returns `true` if access is permitted, `false` if restricted.
  *
- * @param agentUserId  - the userId of the agent making the request
+ * @param userId       - the userId of the agent/super-agent making the request
+ * @param role         - "agent" | "super_agent"
  * @param resourceId   - the _id of the resource being accessed
  * @param resourceType - "employer" | "lead" | "application"
  */
-export async function agentCanAccessResource(
-  agentUserId: string,
+export async function canAccessResource(
+  userId: string,
+  role: "agent" | "super_agent",
   resourceId: string,
   resourceType: "employer" | "lead" | "application"
 ): Promise<boolean> {
   await connectDB();
-  const region = await getAgentRegion(agentUserId);
+  const region = role === "super_agent"
+    ? await getSuperAgentRegion(userId)
+    : await getAgentRegion(userId);
   if (!hasRegionAssigned(region)) return false;
 
   // Dynamic import to avoid circular dep
@@ -63,7 +266,7 @@ export async function agentCanAccessResource(
     const { default: Lead } = await import("@/models/Lead");
     model = Lead;
   } else {
-    // Applications don't have region — allow if agent is assigned to application
+    // Applications don't have region — allow if user is assigned
     return true;
   }
 
@@ -76,7 +279,7 @@ export async function agentCanAccessResource(
   }).findById(resourceId).select("cityId stateId agentId").lean();
 
   if (!doc) return false;
-  if (doc.agentId?.toString() === agentUserId) return true; // assigned agent always has access
+  if (doc.agentId?.toString() === userId) return true; // assigned agent always has access
 
   const cityMatch = doc.cityId && region!.assignedCityIds.some(
     (cid) => cid.toString() === doc.cityId!.toString()
@@ -84,26 +287,50 @@ export async function agentCanAccessResource(
   const stateMatch = doc.stateId && region!.assignedStateIds.some(
     (sid) => sid.toString() === doc.stateId!.toString()
   );
-  return !!(cityMatch || stateMatch);
+
+  // State→city hierarchy: if user has a state assigned and the resource's city belongs to that state
+  let stateCityMatch = false;
+  if (!cityMatch && doc.cityId && region!.assignedStateIds.length > 0) {
+    const expandedCities = await expandStatesToCities(region!);
+    stateCityMatch = expandedCities.has(doc.cityId.toString());
+  }
+
+  return !!(cityMatch || stateMatch || stateCityMatch);
 }
 
 /**
- * Middleware-style guard for agent route handlers.
- * Rejects with 403 if agent tries to access a resource outside their region.
+ * @deprecated Use canAccessResource instead
+ */
+export async function agentCanAccessResource(
+  agentUserId: string,
+  resourceId: string,
+  resourceType: "employer" | "lead" | "application"
+): Promise<boolean> {
+  return canAccessResource(agentUserId, "agent", resourceId, resourceType);
+}
+
+/**
+ * Middleware-style guard for agent AND super-agent route handlers.
+ * Rejects with 403 if user tries to access a resource outside their region.
  *
  * @example
- * const check = await requireAgentRegionAccess(req, ctx, resourceId, "employer");
+ * const check = await requireRegionAccess(req, ctx, resourceId, "employer");
  * if (check) return check; // early return the 403 response
  */
-export async function requireAgentRegionAccess(
+export async function requireRegionAccess(
   _req: NextRequest,
   ctx: { userId: string; role: string },
   resourceId: string,
   resourceType: "employer" | "lead" | "application"
 ): Promise<NextResponse | null> {
-  if (ctx.role !== "agent") return null; // only applies to agents
+  if (ctx.role !== "agent" && ctx.role !== "super_agent") return null; // admins pass through
 
-  const allowed = await agentCanAccessResource(ctx.userId, resourceId, resourceType);
+  const allowed = await canAccessResource(
+    ctx.userId,
+    ctx.role as "agent" | "super_agent",
+    resourceId,
+    resourceType
+  );
   if (!allowed) {
     return NextResponse.json(
       { error: "Access restricted — resource is outside your assigned region." },
@@ -114,27 +341,58 @@ export async function requireAgentRegionAccess(
 }
 
 /**
- * Build a MongoDB query filter that restricts results to the agent's region.
+ * @deprecated Use requireRegionAccess instead
+ */
+export async function requireAgentRegionAccess(
+  _req: NextRequest,
+  ctx: { userId: string; role: string },
+  resourceId: string,
+  resourceType: "employer" | "lead" | "application"
+): Promise<NextResponse | null> {
+  return requireRegionAccess(_req, ctx, resourceId, resourceType);
+}
+
+/**
+ * Build a MongoDB query filter that restricts results to the user's region.
+ * Works for both agents and super-agents.
  * Use with `.find(filter)` on Employer/Lead models that have `cityId` or `stateId` fields.
  */
-export async function buildAgentRegionFilter(
-  agentUserId: string
+export async function buildRegionFilter(
+  userId: string,
+  role: "agent" | "super_agent"
 ): Promise<Record<string, unknown>> {
-  const region = await getAgentRegion(agentUserId);
+  const region = role === "super_agent"
+    ? await getSuperAgentRegion(userId)
+    : await getAgentRegion(userId);
   if (!hasRegionAssigned(region)) {
     return { _id: { $exists: false } }; // no region → no results
   }
 
   const conditions: Record<string, unknown>[] = [
-    { agentId: new mongoose.Types.ObjectId(agentUserId) },
+    { agentId: new mongoose.Types.ObjectId(userId) },
   ];
 
-  if (region!.assignedCityIds.length > 0) {
-    conditions.push({ cityId: { $in: region!.assignedCityIds } });
+  // Expand states to include all their cities for proper hierarchy coverage
+  const expandedCityIds = await expandStatesToCities(region!);
+  const allCityObjectIds = Array.from(expandedCityIds).map(
+    (id) => new mongoose.Types.ObjectId(id)
+  );
+
+  if (allCityObjectIds.length > 0) {
+    conditions.push({ cityId: { $in: allCityObjectIds } });
   }
   if (region!.assignedStateIds.length > 0) {
     conditions.push({ stateId: { $in: region!.assignedStateIds } });
   }
 
   return { $or: conditions };
+}
+
+/**
+ * @deprecated Use buildRegionFilter instead
+ */
+export async function buildAgentRegionFilter(
+  agentUserId: string
+): Promise<Record<string, unknown>> {
+  return buildRegionFilter(agentUserId, "agent");
 }

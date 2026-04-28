@@ -17,15 +17,17 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { PermissionEditor } from "@/components/shared/PermissionEditor";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
 
 interface User {
   _id: string;
@@ -212,194 +214,207 @@ export default function AdminUsersPage() {
     setSelected(s => s.length === users.length ? [] : users.map(u => u._id));
 
   return (
-    <div className="page-container">
-      <div className="flex items-center justify-between">
-        <PageHeader
-          title="User Management"
-          description={`${total.toLocaleString()} total users`}
-        />
-        <Button onClick={() => setShowCreate(true)} size="sm">
-          <Plus className="h-4 w-4" /> Create User
-        </Button>
-      </div>
+    <div className="page-container space-y-4">
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">User Management</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">{total.toLocaleString()} total users</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+                placeholder="Search by name or email…"
+                className="h-8 w-52 rounded-lg pl-8 text-sm"
+              />
+            </div>
+            <SearchableSelect
+              className="h-8 w-[130px]"
+              options={[
+                { value: "all", label: "All roles" },
+                ...ROLES.map((r) => ({ value: r, label: r.replace("_", " ") })),
+              ]}
+              value={roleFilter}
+              onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
+              placeholder="All roles"
+            />
+            <SearchableSelect
+              className="h-8 w-[120px]"
+              options={[
+                { value: "all", label: "All status" },
+                { value: "true", label: "Active" },
+                { value: "false", label: "Inactive" },
+              ]}
+              value={activeFilter}
+              onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
+              placeholder="All status"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
+                  <Download className="h-3.5 w-3.5" /> Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel>Export</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />CSV</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />Excel</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 rounded-lg">
+              <Plus className="h-3.5 w-3.5" /> Create User
+            </Button>
+          </div>
+        </div>
 
-      {/* Filters */}
-      <div className="card-base p-4 lg:p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div className="flex gap-3 flex-wrap flex-1 w-full m:w-auto">
-          <TableToolbar
-            search={search}
-            onSearchChange={(v) => { setSearch(v); resetPage(); }}
-            searchPlaceholder="Search by name or email…"
-            onExportCsv={handleExportCsv}
-            onExportExcel={handleExportExcel}
-            onExportPdf={handleExportPdf}
-            className="flex-1 w-full"
-          />
-          <SearchableSelect
-            className="w-[140px]"
-            options={[
-              { value: "all", label: "All roles" },
-              ...ROLES.map((r) => ({ value: r, label: r.replace("_", " ") })),
-            ]}
-            value={roleFilter}
-            onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
-            placeholder="All roles"
-          />
-          <SearchableSelect
-            className="w-[130px]"
-            options={[
-              { value: "all", label: "All status" },
-              { value: "true", label: "Active" },
-              { value: "false", label: "Inactive" },
-            ]}
-            value={activeFilter}
-            onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
-            placeholder="All status"
-          />
-        </div>
-      </div>
+        {/* Bulk Actions Bar */}
+        {selected.length > 0 && (
+          <div className="flex items-center gap-3 border-b border-border/80 px-5 py-2.5 bg-primary/5">
+            <span className="text-sm font-medium text-primary">{selected.length} selected</span>
+            <select value={bulkAction} onChange={e => setBulkAction(e.target.value)} className="input-field flex-1 max-w-xs text-sm">
+              <option value="">Bulk action…</option>
+              <option value="setRole:agent">Set Role → Agent</option>
+              <option value="setRole:employer">Set Role → Employer</option>
+              <option value="setRole:job_seeker">Set Role → Job Seeker</option>
+              <option value="activate">Activate selected</option>
+              <option value="deactivate">Deactivate selected</option>
+              <option value="delete">Delete selected</option>
+            </select>
+            <Button size="sm" onClick={applyBulk} disabled={!bulkAction || bulkLoading} className="btn-primary">
+              Apply
+            </Button>
+            <button onClick={() => setSelected([])} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>
+          </div>
+        )}
 
-      {/* Bulk Actions Bar */}
-      {selected.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/5 border border-primary/20">
-          <span className="text-sm font-medium text-primary">{selected.length} selected</span>
-          <select value={bulkAction} onChange={e => setBulkAction(e.target.value)} className="input-field flex-1 max-w-xs text-sm">
-            <option value="">Bulk action…</option>
-            <option value="setRole:agent">Set Role → Agent</option>
-            <option value="setRole:employer">Set Role → Employer</option>
-            <option value="setRole:job_seeker">Set Role → Job Seeker</option>
-            <option value="activate">Activate selected</option>
-            <option value="deactivate">Deactivate selected</option>
-            <option value="delete">Delete selected</option>
-          </select>
-          <Button size="sm" onClick={applyBulk} disabled={!bulkAction || bulkLoading} className="btn-primary">
-            Apply
-          </Button>
-          <button onClick={() => setSelected([])} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>
-        </div>
-      )}
-
-      {/* Users table */}
-      {loading ? (
-        <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
-          <div className="bg-muted/30 px-4 py-3 h-10 animate-pulse" />
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="border-t px-4 py-3 h-14 animate-pulse" />
-          ))}
-        </div>
-      ) : users.length === 0 ? (
-        <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03] text-center py-16">
-          <Inbox className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">No users found matching your filters</p>
-        </div>
-      ) : (
-        <div className="card-base overflow-hidden rounded-xl bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead>
-                  <input type="checkbox" checked={selected.length === users.length && users.length > 0}
-                    onChange={toggleAll} className="accent-primary" />
-                </TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Locale</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Actions</TableHead>
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead>
+                <input type="checkbox" checked={selected.length === users.length && users.length > 0}
+                  onChange={toggleAll} className="accent-primary" />
+              </TableHead>
+              <TableHead>User</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Locale</TableHead>
+              <TableHead>Joined</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <TableRow key={i} className="hover:bg-transparent">
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <TableCell key={j}>
+                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : users.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="h-32 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Inbox className="h-8 w-8 opacity-40" />
+                    <span className="text-sm">No users found matching your filters</span>
+                  </div>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => {
-                const initials = (user.name || "U").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
-                const joined = new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            ) : users.map((user) => {
+              const initials = (user.name || "U").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+              const joined = new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-                return (
-                  <TableRow key={user._id} className={selected.includes(user._id) ? "bg-primary/5" : ""}>
-                    <TableCell>
-                      <input type="checkbox" checked={selected.includes(user._id)}
-                        onChange={() => toggleSelect(user._id)} className="accent-primary" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{user.name || "Unnamed"}</p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
-                        </div>
+              return (
+                <TableRow key={user._id} className={selected.includes(user._id) ? "bg-primary/5" : ""}>
+                  <TableCell>
+                    <input type="checkbox" checked={selected.includes(user._id)}
+                      onChange={() => toggleSelect(user._id)} className="accent-primary" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-8 h-8">
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{user.name || "Unnamed"}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <Select
-                          value={user.role}
-                          onValueChange={(v) => updateUser(user._id, { role: v })}
-                        >
-                          <SelectTrigger className="h-7 w-36 text-xs">
-                            <Badge className={`${ROLE_COLORS[user.role] ?? ""} border text-xs`}>
-                              {user.role.replace("_", " ")}
-                            </Badge>
-                            <ChevronDown className="w-3 h-3 ms-auto" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ROLES.map((r) => (
-                              <SelectItem key={r} value={r} className="capitalize text-xs">
-                                {r.replace("_", " ")}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {user.permissionMode === "custom" && (
-                          <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600">Custom</Badge>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <Select
+                        value={user.role}
+                        onValueChange={(v) => updateUser(user._id, { role: v })}
+                      >
+                        <SelectTrigger className="h-7 w-36 text-xs">
+                          <Badge className={`${ROLE_COLORS[user.role] ?? ""} border text-xs`}>
+                            {user.role.replace("_", " ")}
+                          </Badge>
+                          <ChevronDown className="w-3 h-3 ms-auto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map((r) => (
+                            <SelectItem key={r} value={r} className="capitalize text-xs">
+                              {r.replace("_", " ")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {user.permissionMode === "custom" && (
+                        <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600">Custom</Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={user.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}>
+                      {user.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs uppercase">{user.locale}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{joined}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        title="Manage permissions"
+                        onClick={() => openPermissions(user)}
+                      >
+                        <Shield className="w-3.5 h-3.5 text-primary" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        title={user.isActive ? "Deactivate" : "Activate"}
+                        onClick={() => updateUser(user._id, { isActive: !user.isActive })}
+                      >
+                        {user.isActive ? (
+                          <UserX className="w-3.5 h-3.5 text-destructive" />
+                        ) : (
+                          <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={user.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}>
-                        {user.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs uppercase">{user.locale}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{joined}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-xs"
-                          title="Manage permissions"
-                          onClick={() => openPermissions(user)}
-                        >
-                          <Shield className="w-3.5 h-3.5 text-primary" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-xs"
-                          title={user.isActive ? "Deactivate" : "Activate"}
-                          onClick={() => updateUser(user._id, { isActive: !user.isActive })}
-                        >
-                          {user.isActive ? (
-                            <UserX className="w-3.5 h-3.5 text-destructive" />
-                          ) : (
-                            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </section>
 
-      {/* Pagination */}
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
       {/* ── Create User Modal ──────────────────────────────── */}

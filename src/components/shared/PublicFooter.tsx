@@ -77,9 +77,10 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
     title: t("company"),
     links: [
       { href: `/${locale}/privacy`, label: t("privacy") },
+      { href: `/${locale}/terms`, label: t("terms") },
       { href: `/${locale}/cookies`, label: t("cookies") },
+      { href: `/${locale}/gdpr`, label: t("gdpr") },
       { href: `/${locale}/contact`, label: t("support") },
-      { href: `/${locale}`, label: t("homepage") },
     ],
   };
 
@@ -213,8 +214,14 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
             <Link href={`/${locale}/privacy`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
               {t("privacy")}
             </Link>
+            <Link href={`/${locale}/terms`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+              {t("terms")}
+            </Link>
             <Link href={`/${locale}/cookies`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
               {t("cookies")}
+            </Link>
+            <Link href={`/${locale}/gdpr`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+              {t("gdpr")}
             </Link>
             <Link href={`/${locale}/contact`} className="transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
               {t("support")}

@@ -42,7 +42,8 @@ export function Sidebar({
   const usesSimpleEmployerMenu = effectiveRole === "employer";
   const isSuperAgent = effectiveRole === "super_agent";
   const usesModernWorkspaceShell = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
-  const usesInlineWorkspaceSidebar = usesModernWorkspaceShell;
+  const usesDualTierLayout = effectiveRole === "admin";
+  const usesInlineWorkspaceSidebar = usesModernWorkspaceShell && !usesDualTierLayout;
   const workspaceLabel = effectiveRole === "super_agent"
     ? "Super agent workspace"
     : effectiveRole === "admin"
@@ -223,19 +224,24 @@ export function Sidebar({
                 inlineLinkClass
               )
             : cn(
-                usesSimpleEmployerMenu ? "rounded-lg px-2.5 py-2.5 text-[12px]" : "rounded-lg px-3 py-2.5",
+                usesSimpleEmployerMenu ? "rounded-lg px-2.5 py-2.5 text-[12px]" : "rounded-xl px-3 py-2.5",
                 isChildActive
                   ? usesSimpleEmployerMenu
                     ? "bg-card text-primary font-semibold shadow-sm ring-1 ring-border/50"
-                    : "bg-card text-primary font-bold shadow-sm ring-1 ring-border/50"
-                  : "text-sidebar-fg/70 hover:bg-card hover:text-sidebar-fg font-medium hover:shadow-sm hover:ring-1 hover:ring-border/50"
+                    : usesDualTierLayout
+                      ? "bg-primary/10 text-primary font-semibold shadow-[0_8px_20px_-12px_rgba(2,132,199,0.28)] ring-1 ring-primary/15"
+                      : "bg-card text-primary font-bold shadow-sm ring-1 ring-border/50"
+                  : usesDualTierLayout
+                    ? "text-muted-foreground hover:bg-card/80 hover:text-foreground font-medium hover:shadow-[0_8px_16px_-12px_rgba(15,23,42,0.12)]"
+                    : "text-sidebar-fg/70 hover:bg-card hover:text-sidebar-fg font-medium hover:shadow-sm hover:ring-1 hover:ring-border/50"
               )
         )}
       >
         {isChildActive && (
           <div
             className={cn(
-              "absolute left-0 top-1/2 h-1/2 w-1 -translate-y-1/2 rounded-r-full",
+              "absolute top-1/2 h-1/2 w-1 -translate-y-1/2",
+              isRtl ? "right-0 rounded-l-full" : "left-0 rounded-r-full",
               variant === "inline"
                 ? usesLightWorkspaceSidebar
                   ? "bg-sky-500"
@@ -260,7 +266,7 @@ export function Sidebar({
             "min-w-0 flex-1",
             usesModernWorkspaceShell ? "text-[10px]" : "",
             usesSimpleEmployerMenu && variant === "panel"
-              ? "whitespace-normal break-words text-left text-[10px] leading-5"
+              ? cn("whitespace-normal break-words text-[10px] leading-5", isRtl ? "text-right" : "text-left")
               : "truncate"
           )}
         >
@@ -270,34 +276,44 @@ export function Sidebar({
     );
   }
 
+  const sidebarBorder = isRtl ? "border-l" : "border-r";
+
   const primarySidebar = (
     <div
       data-sidebar-tone={usesLightWorkspaceSidebar ? "light" : "theme-aware"}
       className={cn(
         "h-full flex flex-col z-20 shrink-0",
-        usesModernWorkspaceShell
+        usesDualTierLayout
+          ? `w-[196px] ${sidebarBorder} border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.22),_transparent_60%),linear-gradient(180deg,_hsl(var(--card)/0.98),_hsl(var(--surface-3)/0.94))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.32)] backdrop-blur-xl`
+          : usesModernWorkspaceShell
           ? usesSimpleEmployerMenu
-            ? "w-[196px] border-r border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.14),_transparent_50%),linear-gradient(180deg,_hsl(var(--card)/0.97),_hsl(var(--surface-3)/0.92))] shadow-[0_24px_64px_-52px_rgba(2,132,199,0.24)] backdrop-blur-xl"
+            ? `w-[196px] ${sidebarBorder} border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.14),_transparent_50%),linear-gradient(180deg,_hsl(var(--card)/0.97),_hsl(var(--surface-3)/0.92))] shadow-[0_24px_64px_-52px_rgba(2,132,199,0.24)] backdrop-blur-xl`
             : usesLightWorkspaceSidebar
-            ? "w-[216px] border-r border-sky-100/80 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_52%),linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(239,246,255,0.9))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.55)] backdrop-blur-xl"
-            : "w-[216px] border-r border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.18),_transparent_52%),linear-gradient(180deg,_hsl(var(--card)/0.96),_hsl(var(--surface-3)/0.9))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.28)] backdrop-blur-xl"
-          : "w-[200px] bg-slate-900 border-r border-slate-800"
+            ? `w-[216px] ${sidebarBorder} border-sky-100/80 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_52%),linear-gradient(180deg,_rgba(255,255,255,0.96),_rgba(239,246,255,0.9))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.55)] backdrop-blur-xl`
+            : `w-[216px] ${sidebarBorder} border-border/80 bg-[radial-gradient(circle_at_top_left,_hsl(var(--brand-cyan)/0.18),_transparent_52%),linear-gradient(180deg,_hsl(var(--card)/0.96),_hsl(var(--surface-3)/0.9))] shadow-[0_28px_80px_-52px_rgba(2,132,199,0.28)] backdrop-blur-xl`
+          : `w-[200px] bg-slate-900 ${sidebarBorder} border-slate-800`
       )}
     >
       <div
         className={cn(
-          "shrink-0 flex items-center gap-3 px-4",
-          usesModernWorkspaceShell
-            ? usesLightWorkspaceSidebar
-              ? "h-20 border-b border-sky-100/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.6),_rgba(255,255,255,0.22))]"
-              : "h-20 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
-            : "h-16 border-b border-slate-800"
+          "shrink-0 flex items-center gap-3",
+          usesDualTierLayout
+            ? "h-16 px-3 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
+            : cn("px-4",
+              usesModernWorkspaceShell
+                ? usesLightWorkspaceSidebar
+                  ? "h-20 border-b border-sky-100/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.6),_rgba(255,255,255,0.22))]"
+                  : "h-20 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
+                : "h-16 border-b border-slate-800"
+              )
         )}
       >
         <div
           className={cn(
             "overflow-hidden shrink-0",
-            usesModernWorkspaceShell
+            usesDualTierLayout
+              ? "h-10 w-10 rounded-xl border border-border shadow-[0_16px_32px_-24px_rgba(2,132,199,0.34)] ring-2 ring-background/70 bg-white dark:bg-slate-800"
+              : usesModernWorkspaceShell
               ? "h-12 w-12 rounded-2xl border border-border shadow-[0_20px_40px_-28px_rgba(2,132,199,0.34)] ring-4 ring-background/70 bg-white dark:bg-slate-800"
               : "w-9 h-9 rounded-xl shadow-lg ring-1 ring-white/20 bg-white dark:bg-slate-800"
           )}
@@ -318,7 +334,9 @@ export function Sidebar({
               usesModernWorkspaceShell
                 ? usesLightWorkspaceSidebar
                   ? "text-base text-slate-950"
-                  : "text-base text-foreground"
+                  : usesDualTierLayout
+                    ? "text-sm text-foreground"
+                    : "text-base text-foreground"
                 : "text-sm text-white font-bold tracking-wide"
             )}
           >
@@ -335,7 +353,10 @@ export function Sidebar({
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1 sidebar-scroll">
+      <nav className={cn(
+        "flex-1 overflow-y-auto flex flex-col sidebar-scroll",
+        usesDualTierLayout ? "py-3 px-2.5 gap-0.5" : "py-4 px-3 gap-1"
+      )}>
         {allMainItems.map((item) => {
           const Icon = getIcon(item.icon);
           const isSelected = activeMainTitle === item.title;
@@ -343,6 +364,60 @@ export function Sidebar({
           const itemSubmenuId = `sidebar-submenu-${item.title.toLowerCase().replace(/\s+/g, "-")}`;
           const showInlineChildren = usesInlineWorkspaceSidebar && hasChildren && isSelected && submenuExpanded;
           const submenuVariant = usesSimpleEmployerMenu ? "panel" : "inline";
+
+          if (usesDualTierLayout) {
+            const dualTierClass = cn(
+              "group relative w-full flex items-center gap-3 rounded-xl px-3 py-2 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+              isSelected
+                ? "bg-primary/10 text-primary shadow-[0_8px_24px_-12px_rgba(2,132,199,0.4)] ring-1 ring-primary/20"
+                : "text-muted-foreground hover:bg-card/90 hover:text-foreground hover:shadow-[0_8px_20px_-12px_rgba(15,23,42,0.18)]"
+            );
+
+            const dualTierLabel = locale === "ar" ? item.titleAr : item.title;
+
+            const dualTierContent = (
+              <>
+                <Icon className="h-[18px] w-[18px] shrink-0" />
+                <span className="min-w-0 truncate text-[11px] font-medium">{dualTierLabel}</span>
+                {item.title === "Messages" && unreadMessageCount > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                  </span>
+                )}
+              </>
+            );
+
+            if (hasChildren) {
+              return (
+                <button
+                  key={item.title}
+                  type="button"
+                  onClick={() => {
+                    setActiveMainTitle(item.title);
+                    setSubmenuExpanded(true);
+                  }}
+                  className={dualTierClass}
+                >
+                  {dualTierContent}
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={item.title}
+                href={item.href}
+                prefetch={false}
+                onClick={() => {
+                  setActiveMainTitle(item.title);
+                  onMobileClose?.();
+                }}
+                className={dualTierClass}
+              >
+                {dualTierContent}
+              </Link>
+            );
+          }
 
           const itemContent = (
             <>
@@ -352,7 +427,7 @@ export function Sidebar({
                   "min-w-0 font-medium",
                   usesModernWorkspaceShell ? "text-[11px]" : "text-[13px]",
                   usesSimpleEmployerMenu
-                    ? "flex-1 whitespace-normal break-words text-left leading-5"
+                    ? cn("flex-1 whitespace-normal break-words leading-5", isRtl ? "text-right" : "text-left")
                     : "truncate"
                 )}
               >
@@ -429,7 +504,10 @@ export function Sidebar({
                     role="region"
                     aria-labelledby={`${itemSubmenuId}-label`}
                     className={cn(
-                      "ml-4 space-y-1 border-l pl-3",
+                      "space-y-1",
+                      isRtl
+                        ? "mr-4 border-r pr-3"
+                        : "ml-4 border-l pl-3",
                       usesLightWorkspaceSidebar ? "border-sky-100/80" : "border-border/80"
                     )}
                   >
@@ -494,19 +572,39 @@ export function Sidebar({
   const secondarySidebar = (
     <div
       className={cn(
-        "h-full overflow-hidden transition-[width] duration-300 ease-in-out z-10 flex flex-col shrink-0 bg-surface-2 border-r border-sidebar-border shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
-        hasSubmenu ? "w-[240px]" : "w-0 border-r-0"
+        "h-full overflow-hidden transition-[width] duration-300 ease-in-out z-10 flex flex-col shrink-0",
+        usesDualTierLayout
+          ? cn(
+              "bg-[linear-gradient(180deg,_hsl(var(--card)/0.98),_hsl(var(--surface-3)/0.94))] shadow-[4px_0_28px_rgba(2,132,199,0.06)]",
+              isRtl ? "border-l border-border/60" : "border-r border-border/60"
+            )
+          : cn(
+              "bg-surface-2 shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
+              isRtl ? "border-l border-sidebar-border" : "border-r border-sidebar-border"
+            ),
+        hasSubmenu ? "w-[240px]" : "w-0 border-r-0 border-l-0"
       )}
     >
       {activeMainItem && hasSubmenu && (
         <div className="flex flex-col h-full min-w-[240px]">
-          <div className="h-16 shrink-0 flex items-center border-b border-sidebar-border/50 bg-background/50 px-6 backdrop-blur-sm">
-            <h2 className="text-[15px] font-bold tracking-tight text-sidebar-fg">
+          <div className={cn(
+            "shrink-0 flex items-center px-5",
+            usesDualTierLayout
+              ? "h-16 border-b border-border/50 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))] backdrop-blur-sm"
+              : "h-16 border-b border-sidebar-border/50 bg-background/50 backdrop-blur-sm"
+          )}>
+            <h2 className={cn(
+              "text-[15px] font-bold tracking-tight",
+              usesDualTierLayout ? "text-foreground" : "text-sidebar-fg"
+            )}>
               {locale === "ar" ? activeMainItem.titleAr : activeMainItem.title}
             </h2>
             <button
               onClick={() => onMobileClose?.()}
-              className="lg:hidden ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
+              className={cn(
+                "lg:hidden flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted",
+                isRtl ? "mr-auto" : "ml-auto"
+              )}
             >
               <X className="w-4 h-4" />
             </button>
@@ -514,12 +612,48 @@ export function Sidebar({
 
           <nav className="flex-1 overflow-y-auto px-3 py-5 sidebar-scroll">
             <div className="space-y-1">
-              <div id={submenuId} className="space-y-1">
-                {activeMainItem.children!.map((child) => renderSubmenuLink(
-                  child,
-                  "panel",
-                  activeMainItem.children!.map((entry) => entry.href)
-                ))}
+              <div id={submenuId} className="space-y-4">
+                {(() => {
+                  const children = activeMainItem.children!;
+                  const allHrefs = children.map((entry) => entry.href);
+                  const hasGroups = children.some((c) => c.group);
+
+                  if (!hasGroups) {
+                    return (
+                      <div className="space-y-1">
+                        {children.map((child) => renderSubmenuLink(child, "panel", allHrefs))}
+                      </div>
+                    );
+                  }
+
+                  const groups: { key: string; label: string; items: NavItem[] }[] = [];
+                  const seen = new Set<string>();
+                  for (const child of children) {
+                    const key = child.group ?? "";
+                    if (!seen.has(key)) {
+                      seen.add(key);
+                      groups.push({
+                        key,
+                        label: locale === "ar" ? (child.groupAr ?? child.group ?? "") : (child.group ?? ""),
+                        items: [],
+                      });
+                    }
+                    groups.find((g) => g.key === key)!.items.push(child);
+                  }
+
+                  return groups.map((g) => (
+                    <div key={g.key || "_ungrouped"}>
+                      {g.label && (
+                        <h3 className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+                          {g.label}
+                        </h3>
+                      )}
+                      <div className="space-y-0.5">
+                        {g.items.map((child) => renderSubmenuLink(child, "panel", allHrefs))}
+                      </div>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
           </nav>
@@ -530,7 +664,10 @@ export function Sidebar({
 
   return (
     <>
-      <aside className="hidden lg:flex h-full transition-all duration-300 relative z-40 bg-background">
+      <aside className={cn(
+        "hidden lg:flex h-full transition-all duration-300 relative z-40",
+        usesDualTierLayout ? "bg-transparent" : "bg-background"
+      )}>
         {primarySidebar}
         {secondarySidebar}
       </aside>
@@ -543,7 +680,8 @@ export function Sidebar({
             ref={mobileSidebarRef}
             tabIndex={-1}
             className={cn(
-              "relative flex h-full max-w-[85vw] animate-in duration-300 ease-out shadow-2xl bg-background",
+              "relative flex h-full max-w-[85vw] animate-in duration-300 ease-out shadow-2xl",
+              usesDualTierLayout ? "bg-transparent" : "bg-background",
               isRtl ? "right-0 left-auto slide-in-from-right" : "slide-in-from-left"
             )}
           >

@@ -12,7 +12,6 @@ import {
   Plus,
   Radio,
   Send,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -279,68 +278,35 @@ export default function AdminCommunicationsPage() {
   const quickTemplates = templates.slice(0, 3);
 
   return (
-    <div className="page-container space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-sky-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.18),_transparent_36%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] p-6 shadow-[0_24px_60px_-36px_rgba(2,132,199,0.35)] sm:p-7">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5" />
-              System workspace
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">
-              Communications Center
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              Broadcast announcements, maintain reusable templates, and keep a clean audit trail from the same modern admin workspace.
-            </p>
+    <div className="page-container space-y-4">
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">Communications Center</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">Broadcast announcements, manage templates, and review delivery history.</p>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[420px] xl:max-w-[460px]">
-            <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Templates ready</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{templatesLoading ? "..." : templates.length}</p>
-              <p className="mt-1 text-xs text-slate-500">Saved drafts for faster admin outreach.</p>
-            </div>
-            <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Broadcast history</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{historyLoading ? "..." : history.length}</p>
-              <p className="mt-1 text-xs text-slate-500">Recent sends recorded for follow-up.</p>
-            </div>
-            <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Audience mode</p>
-              <p className="mt-3 text-lg font-semibold tracking-tight text-slate-950">{selectedAudience}</p>
-              <p className="mt-1 text-xs text-slate-500">Switch between all users or role-specific delivery.</p>
-            </div>
-            <div className="rounded-2xl border border-white/80 bg-white/80 p-4 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Delivery channels</p>
-              <p className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">{selectedChannels}</p>
-              <p className="mt-1 text-xs text-slate-500">In-app, email, and WhatsApp can run together.</p>
-            </div>
+          <div className="inline-flex flex-wrap gap-1.5 rounded-xl border border-border/60 bg-secondary/50 p-1">
+            {TABS.map((tabOption) => {
+              const active = tab === tabOption.key;
+              return (
+                <button
+                  key={tabOption.key}
+                  type="button"
+                  onClick={() => setTab(tabOption.key)}
+                  aria-label={`Switch to ${tabOption.label} tab`}
+                  aria-pressed={active}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                    active
+                      ? "bg-sky-600 text-white shadow-sm"
+                      : "text-muted-foreground hover:bg-card hover:text-foreground"
+                  }`}
+                >
+                  <tabOption.icon className="h-3.5 w-3.5" />
+                  {tabOption.label}
+                </button>
+              );
+            })}
           </div>
-        </div>
-
-        <div className="mt-6 inline-flex flex-wrap gap-2 rounded-2xl border border-white/80 bg-white/70 p-2 backdrop-blur">
-          {TABS.map((tabOption) => {
-            const active = tab === tabOption.key;
-
-            return (
-              <button
-                key={tabOption.key}
-                type="button"
-                onClick={() => setTab(tabOption.key)}
-                aria-label={`Switch to ${tabOption.label} tab`}
-                aria-pressed={active}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
-                  active
-                    ? "bg-sky-600 text-white shadow-[0_16px_30px_-18px_rgba(2,132,199,0.65)]"
-                    : "text-slate-600 hover:bg-white hover:text-slate-950"
-                }`}
-              >
-                <tabOption.icon className="h-4 w-4" />
-                {tabOption.label}
-              </button>
-            );
-          })}
         </div>
       </section>
 

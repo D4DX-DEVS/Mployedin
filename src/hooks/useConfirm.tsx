@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ interface ConfirmState extends ConfirmOptions {
  *   return <>{ConfirmDialogNode} ... </>
  */
 export function useConfirm() {
+  const t = useTranslations("confirm");
   const [state, setState] = useState<ConfirmState | null>(null);
 
   const confirm = useCallback(
@@ -67,21 +69,21 @@ export function useConfirm() {
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </div>
             <div className="pt-0.5">
-              <DialogTitle>{state.title ?? "Are you sure?"}</DialogTitle>
+              <DialogTitle>{state.title ?? t("title")}</DialogTitle>
               <DialogDescription className="mt-1">{state.message}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" size="sm" onClick={() => handleClose(false)}>
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             variant={state.variant ?? "destructive"}
             size="sm"
             onClick={() => handleClose(true)}
           >
-            {state.confirmLabel ?? "Confirm"}
+            {state.confirmLabel ?? t("confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

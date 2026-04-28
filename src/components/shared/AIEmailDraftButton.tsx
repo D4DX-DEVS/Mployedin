@@ -1,18 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Copy, Loader2, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 
-const EMAIL_CONTEXTS = [
-  { value: "after_application", label: "After Application" },
-  { value: "after_shortlist", label: "After Shortlist" },
-  { value: "after_interview", label: "After Interview" },
-  { value: "after_rejection", label: "After Rejection" },
-  { value: "after_offer", label: "After Offer" },
-  { value: "follow_up_general", label: "General Follow-up" },
+const EMAIL_CONTEXT_KEYS = [
+  { value: "after_application", labelKey: "afterApplication" },
+  { value: "after_shortlist", labelKey: "afterShortlist" },
+  { value: "after_interview", labelKey: "afterInterview" },
+  { value: "after_rejection", labelKey: "afterRejection" },
+  { value: "after_offer", labelKey: "afterOffer" },
+  { value: "follow_up_general", labelKey: "followUpGeneral" },
 ] as const;
 
 interface EmailDraft {
@@ -32,6 +33,8 @@ interface AIEmailDraftButtonProps {
 }
 
 export function AIEmailDraftButton({ applicationId, candidateName, defaultContext }: AIEmailDraftButtonProps) {
+  const t = useTranslations("emailDraft");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [context, setContext] = useState(defaultContext ?? "follow_up_general");
@@ -52,13 +55,13 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Failed" }));
-        throw new Error(err.error ?? "Email draft failed");
+        const err = await res.json().catch(() => ({ error: t("failed") }));
+        throw new Error(err.error ?? t("draftFailed"));
       }
       const data: EmailDraft = await res.json();
       setDraft(data);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate email draft");
+      toast.error(err instanceof Error ? err.message : t("failedToGenerate"));
     } finally {
       setLoading(false);
     }
@@ -68,7 +71,7 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
     if (!draft) return;
     const text = `Subject: ${draft.subject}\n\n${draft.body.replace(/<br\s*\/?>/gi, "\n")}`;
     navigator.clipboard.writeText(text);
-    toast.success("Email copied to clipboard");
+    toast.success(t("copiedToClipboard"));
   }
 
   return (
@@ -81,7 +84,7 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
         title="AI Email Draft"
       >
         <Mail className="me-1 h-3 w-3" />
-        AI Email
+        {t("aiEmail")}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -89,10 +92,10 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
           <DialogHeader className="border-b border-border px-6 py-5">
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-violet-500" />
-              <DialogTitle className="text-lg font-semibold">AI Email Draft</DialogTitle>
+              <DialogTitle className="text-lg font-semibold">{t("title")}</DialogTitle>
             </div>
             <DialogDescription className="mt-1 text-sm text-muted-foreground">
-              Generate a context-aware follow-up email{candidateName ? ` for ${candidateName}` : ""}
+              {candidateName ? t("descriptionFor", { name: candidateName }) : t("description")}
             </DialogDescription>
           </DialogHeader>
 
@@ -100,23 +103,23 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
             {!draft ? (
               <>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground">Email Context</label>
+                  <label className="text-xs font-semibold text-muted-foreground">{t("emailContext")}</label>
                   <select
                     value={context}
                     onChange={(e) => setContext(e.target.value)}
                     className="mt-1 w-full rounded-xl border border-border bg-background/70 px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
                   >
-                    {EMAIL_CONTEXTS.map((c) => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
+                    {EMAIL_CONTEXT_KEYS.map((c) => (
+                      <option key={c.value} value={c.value}>{t(c.labelKey)}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-muted-foreground">Custom Instructions (optional)</label>
+                  <label className="text-xs font-semibold text-muted-foreground">{t("customInstructions")}</label>
                   <textarea
                     value={customInstructions}
                     onChange={(e) => setCustomInstructions(e.target.value)}
-                    placeholder="e.g., mention we're looking forward to their start date, include salary details..."
+                    placeholder={t("customInstructionsPlaceholder")}
                     rows={3}
                     maxLength={300}
                     className="mt-1 w-full rounded-xl border border-border bg-background/70 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20 resize-none"
@@ -132,18 +135,18 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
                   ) : (
                     <Send className="mr-2 h-4 w-4" />
                   )}
-                  {loading ? "Generating..." : "Generate Draft"}
+                  {loading ? tc("generating") : t("generateDraft")}
                 </Button>
               </>
             ) : (
               <>
                 <div className="workspace-glass-panel rounded-2xl p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subject</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("subject")}</p>
                   <p className="mt-1 text-sm font-medium text-foreground">{draft.subject}</p>
                 </div>
 
                 <div className="workspace-glass-panel rounded-2xl p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email Body</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("emailBody")}</p>
                   <div
                     className="mt-2 text-sm leading-6 text-muted-foreground"
                     dangerouslySetInnerHTML={{ __html: draft.body }}
@@ -152,10 +155,10 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
 
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 font-medium capitalize">
-                    Tone: {draft.tone}
+                    {t("tone")}: {draft.tone}
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 font-medium">
-                    Send: {draft.suggestedSendTime?.replace(/_/g, " ")}
+                    {t("send")}: {draft.suggestedSendTime?.replace(/_/g, " ")}
                   </span>
                 </div>
 
@@ -166,14 +169,14 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
                     className="flex-1 h-10 rounded-xl border-border text-sm"
                   >
                     <Copy className="mr-2 h-3.5 w-3.5" />
-                    Copy
+                    {tc("copy")}
                   </Button>
                   <Button
                     onClick={() => setDraft(null)}
                     variant="outline"
                     className="flex-1 h-10 rounded-xl border-border text-sm"
                   >
-                    Regenerate
+                    {tc("regenerate")}
                   </Button>
                 </div>
               </>

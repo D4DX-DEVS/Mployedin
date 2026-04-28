@@ -95,6 +95,24 @@ function withPageSecurityHeaders(response: NextResponse, nonce: string): NextRes
 export default auth(async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Redirect locale-prefixed API routes → /api/… (clients like next-auth/react
+  // may resolve relative URLs against the current locale-prefixed page).
+  // 307 preserves the HTTP method (important for POST signIn calls).
+  const localeApiMatch = pathname.match(/^\/(en|ar)(\/api\/.*)$/);
+  if (localeApiMatch) {
+    const url = req.nextUrl.clone();
+    url.pathname = localeApiMatch[2]; // e.g. /api/auth/session
+    return withSecurityHeaders(NextResponse.redirect(url, 307));
+  }
+
+  // Redirect locale-prefixed public static files (e.g. /en/manifest.json)
+  const localeStaticMatch = pathname.match(/^\/(en|ar)\/(manifest\.json|robots\.txt|llms\.txt|sitemap\.xml)$/);
+  if (localeStaticMatch) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/${localeStaticMatch[2]}`;
+    return withSecurityHeaders(NextResponse.redirect(url, 308));
+  }
+
   // API routes — apply security headers + CSRF, skip i18n (no nonce needed)
   if (pathname.startsWith("/api/")) {
     const isStateMutating = ["POST", "PATCH", "PUT", "DELETE"].includes(req.method);
@@ -108,10 +126,17 @@ export default auth(async function middleware(req: NextRequest) {
   // Generate a per-request nonce for page CSP
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
 
+  // Derive active locale from the URL path (e.g. /ar/employer → "ar")
+  const pathLocale = pathname.split("/")[1];
+  const activeLocale = locales.includes(pathLocale as (typeof locales)[number])
+    ? pathLocale
+    : defaultLocale;
+
   // Build request headers that will be forwarded to the app (includes x-nonce).
   // Next.js App Router reads x-nonce to attach the nonce to its own inline scripts.
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-locale", activeLocale);
 
   // Apply i18n middleware to get locale redirects / rewrites / cookies
   const intlResponse = intlMiddleware(req);
@@ -215,6 +240,6 @@ export default auth(async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|llms\\.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|llms\\.txt|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

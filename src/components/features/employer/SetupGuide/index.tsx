@@ -31,6 +31,7 @@ export function SetupGuide() {
   const [steps, setSteps] = useState<StepStatus[]>([]);
   const [allDone, setAllDone] = useState(false);
   const [doNotShow, setDoNotShow] = useState(false);
+  const isRtl = locale === "ar";
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -72,7 +73,8 @@ export function SetupGuide() {
   return (
     <div
       className={cn(
-        "fixed bottom-20 left-4 right-4 z-50 overflow-hidden rounded-[28px] border border-sky-100 bg-white/95 shadow-[0_28px_80px_-48px_rgba(2,132,199,0.45)] backdrop-blur sm:bottom-24 sm:left-auto sm:right-6 sm:w-[22rem]",
+        "fixed bottom-20 left-4 right-4 z-50 overflow-hidden rounded-[28px] border border-sky-100 bg-white/95 shadow-[0_28px_80px_-48px_rgba(2,132,199,0.45)] backdrop-blur sm:bottom-24 sm:w-[22rem]",
+        isRtl ? "sm:right-auto sm:left-6" : "sm:left-auto sm:right-6",
         "transition-all duration-300"
       )}
     >

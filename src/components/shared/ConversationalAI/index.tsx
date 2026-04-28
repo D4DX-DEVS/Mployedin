@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Bot, X, Send, Minimize2, Maximize2, History, Plus, Trash2, UserCheck, Expand, Shrink, Mic, Loader2, ExternalLink, Users2, TrendingUp, BarChart3, MessageSquare, Briefcase, Zap, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -160,6 +161,8 @@ export function ConversationalAI({
 }: ConversationalAIProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const locale = useLocale();
+  const isRtl = locale === "ar";
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -464,7 +467,8 @@ export function ConversationalAI({
         <button
           onClick={() => setOpen(true)}
           className={cn(
-            "fixed bottom-20 right-4 z-[100] flex h-14 w-14 items-center justify-center rounded-full shadow-lg lg:bottom-6 lg:right-6",
+            "fixed bottom-20 z-[100] flex h-14 w-14 items-center justify-center rounded-full shadow-lg lg:bottom-6",
+            isRtl ? "left-4 lg:left-6" : "right-4 lg:right-6",
             "bg-primary text-white hover:bg-primary/90 transition-all duration-200 hover:scale-105",
             className
           )}
@@ -487,16 +491,18 @@ export function ConversationalAI({
             "fixed z-[100] flex flex-col shadow-2xl border border-border bg-background",
             "transition-all duration-300 ease-in-out",
             minimized
-              ? "bottom-6 right-6 rounded-xl h-14 w-80"
+              ? cn("bottom-6 rounded-xl h-14 w-80", isRtl ? "left-6" : "right-6")
               : expanded
-                ? "top-0 right-0 bottom-0 w-full md:w-[480px] lg:w-[520px] rounded-none md:rounded-l-2xl"
-                : "bottom-6 right-6 rounded-xl h-[520px] w-[380px]"
+                ? cn("top-0 bottom-0 w-full md:w-[480px] lg:w-[520px]", isRtl ? "left-0 rounded-none md:rounded-r-2xl" : "right-0 rounded-none md:rounded-l-2xl")
+                : cn("bottom-6 rounded-xl h-[520px] w-[380px]", isRtl ? "left-6" : "right-6")
           )}
         >
           {/* Header */}
           <div className={cn(
             "flex items-center gap-2 px-4 py-3 bg-primary text-white",
-            expanded && !minimized ? "rounded-none md:rounded-tl-2xl" : "rounded-t-xl"
+            expanded && !minimized
+              ? isRtl ? "rounded-none md:rounded-tr-2xl" : "rounded-none md:rounded-tl-2xl"
+              : "rounded-t-xl"
           )}>
             <Bot className="h-5 w-5" />
             <div className="flex-1">

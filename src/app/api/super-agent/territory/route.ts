@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Agent from "@/models/Agent";
 import Employer from "@/models/Employer";
 import Job from "@/models/Job";
-import Country from "@/models/Country";
 import State from "@/models/State";
 import City from "@/models/City";
 
@@ -16,15 +15,14 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   await connectDB();
 
-  const superAgent = await SuperAgent.findOne({ userId: ctx.userId }).lean();
-  if (!superAgent) {
+  const scope = await getSuperAgentScope(ctx.userId);
+  if (!scope) {
     return NextResponse.json({ regions: [], stats: { totalRegions: 0, totalAgents: 0, totalEmployers: 0, totalJobs: 0 } });
   }
 
-  const sa = superAgent as Record<string, unknown>;
-  const cityIds = (sa.assignedCityIds as string[]) ?? [];
-  const stateIds = (sa.assignedStateIds as string[]) ?? [];
-  const agentIds = (sa.agentIds as string[]) ?? [];
+  const cityIds = scope.assignedCityIds;
+  const stateIds = scope.assignedStateIds;
+  const agentIds = scope.effectiveAgentIds;
 
   /* Fetch region names */
   const [cities, states] = await Promise.all([

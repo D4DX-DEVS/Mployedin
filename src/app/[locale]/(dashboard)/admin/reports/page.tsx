@@ -11,7 +11,6 @@ import {
   Clock3,
   FileText,
   Minus,
-  Sparkles,
   TrendingUp,
   UserCheck,
   Wallet,
@@ -298,50 +297,34 @@ export default function AdminReportsPage() {
   ];
 
   return (
-    <div className="page-container space-y-6">
-      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7" aria-label="Reports overview">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Admin reporting
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Reports & Analytics
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              A decision-ready view of platform demand, funnel health, conversion pressure, and operator workload instead of a flat scorecard.
-            </p>
-          </div>
-
-          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[280px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current pulse</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{alerts[0]?.title ?? "Platform stable"}</p>
-            <p className="text-xs leading-5 text-muted-foreground">{alerts[0]?.description ?? "No urgent operational issues are currently blocking hiring momentum."}</p>
+    <div className="page-container space-y-4">
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">Reports & Analytics</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">Platform demand, funnel health, conversion pressure, and operator workload at a glance.</p>
           </div>
         </div>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map((kpi) => (
-            <div key={kpi.label} className="rounded-[24px] border border-border/80 bg-white/92 p-4 shadow-[0_18px_32px_-30px_rgba(15,23,42,0.12)]">
+            <div key={kpi.label} className="rounded-2xl border border-border/60 bg-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${kpi.indicatorClassName}`} />
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{kpi.label}</p>
+                    <span className={`h-2 w-2 rounded-full ${kpi.indicatorClassName}`} />
+                    <p className="text-xs font-semibold text-muted-foreground">{kpi.label}</p>
                   </div>
-                  <p className={`mt-3 text-3xl font-semibold tracking-tight ${kpi.valueClassName}`}>{kpi.value}</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{loading ? <span className="inline-block h-7 w-16 animate-pulse rounded bg-muted" /> : kpi.value}</p>
                 </div>
-                <div className={`rounded-2xl p-2.5 ${kpi.toneClassName}`}>
-                  <kpi.icon className="h-5 w-5" />
+                <div className={`rounded-xl p-2 ${kpi.toneClassName}`}>
+                  <kpi.icon className="h-4 w-4" />
                 </div>
               </div>
-              <div className="mt-4 flex items-center gap-2">
+              <div className="mt-3 flex items-center gap-2">
                 {kpi.trend ? <TrendBadge trend={kpi.trend} /> : null}
-                <span className="text-xs text-muted-foreground">vs previous 30d</span>
+                <span className="text-xs text-muted-foreground">vs prev 30d</span>
               </div>
-              <p className="mt-3 text-xs leading-5 text-muted-foreground">{kpi.detail}</p>
-              <p className="mt-1 text-xs leading-5 text-foreground/80">{kpi.insight}</p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{kpi.insight}</p>
             </div>
           ))}
         </div>
@@ -349,9 +332,9 @@ export default function AdminReportsPage() {
 
       {loading ? (
         <div className="grid gap-4 lg:grid-cols-2" role="status" aria-live="polite" aria-label="Loading reports">
-          <div className="workspace-panel-surface h-72 animate-pulse rounded-[28px]" />
-          <div className="workspace-panel-surface h-72 animate-pulse rounded-[28px]" />
-          <div className="workspace-panel-surface h-72 animate-pulse rounded-[28px] lg:col-span-2" />
+          <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px]" />
+          <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px]" />
+          <div className="workspace-panel-surface h-72 animate-pulse rounded-[20px] lg:col-span-2" />
         </div>
       ) : errorMessage ? (
         <section className="workspace-panel-surface rounded-[28px] border border-rose-200/80 p-5 sm:p-6 dark:border-rose-900/60" aria-label="Reports error">

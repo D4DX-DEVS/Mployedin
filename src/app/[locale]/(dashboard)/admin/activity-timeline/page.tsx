@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import {
-  Clock, Search, RotateCcw, User, FileText, Briefcase, Shield,
+  Clock, RotateCcw, User, FileText, Briefcase, Shield,
   LogIn, LogOut, Edit, Trash2, Plus, Eye, Check, X, Send,
   Upload, Download, UserPlus, Settings, Activity,
 } from "lucide-react";
@@ -162,36 +162,37 @@ export default function AdminActivityTimelinePage() {
       </section>
 
       {/* Filters */}
-      <section className="workspace-panel-surface rounded-[28px] p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by user name or email..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); pagination.resetPage(); }}
-              className="pl-9"
-            />
-          </div>
-          <SearchableSelect
-            options={RESOURCE_OPTIONS}
-            value={resourceFilter}
-            onValueChange={(v) => { setResourceFilter(v); pagination.resetPage(); }}
-            placeholder="Resource"
-            className="w-40"
-          />
-          <SearchableSelect
-            options={ROLE_OPTIONS}
-            value={roleFilter}
-            onValueChange={(v) => { setRoleFilter(v); pagination.resetPage(); }}
-            placeholder="Role"
-            className="w-40"
-          />
+      <TableToolbar
+        title="Activity Timeline"
+        description="Visual timeline of all user actions across the platform"
+        search={search}
+        onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
+        searchPlaceholder="Search by user name or email..."
+        hasActiveFilters={resourceFilter !== "all" || roleFilter !== "all"}
+        actions={
           <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setResourceFilter("all"); setRoleFilter("all"); pagination.resetPage(); }}>
             <RotateCcw className="mr-1 h-4 w-4" /> Reset
           </Button>
-        </div>
-      </section>
+        }
+        filterContent={
+          <div className="flex flex-wrap items-center gap-3">
+            <SearchableSelect
+              options={RESOURCE_OPTIONS}
+              value={resourceFilter}
+              onValueChange={(v) => { setResourceFilter(v); pagination.resetPage(); }}
+              placeholder="Resource"
+              className="h-11 w-44 rounded-xl border-border bg-card"
+            />
+            <SearchableSelect
+              options={ROLE_OPTIONS}
+              value={roleFilter}
+              onValueChange={(v) => { setRoleFilter(v); pagination.resetPage(); }}
+              placeholder="Role"
+              className="h-11 w-44 rounded-xl border-border bg-card"
+            />
+          </div>
+        }
+      />
 
       {/* Timeline */}
       <section className="workspace-panel-surface rounded-[28px] p-5">

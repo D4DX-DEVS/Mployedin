@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Job from "@/models/Job";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
@@ -38,18 +39,10 @@ async function patchHandler(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  // Ownership validation: job must be under this super agent's agents
+  // Ownership validation: job must be under this super agent's scope (team + regions)
   if (ctx.role === "super_agent") {
-    // Auto-create profile if it doesn't exist yet (e.g. onboarding gap)
-    const saProfile = await SuperAgent.findOneAndUpdate(
-      { userId: ctx.userId },
-      { $setOnInsert: { userId: ctx.userId, agentIds: [], assignedCityIds: [], assignedStateIds: [] } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    )
-      .select("agentIds")
-      .lean();
-
-    const agentIds = (saProfile.agentIds ?? []).map(String);
+    const scope = await getSuperAgentScope(ctx.userId);
+    const agentIds = (scope?.effectiveAgentIds ?? []).map(String);
 
     // If the super-agent has assigned agents, enforce ownership
     if (agentIds.length > 0) {
@@ -61,7 +54,7 @@ async function patchHandler(
 
       if (!isOwnedJob) {
         const managedAgents = await Agent.find({
-          _id: { $in: saProfile.agentIds ?? [] },
+          _id: { $in: scope?.effectiveAgentIds ?? [] },
         })
           .select("assignedEmployerIds")
           .lean();

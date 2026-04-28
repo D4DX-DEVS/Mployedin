@@ -118,7 +118,7 @@ function statusLabel(s: string) {
 }
 
 function sourceLabel(s?: string) {
-  return SOURCE_OPTIONS.find((o) => o.value === s)?.label ?? s ?? "—";
+  return SOURCE_OPTIONS.find((o) => o.value === s)?.label ?? s ?? "ΓÇö";
 }
 
 function InsightIcon({ type }: { type: string }) {
@@ -131,7 +131,7 @@ function InsightIcon({ type }: { type: string }) {
 }
 
 function ScoreBadge({ score }: { score?: number }) {
-  if (score == null) return <span className="text-xs text-muted-foreground">—</span>;
+  if (score == null) return <span className="text-xs text-muted-foreground">ΓÇö</span>;
   const color = score >= 80 ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400"
     : score >= 60 ? "text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400"
     : score >= 40 ? "text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400"
@@ -183,13 +183,13 @@ export default function AdminApplicationsPage() {
   const activeFilters = [status, employerId, source, scoreRange, dateFrom, dateTo].filter(Boolean).length;
 
   const exportColumns: ExportColumn<Application>[] = [
-    { header: "Applicant", key: "jobSeekerId" as keyof Application, formatter: (_v, r) => { const a = r as unknown as Application; return a.jobSeekerId?.fullName ?? a.jobSeekerId?.userId?.name ?? "—"; } },
-    { header: "Job", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.title ?? "—" },
-    { header: "Company", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.employerId?.companyName ?? "—" },
+    { header: "Applicant", key: "jobSeekerId" as keyof Application, formatter: (_v, r) => { const a = r as unknown as Application; return a.jobSeekerId?.fullName ?? a.jobSeekerId?.userId?.name ?? "ΓÇö"; } },
+    { header: "Job", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.title ?? "ΓÇö" },
+    { header: "Company", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.employerId?.companyName ?? "ΓÇö" },
     { header: "Status", key: "status" },
     { header: "Source", key: "source", formatter: (v) => sourceLabel(v as string) },
-    { header: "AI Score", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
-    { header: "Applied", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: "AI Score", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "ΓÇö" },
+    { header: "Applied", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "ΓÇö" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],
@@ -308,12 +308,11 @@ export default function AdminApplicationsPage() {
 
   const toggleSort = (field: string) => {
     if (sortBy === field) {
-      setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortBy(field);
       setSortOrder("desc");
     }
-    resetPage();
   };
 
   const employerOptions = [
@@ -340,7 +339,7 @@ export default function AdminApplicationsPage() {
         </Button>
       </div>
 
-      {/* ───── Stats Cards ───── */}
+      {/* ΓöÇΓöÇΓöÇΓöÇΓöÇ Stats Cards ΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       {stats && (
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div className="workspace-glass-panel rounded-2xl p-4">
@@ -398,7 +397,7 @@ export default function AdminApplicationsPage() {
         </section>
       )}
 
-      {/* ───── AI Insights Panel ───── */}
+      {/* ΓöÇΓöÇΓöÇΓöÇΓöÇ AI Insights Panel ΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       {showAiPanel && (
         <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -459,7 +458,7 @@ export default function AdminApplicationsPage() {
                     <Zap className="h-3.5 w-3.5" /> Recommendations
                   </p>
                   {aiInsights.recommendations.map((rec, i) => (
-                    <p key={i} className="text-sm text-sky-900 dark:text-sky-200 pl-5">• {rec}</p>
+                    <p key={i} className="text-sm text-sky-900 dark:text-sky-200 pl-5">ΓÇó {rec}</p>
                   ))}
                 </div>
               )}
@@ -511,180 +510,192 @@ export default function AdminApplicationsPage() {
       )}
 
       {/* ───── Filters ───── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5 space-y-3">
-        <TableToolbar
-          search={search}
-          onSearchChange={(v) => { setSearch(v); resetPage(); }}
-          searchPlaceholder="Search applicant, job, company, skills…"
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-          className="mb-3"
-        />
-        {/* Primary row */}
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div>
-            <label htmlFor="admin-apps-status" className="sr-only">Status</label>
-            <SearchableSelect
-              id="admin-apps-status"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={STATUS_OPTIONS}
-              value={status}
-              onValueChange={(v) => { setStatus(v); resetPage(); }}
-              placeholder="All Statuses"
-            />
+      <TableToolbar
+        title="Applications"
+        description="View and manage all job applications across the platform."
+        search={search}
+        onSearchChange={(v) => { setSearch(v); resetPage(); }}
+        searchPlaceholder="Search applicant, job, company, skills…"
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+        hasActiveFilters={activeFilters > 0}
+        actions={
+          <div className="flex items-center gap-2">
+            {activeFilters > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs text-muted-foreground gap-1.5">
+                Clear all
+              </Button>
+            )}
+            <Button
+              variant={showAiPanel ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowAiPanel(v => !v)}
+              className="gap-1.5 text-xs"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> AI Insights
+            </Button>
           </div>
-          {employerOptions.length > 2 && (
-            <div>
-              <label htmlFor="admin-apps-employer" className="sr-only">Employer</label>
-              <SearchableSelect
-                id="admin-apps-employer"
-                className="h-11 w-full rounded-xl border-border bg-secondary/65"
-                options={employerOptions}
-                value={employerId}
-                onValueChange={(v) => { setEmployerId(v); resetPage(); }}
-                placeholder="All Employers"
-              />
+        }
+        filterContent={
+          <div className="space-y-3">
+            {/* Primary row */}
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label htmlFor="admin-apps-status" className="sr-only">Status</label>
+                <SearchableSelect
+                  id="admin-apps-status"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={STATUS_OPTIONS}
+                  value={status}
+                  onValueChange={(v) => { setStatus(v); resetPage(); }}
+                  placeholder="All Statuses"
+                />
+              </div>
+              {employerOptions.length > 2 && (
+                <div>
+                  <label htmlFor="admin-apps-employer" className="sr-only">Employer</label>
+                  <SearchableSelect
+                    id="admin-apps-employer"
+                    className="h-11 w-full rounded-xl border-border bg-card"
+                    options={employerOptions}
+                    value={employerId}
+                    onValueChange={(v) => { setEmployerId(v); resetPage(); }}
+                    placeholder="All Employers"
+                  />
+                </div>
+              )}
+              <div>
+                <label htmlFor="admin-apps-source" className="sr-only">Source</label>
+                <SearchableSelect
+                  id="admin-apps-source"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={SOURCE_OPTIONS}
+                  value={source}
+                  onValueChange={(v) => { setSource(v); resetPage(); }}
+                  placeholder="All Sources"
+                />
+              </div>
             </div>
-          )}
-          <div>
-            <label htmlFor="admin-apps-source" className="sr-only">Source</label>
-            <SearchableSelect
-              id="admin-apps-source"
-              className="h-11 w-full rounded-xl border-border bg-secondary/65"
-              options={SOURCE_OPTIONS}
-              value={source}
-              onValueChange={(v) => { setSource(v); resetPage(); }}
-              placeholder="All Sources"
-            />
-          </div>
-        </div>
 
-        {/* Toggle advanced */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Filter className="h-3.5 w-3.5" />
-            Advanced Filters
-            {showAdvancedFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-          {activeFilters > 0 && (
-            <>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{activeFilters} active</Badge>
+            {/* Toggle advanced */}
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={clearAllFilters}
-                className="text-[11px] text-red-500 hover:text-red-600 font-medium"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                Clear all
+                <Filter className="h-3.5 w-3.5" />
+                Advanced Filters
+                {showAdvancedFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
-            </>
-          )}
-        </div>
+              {activeFilters > 0 && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{activeFilters} active</Badge>
+              )}
+            </div>
 
-        {/* Advanced filters row */}
-        {showAdvancedFilters && (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 pt-1">
-            <div>
-              <label htmlFor="admin-apps-score" className="sr-only">AI Score Range</label>
-              <SearchableSelect
-                id="admin-apps-score"
-                className="h-11 w-full rounded-xl border-border bg-secondary/65"
-                options={SCORE_RANGE_OPTIONS}
-                value={scoreRange}
-                onValueChange={(v) => { setScoreRange(v); resetPage(); }}
-                placeholder="All AI Scores"
-              />
+            {/* Advanced filters row */}
+            {showAdvancedFilters && (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 pt-1">
+                <div>
+                  <label htmlFor="admin-apps-score" className="sr-only">AI Score Range</label>
+                  <SearchableSelect
+                    id="admin-apps-score"
+                    className="h-11 w-full rounded-xl border-border bg-card"
+                    options={SCORE_RANGE_OPTIONS}
+                    value={scoreRange}
+                    onValueChange={(v) => { setScoreRange(v); resetPage(); }}
+                    placeholder="All AI Scores"
+                  />
+                </div>
+                <div className="relative min-w-0">
+                  <label htmlFor="admin-apps-date-from" className="sr-only">Date From</label>
+                  <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="admin-apps-date-from"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
+                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+                    placeholder="From date"
+                  />
+                </div>
+                <div className="relative min-w-0">
+                  <label htmlFor="admin-apps-date-to" className="sr-only">Date To</label>
+                  <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="admin-apps-date-to"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
+                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+                    placeholder="To date"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="admin-apps-sort" className="sr-only">Sort By</label>
+                  <SearchableSelect
+                    id="admin-apps-sort"
+                    className="h-11 w-full rounded-xl border-border bg-card"
+                    options={SORT_OPTIONS}
+                    value={sortBy}
+                    onValueChange={(v) => { setSortBy(v); resetPage(); }}
+                    placeholder="Sort by"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* AI Search */}
+            <div className="mt-1 grid gap-3 xl:grid-cols-[1fr_auto]">
+              <div className="relative min-w-0">
+                <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
+                <Input
+                  placeholder='AI search: e.g. "rejected applications from d4dx" or "high score easy apply this week"'
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void handleApplyAiSearch();
+                    }
+                  }}
+                  className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={() => { void handleApplyAiSearch(); }}
+                  disabled={!aiQuery.trim() || isApplyingAiSearch}
+                  className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  <Wand2 className="h-4 w-4" />
+                  {isApplyingAiSearch ? "Applying…" : "AI Search"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={clearAllFilters}
+                  disabled={!activeFilters && !aiQuery && !aiSummary}
+                  className="h-11 rounded-xl border-border bg-card px-4 text-sm"
+                >
+                  Clear filters
+                </Button>
+              </div>
             </div>
-            <div className="relative min-w-0">
-              <label htmlFor="admin-apps-date-from" className="sr-only">Date From</label>
-              <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="admin-apps-date-from"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
-                className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm shadow-none"
-                placeholder="From date"
-              />
-            </div>
-            <div className="relative min-w-0">
-              <label htmlFor="admin-apps-date-to" className="sr-only">Date To</label>
-              <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="admin-apps-date-to"
-                type="date"
-                value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
-                className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm shadow-none"
-                placeholder="To date"
-              />
-            </div>
-            <div>
-              <label htmlFor="admin-apps-sort" className="sr-only">Sort By</label>
-              <SearchableSelect
-                id="admin-apps-sort"
-                className="h-11 w-full rounded-xl border-border bg-secondary/65"
-                options={SORT_OPTIONS}
-                value={sortBy}
-                onValueChange={(v) => { setSortBy(v); resetPage(); }}
-                placeholder="Sort by"
-              />
-            </div>
+
+            {aiSummary && (
+              <p className="mt-2 rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
+                <Sparkles className="mr-1.5 inline-block h-3.5 w-3.5" />
+                {aiSummary}
+              </p>
+            )}
           </div>
-        )}
+        }
+      />
 
-        {/* AI Search */}
-        <div className="mt-1 grid gap-3 xl:grid-cols-[1fr_auto]">
-          <div className="relative min-w-0">
-            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
-            <Input
-              placeholder='AI search: e.g. "rejected applications from d4dx" or "high score easy apply this week"'
-              value={aiQuery}
-              onChange={(e) => setAiQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void handleApplyAiSearch();
-                }
-              }}
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm shadow-none"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={() => { void handleApplyAiSearch(); }}
-              disabled={!aiQuery.trim() || isApplyingAiSearch}
-              className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              <Wand2 className="h-4 w-4" />
-              {isApplyingAiSearch ? "Applying…" : "AI Search"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={clearAllFilters}
-              disabled={!activeFilters && !aiQuery && !aiSummary}
-              className="h-11 rounded-xl border-border bg-secondary/65 px-4 text-sm"
-            >
-              Clear filters
-            </Button>
-          </div>
-        </div>
-
-        {aiSummary && (
-          <p className="mt-2 rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
-            <Sparkles className="mr-1.5 inline-block h-3.5 w-3.5" />
-            {aiSummary}
-          </p>
-        )}
-      </section>
-
-      {/* ───── Applications ───── */}
+      {/* ΓöÇΓöÇΓöÇΓöÇΓöÇ Applications ΓöÇΓöÇΓöÇΓöÇΓöÇ */}
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -713,7 +724,7 @@ export default function AdminApplicationsPage() {
         </div>
       ) : (
         <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
-          {/* Column headers – desktop */}
+          {/* Column headers ΓÇô desktop */}
           <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
             <span>Candidate</span>
             <span>Role, Match, Skills</span>
@@ -733,7 +744,7 @@ export default function AdminApplicationsPage() {
               const jobLocation = job?.location
                 ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", "))
                 : null;
-              const locationExp = [jobLocation, seeker?.totalExperienceYears ? `${seeker.totalExperienceYears}+ yrs` : null].filter(Boolean).join(" · ");
+              const locationExp = [jobLocation, seeker?.totalExperienceYears ? `${seeker.totalExperienceYears}+ yrs` : null].filter(Boolean).join(" ┬╖ ");
               const topSkills = seeker?.skills?.slice(0, 3) ?? [];
               const appliedDate = new Date(app.appliedAt ?? app.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
               const aiScoreLabel = app.aiMatchScore != null ? `${app.aiMatchScore}% match` : null;
@@ -771,10 +782,10 @@ export default function AdminApplicationsPage() {
                   {/* Role, Match, Skills */}
                   <div className="min-w-0 sm:px-2">
                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                      <span className="truncate text-sm font-medium text-foreground">{job?.title ?? "—"}</span>
+                      <span className="truncate text-sm font-medium text-foreground">{job?.title ?? "ΓÇö"}</span>
                       {locationExp && (
                         <>
-                          <span className="hidden text-border sm:inline">·</span>
+                          <span className="hidden text-border sm:inline">┬╖</span>
                           <span className="truncate text-xs text-muted-foreground">{locationExp}</span>
                         </>
                       )}

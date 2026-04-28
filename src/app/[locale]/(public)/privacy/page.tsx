@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Shield } from "lucide-react";
+import { Shield, Calendar, Building2, Mail, MapPin } from "lucide-react";
 
 export default function PrivacyPolicyPage() {
   const pathname = usePathname();
@@ -21,8 +21,9 @@ export default function PrivacyPolicyPage() {
         return r.json();
       })
       .then((d) => {
-        if (d) {
-          setBody(isAr ? d.bodyAr || d.body : d.body);
+        const p = d?.page ?? d;
+        if (p) {
+          setBody(isAr ? p.bodyAr || p.body : p.body);
         }
       })
       .catch(console.error)
@@ -38,25 +39,71 @@ export default function PrivacyPolicyPage() {
   }
 
   return (
-    <div className="py-12">
+    <div className="bg-muted/30 min-h-[80vh] py-14">
       <div className="container mx-auto px-4 max-w-4xl">
-        <div className="text-center mb-10">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Shield className="h-7 w-7" />
+        {/* Hero header */}
+        <div className="text-center mb-8">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm">
+            <Shield className="h-8 w-8" />
           </div>
-          <h1 className="text-4xl font-bold">{t("privacyHeading")}</h1>
+          <h1 className="text-4xl font-bold tracking-tight">{t("privacyHeading")}</h1>
+          <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span>{isAr ? "آخر تحديث: ٨ يونيو ٢٠٢٣" : "Last Updated: 8th June 2023"}</span>
+          </div>
         </div>
 
         {body ? (
-          <div
-            className="prose prose-neutral dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: body }}
-          />
+          <div className="rounded-2xl border border-border/60 bg-background shadow-sm">
+            {/* Intro banner */}
+            <div className="border-b border-border/60 bg-muted/40 px-6 py-5 rounded-t-2xl sm:px-8">
+              <p className="text-sm leading-relaxed text-muted-foreground text-justify">
+                {isAr
+                  ? "توضح سياسة الخصوصية هذه كيفية قيام شركة MPLOYEDIN UK LTD بجمع واستخدام والكشف عن وحماية البيانات الشخصية عند استخدام موقعنا mployedin.com وفقًا للائحة العامة لحماية البيانات (GDPR) وقانون حماية البيانات 2018."
+                  : "This Privacy Policy outlines how MPLOYEDIN UK LTD collects, uses, discloses, and protects personal data when you use our website at mployedin.com, in accordance with the GDPR and the Data Protection Act 2018."}
+              </p>
+            </div>
+
+            {/* Body content */}
+            <div
+              className="prose prose-neutral dark:prose-invert max-w-none px-6 py-8 sm:px-8 prose-headings:scroll-mt-20 prose-h2:text-xl prose-h2:font-semibold prose-h2:border-b prose-h2:border-border/40 prose-h2:pb-3 prose-h2:mb-4 prose-h3:text-lg prose-p:text-justify prose-p:leading-7 prose-li:leading-7"
+              dangerouslySetInnerHTML={{ __html: body }}
+            />
+
+            {/* Contact footer card */}
+            <div className="border-t border-border/60 bg-muted/40 px-6 py-6 rounded-b-2xl sm:px-8">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+                {isAr ? "اتصل بنا" : "Contact Us"}
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background p-4">
+                  <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="text-sm text-foreground leading-5">MPLOYEDIN UK LTD</span>
+                </div>
+                <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background p-4">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="text-sm text-foreground leading-5">X2 Greenleaf Walk, Southall, UB1 1FR</span>
+                </div>
+                <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background p-4">
+                  <Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <a href="mailto:support@mployedin.com" className="text-sm text-primary hover:underline">
+                    support@mployedin.com
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="text-center text-muted-foreground py-10">
             <p>{t("privacyPreparing")}</p>
           </div>
         )}
+
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          {isAr
+            ? "باستخدامك للموقع، فإنك تقر وتوافق على الممارسات الموضحة في سياسة الخصوصية هذه."
+            : "By using our website, you acknowledge and agree to the practices described in this Privacy Policy."}
+        </p>
       </div>
     </div>
   );
