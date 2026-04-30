@@ -192,11 +192,14 @@ export default auth(async function middleware(req: NextRequest) {
     const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
     const isAuthRoute = AUTH_ROUTES.some((r) => stripped.startsWith(r));
     const isVerifyEmailRoute = stripped.startsWith("/verify-email");
+    const isResetPasswordRoute = stripped.startsWith("/reset-password");
     const hasVerifyToken = req.nextUrl.searchParams.has("token");
     const isRootLanding = stripped === "/";
     // Allow /verify-email if user's email is unverified OR if URL has a token (cross-device verification)
     const exemptVerify = isVerifyEmailRoute && (session.user.isEmailVerified === false || hasVerifyToken);
-    if ((isAuthRoute || isRootLanding) && !exemptVerify) {
+    // Allow /reset-password if URL has a token (user clicked email link while logged in)
+    const exemptReset = isResetPasswordRoute && hasVerifyToken;
+    if ((isAuthRoute || isRootLanding) && !exemptVerify && !exemptReset) {
       const role = session.user.role;
       const urlLocale = pathname.split("/")[1] || defaultLocale;
       return withSecurityHeaders(
