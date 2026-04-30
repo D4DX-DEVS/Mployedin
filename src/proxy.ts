@@ -30,6 +30,7 @@ const AUTH_ROUTES = [
 const PUBLIC_ROUTES = [
   "/login",
   "/register",
+  "/employer-register",
   "/forgot-password",
   "/reset-password",
   "/verify-email",
@@ -69,11 +70,11 @@ function isRoleAllowed(role: UserRole, pathname: string): boolean {
   const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
   // Root "/" or non-dashboard routes — allow
   const dashboardSections = ["/admin", "/super-agent", "/agent", "/employer", "/job-seeker"];
-  const inDashboard = dashboardSections.some((s) => stripped.startsWith(s));
+  const inDashboard = dashboardSections.some((s) => stripped === s || stripped.startsWith(s + "/"));
   if (!inDashboard) return true;
   // Check if role has access to this section
   const allowed = ROLE_ROUTES[role] ?? [];
-  return allowed.some((prefix) => stripped.startsWith(prefix));
+  return allowed.some((prefix) => stripped === prefix || stripped.startsWith(prefix + "/"));
 }
 
 /** Apply static security headers to API/redirect responses (no nonce). */
@@ -156,7 +157,7 @@ export default auth(async function middleware(req: NextRequest) {
   if (session?.user && !isPublic) {
     const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
     const dashboardSections = ["/admin", "/super-agent", "/agent", "/employer", "/job-seeker"];
-    const inDashboard = dashboardSections.some((s) => stripped.startsWith(s));
+    const inDashboard = dashboardSections.some((s) => stripped === s || stripped.startsWith(s + "/"));
     const isVerifyPage = stripped.startsWith("/verify-email");
     if (inDashboard && !isVerifyPage && session.user.isEmailVerified === false) {
       const urlLocale = pathname.split("/")[1] || defaultLocale;
