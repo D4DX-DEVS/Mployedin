@@ -607,7 +607,7 @@ export default function SuperAgentAgentsPage() {
               <div className="space-y-2">
                 <Label>Password <span className="text-destructive">*</span></Label>
                 <Input
-                  type="text"
+                  type="password"
                   value={createForm.password}
                   onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
                   placeholder="Min 8 characters"

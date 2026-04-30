@@ -83,7 +83,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       superAgentProfile: profile
         ? {
             _id: profile._id,
-            overrideCommissionRate: profile.overrideCommissionRate,
+            overrideCommissionRate: profile.overrideRate ?? 0,
             assignedCityIds: profile.assignedCityIds,
             assignedStateIds: profile.assignedStateIds,
             agents,
@@ -130,7 +130,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   try {
     const saDoc = await SuperAgent.create({
       userId: user._id,
-      overrideCommissionRate: overrideCommissionRate ?? 0,
+      overrideRate: overrideCommissionRate ?? 0,
       assignedCityIds: assignedCityIds ?? [],
       assignedStateIds: assignedStateIds ?? [],
       agentIds: agentIds ?? [],
@@ -184,7 +184,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Update or create super agent profile
   const profileUpdate: Record<string, unknown> = {};
-  if (overrideCommissionRate !== undefined) profileUpdate.overrideCommissionRate = overrideCommissionRate;
+  if (overrideCommissionRate !== undefined) profileUpdate.overrideRate = overrideCommissionRate;
   if (assignedCityIds !== undefined) profileUpdate.assignedCityIds = assignedCityIds;
   if (assignedStateIds !== undefined) profileUpdate.assignedStateIds = assignedStateIds;
   if (agentIds !== undefined) profileUpdate.agentIds = agentIds;

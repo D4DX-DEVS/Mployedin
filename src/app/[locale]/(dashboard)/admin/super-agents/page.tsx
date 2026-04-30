@@ -439,7 +439,7 @@ export default function AdminSuperAgentsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Password <span className="text-destructive">*</span></Label>
-                <Input type="text" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" />
+                <Input type="password" value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" />
               </div>
               <div className="space-y-2">
                 <Label>Override Commission Rate (%)</Label>
