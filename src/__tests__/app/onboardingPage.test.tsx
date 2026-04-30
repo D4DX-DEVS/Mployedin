@@ -31,6 +31,17 @@ jest.mock("@/components/shared/ThemeToggle", () => ({
 }));
 
 describe("JobSeekerOnboardingPage", () => {
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ profile: null }),
+    }) as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("renders the shared theme toggle in the onboarding top bar", () => {
     render(<JobSeekerOnboardingPage />);
 

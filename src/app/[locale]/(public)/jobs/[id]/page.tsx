@@ -7,6 +7,7 @@ import { MapPin, Briefcase, Clock, Users, Globe } from "lucide-react";
 import Link from "next/link";
 import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/features/public/EasyApply";
 import TrackJobView from "@/components/features/public/TrackJobView";
+import SocialShare from "@/components/features/public/SocialShare";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import RelativeDate from "@/components/shared/RelativeDate";
 
@@ -171,9 +172,16 @@ export default async function JobDetailPage({ params }: PageProps) {
               <div>
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <h1 className="text-2xl font-semibold text-foreground">{job.title}</h1>
-                  {(employer?.domainVerified || employer?.isAgentVerified) && (
-                    <span className="shrink-0 text-xs bg-green-500/10 text-green-600 px-2 py-1 rounded-full font-medium">✓ Verified</span>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <SocialShare
+                      url={`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/${locale}/jobs/${String(job._id)}`}
+                      title={`${job.title} at ${employer?.companyName ?? "Company"}`}
+                      description={job.description?.slice(0, 120)}
+                    />
+                    {(employer?.domainVerified || employer?.isAgentVerified) && (
+                      <span className="text-xs bg-green-500/10 text-green-600 px-2 py-1 rounded-full font-medium">✓ Verified</span>
+                    )}
+                  </div>
                 </div>
 
                 <p className="text-base text-muted-foreground font-medium mb-4">{employer?.companyName}</p>

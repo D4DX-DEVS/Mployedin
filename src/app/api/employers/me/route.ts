@@ -40,7 +40,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   const allowed = [
     "companyName", "companyEmail", "phone", "designation",
-    "address", "website", "industry", "companySize",
+    "address", "country", "website", "industry", "companySize",
     "description", "foundedYear", "socialLinks",
     "hiringPreferences", "notificationPrefs",
   ] as const;

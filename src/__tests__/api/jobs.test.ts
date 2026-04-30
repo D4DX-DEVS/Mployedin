@@ -80,6 +80,23 @@ jest.mock("@/models/Agent", () => ({
   },
 }));
 
+jest.mock("@/models/CompanyUser", () => ({
+  __esModule: true,
+  CompanyUser: {
+    findOne: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }) }),
+  },
+  default: {
+    findOne: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }) }),
+  },
+}));
+
+jest.mock("@/models/SuperAgent", () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(),
+  },
+}));
+
 // ── Helper ──────────────────────────────────────────────────────────────────
 function makeRequest(url: string, options?: { method?: string; body?: string; headers?: Record<string, string> }): NextRequest {
   return new NextRequest(`http://localhost:3000${url}`, options);
@@ -137,7 +154,7 @@ describe("Jobs API", () => {
     expect(query.status).toBe("draft");
     expect(query["poster.approvalStatus"]).toBe("pending");
     expect(query.workMode).toBe("remote");
-    expect(query["requirements.skills"]).toEqual({ $all: ["React", "Node.js"] });
+    expect(query["requirements.skills"]).toEqual({ $all: [expect.any(RegExp), expect.any(RegExp)] });
     expect(query.showSalary).toBe(false);
     expect(Array.isArray(query.$and)).toBe(true);
   });

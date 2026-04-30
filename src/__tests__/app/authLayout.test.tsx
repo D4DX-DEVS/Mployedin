@@ -5,6 +5,13 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import AuthLayout from "@/app/[locale]/(auth)/layout";
 
+jest.mock("next-auth/react", () => ({
+  useSession: () => ({ data: null, status: "unauthenticated" }),
+  SessionProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+}));
+
 jest.mock("@/components/shared/ThemeToggle", () => ({
   ThemeToggle: () => <button aria-label="theme-toggle">Theme</button>,
 }));

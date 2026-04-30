@@ -21,7 +21,7 @@ export interface IJobRequirements {
 
 export type SalaryPeriod = "monthly" | "yearly" | "lpa";
 export type JobVisibility = "public" | "private" | "invite_only";
-export type EmploymentType = "full_time" | "part_time" | "contract" | "internship" | "freelance";
+export type EmploymentType = "full_time" | "part_time" | "contract" | "internship" | "freelance" | "walk_in";
 export type WorkMode = "onsite" | "hybrid" | "remote";
 
 export interface IJobSalary {
@@ -91,7 +91,9 @@ export interface IJob extends Document {
   employerId: mongoose.Types.ObjectId;
   agentId?: mongoose.Types.ObjectId;
   title: string;
+  titleAr?: string;
   description: string;
+  descriptionAr?: string;
   requirements: IJobRequirements;
   salary: IJobSalary;
   location: IJobLocation;
@@ -99,8 +101,11 @@ export interface IJob extends Document {
   workMode?: WorkMode;
   duration?: string;
   responsibilities?: string[];
+  responsibilitiesAr?: string[];
   qualifications?: string[];
+  qualificationsAr?: string[];
   benefits?: string[];
+  benefitsAr?: string[];
   learningOutcomes?: string[];
   status: JobStatus;
   workflowMode: WorkflowMode;
@@ -120,6 +125,17 @@ export interface IJob extends Document {
   tags: string[];
   visibility: JobVisibility;
   category?: string;
+  isFeatured?: boolean;
+  featuredUntil?: Date;
+  isWalkIn?: boolean;
+  walkInDetails?: {
+    date?: Date;
+    time?: string;
+    venue?: string;
+    contactPerson?: string;
+    contactPhone?: string;
+  };
+  locations?: IJobLocation[];
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -130,7 +146,9 @@ const JobSchema = new Schema<IJob>(
     employerId: { type: Schema.Types.ObjectId, ref: "Employer", required: true },
     agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
     title: { type: String, required: true, trim: true },
+    titleAr: { type: String, trim: true },
     description: { type: String, required: true },
+    descriptionAr: { type: String },
     requirements: {
       skills: [String],
       preferredSkills: [String],
@@ -142,7 +160,7 @@ const JobSchema = new Schema<IJob>(
     },
     employmentType: {
       type: String,
-      enum: ["full_time", "part_time", "contract", "internship", "freelance"],
+      enum: ["full_time", "part_time", "contract", "internship", "freelance", "walk_in"],
     },
     workMode: {
       type: String,
@@ -150,8 +168,11 @@ const JobSchema = new Schema<IJob>(
     },
     duration: String,
     responsibilities: [String],
+    responsibilitiesAr: [String],
     qualifications: [String],
+    qualificationsAr: [String],
     benefits: [String],
+    benefitsAr: [String],
     learningOutcomes: [String],
     salary: {
       min: Number,
@@ -226,6 +247,22 @@ const JobSchema = new Schema<IJob>(
     tags: [String],
     visibility: { type: String, enum: ["public", "private", "invite_only"], default: "public" },
     category: String,
+    isFeatured: { type: Boolean, default: false },
+    featuredUntil: { type: Date },
+    isWalkIn: { type: Boolean, default: false },
+    walkInDetails: {
+      date: Date,
+      time: String,
+      venue: String,
+      contactPerson: String,
+      contactPhone: String,
+    },
+    locations: [{
+      country: { type: String },
+      city: { type: String },
+      isRemote: { type: Boolean, default: false },
+      _id: false,
+    }],
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
@@ -238,6 +275,7 @@ JobSchema.index({ deletedAt: 1 });
 JobSchema.index({ "location.country": 1 });
 JobSchema.index({ "requirements.skills": 1 });
 JobSchema.index({ createdAt: -1 });
+JobSchema.index({ isFeatured: -1, createdAt: -1 });
 JobSchema.index({ title: "text", description: "text", tags: "text" });
 JobSchema.index(
   { status: 1, "poster.approvalStatus": 1, createdAt: -1 },

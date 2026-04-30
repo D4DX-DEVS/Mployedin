@@ -27,6 +27,10 @@ export default function ApplicationFeedbackPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [communicationRating, setCommunicationRating] = useState(0);
+  const [processRating, setProcessRating] = useState(0);
+  const [timelinessRating, setTimelinessRating] = useState(0);
+  const [wouldRecommend, setWouldRecommend] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetch(`/api/applications/${id}`)
@@ -46,7 +50,16 @@ export default function ApplicationFeedbackPage() {
       const res = await fetch(`/api/applications/${id}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating, comment: comment.trim() || undefined }),
+        body: JSON.stringify({
+          rating,
+          comment: comment.trim() || undefined,
+          aspects: {
+            communicationRating: communicationRating || undefined,
+            processRating: processRating || undefined,
+            timelinessRating: timelinessRating || undefined,
+          },
+          wouldRecommend,
+        }),
       });
       if (res.status === 409) {
         // Already submitted
@@ -162,6 +175,34 @@ export default function ApplicationFeedbackPage() {
               {starLabels[hovered || rating]}
             </p>
           )}
+        </div>
+
+        {/* Aspect Ratings */}
+        <div className="card-base space-y-3">
+          <p className="text-sm font-medium text-foreground/80">Rate specific aspects (optional)</p>
+          {[
+            { label: "Communication", value: communicationRating, set: setCommunicationRating },
+            { label: "Hiring Process", value: processRating, set: setProcessRating },
+            { label: "Timeliness", value: timelinessRating, set: setTimelinessRating },
+          ].map(({ label, value, set }) => (
+            <div key={label} className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{label}</span>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button key={s} type="button" onClick={() => set(s)} className="focus:outline-none">
+                    <Star className={`w-5 h-5 ${s <= value ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20"}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="pt-2 border-t border-border">
+            <p className="text-sm text-muted-foreground mb-2">Would you recommend this employer?</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setWouldRecommend(true)} className={`px-3 py-1.5 rounded-lg border text-sm ${wouldRecommend === true ? "border-emerald-500 bg-emerald-500/10 text-emerald-600" : "border-border hover:bg-muted"}`}>👍 Yes</button>
+              <button type="button" onClick={() => setWouldRecommend(false)} className={`px-3 py-1.5 rounded-lg border text-sm ${wouldRecommend === false ? "border-red-500 bg-red-500/10 text-red-600" : "border-border hover:bg-muted"}`}>👎 No</button>
+            </div>
+          </div>
         </div>
 
         {/* Comment */}

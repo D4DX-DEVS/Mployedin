@@ -10,8 +10,13 @@ const config: Config = {
   // Use jsdom by default for React component tests;
   // API tests override to "node" via docblock: @jest-environment node
   testEnvironment: "jsdom",
+  transformIgnorePatterns: [
+    "/node_modules/(?!(next-intl|use-intl|@formatjs|intl-messageformat|next-auth|@auth/core|oauth4webapi|@panva)/)",
+  ],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^next-intl$": "<rootDir>/src/__mocks__/next-intl.ts",
+    "^use-intl/react$": "<rootDir>/src/__mocks__/use-intl/react.ts",
   },
   setupFilesAfterEnv: ["<rootDir>/src/test-utils/setup.ts"],
   testMatch: [
@@ -39,4 +44,15 @@ const config: Config = {
   },
 };
 
-export default createJestConfig(config);
+const jestConfig = async () => {
+  const nextConfig = await createJestConfig(config)();
+  return {
+    ...nextConfig,
+    transformIgnorePatterns: [
+      "/node_modules/(?!(next-intl|use-intl|@formatjs|intl-messageformat|next/dist/client|next/dist/shared/lib|next/src/client|next/src/shared/lib|geist)/)",
+      "^.+\\.module\\.(css|sass|scss)$",
+    ],
+  };
+};
+
+export default jestConfig;

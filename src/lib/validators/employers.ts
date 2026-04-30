@@ -23,6 +23,7 @@ export const employerUpdateSchema = z.object({
   registrationNo: z.string().max(50).trim().optional(),
   taxId: z.string().max(50).trim().optional(),
   address: z.string().max(500).trim().optional(),
+  country: z.string().max(10).trim().optional(),
   website: commonSchemas.url.optional().or(z.literal("")),
   industry: z.string().max(100).optional(),
   companySize: z.string().max(50).optional(),

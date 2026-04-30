@@ -19,7 +19,7 @@ export const countryKeys = {
 async function fetchCountries(query: string): Promise<CountryOption[]> {
   const params = new URLSearchParams({
     q: query,
-    limit: "10",
+    limit: query ? "10" : "50",
   });
 
   const response = await fetch(`/api/countries?${params}`);
@@ -32,11 +32,11 @@ async function fetchCountries(query: string): Promise<CountryOption[]> {
   return data.countries;
 }
 
-export function useCountrySearch(query: string) {
+export function useCountrySearch(query: string, options?: { loadAll?: boolean }) {
   return useQuery({
     queryKey: countryKeys.search(query),
     queryFn: () => fetchCountries(query),
-    enabled: query.length >= 2,
+    enabled: options?.loadAll || query.length >= 2,
     staleTime: 5 * 60 * 1000,
   });
 }

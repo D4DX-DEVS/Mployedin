@@ -3,6 +3,12 @@
  */
 import { NextResponse } from "next/server";
 import { hasRegionAssigned } from "@/lib/auth/agentRestrictions";
+
+// Mock next-auth/config to avoid importing Credentials provider
+jest.mock("@/lib/auth/config", () => ({
+  auth: jest.fn().mockResolvedValue({ user: { id: "test", role: "admin" } }),
+}));
+
 import { requireRole } from "@/lib/auth/withAuth";
 import type mongoose from "mongoose";
 

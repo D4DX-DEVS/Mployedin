@@ -149,6 +149,10 @@ export interface IJobSeeker extends Document {
   profileCompleteness: number; // 0-100
   // Badges
   badges: ("premium" | "skilled" | string)[];
+  // Profile Boost
+  isProfileBoosted?: boolean;
+  profileBoostedUntil?: Date;
+  profileBoostCount?: number;
   // Applications
   applicationIds: mongoose.Types.ObjectId[];
   // TalIndia
@@ -333,6 +337,9 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     autoApplyResetAt: Date,
     profileCompleteness: { type: Number, default: 0, min: 0, max: 100 },
     badges: [String],
+    isProfileBoosted: { type: Boolean, default: false },
+    profileBoostedUntil: { type: Date },
+    profileBoostCount: { type: Number, default: 0, min: 0 },
     applicationIds: [{ type: Schema.Types.ObjectId, ref: "Application" }],
     enrolledCourses: [String],
     completedCourses: [String],

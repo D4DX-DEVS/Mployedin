@@ -93,21 +93,21 @@ describe("calculateMatchScore", () => {
     expect(result).toBe(94);
   });
 
-  it("role title bonus adds 5 points capped at 100", () => {
+  it("role title bonus adds 15 points capped at 100", () => {
     const result = calculateMatchScore(
       { ...baseSeeker, preferredRoles: ["senior developer"] },
       { ...baseJob, title: "senior developer react" }
     );
-    // base 100 + 5 (bonus) = capped at 100
+    // base 100 + 15 (bonus) = capped at 100
     expect(result).toBe(100);
   });
 
-  it("role title bonus adds 5 when base is below 100", () => {
+  it("role title bonus adds 15 when base is below 100", () => {
     const result = calculateMatchScore(
       { ...baseSeeker, salaryExpectation: 100000, preferredRoles: ["react developer"] },
       { ...baseJob, salaryMin: 5000, salaryMax: 7000, title: "react developer" }
     );
-    // salary mismatch: base = 80, + bonus 5 = 85
-    expect(result).toBe(85);
+    // salary mismatch: base = 80, + bonus 15 = 95
+    expect(result).toBe(95);
   });
 });

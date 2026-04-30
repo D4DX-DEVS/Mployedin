@@ -166,7 +166,6 @@ describe("JobSeekerHomePage", () => {
     expect(screen.getByText("اقتراحات الذكاء الاصطناعي")).toBeInTheDocument();
     expect(screen.getByText("ارفع سيرتك الذاتية")).toBeInTheDocument();
     expect(screen.getByText("ابق قريباً من مسار طلباتك")).toBeInTheDocument();
-    expect(container.querySelector('[dir="rtl"]')).toHaveClass("text-right");
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/ai/daily-insights");

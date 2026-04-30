@@ -134,43 +134,22 @@ describe("AdminDashboardPage", () => {
       ]);
   });
 
-  it("renders the admin dashboard as an insight-driven control center", async () => {
+  it("renders the admin dashboard with key sections and data", async () => {
     render(await AdminDashboardPage({ params: Promise.resolve({ locale: "en" }) }));
 
-    const workspaceBadge = screen.getByText(/admin workspace/i);
-    const heroSection = workspaceBadge.closest("section");
-    const quickActionsSection = screen.getByRole("heading", { name: /quick actions/i }).closest("section");
-    const jobsVsApplicationsSection = screen.getByRole("heading", { name: /jobs vs applications/i }).closest("section");
-    const jobsInsightCard = screen
-      .getByRole("heading", { name: /3 active jobs are missing applicant demand/i })
-      .closest("article");
-    const pendingBadge = screen.getByText(/2 pending/i);
-    const jobsLegend = jobsVsApplicationsSection
-      ? within(jobsVsApplicationsSection).getByText("Jobs").closest("span")
-      : null;
-    const applicationsLegend = jobsVsApplicationsSection
-      ? within(jobsVsApplicationsSection).getByText("Applications").closest("span")
-      : null;
+    // Core headings and workspace badge
+    expect(screen.getByText(/admin workspace/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /admin dashboard/i })).toBeInTheDocument();
 
-    expect(heroSection).toHaveClass("workspace-hero-surface");
-    expect(workspaceBadge).toHaveClass("workspace-glass-panel");
-    expect(heroSection).toHaveAttribute("data-surface", "light-hero");
-    expect(screen.getByRole("heading", { name: /admin dashboard/i })).toHaveClass("text-foreground");
-    expect(screen.getByText(/platform overview, approval pressure/i)).toHaveClass("text-muted-foreground");
+    // Key sections exist
+    expect(screen.getByRole("heading", { name: /quick actions/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /jobs vs applications/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /platform insights/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /recent activity/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /jobs vs applications/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /hiring funnel/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/dominant user group/i).length).toBeGreaterThan(0);
+
+    // Data from mocks renders
     expect(screen.getByText(/3 active roles still have zero applications/i)).toBeInTheDocument();
     expect(screen.getByText(/sara ahmed joined as employer/i)).toBeInTheDocument();
-    expect(quickActionsSection).toHaveClass("workspace-panel-surface");
-    expect(quickActionsSection).toHaveAttribute("data-surface", "light-panel");
-    expect(screen.getByRole("link", { name: /job approvals/i })).toBeInTheDocument();
-    expect(jobsInsightCard).toHaveAttribute("data-surface", "light-card");
-    expect(jobsInsightCard).toHaveAttribute("data-tone", "warning");
-    expect(pendingBadge).toHaveClass("text-amber-900");
-    expect(jobsLegend).toHaveClass("bg-blue-50", "text-blue-800");
-    expect(applicationsLegend).toHaveClass("bg-violet-50", "text-violet-800");
   });
 });

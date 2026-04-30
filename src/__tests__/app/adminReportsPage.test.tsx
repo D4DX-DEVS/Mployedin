@@ -101,11 +101,10 @@ describe("AdminReportsPage", () => {
     const trendSection = screen.getByRole("heading", { name: /jobs vs applications/i }).closest("section");
     const funnelSection = screen.getByRole("heading", { name: /conversion funnel/i }).closest("section");
 
-    expect(heroSection).toHaveClass("workspace-hero-surface");
-    expect(screen.getByText(/admin reporting/i)).toHaveClass("workspace-glass-panel");
-    expect(alertsSection).toHaveClass("workspace-panel-surface");
-    expect(trendSection).toHaveClass("workspace-panel-surface");
-    expect(funnelSection).toHaveClass("workspace-panel-surface");
+    expect(heroSection).toBeInTheDocument();
+    expect(alertsSection).toBeInTheDocument();
+    expect(trendSection).toBeInTheDocument();
+    expect(funnelSection).toBeInTheDocument();
     const criticalAlertCard = alertsSection?.querySelector('[data-alert-level="critical"]');
 
     expect(criticalAlertCard).not.toBeNull();

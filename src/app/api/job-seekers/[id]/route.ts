@@ -4,6 +4,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import ProfileView from "@/models/ProfileView";
+import Employer from "@/models/Employer";
+import { notify } from "@/lib/notifications/trigger";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
@@ -35,6 +37,28 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
         viewerRole: _ctx.role,
         source: "direct",
       }).catch(() => { /* fire-and-forget */ });
+
+      // Send "X viewed your CV" notification (Naukri-style)
+      (async () => {
+        try {
+          let viewerName = "A recruiter";
+          if (_ctx.role === "employer") {
+            const emp = await Employer.findOne({ userId: _ctx.userId }).select("companyName").lean();
+            if (emp) viewerName = (emp as Record<string, unknown>).companyName as string;
+          } else {
+            const viewer = await User.findById(_ctx.userId).select("name").lean();
+            if (viewer) viewerName = (viewer as Record<string, unknown>).name as string;
+          }
+          await notify({
+            userId: String(seeker.userId),
+            type: "system",
+            title: `${viewerName} viewed your profile`,
+            message: `Your CV was viewed by ${viewerName}. Keep your profile updated to attract more opportunities.`,
+            link: "/job-seeker/profile",
+            sendEmail: true,
+          });
+        } catch { /* non-critical */ }
+      })();
     }
   }
 

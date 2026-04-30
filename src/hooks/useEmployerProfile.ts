@@ -7,6 +7,7 @@ export interface CompanyData {
   phone: string;
   designation?: string;
   address?: string;
+  country?: string;
   website?: string;
   industry?: string;
   companySize?: string;

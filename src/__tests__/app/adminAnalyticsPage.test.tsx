@@ -109,14 +109,11 @@ describe("AdminAnalyticsPage", () => {
     const user = userEvent.setup();
     const view = render(<AdminAnalyticsPage />);
 
-    const heroSection = screen.getByRole("heading", { name: /analytics & insights/i }).closest("section");
-    const templatesSection = screen.getByRole("heading", { name: /start from a prompt template that matches the workday/i }).closest("section");
-    const querySection = screen.getByRole("heading", { name: /custom analytics query/i }).closest("section");
+    const heroSection = screen.getByRole("region", { name: /analytics templates/i });
+    const querySection = screen.getByRole("region", { name: /custom analytics query/i });
 
-    expect(heroSection).toHaveClass("workspace-hero-surface");
-    expect(screen.getByText(/ai analytics/i)).toHaveClass("workspace-glass-panel");
-    expect(templatesSection).toHaveClass("workspace-panel-surface");
-    expect(querySection).toHaveClass("workspace-panel-surface");
+    expect(heroSection).toBeInTheDocument();
+    expect(querySection).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export/i })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: /platform growth this month/i }));

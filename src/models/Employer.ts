@@ -37,6 +37,7 @@ export interface IEmployer extends Document {
   registrationNo?: string;
   taxId?: string;
   address?: string;
+  country?: string;
   website?: string;
   industry?: string;
   companySize?: string;
@@ -94,6 +95,7 @@ const EmployerSchema = new Schema<IEmployer>(
     registrationNo: String,
     taxId: String,
     address: String,
+    country: String,
     website: String,
     industry: String,
     companySize: String,

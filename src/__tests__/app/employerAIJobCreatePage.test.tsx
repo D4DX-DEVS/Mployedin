@@ -76,7 +76,7 @@ describe("EmployerAIJobCreatePage", () => {
 
     expect(options.language).toBe("auto");
     expect(options.mode).toBe("explicitSend");
-    expect(options.maxDurationMs).toBe(15000);
+    expect(options.maxDurationMs).toBe(60000);
     expect(options.onError).toBeUndefined();
     expect(toast.error).not.toHaveBeenCalled();
   });

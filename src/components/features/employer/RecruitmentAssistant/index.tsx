@@ -21,6 +21,7 @@ import {
   Sparkles,
   ChevronRight,
   Globe,
+  LayoutList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -223,8 +224,10 @@ export function RecruitmentAssistant() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [extractedJob, setExtractedJob] = useState<ExtractedJob | null>(null);
+  const [extractedBulkJobs, setExtractedBulkJobs] = useState<ExtractedJob[]>([]);
   const [creatingJob, setCreatingJob] = useState(false);
   const [jobCreatedMsg, setJobCreatedMsg] = useState("");
+  const [bulkProgress, setBulkProgress] = useState<{ created: number; total: number; errors: string[] } | null>(null);
   const [voiceLanguage, setVoiceLanguage] = useState("auto");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -326,6 +329,8 @@ export function RecruitmentAssistant() {
     setThreadIds((prev) => ({ ...prev, [activeTab]: null }));
     setTabStarted((prev) => ({ ...prev, [activeTab]: false }));
     setExtractedJob(null);
+    setExtractedBulkJobs([]);
+    setBulkProgress(null);
     setJobCreatedMsg("");
     setShowHistory(false);
     setInput("");
@@ -347,6 +352,8 @@ export function RecruitmentAssistant() {
       setInput("");
       if (textareaRef.current) textareaRef.current.style.height = "auto";
       setExtractedJob(null);
+      setExtractedBulkJobs([]);
+      setBulkProgress(null);
 
       const userMsg: Message = {
         role: "user",
@@ -404,11 +411,25 @@ export function RecruitmentAssistant() {
 
         // Extract job data from job_creator tab
         if (activeTab === "job_creator") {
-          const match = accumulated.match(/<JOB_DATA>([\s\S]*?)<\/JOB_DATA>/);
-          if (match) {
+          // Check for bulk job data first
+          const bulkMatch = accumulated.match(/<BULK_JOB_DATA>([\s\S]*?)<\/BULK_JOB_DATA>/);
+          if (bulkMatch) {
             try {
-              setExtractedJob(JSON.parse(match[1].trim()));
-            } catch { /* ignore */ }
+              const parsed = JSON.parse(bulkMatch[1].trim());
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setExtractedBulkJobs(parsed.slice(0, 10));
+                setExtractedJob(null);
+              }
+            } catch { /* ignore parse errors */ }
+          } else {
+            // Single job extraction
+            const match = accumulated.match(/<JOB_DATA>([\s\S]*?)<\/JOB_DATA>/);
+            if (match) {
+              try {
+                setExtractedJob(JSON.parse(match[1].trim()));
+                setExtractedBulkJobs([]);
+              } catch { /* ignore */ }
+            }
           }
         }
 
@@ -478,6 +499,46 @@ export function RecruitmentAssistant() {
       }
     } finally {
       setCreatingJob(false);
+    }
+  };
+
+  const createBulkJobDrafts = async () => {
+    if (extractedBulkJobs.length === 0) return;
+    setCreatingJob(true);
+    setBulkProgress({ created: 0, total: extractedBulkJobs.length, errors: [] });
+    const errors: string[] = [];
+    let created = 0;
+
+    for (const job of extractedBulkJobs) {
+      try {
+        const sanitized = sanitizeExtractedJob(job);
+        const res = await fetch("/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...sanitized, status: "draft" }),
+        });
+        if (res.ok) {
+          created++;
+        } else {
+          const err = await res.json().catch(() => ({}));
+          errors.push(`${job.title ?? "Unknown"}: ${(err as { error?: string }).error ?? "Failed"}`);
+        }
+      } catch {
+        errors.push(`${job.title ?? "Unknown"}: Network error`);
+      }
+      setBulkProgress({ created, total: extractedBulkJobs.length, errors });
+    }
+
+    setCreatingJob(false);
+    if (errors.length === 0) {
+      setJobCreatedMsg(`All ${created} job drafts created successfully!`);
+      setExtractedBulkJobs([]);
+      setBulkProgress(null);
+      setTimeout(() => {
+        router.push(`/${locale}/employer/jobs`);
+      }, 1500);
+    } else {
+      setJobCreatedMsg(`Created ${created}/${extractedBulkJobs.length} drafts. ${errors.length} failed.`);
     }
   };
 
@@ -635,6 +696,8 @@ export function RecruitmentAssistant() {
                         setActiveTab(tab.id);
                         setShowHistory(false);
                         setExtractedJob(null);
+                        setExtractedBulkJobs([]);
+                        setBulkProgress(null);
                         setJobCreatedMsg("");
                       }}
                       className={cn(
@@ -734,7 +797,17 @@ export function RecruitmentAssistant() {
                               createdMsg={jobCreatedMsg}
                             />
                           )}
-                          {jobCreatedMsg && !extractedJob && (
+                          {/* Bulk job preview card (job_creator only) */}
+                          {activeTab === "job_creator" && extractedBulkJobs.length > 0 && (
+                            <BulkJobPreviewCard
+                              jobs={extractedBulkJobs}
+                              onCreateAll={createBulkJobDrafts}
+                              creating={creatingJob}
+                              progress={bulkProgress}
+                              createdMsg={jobCreatedMsg}
+                            />
+                          )}
+                          {jobCreatedMsg && !extractedJob && extractedBulkJobs.length === 0 && (
                             <p className="text-xs text-center text-emerald-600 font-medium py-2">
                               {jobCreatedMsg}
                             </p>
@@ -837,9 +910,10 @@ function MessageBubble({
   msg: Message;
   isLastAssistant: boolean;
 }) {
-  // Strip <JOB_DATA>...</JOB_DATA> from display
+  // Strip <JOB_DATA>...</JOB_DATA> and <BULK_JOB_DATA>...</BULK_JOB_DATA> from display
   const displayContent = msg.content
     .replace(/<JOB_DATA>[\s\S]*?<\/JOB_DATA>/g, "")
+    .replace(/<BULK_JOB_DATA>[\s\S]*?<\/BULK_JOB_DATA>/g, "")
     .trim();
 
   return (
@@ -970,6 +1044,103 @@ function JobPreviewCard({
           )}
         </Button>
       )}
+    </div>
+  );
+}
+
+// ─── Bulk job preview card ───────────────────────────────────────
+function BulkJobPreviewCard({
+  jobs,
+  onCreateAll,
+  creating,
+  progress,
+  createdMsg,
+}: {
+  jobs: ExtractedJob[];
+  onCreateAll: () => void;
+  creating: boolean;
+  progress: { created: number; total: number; errors: string[] } | null;
+  createdMsg: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20 p-4 space-y-3 mt-2">
+      <div className="flex items-center gap-2">
+        <LayoutList className="h-4 w-4 text-blue-600 flex-shrink-0" />
+        <h4 className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">
+          Bulk Job Preview ({jobs.length} jobs)
+        </h4>
+      </div>
+      <div className="space-y-2 max-h-[200px] overflow-y-auto">
+        {jobs.map((job, idx) => (
+          <div
+            key={idx}
+            className="rounded-lg border border-blue-100 dark:border-blue-900/30 bg-white dark:bg-blue-950/30 p-2.5 space-y-1"
+          >
+            <p className="text-xs font-semibold text-foreground">{job.title || `Job ${idx + 1}`}</p>
+            <div className="flex flex-wrap gap-1 text-[11px] text-muted-foreground">
+              {job.location?.city && <span>{job.location.city}</span>}
+              {job.location?.country && <span>• {job.location.country}</span>}
+              {job.employmentType && <span>• {job.employmentType.replace("_", "-")}</span>}
+              {job.workMode && <span>• {job.workMode}</span>}
+            </div>
+            {job.requirements?.skills?.length ? (
+              <div className="flex gap-1 flex-wrap">
+                {job.requirements.skills.slice(0, 5).map((s) => (
+                  <span
+                    key={s}
+                    className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 text-[10px] font-medium"
+                  >
+                    {s}
+                  </span>
+                ))}
+                {job.requirements.skills.length > 5 && (
+                  <span className="text-[10px] text-muted-foreground">+{job.requirements.skills.length - 5}</span>
+                )}
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      {progress && (
+        <div className="space-y-1">
+          <div className="w-full h-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 transition-all duration-300 rounded-full"
+              style={{ width: `${(progress.created / progress.total) * 100}%` }}
+            />
+          </div>
+          <p className="text-[11px] text-blue-600 dark:text-blue-400">
+            Created {progress.created} of {progress.total}...
+          </p>
+          {progress.errors.length > 0 && (
+            <div className="text-[11px] text-red-500 space-y-0.5">
+              {progress.errors.map((err, i) => <p key={i}>{err}</p>)}
+            </div>
+          )}
+        </div>
+      )}
+      {createdMsg ? (
+        <p className="text-xs text-emerald-600 font-medium">{createdMsg}</p>
+      ) : !progress ? (
+        <Button
+          size="sm"
+          onClick={onCreateAll}
+          disabled={creating}
+          className="w-full h-8 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+        >
+          {creating ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              Creating…
+            </>
+          ) : (
+            <>
+              Create All {jobs.length} Job Drafts
+              <ChevronRight className="h-3.5 w-3.5 ml-1" />
+            </>
+          )}
+        </Button>
+      ) : null}
     </div>
   );
 }

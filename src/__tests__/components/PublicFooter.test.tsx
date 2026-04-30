@@ -6,6 +6,68 @@ import { render, screen } from "@testing-library/react";
 
 import PublicFooter from "@/components/shared/PublicFooter";
 
+const enMessages: Record<string, string> = {
+  digitalPlatform: "Digital hiring platform",
+  description: "MPLOYEDIN brings job discovery, AI matching, and employer workflows into one cleaner hiring experience for Gulf markets.",
+  aiMatching: "AI-powered matching",
+  fasterScreening: "Faster candidate screening",
+  smarterHiring: "Smarter Gulf hiring",
+  browseJobs: "Browse jobs",
+  forEmployers: "For employers",
+  followUs: "Follow us",
+  allRights: "All rights reserved.",
+  platform: "Platform",
+  discoverJobs: "Discover jobs",
+  buildProfile: "Build your profile",
+  hiringSolutions: "Hiring solutions",
+  workspaceLogin: "Workspace login",
+  resources: "Resources",
+  blogLink: "Blog",
+  faqLink: "FAQ",
+  talkToUs: "Talk to us",
+  company: "Company",
+  privacy: "Privacy",
+  cookies: "Cookies",
+  terms: "Terms",
+  gdpr: "GDPR",
+  support: "Support",
+  homepage: "Homepage",
+};
+
+const arMessages: Record<string, string> = {
+  digitalPlatform: "منصة توظيف رقمية",
+  resources: "الموارد",
+  followUs: "تابعنا",
+  platform: "المنصة",
+  company: "الشركة",
+  aiMatching: "مطابقة مدعومة بالذكاء الاصطناعي",
+  fasterScreening: "فرز أسرع للمرشحين",
+  smarterHiring: "توظيف أذكى في الخليج",
+  browseJobs: "تصفح الوظائف",
+  forEmployers: "لأصحاب العمل",
+  allRights: "جميع الحقوق محفوظة.",
+  description: "توفر MPLOYEDIN اكتشاف الوظائف والمطابقة الذكية وسير عمل أصحاب العمل في تجربة توظيف واحدة لأسواق الخليج.",
+  discoverJobs: "اكتشف الوظائف",
+  buildProfile: "أنشئ ملفك",
+  hiringSolutions: "حلول التوظيف",
+  workspaceLogin: "دخول مساحة العمل",
+  blogLink: "المدونة",
+  faqLink: "الأسئلة الشائعة",
+  talkToUs: "تواصل معنا",
+  privacy: "الخصوصية",
+  cookies: "ملفات تعريف الارتباط",
+  terms: "الشروط",
+  gdpr: "GDPR",
+  support: "الدعم",
+  homepage: "الصفحة الرئيسية",
+};
+
+let activeMessages = enMessages;
+
+jest.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => activeMessages[key] ?? key,
+}));
+
 jest.mock("next/link", () => ({
   __esModule: true,
   default: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
@@ -21,6 +83,10 @@ jest.mock("next/image", () => ({
 }));
 
 describe("PublicFooter", () => {
+  beforeEach(() => {
+    activeMessages = enMessages;
+  });
+
   it("renders a compact product-first footer instead of the old sitemap sections", () => {
     render(<PublicFooter locale="en" />);
 
@@ -47,6 +113,7 @@ describe("PublicFooter", () => {
   });
 
   it("renders the localized Arabic footer content", () => {
+    activeMessages = arMessages;
     render(<PublicFooter locale="ar" />);
 
     expect(screen.getByText("منصة توظيف رقمية")).toBeInTheDocument();

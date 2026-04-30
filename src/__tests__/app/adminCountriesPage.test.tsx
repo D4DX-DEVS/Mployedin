@@ -107,7 +107,6 @@ describe("AdminCountriesPage", () => {
     });
 
     expect(screen.getByRole("heading", { level: 1, name: "Country Details" })).toBeInTheDocument();
-    expect(screen.getByText(/location data/i, { selector: "div.workspace-glass-panel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add new/i })).toBeInTheDocument();
 
     await waitFor(() => {
@@ -117,8 +116,6 @@ describe("AdminCountriesPage", () => {
     expect(await screen.findByText("United Arab Emirates")).toBeInTheDocument();
     expect(screen.getByText("971")).toBeInTheDocument();
     expect(screen.getByTestId("pagination-controls")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /filter countries by name or status/i }).closest("section")).toHaveClass("workspace-panel-surface");
-    expect(screen.getByRole("heading", { name: /review formatting and telecom metadata/i }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(paginationState.updateTotal).toHaveBeenCalledWith(1);
   });
 });

@@ -42,6 +42,7 @@ jest.mock("@/hooks/useCandidates", () => ({
   usePublishedJobs: (...args: unknown[]) => usePublishedJobsMock(...args),
   useStartConversation: () => ({ mutateAsync: mutateAsyncStartConversationMock }),
   useAiMatch: () => ({ mutateAsync: mutateAsyncAiMatchMock }),
+  useScreenCandidates: () => ({ mutateAsync: jest.fn().mockResolvedValue({}) }),
 }));
 
 jest.mock("@/components/ui/button", () => ({

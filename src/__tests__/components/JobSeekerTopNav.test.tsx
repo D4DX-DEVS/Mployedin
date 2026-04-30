@@ -11,7 +11,7 @@ const translations: Record<string, Record<string, string>> = {
     home: "الرئيسية",
     jobs: "الوظائف",
     applications: "الطلبات",
-    messages: "الرسائل",
+    support: "الدعم",
     profile: "الملف الشخصي",
   },
 };
@@ -44,7 +44,7 @@ describe("JobSeekerTopNav", () => {
     expect(screen.getByText("الرئيسية")).toBeInTheDocument();
     expect(screen.getByText("الوظائف")).toBeInTheDocument();
     expect(screen.getByText("الطلبات")).toBeInTheDocument();
-    expect(screen.getByText("الرسائل")).toBeInTheDocument();
+    expect(screen.getByText("الدعم")).toBeInTheDocument();
     expect(screen.getByText("الملف الشخصي")).toBeInTheDocument();
   });
 
@@ -54,7 +54,7 @@ describe("JobSeekerTopNav", () => {
     expect(screen.getByText("الرئيسية")).toBeInTheDocument();
     expect(screen.getByText("الوظائف")).toBeInTheDocument();
     expect(screen.getByText("الطلبات")).toBeInTheDocument();
-    expect(screen.getByText("الرسائل")).toBeInTheDocument();
+    expect(screen.getByText("الدعم")).toBeInTheDocument();
     expect(screen.getByText("الملف الشخصي")).toBeInTheDocument();
   });
 });

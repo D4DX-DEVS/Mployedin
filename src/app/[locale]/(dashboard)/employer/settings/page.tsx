@@ -20,6 +20,7 @@ import { LogoUpload } from "@/components/features/employer/LogoUpload";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument } from "@/hooks/useEmployerProfile";
 import type { CompanyData } from "@/hooks/useEmployerProfile";
+import { useCountrySearch } from "@/hooks/useCountrySearch";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ interface FormData {
   foundedYear: string;
   designation: string;
   address: string;
+  country: string;
   companyEmail: string;
   phone: string;
   website: string;
@@ -92,6 +94,7 @@ function buildInitialForm(emp?: CompanyData | null): FormData {
     foundedYear: emp?.foundedYear ? String(emp.foundedYear) : "",
     designation: emp?.designation ?? "",
     address: emp?.address ?? "",
+    country: emp?.country ?? "",
     companyEmail: emp?.companyEmail ?? "",
     phone: emp?.phone ?? "",
     website: emp?.website ?? "",
@@ -203,6 +206,7 @@ function CompanySettingsPage() {
 
   // React Query hooks
   const { data: company, isLoading: loading } = useEmployerProfile();
+  const { data: countries = [] } = useCountrySearch("", { loadAll: true });
   const updateProfile = useUpdateEmployerProfile();
   const uploadDocMutation = useUploadDocument();
   const deleteDocMutation = useDeleteDocument();
@@ -306,6 +310,7 @@ function CompanySettingsPage() {
       phone: form.phone,
       designation: form.designation,
       address: form.address,
+      country: form.country || undefined,
       website: form.website ? normalizeUrl(form.website) : "",
       industry: form.industry,
       companySize: form.companySize,
@@ -622,13 +627,25 @@ function CompanySettingsPage() {
                       </div>
                     </div>
 
-                    <div>
-                      <FieldLabel>Address</FieldLabel>
-                      <Input
-                        placeholder="Company address"
-                        value={form.address}
-                        onChange={(e) => setField("address", e.target.value)}
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div>
+                        <FieldLabel>Address</FieldLabel>
+                        <Input
+                          placeholder="Company address"
+                          value={form.address}
+                          onChange={(e) => setField("address", e.target.value)}
+                        />
+                      </div>
+                      <div data-field="country" className="transition-all duration-300">
+                        <FieldLabel>Country</FieldLabel>
+                        <SearchableSelect
+                          options={countries.map((c) => ({ value: c.code, label: `${c.name} (${c.currencyCode})` }))}
+                          value={form.country}
+                          onValueChange={(v) => setField("country", v)}
+                          placeholder="Select country"
+                          searchPlaceholder="Search countries..."
+                        />
+                      </div>
                     </div>
 
                     <Separator />

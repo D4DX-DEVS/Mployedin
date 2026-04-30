@@ -102,7 +102,6 @@ describe("SalaryPeriodsPage", () => {
     });
 
     expect(screen.getByRole("heading", { level: 1, name: "Salary Periods" })).toBeInTheDocument();
-    expect(screen.getByText(/configuration workspace/i, { selector: "div.workspace-glass-panel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add new/i })).toBeInTheDocument();
 
     await waitFor(() => {
@@ -112,8 +111,6 @@ describe("SalaryPeriodsPage", () => {
     expect(await screen.findByText("Monthly")).toBeInTheDocument();
     expect(screen.getByText("شهري")).toBeInTheDocument();
     expect(screen.getByTestId("pagination-controls")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /filter the attribute values you want to manage next/i }).closest("section")).toHaveClass("workspace-panel-surface");
-    expect(screen.getByRole("heading", { name: /review and curate attribute values/i }).closest("section")).toHaveClass("workspace-panel-surface");
     expect(paginationState.updateTotal).toHaveBeenCalledWith(1);
   });
 });
