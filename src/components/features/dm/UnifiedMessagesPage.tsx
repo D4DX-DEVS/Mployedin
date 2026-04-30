@@ -4,13 +4,17 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, Search, Inbox, Loader2, ChevronLeft, Headset, Shield, Users, Building2, Star } from "lucide-react";
+import { MessageSquare, Search, Inbox, Loader2, ChevronLeft, Headset, Shield, Users, Building2, Star, Plus } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DirectMessageChat } from "@/components/features/dm/DirectMessageChat";
 import { NewChatSearch } from "@/components/features/dm/NewChatSearch";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useConversations, conversationKeys } from "@/hooks/useConversations";
 import type { Conversation } from "@/hooks/useConversations";
 
@@ -41,6 +45,8 @@ interface UnifiedMessagesPageProps {
   showNewChat?: boolean;
   /** Whether to show customer care tab (admin only) */
   showCustomerCare?: boolean;
+  /** Support-only mode: hides DM tab, defaults to support */
+  supportOnly?: boolean;
 }
 
 export function UnifiedMessagesPage({
@@ -49,6 +55,7 @@ export function UnifiedMessagesPage({
   description = "Direct messages & conversations",
   showNewChat = true,
   showCustomerCare = false,
+  supportOnly = false,
 }: UnifiedMessagesPageProps) {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
@@ -57,7 +64,7 @@ export function UnifiedMessagesPage({
   const isRtl = locale === "ar";
   const queryClient = useQueryClient();
 
-  const { data: conversations = [], isLoading: loading } = useConversations();
+  const { data: conversations = [], isLoading: loading } = useConversations({ enabled: !supportOnly });
   const { data: customerCareConvs = [], isLoading: customerCareLoading } = useQuery({
     queryKey: ["customerCareConversations"],
     queryFn: async () => {
@@ -66,21 +73,49 @@ export function UnifiedMessagesPage({
       const data = await res.json();
       return (data.conversations ?? []) as Conversation[];
     },
-    enabled: showCustomerCare,
+    enabled: showCustomerCare || supportOnly,
     staleTime: 15 * 1000,
-    refetchInterval: showCustomerCare ? 15_000 : false,
+    refetchInterval: (showCustomerCare || supportOnly) ? 15_000 : false,
   });
   const [search, setSearch] = useState("");
   const [activeConvId, setActiveConvId] = useState<string | null>(
     searchParams.get("conv")
   );
   const [activeTab, setActiveTab] = useState<"dm" | "support">(
-    searchParams.get("tab") === "support" ? "support" : "dm"
+    supportOnly ? "support" : searchParams.get("tab") === "support" ? "support" : "dm"
   );
   // Pending new-chat recipient (conversation not created yet)
   const [pendingRecipientId, setPendingRecipientId] = useState<string | null>(
     searchParams.get("newChat")
   );
+
+  // New support ticket dialog state
+  const [ticketDialogOpen, setTicketDialogOpen] = useState(false);
+  const [ticketCategory, setTicketCategory] = useState("account");
+  const [ticketMessage, setTicketMessage] = useState("");
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
+
+  async function handleCreateTicket() {
+    if (!ticketMessage.trim()) return;
+    setTicketSubmitting(true);
+    try {
+      const res = await fetch("/api/dm/customer-care", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: ticketCategory, message: ticketMessage.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to create ticket");
+      const data = await res.json();
+      const convId = data.conversation?._id;
+      queryClient.invalidateQueries({ queryKey: ["customerCareConversations"] });
+      setTicketDialogOpen(false);
+      setTicketMessage("");
+      setTicketCategory("account");
+      if (convId) selectConversation(convId);
+    } finally {
+      setTicketSubmitting(false);
+    }
+  }
 
   const currentUserId = (session?.user as unknown as { id?: string })?.id ?? "";
 
@@ -171,9 +206,9 @@ export function UnifiedMessagesPage({
     });
   }
 
-  const displayConversations = activeTab === "support" ? customerCareConvs : conversations;
+  const displayConversations = (activeTab === "support" || supportOnly) ? customerCareConvs : conversations;
   const filtered = filterConversations(displayConversations);
-  const isLoadingConvs = activeTab === "support" ? customerCareLoading : loading;
+  const isLoadingConvs = (activeTab === "support" || supportOnly) ? customerCareLoading : loading;
 
   // Find active conversation across both lists
   const activeConversation = pendingConversation
@@ -195,7 +230,56 @@ export function UnifiedMessagesPage({
         title={title}
         description={description}
         actions={
-          showNewChat && activeTab === "dm" ? (
+          supportOnly ? (
+            <Dialog open={ticketDialogOpen} onOpenChange={setTicketDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="gap-1.5">
+                  <Plus className="h-4 w-4" />
+                  New Ticket
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>New Support Ticket</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-4 pt-2">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium">Category</label>
+                    <Select value={ticketCategory} onValueChange={setTicketCategory}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="account">Account</SelectItem>
+                        <SelectItem value="job_search">Job Search</SelectItem>
+                        <SelectItem value="technical">Technical</SelectItem>
+                        <SelectItem value="billing">Billing</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium">Message</label>
+                    <Textarea
+                      value={ticketMessage}
+                      onChange={(e) => setTicketMessage(e.target.value)}
+                      placeholder="Describe your issue…"
+                      rows={4}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleCreateTicket}
+                    disabled={!ticketMessage.trim() || ticketSubmitting}
+                  >
+                    {ticketSubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    Submit Ticket
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          ) : showNewChat && activeTab === "dm" ? (
             <NewChatSearch dashboardPrefix={dashboardPrefix as "employer" | "job-seeker"} />
           ) : undefined
         }
@@ -210,8 +294,8 @@ export function UnifiedMessagesPage({
             (activeConvId || pendingRecipientId) ? "hidden md:flex" : "flex"
           )}
         >
-          {/* Tab switcher for admin */}
-          {showCustomerCare && (
+          {/* Tab switcher - hidden in supportOnly mode */}
+          {showCustomerCare && !supportOnly && (
             <div className="flex border-b">
               <button
                 onClick={() => { setActiveTab("dm"); setActiveConvId(null); }}
@@ -273,8 +357,8 @@ export function UnifiedMessagesPage({
                 <p className="text-xs text-muted-foreground">
                   {search
                     ? "No conversations match your search."
-                    : activeTab === "support"
-                    ? "No support tickets yet."
+                    : (activeTab === "support" || supportOnly)
+                    ? 'No support tickets yet. Click "New Ticket" to contact support.'
                     : 'No conversations yet. Start one with the "New Chat" button above.'}
                 </p>
               </div>

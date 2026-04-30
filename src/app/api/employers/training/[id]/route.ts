@@ -76,6 +76,6 @@ async function DELETE(
   return NextResponse.json({ success: true });
 }
 
-export const PATCH_handler = withAuth(PATCH, { resource: "employers", action: "update" });
-export const DELETE_handler = withAuth(DELETE, { resource: "employers", action: "delete" });
+const PATCH_handler = withAuth(PATCH, { resource: "employers", action: "update" });
+const DELETE_handler = withAuth(DELETE, { resource: "employers", action: "delete" });
 export { PATCH_handler as PATCH, DELETE_handler as DELETE };

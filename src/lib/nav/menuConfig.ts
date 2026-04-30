@@ -1330,12 +1330,12 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "ادعُ أصدقاءك واكسب مكافآت",
           },
           {
-            title: "Messages",
-            titleAr: "الرسائل",
+            title: "Support",
+            titleAr: "الدعم",
             href: p("/job-seeker/messages"),
-            icon: "MessageSquare",
-            description: "Chat with employers & support",
-            descriptionAr: "الدردشة مع أصحاب العمل والدعم",
+            icon: "Headset",
+            description: "Contact support for help",
+            descriptionAr: "تواصل مع الدعم للمساعدة",
           },
           {
             title: "Settings",

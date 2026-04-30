@@ -50,6 +50,6 @@ async function POST(req: NextRequest, ctx: { userId: string; role: string; local
   return NextResponse.json({ message: msg }, { status: 201 });
 }
 
-export const GET_handler = withAuth(GET, { resource: "notifications", action: "read" });
-export const POST_handler = withAuth(POST, { resource: "notifications", action: "create" });
+const GET_handler = withAuth(GET, { resource: "notifications", action: "read" });
+const POST_handler = withAuth(POST, { resource: "notifications", action: "create" });
 export { GET_handler as GET, POST_handler as POST };

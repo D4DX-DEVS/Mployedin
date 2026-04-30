@@ -6,10 +6,11 @@ export default function JobSeekerMessagesPage() {
   return (
     <UnifiedMessagesPage
       dashboardPrefix="job-seeker"
-      title="Messages"
-      description="Chat with employers & contact support"
-      showNewChat={true}
+      title="Support"
+      description="Contact support for help"
+      showNewChat={false}
       showCustomerCare={true}
+      supportOnly={true}
     />
   );
 }

@@ -4,20 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { type LucideIcon, Home, Briefcase, FileText, MessageCircle, UserCircle, Sparkles } from "lucide-react";
+import { type LucideIcon, Home, Briefcase, FileText, Headset, UserCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface JobSeekerTopNavProps {
   locale: string;
 }
 
-type NavItemKey = "home" | "jobs" | "applications" | "messages" | "profile";
+type NavItemKey = "home" | "jobs" | "applications" | "support" | "profile";
 
 const NAV_ITEMS: Array<{ labelKey: NavItemKey; href: string; icon: LucideIcon; aiPowered?: boolean }> = [
   { labelKey: "home", href: "/job-seeker", icon: Home },
   { labelKey: "jobs", href: "/job-seeker/jobs", icon: Briefcase, aiPowered: true },
   { labelKey: "applications", href: "/job-seeker/applications", icon: FileText },
-  { labelKey: "messages", href: "/job-seeker/messages", icon: MessageCircle },
+  { labelKey: "support", href: "/job-seeker/messages", icon: Headset },
   { labelKey: "profile", href: "/job-seeker/profile", icon: UserCircle },
 ];
 

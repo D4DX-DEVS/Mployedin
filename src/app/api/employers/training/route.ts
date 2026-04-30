@@ -76,6 +76,6 @@ async function POST(req: NextRequest, ctx: { userId: string }) {
   return NextResponse.json({ item }, { status: 201 });
 }
 
-export const GET_handler = withAuth(GET, { resource: "employers", action: "read" });
-export const POST_handler = withAuth(POST, { resource: "employers", action: "create" });
+const GET_handler = withAuth(GET, { resource: "employers", action: "read" });
+const POST_handler = withAuth(POST, { resource: "employers", action: "create" });
 export { GET_handler as GET, POST_handler as POST };

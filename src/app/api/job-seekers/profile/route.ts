@@ -156,6 +156,6 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   return NextResponse.json({ success: true, isOnboarded: updated.isOnboarded });
 }
 
-export const GET_handler = withAuth(GET);
-export const PATCH_handler = withAuth(PATCH);
+const GET_handler = withAuth(GET);
+const PATCH_handler = withAuth(PATCH);
 export { GET_handler as GET, PATCH_handler as PATCH };

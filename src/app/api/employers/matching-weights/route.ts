@@ -64,6 +64,6 @@ async function PATCH(req: NextRequest, ctx: { userId: string }) {
   return NextResponse.json({ success: true });
 }
 
-export const GET_handler = withAuth(GET, { resource: "employers", action: "read" });
-export const PATCH_handler = withAuth(PATCH, { resource: "employers", action: "update" });
+const GET_handler = withAuth(GET, { resource: "employers", action: "read" });
+const PATCH_handler = withAuth(PATCH, { resource: "employers", action: "update" });
 export { GET_handler as GET, PATCH_handler as PATCH };

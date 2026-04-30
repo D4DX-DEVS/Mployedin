@@ -41,15 +41,16 @@ async function fetchConversations(): Promise<Conversation[]> {
   return data.conversations;
 }
 
-export function useConversations() {
+export function useConversations(options?: { enabled?: boolean }) {
   const { data: session } = useSession();
   const currentUserId = (session?.user as unknown as { id?: string })?.id ?? "";
+  const externalEnabled = options?.enabled ?? true;
 
   return useQuery({
     queryKey: conversationKeys.lists(),
     queryFn: fetchConversations,
-    enabled: !!currentUserId,
+    enabled: !!currentUserId && externalEnabled,
     staleTime: 30 * 1000,
-    refetchInterval: 30_000, // Poll every 30s (balanced between freshness and load)
+    refetchInterval: externalEnabled ? 30_000 : false,
   });
 }
