@@ -270,7 +270,7 @@ export const EmailTemplates = {
         </div>
         <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
           <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
-          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Thank you for joining MPLOYEDIN! Please verify your email address to unlock full access to job recommendations, applications, and profile visibility to employers.</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Thank you for joining MPLOYEDIN! Please verify your email address to unlock full access to your account and all platform features.</p>
           <div style="text-align: center; margin: 32px 0;">
             <a href="${verifyUrl}" style="background: #0D6FD8; color: white; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block; box-shadow: 0 2px 4px rgba(13,111,216,0.3);">Verify My Email</a>
           </div>

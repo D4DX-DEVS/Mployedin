@@ -12,6 +12,7 @@ import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
+import { uploadBuffer } from "@/lib/storage/spaces";
 
 export const runtime = "nodejs";
 
@@ -47,6 +48,38 @@ export async function POST(req: NextRequest) {
 
     // Step 2 — verification
     const verificationLevel = get("verificationLevel") || "basic";
+
+    // Step 2 — handle file uploads for Standard/Premium verification
+    let tradeLicenseUrl: string | undefined;
+    let mohCertUrl: string | undefined;
+
+    if (verificationLevel !== "basic") {
+      const tradeLicenseFile = form.get("tradeLicense") as File | null;
+      if (tradeLicenseFile && tradeLicenseFile.size > 0) {
+        const buffer = Buffer.from(await tradeLicenseFile.arrayBuffer());
+        const result = await uploadBuffer(buffer, {
+          folder: "documents",
+          fileName: tradeLicenseFile.name,
+          contentType: tradeLicenseFile.type,
+          validateAs: "cv",
+        });
+        tradeLicenseUrl = result.url;
+      }
+    }
+
+    if (verificationLevel === "premium") {
+      const mohCertFile = form.get("mohCert") as File | null;
+      if (mohCertFile && mohCertFile.size > 0) {
+        const buffer = Buffer.from(await mohCertFile.arrayBuffer());
+        const result = await uploadBuffer(buffer, {
+          folder: "documents",
+          fileName: mohCertFile.name,
+          contentType: mohCertFile.type,
+          validateAs: "cv",
+        });
+        mohCertUrl = result.url;
+      }
+    }
 
     // Step 3 — contact
     const contactName = get("contactName");
@@ -159,8 +192,8 @@ export async function POST(req: NextRequest) {
       country,
       city,
       designation: contactTitle,
-      verificationLevel,
-      verificationStatus: verificationLevel === "basic" ? "verified" : "pending",
+      verificationLevel: verificationLevel === "standard" ? "company" : verificationLevel,
+      verificationDocs: [tradeLicenseUrl, mohCertUrl].filter(Boolean),
       ...(referrerAgentId ? { agentId: referrerAgentId } : {}),
       isAgentVerified,
       ...(verifiedByAgentId ? { verifiedByAgentId } : {}),
