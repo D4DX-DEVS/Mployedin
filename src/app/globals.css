@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "tailwindcss" source("../../src");
 
 /* Prevent horizontal overflow on all viewports — use clip instead of hidden
    so position:sticky still works (overflow:hidden creates a scroll container) */
