@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
@@ -20,6 +21,14 @@ if (process.env.NODE_ENV === "production") {
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
+
+  // Ensure Vercel's file tracer includes page_client-reference-manifest.js files
+  // generated for App Router pages inside route groups like (public) and [locale].
+  // Without this, lstat errors occur at runtime on Vercel serverless functions.
+  outputFileTracingRoot: path.join(__dirname, "../"),
+  outputFileTracingIncludes: {
+    "/**": ["./.next/server/**/*-manifest.js", "./.next/server/**/*.json"],
+  },
 
   experimental: {
     // Tree-shake barrel exports from heavy icon/UI packages — cuts initial JS by ~30-40 %
