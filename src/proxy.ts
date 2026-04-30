@@ -186,12 +186,13 @@ export default auth(async function middleware(req: NextRequest) {
     }
   }
 
-  // Redirect authenticated users away from auth pages only (not all public pages)
+  // Redirect authenticated users away from auth pages and the landing page
   if (session?.user && isPublic) {
     const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
     const isAuthRoute = AUTH_ROUTES.some((r) => stripped.startsWith(r));
     const isVerifyEmailRoute = stripped.startsWith("/verify-email");
-    if (isAuthRoute && !(isVerifyEmailRoute && session.user.isEmailVerified === false)) {
+    const isRootLanding = stripped === "/";
+    if ((isAuthRoute || isRootLanding) && !(isVerifyEmailRoute && session.user.isEmailVerified === false)) {
       const role = session.user.role;
       const urlLocale = pathname.split("/")[1] || defaultLocale;
       return withSecurityHeaders(

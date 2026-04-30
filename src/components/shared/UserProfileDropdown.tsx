@@ -115,7 +115,7 @@ export function UserProfileDropdown({
       // Clear idle timeout tracker
       localStorage.removeItem("mployedin_last_activity");
       await Promise.race([
-        signOut({ redirect: false }),
+        signOut({ redirect: false }).catch(() => {}),
         new Promise((resolve) => setTimeout(resolve, 4000)),
       ]);
     } catch {
