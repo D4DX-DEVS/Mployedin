@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
@@ -22,12 +21,14 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
 
-  // Ensure Vercel's file tracer includes page_client-reference-manifest.js files
-  // generated for App Router pages inside route groups like (public) and [locale].
-  // Without this, lstat errors occur at runtime on Vercel serverless functions.
-  outputFileTracingRoot: path.join(__dirname, "../"),
+  // Vercel's nft (node-file-trace) can miss files whose paths contain special
+  // characters like "[" or "(" (dynamic segments / route groups). Explicitly
+  // include every App Router manifest so the serverless function bundle is complete.
   outputFileTracingIncludes: {
-    "/**": ["./.next/server/**/*-manifest.js", "./.next/server/**/*.json"],
+    "/**": [
+      "./.next/server/app/**/*-manifest.js",
+      "./.next/server/app/**/*.json",
+    ],
   },
 
   experimental: {
