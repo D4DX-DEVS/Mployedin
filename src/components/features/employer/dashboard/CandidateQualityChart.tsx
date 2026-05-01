@@ -166,9 +166,9 @@ export function CandidateQualityChart({
           {statCards.map((stat) => (
             <div
               key={stat.label}
-              className={`rounded-2xl border px-2.5 py-2.5 text-center sm:px-3 sm:py-3 ${stat.borderClass} ${stat.surfaceClass}`}
+              className={`overflow-hidden rounded-2xl border px-2.5 py-2.5 text-center sm:px-3 sm:py-3 ${stat.borderClass} ${stat.surfaceClass}`}
             >
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{stat.label}</p>
+              <p className="truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground sm:tracking-[0.18em]">{stat.label}</p>
               <p className={`mt-1.5 text-lg font-semibold tracking-tight sm:text-xl ${stat.valueClass}`}>{stat.value}</p>
               <p className="text-[10px] text-muted-foreground">{stat.detail}</p>
             </div>

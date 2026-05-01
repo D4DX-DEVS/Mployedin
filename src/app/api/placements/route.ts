@@ -73,7 +73,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     query.placedAt = dateQuery;
   }
 
-  const [placements, total, aggregation] = await Promise.all([
+  const [placements, total, aggregation, statusAgg] = await Promise.all([
     Placement.find(query)
       .populate("jobId", "title location")
       .populate("jobSeekerId", "userId")
@@ -90,6 +90,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     Placement.aggregate([
       { $match: query },
       { $group: { _id: "$currency", totalSalary: { $sum: "$salary" }, count: { $sum: 1 } } },
+    ]),
+    // Aggregate status counts (unfiltered by status for accurate totals)
+    Placement.aggregate([
+      { $match: { ...query, ...(query.status ? {} : {}) } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
   ]);
 
@@ -146,6 +151,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     total: search ? filtered.length : total,
     totalSalaryValue,
     salaryByCurrency,
+    statusCounts: Object.fromEntries(statusAgg.map((s) => [s._id ?? "unknown", s.count])),
     pagination: { page, limit, total: search ? filtered.length : total, pages: Math.ceil((search ? filtered.length : total) / limit) },
   }, {
     headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },

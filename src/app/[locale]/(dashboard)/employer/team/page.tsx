@@ -243,6 +243,17 @@ export default function TeamManagementPage() {
           </Button>
         </div>
       ) : (
+        <div className="space-y-4">
+          {/* ── Search & Export Toolbar ── */}
+          <TableToolbar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by name, email, or role…"
+            onExportCsv={handleExportCsv}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+          />
+
         <div className="card-base overflow-hidden">
           {/* ── Desktop Table ── */}
           <div className="hidden md:block overflow-x-auto">
@@ -258,7 +269,7 @@ export default function TeamManagementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {members.map((member) => (
+                {pagedMembers.map((member) => (
                   <tr key={member._id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
@@ -350,7 +361,7 @@ export default function TeamManagementPage() {
 
           {/* ── Mobile Card List ── */}
           <div className="md:hidden divide-y divide-border/40">
-            {members.map((member) => (
+            {pagedMembers.map((member) => (
               <div key={member._id} className="p-4 space-y-3">
                 {/* Member info row */}
                 <div className="flex items-start justify-between gap-3">
@@ -430,6 +441,19 @@ export default function TeamManagementPage() {
               </div>
             ))}
           </div>
+        </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              limit={limit}
+              onPageChange={setPage}
+              onLimitChange={setLimit}
+            />
+          )}
         </div>
       )}
 

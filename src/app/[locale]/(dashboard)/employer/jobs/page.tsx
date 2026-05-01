@@ -99,9 +99,9 @@ export default function EmployerJobsPage() {
     jobTemplates.filter((t) => t.sourceJobId).map((t) => t.sourceJobId as string)
   );
 
-  const activeJobs = jobs.filter((job) => job.status === "active").length;
-  const draftJobs = jobs.filter((job) => job.status === "draft").length;
-  const pausedJobs = jobs.filter((job) => job.status === "paused").length;
+  const activeJobs = data?.statusCounts?.active ?? jobs.filter((job) => job.status === "active").length;
+  const draftJobs = data?.statusCounts?.draft ?? jobs.filter((job) => job.status === "draft").length;
+  const pausedJobs = data?.statusCounts?.paused ?? jobs.filter((job) => job.status === "paused").length;
   const hiddenSalaryJobs = jobs.filter((job) => job.showSalary === false).length;
   const totalOpenings = jobs.reduce((sum, job) => sum + (job.vacancies ?? 0), 0);
 

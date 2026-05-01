@@ -17,6 +17,7 @@ interface PlacementsResponse {
   placements?: Placement[];
   items?: Placement[];
   total?: number;
+  statusCounts?: Record<string, number>;
 }
 
 export interface PlacementsFilters {
@@ -33,7 +34,7 @@ export const placementKeys = {
 };
 
 // ── Fetcher ────────────────────────────────────────────────────────
-async function fetchPlacements(filters: PlacementsFilters): Promise<{ placements: Placement[]; total: number }> {
+async function fetchPlacements(filters: PlacementsFilters): Promise<{ placements: Placement[]; total: number; statusCounts?: Record<string, number> }> {
   const params = new URLSearchParams();
   params.set("page", String(filters.page));
   params.set("limit", String(filters.limit));
@@ -43,7 +44,7 @@ async function fetchPlacements(filters: PlacementsFilters): Promise<{ placements
   if (!res.ok) throw new Error("Failed to fetch placements");
   const data: PlacementsResponse = await res.json();
   const items = data.placements ?? data.items ?? [];
-  return { placements: items, total: data.total ?? items.length };
+  return { placements: items, total: data.total ?? items.length, statusCounts: data.statusCounts };
 }
 
 // ── Hooks ──────────────────────────────────────────────────────────

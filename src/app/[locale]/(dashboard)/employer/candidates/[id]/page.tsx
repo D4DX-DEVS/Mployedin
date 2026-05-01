@@ -538,6 +538,8 @@ export default function UnifiedCandidatePage() {
                     src={candidate.cv.originalUrl}
                     className="w-full h-full border-0"
                     title={`${name}'s Resume`}
+                    sandbox="allow-same-origin"
+                    referrerPolicy="no-referrer"
                   />
                 </div>
               </div>

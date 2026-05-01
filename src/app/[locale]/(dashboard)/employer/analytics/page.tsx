@@ -117,7 +117,7 @@ export default function EmployerAnalyticsPage() {
           },
           {
             label: "In Pipeline",
-            value: data.conversion.applied - data.conversion.hired - (pipeline.perJob.reduce((sum, j) => sum + (j.stages.find((s) => s.status === "rejected")?.count || 0), 0)),
+            value: Math.max(0, data.conversion.applied - data.conversion.hired - (pipeline.perJob.reduce((sum, j) => sum + (j.stages.find((s) => s.status === "rejected")?.count || 0), 0))),
             description: "Active candidates right now",
             icon: TrendingUp,
             color: "indigo",
@@ -419,13 +419,22 @@ export default function EmployerAnalyticsPage() {
           setCustomEnd={setCustomEnd}
         />
       )}
+      {activeTab === "historical" && !historical && (
+        <TabLoadingSkeleton />
+      )}
 
       {activeTab === "performance" && performance && (
         <PerformanceTab performance={performance} />
       )}
+      {activeTab === "performance" && !performance && (
+        <TabLoadingSkeleton />
+      )}
 
       {activeTab === "response" && responseTime && (
         <ResponseTimeTab data={responseTime} />
+      )}
+      {activeTab === "response" && !responseTime && (
+        <TabLoadingSkeleton />
       )}
 
       {activeTab === "pipeline" && (
@@ -433,6 +442,24 @@ export default function EmployerAnalyticsPage() {
           Live pipeline analytics refresh automatically every {AUTO_REFRESH_MS / 1000} seconds.
         </p>
       )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Tab Loading Skeleton
+   ══════════════════════════════════════════════════════════════════ */
+
+function TabLoadingSkeleton() {
+  return (
+    <div className="workspace-panel-surface rounded-[28px] p-6 space-y-4 animate-pulse">
+      <div className="h-5 w-48 bg-muted rounded" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-24 rounded-2xl bg-muted/60" />
+        ))}
+      </div>
+      <div className="h-64 rounded-2xl bg-muted/40" />
     </div>
   );
 }

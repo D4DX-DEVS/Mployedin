@@ -128,7 +128,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (employerId) query.employerId = employerId;
 
   const skip = (page - 1) * limit;
-  const [jobs, total] = await Promise.all([
+  const [jobs, total, statusAgg] = await Promise.all([
     Job.find(query)
       .sort(search ? { score: { $meta: "textScore" } } : { createdAt: -1 })
       .skip(skip)
@@ -136,6 +136,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .populate("employerId", "companyName country industry logo")
       .lean(),
     Job.countDocuments(query),
+    // Status counts for stat cards (use base query without status filter)
+    canFilterManagedJobs
+      ? Job.aggregate([
+          { $match: { ...query, ...(status ? { status: { $exists: true } } : {}) } },
+          { $group: { _id: "$status", count: { $sum: 1 } } },
+        ]).then((agg) => Object.fromEntries(agg.map((s) => [s._id, s.count])))
+      : Promise.resolve(undefined),
   ]);
   // Aggregate real application counts from Application collection for managed job views
   if (canFilterManagedJobs && jobs.length > 0) {
@@ -153,6 +160,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({
     jobs,
     pagination: { page, limit, total, pages: Math.ceil(total / limit), totalPages: Math.ceil(total / limit) },
+    ...(statusAgg && { statusCounts: statusAgg }),
   }, {
     headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
   });

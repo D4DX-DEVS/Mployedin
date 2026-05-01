@@ -123,7 +123,8 @@ export default function EmployerOffersPage() {
   }
 
   function formatSalary(offer: Offer): string {
-    return `${offer.salary.currency} ${offer.salary.amount.toLocaleString()}`;
+    if (!offer.salary?.amount) return "Not disclosed";
+    return `${offer.salary.currency ?? "AED"} ${offer.salary.amount.toLocaleString()}`;
   }
 
   return (
@@ -401,8 +402,8 @@ export default function EmployerOffersPage() {
             </div>
             <div className="flex justify-end gap-2 px-6 py-5">
               <Button variant="ghost" className="rounded-xl" onClick={() => setWithdrawingId(null)}>Cancel</Button>
-              <Button variant="destructive" className="rounded-xl" onClick={() => handleWithdraw(withdrawingId)}>
-                Withdraw Offer
+              <Button variant="destructive" className="rounded-xl" disabled={withdrawMutation.isPending} onClick={() => handleWithdraw(withdrawingId)}>
+                {withdrawMutation.isPending ? "Withdrawing…" : "Withdraw Offer"}
               </Button>
             </div>
           </div>

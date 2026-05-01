@@ -131,8 +131,11 @@ jest.mock("@/models/Agent", () => ({
 }));
 
 // ── Import route after mocks ────────────────────────────────────────────────
-import { POST } from "@/app/api/interviews/bulk/route";
+import { POST as _POST } from "@/app/api/interviews/bulk/route";
 import Interview from "@/models/Interview";
+
+// withAuth mock strips the second arg requirement
+const POST = _POST as unknown as (req: NextRequest) => Promise<Response>;
 
 function createBulkRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest("http://localhost:3000/api/interviews/bulk", {

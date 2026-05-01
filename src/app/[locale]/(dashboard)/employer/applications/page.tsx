@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import {
   Award,
   BarChart3,
@@ -568,9 +569,14 @@ export default function EmployerApplicationsPage() {
     }).filter((c) => c.jobSeekerId);
 
     try {
+      const resolvedJobId = jobFilter || filteredApplications[0]?.jobId?._id;
+      if (!resolvedJobId) {
+        toast.error("Unable to determine job for interview scheduling. Please select a job filter.");
+        return;
+      }
       await createInterview.mutateAsync({
         candidates,
-        jobId: jobFilter || filteredApplications[0]?.jobId?._id || "",
+        jobId: resolvedJobId,
         scheduledAt: data.scheduledAt,
         type: data.type,
         duration: data.duration,
@@ -1277,8 +1283,8 @@ export default function EmployerApplicationsPage() {
         totalPages={totalPages}
         total={total}
         limit={limit}
-        onPageChange={setPage}
-        onLimitChange={(newLimit: number) => { setLimit(newLimit); setPage(1); }}
+        onPageChange={(p: number) => { setPage(p); setSelected([]); }}
+        onLimitChange={(newLimit: number) => { setLimit(newLimit); setPage(1); setSelected([]); }}
       />
     </div>
   );

@@ -28,19 +28,20 @@ export default function EmployerPlacementsPage() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
-  // Compute stats from current page (best effort)
+  // Compute stats from API-level statusCounts (accurate totals across all pages)
+  const statusCounts = data?.statusCounts;
   const stats = useMemo(() => {
-    const now = new Date();
     return {
       total,
-      active: placements.filter((p) => p.status === "active").length,
-      completed: placements.filter((p) => p.status === "completed").length,
+      active: statusCounts?.active ?? 0,
+      completed: statusCounts?.completed ?? 0,
       thisMonth: placements.filter((p) => {
+        const now = new Date();
         const d = new Date(p.createdAt);
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       }).length,
     };
-  }, [placements, total]);
+  }, [statusCounts, total, placements]);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: "Candidate", key: "candidateName", formatter: (v) => String(v ?? "Candidate") },
