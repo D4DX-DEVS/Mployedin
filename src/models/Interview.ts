@@ -21,7 +21,7 @@ export interface IInterview extends Document {
   agentId?: mongoose.Types.ObjectId;
   type: InterviewType;
   scheduledAt: Date;
-  duration: InterviewDuration;
+  duration: number;
   location?: string;
   meetLink?: string;
   instructions?: string;
@@ -65,7 +65,7 @@ const InterviewSchema = new Schema<IInterview>(
       required: true,
     },
     scheduledAt: { type: Date, required: true },
-    duration: { type: Number, enum: [15, 30, 45, 60], default: 30 },
+    duration: { type: Number, min: 15, max: 480, default: 30 },
     location: String,
     meetLink: String,
     instructions: String,
@@ -106,6 +106,11 @@ InterviewSchema.index({ jobSeekerId: 1 });
 InterviewSchema.index({ employerId: 1 });
 InterviewSchema.index({ scheduledAt: 1 });
 InterviewSchema.index({ status: 1 });
+// Prevent duplicate active interviews for same application + round (race condition guard)
+InterviewSchema.index(
+  { applicationId: 1, interviewRound: 1 },
+  { unique: true, partialFilterExpression: { status: { $in: ["scheduled", "confirmed"] } } }
+);
 
 export const Interview =
   mongoose.models.Interview ||

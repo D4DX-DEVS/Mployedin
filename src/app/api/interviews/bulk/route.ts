@@ -158,6 +158,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // Auto-calculate next available time slot (respects working hours + breaks)
       const candidateTime = nextAvailableSlot(slotCursor, slotDuration);
 
+      // ── Duplicate guard: skip if candidate already has active interview for same job ──
+      const existingInterview = await Interview.findOne({
+        applicationId: candidate.applicationId,
+        status: { $in: ["scheduled", "confirmed"] },
+      }).select("_id").lean();
+
+      if (existingInterview) {
+        failed.push(candidate.applicationId);
+        slotCursor = new Date(candidateTime.getTime() + (slotDuration + gapMinutes) * 60_000);
+        continue;
+      }
+
       const interview = await Interview.create({
         applicationId: candidate.applicationId,
         jobSeekerId: application.jobSeekerId,

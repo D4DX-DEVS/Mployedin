@@ -1,0 +1,39 @@
+"use client";
+
+import { useEffect } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+
+export default function AgentInterviewsError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error("[Agent Interviews Error]", error);
+  }, [error]);
+
+  return (
+    <div className="page-container flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center gap-4 p-8 rounded-lg border border-destructive/20 bg-destructive/5 max-w-md text-center">
+        <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+          <AlertTriangle className="w-6 h-6 text-destructive" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold text-destructive">Failed to load interviews</h3>
+          <p className="text-sm text-muted-foreground">
+            {error.message || "An unexpected error occurred while loading interviews."}
+          </p>
+        </div>
+        <button
+          onClick={reset}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
+}

@@ -36,11 +36,13 @@ const TASK_MODEL_MAP: Record<AITask, keyof typeof GEMINI_MODELS> = {
  */
 export async function routeGenerate(
   prompt: string,
-  task: AITask = "chat"
+  task: AITask = "chat",
+  options?: { jsonMode?: boolean; maxTokens?: number }
 ): Promise<string> {
   const modelKey = TASK_MODEL_MAP[task];
   const model = GEMINI_MODELS[modelKey];
-  const maxOutputTokens = AI_TOKEN_LIMITS[task];
+  const maxOutputTokens = options?.maxTokens ?? AI_TOKEN_LIMITS[task];
+  const jsonMode = options?.jsonMode ?? false;
 
   // Check cache first
   const hash = createHash("sha256").update(`${task}:${prompt}`).digest("hex");
@@ -57,12 +59,12 @@ export async function routeGenerate(
 
   let result: string;
   try {
-    result = await generateText(prompt, model, maxOutputTokens);
+    result = await generateText(prompt, model, maxOutputTokens, jsonMode);
   } catch (err: unknown) {
     // Fallback to flash on error
     if (model !== GEMINI_MODELS.flash) {
       logger.warn({ err, model, task }, "AI model failed, falling back to flash");
-      result = await generateText(prompt, GEMINI_MODELS.flash, maxOutputTokens);
+      result = await generateText(prompt, GEMINI_MODELS.flash, maxOutputTokens, jsonMode);
     } else {
       throw err;
     }
@@ -78,6 +80,19 @@ export async function routeGenerate(
   }).catch((err) => logger.warn({ err }, "AI cache write failed"));
 
   return result;
+}
+
+/**
+ * Invalidate a cached AI response (e.g. when the cached result is malformed).
+ */
+export async function invalidateAICache(task: AITask, prompt: string): Promise<void> {
+  const hash = createHash("sha256").update(`${task}:${prompt}`).digest("hex");
+  try {
+    await connectDB();
+    await AICache.deleteOne({ hash });
+  } catch (err) {
+    logger.warn({ err }, "AI cache invalidation failed");
+  }
 }
 
 /**

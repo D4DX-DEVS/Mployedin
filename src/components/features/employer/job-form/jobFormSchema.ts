@@ -210,7 +210,12 @@ export function formatSalary(amount: number, currency: CurrencyCode, period: str
   const currencyObj = CURRENCIES.find((c) => c.code === currency);
   const symbol = currencyObj?.symbol ?? currency;
 
-  if (currency === "INR" && period === "lpa") {
+  // When period is LPA, user enters value directly in lakhs (e.g. 35 = 35L)
+  if (period === "lpa") {
+    return `${symbol}${amount % 1 === 0 ? amount : amount.toFixed(1)}L`;
+  }
+
+  if (currency === "INR" && amount >= 100000) {
     const lpa = amount / 100000;
     return `₹${lpa % 1 === 0 ? lpa : lpa.toFixed(1)}L`;
   }

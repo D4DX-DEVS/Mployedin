@@ -42,7 +42,8 @@ async function openRouterFetch(
   model: GeminiModel,
   messages: OpenRouterMessage[],
   maxTokens?: number,
-  stream = false
+  stream = false,
+  jsonMode = false
 ): Promise<Response> {
   return fetch(`${OPENROUTER_BASE}/chat/completions`, {
     method: "POST",
@@ -56,6 +57,7 @@ async function openRouterFetch(
       model,
       messages,
       ...(maxTokens ? { max_tokens: maxTokens } : {}),
+      ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
       stream,
     }),
   });
@@ -65,10 +67,11 @@ async function openRouterFetch(
 export async function generateText(
   prompt: string,
   model: GeminiModel = GEMINI_MODELS.flash,
-  maxOutputTokens?: number
+  maxOutputTokens?: number,
+  jsonMode = false
 ): Promise<string> {
   const start = Date.now();
-  const res = await openRouterFetch(model, [{ role: "user", content: prompt }], maxOutputTokens);
+  const res = await openRouterFetch(model, [{ role: "user", content: prompt }], maxOutputTokens, false, jsonMode);
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`OpenRouter error ${res.status}: ${err}`);

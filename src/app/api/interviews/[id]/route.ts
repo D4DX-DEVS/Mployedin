@@ -38,8 +38,56 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     update.rescheduleCount = (interview.rescheduleCount ?? 0) + 1;
   }
 
+  // Also increment rescheduleCount when scheduledAt is changed (in-place reschedule)
+  if (body.scheduledAt && !body.status) {
+    update.rescheduleCount = (interview.rescheduleCount ?? 0) + 1;
+    // Reset candidate response since time changed — they need to re-confirm
+    update.candidateResponse = "pending";
+    update.candidateResponseAt = undefined;
+    // Keep status as "scheduled" even if it was previously "confirmed"
+    if (interview.status === "confirmed") {
+      update.status = "scheduled";
+    }
+  }
+
   Object.assign(interview, update);
   await interview.save();
+
+  // Notify candidate when interview is rescheduled (in-place)
+  if (body.scheduledAt && !body.status) {
+    const jobSeeker = await JobSeeker.findById(interview.jobSeekerId).select("userId").lean();
+    const job = await Job.findById(interview.jobId).select("title").lean();
+    const jobTitle = (job as { title?: string } | null)?.title ?? "a position";
+    if (jobSeeker) {
+      await notify({
+        userId: String((jobSeeker as { userId: unknown }).userId),
+        type: "interview_scheduled",
+        title: "Interview Rescheduled",
+        message: `Your interview for "${jobTitle}" has been rescheduled to ${new Date(body.scheduledAt).toLocaleString()}. Please confirm your availability.`,
+        link: `/en/job-seeker/interviews`,
+        sendEmail: true,
+        metadata: { jobTitle, interviewId: params?.id, scheduledAt: body.scheduledAt },
+      }).catch(() => { /* non-blocking */ });
+    }
+  }
+
+  // Notify candidate when interview is cancelled via PATCH
+  if (body.status === "cancelled") {
+    const jobSeeker = await JobSeeker.findById(interview.jobSeekerId).select("userId").lean();
+    const job = await Job.findById(interview.jobId).select("title").lean();
+    const jobTitle = (job as { title?: string } | null)?.title ?? "a position";
+    if (jobSeeker) {
+      await notify({
+        userId: String((jobSeeker as { userId: unknown }).userId),
+        type: "interview_update",
+        title: "Interview Cancelled",
+        message: `Your interview for "${jobTitle}" has been cancelled by the employer.`,
+        link: `/en/job-seeker/interviews`,
+        sendEmail: true,
+        metadata: { jobTitle, interviewId: params?.id },
+      }).catch(() => { /* non-blocking */ });
+    }
+  }
 
   // Handle outcome-based workflow transitions
   if (body.status === "completed" && body.outcome) {
@@ -119,6 +167,22 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
 
   interview.status = "cancelled";
   await interview.save();
+
+  // Notify candidate about cancellation
+  const cancelledJobSeeker = await JobSeeker.findById(interview.jobSeekerId).select("userId").lean();
+  const cancelledJob = await Job.findById(interview.jobId).select("title").lean();
+  const cancelledJobTitle = (cancelledJob as { title?: string } | null)?.title ?? "a position";
+  if (cancelledJobSeeker) {
+    await notify({
+      userId: String((cancelledJobSeeker as { userId: unknown }).userId),
+      type: "interview_update",
+      title: "Interview Cancelled",
+      message: `Your interview for "${cancelledJobTitle}" has been cancelled by the employer.`,
+      link: `/en/job-seeker/interviews`,
+      sendEmail: true,
+      metadata: { jobTitle: cancelledJobTitle, interviewId: params?.id },
+    }).catch(() => { /* non-blocking */ });
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

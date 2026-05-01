@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
-import { routeGenerate } from "@/lib/ai/router";
+import { routeGenerate, invalidateAICache } from "@/lib/ai/router";
 import { connectDB } from "@/lib/db/mongoose";
 import Interview from "@/models/Interview";
 import Job from "@/models/Job";
 import { JobSeeker } from "@/models/JobSeeker";
 import { Application } from "@/models/Application";
+
+function parseJsonResponse(raw: string): unknown {
+  let cleaned = raw.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
+  const jsonStart = cleaned.indexOf("{");
+  const jsonEnd = cleaned.lastIndexOf("}");
+  if (jsonStart !== -1 && jsonEnd > jsonStart) {
+    cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
+  }
+  return JSON.parse(cleaned);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -129,17 +140,36 @@ Generate a JSON response with:
 
 Output ONLY valid JSON, no markdown code blocks.`;
 
-    const rawText = await routeGenerate(prompt, "chat");
+    const aiOptions = { jsonMode: true, maxTokens: 4000 };
+
+    let rawText: string;
+    try {
+      rawText = await routeGenerate(prompt, "chat", aiOptions);
+    } catch (aiErr) {
+      console.error("[Prep Brief AI Error]", aiErr);
+      return NextResponse.json(
+        { error: "AI service unavailable. Please try again." },
+        { status: 503 }
+      );
+    }
 
     let parsed: unknown;
     try {
-      const cleaned = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
-      parsed = JSON.parse(cleaned);
+      parsed = parseJsonResponse(rawText);
     } catch {
-      return NextResponse.json(
-        { error: "Failed to parse AI response" },
-        { status: 502 }
-      );
+      // Invalidate cached truncated response and retry
+      console.warn("[Prep Brief Parse Error] Retrying... Raw:", rawText.slice(0, 200));
+      await invalidateAICache("chat", prompt);
+      try {
+        const retryText = await routeGenerate(prompt, "chat", aiOptions);
+        parsed = parseJsonResponse(retryText);
+      } catch {
+        console.error("[Prep Brief Parse Error] Retry also failed. Raw:", rawText.slice(0, 500));
+        return NextResponse.json(
+          { error: "Failed to parse AI response. Please retry." },
+          { status: 422 }
+        );
+      }
     }
 
     return NextResponse.json(
@@ -160,3 +190,5 @@ Output ONLY valid JSON, no markdown code blocks.`;
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
+export const maxDuration = 30;

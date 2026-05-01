@@ -228,7 +228,7 @@ export function DateTimePicker({
                           "h-8 w-8 flex items-center justify-center rounded-md text-sm transition-all",
                           !inMonth && "text-muted-foreground/40",
                           inMonth && !isSelected && "hover:bg-accent",
-                          today && !isSelected && "font-semibold text-primary",
+                          inMonth && today && !isSelected && "font-semibold text-primary",
                           isSelected &&
                             "bg-primary text-primary-foreground font-semibold shadow-sm",
                           disabled && "opacity-30 cursor-not-allowed"

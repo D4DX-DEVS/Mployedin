@@ -24,12 +24,21 @@ interface InterviewsResponse {
   items?: Interview[];
   interviews?: Interview[];
   total?: number;
+  statusCounts?: Record<string, number>;
 }
 
 export interface InterviewsFilters {
   page: number;
   limit: number;
   status?: string;
+  search?: string;
+  type?: string;
+  outcome?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  jobId?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────
@@ -41,17 +50,25 @@ export const interviewKeys = {
 };
 
 // ── Fetcher ────────────────────────────────────────────────────────
-async function fetchInterviews(filters: InterviewsFilters): Promise<{ interviews: Interview[]; total: number }> {
+async function fetchInterviews(filters: InterviewsFilters): Promise<{ interviews: Interview[]; total: number; statusCounts?: Record<string, number> }> {
   const params = new URLSearchParams();
   params.set("page", String(filters.page));
   params.set("limit", String(filters.limit));
   if (filters.status) params.set("status", filters.status);
+  if (filters.search) params.set("search", filters.search);
+  if (filters.type) params.set("type", filters.type);
+  if (filters.outcome) params.set("outcome", filters.outcome);
+  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+  if (filters.dateTo) params.set("dateTo", filters.dateTo);
+  if (filters.jobId) params.set("jobId", filters.jobId);
+  if (filters.sortBy) params.set("sortBy", filters.sortBy);
+  if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
 
   const res = await fetch(`/api/interviews?${params}`);
   if (!res.ok) throw new Error("Failed to fetch interviews");
   const data: InterviewsResponse = await res.json();
   const items = data.items ?? data.interviews ?? [];
-  return { interviews: items, total: data.total ?? items.length };
+  return { interviews: items, total: data.total ?? items.length, statusCounts: data.statusCounts };
 }
 
 // ── Hooks ──────────────────────────────────────────────────────────

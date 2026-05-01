@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -12,7 +13,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Inbox, Sparkles, CalendarDays, CircleCheckBig, RotateCcw, ArrowRight, Clock3,
   CalendarClock, CheckCircle2, XCircle, AlertTriangle, Forward, FileText,
-  Send, Ban, Loader2, BookOpen,
+  Send, Ban, Loader2, BookOpen, Search, Filter, ChevronDown, ChevronUp, X,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -63,13 +64,46 @@ export default function EmployerInterviewsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const { can } = usePermissions();
-  const [status, setStatus] = useState("");
   const [aiTarget, setAiTarget] = useState<AIQuestionsTarget | null>(null);
   const [modal, setModal] = useState<ModalType>({ kind: "none" });
   const [prepBrief, setPrepBrief] = useState<PrepBriefResult | null>(null);
   const [loadingPrepBriefId, setLoadingPrepBriefId] = useState<string | null>(null);
 
-  const { data, isLoading: loading, error, refetch } = useInterviews({ page, limit, status: status || undefined });
+  // ── Filter state ──────────────────────────────────────────────────
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [status, setStatus] = useState("");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [outcomeFilter, setOutcomeFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortBy, setSortBy] = useState("scheduledAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // AI search
+  const [aiSearchQuery, setAiSearchQuery] = useState("");
+  const [aiSearching, setAiSearching] = useState(false);
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const activeFilterCount = [status, debouncedSearch, typeFilter, outcomeFilter, dateFrom, dateTo].filter(Boolean).length;
+
+  const { data, isLoading: loading, error, refetch } = useInterviews({
+    page, limit,
+    status: status || undefined,
+    search: debouncedSearch || undefined,
+    type: typeFilter || undefined,
+    outcome: outcomeFilter || undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+    sortBy,
+    sortOrder,
+  });
   const updateMutation = useUpdateInterview();
   const nextRoundMutation = useScheduleNextRound();
   const createOfferMutation = useCreateOffer();
@@ -77,10 +111,74 @@ export default function EmployerInterviewsPage() {
   const interviews = data?.interviews ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
-  const now = Date.now();
-  const upcomingCount = interviews.filter((iv) => new Date(iv.scheduledAt).getTime() > now && ["scheduled", "confirmed", "rescheduled"].includes(iv.status)).length;
-  const completedCount = interviews.filter((iv) => iv.status === "completed").length;
-  const attentionCount = interviews.filter((iv) => iv.status === "rescheduled" || iv.status === "cancelled").length;
+  const statusCounts = data?.statusCounts ?? {};
+
+  // Deduplicate: per application show only the latest actionable interview
+  const deduplicatedInterviews = (() => {
+    const bestByApp = new Map<string, Interview>();
+    for (const iv of interviews) {
+      const appKey = iv.applicationId ?? iv._id;
+      const existing = bestByApp.get(appKey);
+      if (!existing) {
+        bestByApp.set(appKey, iv);
+        continue;
+      }
+      const ivRound = iv.interviewRound ?? 1;
+      const exRound = existing.interviewRound ?? 1;
+      // Prefer higher round
+      if (ivRound > exRound) {
+        bestByApp.set(appKey, iv);
+      } else if (ivRound === exRound) {
+        // Same round: prefer active status over "rescheduled"
+        const isIvActive = iv.status !== "rescheduled";
+        const isExActive = existing.status !== "rescheduled";
+        if (isIvActive && !isExActive) {
+          bestByApp.set(appKey, iv);
+        }
+      }
+    }
+    return [...bestByApp.values()].filter((iv) => iv.status !== "rescheduled");
+  })();
+
+  // Stats from API statusCounts (covers ALL records, not just current page)
+  const scheduledTotal = (statusCounts.scheduled ?? 0) + (statusCounts.confirmed ?? 0);
+  const completedTotal = statusCounts.completed ?? 0;
+  const attentionTotal = (statusCounts.rescheduled ?? 0) + (statusCounts.cancelled ?? 0);
+  const confirmedTotal = statusCounts.confirmed ?? 0;
+
+  // AI-powered search: parse natural language into filters
+  async function handleAiSearch() {
+    if (!aiSearchQuery.trim()) return;
+    setAiSearching(true);
+    try {
+      const res = await fetch("/api/ai/interview-filter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: aiSearchQuery }),
+      });
+      if (res.ok) {
+        const parsed = await res.json();
+        if (parsed.search) setSearch(parsed.search);
+        if (parsed.status) setStatus(parsed.status);
+        if (parsed.type) setTypeFilter(parsed.type);
+        if (parsed.outcome) setOutcomeFilter(parsed.outcome);
+        if (parsed.dateFrom) setDateFrom(parsed.dateFrom);
+        if (parsed.dateTo) setDateTo(parsed.dateTo);
+        setPage(1);
+        setFiltersOpen(true);
+      } else {
+        // Fallback: use query as search text
+        setSearch(aiSearchQuery);
+        setPage(1);
+      }
+    } catch {
+      // Fallback: use query as text search
+      setSearch(aiSearchQuery);
+      setPage(1);
+    } finally {
+      setAiSearching(false);
+    }
+  }
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: "Candidate", key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.fullName ?? "Candidate" },
@@ -114,8 +212,6 @@ export default function EmployerInterviewsPage() {
     ].filter((skill, index, values) => Boolean(skill) && values.indexOf(skill) === index);
     return merged.slice(0, 3);
   }
-
-  useEffect(() => { setPage(1); }, [status]);
 
   function openAIQuestions(iv: Interview) {
     const skills = [
@@ -164,8 +260,8 @@ export default function EmployerInterviewsPage() {
       }
       const data: PrepBriefResult = await res.json();
       setPrepBrief(data);
-    } catch {
-      // silent — user can retry
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Prep brief generation failed. Please retry.");
     } finally {
       setLoadingPrepBriefId(null);
     }
@@ -215,9 +311,9 @@ export default function EmployerInterviewsPage() {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{total} interview records</p>
-              <p className="text-xs text-muted-foreground">Scheduled, confirmed, completed, and changed sessions together.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current view</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{deduplicatedInterviews.length} active · {total} total</p>
+              <p className="text-xs text-muted-foreground">Active interviews on this page. {total} records match filters.</p>
             </div>
             {can("interviews", "create") ? (
               <Button
@@ -230,15 +326,42 @@ export default function EmployerInterviewsPage() {
                 </Link>
               </Button>
             ) : null}
+            <Button
+              variant="outline"
+              className="h-11 gap-2 rounded-xl px-4 text-sm font-semibold"
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/interviews/export/ical", { credentials: "include" });
+                  if (!res.ok) {
+                    toast.error("Failed to export calendar");
+                    return;
+                  }
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "mployedin-interviews.ics";
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                } catch {
+                  toast.error("Calendar export failed");
+                }
+              }}
+            >
+              <CalendarDays className="h-4 w-4" />
+              Export Calendar
+            </Button>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: "Upcoming", value: upcomingCount, note: "Future interviews in the current result set.", icon: CalendarDays, tone: "text-sky-600", chip: "bg-sky-50" },
-            { label: "Completed", value: completedCount, note: "Completed sessions visible on this page.", icon: CircleCheckBig, tone: "text-emerald-600", chip: "bg-emerald-50" },
-            { label: "Rescheduled or cancelled", value: attentionCount, note: "Changed sessions inside the current result set.", icon: RotateCcw, tone: "text-amber-600", chip: "bg-amber-50" },
-            { label: "Awaiting action", value: interviews.filter((iv) => iv.status === "scheduled").length, note: "Scheduled sessions visible in the current result set.", icon: Clock3, tone: "text-violet-600", chip: "bg-violet-50" },
+            { label: "Scheduled", value: scheduledTotal, note: "Interviews waiting to happen (scheduled + confirmed).", icon: CalendarDays, tone: "text-sky-600", chip: "bg-sky-50" },
+            { label: "Completed", value: completedTotal, note: "Interviews finished with outcome recorded.", icon: CircleCheckBig, tone: "text-emerald-600", chip: "bg-emerald-50" },
+            { label: "Needs attention", value: attentionTotal, note: "Rescheduled or cancelled sessions requiring follow-up.", icon: RotateCcw, tone: "text-amber-600", chip: "bg-amber-50" },
+            { label: "Confirmed", value: confirmedTotal, note: "Candidates who confirmed their attendance.", icon: Clock3, tone: "text-violet-600", chip: "bg-violet-50" },
           ].map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
@@ -258,30 +381,157 @@ export default function EmployerInterviewsPage() {
 
       {/* ── Filter Section ────────────────────────────────────────────── */}
       <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Filter schedule</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Focus the calendar on the interview status you need.</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              This page stays tied to the existing interview API, so status remains the one supported filter while the workspace becomes easier to scan.
-            </p>
+        {/* Search + Toggle */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Search by candidate name or role..."
+              className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-
-          <SearchableSelect
-            className="w-full min-w-[220px] sm:w-60"
-            options={[
-              { value: "all", label: "All Statuses" },
-              { value: "scheduled", label: "Scheduled" },
-              { value: "confirmed", label: "Confirmed" },
-              { value: "rescheduled", label: "Rescheduled" },
-              { value: "completed", label: "Completed" },
-              { value: "cancelled", label: "Cancelled" },
-            ]}
-            value={status || "all"}
-            onValueChange={(v) => setStatus(v === "all" ? "" : v)}
-            placeholder="All Statuses"
-          />
+          <div className="flex items-center gap-2">
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => { setStatus(""); setTypeFilter(""); setOutcomeFilter(""); setDateFrom(""); setDateTo(""); setPage(1); }}>
+                <X className="me-1 h-3 w-3" /> Clear filters
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 rounded-xl text-xs font-medium"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              {filtersOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+          </div>
         </div>
+
+        {/* Expanded filters */}
+        {filtersOpen && (
+          <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Status</label>
+              <SearchableSelect
+                className="w-full"
+                options={[
+                  { value: "all", label: "All Statuses" },
+                  { value: "scheduled", label: "Scheduled" },
+                  { value: "confirmed", label: "Confirmed" },
+                  { value: "completed", label: "Completed" },
+                  { value: "cancelled", label: "Cancelled" },
+                ]}
+                value={status || "all"}
+                onValueChange={(v) => { setStatus(v === "all" ? "" : v); setPage(1); }}
+                placeholder="All Statuses"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Type</label>
+              <SearchableSelect
+                className="w-full"
+                options={[
+                  { value: "all", label: "All Types" },
+                  { value: "video", label: "Video" },
+                  { value: "offline", label: "In-Person" },
+                  { value: "hybrid", label: "Hybrid" },
+                ]}
+                value={typeFilter || "all"}
+                onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); setPage(1); }}
+                placeholder="All Types"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Outcome</label>
+              <SearchableSelect
+                className="w-full"
+                options={[
+                  { value: "all", label: "All Outcomes" },
+                  { value: "passed", label: "Passed" },
+                  { value: "failed", label: "Rejected" },
+                  { value: "hold", label: "On Hold" },
+                  { value: "no_show", label: "No Show" },
+                ]}
+                value={outcomeFilter || "all"}
+                onValueChange={(v) => { setOutcomeFilter(v === "all" ? "" : v); setPage(1); }}
+                placeholder="All Outcomes"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Sort By</label>
+              <SearchableSelect
+                className="w-full"
+                options={[
+                  { value: "scheduledAt-asc", label: "Date (Earliest first)" },
+                  { value: "scheduledAt-desc", label: "Date (Latest first)" },
+                  { value: "createdAt-desc", label: "Recently added" },
+                ]}
+                value={`${sortBy}-${sortOrder}`}
+                onValueChange={(v) => {
+                  const [field, order] = v.split("-") as [string, "asc" | "desc"];
+                  setSortBy(field); setSortOrder(order); setPage(1);
+                }}
+                placeholder="Sort order"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">From Date</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">To Date</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <Sparkles className="me-1 inline h-3 w-3 text-violet-500" /> AI Search
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={aiSearchQuery}
+                  onChange={(e) => setAiSearchQuery(e.target.value)}
+                  placeholder="e.g. &quot;candidates with React skills scheduled next week&quot;"
+                  className="h-10 flex-1 rounded-xl border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && aiSearchQuery.trim()) {
+                      handleAiSearch();
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  className="h-10 rounded-xl bg-violet-600 px-4 text-sm font-medium text-white hover:bg-violet-700"
+                  disabled={aiSearching || !aiSearchQuery.trim()}
+                  onClick={handleAiSearch}
+                >
+                  {aiSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ── Error State ───────────────────────────────────────────────── */}
@@ -311,7 +561,7 @@ export default function EmployerInterviewsPage() {
               Candidate context, role detail, schedule timing, and AI question generation stay inside one consistent workspace.
             </p>
           </div>
-          <p className="text-sm text-muted-foreground">{interviews.length} interviews on this page</p>
+          <p className="text-sm text-muted-foreground">{deduplicatedInterviews.length} interviews on this page</p>
         </div>
 
         <TableToolbar
@@ -345,7 +595,7 @@ export default function EmployerInterviewsPage() {
                     ))}
                   </TableRow>
                 ))
-              ) : interviews.length === 0 ? (
+              ) : deduplicatedInterviews.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={can("interviews", "update") ? 9 : 8} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
@@ -359,7 +609,7 @@ export default function EmployerInterviewsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : interviews.map((iv) => {
+              ) : deduplicatedInterviews.map((iv) => {
                 const scheduled = formatDateTime(iv.scheduledAt);
                 const skills = getInterviewSkills(iv);
                 const outcomeMeta = getOutcomeLabel(iv.outcome);
@@ -461,7 +711,11 @@ export default function EmployerInterviewsPage() {
                               </Button>
                               <Button variant="ghost" size="sm"
                                 className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-red-700 hover:bg-red-50"
-                                onClick={() => updateMutation.mutate({ id: iv._id, status: "cancelled" })}>
+                                onClick={() => {
+                                  if (window.confirm(`Cancel interview with ${iv.jobSeekerId?.fullName ?? "this candidate"}?`)) {
+                                    updateMutation.mutate({ id: iv._id, status: "cancelled" });
+                                  }
+                                }}>
                                 <Ban className="me-1 h-3 w-3" />
                                 Cancel
                               </Button>
@@ -518,10 +772,10 @@ export default function EmployerInterviewsPage() {
 
       {/* ── AI Prep Brief Dialog ──────────────────────────────────────── */}
       <Dialog open={Boolean(prepBrief)} onOpenChange={(open) => { if (!open) setPrepBrief(null); }}>
-        <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto rounded-[24px] border-border bg-background p-0">
+        <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col rounded-[24px] border-border bg-background p-0">
           {prepBrief && (
             <>
-              <DialogHeader className="border-b border-border px-6 py-5">
+              <DialogHeader className="shrink-0 border-b border-border px-6 py-5">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-violet-500" />
                   <DialogTitle className="text-lg font-semibold">Interview Prep Brief</DialogTitle>
@@ -530,7 +784,7 @@ export default function EmployerInterviewsPage() {
                   {prepBrief.candidateName} — {prepBrief.jobTitle} (Round {prepBrief.round}, {prepBrief.duration}min {prepBrief.type})
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 px-6 py-5">
+              <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
                 {/* Candidate Summary */}
                 <div className="workspace-glass-panel rounded-2xl p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Candidate Summary</p>
@@ -682,32 +936,15 @@ function InterviewActionModal({
         });
       } else if (modal.kind === "reschedule") {
         if (!scheduledAt) { setSubmitError("Please select a new date/time"); setSubmitting(false); return; }
+        // Update interview in-place — no duplicate creation
         await updateMutation.mutateAsync({
           id: iv._id,
-          status: "rescheduled",
           scheduledAt: new Date(scheduledAt).toISOString(),
           duration,
           type,
-          location: location || undefined,
-          meetLink: meetLink || undefined,
+          location: type !== "video" ? (location || undefined) : undefined,
+          meetLink: type !== "offline" ? (meetLink || undefined) : undefined,
         });
-        // Schedule the new one
-        const res = await fetch("/api/interviews", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            applicationId: iv.applicationId,
-            scheduledAt: new Date(scheduledAt).toISOString(),
-            duration,
-            type,
-            location: location || undefined,
-            meetLink: meetLink || undefined,
-          }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error ?? "Failed to create rescheduled interview");
-        }
       } else if (modal.kind === "next-round") {
         if (!scheduledAt) { setSubmitError("Please select a date/time"); setSubmitting(false); return; }
         await nextRoundMutation.mutateAsync({
@@ -715,8 +952,8 @@ function InterviewActionModal({
           scheduledAt: new Date(scheduledAt).toISOString(),
           duration,
           type,
-          location: location || undefined,
-          meetLink: meetLink || undefined,
+          location: type !== "video" ? (location || undefined) : undefined,
+          meetLink: type !== "offline" ? (meetLink || undefined) : undefined,
         });
       } else if (modal.kind === "offer") {
         if (!salaryAmount || !startDate) { setSubmitError("Salary and start date are required"); setSubmitting(false); return; }
@@ -739,7 +976,7 @@ function InterviewActionModal({
     }
   }, [modal, iv, outcome, feedback, scheduledAt, duration, type, location, meetLink,
       salaryAmount, salaryCurrency, salaryPeriod, startDate, benefits, offerNotes,
-      updateMutation, nextRoundMutation, onClose]);
+      updateMutation, nextRoundMutation, createOfferMutation, onClose, onOfferCreated]);
 
   const title = {
     complete: "Complete Interview & Set Outcome",

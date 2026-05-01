@@ -61,9 +61,12 @@ export default function InterviewsPage() {
 
   useEffect(() => { fetchInterviews(); }, [fetchInterviews]);
 
+  // Filter out legacy "rescheduled" rows (superseded by in-place updates)
+  const activeInterviews = interviews.filter((i) => i.status !== "rescheduled");
+
   const now = new Date();
-  const upcoming = interviews.filter((i) => new Date(i.scheduledAt) >= now && i.status !== "cancelled");
-  const past = interviews.filter((i) => new Date(i.scheduledAt) < now || i.status === "cancelled");
+  const upcoming = activeInterviews.filter((i) => new Date(i.scheduledAt) >= now && i.status !== "cancelled");
+  const past = activeInterviews.filter((i) => new Date(i.scheduledAt) < now || i.status === "cancelled");
 
   const exportData = interviews.map((iv) => ({
     jobTitle: iv.jobTitle ?? "",

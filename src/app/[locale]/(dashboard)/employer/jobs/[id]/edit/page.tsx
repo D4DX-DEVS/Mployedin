@@ -6,7 +6,7 @@ import {
   ArrowLeft, Sparkles, Plus, X, ChevronDown, ChevronUp,
   Briefcase, MapPin, DollarSign, Settings2, Tags,
   Globe, Users, Eye, CheckCircle2, AlertCircle, Loader2,
-  Search, Rocket,
+  Search, Rocket, ClipboardList, GripVertical, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +68,31 @@ const WORK_MODE_LABELS: Record<string, string> = {
 
 // ─── Types ───────────────────────────────────────────────────────
 
+interface ScreeningQuestion {
+  id: string;
+  label: string;
+  type: "text" | "textarea" | "select" | "checkbox" | "radio" | "number" | "date";
+  required: boolean;
+  options: string[];
+  placeholder: string;
+}
+
+const QUESTION_TYPES = [
+  { value: "text", label: "Short Text" },
+  { value: "textarea", label: "Long Text" },
+  { value: "select", label: "Dropdown" },
+  { value: "checkbox", label: "Checkbox" },
+  { value: "radio", label: "Multiple Choice" },
+  { value: "number", label: "Number" },
+  { value: "date", label: "Date" },
+] as const;
+
+const NEEDS_OPTIONS = new Set(["select", "checkbox", "radio"]);
+
+function generateQuestionId() {
+  return `sq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 interface FormData {
   title: string;
   description: string;
@@ -86,6 +111,7 @@ interface FormData {
   qualifications: string[];
   benefits: string[];
   learningOutcomes: string[];
+  screeningQuestions: ScreeningQuestion[];
 }
 
 type FieldErrors = Partial<Record<string, string>>;
@@ -94,7 +120,11 @@ type FieldErrors = Partial<Record<string, string>>;
 function formatSalary(value: number, currency: string, period: string): string {
   if (!value) return "—";
   const sym = CURRENCY_SYMBOLS[currency] ?? currency + " ";
-  if (period === "lpa" || (currency === "INR" && value >= 100000)) {
+  // When period is LPA, user enters value directly in lakhs (e.g. 35 = 35L)
+  if (period === "lpa") {
+    return `${sym}${value % 1 === 0 ? value : value.toFixed(1)}L`;
+  }
+  if (currency === "INR" && value >= 100000) {
     const l = value / 100000;
     return `${sym}${l % 1 === 0 ? l : l.toFixed(1)}L`;
   }
@@ -250,6 +280,7 @@ export default function EditJobPage() {
     qualifications: [],
     benefits: [],
     learningOutcomes: [],
+    screeningQuestions: [],
   });
 
   const [skillInput, setSkillInput] = useState("");
@@ -322,6 +353,14 @@ export default function EditJobPage() {
       qualifications: (job as unknown as { qualifications?: string[] }).qualifications ?? [],
       benefits: (job as unknown as { benefits?: string[] }).benefits ?? [],
       learningOutcomes: (job as unknown as { learningOutcomes?: string[] }).learningOutcomes ?? [],
+      screeningQuestions: ((job as unknown as { screeningQuestions?: ScreeningQuestion[] }).screeningQuestions ?? []).map((q) => ({
+        id: q.id || generateQuestionId(),
+        label: q.label || "",
+        type: q.type || "text",
+        required: q.required ?? false,
+        options: q.options ?? [],
+        placeholder: q.placeholder || "",
+      })),
     });
 
     if (loc.country) setCountryQuery(loc.country);
@@ -443,6 +482,9 @@ export default function EditJobPage() {
       qualifications: form.qualifications.length > 0 ? form.qualifications : undefined,
       benefits: form.benefits.length > 0 ? form.benefits : undefined,
       learningOutcomes: form.learningOutcomes.length > 0 ? form.learningOutcomes : undefined,
+      screeningQuestions: form.screeningQuestions.length > 0
+        ? form.screeningQuestions.map((q, i) => ({ ...q, order: i }))
+        : [],
     };
 
     if (form.location.country.trim() && form.location.city.trim()) {
@@ -889,6 +931,146 @@ export default function EditJobPage() {
                 </div>
               )}
             </Field>
+          </Section>
+
+          {/* ⑥b Screening Questions */}
+          <Section icon={ClipboardList} title="Screening Questions" subtitle="Ask candidates questions when they apply (max 20)">
+            {form.screeningQuestions.map((q, qIdx) => (
+              <div key={q.id} className="rounded-xl border border-border/60 bg-muted/10 p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                  <GripVertical className="w-4 h-4 text-muted-foreground mt-2 flex-shrink-0" />
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="Enter your question…"
+                        value={q.label}
+                        onChange={(e) => {
+                          const updated = [...form.screeningQuestions];
+                          updated[qIdx] = { ...updated[qIdx], label: e.target.value };
+                          setField("screeningQuestions", updated);
+                        }}
+                        className="flex-1 text-sm"
+                        maxLength={500}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setField("screeningQuestions", form.screeningQuestions.filter((_, i) => i !== qIdx))}
+                        className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <select
+                        value={q.type}
+                        onChange={(e) => {
+                          const updated = [...form.screeningQuestions];
+                          updated[qIdx] = { ...updated[qIdx], type: e.target.value as ScreeningQuestion["type"], options: NEEDS_OPTIONS.has(e.target.value) ? (updated[qIdx].options.length ? updated[qIdx].options : [""]) : [] };
+                          setField("screeningQuestions", updated);
+                        }}
+                        className="text-xs border border-border rounded-md px-2 py-1.5 bg-background"
+                      >
+                        {QUESTION_TYPES.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={q.required}
+                          onChange={(e) => {
+                            const updated = [...form.screeningQuestions];
+                            updated[qIdx] = { ...updated[qIdx], required: e.target.checked };
+                            setField("screeningQuestions", updated);
+                          }}
+                          className="rounded border-border"
+                        />
+                        Required
+                      </label>
+                      {qIdx > 0 && (
+                        <button type="button" onClick={() => {
+                          const updated = [...form.screeningQuestions];
+                          [updated[qIdx - 1], updated[qIdx]] = [updated[qIdx], updated[qIdx - 1]];
+                          setField("screeningQuestions", updated);
+                        }} className="p-1 text-muted-foreground hover:text-foreground">
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {qIdx < form.screeningQuestions.length - 1 && (
+                        <button type="button" onClick={() => {
+                          const updated = [...form.screeningQuestions];
+                          [updated[qIdx], updated[qIdx + 1]] = [updated[qIdx + 1], updated[qIdx]];
+                          setField("screeningQuestions", updated);
+                        }} className="p-1 text-muted-foreground hover:text-foreground">
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    {NEEDS_OPTIONS.has(q.type) && (
+                      <div className="space-y-1.5 pl-1">
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Options</p>
+                        {q.options.map((opt, optIdx) => (
+                          <div key={optIdx} className="flex items-center gap-1.5">
+                            <Input
+                              placeholder={`Option ${optIdx + 1}`}
+                              value={opt}
+                              onChange={(e) => {
+                                const updated = [...form.screeningQuestions];
+                                const newOpts = [...updated[qIdx].options];
+                                newOpts[optIdx] = e.target.value;
+                                updated[qIdx] = { ...updated[qIdx], options: newOpts };
+                                setField("screeningQuestions", updated);
+                              }}
+                              className="flex-1 h-8 text-xs"
+                              maxLength={200}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...form.screeningQuestions];
+                                updated[qIdx] = { ...updated[qIdx], options: updated[qIdx].options.filter((_, i) => i !== optIdx) };
+                                setField("screeningQuestions", updated);
+                              }}
+                              className="p-1 text-muted-foreground hover:text-destructive"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        {q.options.length < 20 && (
+                          <Button
+                            type="button" size="sm" variant="ghost"
+                            onClick={() => {
+                              const updated = [...form.screeningQuestions];
+                              updated[qIdx] = { ...updated[qIdx], options: [...updated[qIdx].options, ""] };
+                              setField("screeningQuestions", updated);
+                            }}
+                            className="h-7 text-xs gap-1 text-primary"
+                          >
+                            <Plus className="w-3 h-3" /> Add option
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {form.screeningQuestions.length < 20 && (
+              <Button
+                type="button" variant="outline" size="sm"
+                onClick={() => setField("screeningQuestions", [
+                  ...form.screeningQuestions,
+                  { id: generateQuestionId(), label: "", type: "text", required: false, options: [], placeholder: "" },
+                ])}
+                className="gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Question
+              </Button>
+            )}
+            {form.screeningQuestions.length === 0 && (
+              <p className="text-xs text-muted-foreground">No screening questions yet. Add questions that candidates must answer when applying.</p>
+            )}
           </Section>
 
           {/* ⑦ Advanced */}
