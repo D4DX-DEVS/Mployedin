@@ -21,9 +21,10 @@ export interface IUser extends Document {
   passwordChangedAt?: Date;
   failedLoginAttempts: number;
   lockUntil?: Date;
-  authProvider: "credentials" | "google" | "linkedin";
+  authProvider: "credentials" | "google" | "linkedin" | "apple";
   linkedinSub?: string;
   linkedinAccessToken?: string;
+  appleSub?: string;
   avatar?: string;
   phone?: string;
   lastLogin?: Date;
@@ -70,11 +71,12 @@ const UserSchema = new Schema<IUser>(
     lockUntil: { type: Date },
     authProvider: {
       type: String,
-      enum: ["credentials", "google", "linkedin"],
+      enum: ["credentials", "google", "linkedin", "apple"],
       default: "credentials",
     },
     linkedinSub: { type: String, sparse: true },
     linkedinAccessToken: { type: String, select: false },
+    appleSub: { type: String, sparse: true },
     avatar: { type: String },
     phone: { type: String },
     lastLogin: { type: Date },
@@ -101,6 +103,7 @@ UserSchema.index({ role: 1 });
 UserSchema.index({ isActive: 1 });
 UserSchema.index({ createdAt: -1 });
 UserSchema.index({ linkedinSub: 1 }, { unique: true, sparse: true });
+UserSchema.index({ appleSub: 1 }, { unique: true, sparse: true });
 
 // Password comparison method
 UserSchema.methods.comparePassword = async function (

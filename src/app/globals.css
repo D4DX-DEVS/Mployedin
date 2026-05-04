@@ -143,6 +143,7 @@ body {
 }
 
 .dark {
+  --brand-blue-pale: 220 30% 16%;
   --brand-text: 210 25% 96%;
   --brand-muted: 215 16% 70%;
 

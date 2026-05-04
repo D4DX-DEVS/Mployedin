@@ -10,15 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Globe,
   MapPin,
   Play,
   Search,
-  ShieldCheck,
-  Sparkles,
   Star,
   Users,
-  Zap,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -166,74 +162,6 @@ export default function LandingPage() {
     t("Retail", "التجزئة"),
   ];
 
-  const valueProps = [
-    {
-      icon: Search,
-      title: t("Jobs-first discovery", "اكتشاف وظائف أولاً"),
-      description: t(
-        "Search by role, skill, employer, or location and move from browsing to applying faster.",
-        "ابحث حسب الوظيفة أو المهارة أو الشركة أو الموقع وانتقل من التصفح إلى التقديم بسرعة."
-      ),
-    },
-    {
-      icon: Sparkles,
-      title: t("AI-guided matching", "مطابقة مدعومة بالذكاء الاصطناعي"),
-      description: t(
-        "Profiles, preferences, and recruiter signals help surface stronger-fit opportunities.",
-        "يساعد ملفك وتفضيلاتك وإشارات أصحاب العمل على إظهار فرص أكثر ملاءمة."
-      ),
-    },
-    {
-      icon: Globe,
-      title: t("Built for Gulf hiring", "مصمم للتوظيف في الخليج"),
-      description: t(
-        "A focused platform for employers and talent hiring across the Gulf region.",
-        "منصة مركزة لأصحاب العمل والمواهب الباحثة عن فرص في منطقة الخليج."
-      ),
-    },
-    {
-      icon: ShieldCheck,
-      title: t("Trust-ready profiles", "ملفات موثوقة وجاهزة"),
-      description: t(
-        "Showcase your skills, CV, and experience in one recruiter-friendly profile.",
-        "اعرض مهاراتك وسيرتك الذاتية وخبراتك في ملف واحد واضح لأصحاب العمل."
-      ),
-    },
-  ];
-
-  const actionCards = [
-    {
-      icon: Briefcase,
-      title: t("Find jobs that fit your profile", "اعثر على وظائف تناسب ملفك"),
-      description: t(
-        "Explore fresh opportunities across engineering, hospitality, sales, logistics, and more.",
-        "استكشف فرصاً حديثة في الهندسة والضيافة والمبيعات واللوجستيات والمزيد."
-      ),
-      href: `/${locale}/jobs`,
-      cta: t("Browse all jobs", "تصفح جميع الوظائف"),
-    },
-    {
-      icon: Users,
-      title: t("Build a stronger candidate profile", "أنشئ ملفاً مرشحاً أقوى"),
-      description: t(
-        "Register, upload your CV, and start receiving higher-signal job recommendations.",
-        "سجل وارفع سيرتك الذاتية وابدأ في تلقي توصيات وظائف أكثر دقة."
-      ),
-      href: `/${locale}/register`,
-      cta: t("Create profile", "أنشئ ملفك"),
-    },
-    {
-      icon: Building2,
-      title: t("Hire international talent faster", "وظف المواهب الدولية أسرع"),
-      description: t(
-        "Employers can post roles, review candidates, and scale hiring from one workspace.",
-        "يمكن لأصحاب العمل نشر الوظائف ومراجعة المرشحين وتوسيع التوظيف من مساحة واحدة."
-      ),
-      href: `/${locale}/employer-register`,
-      cta: t("Post a job", "أعلن عن وظيفة"),
-    },
-  ];
-
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const query = [searchTerm.trim(), locationTerm.trim()].filter(Boolean).join(" ");
@@ -265,58 +193,52 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col overflow-hidden">
-      <section className="relative border-b border-border/60 bg-[radial-gradient(circle_at_top_left,hsl(var(--brand-blue-pale))_0%,rgba(255,255,255,0)_38%),linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--surface-2))_100%)]">
+      <section className="relative border-b border-border/60 bg-[radial-gradient(circle_at_top_left,hsl(var(--brand-blue-pale))_0%,transparent_38%),linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--surface-2))_100%)]">
         <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,hsl(var(--brand-blue-dark))/0.08,transparent)]" />
-        <div className="container relative mx-auto px-4 py-10 sm:px-6 lg:py-16">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-start">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary shadow-sm backdrop-blur">
-                <Zap className="h-3.5 w-3.5" />
-                {t("Smart Gulf hiring", "توظيف ذكي للخليج")}
-              </div>
-
-              <h1 className="mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl lg:leading-[1.02]">
+        <div className="container relative mx-auto px-4 py-10 sm:px-6 lg:py-14">
+          <div className="mx-auto max-w-3xl text-center">
+              <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] lg:leading-[1.08]">
                 {t(
-                  "Find better-fit jobs, faster, with a home page built for active job seekers.",
-                  "اعثر على وظائف أنسب وأسرع من خلال صفحة رئيسية مصممة للباحثين عن عمل."
+                  "Find your next role in the Gulf.",
+                  "اعثر على وظيفتك القادمة في الخليج."
                 )}
               </h1>
 
-              <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+              <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
                 {t(
-                  "Search live roles across the Gulf, build a stronger profile, and move from discovery to application with clearer signals and smarter recommendations.",
-                  "ابحث في الوظائف الحية عبر الخليج، وابنِ ملفاً أقوى، وانتقل من الاكتشاف إلى التقديم بإشارات أوضح وتوصيات أذكى."
+                  "Search thousands of live jobs, get AI-matched recommendations, and apply directly to top employers across the region.",
+                  "ابحث في آلاف الوظائف الحية، واحصل على توصيات مطابقة بالذكاء الاصطناعي، وقدّم مباشرة لأفضل أصحاب العمل في المنطقة."
                 )}
               </p>
 
-              <form onSubmit={handleSearch} className="mt-8 rounded-[28px] border border-border/70 bg-white p-3 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)_auto]">
-                  <label className="flex min-h-14 items-center gap-3 rounded-[20px] border border-border/70 px-4">
-                    <Search className="h-4 w-4 text-primary" />
+              <form onSubmit={handleSearch} className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border/70 bg-card p-3 shadow-[0_20px_60px_rgba(15,23,42,0.08)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+                <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                  <label className="flex min-h-12 items-center gap-3 rounded-xl border border-border/70 px-4">
+                    <Search className="h-4 w-4 shrink-0 text-primary" />
                     <input
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
                       placeholder={t("Job title, skill, or company", "المسمى الوظيفي أو المهارة أو الشركة")}
-                      className="h-full w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                      className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                     />
                   </label>
 
-                  <label className="flex min-h-14 items-center gap-3 rounded-[20px] border border-border/70 px-4">
-                    <MapPin className="h-4 w-4 text-primary" />
+                  <label className="flex min-h-12 items-center gap-3 rounded-xl border border-border/70 px-4">
+                    <MapPin className="h-4 w-4 shrink-0 text-primary" />
                     <input
                       value={locationTerm}
                       onChange={(event) => setLocationTerm(event.target.value)}
                       placeholder={t("Country or city", "الدولة أو المدينة")}
-                      className="h-full w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                      className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                     />
                   </label>
 
-                  <Button type="submit" className="h-14 rounded-[20px] px-6 text-sm font-semibold">
+                  <Button type="submit" className="h-12 rounded-xl px-6 text-sm font-semibold">
                     {t("Find jobs", "ابحث عن وظائف")}
                   </Button>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                   <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
                     {t("Popular searches", "عمليات البحث الشائعة")}
                   </span>
@@ -325,7 +247,7 @@ export default function LandingPage() {
                       key={item}
                       type="button"
                       onClick={() => router.push(`/${locale}/jobs?search=${encodeURIComponent(item)}`)}
-                      className="rounded-full border border-border/70 bg-muted/30 px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/25 hover:text-primary"
+                      className="rounded-full border border-border/70 bg-muted/30 px-3 py-1 text-xs text-foreground transition-colors hover:border-primary/25 hover:text-primary"
                     >
                       {item}
                     </button>
@@ -333,195 +255,86 @@ export default function LandingPage() {
                 </div>
               </form>
 
-              <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[24px] border border-border/60 bg-white/80 p-4 shadow-sm">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{t("Search", "البحث")}</div>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {t("Explore Gulf roles by skill, location, and employer.", "استكشف وظائف الخليج حسب المهارة والموقع والشركة.")}
-                  </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">5,000+</span>
+                  <span className="text-xs text-muted-foreground">{t("Active jobs", "وظيفة نشطة")}</span>
                 </div>
-                <div className="rounded-[24px] border border-border/60 bg-white/80 p-4 shadow-sm">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{t("Profile", "الملف الشخصي")}</div>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {t("Create a profile recruiters can review quickly and trust.", "أنشئ ملفاً يسهل على أصحاب العمل مراجعته والثقة به.")}
-                  </p>
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">800+</span>
+                  <span className="text-xs text-muted-foreground">{t("Companies hiring", "شركة توظف")}</span>
                 </div>
-                <div className="rounded-[24px] border border-border/60 bg-white/80 p-4 shadow-sm">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{t("Apply", "التقديم")}</div>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {t("Move from discovery to application with fewer dead ends.", "انتقل من الاكتشاف إلى التقديم مع عوائق أقل.")}
-                  </p>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">50,000+</span>
+                  <span className="text-xs text-muted-foreground">{t("Registered candidates", "مرشح مسجل")}</span>
                 </div>
               </div>
-            </div>
 
-            <div className="relative">
-              <div className="rounded-[32px] border border-border/70 bg-white p-4 shadow-[0_24px_70px_rgba(15,23,42,0.12)]">
-                <div className="relative overflow-hidden rounded-[24px] bg-[linear-gradient(140deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_62%,hsl(var(--brand-blue-light))_140%)] p-5 text-white">
-                  <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-white/10 blur-3xl" />
-                  <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
-                  <div className="relative">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
-                          {t("Featured campaign", "حملة مميزة")}
-                        </div>
-                        <h2 className="mt-2 text-2xl font-semibold leading-tight">
-                          {activeBanner
-                            ? isAr
-                              ? activeBanner.titleAr || activeBanner.title
-                              : activeBanner.title
-                            : t("A smarter way to discover your next role.", "طريقة أذكى لاكتشاف وظيفتك القادمة.")}
-                        </h2>
-                      </div>
-                      {banners.length > 1 && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={prevBanner}
-                            aria-label={t("Previous banner", "الشريحة السابقة")}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 transition-colors hover:bg-white/20"
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={nextBanner}
-                            aria-label={t("Next banner", "الشريحة التالية")}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 transition-colors hover:bg-white/20"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+          </div>
+        </div>
+      </section>
 
-                    <p className="mt-4 max-w-md text-sm leading-6 text-white/80">
-                      {activeBanner
-                        ? isAr
-                          ? activeBanner.subtitleAr || activeBanner.subtitle
-                          : activeBanner.subtitle
-                        : t(
-                            "Use your profile, CV, and preferences to uncover roles that are easier to act on.",
-                            "استخدم ملفك وسيرتك الذاتية وتفضيلاتك لاكتشاف فرص يسهل التقدم لها."
-                          )}
+      {/* Banner carousel — only shown when actual campaign banners exist */}
+      {banners.length > 0 && (
+        <section className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] py-6">
+          <div className="container mx-auto px-4 sm:px-6">
+            <div className="flex items-center gap-6">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-4">
+                  {activeBanner?.image && (
+                    <img
+                      src={activeBanner.image}
+                      alt={isAr ? activeBanner.titleAr || activeBanner.title : activeBanner.title}
+                      className="hidden h-16 w-24 rounded-lg object-cover sm:block"
+                    />
+                  )}
+                  <div className="min-w-0 text-white">
+                    <h3 className="truncate text-base font-semibold">
+                      {isAr ? activeBanner?.titleAr || activeBanner?.title : activeBanner?.title}
+                    </h3>
+                    <p className="mt-0.5 truncate text-sm text-white/70">
+                      {isAr ? activeBanner?.subtitleAr || activeBanner?.subtitle : activeBanner?.subtitle}
                     </p>
-
-                    <div className="mt-6 overflow-hidden rounded-[22px] border border-white/15 bg-white/10">
-                      {activeBanner?.image ? (
-                        <picture data-testid="banner-picture">
-                          {activeBanner.imageMobile ? (
-                            <source media="(max-width: 768px)" srcSet={activeBanner.imageMobile} />
-                          ) : null}
-                          <img
-                            src={activeBanner.image}
-                            alt={isAr ? activeBanner.titleAr || activeBanner.title : activeBanner.title}
-                            className="h-56 w-full object-cover"
-                          />
-                        </picture>
-                      ) : (
-                        <div className="flex h-56 items-center justify-center bg-white/5 px-6 text-center text-sm text-white/75">
-                          {t(
-                            "Live hiring campaigns, job discovery, and profile setup all start here.",
-                            "هنا تبدأ حملات التوظيف الحية واكتشاف الوظائف وإعداد الملف الشخصي."
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-5 flex flex-wrap items-center gap-3">
-                      <Link
-                        href={activeBanner?.linkUrl || `/${locale}/jobs`}
-                        className="inline-flex h-11 items-center rounded-full bg-white px-5 text-sm font-semibold text-[hsl(var(--brand-blue-dark))]"
-                      >
-                        {activeBanner
-                          ? isAr
-                            ? activeBanner.linkTextAr || activeBanner.linkText || t("Explore now", "استكشف الآن")
-                            : activeBanner.linkText || t("Explore now", "استكشف الآن")
-                          : t("Explore jobs", "استكشف الوظائف")}
-                      </Link>
-                      <Link
-                        href={`/${locale}/register`}
-                        className="inline-flex h-11 items-center rounded-full border border-white/20 px-5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-                      >
-                        {t("Create your candidate profile", "أنشئ ملفك المرشح")}
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-[22px] border border-border/70 bg-muted/20 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("Market focus", "تركيز السوق")}</div>
-                    <div className="mt-2 text-sm font-medium text-foreground">{t("Gulf hiring markets", "أسواق التوظيف في الخليج")}</div>
-                  </div>
-                  <div className="rounded-[22px] border border-border/70 bg-muted/20 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("Hiring teams", "فرق التوظيف")}</div>
-                    <div className="mt-2 text-sm font-medium text-foreground">{t("Employers and recruiters", "أصحاب العمل ووكلاء التوظيف")}</div>
-                  </div>
-                  <div className="rounded-[22px] border border-border/70 bg-muted/20 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("Candidate flow", "رحلة المرشح")}</div>
-                    <div className="mt-2 text-sm font-medium text-foreground">{t("Search, profile, apply", "ابحث، أنشئ ملفك، قدّم")}</div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 lg:py-20">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">{t("Get moving quickly", "ابدأ بسرعة")}</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                {t("Choose the path that matches where you are right now.", "اختر المسار الذي يناسب مرحلتك الحالية الآن.")}
-              </h2>
-            </div>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              {t(
-                "The homepage should help job seekers act immediately: search live jobs, strengthen their profile, or enter as an employer without hunting through navigation.",
-                "يجب أن تساعد الصفحة الرئيسية الباحثين عن عمل على التصرف فوراً: البحث عن وظائف أو تقوية الملف الشخصي أو الدخول كصاحب عمل دون التنقل الطويل."
-              )}
-            </p>
-          </div>
-
-          <div className="mt-8 grid gap-5 lg:grid-cols-3">
-            {actionCards.map((card) => {
-              const Icon = card.icon;
-
-              return (
+              <div className="flex shrink-0 items-center gap-2">
+                {banners.length > 1 && (
+                  <>
+                    <button type="button" onClick={prevBanner} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10">
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button type="button" onClick={nextBanner} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white hover:bg-white/10">
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
                 <Link
-                  key={card.title}
-                  href={card.href}
-                  className="group rounded-[28px] border border-border/70 bg-white p-6 shadow-[0_12px_40px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_20px_48px_rgba(15,23,42,0.08)]"
+                  href={activeBanner?.linkUrl || `/${locale}/jobs`}
+                  className="inline-flex h-9 items-center rounded-full bg-white px-4 text-xs font-semibold text-[hsl(var(--brand-blue-dark))]"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-primary/[0.08] text-primary">
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="mt-5 text-xl font-semibold tracking-tight text-foreground">{card.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.description}</p>
-                  <div className="mt-6 text-sm font-semibold text-primary">{card.cta}</div>
+                  {activeBanner?.linkText || t("View", "عرض")}
                 </Link>
-              );
-            })}
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section className="border-y border-border/60 bg-muted/20 py-16 lg:py-20">
+      <section className="border-y border-border/60 bg-muted/20 py-10 lg:py-12">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_320px] xl:items-start">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">{t("Browse by category", "تصفح حسب الفئة")}</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{t("Jobs by functional area", "الوظائف حسب المجال")}</h2>
+              <h2 className="text-xl font-semibold text-foreground">{t("Jobs by functional area", "الوظائف حسب المجال")}</h2>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {functionalAreas.map((item) => (
                   <Link
                     key={item}
                     href={`/${locale}/jobs?search=${encodeURIComponent(item)}`}
-                    className="rounded-[20px] border border-border/70 bg-white px-4 py-3 text-sm font-medium text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary"
+                    className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm font-medium text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary"
                   >
                     {item}
                   </Link>
@@ -530,14 +343,13 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">{t("Explore by market", "استكشف حسب السوق")}</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{t("Jobs by industry", "الوظائف حسب القطاع")}</h2>
+              <h2 className="text-xl font-semibold text-foreground">{t("Jobs by industry", "الوظائف حسب القطاع")}</h2>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {industries.map((item) => (
                   <Link
                     key={item}
                     href={`/${locale}/jobs?search=${encodeURIComponent(item)}`}
-                    className="rounded-[20px] border border-border/70 bg-white px-4 py-3 text-sm font-medium text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary"
+                    className="rounded-xl border border-border/70 bg-card px-4 py-3 text-sm font-medium text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary"
                   >
                     {item}
                   </Link>
@@ -545,59 +357,31 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="rounded-[30px] border border-primary/15 bg-[linear-gradient(160deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] p-6 text-white shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/65">{t("Why this home page", "لماذا هذه الصفحة")}</p>
-              <h3 className="mt-3 text-2xl font-semibold tracking-tight">{t("A clearer front door for job seekers.", "مدخل أوضح للباحثين عن عمل.")}</h3>
+            <div className="rounded-2xl border border-primary/15 bg-[linear-gradient(160deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] p-6 text-white shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
+              <h3 className="text-xl font-semibold">{t("Hire faster across the Gulf.", "وظّف أسرع في الخليج.")}</h3>
               <p className="mt-4 text-sm leading-6 text-white/80">
                 {t(
-                  "Bayt-style structure works because it lets users search, browse categories, and trust the platform quickly. This redesign keeps that clarity while fitting MPLOYEDIN's brand.",
-                  "يعمل هذا الأسلوب لأنه يتيح للمستخدم البحث والتصفح وبناء الثقة بسرعة. ويحتفظ هذا التصميم بالوضوح مع هوية مبلويدين."
+                  "Post jobs, review matched candidates, and manage your hiring pipeline from one dashboard. Reach job seekers across the GCC.",
+                  "أعلن عن الوظائف وراجع المرشحين المطابقين وأدر عملية التوظيف من لوحة واحدة. وصِل إلى الباحثين عن عمل في دول الخليج."
                 )}
               </p>
               <Link
-                href={`/${locale}/jobs`}
+                href={`/${locale}/employer-register`}
                 className="mt-6 inline-flex h-11 items-center rounded-full bg-white px-5 text-sm font-semibold text-[hsl(var(--brand-blue-dark))]"
               >
-                {t("Explore open positions", "استكشف الوظائف المتاحة")}
+                {t("Start hiring", "ابدأ التوظيف")}
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-16 lg:py-20">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="mb-8 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">{t("Built around real actions", "مبني حول الإجراءات الحقيقية")}</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              {t("Why job seekers stay on MPLOYEDIN.", "لماذا يستمر الباحثون عن عمل مع مبلويدين.")}
-            </h2>
-          </div>
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {valueProps.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <div key={item.title} className="rounded-[28px] border border-border/70 bg-white p-6 shadow-[0_12px_36px_rgba(15,23,42,0.04)]">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-primary/[0.08] text-primary">
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="mt-5 text-lg font-semibold text-foreground">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       {data?.videos && data.videos.length > 0 && (
-        <section className="border-y border-border/60 bg-muted/20 py-16 lg:py-20">
+        <section className="border-y border-border/60 bg-muted/20 py-10 lg:py-12">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">{t("See the platform", "شاهد المنصة")}</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{t("Learn the workflow in minutes.", "تعرّف على سير العمل في دقائق.")}</h2>
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("Learn the workflow in minutes.", "تعرّف على سير العمل في دقائق.")}</h2>
               </div>
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
                 {t(
@@ -609,7 +393,7 @@ export default function LandingPage() {
 
             <div className={`mt-8 grid gap-6 ${data.videos.length === 1 ? "max-w-4xl" : "lg:grid-cols-2 xl:grid-cols-3"}`}>
               {data.videos.slice(0, 3).map((video) => (
-                <div key={video._id} className="overflow-hidden rounded-[28px] border border-border/70 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.05)]">
+                <div key={video._id} className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
                   <div className="aspect-video bg-black/5">
                     <iframe
                       src={getEmbedUrl(video.url)}
@@ -639,16 +423,15 @@ export default function LandingPage() {
       )}
 
       {data?.testimonials && data.testimonials.length > 0 && (
-        <section className="py-16 lg:py-20">
+        <section className="py-10 lg:py-12">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="mb-8 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">{t("Social proof", "آراء المستخدمين")}</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{t("What users say after switching to MPLOYEDIN.", "ماذا يقول المستخدمون بعد الانتقال إلى مبلويدين.")}</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("What users say after switching to MPLOYEDIN.", "ماذا يقول المستخدمون بعد الانتقال إلى مبلويدين.")}</h2>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
               {data.testimonials.slice(0, 3).map((testimonial) => (
-                <div key={testimonial._id} className="rounded-[28px] border border-border/70 bg-white p-6 shadow-[0_12px_40px_rgba(15,23,42,0.05)]">
+                <div key={testimonial._id} className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
                   <div className="flex gap-1">
                     {Array.from({ length: testimonial.rating }).map((_, index) => (
                       <Star key={index} className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -683,12 +466,11 @@ export default function LandingPage() {
       )}
 
       {data?.recentPosts && data.recentPosts.length > 0 && (
-        <section className="border-y border-border/60 bg-muted/20 py-16 lg:py-20">
+        <section className="border-y border-border/60 bg-muted/20 py-10 lg:py-12">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">{t("Career content", "محتوى مهني")}</p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{t("Advice, updates, and market context.", "نصائح وتحديثات وسياق السوق.")}</h2>
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("Advice, updates, and market context.", "نصائح وتحديثات وسياق السوق.")}</h2>
               </div>
               <Link href={`/${locale}/blog`}>
                 <Button variant="outline">{t("Visit blog", "زر المدونة")}</Button>
@@ -697,7 +479,7 @@ export default function LandingPage() {
 
             <div className="mt-8 grid gap-6 lg:grid-cols-3">
               {data.recentPosts.slice(0, 3).map((post) => (
-                <Link key={post._id} href={`/${locale}/blog/${post.slug}`} className="group overflow-hidden rounded-[28px] border border-border/70 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
+                <Link key={post._id} href={`/${locale}/blog/${post.slug}`} className="group overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm transition-shadow hover:shadow-md dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_8px_28px_rgba(0,0,0,0.25)]">
                   {post.coverImage && <img src={post.coverImage} alt="" className="h-52 w-full object-cover" />}
                   <div className="p-6">
                     <h3 className="text-lg font-semibold tracking-tight text-foreground transition-colors group-hover:text-primary">
@@ -719,11 +501,10 @@ export default function LandingPage() {
       )}
 
       {data?.faqs && data.faqs.length > 0 && (
-        <section className="py-16 lg:py-20">
+        <section className="py-10 lg:py-12">
           <div className="container mx-auto max-w-4xl px-4 sm:px-6">
             <div className="mb-8 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">{t("Questions", "الأسئلة")}</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{t("Frequently asked questions.", "الأسئلة الشائعة.")}</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("Frequently asked questions.", "الأسئلة الشائعة.")}</h2>
             </div>
 
             <div className="space-y-3">
@@ -731,7 +512,7 @@ export default function LandingPage() {
                 const isOpen = openFaq === faq._id;
 
                 return (
-                  <div key={faq._id} className="overflow-hidden rounded-[22px] border border-border/70 bg-white shadow-sm">
+                  <div key={faq._id} className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm">
                     <button
                       type="button"
                       onClick={() => setOpenFaq(isOpen ? null : faq._id)}
@@ -763,16 +544,15 @@ export default function LandingPage() {
         </section>
       )}
 
-      <section className="bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] py-16 lg:py-20">
+      <section className="bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] py-12 lg:py-14">
         <div className="container mx-auto px-4 text-center sm:px-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/65">{t("Final step", "الخطوة الأخيرة")}</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            {t("Start with the path that gets you hired faster.", "ابدأ بالمسار الذي يقربك من التوظيف بشكل أسرع.")}
+          <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            {t("Ready to take the next step?", "مستعد للخطوة التالية؟")}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-white/80">
             {t(
-              "Whether you want to search jobs, build a stronger profile, or hire internationally, the homepage now gives each audience a clear next step.",
-              "سواء أردت البحث عن وظائف أو بناء ملف أقوى أو التوظيف دولياً، تمنحك الصفحة الرئيسية الآن خطوة واضحة تالية لكل فئة."
+              "Join thousands of professionals who have found their ideal role through MPLOYEDIN. Create your profile today and let employers find you.",
+              "انضم لآلاف المهنيين الذين وجدوا وظيفتهم المثالية عبر مبلويدين. أنشئ ملفك اليوم ودع أصحاب العمل يجدونك."
             )}
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">

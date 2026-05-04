@@ -1,6 +1,7 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import LinkedIn from "next-auth/providers/linkedin";
+import Apple from "next-auth/providers/apple";
 import { z } from "zod";
 import connectDB from "@/lib/db/mongoose";
 import { User } from "@/models/User";
@@ -265,6 +266,18 @@ export const authConfig: NextAuthConfig = {
         };
       },
     }),
+    Apple({
+      clientId: process.env.APPLE_CLIENT_ID!,
+      clientSecret: process.env.APPLE_CLIENT_SECRET!,
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name ?? profile.email?.split("@")[0] ?? "Apple User",
+          email: profile.email,
+          image: null,
+        };
+      },
+    }),
   ],
   trustHost: true,
   session: {
@@ -345,8 +358,9 @@ export const authConfig: NextAuthConfig = {
             avatar: token.picture,
             role: "job_seeker",
             isEmailVerified: true,
-            authProvider: account.provider === "linkedin" ? "linkedin" : "google",
+            authProvider: account.provider === "linkedin" ? "linkedin" : account.provider === "apple" ? "apple" : "google",
             linkedinSub: account.provider === "linkedin" ? account.providerAccountId : undefined,
+            appleSub: account.provider === "apple" ? account.providerAccountId : undefined,
             locale: "en",
           });
         } else if (account.provider === "linkedin" && !dbUser.linkedinSub) {
@@ -360,6 +374,20 @@ export const authConfig: NextAuthConfig = {
           dbUser.isEmailVerified = true;
         } else if (account.provider === "linkedin" && !dbUser.isEmailVerified) {
           // Existing linked user still unverified — LinkedIn verified the email via OAuth
+          await User.findByIdAndUpdate(dbUser._id, {
+            isEmailVerified: true,
+            emailVerificationToken: undefined,
+          });
+          dbUser.isEmailVerified = true;
+        } else if (account.provider === "apple" && !dbUser.appleSub) {
+          // Link Apple to existing account (auto-link — both sides verify email)
+          await User.findByIdAndUpdate(dbUser._id, {
+            appleSub: account.providerAccountId,
+            isEmailVerified: true,
+            emailVerificationToken: undefined,
+          });
+          dbUser.isEmailVerified = true;
+        } else if (account.provider === "apple" && !dbUser.isEmailVerified) {
           await User.findByIdAndUpdate(dbUser._id, {
             isEmailVerified: true,
             emailVerificationToken: undefined,
