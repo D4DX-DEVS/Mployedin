@@ -266,18 +266,20 @@ export const authConfig: NextAuthConfig = {
         };
       },
     }),
-    Apple({
-      clientId: process.env.APPLE_CLIENT_ID!,
-      clientSecret: process.env.APPLE_CLIENT_SECRET!,
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.name ?? profile.email?.split("@")[0] ?? "Apple User",
-          email: profile.email,
-          image: null,
-        };
-      },
-    }),
+    ...(process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET
+      ? [Apple({
+          clientId: process.env.APPLE_CLIENT_ID,
+          clientSecret: process.env.APPLE_CLIENT_SECRET,
+          profile(profile) {
+            return {
+              id: profile.sub,
+              name: profile.name ?? profile.email?.split("@")[0] ?? "Apple User",
+              email: profile.email,
+              image: null,
+            };
+          },
+        })]
+      : []),
   ],
   trustHost: true,
   session: {
