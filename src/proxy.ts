@@ -96,6 +96,14 @@ function withPageSecurityHeaders(response: NextResponse, nonce: string): NextRes
 export default auth(async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Skip static assets that should never be processed by middleware.
+  // Belt-and-suspenders: the matcher regex should exclude these, but some
+  // Edge Runtimes evaluate the pattern differently, causing sw.js to be
+  // redirected by the intl middleware (breaks Service Worker registration).
+  if (/^\/(sw\.js|workbox-.*\.js)(\.map)?$/.test(pathname)) {
+    return NextResponse.next();
+  }
+
   // Redirect locale-prefixed API routes → /api/… (clients like next-auth/react
   // may resolve relative URLs against the current locale-prefixed page).
   // 307 preserves the HTTP method (important for POST signIn calls).
