@@ -517,7 +517,7 @@ export function JobSeekerHomePage({
   const topSkills = (profile?.skills ?? [])
     .map((skill) => (typeof skill === "string" ? skill.trim() : skill.name?.trim()))
     .filter((skill): skill is string => Boolean(skill))
-    .slice(0, 3);
+    .slice(0, 6);
   const activeMatchesCountLabel = t("summary.activeMatches", { count: jobs.length });
   const nextStepsLabel = t("summary.nextStepsQueued", { count: suggestions.length });
 

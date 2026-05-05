@@ -150,6 +150,9 @@ export async function checkFeatureGate(
 // ── Bypass roles — admin/super_agent/agent never gated ───────────────────────
 const BYPASS_ROLES = new Set(["admin", "super_agent", "agent"]);
 
+// ── Free AI features — available to all authenticated users ──────────────────
+const FREE_AI_FEATURES = new Set(["ai_daily_insights"]);
+
 /**
  * Check feature gate AND atomically increment usage for AI features.
  * Returns a NextResponse error if blocked, or null if allowed.
@@ -163,6 +166,9 @@ export async function enforceFeatureGate(
 ): Promise<NextResponse | null> {
   // Admin/agent roles bypass all subscription gates
   if (BYPASS_ROLES.has(role)) return null;
+
+  // Free-tier AI features bypass subscription gates for all authenticated users
+  if (check.type === "ai" && FREE_AI_FEATURES.has(check.feature)) return null;
 
   const targetRole = role === "employer" ? "employer" : "job_seeker";
   const gate = await checkFeatureGate(userId, check, targetRole as "employer" | "job_seeker");
