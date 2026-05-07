@@ -65,3 +65,39 @@ mployedin/ROLES.md
 graphify-out/
 .code-review-graph
 .code-review-graph
+
+# ===== Temp/junk files from chat sessions =====
+
+# Temp rewrite scripts (one-time use, already applied)
+_*.js
+_*.mjs
+
+# Build/TSC output logs
+build-*.txt
+build_runner.py
+tsc-*.txt
+
+# Temp utility scripts
+create_dir.bat
+create_dirs.bat
+create_dirs.js
+create-dirs.js
+check_types_temp.js
+check-types.js
+run_build.bat
+run_check.bat
+run-typecheck.js
+truncate.js
+tasks.json
+
+# Test seed scripts (production-like data simulation)
+scripts/seed-production-like.mjs
+scripts/seed-applicants.mjs
+
+# E2E tests (not in CI pipeline yet)
+e2e/
+test-results/
+playwright.config.ts
+
+# Coverage reports (generated, not committed)
+coverage/
