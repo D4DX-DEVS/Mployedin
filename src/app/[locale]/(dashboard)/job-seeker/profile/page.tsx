@@ -72,6 +72,7 @@ interface ProfileData {
   accomplishments?: Accomplishment[];
   careerProfile?: CareerProfile;
   profileVisibility?: "visible" | "hidden";
+  sectionVisibility?: Record<string, boolean>;
   availabilityStatus?: string;
   totalExperienceYears?: number;
   totalExperienceMonths?: number;
@@ -292,6 +293,17 @@ export default function JobSeekerProfilePage() {
       setShowVisibilityModal(false);
     } catch { /* toast */ }
     finally { setSavingVisibility(false); }
+  }
+
+  async function handleToggleSectionVisibility(sectionId: string, visible: boolean) {
+    const prev = profile?.sectionVisibility ?? {};
+    const updated = { ...prev, [sectionId]: visible };
+    setProfile((p) => p ? { ...p, sectionVisibility: updated } : p);
+    try {
+      await patchProfile({ sectionVisibility: updated });
+    } catch {
+      setProfile((p) => p ? { ...p, sectionVisibility: prev } : p);
+    }
   }
 
   // ── Derived data ──────────────────────────────────────────────────────
@@ -955,7 +967,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Experience ────────────────────────────────────────────── */}
           <div id="experience" className="scroll-mt-24">
-            <SectionCard icon={Briefcase} title="Experience" onAdd={() => router.push("./experience")} isEmpty={(profile?.experience?.length ?? 0) === 0} emptyLabel="Add work experience">
+            <SectionCard icon={Briefcase} title="Experience" onAdd={() => router.push("./experience")} isEmpty={(profile?.experience?.length ?? 0) === 0} emptyLabel="Add work experience" visible={profile?.sectionVisibility?.experience !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("experience", v)}>
               {(profile?.experience?.length ?? 0) > 0 && (
                 <div className="space-y-4">
                   {profile!.experience.map((exp, i) => (
@@ -978,7 +990,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Skills ────────────────────────────────────────────────── */}
           <div id="skills" className="scroll-mt-24">
-            <SectionCard icon={Award} title="Skills" onAdd={() => router.push("./skills")} isEmpty={(profile?.skills?.length ?? 0) === 0} emptyLabel="Add skills">
+            <SectionCard icon={Award} title="Skills" onAdd={() => router.push("./skills")} isEmpty={(profile?.skills?.length ?? 0) === 0} emptyLabel="Add skills" visible={profile?.sectionVisibility?.skills !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("skills", v)}>
               {(profile?.skills?.length ?? 0) > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {profile!.skills.map((s, i) => {
@@ -998,7 +1010,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Education ─────────────────────────────────────────────── */}
           <div id="education" className="scroll-mt-24">
-            <SectionCard icon={GraduationCap} title="Education" onAdd={() => router.push("./cv")} isEmpty={(profile?.education?.length ?? 0) === 0} emptyLabel="Add education">
+            <SectionCard icon={GraduationCap} title="Education" onAdd={() => router.push("./cv")} isEmpty={(profile?.education?.length ?? 0) === 0} emptyLabel="Add education" visible={profile?.sectionVisibility?.education !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("education", v)}>
               {(profile?.education?.length ?? 0) > 0 && (
                 <div className="space-y-3">
                   {profile!.education.map((edu, i) => (
@@ -1020,7 +1032,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Projects (NEW) ────────────────────────────────────────── */}
           <div id="projects" className="scroll-mt-24">
-            <SectionCard icon={FolderKanban} title="Projects" onAdd={() => router.push("./cv")} isEmpty={(profile?.projects?.length ?? 0) === 0} emptyLabel="Add projects to stand out to employers">
+            <SectionCard icon={FolderKanban} title="Projects" onAdd={() => router.push("./cv")} isEmpty={(profile?.projects?.length ?? 0) === 0} emptyLabel="Add projects to stand out to employers" visible={profile?.sectionVisibility?.projects !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("projects", v)}>
               {(profile?.projects?.length ?? 0) > 0 && (
                 <div className="space-y-4">
                   {profile!.projects!.map((proj, i) => (
@@ -1062,7 +1074,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Accomplishments (NEW) ─────────────────────────────────── */}
           <div id="accomplishments" className="scroll-mt-24">
-            <SectionCard icon={Trophy} title="Accomplishments" onAdd={() => router.push("./cv")} isEmpty={(profile?.accomplishments?.length ?? 0) === 0 && (profile?.certifications?.length ?? 0) === 0} emptyLabel="Add certifications, work samples, publications, or online profiles">
+            <SectionCard icon={Trophy} title="Accomplishments" onAdd={() => router.push("./cv")} isEmpty={(profile?.accomplishments?.length ?? 0) === 0 && (profile?.certifications?.length ?? 0) === 0} emptyLabel="Add certifications, work samples, publications, or online profiles" visible={profile?.sectionVisibility?.accomplishments !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("accomplishments", v)}>
               <div className="space-y-4">
                 {/* Certifications */}
                 {(profile?.certifications?.length ?? 0) > 0 && (
@@ -1464,7 +1476,7 @@ export default function JobSeekerProfilePage() {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SectionCard({
-  icon: Icon, title, children, onAdd, onEdit, isEmpty, emptyLabel,
+  icon: Icon, title, children, onAdd, onEdit, isEmpty, emptyLabel, visible, onToggleVisibility,
 }: {
   icon: React.ElementType;
   title: string;
@@ -1473,6 +1485,8 @@ function SectionCard({
   onEdit?: () => void;
   isEmpty: boolean;
   emptyLabel?: string;
+  visible?: boolean;
+  onToggleVisibility?: (v: boolean) => void;
 }) {
   return (
     <div className="card-base p-5 sm:p-6">
@@ -1483,6 +1497,21 @@ function SectionCard({
           <span className="text-sm font-semibold">{title}</span>
         </div>
         <div className="flex items-center gap-1">
+          {onToggleVisibility && (
+            <button
+              onClick={() => onToggleVisibility(!visible)}
+              className={cn(
+                "flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors",
+                visible !== false
+                  ? "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                  : "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+              )}
+              title={visible !== false ? "Visible to employers – click to hide" : "Hidden from employers – click to show"}
+            >
+              {visible !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+              {visible !== false ? "Visible" : "Hidden"}
+            </button>
+          )}
           {onEdit && !isEmpty && (
             <button
               onClick={onEdit}

@@ -68,7 +68,8 @@ interface Applicant {
     skills?: string[];
     currentLocation?: string;
     totalExperienceYears?: number;
-    experience?: { jobTitle?: string; company?: string; isCurrent?: boolean }[];
+    experience?: { jobTitle?: string; company?: string; isCurrent?: boolean; startDate?: string; endDate?: string }[];
+    education?: { degree?: string; institution?: string; field?: string; graduationDate?: string }[];
     cv?: { originalUrl?: string };
   };
   status: string;
@@ -292,8 +293,11 @@ export default function EmployerApplicationsPage() {
     if (!jobId || !jobSeekerId) return;
     try {
       await computeAiMatch.mutateAsync({ applicationId: app._id, jobId, jobSeekerId });
+      toast.success("AI match score generated");
     } catch (err) {
       console.error("Failed to compute AI match:", err);
+      const message = err instanceof Error ? err.message : "Failed to generate AI score";
+      toast.error(message);
     }
   }
 
@@ -1811,6 +1815,40 @@ function ApplicationDetailsPanel({
                   </div>
                 ) : (
                   <p className="mt-3 text-sm text-muted-foreground">No skills are attached to this profile yet.</p>
+                )}
+              </div>
+
+              {/* Education */}
+              <div className="workspace-glass-panel rounded-[24px] p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Education</p>
+                {app.jobSeekerId?.education?.length ? (
+                  <div className="mt-3 space-y-3">
+                    {app.jobSeekerId.education.map((edu, i) => (
+                      <div key={i} className="space-y-0.5">
+                        <p className="text-sm font-semibold text-foreground">{edu.degree}{edu.field ? ` - ${edu.field}` : ""}</p>
+                        <p className="text-xs text-muted-foreground">{edu.institution}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">No education details available.</p>
+                )}
+              </div>
+
+              {/* Experience */}
+              <div className="workspace-glass-panel rounded-[24px] p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Experience</p>
+                {app.jobSeekerId?.experience?.length ? (
+                  <div className="mt-3 space-y-3">
+                    {app.jobSeekerId.experience.map((exp, i) => (
+                      <div key={i} className="space-y-0.5">
+                        <p className="text-sm font-semibold text-foreground">{exp.jobTitle}{exp.isCurrent ? " (Current)" : ""}</p>
+                        <p className="text-xs text-muted-foreground">{exp.company}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">No experience details available.</p>
                 )}
               </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -16,9 +17,9 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import {
-  Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users,
+  Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users, Plus,
   Eye, Building2, MapPin, DollarSign, Clock, Calendar, Globe, UserCheck,
-  Wand2, CheckCircle, ArrowRight,
+  Wand2, CheckCircle, ArrowRight, Trash2, XCircle, Edit2, ClipboardList,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -209,6 +210,43 @@ export default function AdminJobsPage() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
+  // ── Admin job actions ────────────────────────────────────────────────────
+  const handleApproveJob = async (jobId: string) => {
+    try {
+      const res = await fetch(`/api/admin/jobs/${jobId}/approve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: true }),
+      });
+      if (!res.ok) throw new Error("Failed to approve");
+      toast.success("Job approved successfully");
+      fetchJobs();
+    } catch { toast.error("Failed to approve job"); }
+  };
+
+  const handleRejectJob = async (jobId: string) => {
+    try {
+      const res = await fetch(`/api/admin/jobs/${jobId}/approve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: false }),
+      });
+      if (!res.ok) throw new Error("Failed to reject");
+      toast.success("Job rejected");
+      fetchJobs();
+    } catch { toast.error("Failed to reject job"); }
+  };
+
+  const handleDeleteJob = async (jobId: string) => {
+    if (!confirm("Are you sure you want to delete this job?")) return;
+    try {
+      const res = await fetch(`/api/admin/jobs/${jobId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast.success("Job deleted");
+      fetchJobs();
+    } catch { toast.error("Failed to delete job"); }
+  };
+
   const activeJobs = jobs.filter((j) => j.status === "active").length;
   const draftJobs = jobs.filter((j) => j.status === "draft").length;
   const totalApplicants = jobs.reduce((sum, j) => sum + (j.applicantsCount ?? 0), 0);
@@ -297,9 +335,17 @@ export default function AdminJobsPage() {
           </div>
         )}
         right={(
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-            <ArrowRight className="h-3.5 w-3.5 text-primary" />
-            {total.toLocaleString()} jobs across {totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"}
+          <div className="flex items-center gap-2">
+            <Link href="./new">
+              <Button size="sm" className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" />
+                Post Job
+              </Button>
+            </Link>
+            <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
+              <ArrowRight className="h-3.5 w-3.5 text-primary" />
+              {total.toLocaleString()} jobs across {totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"}
+            </div>
           </div>
         )}
         onExportCsv={handleExportCsv}
@@ -597,6 +643,49 @@ export default function AdminJobsPage() {
                         <Eye className="h-4 w-4" />
                         View Details
                         <ArrowRight className="ml-auto h-4 w-4" />
+                      </Button>
+                      {(job.poster?.approvalStatus === "pending" || job.status === "draft") && (
+                        <Button
+                          size="sm"
+                          className="h-9 gap-1.5 rounded-xl bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700"
+                          onClick={() => handleApproveJob(job._id)}
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" /> Approve
+                        </Button>
+                      )}
+                      {(job.poster?.approvalStatus === "pending" || job.status === "draft") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-9 gap-1.5 rounded-xl border-amber-200 px-3 text-xs font-semibold text-amber-700 hover:bg-amber-50"
+                          onClick={() => handleRejectJob(job._id)}
+                        >
+                          <XCircle className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold"
+                        onClick={() => window.open(`/admin/jobs/${job._id}/edit`, "_blank")}
+                      >
+                        <Edit2 className="h-3.5 w-3.5" /> Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold"
+                        onClick={() => window.open(`/admin/applications?jobId=${job._id}`, "_blank")}
+                      >
+                        <ClipboardList className="h-3.5 w-3.5" /> Applications
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="col-span-2 h-9 gap-1.5 rounded-xl border-destructive/20 px-3 text-xs font-semibold text-destructive hover:bg-destructive/5"
+                        onClick={() => handleDeleteJob(job._id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
                       </Button>
                     </div>
                   </div>

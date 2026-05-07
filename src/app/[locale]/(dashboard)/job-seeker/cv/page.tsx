@@ -6,7 +6,7 @@ import { getSession } from "next-auth/react";
 import {
   Upload, CheckCircle, AlertCircle, Sparkles,
   X, Plus, Pencil, Save, Download, Loader2,
-  Trash2, Eye, Briefcase, GraduationCap,
+  Trash2, Eye, EyeOff, Briefcase, GraduationCap,
   Globe, Award, User as UserIcon, FolderKanban,
   LayoutTemplate, Paintbrush, Maximize2, Minimize2,
 } from "lucide-react";
@@ -34,6 +34,19 @@ import { TemplateRenderer } from "./templates";
 import { TemplatePicker, FormattingPanel } from "./template-picker";
 import { AIWriteButton } from "./ai-write-button";
 
+/* ── Filter out hidden sections for preview/PDF ── */
+function getVisibleForm(form: CVForm, hidden: Set<string>): CVForm {
+  return {
+    ...form,
+    experience: hidden.has("experience") ? [] : form.experience,
+    education: hidden.has("education") ? [] : form.education,
+    skills: hidden.has("skills") ? [] : form.skills,
+    projects: hidden.has("projects") ? [] : form.projects,
+    languages: hidden.has("languages") ? [] : form.languages,
+    certifications: hidden.has("certifications") ? [] : form.certifications,
+  };
+}
+
 /* ══════════════════════════════════════════════════════════
    MAIN PAGE COMPONENT
    ══════════════════════════════════════════════════════════ */
@@ -53,6 +66,14 @@ export default function CVBuilderPage() {
   const [skillInput, setSkillInput] = useState("");
   const [certInput, setCertInput] = useState("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
+
+  /* Section visibility — controls which sections appear in preview & PDF */
+  const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
+  const toggleSection = (section: string) => setHiddenSections((prev) => {
+    const next = new Set(prev);
+    if (next.has(section)) next.delete(section); else next.add(section);
+    return next;
+  });
 
   /* Template & formatting */
   const [selectedTemplate, setSelectedTemplate] = useState("classic");
@@ -363,8 +384,9 @@ export default function CVBuilderPage() {
     try {
       const { pdf } = await import("@react-pdf/renderer");
       const { CVPDFDocument } = await import("./cv-pdf-document");
+      const visibleForm = getVisibleForm(form, hiddenSections);
       const blob = await pdf(
-        <CVPDFDocument data={form} templateId={selectedTemplate} formatting={formatting} />
+        <CVPDFDocument data={visibleForm} templateId={selectedTemplate} formatting={formatting} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -546,6 +568,7 @@ export default function CVBuilderPage() {
                   icon={<Briefcase className="w-4 h-4" />}
                   badge={<span className="text-[0.6rem] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" />AI-powered</span>}
                   action={<Button variant="outline" size="sm" onClick={addExperience} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> Add</Button>}
+                  sectionKey="experience" hidden={hiddenSections.has("experience")} onToggle={() => toggleSection("experience")}
                 >
                   {form.experience.length === 0 && (
                     <p className="text-xs text-muted-foreground py-4 text-center">No experience yet. Click &quot;Add&quot; to start.</p>
@@ -609,6 +632,7 @@ export default function CVBuilderPage() {
                   title={`Education (${form.education.length})`}
                   icon={<GraduationCap className="w-4 h-4" />}
                   action={<Button variant="outline" size="sm" onClick={addEducation} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> Add</Button>}
+                  sectionKey="education" hidden={hiddenSections.has("education")} onToggle={() => toggleSection("education")}
                 >
                   {form.education.length === 0 && (
                     <p className="text-xs text-muted-foreground py-4 text-center">No education yet. Click &quot;Add&quot; to start.</p>
@@ -637,7 +661,9 @@ export default function CVBuilderPage() {
                 </SectionCard>
 
                 {/* Skills */}
-                <SectionCard title={`Key Skills (${form.skills.length})`} icon={<Award className="w-4 h-4" />}>
+                <SectionCard title={`Key Skills (${form.skills.length})`} icon={<Award className="w-4 h-4" />}
+                  sectionKey="skills" hidden={hiddenSections.has("skills")} onToggle={() => toggleSection("skills")}
+                >
                   <div className="flex flex-wrap gap-2 min-h-[2rem]">
                     {form.skills.map((s, i) => (
                       <Badge key={i} variant="secondary" className="text-xs gap-1 pe-1 py-1">
@@ -665,6 +691,7 @@ export default function CVBuilderPage() {
                   icon={<FolderKanban className="w-4 h-4" />}
                   badge={<span className="text-[0.6rem] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" />AI-powered</span>}
                   action={<Button variant="outline" size="sm" onClick={addProject} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> Add</Button>}
+                  sectionKey="projects" hidden={hiddenSections.has("projects")} onToggle={() => toggleSection("projects")}
                 >
                   {form.projects.length === 0 && (
                     <p className="text-xs text-muted-foreground py-4 text-center">No projects yet. Click &quot;Add&quot; to start.</p>
@@ -714,6 +741,7 @@ export default function CVBuilderPage() {
                   title={`Languages (${form.languages.length})`}
                   icon={<Globe className="w-4 h-4" />}
                   action={<Button variant="outline" size="sm" onClick={addLanguage} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> Add</Button>}
+                  sectionKey="languages" hidden={hiddenSections.has("languages")} onToggle={() => toggleSection("languages")}
                 >
                   {form.languages.length === 0 && <p className="text-xs text-muted-foreground py-2 text-center">No languages yet.</p>}
                   <div className="space-y-3">
@@ -735,7 +763,9 @@ export default function CVBuilderPage() {
                 </SectionCard>
 
                 {/* Certifications */}
-                <SectionCard title={`Certifications (${form.certifications.length})`} icon={<Award className="w-4 h-4" />}>
+                <SectionCard title={`Certifications (${form.certifications.length})`} icon={<Award className="w-4 h-4" />}
+                  sectionKey="certifications" hidden={hiddenSections.has("certifications")} onToggle={() => toggleSection("certifications")}
+                >
                   <div className="space-y-2">
                     {form.certifications.map((c, i) => (
                       <div key={i} className="flex items-center gap-2 text-sm group">
@@ -836,7 +866,7 @@ export default function CVBuilderPage() {
             <div className="p-6 min-h-[600px] max-h-[85vh] overflow-y-auto bg-white">
               <TemplateRenderer
                 templateId={selectedTemplate}
-                data={form}
+                data={getVisibleForm(form, hiddenSections)}
                 formatting={formatting}
               />
             </div>
@@ -876,21 +906,41 @@ function getCompleteness(form: CVForm): number {
 /* ── Sub-components ── */
 
 function SectionCard({
-  title, icon, badge, action, children,
+  title, icon, badge, action, children, sectionKey, hidden, onToggle,
 }: {
   title: string;
   icon: React.ReactNode;
   badge?: React.ReactNode;
   action?: React.ReactNode;
   children: React.ReactNode;
+  sectionKey?: string;
+  hidden?: boolean;
+  onToggle?: () => void;
 }) {
   return (
-    <div className="card-base p-4 sm:p-5 space-y-4">
+    <div className={`card-base p-4 sm:p-5 space-y-4 ${hidden ? "opacity-50" : ""}`}>
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold flex items-center gap-2">
           {icon} {title} {badge}
         </h3>
-        {action}
+        <div className="flex items-center gap-2">
+          {sectionKey && onToggle && (
+            <button
+              type="button"
+              onClick={onToggle}
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+                hidden
+                  ? "text-muted-foreground hover:text-foreground bg-muted/50"
+                  : "text-primary hover:text-primary/80 bg-primary/5"
+              }`}
+              title={hidden ? "Show in CV" : "Hide from CV"}
+            >
+              {hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              {hidden ? "Hidden" : "Visible"}
+            </button>
+          )}
+          {action}
+        </div>
       </div>
       {children}
     </div>

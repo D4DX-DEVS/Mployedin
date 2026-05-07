@@ -18,6 +18,7 @@ interface AuthCtx {
  * PATCH /api/dm/customer-care/[conversationId]/manage
  *
  * Admin-only: update customer care ticket status, assignment, priority.
+ * Job seekers: can only re-open their own resolved/closed tickets.
  * Body: { status?, assignedTo?, priority? }
  */
 async function patchHandler(
@@ -25,10 +26,6 @@ async function patchHandler(
   ctx: AuthCtx,
   params?: Record<string, string>
 ) {
-  if (ctx.role !== "admin") {
-    return NextResponse.json({ error: "Admin only" }, { status: 403 });
-  }
-
   await connectDB();
 
   const conversationId = params?.conversationId;
@@ -47,6 +44,53 @@ async function patchHandler(
 
   const body = await validateBody(req, customerCareManageSchema);
   const { status, assignedTo, priority } = body;
+
+  // Job seekers can only re-open their own resolved/closed tickets
+  if (ctx.role === "job_seeker") {
+    const isParticipant = conversation.participants.some(
+      (p) => p.toString() === ctx.userId
+    );
+    if (!isParticipant) {
+      return NextResponse.json({ error: "Not your ticket" }, { status: 403 });
+    }
+    const currentStatus = conversation.customerCare?.status;
+    if (status !== "open" || !["resolved", "closed"].includes(currentStatus ?? "")) {
+      return NextResponse.json(
+        { error: "You can only re-open resolved or closed tickets" },
+        { status: 403 }
+      );
+    }
+    conversation.customerCare!.status = "open";
+    conversation.customerCare!.resolvedAt = undefined;
+    conversation.customerCare!.closedAt = undefined;
+    await conversation.save();
+
+    // Notify admin
+    const adminParticipant = conversation.participantDetails.find(
+      (p) => p.role === "admin"
+    );
+    if (adminParticipant) {
+      await triggerRealtimeEvent(
+        adminParticipant.userId.toString(),
+        "customer-care-update",
+        { conversationId: conversation._id.toString(), status: "open" }
+      ).catch(() => {});
+    }
+
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "dm.customer_care_reopen",
+      resource: "conversations",
+      resourceId: conversationId,
+      req,
+    });
+
+    return NextResponse.json({ conversation: conversation.toObject() });
+  }
+
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Admin only" }, { status: 403 });
+  }
 
   if (!conversation.customerCare) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

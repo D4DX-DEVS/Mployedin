@@ -57,12 +57,15 @@ const profileUpdateSchema = z.object({
 
   // Completion flag
   onboardingComplete: z.boolean().optional(),
+  profileCompletedLater: z.boolean().optional(),
 
   // Misc profile fields
   nationality: z.string().max(100).optional(),
   currentLocation: z.string().max(200).optional(),
   availabilityStatus: z.enum(["immediately", "within_month", "within_3_months", "not_available"]).optional(),
   preferredCountries: z.array(z.string().max(10)).max(15).optional(),
+  sectionVisibility: z.record(z.string(), z.boolean()).optional(),
+  profileVisibility: z.enum(["visible", "hidden"]).optional(),
 }).strict();
 
 // ── GET — return own profile ──────────────────────────────────────────────────

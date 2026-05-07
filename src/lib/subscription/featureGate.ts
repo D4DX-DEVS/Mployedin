@@ -151,7 +151,7 @@ export async function checkFeatureGate(
 const BYPASS_ROLES = new Set(["admin", "super_agent", "agent"]);
 
 // ── Free AI features — available to all authenticated users ──────────────────
-const FREE_AI_FEATURES = new Set(["ai_daily_insights"]);
+const FREE_AI_FEATURES = new Set(["ai_daily_insights", "ai_cv_extraction", "ai_job_matching"]);
 
 /**
  * Check feature gate AND atomically increment usage for AI features.

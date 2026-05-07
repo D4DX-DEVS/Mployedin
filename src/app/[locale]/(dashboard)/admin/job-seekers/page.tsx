@@ -6,7 +6,7 @@ import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
-import { Pencil, Trash2, UserX } from "lucide-react";
+import { Pencil, Trash2, UserX, ChevronDown, ChevronUp, Briefcase, GraduationCap, Globe, Award } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,15 @@ interface JobSeeker {
   currentLocation?: string;
   status?: string;
   userId?: { name?: string; email?: string };
+  headline?: string;
+  summary?: string;
+  skills?: string[];
+  education?: { degree?: string; institution?: string; field?: string; startYear?: string; passingYear?: string }[];
+  experience?: { jobTitle?: string; company?: string; location?: string; isCurrent?: boolean; startDate?: string; endDate?: string }[];
+  languages?: { language?: string; proficiency?: string }[];
+  certifications?: string[];
+  profileCompleteness?: number;
+  phone?: string;
   createdAt: string;
 }
 
@@ -48,6 +57,7 @@ export default function AdminJobSeekersPage() {
   const [search, setSearch] = useState("");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [editItem, setEditItem] = useState<JobSeeker | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const exportColumns: ExportColumn<JobSeeker>[] = [
     { header: "Name", key: "fullName", formatter: (v, r) => String(v || (r as unknown as JobSeeker).userId?.name || "—") },
@@ -143,7 +153,11 @@ export default function AdminJobSeekersPage() {
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Profession</TableHead>
+              <TableHead>Education</TableHead>
               <TableHead>Nationality</TableHead>
+              <TableHead>Skills</TableHead>
+              <TableHead>Profile %</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Joined</TableHead>
               {(can("job_seekers", "update") || can("job_seekers", "delete")) && (
@@ -172,14 +186,23 @@ export default function AdminJobSeekersPage() {
                 </TableCell>
               </TableRow>
             ) : jobSeekers.map((js) => (
-              <TableRow key={js._id}>
-                <TableCell className="font-medium">{js.fullName || js.userId?.name || "—"}</TableCell>
+              <><TableRow key={js._id} className="cursor-pointer hover:bg-muted/30" onClick={() => setExpandedId(expandedId === js._id ? null : js._id)}>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-1.5">
+                    {expandedId === js._id ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                    {js.fullName || js.userId?.name || "—"}
+                  </div>
+                </TableCell>
                 <TableCell className="text-muted-foreground">{js.email ?? js.userId?.email ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">{js.headline || js.experience?.[0]?.jobTitle || "—"}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">{js.education?.[0]?.degree ? `${js.education[0].degree}${js.education[0].field ? ` - ${js.education[0].field}` : ""}` : "—"}</TableCell>
                 <TableCell className="text-muted-foreground">{js.nationality ?? "—"}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">{js.skills?.length ? `${js.skills.slice(0, 3).join(", ")}${js.skills.length > 3 ? ` +${js.skills.length - 3}` : ""}` : "—"}</TableCell>
+                <TableCell className="text-muted-foreground">{js.profileCompleteness != null ? `${js.profileCompleteness}%` : "—"}</TableCell>
                 <TableCell><StatusBadge status={js.status ?? "active"} /></TableCell>
                 <TableCell className="text-muted-foreground">{new Date(js.createdAt).toLocaleDateString()}</TableCell>
                 {(can("job_seekers", "update") || can("job_seekers", "delete")) && (
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1">
                       {can("job_seekers", "update") && (
                         <Button variant="ghost" size="xs" onClick={() => setEditItem(js)} title="Edit">
@@ -200,6 +223,83 @@ export default function AdminJobSeekersPage() {
                   </TableCell>
                 )}
               </TableRow>
+              {expandedId === js._id && (
+                <TableRow className="bg-muted/10 hover:bg-muted/10">
+                  <TableCell colSpan={10} className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      {/* Summary */}
+                      {js.summary && (
+                        <div className="md:col-span-3">
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">Summary</p>
+                          <p className="text-muted-foreground">{js.summary}</p>
+                        </div>
+                      )}
+                      {/* Contact */}
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1">Contact</p>
+                        <p className="text-muted-foreground">{js.email ?? js.userId?.email ?? "—"}</p>
+                        {js.phone && <p className="text-muted-foreground">{js.phone}</p>}
+                        {js.currentLocation && <p className="text-muted-foreground">{js.currentLocation}</p>}
+                      </div>
+                      {/* Experience */}
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Briefcase className="h-3 w-3" /> Experience</p>
+                        {js.experience?.length ? js.experience.slice(0, 3).map((exp, i) => (
+                          <div key={i} className="mb-1.5">
+                            <p className="font-medium text-foreground text-xs">{exp.jobTitle || "—"}</p>
+                            <p className="text-xs text-muted-foreground">{exp.company}{exp.isCurrent ? " · Current" : ""}</p>
+                          </div>
+                        )) : <p className="text-xs text-muted-foreground">No experience</p>}
+                      </div>
+                      {/* Education */}
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><GraduationCap className="h-3 w-3" /> Education</p>
+                        {js.education?.length ? js.education.slice(0, 3).map((edu, i) => (
+                          <div key={i} className="mb-1.5">
+                            <p className="font-medium text-foreground text-xs">{edu.degree || "—"}{edu.field ? ` — ${edu.field}` : ""}</p>
+                            <p className="text-xs text-muted-foreground">{edu.institution}{edu.passingYear ? ` · ${edu.passingYear}` : ""}</p>
+                          </div>
+                        )) : <p className="text-xs text-muted-foreground">No education</p>}
+                      </div>
+                      {/* Skills */}
+                      {js.skills?.length ? (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Award className="h-3 w-3" /> Skills</p>
+                          <div className="flex flex-wrap gap-1">
+                            {js.skills.slice(0, 8).map((s) => (
+                              <span key={s} className="rounded-full border bg-muted/30 px-2 py-0.5 text-[0.65rem] text-muted-foreground">{s}</span>
+                            ))}
+                            {js.skills.length > 8 && <span className="text-xs text-muted-foreground">+{js.skills.length - 8} more</span>}
+                          </div>
+                        </div>
+                      ) : null}
+                      {/* Languages */}
+                      {js.languages?.length ? (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Globe className="h-3 w-3" /> Languages</p>
+                          <div className="flex flex-wrap gap-1">
+                            {js.languages.map((l, i) => (
+                              <span key={i} className="rounded-full border bg-muted/30 px-2 py-0.5 text-[0.65rem] text-muted-foreground">{l.language} ({l.proficiency})</span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {/* Certifications */}
+                      {js.certifications?.length ? (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">Certifications</p>
+                          <div className="flex flex-wrap gap-1">
+                            {js.certifications.slice(0, 5).map((c, i) => (
+                              <span key={i} className="rounded-full border bg-muted/30 px-2 py-0.5 text-[0.65rem] text-muted-foreground">{c}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+              </>
             ))}
           </TableBody>
         </Table>

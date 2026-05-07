@@ -115,6 +115,7 @@ export interface IJobSeeker extends Document {
   diversityInclusion?: IDiversityInclusion;
   // Profile Visibility
   profileVisibility: "visible" | "hidden"; // employers can/can't find you
+  sectionVisibility?: Record<string, boolean>; // per-section visibility toggles
   // Documents
   documents: {
     id: string;
@@ -135,6 +136,7 @@ export interface IJobSeeker extends Document {
   industry?: string;
   preferredLocations: string[];
   isOnboarded: boolean;
+  profileCompletedLater?: boolean;
   // Preferences
   preferredCountries: string[];
   preferredRoles: string[];
@@ -292,6 +294,11 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     careerProfile: CareerProfileSchema,
     diversityInclusion: DiversityInclusionSchema,
     profileVisibility: { type: String, enum: ["visible", "hidden"], default: "visible" },
+    sectionVisibility: {
+      type: Map,
+      of: Boolean,
+      default: {},
+    },
     documents: [{
       id: { type: String, required: true },
       name: { type: String, required: true },
@@ -314,6 +321,7 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     industry: String,
     preferredLocations: [String],
     isOnboarded: { type: Boolean, default: false, index: true },
+    profileCompletedLater: { type: Boolean, default: false },
     preferredCountries: [String],
     preferredRoles: [String],
     preferredSalary: {

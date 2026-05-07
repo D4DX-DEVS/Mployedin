@@ -123,14 +123,20 @@ export default function AdminAnalyticsPage() {
         const data = await res.json();
         setResult(data.report ?? data.content ?? JSON.stringify(data, null, 2));
       } else {
-        setResult("Failed to generate report. Check AI configuration.");
+        const errData = await res.json().catch(() => ({})) as { error?: string };
+        const statusMsg = res.status === 429 ? "Rate limit exceeded. Please wait and try again."
+          : res.status === 401 ? "Authentication required. Please re-login."
+          : res.status === 403 ? "Insufficient permissions for AI analytics."
+          : errData.error ?? `Server error (${res.status}). Check AI API key configuration.`;
+        setResult(`⚠️ ${statusMsg}`);
       }
     } catch (error: unknown) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
       }
 
-      setResult("Failed to generate report. Check AI configuration.");
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      setResult(`⚠️ Report generation failed: ${msg}. Verify GEMINI_API_KEY is configured in environment variables.`);
     } finally {
       if (activeRequestRef.current === controller) {
         activeRequestRef.current = null;

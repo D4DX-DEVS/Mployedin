@@ -17,6 +17,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useJobDetail, useUpdateJobStatus, useCloneJob, useDeleteJob } from "@/hooks/useJobs";
 import { useConfirm } from "@/hooks/useConfirm";
 import { JobPosterDialog } from "@/components/features/employer/jobs/JobPosterDialog";
+import SocialShare from "@/components/features/public/SocialShare";
 
 interface Job {
   _id: string;
@@ -32,6 +33,8 @@ interface Job {
     languages?: string[];
   };
   salary?: { min?: number; max?: number; currency?: string; isNegotiable?: boolean };
+  qualifications?: string[];
+  responsibilities?: string[];
   status: string;
   workflowMode?: string;
   vacancies?: number;
@@ -161,6 +164,11 @@ export default function JobDetailPage() {
           <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={cloneJob} disabled={cloning}>
             <Copy className="w-3.5 h-3.5" /> {cloning ? "Cloning…" : "Clone"}
           </Button>
+          <SocialShare
+            url={typeof window !== "undefined" ? `${window.location.origin}/${locale}/jobs/${id}` : ""}
+            title={job.title}
+            description={job.description?.slice(0, 120)}
+          />
           {can("jobs", "update") && (
             <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={() => router.push(`/${locale}/employer/jobs/${id}/edit`)}>
               <Edit2 className="w-3.5 h-3.5" /> Edit
@@ -288,6 +296,30 @@ export default function JobDetailPage() {
           {job.description}
         </div>
       </div>
+
+      {/* Responsibilities */}
+      {job.responsibilities && job.responsibilities.length > 0 && (
+        <div className="card-base p-5 sm:p-6">
+          <h2 className="text-base font-semibold text-foreground mb-3">Responsibilities</h2>
+          <ul className="list-disc list-inside space-y-1.5 text-sm text-foreground/80">
+            {job.responsibilities.map((r: string, i: number) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Qualifications */}
+      {job.qualifications && job.qualifications.length > 0 && (
+        <div className="card-base p-5 sm:p-6">
+          <h2 className="text-base font-semibold text-foreground mb-3">Qualifications</h2>
+          <ul className="list-disc list-inside space-y-1.5 text-sm text-foreground/80">
+            {job.qualifications.map((q: string, i: number) => (
+              <li key={i}>{q}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Requirements */}
       {job.requirements && (

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageSquare, Search, Inbox, Loader2, ChevronLeft, Headset, Shield, Users, Building2, Star, Plus } from "lucide-react";
+import { MessageSquare, Search, Inbox, Loader2, ChevronLeft, Headset, Shield, Users, Building2, Star, Plus, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DirectMessageChat } from "@/components/features/dm/DirectMessageChat";
 import { NewChatSearch } from "@/components/features/dm/NewChatSearch";
@@ -114,6 +114,22 @@ export function UnifiedMessagesPage({
       if (convId) selectConversation(convId);
     } finally {
       setTicketSubmitting(false);
+    }
+  }
+
+  const [reopening, setReopening] = useState(false);
+  async function handleReopenTicket(conversationId: string) {
+    setReopening(true);
+    try {
+      const res = await fetch(`/api/dm/customer-care/${conversationId}/manage`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "open" }),
+      });
+      if (!res.ok) throw new Error("Failed to re-open ticket");
+      queryClient.invalidateQueries({ queryKey: ["customerCareConversations"] });
+    } finally {
+      setReopening(false);
     }
   }
 
@@ -370,9 +386,7 @@ export function UnifiedMessagesPage({
                 const unread = conv.unreadCounts?.[currentUserId] ?? 0;
                 const isActive = conv._id === activeConvId;
                 const subtitle = other?.headline ?? other?.companyName;
-                const customerCare = (conv as unknown as Record<string, unknown>).customerCare as
-                  | { status?: string; priority?: string; category?: string }
-                  | undefined;
+                const customerCare = conv.customerCare;
 
                 return (
                   <button
@@ -492,6 +506,31 @@ export function UnifiedMessagesPage({
                 <ChevronLeft className="h-4 w-4" />
                 Back
               </button>
+              {/* Re-open banner for resolved/closed tickets */}
+              {supportOnly &&
+                activeConversation.customerCare &&
+                ["resolved", "closed"].includes(activeConversation.customerCare.status) && (
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b border-border/40">
+                    <p className="text-sm text-muted-foreground">
+                      This ticket has been{" "}
+                      <span className="font-medium">{activeConversation.customerCare.status}</span>.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleReopenTicket(activeConversation._id)}
+                      disabled={reopening}
+                      className="gap-1.5"
+                    >
+                      {reopening ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      )}
+                      Re-open
+                    </Button>
+                  </div>
+                )}
               <DirectMessageChat
                 key={activeConversation._id}
                 conversation={activeConversation}

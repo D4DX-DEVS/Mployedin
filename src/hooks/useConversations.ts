@@ -19,6 +19,14 @@ export interface Conversation {
   lastMessage?: string;
   lastMessageAt?: string;
   unreadCounts?: Record<string, number>;
+  customerCare?: {
+    status: "open" | "assigned" | "resolved" | "closed";
+    priority: "low" | "medium" | "high" | "urgent";
+    category?: string;
+    assignedTo?: string;
+    resolvedAt?: string;
+    closedAt?: string;
+  };
 }
 
 interface ConversationsResponse {

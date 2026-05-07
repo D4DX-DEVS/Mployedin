@@ -281,6 +281,70 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 </div>
               </section>
 
+              {/* Responsibilities */}
+              {job.responsibilities?.length > 0 && (
+                <section className="card-base rounded-[28px] p-6">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Responsibilities</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What you&apos;ll do</h2>
+                  <ul className="mt-4 space-y-2">
+                    {job.responsibilities.map((r: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/60 shrink-0" />
+                        {r}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* Qualifications */}
+              {job.qualifications?.length > 0 && (
+                <section className="card-base rounded-[28px] p-6">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Qualifications</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What we&apos;re looking for</h2>
+                  <ul className="mt-4 space-y-2">
+                    {job.qualifications.map((q: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500/60 shrink-0" />
+                        {q}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* Benefits */}
+              {job.benefits?.length > 0 && (
+                <section className="card-base rounded-[28px] p-6">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Benefits</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What you&apos;ll get</h2>
+                  <ul className="mt-4 space-y-2">
+                    {job.benefits.map((b: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500/60 shrink-0" />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* Learning Outcomes */}
+              {job.learningOutcomes?.length > 0 && (
+                <section className="card-base rounded-[28px] p-6">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Learning</div>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What you&apos;ll learn</h2>
+                  <ul className="mt-4 space-y-2">
+                    {job.learningOutcomes.map((l: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-violet-500/60 shrink-0" />
+                        {l}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
               {/* Profile Insights — skill matching + micro questions */}
               <SkillInsights jobId={String(job._id)} source="job_view" />
 

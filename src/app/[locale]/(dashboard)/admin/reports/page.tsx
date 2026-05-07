@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -258,6 +259,7 @@ export default function AdminReportsPage() {
       indicatorClassName: "bg-blue-500",
       toneClassName: "workspace-tone-sky",
       icon: Briefcase,
+      href: "../jobs",
     },
     {
       label: "Applications",
@@ -269,6 +271,7 @@ export default function AdminReportsPage() {
       indicatorClassName: "bg-violet-500",
       toneClassName: "workspace-tone-violet",
       icon: FileText,
+      href: "../applications",
     },
     {
       label: "Placements",
@@ -280,6 +283,7 @@ export default function AdminReportsPage() {
       indicatorClassName: totalPlacements > 0 ? "bg-emerald-500" : "bg-yellow-500",
       toneClassName: totalPlacements > 0 ? "workspace-tone-emerald" : "workspace-tone-amber",
       icon: UserCheck,
+      href: "../applications?status=placed",
     },
     {
       label: "Revenue",
@@ -293,6 +297,7 @@ export default function AdminReportsPage() {
       indicatorClassName: totalRevenue > 0 ? "bg-amber-500" : "bg-slate-400",
       toneClassName: "workspace-tone-amber",
       icon: Wallet,
+      href: "../subscriptions",
     },
   ];
 
@@ -307,7 +312,7 @@ export default function AdminReportsPage() {
         </div>
         <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map((kpi) => (
-            <div key={kpi.label} className="rounded-2xl border border-border/60 bg-card p-4">
+            <Link key={kpi.label} href={kpi.href} className="rounded-2xl border border-border/60 bg-card p-4 transition-shadow hover:ring-2 hover:ring-primary/20 hover:shadow-md">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
@@ -325,7 +330,7 @@ export default function AdminReportsPage() {
                 <span className="text-xs text-muted-foreground">vs prev 30d</span>
               </div>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">{kpi.insight}</p>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -558,12 +563,12 @@ export default function AdminReportsPage() {
                     </TableHeader>
                     <TableBody>
                       {stats.recentJobs.map((job) => (
-                        <TableRow key={job.id}>
+                        <TableRow key={job.id} className="cursor-pointer hover:bg-muted/40 transition-colors">
                           <TableCell>
-                            <div>
+                            <Link href={`../jobs`} className="block">
                               <p className="font-medium text-foreground">{job.title}</p>
                               <p className="text-xs text-muted-foreground">{job.employerName} · {job.status}</p>
-                            </div>
+                            </Link>
                           </TableCell>
                           <TableCell>
                             <div className="text-right">
@@ -605,12 +610,12 @@ export default function AdminReportsPage() {
                     </TableHeader>
                     <TableBody>
                       {stats.recentApplications.map((application) => (
-                        <TableRow key={application.id}>
+                        <TableRow key={application.id} className="cursor-pointer hover:bg-muted/40 transition-colors">
                           <TableCell>
-                            <div>
+                            <Link href={`../applications`} className="block">
                               <p className="font-medium text-foreground">{application.jobTitle}</p>
                               <p className="text-xs text-muted-foreground">{application.employerName}</p>
-                            </div>
+                            </Link>
                           </TableCell>
                           <TableCell>
                             <div className="text-right">

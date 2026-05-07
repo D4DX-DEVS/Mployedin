@@ -97,6 +97,7 @@ interface KpiCard {
   icon: LucideIcon;
   trend: TrendSummary;
   trendClassName: string;
+  href: string;
 }
 
 interface InsightItem {
@@ -521,6 +522,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       icon: Users,
       trend: usersTrend,
       trendClassName: getTrendClassName(usersTrend.direction),
+      href: `/${locale}/admin/users`,
     },
     {
       label: "Active Jobs",
@@ -533,6 +535,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       icon: Briefcase,
       trend: jobsTrend,
       trendClassName: getTrendClassName(jobsTrend.direction),
+      href: `/${locale}/admin/jobs`,
     },
     {
       label: "Total Applications",
@@ -543,6 +546,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       icon: FileText,
       trend: applicationsTrend,
       trendClassName: getTrendClassName(applicationsTrend.direction),
+      href: `/${locale}/admin/applications`,
     },
     {
       label: "Total Interviews",
@@ -555,6 +559,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       icon: Activity,
       trend: { direction: stats.totalInterviews > 0 ? "up" : "flat", label: `${stats.totalInterviews} total` },
       trendClassName: getTrendClassName(stats.totalInterviews > 0 ? "up" : "flat"),
+      href: `/${locale}/admin/interviews`,
     },
   ];
 
@@ -770,9 +775,13 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
             const Icon = kpi.icon;
 
             return (
-              <article
+              <Link
                 key={kpi.label}
-                className={`${adminCardClassName} p-6`}
+                href={kpi.href}
+                className="block"
+              >
+              <article
+                className={`${adminCardClassName} p-6 cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all`}
                 data-surface="light-card"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -791,6 +800,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
                 <p className="mt-4 text-sm font-medium leading-6 text-foreground">{kpi.detail}</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{kpi.insight}</p>
               </article>
+              </Link>
             );
           })}
         </div>

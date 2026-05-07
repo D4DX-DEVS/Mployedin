@@ -91,18 +91,6 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const message = body.message;
   const category = body.category;
 
-  // Find the first admin user to pair as the support agent
-  const adminUser = await User.findOne({ role: "admin" })
-    .select("_id name email role image")
-    .lean();
-
-  if (!adminUser) {
-    return NextResponse.json(
-      { error: "No support agent available. Please try again later." },
-      { status: 503 }
-    );
-  }
-
   const jobSeekerUser = await User.findById(ctx.userId)
     .select("_id name email role image")
     .lean();
@@ -111,12 +99,47 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Check for existing open customer care conversation
+  // Check for existing open customer care conversation for this job seeker
   const existing = await Conversation.findOne({
     type: "customer_care",
-    participants: { $all: [jobSeekerUser._id, adminUser._id] },
+    participants: new mongoose.Types.ObjectId(ctx.userId),
     "customerCare.status": { $in: ["open", "assigned"] },
   }).lean();
+
+  // Find admin with fewest open support tickets (round-robin assignment)
+  const adminUsers = await User.find({ role: "admin" })
+    .select("_id name email role image")
+    .lean();
+
+  if (!adminUsers.length) {
+    return NextResponse.json(
+      { error: "No support agent available. Please try again later." },
+      { status: 503 }
+    );
+  }
+
+  let adminUser = adminUsers[0];
+  if (adminUsers.length > 1) {
+    const adminIds = adminUsers.map((a) => a._id);
+    const openCounts = await Conversation.aggregate([
+      {
+        $match: {
+          type: "customer_care",
+          "customerCare.status": { $in: ["open", "assigned"] },
+          participants: { $in: adminIds },
+        },
+      },
+      { $unwind: "$participants" },
+      { $match: { participants: { $in: adminIds } } },
+      { $group: { _id: "$participants", count: { $sum: 1 } } },
+    ]);
+    const countMap = new Map(openCounts.map((r) => [r._id.toString(), r.count as number]));
+    adminUser = adminUsers.reduce((best, cur) =>
+      (countMap.get(cur._id.toString()) ?? 0) < (countMap.get(best._id.toString()) ?? 0)
+        ? cur
+        : best
+    );
+  }
 
   if (existing) {
     // Return existing conversation — don't create duplicate

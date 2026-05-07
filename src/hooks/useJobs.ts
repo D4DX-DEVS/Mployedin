@@ -19,6 +19,8 @@ export interface Job {
   views?: number;
   tags?: string[];
   description?: string;
+  responsibilities?: string[];
+  qualifications?: string[];
   workflowMode?: string;
   updatedAt?: string;
   employerId?: { companyName?: string; logo?: string; industry?: string };

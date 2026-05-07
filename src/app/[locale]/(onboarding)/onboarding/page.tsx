@@ -206,6 +206,9 @@ export default function JobSeekerOnboardingPage() {
   const [aiImporting, setAiImporting] = useState(false);
   const [aiImported, setAiImported] = useState(false);
   const [aiImportError, setAiImportError] = useState("");
+  const [cvParsing, setCvParsing] = useState(false);
+  const [cvParsed, setCvParsed] = useState(false);
+  const [cvParseError, setCvParseError] = useState("");
 
   const [step0, setStep0] = useState<Step0Data>({
     name: userName,
@@ -394,6 +397,115 @@ export default function JobSeekerOnboardingPage() {
     }
   }, []);
 
+  // ── AI-powered CV/Resume parsing ──────────────────────────────────────────
+  const handleCvParse = useCallback(async (file: File) => {
+    if (!file || file.size > 10 * 1024 * 1024) {
+      setCvParseError(file.size > 10 * 1024 * 1024 ? "File size must be under 10 MB" : "No file selected");
+      return;
+    }
+    setCvParsing(true);
+    setCvParseError("");
+    try {
+      const formData = new FormData();
+      formData.append("cv", file);
+      const res = await fetch("/api/ai/cv-extract", { method: "POST", body: formData });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? "CV parsing failed");
+      }
+      const { extracted } = await res.json() as {
+        extracted: {
+          fullName?: string;
+          phone?: string;
+          headline?: string;
+          nationality?: string;
+          currentLocation?: string;
+          skills?: ({ name: string } | string)[];
+          experience?: { jobTitle?: string; company?: string; location?: string; from?: string; to?: string; current?: boolean }[];
+          education?: { degree?: string; field?: string; institution?: string; from?: string; to?: string }[];
+          languages?: { language?: string; level?: string }[];
+          socialLinks?: { label?: string; url?: string }[];
+        } | null;
+      };
+
+      if (!extracted) {
+        throw new Error("Could not extract data from this CV. Try a different file.");
+      }
+
+      // Pre-fill Step 0
+      if (extracted.fullName) {
+        setStep0((p) => ({ ...p, name: extracted.fullName || p.name }));
+      }
+      if (extracted.phone) {
+        setStep0((p) => ({ ...p, phone: extracted.phone || p.phone }));
+      }
+
+      // Pre-fill Step 1 (Employment)
+      const firstExp = extracted.experience?.[0];
+      if (firstExp) {
+        setStep0((p) => ({ ...p, workStatus: p.workStatus || "experienced" }));
+        const skills = extracted.skills?.map((s) => typeof s === "string" ? s : s.name).filter(Boolean) ?? [];
+
+        // Calculate experience duration from start date
+        let expYears = "";
+        let expMonths = "";
+        let startMonth = "";
+        let startYear = "";
+        if (firstExp.from) {
+          const parts = firstExp.from.split("-");
+          startYear = parts[0] || "";
+          startMonth = parts[1] || "";
+          const startDate = new Date(firstExp.from.length === 7 ? `${firstExp.from}-01` : firstExp.from);
+          const endDate = firstExp.to && firstExp.to !== "present"
+            ? new Date(firstExp.to.length === 7 ? `${firstExp.to}-01` : firstExp.to)
+            : new Date();
+          if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+            const totalMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
+            expYears = String(Math.floor(Math.max(0, totalMonths) / 12));
+            expMonths = String(Math.max(0, totalMonths) % 12);
+          }
+        }
+
+        setStep1((p) => ({
+          ...p,
+          isCurrentlyEmployed: firstExp.current ?? p.isCurrentlyEmployed,
+          companyName: firstExp.company || p.companyName,
+          jobTitle: firstExp.jobTitle || p.jobTitle,
+          currentCity: firstExp.location || p.currentCity,
+          skills: skills.length ? skills.slice(0, 15) : p.skills,
+          ...(startMonth && { startMonth }),
+          ...(startYear && { startYear }),
+          ...(expYears && { experienceYears: expYears }),
+          ...(expMonths && { experienceMonths: expMonths }),
+        }));
+      }
+
+      // Pre-fill Step 2 (Education)
+      const firstEdu = extracted.education?.[0];
+      if (firstEdu) {
+        setStep2((p) => ({
+          ...p,
+          qualification: firstEdu.degree || p.qualification,
+          university: firstEdu.institution || p.university,
+          specialization: firstEdu.field || p.specialization,
+          startYear: firstEdu.from?.slice(0, 4) || p.startYear,
+          passingYear: firstEdu.to?.slice(0, 4) || p.passingYear,
+        }));
+      }
+
+      // Pre-fill Step 3 (Headline)
+      if (extracted.headline) {
+        setStep3((p) => ({ ...p, headline: extracted.headline || p.headline }));
+      }
+
+      setCvParsed(true);
+    } catch (err) {
+      setCvParseError((err as Error).message);
+    } finally {
+      setCvParsing(false);
+    }
+  }, []);
+
   const [step1, setStep1] = useState<Step1Data>({
     isCurrentlyEmployed: null,
     experienceYears: "",
@@ -423,6 +535,8 @@ export default function JobSeekerOnboardingPage() {
     startYear: "",
     passingYear: "",
   });
+  const [courseConfirmed, setCourseConfirmed] = useState(false);
+  const [specConfirmed, setSpecConfirmed] = useState(false);
 
   const [step3, setStep3] = useState<Step3Data>({
     headline: "",
@@ -488,6 +602,10 @@ export default function JobSeekerOnboardingPage() {
           workStatus: step0.workStatus,
           marketingConsent: step0.marketingConsent,
         });
+        // Sync session JWT with the (possibly CV-parsed) name
+        if (step0.name && step0.name !== session?.user?.name) {
+          await updateSession({ name: step0.name });
+        }
       } else if (step === 1) {
         const payload: Record<string, unknown> = {
           totalExperienceYears: parseInt(step1.experienceYears) || 0,
@@ -545,8 +663,8 @@ export default function JobSeekerOnboardingPage() {
         gender: step3.gender,
         onboardingComplete: true,
       });
-      // Refresh the JWT so middleware sees isOnboarded: true
-      await updateSession({ isOnboarded: true });
+      // Refresh the JWT so middleware sees isOnboarded: true + updated name
+      await updateSession({ isOnboarded: true, name: step0.name });
       router.push(`/${locale ?? "en"}/job-seeker`);
     } catch (err) {
       setSaveError((err as Error).message);
@@ -819,16 +937,30 @@ export default function JobSeekerOnboardingPage() {
                           type="file"
                           accept=".doc,.docx,.pdf,.rtf"
                           className="sr-only"
-                          onChange={(e) => setStep0((p) => ({ ...p, resumeFile: e.target.files?.[0] ?? null }))}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            setStep0((p) => ({ ...p, resumeFile: file }));
+                            if (file) handleCvParse(file);
+                          }}
                         />
                         <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors">
-                          <Upload className="w-4 h-4" />
-                          {step0.resumeFile ? step0.resumeFile.name.slice(0, 20) + "…" : "Upload Resume"}
+                          {cvParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                          {cvParsing ? "Parsing…" : step0.resumeFile ? step0.resumeFile.name.slice(0, 20) + "…" : "Upload Resume"}
                         </span>
                       </label>
-                      <span className="text-xs text-gray-500">DOC, DOCx, PDF, RTF | Max: 2 MB</span>
+                      <span className="text-xs text-gray-500">DOC, DOCx, PDF, RTF | Max: 10 MB</span>
                     </div>
-                    <p className="text-xs text-gray-500">Recruiters prefer candidates who have a resume on their profile</p>
+                    {cvParsed && (
+                      <p className="text-xs text-green-600 flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5" /> Resume parsed! Fields auto-filled below.
+                      </p>
+                    )}
+                    {cvParseError && (
+                      <p className="text-xs text-red-500">{cvParseError}</p>
+                    )}
+                    {!cvParsed && !cvParseError && (
+                      <p className="text-xs text-gray-500">Upload your resume to auto-fill your profile using AI</p>
+                    )}
                   </div>
                 )}
 
@@ -1173,22 +1305,35 @@ export default function JobSeekerOnboardingPage() {
                   <>
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-800">Course <span className="text-red-500">*</span></Label>
-                      {step2.course ? (
+                      {step2.course && courseConfirmed ? (
                         <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-gray-300 min-h-[44px]">
-                          <TagChip label={step2.course} onRemove={() => setStep2((p) => ({ ...p, course: "" }))} />
+                          <TagChip label={step2.course} onRemove={() => { setStep2((p) => ({ ...p, course: "" })); setCourseConfirmed(false); }} />
                         </div>
                       ) : (
                         <>
-                          <Input
-                            value={step2.course}
-                            onChange={(e) => setStep2((p) => ({ ...p, course: e.target.value }))}
-                            placeholder="Eg. B.Tech"
-                            className="h-11 border-gray-300 focus:border-blue-500"
-                          />
+                          <div className="relative">
+                            <Input
+                              value={step2.course}
+                              onChange={(e) => setStep2((p) => ({ ...p, course: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === "Enter" && step2.course.trim()) { e.preventDefault(); setCourseConfirmed(true); } }}
+                              placeholder="Eg. B.Tech (type and press Enter or pick below)"
+                              autoComplete="off"
+                              className="h-11 border-gray-300 focus:border-blue-500 pr-20"
+                            />
+                            {step2.course.trim() && !courseConfirmed && (
+                              <button
+                                type="button"
+                                onClick={() => setCourseConfirmed(true)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-2 py-1 rounded"
+                              >
+                                ✓ Confirm
+                              </button>
+                            )}
+                          </div>
                           <div className="flex flex-wrap gap-2">
                             <span className="text-xs text-gray-500">Suggestions</span>
-                            {(COURSE_SUGGESTIONS[step2.qualification] ?? []).map((c) => (
-                              <SuggestionChip key={c} label={c} onClick={() => setStep2((p) => ({ ...p, course: c }))} />
+                            {(COURSE_SUGGESTIONS[step2.qualification] ?? []).filter((c) => !step2.course || c.toLowerCase().includes(step2.course.toLowerCase())).map((c) => (
+                              <SuggestionChip key={c} label={c} onClick={() => { setStep2((p) => ({ ...p, course: c })); setCourseConfirmed(true); }} />
                             ))}
                           </div>
                         </>
@@ -1196,7 +1341,7 @@ export default function JobSeekerOnboardingPage() {
                     </div>
 
                     {/* Course type */}
-                    {step2.course && (
+                    {step2.course && courseConfirmed && (
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-gray-800">Course type <span className="text-red-500">*</span></Label>
                         <div className="flex flex-wrap gap-2">
@@ -1215,29 +1360,44 @@ export default function JobSeekerOnboardingPage() {
                     {step2.courseType && (
                       <div className="space-y-1.5">
                         <Label className="text-sm font-medium text-gray-800">Specialization <span className="text-red-500">*</span></Label>
-                        {step2.specialization ? (
+                        {step2.specialization && specConfirmed ? (
                           <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-gray-300 min-h-[44px]">
-                            <TagChip label={step2.specialization} onRemove={() => setStep2((p) => ({ ...p, specialization: "" }))} />
+                            <TagChip label={step2.specialization} onRemove={() => { setStep2((p) => ({ ...p, specialization: "" })); setSpecConfirmed(false); }} />
                           </div>
                         ) : (
-                          <div className="relative">
-                            <Input
-                              value={step2.specialization}
-                              onChange={(e) => setStep2((p) => ({ ...p, specialization: e.target.value }))}
-                              placeholder="Eg. Data Analytics"
-                              className="h-11 border-gray-300 focus:border-blue-500"
-                              list="spec-suggestions"
-                            />
-                            <datalist id="spec-suggestions">
-                              {SPEC_SUGGESTIONS.map((s) => <option key={s} value={s} />)}
-                            </datalist>
+                          <div className="space-y-2">
+                            <div className="relative">
+                              <Input
+                                value={step2.specialization}
+                                onChange={(e) => setStep2((p) => ({ ...p, specialization: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === "Enter" && step2.specialization.trim()) { e.preventDefault(); setSpecConfirmed(true); } }}
+                                placeholder="Eg. Computer Science (type and press Enter or pick below)"
+                                autoComplete="off"
+                                className="h-11 border-gray-300 focus:border-blue-500 pr-20"
+                              />
+                              {step2.specialization.trim() && !specConfirmed && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSpecConfirmed(true)}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-2 py-1 rounded"
+                                >
+                                  ✓ Confirm
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="text-xs text-gray-500">Suggestions</span>
+                              {SPEC_SUGGESTIONS.filter((s) => !step2.specialization || s.toLowerCase().includes(step2.specialization.toLowerCase())).map((s) => (
+                                <SuggestionChip key={s} label={s} onClick={() => { setStep2((p) => ({ ...p, specialization: s })); setSpecConfirmed(true); }} />
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
                     )}
 
                     {/* University */}
-                    {step2.specialization && (
+                    {step2.specialization && specConfirmed && (
                       <div className="space-y-1.5">
                         <Label className="text-sm font-medium text-gray-800">University / Institute <span className="text-red-500">*</span></Label>
                         <Input
@@ -1430,6 +1590,26 @@ export default function JobSeekerOnboardingPage() {
                 </button>
               ) : <div />}
               <div className="flex items-center gap-3">
+                {/* Complete Later — available on all steps */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setSaving(true);
+                    try {
+                      await saveStep({ onboardingComplete: true, profileCompletedLater: true });
+                      await updateSession({ isOnboarded: true });
+                      router.push(`/${locale ?? "en"}/job-seeker`);
+                    } catch {
+                      setSaveError("Failed to skip. Please try again.");
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  disabled={saving}
+                  className="text-sm text-gray-500 hover:text-gray-800 transition-colors underline underline-offset-2"
+                >
+                  Complete later
+                </button>
                 {/* Skip button for fresher Employment step */}
                 {step === 1 && step0.workStatus === "fresher" && (
                   <button
