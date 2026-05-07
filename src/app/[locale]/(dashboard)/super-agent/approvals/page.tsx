@@ -65,6 +65,7 @@ interface JobDetail {
   createdAt: string;
   expiresAt?: string;
   views?: number;
+  poster?: { approvalStatus?: string };
 }
 
 interface JobCounts {
@@ -156,6 +157,25 @@ export default function SuperAgentApprovalsPage() {
       }
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const [approving, setApproving] = useState(false);
+  const handleApproval = async (status: "approved" | "rejected") => {
+    if (!selectedJob) return;
+    setApproving(true);
+    try {
+      const res = await fetch(`/api/super-agent/approvals/${selectedJob._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        setDetailOpen(false);
+        loadJobs();
+      }
+    } finally {
+      setApproving(false);
     }
   };
 
@@ -525,6 +545,27 @@ export default function SuperAgentApprovalsPage() {
                   <ul className="list-disc pl-5 space-y-0.5 text-sm text-muted-foreground">
                     {selectedJob.benefits!.map((b, i) => <li key={i}>{b}</li>)}
                   </ul>
+                </div>
+              )}
+
+              {/* Approve / Reject Actions */}
+              {selectedJob.poster?.approvalStatus === "pending" && (
+                <div className="flex items-center gap-3 pt-4 border-t">
+                  <Button
+                    onClick={() => handleApproval("approved")}
+                    disabled={approving}
+                    className="flex-1"
+                  >
+                    {approving ? "Processing…" : "Approve & Publish"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleApproval("rejected")}
+                    disabled={approving}
+                    className="flex-1"
+                  >
+                    Reject
+                  </Button>
                 </div>
               )}
             </>

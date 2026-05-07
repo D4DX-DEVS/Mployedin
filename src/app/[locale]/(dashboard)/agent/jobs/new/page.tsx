@@ -54,16 +54,12 @@ export default function AgentJobPosterPage() {
         body: JSON.stringify({
           title: form.title,
           category: form.category,
-          location: form.location,
+          ...(form.location ? { location: { city: form.location.split(",")[0]?.trim() || form.location, country: form.location.split(",")[1]?.trim() || "UAE" } } : {}),
           employmentType: form.employmentType,
-          salary: {
-            min: form.salaryMin ? parseInt(form.salaryMin) : undefined,
-            max: form.salaryMax ? parseInt(form.salaryMax) : undefined,
-            currency: form.currency,
-          },
+          ...(form.salaryMin && form.salaryMax ? { salary: { min: parseInt(form.salaryMin), max: parseInt(form.salaryMax), currency: form.currency } } : {}),
           description: form.description,
-          requirements: form.requirements.split("\n").map((r) => r.trim()).filter(Boolean),
-          onBehalfOfEmployer: selectedEmployer,
+          ...(form.requirements.trim() ? { requirements: { skills: form.requirements.split("\n").map((r) => r.trim()).filter(Boolean) } } : {}),
+          employerId: selectedEmployer,
         }),
       });
       if (res.ok) {

@@ -82,8 +82,8 @@ export function DateTimePicker({
       onChange(`${pad(h)}:${pad(m)}`);
     } else if (date) {
       const dt = setMinutes(setHours(date, h), m);
-      // datetime-local format: yyyy-MM-ddTHH:mm
-      onChange(format(dt, "yyyy-MM-dd'T'HH:mm"));
+      // ISO 8601 format for API compatibility
+      onChange(dt.toISOString());
     }
   }
 
