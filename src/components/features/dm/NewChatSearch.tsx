@@ -42,9 +42,11 @@ interface NewChatSearchProps {
   dashboardPrefix: "employer" | "job-seeker" | "admin" | "super-agent" | "agent";
   /** Optional trigger button — defaults to built-in "New Chat" button */
   trigger?: ReactNode;
+  /** Label for the default trigger button */
+  newChatLabel?: string;
 }
 
-export function NewChatSearch({ dashboardPrefix, trigger }: NewChatSearchProps) {
+export function NewChatSearch({ dashboardPrefix, trigger, newChatLabel }: NewChatSearchProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState<string | null>(null);
@@ -110,7 +112,7 @@ export function NewChatSearch({ dashboardPrefix, trigger }: NewChatSearchProps) 
         {trigger ?? (
           <button className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
             <MessageSquare className="h-3.5 w-3.5" />
-            New Chat
+            {newChatLabel ?? "New Chat"}
           </button>
         )}
       </DialogTrigger>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Award,
@@ -92,14 +93,17 @@ interface TimelineEntry {
   createdAt: string;
 }
 
-const pipelineStages = [
-  { value: "applied", label: "Applied" },
-  { value: "shortlisted", label: "Shortlisted" },
-  { value: "interview_scheduled", label: "Interview" },
-  { value: "offer", label: "Offer" },
-  { value: "selected", label: "Selected" },
-  { value: "rejected", label: "Rejected" },
-];
+function usePipelineStages() {
+  const t = useTranslations("employerApplications");
+  return [
+    { value: "applied", label: t("applied") },
+    { value: "shortlisted", label: t("shortlisted") },
+    { value: "interview_scheduled", label: t("interview") },
+    { value: "offer", label: t("offer") },
+    { value: "selected", label: t("selected") },
+    { value: "rejected", label: t("rejected") },
+  ];
+}
 
 function getAiMatchBadgeClass(score?: number): string {
   if (score == null) {
@@ -118,7 +122,7 @@ function getAiMatchBadgeClass(score?: number): string {
 }
 
 function getCurrentRole(app: Applicant): string {
-  return app.jobSeekerId?.experience?.find((entry) => entry.isCurrent)?.jobTitle ?? "Role not specified";
+  return app.jobSeekerId?.experience?.find((entry) => entry.isCurrent)?.jobTitle ?? "";
 }
 
 function getLocationExperienceSummary(app: Applicant): string {
@@ -128,7 +132,7 @@ function getLocationExperienceSummary(app: Applicant): string {
     summary.push(`${app.jobSeekerId.totalExperienceYears}+ yrs`);
   }
 
-  return summary.filter(Boolean).join(" • ") || "Location and experience pending";
+  return summary.filter(Boolean).join(" • ") || "";
 }
 
 function getApplicantTags(app: Applicant): string[] {
@@ -140,6 +144,9 @@ export default function EmployerApplicationsPage() {
   const { locale } = useParams<{ locale: string }>();
   const initialJobId = searchParams.get("jobId") ?? searchParams.get("job") ?? "";
   const { can } = usePermissions();
+  const t = useTranslations("employerApplications");
+  const tc = useTranslations("employerCommon");
+  const pipelineStages = usePipelineStages();
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -270,13 +277,13 @@ export default function EmployerApplicationsPage() {
     data: applications as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "applications",
-    title: "Applications",
+    title: t("title"),
   });
 
   useEffect(() => {
     document.title = selectedJob
-      ? `${selectedJob.title} — Applications · MPLOYEDIN`
-      : "Applications · MPLOYEDIN";
+      ? `${selectedJob.title} — ${t("title")} · MPLOYEDIN`
+      : `${t("title")} · MPLOYEDIN`;
   }, [selectedJob]);
 
   useEffect(() => { setPage(1); setSelected([]); }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter]);
@@ -628,16 +635,16 @@ export default function EmployerApplicationsPage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <h1 className="text-[1.45rem] font-semibold tracking-tight text-foreground">
-              {selectedJob ? `${selectedJob.title} — Applications` : "Applications"}
+              {selectedJob ? `${selectedJob.title} — ${t("title")}` : t("title")}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{filteredApplications.length}</span> Applicants
+              <span className="font-medium text-foreground">{filteredApplications.length}</span> {t("applicants")}
               <span className="px-2 text-border">•</span>
-              <span className="font-medium text-foreground">{highMatchCount}</span> High Match
+              <span className="font-medium text-foreground">{highMatchCount}</span> {t("highMatch")}
               <span className="px-2 text-border">•</span>
-              <span className="font-medium text-foreground">{interviewCount}</span> Interviews
+              <span className="font-medium text-foreground">{interviewCount}</span> {t("interviews")}
               <span className="px-2 text-border">•</span>
-              <span className="font-medium text-foreground">{selectedStageCount}</span> Selected
+              <span className="font-medium text-foreground">{selectedStageCount}</span> {t("selected")}
             </p>
           </div>
 
@@ -651,7 +658,7 @@ export default function EmployerApplicationsPage() {
                 disabled={!filteredApplications.length}
               >
                 {allVisibleSelected ? <CheckSquare className="mr-2 h-3.5 w-3.5 text-sky-600 dark:text-sky-300" /> : <Square className="mr-2 h-3.5 w-3.5 text-muted-foreground" />}
-                {allVisibleSelected ? "Clear Visible" : "Select Visible"}
+                {allVisibleSelected ? "Clear Visible" : t("selectVisible")}
               </Button>
               <Button
                 size="sm"
@@ -663,7 +670,7 @@ export default function EmployerApplicationsPage() {
                 <Sparkles className={`mr-2 h-3.5 w-3.5 ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
                 {bulkMatchProgress
                   ? `Scoring ${bulkMatchProgress.done}/${bulkMatchProgress.total}...`
-                  : "Score All"}
+                  : t("scoreAll")}
               </Button>
               <Button
                 size="sm"
@@ -672,7 +679,7 @@ export default function EmployerApplicationsPage() {
                 onClick={handleAutoShortlist}
               >
                 <CheckCheck className="mr-2 h-3.5 w-3.5" />
-                Shortlist Top
+                {t("shortlistTop")}
               </Button>
             </div>
           ) : null}
@@ -693,7 +700,7 @@ export default function EmployerApplicationsPage() {
             <SearchableSelect
               className="h-10 w-full rounded-xl border-sky-200 bg-sky-50/50 dark:border-sky-500/30 dark:bg-sky-500/10"
               options={[
-                { value: "", label: "All Jobs" },
+                { value: "", label: t("allJobs") },
                 ...employerJobs.map((j) => ({ value: j._id, label: j.title })),
               ]}
               value={jobFilter}
@@ -709,7 +716,7 @@ export default function EmployerApplicationsPage() {
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search applicants, skills, or location"
+                placeholder={tc("search")}
                 className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
               />
             </div>
@@ -717,16 +724,16 @@ export default function EmployerApplicationsPage() {
               <SearchableSelect
                 className="h-10 w-full rounded-xl border-border bg-background/70"
                 options={[
-                  { value: "all", label: "All statuses" },
+                  { value: "all", label: t("allStatuses") },
                   ...pipelineStages.map((s) => ({ value: s.value, label: s.label })),
                 ]}
                 value={statusFilter}
                 onValueChange={setStatusFilter}
-                placeholder="All statuses"
+                placeholder={t("allStatuses")}
               />
               <Button size="sm" variant="outline" onClick={() => setShowFilters(!showFilters)} className="h-10 rounded-xl border-border bg-background/80 px-3 text-sm">
                 <Filter className="mr-2 h-3.5 w-3.5" />
-                Filters
+                {t("filters")}
                 {(scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0) && (
                   <Badge variant="secondary" className="ml-2 rounded-full px-2 py-0.5 text-[10px]">Active</Badge>
                 )}
@@ -738,7 +745,7 @@ export default function EmployerApplicationsPage() {
                 onClick={() => setScoreRange(scoreRange[0] === 70 && scoreRange[1] === 100 ? [0, 100] : [70, 100])}
               >
                 <span className="mr-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-                High Match
+                {t("highMatch")}
               </Button>
           </div>
 
@@ -936,20 +943,20 @@ export default function EmployerApplicationsPage() {
 
       {canUpdate && selected.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-[24px] border border-sky-500/20 bg-sky-500/10 p-4 text-sky-800 dark:text-sky-200">
-          <span className="text-sm font-semibold">{selected.length} selected for bulk review</span>
+          <span className="text-sm font-semibold">{selected.length} {t("bulkActions")}</span>
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm"
               onClick={() => openEmailPreview("move_stage", "shortlisted")} disabled={bulkAction.isPending}>
-              Shortlist Selected
+              {t("moveToShortlisted")}
             </Button>
             <Button size="sm" variant="outline" className="h-10 rounded-xl border-violet-300/40 bg-background/80 px-4 text-sm text-violet-700 hover:bg-violet-500/10 dark:text-violet-300"
               onClick={openBulkInterviewModal} disabled={createInterview.isPending}>
               <Calendar className="mr-2 h-3.5 w-3.5" />
-              Schedule Interviews
+              {t("scheduleInterview")}
             </Button>
             <Button size="sm" variant="outline" className="h-10 rounded-xl border-destructive/30 bg-background/80 px-4 text-sm text-destructive hover:bg-destructive/10"
               onClick={() => setShowRejectPrompt(true)} disabled={bulkAction.isPending}>
-              Reject All
+              {t("reject")}
             </Button>
           </div>
           <Button size="sm" variant="ghost" className="ml-auto h-10 w-10 rounded-xl p-0 text-muted-foreground hover:bg-background/70" onClick={() => setSelected([])}>
@@ -1132,7 +1139,7 @@ export default function EmployerApplicationsPage() {
             Something went wrong while fetching applications. This may be a subscription limit — please check your plan or try refreshing the page.
           </p>
           <Button variant="outline" className="mt-4" onClick={() => applicationsQuery.refetch()}>
-            Try Again
+            {tc("tryAgain")}
           </Button>
         </div>
       ) : isLoading ? (
@@ -1309,6 +1316,8 @@ function TableView({
   hasActiveRefinement?: boolean;
 }) {
   const { locale } = useParams<{ locale: string }>();
+  const t = useTranslations("employerApplications");
+  const tc = useTranslations("employerCommon");
 
   if (!applications.length) {
     return (
@@ -1317,12 +1326,12 @@ function TableView({
           <Inbox className="h-7 w-7" />
         </div>
         <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-          {hasActiveRefinement ? "No applications match the current filters." : "No applications yet"}
+          {hasActiveRefinement ? t("noApplications") : t("noApplications")}
         </h3>
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
           {hasActiveRefinement
-            ? "Try widening the score range, status, or search terms to bring more applicants back into view."
-            : "Applications will appear here once candidates apply and move through your hiring pipeline."}
+            ? t("noApplicationsDesc")
+            : t("noApplicationsDesc")}
         </p>
       </div>
     );
@@ -1331,9 +1340,9 @@ function TableView({
   return (
     <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
       <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
-        <span>Candidate</span>
-        <span>Role, Match, Skills</span>
-        <span className="text-right">Actions</span>
+        <span>{t("candidate")}</span>
+        <span>{t("roleMatchSkills")}</span>
+        <span className="text-right">{t("actions")}</span>
       </div>
 
       <div className="divide-y divide-border/60">
@@ -1345,7 +1354,7 @@ function TableView({
           const topSkills = getApplicantTags(app);
           const appliedDate = new Date(app.appliedAt).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
           const scorecard = scorecardMap?.[app._id];
-          const aiScoreLabel = app.aiMatchScore != null ? `${app.aiMatchScore}% match` : "AI pending";
+          const aiScoreLabel = app.aiMatchScore != null ? `${app.aiMatchScore}% ${t("match")}` : "AI pending";
 
           return (
             <article
@@ -1397,9 +1406,9 @@ function TableView({
 
               <div className="min-w-0 sm:px-1">
                 <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                  <span className="truncate text-[13px] font-medium text-foreground">{app.jobId?.title ?? currentRole}</span>
+                  <span className="truncate text-[13px] font-medium text-foreground">{app.jobId?.title ?? (currentRole || t("roleNotSpecified"))}</span>
                   <span className="hidden text-border sm:inline">•</span>
-                  <span className="truncate text-[11px] text-muted-foreground">{locationExperience}</span>
+                  <span className="truncate text-[11px] text-muted-foreground">{locationExperience || t("locationExpPending")}</span>
                 </div>
 
                 <div className="mt-0.5 flex flex-wrap items-center gap-1">
@@ -1412,16 +1421,16 @@ function TableView({
                     </span>
                   ))}
                   {!topSkills.length ? (
-                    <span className="text-[11px] text-muted-foreground">{currentRole}</span>
+                    <span className="text-[11px] text-muted-foreground">{currentRole || t("roleNotSpecified")}</span>
                   ) : null}
                 </div>
 
                 <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span>Applied {appliedDate}</span>
+                  <span>{t("appliedDate")} {appliedDate}</span>
                   {(app.otherApplicationsCount ?? 0) > 0 ? (
                     <span className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-300">
                       <Users className="h-3 w-3" />
-                      +{app.otherApplicationsCount} other role{app.otherApplicationsCount! > 1 ? "s" : ""}
+                      +{app.otherApplicationsCount} {t("otherRole")}
                     </span>
                   ) : null}
                 </div>
@@ -1438,7 +1447,7 @@ function TableView({
                       onOpenDetails?.(app, event.currentTarget);
                     }}
                   >
-                    <BarChart3 className="mr-1 h-3.5 w-3.5" /> Detailed View
+                    <BarChart3 className="mr-1 h-3.5 w-3.5" /> {t("detailedView")}
                   </Button>
                 ) : null}
                 {app.jobSeekerId?.cv?.originalUrl && onViewCv ? (
@@ -1513,6 +1522,9 @@ function ApplicationDetailsPanel({
   const [rejectReason, setRejectReason] = useState("");
   const [statusPending, setStatusPending] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const t = useTranslations("employerApplications");
+  const tc = useTranslations("employerCommon");
+  const pipelineStages = usePipelineStages();
   const currentRole = getCurrentRole(app);
   const candidateName = getCandidateName(app);
   const matchItems = app.matchBreakdown
@@ -1614,7 +1626,7 @@ function ApplicationDetailsPanel({
                   <User className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700/80 dark:text-sky-300/80">Candidate Detailed View</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700/80 dark:text-sky-300/80">{t("detailedView")}</p>
                   <div className="flex flex-wrap items-center gap-2">
                     <a
                       href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
@@ -1624,20 +1636,20 @@ function ApplicationDetailsPanel({
                     </a>
                     <StatusBadge status={app.status} />
                     <Badge className={`${getAiMatchBadgeClass(app.aiMatchScore)} rounded-full px-2.5 py-1 text-xs font-semibold`}>
-                      {app.aiMatchScore != null ? `${app.aiMatchScore}% match` : "AI score pending"}
+                      {app.aiMatchScore != null ? `${app.aiMatchScore}% ${t("match")}` : "AI score pending"}
                     </Badge>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {currentRole}
+                    {currentRole || t("roleNotSpecified")}
                     {app.jobSeekerId?.currentLocation ? ` • ${app.jobSeekerId.currentLocation}` : ""}
-                    {app.jobSeekerId?.totalExperienceYears != null ? ` • ${app.jobSeekerId.totalExperienceYears}+ years experience` : ""}
+                    {app.jobSeekerId?.totalExperienceYears != null ? ` • ${app.jobSeekerId.totalExperienceYears}+ ${t("yearsExp")}` : ""}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                  <span className="font-semibold text-foreground">Applied</span>
+                  <span className="font-semibold text-foreground">{t("appliedDate")}</span>
                   <span className="ml-1.5">{new Date(app.appliedAt).toLocaleDateString()}</span>
                 </div>
                 <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
@@ -1646,7 +1658,7 @@ function ApplicationDetailsPanel({
                 </div>
                 {(app.otherApplicationsCount ?? 0) > 0 ? (
                   <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                    <span className="font-semibold text-foreground">Other roles</span>
+                    <span className="font-semibold text-foreground">{t("otherRole")}</span>
                     <span className="ml-1.5">{app.otherApplicationsCount}</span>
                   </div>
                 ) : null}
@@ -1663,7 +1675,7 @@ function ApplicationDetailsPanel({
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="workspace-glass-panel rounded-2xl p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current Role</p>
-              <p className="mt-2 text-sm font-semibold text-foreground">{currentRole}</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{currentRole || t("roleNotSpecified")}</p>
             </div>
             <div className="workspace-glass-panel rounded-2xl p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Location</p>
@@ -1671,7 +1683,7 @@ function ApplicationDetailsPanel({
             </div>
             <div className="workspace-glass-panel rounded-2xl p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Experience</p>
-              <p className="mt-2 text-sm font-semibold text-foreground">{app.jobSeekerId?.totalExperienceYears != null ? `${app.jobSeekerId.totalExperienceYears}+ years` : "Pending"}</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{app.jobSeekerId?.totalExperienceYears != null ? `${app.jobSeekerId.totalExperienceYears}+ ${t("yearsExp")}` : t("locationExpPending")}</p>
             </div>
             <div className="workspace-glass-panel rounded-2xl p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scorecard</p>
@@ -1748,7 +1760,7 @@ function ApplicationDetailsPanel({
 
               {app.coverLetter ? (
                 <div className="workspace-glass-panel rounded-[24px] p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Cover Letter</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("coverLetter")}</p>
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">{app.coverLetter}</p>
                 </div>
               ) : null}
@@ -1857,12 +1869,12 @@ function ApplicationDetailsPanel({
                 <div className="mt-4 flex flex-wrap gap-2">
                   {app.jobSeekerId?.cv?.originalUrl && onViewCv ? (
                     <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onViewCv(app)}>
-                      <FileText className="mr-2 h-3.5 w-3.5" /> View CV
+                      <FileText className="mr-2 h-3.5 w-3.5" /> {t("viewResume")}
                     </Button>
                   ) : null}
                   {onOpenTimeline ? (
                     <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenTimeline(app._id, candidateName)}>
-                      <History className="mr-2 h-3.5 w-3.5" /> Activity
+                      <History className="mr-2 h-3.5 w-3.5" /> {t("timeline")}
                     </Button>
                   ) : null}
                   {onOpenScorecard && ["interview_scheduled", "selected"].includes(app.status) ? (
@@ -1872,17 +1884,17 @@ function ApplicationDetailsPanel({
                   ) : null}
                   {app.status === "shortlisted" && onScheduleInterview ? (
                     <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-violet-500/10 px-4 text-sm text-violet-700 hover:bg-violet-500/15 dark:text-violet-300" onClick={() => onScheduleInterview(app)}>
-                      <Calendar className="mr-2 h-3.5 w-3.5" /> Schedule Interview
+                      <Calendar className="mr-2 h-3.5 w-3.5" /> {t("scheduleInterview")}
                     </Button>
                   ) : null}
                   {app.status === "selected" && onCreateOffer ? (
                     <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-cyan-500/10 px-4 text-sm text-cyan-700 hover:bg-cyan-500/15 dark:text-cyan-300" onClick={() => onCreateOffer(app)}>
-                      <DollarSign className="mr-2 h-3.5 w-3.5" /> Create Offer
+                      <DollarSign className="mr-2 h-3.5 w-3.5" /> {t("sendOffer")}
                     </Button>
                   ) : null}
                   {app.status === "applied" && onChangeStatus ? (
                     <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-sky-500/10 px-4 text-sm text-sky-700 hover:bg-sky-500/15 dark:text-sky-300" disabled={statusPending} onClick={() => handleQuickStageChange("shortlisted")}>
-                      Shortlist
+                      {t("shortlisted")}
                     </Button>
                   ) : null}
                   {app.status === "interview_scheduled" && onChangeStatus ? (
@@ -1892,7 +1904,7 @@ function ApplicationDetailsPanel({
                   ) : null}
                   {!(["rejected", "offer"]).includes(app.status) && onChangeStatus ? (
                     <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-rose-500/10 px-4 text-sm text-rose-600 hover:bg-rose-500/15 dark:text-rose-300" onClick={() => setNextStage("rejected")}>
-                      Reject
+                      {t("rejected")}
                     </Button>
                   ) : null}
                   <AIEmailDraftButton
@@ -1911,7 +1923,7 @@ function ApplicationDetailsPanel({
 
                 {onChangeStatus ? (
                   <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Stage Management</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("stageManagement")}</p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                       <SearchableSelect
                         className="h-10 w-full rounded-xl border-border bg-background/80"

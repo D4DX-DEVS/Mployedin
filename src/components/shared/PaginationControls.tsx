@@ -7,6 +7,7 @@ import {
   ChevronsRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import {
   Select,
   SelectContent,
@@ -15,6 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/formatNumber";
+import { useParams } from "next/navigation";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -37,6 +40,8 @@ export function PaginationControls({
   onLimitChange,
   className = "",
 }: PaginationControlsProps) {
+  const t = useTranslations("employerCommon");
+  const { locale } = useParams<{ locale: string }>();
   const from = total === 0 ? 0 : (page - 1) * limit + 1;
   const to = Math.min(page * limit, total);
 
@@ -49,7 +54,7 @@ export function PaginationControls({
     >
       {/* Left: rows per page */}
       <div className="flex items-center gap-2 text-muted-foreground leading-none">
-        <span className="whitespace-nowrap flex items-center h-8">Rows per page</span>
+        <span className="whitespace-nowrap flex items-center h-8">{t("rowsPerPage")}</span>
         <Select
           value={String(limit)}
           onValueChange={(v) => onLimitChange(Number(v))}
@@ -60,7 +65,7 @@ export function PaginationControls({
           <SelectContent>
             {PAGE_SIZE_OPTIONS.map((size) => (
               <SelectItem key={size} value={String(size)}>
-                {size}
+                {formatNumber(size, locale)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -69,7 +74,7 @@ export function PaginationControls({
 
       {/* Center: showing X-Y of Z */}
       <span className="text-muted-foreground whitespace-nowrap">
-        Showing {from}–{to} of {total.toLocaleString()}
+        {t("showing")} {formatNumber(from, locale)}–{formatNumber(to, locale)} {t("of")} {formatNumber(total, locale)}
       </span>
 
       {/* Right: navigation buttons */}
@@ -80,7 +85,7 @@ export function PaginationControls({
           className="h-8 w-8"
           onClick={() => onPageChange(1)}
           disabled={page <= 1}
-          title="First page"
+          title={t("firstPage")}
         >
           <ChevronsLeft className="h-4 w-4" />
         </Button>
@@ -90,12 +95,12 @@ export function PaginationControls({
           className="h-8 w-8"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          title="Previous page"
+          title={t("previousPage")}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="px-2 text-muted-foreground whitespace-nowrap tabular-nums">
-          {page} / {totalPages}
+          {formatNumber(page, locale)} / {formatNumber(totalPages, locale)}
         </span>
         <Button
           variant="outline"
@@ -103,7 +108,7 @@ export function PaginationControls({
           className="h-8 w-8"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          title="Next page"
+          title={t("nextPage")}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -113,7 +118,7 @@ export function PaginationControls({
           className="h-8 w-8"
           onClick={() => onPageChange(totalPages)}
           disabled={page >= totalPages}
-          title="Last page"
+          title={t("lastPage")}
         >
           <ChevronsRight className="h-4 w-4" />
         </Button>

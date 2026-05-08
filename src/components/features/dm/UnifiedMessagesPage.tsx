@@ -47,6 +47,16 @@ interface UnifiedMessagesPageProps {
   showCustomerCare?: boolean;
   /** Support-only mode: hides DM tab, defaults to support */
   supportOnly?: boolean;
+  /** Label for the "New Chat" button */
+  newChatLabel?: string;
+  /** Placeholder for the search input */
+  searchPlaceholder?: string;
+  /** Text shown when no DM conversations exist */
+  emptyStateText?: string;
+  /** Title shown when no conversation is selected */
+  selectConversationTitle?: string;
+  /** Description shown when no conversation is selected */
+  selectConversationHint?: string;
 }
 
 export function UnifiedMessagesPage({
@@ -56,6 +66,11 @@ export function UnifiedMessagesPage({
   showNewChat = true,
   showCustomerCare = false,
   supportOnly = false,
+  newChatLabel,
+  searchPlaceholder,
+  emptyStateText,
+  selectConversationTitle,
+  selectConversationHint,
 }: UnifiedMessagesPageProps) {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
@@ -296,7 +311,7 @@ export function UnifiedMessagesPage({
               </DialogContent>
             </Dialog>
           ) : showNewChat && activeTab === "dm" ? (
-            <NewChatSearch dashboardPrefix={dashboardPrefix as "employer" | "job-seeker"} />
+            <NewChatSearch dashboardPrefix={dashboardPrefix as "employer" | "job-seeker"} newChatLabel={newChatLabel} />
           ) : undefined
         }
       />
@@ -356,7 +371,7 @@ export function UnifiedMessagesPage({
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search conversations…"
+                placeholder={searchPlaceholder ?? "Search conversations…"}
                 className="pl-8 h-8 text-xs"
               />
             </div>
@@ -375,7 +390,7 @@ export function UnifiedMessagesPage({
                     ? "No conversations match your search."
                     : (activeTab === "support" || supportOnly)
                     ? 'No support tickets yet. Click "New Ticket" to contact support.'
-                    : 'No conversations yet. Start one with the "New Chat" button above.'}
+                    : (emptyStateText ?? 'No conversations yet. Start one with the "New Chat" button above.')}
                 </p>
               </div>
             ) : (
@@ -545,11 +560,11 @@ export function UnifiedMessagesPage({
                 <MessageSquare className="h-8 w-8 text-muted-foreground/40" />
               </div>
               <div>
-                <p className="font-medium text-foreground">Select a conversation</p>
+                <p className="font-medium text-foreground">{selectConversationTitle ?? "Select a conversation"}</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {activeTab === "support"
                     ? "Select a support ticket from the left to respond."
-                    : "Choose a conversation from the left, or start a new chat."}
+                    : (selectConversationHint ?? "Choose a conversation from the left, or start a new chat.")}
                 </p>
               </div>
             </div>

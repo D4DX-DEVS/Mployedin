@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { useState, useEffect } from "react";
 import { Sliders, Save, RotateCcw, Loader2, CheckCircle, Sparkles, Target, Scale, BarChart3, BookTemplate, Copy } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -25,29 +27,31 @@ const DEFAULT_WEIGHTS: MatchingWeights = {
   behaviorSignals: 10,
 };
 
-const WEIGHT_LABELS: Record<keyof MatchingWeights, string> = {
-  skills: "Skills Match",
-  experience: "Years of Experience",
-  education: "Education Level",
-  location: "Location Preference",
-  salary: "Salary Expectation",
-  languages: "Language Match",
-  availability: "Availability",
-  behaviorSignals: "Behavior Signals",
+const WEIGHT_LABEL_KEYS: Record<keyof MatchingWeights, string> = {
+  skills: "skillsMatch",
+  experience: "yearsOfExperience",
+  education: "educationLevel",
+  location: "locationPreference",
+  salary: "salaryExpectation",
+  languages: "languageMatch",
+  availability: "availability",
+  behaviorSignals: "behaviorSignals",
 };
 
-const WEIGHT_DESCRIPTIONS: Record<keyof MatchingWeights, string> = {
-  skills: "How closely the candidate's technical skills match the job requirements",
-  experience: "Weight given to years of relevant work experience",
-  education: "Degree level and field of study relevance",
-  location: "Candidate's location vs. job country/city preferences",
-  salary: "Candidate's salary expectations vs. offered range",
-  languages: "Match on required language proficiencies",
-  availability: "Immediate availability for joining",
-  behaviorSignals: "AI-inferred soft skills, communication style, and culture fit signals",
+const WEIGHT_DESC_KEYS: Record<keyof MatchingWeights, string> = {
+  skills: "skillsMatchDesc",
+  experience: "yearsOfExperienceDesc",
+  education: "educationLevelDesc",
+  location: "locationPreferenceDesc",
+  salary: "salaryExpectationDesc",
+  languages: "languageMatchDesc",
+  availability: "availabilityDesc",
+  behaviorSignals: "behaviorSignalsDesc",
 };
 
 export default function EmployerMatchingWeightsPage() {
+  const t = useTranslations("employerMatchingWeights");
+  const tc = useTranslations("employerCommon");
   const { data: serverWeights, isLoading: loading } = useMatchingWeights();
   const saveWeights = useSaveMatchingWeights();
   const { data: templates, isLoading: templatesLoading } = useEmployerMatchingWeightTemplates();
@@ -88,8 +92,8 @@ export default function EmployerMatchingWeightsPage() {
     }
   };
 
-  const applyTemplate = (t: MatchingWeightTemplateItem) => {
-    setWeights(t.weights);
+  const applyTemplate = (tpl: MatchingWeightTemplateItem) => {
+    setWeights(tpl.weights);
     setShowTemplateSelector(false);
     setSaved(false);
   };
@@ -131,8 +135,8 @@ export default function EmployerMatchingWeightsPage() {
     <FeatureGate feature="matchingWeightCustomization">
     <div className="page-container employer-legacy-surface space-y-6">
       <PageHeader
-        title="AI Matching Weights"
-        description="Customise how candidates are scored and ranked for your roles"
+        title={t("title")}
+        description={t("description")}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -142,7 +146,7 @@ export default function EmployerMatchingWeightsPage() {
               className="gap-1.5 rounded-xl border-border"
             >
               <BookTemplate className="h-4 w-4" />
-              Templates
+              {t("templates")}
             </Button>
             <Button
               variant="outline"
@@ -151,7 +155,7 @@ export default function EmployerMatchingWeightsPage() {
               className="gap-1.5 rounded-xl border-border"
             >
               <Copy className="h-4 w-4" />
-              Save as Template
+              {t("saveAsTemplate")}
             </Button>
           </div>
         }
@@ -171,24 +175,24 @@ export default function EmployerMatchingWeightsPage() {
             <div className="h-16 animate-pulse rounded-xl border border-border bg-background/70" />
           ) : templates && templates.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {templates.map((t) => {
-                const wKeys = Object.keys(t.weights) as Array<keyof MatchingWeights>;
-                const topKey = wKeys.reduce((h, k) => (t.weights[k] > t.weights[h] ? k : h), wKeys[0]);
+              {templates.map((tpl) => {
+                const wKeys = Object.keys(tpl.weights) as Array<keyof MatchingWeights>;
+                const topKey = wKeys.reduce((h, k) => (tpl.weights[k] > tpl.weights[h] ? k : h), wKeys[0]);
                 return (
                   <button
-                    key={t._id}
-                    onClick={() => applyTemplate(t)}
+                    key={tpl._id}
+                    onClick={() => applyTemplate(tpl)}
                     className="rounded-xl border border-border bg-background/80 p-3 text-left transition-all hover:border-sky-500/40 hover:bg-sky-500/5"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-foreground">{t.name}</span>
-                      <Badge variant={t.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
-                        {t.scope === "system" ? "System" : "Custom"}
+                      <span className="text-sm font-semibold text-foreground">{tpl.name}</span>
+                      <Badge variant={tpl.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
+                        {tpl.scope === "system" ? "System" : "Custom"}
                       </Badge>
                     </div>
-                    {t.description && <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{t.description}</p>}
+                    {tpl.description && <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{tpl.description}</p>}
                     <p className="mt-1 text-[10px] text-muted-foreground">
-                      Top: {WEIGHT_LABELS[topKey]} ({t.weights[topKey]}%)
+                      Top: {t(WEIGHT_LABEL_KEYS[topKey])} ({tpl.weights[topKey]}%)
                     </p>
                   </button>
                 );
@@ -250,42 +254,42 @@ export default function EmployerMatchingWeightsPage() {
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-sky-300">
               <Sparkles className="h-4 w-4" />
-              Ranking controls
+              {t("rankingControls")}
             </div>
             <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground">
-              Tune how the platform prioritises skills, experience, and fit before recruiters review each shortlist.
+              {t("rankingControlsDesc")}
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Adjust the scoring mix for every employer role, keep the total balanced at 100%, and preview the weight distribution before saving.
+              {t("totalAllocation")}
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <Scale className="h-5 w-5 text-sky-600 dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">Total at {total}%</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">The scoring model must total exactly 100% before it can be saved.</p>
+                <p className="mt-3 text-sm font-semibold text-foreground">{t("totalAt")} {total}%</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("totalMustBe100")}</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <Target className="h-5 w-5 text-sky-600 dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">Top priority: {WEIGHT_LABELS[topPriority]}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">Current strongest influence in ranking is set to {weights[topPriority]}%.</p>
+                <p className="mt-3 text-sm font-semibold text-foreground">{t("topPriority")} {t(WEIGHT_LABEL_KEYS[topPriority])}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("currentStrongest")} {weights[topPriority]}%.</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <BarChart3 className="h-5 w-5 text-sky-600 dark:text-sky-300" />
                 <p className="mt-3 text-sm font-semibold text-foreground">{saveStateLabel}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">Recruiter scoring updates only after you save the final distribution.</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("readyToUpdateDesc")}</p>
               </div>
             </div>
           </div>
 
           <div className="workspace-glass-panel rounded-[24px] p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scoring preview</p>
-            <p className="mt-2 text-sm text-muted-foreground">High-weight criteria have the most impact when candidates are ranked inside your workflow.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("scoringPreview")}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{t("scoringPreviewDesc")}</p>
             <div className="mt-5 space-y-3">
               {weightKeys.slice().sort((a, b) => weights[b] - weights[a]).slice(0, 4).map((key) => (
                 <div key={key} className="rounded-2xl border border-border bg-background/60 px-4 py-3">
                   <div className="flex items-center justify-between gap-3 text-sm font-medium text-foreground">
-                    <span>{WEIGHT_LABELS[key]}</span>
+                    <span>{t(WEIGHT_LABEL_KEYS[key])}</span>
                     <span>{weights[key]}%</span>
                   </div>
                   <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted/50">
@@ -303,7 +307,7 @@ export default function EmployerMatchingWeightsPage() {
         <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Weight builder</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
               <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
                 <Sliders className="h-4 w-4 text-sky-600" /> Weight configuration
               </h3>
@@ -318,8 +322,8 @@ export default function EmployerMatchingWeightsPage() {
             <div key={key} className="rounded-[22px] border border-border bg-background/60 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="max-w-2xl">
-                  <label className="text-sm font-semibold text-foreground">{WEIGHT_LABELS[key]}</label>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{WEIGHT_DESCRIPTIONS[key]}</p>
+                  <label className="text-sm font-semibold text-foreground">{t(WEIGHT_LABEL_KEYS[key])}</label>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(WEIGHT_DESC_KEYS[key])}</p>
                 </div>
                 <div className="flex items-center gap-2 self-start">
                   <Input
@@ -352,14 +356,14 @@ export default function EmployerMatchingWeightsPage() {
               className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700 disabled:bg-slate-300"
             >
               {saveWeights.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {saveWeights.isPending ? "Saving…" : saved ? "Saved!" : "Save Weights"}
+              {saveWeights.isPending ? t("saving") : saved ? "✓" : t("save")}
             </Button>
             <Button
               variant="outline"
               onClick={() => setWeights(DEFAULT_WEIGHTS)}
               className="gap-2 rounded-xl border-border bg-background/80 hover:bg-background"
             >
-              <RotateCcw className="h-4 w-4" /> Reset Defaults
+              <RotateCcw className="h-4 w-4" /> {t("resetDefaults")}
             </Button>
             <p className="text-sm text-muted-foreground">Keep the strongest weights for the signals recruiters trust most.</p>
           </div>
@@ -376,7 +380,7 @@ export default function EmployerMatchingWeightsPage() {
               {weightKeys.map((key) => (
                 <div key={key} className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{WEIGHT_LABELS[key]}</span>
+                    <span className="text-muted-foreground">{t(WEIGHT_LABEL_KEYS[key])}</span>
                     <span className="font-medium text-foreground">{weights[key]}%</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-muted/50">

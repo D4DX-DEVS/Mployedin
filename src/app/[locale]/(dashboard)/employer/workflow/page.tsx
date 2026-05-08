@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { useState, useEffect, useCallback } from "react";
 import {
   Settings2, ChevronDown, ChevronUp,
@@ -42,6 +44,8 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 export default function EmployerWorkflowPage() {
+  const t = useTranslations("employerWorkflow");
+  const tc = useTranslations("employerCommon");
   const { data: serverData, isLoading: loading, error: fetchError } = useWorkflow();
   const saveWorkflow = useSaveWorkflow();
   const { data: templates, isLoading: templatesLoading } = useEmployerWorkflowTemplates();
@@ -132,11 +136,11 @@ export default function EmployerWorkflowPage() {
     }
   };
 
-  const applyTemplate = (t: WorkflowTemplateItem) => {
-    setStages(t.stages);
-    setAiAutoScreen(t.settings.aiAutoScreen);
-    setNotifyOnStageChange(t.settings.notifyOnStageChange);
-    setAutoRejectBelow(t.settings.autoRejectBelow);
+  const applyTemplate = (tpl: WorkflowTemplateItem) => {
+    setStages(tpl.stages);
+    setAiAutoScreen(tpl.settings.aiAutoScreen);
+    setNotifyOnStageChange(tpl.settings.notifyOnStageChange);
+    setAutoRejectBelow(tpl.settings.autoRejectBelow);
     setShowTemplateSelector(false);
     markDirty();
   };
@@ -185,8 +189,8 @@ export default function EmployerWorkflowPage() {
     <FeatureGate feature="workflowCustomization">
     <div className="page-container employer-legacy-surface space-y-6">
       <PageHeader
-        title="Hiring Workflow"
-        description="Configure your recruitment pipeline stages and automation"
+        title={t("title")}
+        description={t("description")}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -196,7 +200,7 @@ export default function EmployerWorkflowPage() {
               className="gap-1.5 rounded-xl border-border"
             >
               <BookTemplate className="h-4 w-4" />
-              Templates
+              {t("templates")}
             </Button>
             <Button
               variant="outline"
@@ -205,7 +209,7 @@ export default function EmployerWorkflowPage() {
               className="gap-1.5 rounded-xl border-border"
             >
               <Copy className="h-4 w-4" />
-              Save as Template
+              {t("saveAsTemplate")}
             </Button>
             <Button
               onClick={handleSave}
@@ -220,7 +224,7 @@ export default function EmployerWorkflowPage() {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              {saveWorkflow.isPending ? "Saving…" : saved ? "Saved!" : "Save Workflow"}
+              {saveWorkflow.isPending ? tc("loading") : saved ? "✓" : t("saveWorkflow")}
             </Button>
           </div>
         }
@@ -240,22 +244,22 @@ export default function EmployerWorkflowPage() {
             <div className="h-16 animate-pulse rounded-xl border border-border bg-background/70" />
           ) : templates && templates.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {templates.map((t) => (
+              {templates.map((tpl) => (
                 <button
-                  key={t._id}
-                  onClick={() => applyTemplate(t)}
+                  key={tpl._id}
+                  onClick={() => applyTemplate(tpl)}
                   className="rounded-xl border border-border bg-background/80 p-3 text-left transition-all hover:border-sky-500/40 hover:bg-sky-500/5"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">{t.name}</span>
-                    <Badge variant={t.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
-                      {t.scope === "system" ? "System" : "Custom"}
+                    <span className="text-sm font-semibold text-foreground">{tpl.name}</span>
+                    <Badge variant={tpl.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
+                      {tpl.scope === "system" ? "System" : "Custom"}
                     </Badge>
-                    {t.isDefault && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
+                    {tpl.isDefault && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
                   </div>
-                  {t.description && <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{t.description}</p>}
+                  {tpl.description && <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{tpl.description}</p>}
                   <p className="mt-1 text-[10px] text-muted-foreground">
-                    {t.stages.filter((s) => s.enabled).length} stages · AI: {t.settings.aiAutoScreen ? "on" : "off"}
+                    {tpl.stages.filter((s) => s.enabled).length} stages · AI: {tpl.settings.aiAutoScreen ? "on" : "off"}
                   </p>
                 </button>
               ))}
@@ -325,30 +329,30 @@ export default function EmployerWorkflowPage() {
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-sky-700 dark:text-sky-300">
               <Sparkles className="h-4 w-4" />
-              Pipeline automation
+              {t("pipelineAutomation")}
             </div>
             <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-foreground">
-              Shape the hiring journey once, then keep recruiters and candidates aligned from first review to final offer.
+              {t("pipelineAutomationDesc")}
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Reorder stages, enable automation, and define rejection thresholds without leaving the workflow view. Every change stays local until you save it.
+              {t("reorderStages")}
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <Settings2 className="h-5 w-5 text-sky-600 dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{activeStages.length} active stages</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">A clean pipeline keeps hiring teams consistent across every role.</p>
+                <p className="mt-3 text-sm font-semibold text-foreground">{activeStages.length} {t("activeStages")}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("activeStagesDesc")}</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <Sparkles className="h-5 w-5 text-sky-600 dark:text-sky-300" />
-                <p className="mt-3 text-sm font-semibold text-foreground">{automatedStages} automated steps</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">Auto-progression can speed up screening and interview coordination.</p>
+                <p className="mt-3 text-sm font-semibold text-foreground">{automatedStages} {t("automatedSteps")}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("automatedStepsDesc")}</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <Bell className="h-5 w-5 text-sky-600 dark:text-sky-300" />
                 <p className="mt-3 text-sm font-semibold text-foreground">{saveStateLabel}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">Notifications and automation stay in sync with your latest saved workflow.</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("liveConfigDesc")}</p>
               </div>
             </div>
           </div>
@@ -356,11 +360,11 @@ export default function EmployerWorkflowPage() {
           <div className="workspace-glass-panel rounded-[24px] p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline preview</p>
-                <p className="mt-2 text-sm text-muted-foreground">This is the active candidate path recruiters will work with.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("pipelinePreview")}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{t("pipelinePreviewDesc")}</p>
               </div>
               <span className="rounded-full border border-border bg-background/80 px-3 py-1 text-xs font-semibold text-foreground">
-                {activeStages.length} live
+                {activeStages.length} {t("live")}
               </span>
             </div>
             <div className="mt-5 overflow-x-auto pb-1">
@@ -507,12 +511,12 @@ export default function EmployerWorkflowPage() {
                           <span className={`h-3 w-3 flex-shrink-0 rounded-full ${STAGE_COLORS[stage.id] ?? "bg-gray-400"}`} />
                           <span className="truncate text-sm font-semibold text-foreground">{stage.label}</span>
                           <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                            {stage.enabled ? "Enabled" : "Paused"}
+                            {stage.enabled ? t("enabled") : "Paused"}
                           </span>
                         </div>
                         <div className="mt-3 flex flex-wrap items-center gap-4">
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>Auto-progress</span>
+                            <span>{t("autoProgress")}</span>
                             <Switch
                               checked={stage.autoProgress}
                               onCheckedChange={() => toggleStage(stage.id, "autoProgress")}
@@ -521,7 +525,7 @@ export default function EmployerWorkflowPage() {
                             />
                           </div>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>Stage active</span>
+                            <span>{t("stage")}</span>
                             <Switch
                               checked={stage.enabled}
                               onCheckedChange={() => toggleStage(stage.id, "enabled")}

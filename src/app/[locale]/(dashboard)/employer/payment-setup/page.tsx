@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,41 +22,42 @@ interface PaymentConfig {
   isConnected: boolean;
 }
 
-const GATEWAYS = [
-  {
-    id: "stripe" as const,
-    name: "Stripe",
-    description: "Global payment processing with cards, wallets & bank transfers",
-    icon: <CreditCard className="h-6 w-6" />,
-    regions: "Global",
-  },
-  {
-    id: "tap" as const,
-    name: "Tap Payments",
-    description: "MENA-focused payment gateway with local card & KNET support",
-    icon: <Banknote className="h-6 w-6" />,
-    regions: "GCC / MENA",
-  },
-];
-
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 export default function EmployerPaymentSetupPage() {
+  const t = useTranslations("employerPaymentSetup");
   const [selectedGateway, setSelectedGateway] = useState<"stripe" | "tap" | "none">("none");
   const [publicKey, setPublicKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [connected, setConnected] = useState(false);
 
+  const GATEWAYS = [
+    {
+      id: "stripe" as const,
+      name: t("gatewayStripeName"),
+      description: t("gatewayStripeDesc"),
+      icon: <CreditCard className="h-6 w-6" />,
+      regions: t("gatewayStripeRegions"),
+    },
+    {
+      id: "tap" as const,
+      name: t("gatewayTapName"),
+      description: t("gatewayTapDesc"),
+      icon: <Banknote className="h-6 w-6" />,
+      regions: t("gatewayTapRegions"),
+    },
+  ];
+
   const handleSave = async () => {
     if (!selectedGateway || selectedGateway === "none") {
-      toast.error("Please select a payment gateway");
+      toast.error(t("errorSelectGateway"));
       return;
     }
     if (!publicKey.trim()) {
-      toast.error("Public/Publishable key is required");
+      toast.error(t("errorPublicKeyRequired"));
       return;
     }
 
@@ -67,20 +69,19 @@ export default function EmployerPaymentSetupPage() {
         body: JSON.stringify({
           gateway: selectedGateway,
           publicKey: publicKey.trim(),
-          // Secret key is stored server-side only
           secretKey: secretKey.trim(),
         }),
       });
 
       if (res.ok) {
-        toast.success("Payment gateway configured — ready for activation");
+        toast.success(t("successConfigured"));
         setConnected(true);
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to save configuration");
+        toast.error(data.error || t("errorSaveFailed"));
       }
     } catch {
-      toast.error("Failed to save payment configuration");
+      toast.error(t("errorSaveFailedGeneric"));
     } finally {
       setSaving(false);
     }
@@ -95,10 +96,9 @@ export default function EmployerPaymentSetupPage() {
             <CreditCard className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Payment Setup</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Configure your payment gateway for subscription billing and premium features.
-              Keys are securely encrypted and stored server-side.
+              {t("subtitle")}
             </p>
           </div>
         </div>
@@ -110,9 +110,9 @@ export default function EmployerPaymentSetupPage() {
               <>
                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">Gateway Configured</p>
+                  <p className="text-sm font-medium text-foreground">{t("statusConnected")}</p>
                   <p className="text-xs text-muted-foreground">
-                    Payment processing is set up. Connect it to billing when ready.
+                    {t("statusConnectedDesc")}
                   </p>
                 </div>
               </>
@@ -120,9 +120,9 @@ export default function EmployerPaymentSetupPage() {
               <>
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">No Gateway Connected</p>
+                  <p className="text-sm font-medium text-foreground">{t("statusDisconnected")}</p>
                   <p className="text-xs text-muted-foreground">
-                    Select a provider below and enter your API keys to enable payments.
+                    {t("statusDisconnectedDesc")}
                   </p>
                 </div>
               </>
@@ -133,15 +133,15 @@ export default function EmployerPaymentSetupPage() {
 
       {/* Gateway Selection */}
       <section className="workspace-panel-surface rounded-[28px] p-5">
-        <h2 className="text-lg font-semibold text-foreground">Choose Provider</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Select the payment gateway for your region</p>
+        <h2 className="text-lg font-semibold text-foreground">{t("chooseProvider")}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t("chooseProviderDesc")}</p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {GATEWAYS.map((gw) => (
             <button
               key={gw.id}
               onClick={() => setSelectedGateway(gw.id)}
-              className={`workspace-glass-panel rounded-2xl p-5 text-left transition-all ${
+              className={`workspace-glass-panel rounded-2xl p-5 text-start transition-all ${
                 selectedGateway === gw.id
                   ? "ring-2 ring-primary bg-primary/5"
                   : "hover:bg-muted/50"
@@ -165,16 +165,15 @@ export default function EmployerPaymentSetupPage() {
         <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold text-foreground">API Keys</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("apiKeysTitle")}</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Enter your {selectedGateway === "stripe" ? "Stripe" : "Tap"} API keys.
-            These are encrypted and stored securely.
+            {t("apiKeysDesc", { gateway: selectedGateway === "stripe" ? t("gatewayStripeName") : t("gatewayTapName") })}
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Publishable / Public Key</Label>
+              <Label>{t("publicKeyLabel")}</Label>
               <Input
                 placeholder={selectedGateway === "stripe" ? "pk_live_..." : "pk_live_..."}
                 value={publicKey}
@@ -182,7 +181,7 @@ export default function EmployerPaymentSetupPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Secret Key</Label>
+              <Label>{t("secretKeyLabel")}</Label>
               <Input
                 type="password"
                 placeholder={selectedGateway === "stripe" ? "sk_live_..." : "sk_live_..."}
@@ -191,7 +190,7 @@ export default function EmployerPaymentSetupPage() {
               />
               <p className="text-[10px] text-muted-foreground">
                 <Shield className="mr-1 inline h-3 w-3" />
-                Secret key is encrypted server-side and never exposed to the browser
+                {t("secretKeyNote")}
               </p>
             </div>
           </div>
@@ -199,10 +198,10 @@ export default function EmployerPaymentSetupPage() {
           <div className="flex items-center gap-3 pt-2">
             <Button onClick={handleSave} disabled={saving}>
               <Zap className="mr-1 h-4 w-4" />
-              {saving ? "Saving..." : "Save Configuration"}
+              {saving ? t("saving") : t("saveConfig")}
             </Button>
             <p className="text-xs text-muted-foreground">
-              You can connect the gateway to billing later from subscription settings.
+              {t("connectLaterNote")}
             </p>
           </div>
         </section>
@@ -213,12 +212,12 @@ export default function EmployerPaymentSetupPage() {
         <div className="flex items-start gap-3">
           <Shield className="mt-0.5 h-5 w-5 text-muted-foreground" />
           <div>
-            <p className="text-sm font-medium text-foreground">Payment Integration Roadmap</p>
+            <p className="text-sm font-medium text-foreground">{t("roadmapTitle")}</p>
             <ul className="mt-2 space-y-1 text-xs text-muted-foreground list-disc list-inside">
-              <li>Step 1: Configure gateway keys (this page) ✓</li>
-              <li>Step 2: Connect to subscription billing (coming soon)</li>
-              <li>Step 3: Enable automated invoicing</li>
-              <li>Step 4: Set up webhook for payment events</li>
+              <li>{t("roadmapStep1")}</li>
+              <li>{t("roadmapStep2")}</li>
+              <li>{t("roadmapStep3")}</li>
+              <li>{t("roadmapStep4")}</li>
             </ul>
           </div>
         </div>

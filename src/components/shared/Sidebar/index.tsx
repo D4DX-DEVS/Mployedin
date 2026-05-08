@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
@@ -30,6 +31,7 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const t = useTranslations("nav");
   const sessionRole = (session?.user as { role?: string } | undefined)?.role;
   const effectiveRole = userRole ?? sessionRole;
   const isRtl = locale === "ar";
@@ -45,12 +47,12 @@ export function Sidebar({
   const usesDualTierLayout = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
   const usesInlineWorkspaceSidebar = usesModernWorkspaceShell && !usesDualTierLayout;
   const workspaceLabel = effectiveRole === "super_agent"
-    ? "Super agent workspace"
+    ? t("superAgentWorkspace")
     : effectiveRole === "admin"
-      ? "Admin workspace"
+      ? t("adminWorkspace")
     : effectiveRole === "agent"
-      ? "Agent workspace"
-      : "Employer workspace";
+      ? t("agentWorkspace")
+      : t("employerWorkspace");
   const usesLightWorkspaceSidebar = false;
   const userImage = session?.user?.image;
   const displayImage = companyLogo ?? userImage;

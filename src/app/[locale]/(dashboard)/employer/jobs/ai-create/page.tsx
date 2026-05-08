@@ -10,6 +10,7 @@ import { useVoiceInput } from "@/hooks/useVoiceInput";
 import type { JobFormValues } from "@/components/features/employer/job-form/jobFormSchema";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useTranslations, useLocale } from "next-intl";
 
 function hasMalayalam(text: string): boolean {
   return /[\u0D00-\u0D7F]/.test(text);
@@ -225,8 +226,11 @@ function renderMarkdown(text: string) {
 export default function EmployerAIJobCreatePage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const t = useTranslations("ai");
+  const currentLocale = useLocale();
+  const isRtl = currentLocale === "ar";
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: INITIAL_MESSAGE }
+    { role: "assistant", content: t("jobCreator.initialMessage") }
   ]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -318,13 +322,13 @@ export default function EmployerAIJobCreatePage() {
         try {
           const jobData = JSON.parse(jobDataMatch[1].trim());
           setExtractedJob(jobData);
-          toast.success("Draft details are ready to review in the form.");
+          toast.success(t("jobCreator.draftReady"));
         } catch { /* ignore parse errors */ }
       }
     } catch {
       setMessages((prev) => {
         const copy = [...prev];
-        copy[copy.length - 1] = { ...copy[copy.length - 1], content: "Sorry, something went wrong. Please try again." };
+        copy[copy.length - 1] = { ...copy[copy.length - 1], content: t("errorMessage") };
         return copy;
       });
     } finally {
@@ -338,15 +342,15 @@ export default function EmployerAIJobCreatePage() {
       sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify(buildPrefill(extractedJob)));
       router.push(`/${locale}/employer/jobs/new?mode=manual&prefill=ai`);
     } catch {
-      toast.error("Failed to open the review form. Please try again.");
+      toast.error(t("jobCreator.failedOpenForm"));
     }
   };
 
   return (
     <div className="page-container">
       <PageHeader
-        title="AI Job Creator"
-        description="Answer a few basics with typing or voice. AI will prefill the full job form for review before anything is saved."
+        title={t("jobCreator.title")}
+        description={t("jobCreator.description")}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -377,7 +381,7 @@ export default function EmployerAIJobCreatePage() {
                           {hasJobData && !isStreaming && (
                             <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-green-800 text-xs">
                               <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
-                              <span className="font-medium">Draft ready — check the Job Preview panel on the right →</span>
+                              <span className="font-medium">{t("jobCreator.draftReadyPanel")}</span>
                             </div>
                           )}
                           {isStreaming && i === messages.length - 1 && (
@@ -418,7 +422,7 @@ export default function EmployerAIJobCreatePage() {
                     void sendMessage();
                   }
                 }}
-                placeholder="Describe the role, location, skills, and optional salary or openings..."
+                placeholder={t("jobCreator.inputPlaceholder")}
                 disabled={isStreaming || isRecording || isVoiceProcessing}
                 rows={1}
                 className="min-h-[44px] max-h-[200px] flex-1 resize-none rounded-xl border-border/60 bg-muted/20 overflow-y-auto transition-[height] duration-100"
@@ -430,9 +434,9 @@ export default function EmployerAIJobCreatePage() {
                     variant="outline"
                     onClick={cancelRecording}
                     className="h-10 rounded-xl border-border/60 px-3 text-muted-foreground hover:text-foreground"
-                    aria-label="Cancel voice input"
+                    aria-label={t("cancelVoiceInput")}
                   >
-                    <X className="mr-1.5 h-4 w-4" /> Cancel
+                    <X className="mr-1.5 h-4 w-4" /> {t("cancel")}
                   </Button>
                   <div
                     role="status"
@@ -458,8 +462,8 @@ export default function EmployerAIJobCreatePage() {
                       ))}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium leading-none">Listening...</p>
-                      <p className="mt-1 text-xs text-red-700/80">Tap send when you're ready.</p>
+                      <p className="font-medium leading-none">{t("listening")}</p>
+                      <p className="mt-1 text-xs text-red-700/80">{t("jobCreator.tapSendWhenReady")}</p>
                     </div>
                     <span
                       className="ml-auto font-mono text-sm tabular-nums"
@@ -472,9 +476,9 @@ export default function EmployerAIJobCreatePage() {
                     type="button"
                     onClick={submitRecording}
                     className="h-10 rounded-xl px-4"
-                    aria-label="Send voice input"
+                    aria-label={t("sendVoiceInput")}
                   >
-                    <Send className="mr-1.5 h-4 w-4" /> Send
+                    <Send className="mr-1.5 h-4 w-4" /> {t("send")}
                   </Button>
                 </div>
               ) : voiceState === "processing" ? (
@@ -485,7 +489,7 @@ export default function EmployerAIJobCreatePage() {
                   className="flex items-center justify-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
                 >
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="font-medium">Processing voice...</span>
+                  <span className="font-medium">{t("processingVoice")}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-end gap-2">
@@ -495,7 +499,7 @@ export default function EmployerAIJobCreatePage() {
                       onClick={() => setShowLangPicker((v) => !v)}
                       disabled={isRecording || isVoiceProcessing}
                       className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-1 rounded hover:bg-muted disabled:opacity-40"
-                      title="Voice language"
+                      title={t("voiceLanguage")}
                     >
                       <Globe className="h-3 w-3" />
                       <span>{(VOICE_LANGUAGES.find((l) => l.code === voiceLanguage) ?? VOICE_LANGUAGES[0]).flag} {voiceLanguage.toUpperCase()}</span>
@@ -524,15 +528,15 @@ export default function EmployerAIJobCreatePage() {
                     onClick={() => void startRecording()}
                     disabled={isStreaming}
                     className="h-10 w-10 rounded-xl border-border/60 p-0 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                    title="Start voice input"
-                    aria-label="Start voice input"
+                    title={t("startVoiceInput")}
+                    aria-label={t("startVoiceInput")}
                   >
                     <Mic className="h-4 w-4" />
                   </Button>
                   <button
                     onClick={() => void sendMessage()}
                     disabled={!input.trim() || isStreaming}
-                    aria-label="Send AI prompt"
+                    aria-label={t("sendMessage")}
                     className="btn-primary h-10 w-10 rounded-xl p-0 flex-shrink-0 flex items-center justify-center disabled:opacity-50"
                   >
                     <Send className="h-4 w-4" />
@@ -547,11 +551,11 @@ export default function EmployerAIJobCreatePage() {
                 </p>
               ) : voiceState === "idle" && detectedLanguageLabel ? (
                 <p className="text-[11px] text-muted-foreground/80">
-                  Detected language: {detectedLanguageLabel}
+                  {t("jobCreator.detectedLanguage", { lang: detectedLanguageLabel })}
                 </p>
               ) : voiceState === "idle" ? (
                 <p className="text-[11px] text-muted-foreground/70 text-center sm:text-left">
-                  Press Enter to send, use Shift+Enter for a new line, or tap the mic to dictate a longer brief.
+                  {t("jobCreator.enterToSend")}
                 </p>
               ) : null}
             </div>
@@ -563,33 +567,33 @@ export default function EmployerAIJobCreatePage() {
           <div className={`card-base p-5 space-y-3 transition-all ${extractedJob ? "border-green-300 bg-green-50/30" : ""}`}>
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Job Preview</h3>
+              <h3 className="text-sm font-semibold">{t("jobCreator.jobPreview")}</h3>
             </div>
             {!extractedJob ? (
               <div className="space-y-3 text-xs text-muted-foreground">
-                <p>AI will ask for these basics first:</p>
+                <p>{t("jobCreator.aiWillAsk")}</p>
                 <div className="grid gap-2">
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">Role and team</div>
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">Location and work setup</div>
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">Key skills and requirements</div>
-                  <div className="rounded-xl border border-dashed border-border px-3 py-2">Optional salary and openings</div>
+                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.roleAndTeam")}</div>
+                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.locationAndWork")}</div>
+                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.keySkills")}</div>
+                  <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.optionalSalary")}</div>
                 </div>
               </div>
             ) : (
               <div className="space-y-2 text-xs">
-                <p><strong>Title:</strong> {extractedJob.title ?? "—"}</p>
-                <p><strong>Category:</strong> {extractedJob.category ?? "—"}</p>
-                <p><strong>Location:</strong> {typeof extractedJob.location === "string" ? extractedJob.location : [extractedJob.location?.city, extractedJob.location?.country].filter(Boolean).join(", ") || "—"}</p>
-                <p><strong>Type:</strong> {extractedJob.employmentType ? extractedJob.employmentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
-                <p><strong>Work Mode:</strong> {extractedJob.workMode ? extractedJob.workMode.replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
+                <p><strong>{t("jobCreator.titleLabel")}</strong> {extractedJob.title ?? "—"}</p>
+                <p><strong>{t("jobCreator.categoryLabel")}</strong> {extractedJob.category ?? "—"}</p>
+                <p><strong>{t("jobCreator.locationLabel")}</strong> {typeof extractedJob.location === "string" ? extractedJob.location : [extractedJob.location?.city, extractedJob.location?.country].filter(Boolean).join(", ") || "—"}</p>
+                <p><strong>{t("jobCreator.typeLabel")}</strong> {extractedJob.employmentType ? extractedJob.employmentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
+                <p><strong>{t("jobCreator.workModeLabel")}</strong> {extractedJob.workMode ? extractedJob.workMode.replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
                 {extractedJob.salary && (extractedJob.salary.min || extractedJob.salary.max) ? (
-                  <p><strong>Salary:</strong> {extractedJob.showSalary === false ? "Not disclosed" : `${extractedJob.salary.currency ?? "USD"} ${extractedJob.salary.min?.toLocaleString() ?? 0} – ${extractedJob.salary.max?.toLocaleString() ?? 0}`}</p>
+                  <p><strong>{t("jobCreator.salaryLabel")}</strong> {extractedJob.showSalary === false ? t("jobCreator.notDisclosed") : `${extractedJob.salary.currency ?? "USD"} ${extractedJob.salary.min?.toLocaleString() ?? 0} – ${extractedJob.salary.max?.toLocaleString() ?? 0}`}</p>
                 ) : (
-                  <p><strong>Salary:</strong> <span className="text-muted-foreground italic">Not specified (optional)</span></p>
+                  <p><strong>{t("jobCreator.salaryLabel")}</strong> <span className="text-muted-foreground italic">{t("jobCreator.notSpecified")}</span></p>
                 )}
                 {extractSkills(extractedJob.requirements).length ? (
                   <div>
-                    <strong>Required Skills:</strong>
+                    <strong>{t("jobCreator.requiredSkills")}</strong>
                     <ul className="mt-1 space-y-0.5 list-disc list-inside">
                       {extractSkills(extractedJob.requirements).map((r, i) => (
                         <li key={i} className="text-muted-foreground">{r}</li>
@@ -599,18 +603,18 @@ export default function EmployerAIJobCreatePage() {
                 ) : null}
                 {extractedJob.responsibilities?.length ? (
                   <div>
-                    <strong>Responsibilities:</strong>
+                    <strong>{t("jobCreator.responsibilities")}</strong>
                     <ul className="mt-1 space-y-0.5 list-disc list-inside">
                       {extractedJob.responsibilities.slice(0, 5).map((r, i) => (
                         <li key={i} className="text-muted-foreground">{r}</li>
                       ))}
-                      {extractedJob.responsibilities.length > 5 && <li className="text-muted-foreground italic">+{extractedJob.responsibilities.length - 5} more</li>}
+                      {extractedJob.responsibilities.length > 5 && <li className="text-muted-foreground italic">+{extractedJob.responsibilities.length - 5} {t("jobCreator.more", { count: extractedJob.responsibilities.length - 5 }).replace(/^\+\d+\s*/, "")}</li>}
                     </ul>
                   </div>
                 ) : null}
                 {extractedJob.benefits?.length ? (
                   <div>
-                    <strong>Benefits:</strong>
+                    <strong>{t("jobCreator.benefits")}</strong>
                     <ul className="mt-1 space-y-0.5 list-disc list-inside">
                       {extractedJob.benefits.map((b, i) => (
                         <li key={i} className="text-muted-foreground">{b}</li>
@@ -619,20 +623,20 @@ export default function EmployerAIJobCreatePage() {
                   </div>
                 ) : null}
                 <p className="rounded-lg bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
-                  Nothing is saved yet. Review and submit in the full form.
+                  {t("jobCreator.nothingSavedYet")}
                 </p>
                 <Button onClick={reviewInForm} className="w-full gap-2 text-xs">
-                  <WandSparkles className="h-4 w-4" /> Review in Full Form
+                  <WandSparkles className="h-4 w-4" /> {t("jobCreator.reviewInForm")}
                 </Button>
               </div>
             )}
           </div>
 
           <div className="card-base">
-            <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Or use manual form</p>
+            <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">{t("jobCreator.orManualForm")}</p>
             <a href={`/${locale}/employer/jobs/new?mode=manual`}
               className="btn-outline block w-full text-center text-xs">
-              → Manual Job Form
+              {t("jobCreator.manualJobForm")}
             </a>
           </div>
         </div>

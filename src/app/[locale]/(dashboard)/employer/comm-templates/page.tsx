@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Trash2, Plus } from "lucide-react";
@@ -14,11 +16,11 @@ import { toast } from "sonner";
 import { useCommTemplates, useCreateCommTemplate, useDeleteCommTemplate } from "@/hooks/useCommTemplates";
 import type { CommTemplate } from "@/hooks/useCommTemplates";
 
-const TYPE_LABELS: Record<CommTemplateType, string> = {
-  rejection: "Rejection",
-  invite: "Interview Invite",
-  followup: "Follow-up",
-  offer: "Offer",
+const TYPE_LABELS_KEY: Record<CommTemplateType, string> = {
+  rejection: "rejection",
+  invite: "interviewInvite",
+  followup: "followUp",
+  offer: "offer",
 };
 
 const TYPE_COLORS: Record<CommTemplateType, string> = {
@@ -29,6 +31,8 @@ const TYPE_COLORS: Record<CommTemplateType, string> = {
 };
 
 export default function CommTemplatesPage() {
+  const t = useTranslations("employerCommTemplates");
+  const tc = useTranslations("employerCommon");
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -84,32 +88,32 @@ export default function CommTemplatesPage() {
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
       <PageHeader
-        title="Communication Templates"
-        description="Pre-written templates for rejection emails, interview invites, follow-ups, and offers"
+        title={t("title")}
+        description={t("description")}
         actions={
           <Button
             onClick={() => setShowForm(!showForm)}
             className="gap-2"
           >
             <Plus className="w-4 h-4" />
-            New Template
+            {t("newTemplate")}
           </Button>
         }
       />
 
       {/* Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {(["all", "rejection", "invite", "followup", "offer"] as const).map((t) => (
+        {(["all", "rejection", "invite", "followup", "offer"] as const).map((tab) => (
           <button
-            key={t}
-            onClick={() => setFilterType(t === "all" ? "all" : t)}
+            key={tab}
+            onClick={() => setFilterType(tab === "all" ? "all" : tab)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filterType === t
+              filterType === tab
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
-            {t === "all" ? "All Templates" : TYPE_LABELS[t]}
+            {tab === "all" ? t("allTemplates") : t(TYPE_LABELS_KEY[tab])}
           </button>
         ))}
       </div>
@@ -117,10 +121,10 @@ export default function CommTemplatesPage() {
       {/* New Template Form */}
       {showForm && (
         <div className="border rounded-lg p-6 bg-card space-y-4">
-          <h3 className="font-semibold text-lg">Create New Template</h3>
+          <h3 className="font-semibold text-lg">{t("newTemplate")}</h3>
           <form onSubmit={handleCreateTemplate} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Template Name</label>
+              <label className="block text-sm font-medium mb-1">{t("templateName")}</label>
               <Input
                 placeholder="e.g., Standard Rejection"
                 maxLength={100}
@@ -131,7 +135,7 @@ export default function CommTemplatesPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Template Type</label>
+              <label className="block text-sm font-medium mb-1">{t("templateType")}</label>
               <select
                 className="w-full px-3 py-2 border rounded-md bg-background text-foreground"
                 value={formData.type}
@@ -139,15 +143,15 @@ export default function CommTemplatesPage() {
                   setFormData({ ...formData, type: e.target.value as CommTemplateType })
                 }
               >
-                <option value="rejection">Rejection</option>
-                <option value="invite">Interview Invite</option>
-                <option value="followup">Follow-up</option>
-                <option value="offer">Offer</option>
+                <option value="rejection">{t("rejection")}</option>
+                <option value="invite">{t("interviewInvite")}</option>
+                <option value="followup">{t("followUp")}</option>
+                <option value="offer">{t("offer")}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Email Subject</label>
+              <label className="block text-sm font-medium mb-1">{t("emailSubject")}</label>
               <Input
                 placeholder="e.g., Application Status Update"
                 maxLength={200}
@@ -158,7 +162,7 @@ export default function CommTemplatesPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Email Body</label>
+              <label className="block text-sm font-medium mb-1">{t("body")}</label>
               <p className="text-xs text-muted-foreground mb-2">
                 Supported placeholders: {"{"}candidateName{"}"}, {"{"}jobTitle{"}"}, {"{"}companyName{"}"}
               </p>
@@ -186,10 +190,10 @@ export default function CommTemplatesPage() {
                 }}
                 disabled={saving}
               >
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving ? "Saving..." : "Save Template"}
+                {saving ? tc("loading") : t("save")}
               </Button>
             </div>
           </form>
@@ -201,7 +205,7 @@ export default function CommTemplatesPage() {
         <div className="text-center py-8 text-muted-foreground">Loading templates...</div>
       ) : filteredTemplates.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          No templates yet. Create your first template to get started.
+          {t("noTemplates")}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -211,7 +215,7 @@ export default function CommTemplatesPage() {
                 <div className="flex-1 space-y-1">
                   <h3 className="font-semibold text-foreground truncate">{template.name}</h3>
                   <Badge className={`w-fit ${TYPE_COLORS[template.type]}`}>
-                    {TYPE_LABELS[template.type]}
+                    {t(TYPE_LABELS_KEY[template.type])}
                   </Badge>
                 </div>
               </div>
@@ -238,7 +242,7 @@ export default function CommTemplatesPage() {
                 className="w-full mt-2 px-3 py-2 rounded border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors text-sm font-medium flex items-center justify-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
-                Delete
+                {tc("delete")}
               </button>
             </div>
           ))}

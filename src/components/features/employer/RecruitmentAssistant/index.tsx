@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import {
   Bot,
   X,
@@ -176,11 +176,13 @@ function sanitizeExtractedJob(job: ExtractedJob): ExtractedJob {
   };
 }
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: "job_creator", label: "Job Creator AI" },
-  { id: "interview_ai", label: "Interview AI" },
-  { id: "screening_ai", label: "Screening AI" },
-];
+// Tab IDs — labels resolved inside the component via useTranslations
+const TAB_IDS: TabId[] = ["job_creator", "interview_ai", "screening_ai"];
+const TAB_LABEL_KEYS: Record<TabId, string> = {
+  job_creator: "tabs.jobCreator",
+  interview_ai: "tabs.interview",
+  screening_ai: "tabs.screening",
+};
 
 const TAB_CONTEXT_MAP: Record<TabId, string> = {
   job_creator: "job_creator",
@@ -194,6 +196,7 @@ export function RecruitmentAssistant() {
   const router = useRouter();
   const locale = (params?.locale as string) ?? "en";
   const isRtl = locale === "ar";
+  const t = useTranslations("recruitmentAI");
 
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
@@ -320,7 +323,7 @@ export function RecruitmentAssistant() {
   const deleteThread = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     await fetch(`/api/ai/chat-history?threadId=${id}`, { method: "DELETE" });
-    setThreads((prev) => prev.filter((t) => t._id !== id));
+    setThreads((prev) => prev.filter((th) => th._id !== id));
     if (threadId === id) newConversation();
   };
 
@@ -463,7 +466,7 @@ export function RecruitmentAssistant() {
           const msgs = [...(prev[activeTab] ?? [])];
           msgs[msgs.length - 1] = {
             ...msgs[msgs.length - 1],
-            content: "Sorry, something went wrong. Please try again.",
+            content: t("errorMessage"),
           };
           return { ...prev, [activeTab]: msgs };
         });
@@ -488,14 +491,14 @@ export function RecruitmentAssistant() {
       });
       if (res.ok) {
         const data = await res.json();
-        setJobCreatedMsg("Draft created! Redirecting to edit page...");
+        setJobCreatedMsg(t("jobCreator.draftCreated"));
         setExtractedJob(null);
         setTimeout(() => {
           router.push(`/${locale}/employer/jobs/${data.job?._id ?? ""}/edit`);
         }, 1500);
       } else {
         const err = await res.json().catch(() => ({}));
-        setJobCreatedMsg((err as { error?: string }).error ?? "Failed to create job draft. Please try again.");
+        setJobCreatedMsg((err as { error?: string }).error ?? t("failedCreate"));
       }
     } finally {
       setCreatingJob(false);
@@ -531,14 +534,14 @@ export function RecruitmentAssistant() {
 
     setCreatingJob(false);
     if (errors.length === 0) {
-      setJobCreatedMsg(`All ${created} job drafts created successfully!`);
+      setJobCreatedMsg(t("bulkSuccess", { count: created }));
       setExtractedBulkJobs([]);
       setBulkProgress(null);
       setTimeout(() => {
         router.push(`/${locale}/employer/jobs`);
       }, 1500);
     } else {
-      setJobCreatedMsg(`Created ${created}/${extractedBulkJobs.length} drafts. ${errors.length} failed.`);
+      setJobCreatedMsg(t("bulkPartial", { created, total: extractedBulkJobs.length, failed: errors.length }));
     }
   };
 
@@ -575,8 +578,8 @@ export function RecruitmentAssistant() {
             "fixed bottom-6 z-[99] h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1 group",
             isRtl ? "left-6" : "right-6"
           )}
-          aria-label="Open Recruitment AI"
-          title="Ask AI to create jobs, screen candidates, or prepare interviews"
+          aria-label={t("openButton")}
+          title={t("openButtonTooltip")}
         >
           <Sparkles className={cn("h-5 w-5 absolute top-2.5 text-white/60 group-hover:text-white/80 transition-colors", isRtl ? "left-2.5" : "right-2.5")} />
           <Bot className="h-6 w-6" />
@@ -613,11 +616,11 @@ export function RecruitmentAssistant() {
             >
               <div className="flex items-center gap-2.5 px-4 h-full cursor-pointer">
                 <Bot className="h-5 w-5 text-white shrink-0" />
-                <span className="text-sm font-semibold text-white truncate">Recruitment AI</span>
+                <span className="text-sm font-semibold text-white truncate">{t("title")}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); setOpen(false); setMinimized(false); }}
                   className="ml-auto text-white/60 hover:text-white transition-colors p-0.5 rounded-full hover:bg-white/20"
-                  title="Close"
+                  title={t("close")}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -634,16 +637,16 @@ export function RecruitmentAssistant() {
                 <Bot className="h-4.5 w-4.5 text-white h-[18px] w-[18px]" />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-bold text-white leading-tight">Recruitment AI</h2>
+                <h2 className="text-sm font-bold text-white leading-tight">{t("title")}</h2>
                 <p className="text-xs text-white/60 truncate">
-                  {isStreaming ? "Thinking…" : "Your hiring assistant"}
+                  {isStreaming ? t("thinking") : t("hiringAssistant")}
                 </p>
               </div>
               <button
                 onClick={newConversation}
                 className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-                title="New conversation"
-                aria-label="New conversation"
+                title={t("newConversation")}
+                aria-label={t("newConversation")}
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -653,7 +656,7 @@ export function RecruitmentAssistant() {
                   "text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10",
                   showHistory && "text-white bg-white/20"
                 )}
-                title="History"
+                title={t("history")}
               >
                 <History className="h-4 w-4" />
               </button>
@@ -663,7 +666,7 @@ export function RecruitmentAssistant() {
                   setMinimized(false);
                 }}
                 className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-                title={expanded ? "Restore" : "Expand"}
+                title={expanded ? t("restore") : t("expand")}
               >
                 {expanded ? (
                   <Minimize2 className="h-4 w-4" />
@@ -674,14 +677,14 @@ export function RecruitmentAssistant() {
               <button
                 onClick={() => { setMinimized(true); setExpanded(false); }}
                 className="text-white/60 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-                title="Minimize"
+                title={t("minimize")}
               >
                 <Minus className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setOpen(false)}
                 className="text-white hover:bg-white/20 transition-colors p-1 rounded-full"
-                title="Close"
+                title={t("close")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -689,11 +692,11 @@ export function RecruitmentAssistant() {
 
                 {/* ── Tab bar ── */}
                 <div className="flex border-b border-border shrink-0 bg-background/95">
-                  {TABS.map((tab) => (
+                  {TAB_IDS.map((tabId) => (
                     <button
-                      key={tab.id}
+                      key={tabId}
                       onClick={() => {
-                        setActiveTab(tab.id);
+                        setActiveTab(tabId);
                         setShowHistory(false);
                         setExtractedJob(null);
                         setExtractedBulkJobs([]);
@@ -702,12 +705,12 @@ export function RecruitmentAssistant() {
                       }}
                       className={cn(
                         "flex-1 py-2.5 text-xs font-semibold transition-all border-b-2 -mb-px",
-                        activeTab === tab.id
+                        activeTab === tabId
                           ? "border-primary text-primary"
                           : "border-transparent text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      {tab.label}
+                      {t(TAB_LABEL_KEYS[tabId])}
                     </button>
                   ))}
                 </div>
@@ -716,7 +719,7 @@ export function RecruitmentAssistant() {
                 {showHistory && (
                   <div className="flex-1 overflow-y-auto ai-panel-scroll p-3 space-y-1">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-2">
-                      Recent Conversations
+                      {t("recentConversations")}
                     </p>
                     {loadingHistory && (
                       <div className="flex justify-center py-8">
@@ -725,23 +728,23 @@ export function RecruitmentAssistant() {
                     )}
                     {!loadingHistory && threads.length === 0 && (
                       <p className="text-sm text-center text-muted-foreground py-8">
-                        No conversations yet
+                        {t("noHistory")}
                       </p>
                     )}
-                    {threads.map((t) => (
+                    {threads.map((th) => (
                       <div
-                        key={t._id}
-                        onClick={() => loadThread(t)}
+                        key={th._id}
+                        onClick={() => loadThread(th)}
                         className="flex items-center gap-2 p-2.5 rounded-xl hover:bg-muted/60 cursor-pointer group transition-colors"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{t.title || "Untitled"}</p>
+                          <p className="text-sm font-medium truncate">{th.title || t("untitled")}</p>
                           <p className="text-xs text-muted-foreground">
-                            {new Date(t.updatedAt).toLocaleDateString()}
+                            {new Date(th.updatedAt).toLocaleDateString()}
                           </p>
                         </div>
                         <button
-                          onClick={(e) => deleteThread(t._id, e)}
+                          onClick={(e) => deleteThread(th._id, e)}
                           className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-all p-1"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -974,35 +977,36 @@ function JobPreviewCard({
   creating: boolean;
   createdMsg: string;
 }) {
+  const t = useTranslations("recruitmentAI");
   return (
     <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20 p-4 space-y-3 mt-2">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-emerald-600 flex-shrink-0" />
         <h4 className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
-          Job Preview
+          {t("jobCreator.preview")}
         </h4>
       </div>
       <div className="space-y-1.5 text-xs">
         {job.title && (
-          <Row label="Title" value={job.title} />
+          <Row label={t("previewLabels.title")} value={job.title} />
         )}
-        {job.category && <Row label="Category" value={job.category} />}
+        {job.category && <Row label={t("previewLabels.category")} value={job.category} />}
         {job.location?.country && (
           <Row
-            label="Location"
-            value={`${job.location.city ? `${job.location.city}, ` : ""}${job.location.country}${job.location.isRemote ? " (Remote)" : ""}`}
+            label={t("previewLabels.location")}
+            value={`${job.location.city ? `${job.location.city}, ` : ""}${job.location.country}${job.location.isRemote ? ` (${t("previewLabels.remote")})` : ""}`}
           />
         )}
         {job.salary && (
           <Row
-            label="Salary"
+            label={t("previewLabels.salary")}
             value={`${job.salary.currency ?? "USD"} ${job.salary.min?.toLocaleString()} – ${job.salary.max?.toLocaleString()} / ${job.salary.period ?? "month"}`}
           />
         )}
         {job.employmentType && (
-          <Row label="Type" value={job.employmentType.replace("_", "-")} />
+          <Row label={t("previewLabels.type")} value={job.employmentType.replace("_", "-")} />
         )}
-        {job.workMode && <Row label="Work Mode" value={job.workMode} />}
+        {job.workMode && <Row label={t("previewLabels.workMode")} value={job.workMode} />}
         {job.requirements?.skills?.length ? (
           <div className="flex gap-1.5 flex-wrap mt-1">
             {job.requirements.skills.slice(0, 8).map((s) => (
@@ -1016,10 +1020,10 @@ function JobPreviewCard({
           </div>
         ) : null}
         {job.responsibilities?.length ? (
-          <Row label="Responsibilities" value={`${job.responsibilities.length} items`} />
+          <Row label={t("previewLabels.responsibilities")} value={t("previewLabels.items", { count: job.responsibilities.length })} />
         ) : null}
         {job.benefits?.length ? (
-          <Row label="Benefits" value={`${job.benefits.length} items`} />
+          <Row label={t("previewLabels.benefits")} value={t("previewLabels.items", { count: job.benefits.length })} />
         ) : null}
       </div>
       {createdMsg ? (
@@ -1034,11 +1038,11 @@ function JobPreviewCard({
           {creating ? (
             <>
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-              Creating…
+              {t("jobCreator.creating")}
             </>
           ) : (
             <>
-              Create Job Draft
+              {t("jobCreator.createDraft")}
               <ChevronRight className="h-3.5 w-3.5 ml-1" />
             </>
           )}
@@ -1062,12 +1066,13 @@ function BulkJobPreviewCard({
   progress: { created: number; total: number; errors: string[] } | null;
   createdMsg: string;
 }) {
+  const t = useTranslations("recruitmentAI");
   return (
     <div className="rounded-2xl border border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/20 p-4 space-y-3 mt-2">
       <div className="flex items-center gap-2">
         <LayoutList className="h-4 w-4 text-blue-600 flex-shrink-0" />
         <h4 className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">
-          Bulk Job Preview ({jobs.length} jobs)
+          {t("bulkPreview", { count: jobs.length })}
         </h4>
       </div>
       <div className="space-y-2 max-h-[200px] overflow-y-auto">
@@ -1110,7 +1115,7 @@ function BulkJobPreviewCard({
             />
           </div>
           <p className="text-[11px] text-blue-600 dark:text-blue-400">
-            Created {progress.created} of {progress.total}...
+            {t("createdProgress", { created: progress.created, total: progress.total })}
           </p>
           {progress.errors.length > 0 && (
             <div className="text-[11px] text-red-500 space-y-0.5">
@@ -1131,11 +1136,11 @@ function BulkJobPreviewCard({
           {creating ? (
             <>
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-              Creating…
+              {t("jobCreator.creating")}
             </>
           ) : (
             <>
-              Create All {jobs.length} Job Drafts
+              {t("createAllDrafts", { count: jobs.length })}
               <ChevronRight className="h-3.5 w-3.5 ml-1" />
             </>
           )}
@@ -1188,11 +1193,10 @@ interface InputBarProps {
   isCompact: boolean;
 }
 
-const INPUT_PLACEHOLDERS: Record<TabId, string> = {
-  job_creator:
-    "Describe the role, location, skills, salary, or openings…",
-  interview_ai: "Ask for interview questions, briefs, or scheduling help…",
-  screening_ai: "Paste job or candidate details for screening and ranking…",
+const INPUT_PLACEHOLDER_KEYS: Record<TabId, string> = {
+  job_creator: "placeholders.jobCreator",
+  interview_ai: "placeholders.interview",
+  screening_ai: "placeholders.screening",
 };
 
 function InputBar({
@@ -1215,6 +1219,7 @@ function InputBar({
   onSubmitVoice,
   isCompact,
 }: InputBarProps) {
+  const t = useTranslations("recruitmentAI");
   const [showLangPicker, setShowLangPicker] = useState(false);
   const currentLang = VOICE_LANGUAGES.find((l) => l.code === voiceLanguage) ?? VOICE_LANGUAGES[0];
   const isRecording = voiceState === "recording";
@@ -1245,7 +1250,7 @@ function InputBar({
             value={value}
             onChange={(e) => { onChange(e.target.value); autoResize(); }}
             onKeyDown={onKeyDown}
-            placeholder={INPUT_PLACEHOLDERS[tabId]}
+            placeholder={t(INPUT_PLACEHOLDER_KEYS[tabId])}
             className={cn(
               "resize-none text-sm flex-1 overflow-y-auto transition-[height] duration-100",
               isIdle
@@ -1266,7 +1271,7 @@ function InputBar({
                   onClick={() => setShowLangPicker((v) => !v)}
                   disabled={isStreaming || isVoiceProcessing}
                   className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted/70 px-3 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-                  title="Voice language"
+                  title={t("voiceLanguage")}
                 >
                   <Globe className="h-3 w-3" />
                   <span>{voiceTriggerLabel}</span>
@@ -1283,7 +1288,7 @@ function InputBar({
                         )}
                       >
                         <span>{lang.flag}</span>
-                        <span>{lang.label}</span>
+                        <span>{t(`voiceLanguages.${lang.code}`)}</span>
                       </button>
                     ))}
                   </div>
@@ -1299,8 +1304,8 @@ function InputBar({
                     "border-border/60 bg-background text-muted-foreground shadow-sm shadow-black/[0.04] hover:bg-primary/10 hover:text-primary",
                     (isStreaming || isVoiceProcessing) && "opacity-50 cursor-not-allowed"
                   )}
-                  title={`Start voice input (${currentLang.label})`}
-                  aria-label="Start voice input"
+                  title={t("startVoiceInput")}
+                  aria-label={t("startVoiceInput")}
                 >
                   <Mic className="h-4 w-4" />
                 </button>
@@ -1310,7 +1315,7 @@ function InputBar({
                   onClick={onSend}
                   disabled={!value.trim() || isStreaming || isVoiceProcessing}
                   className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 shadow-sm"
-                  aria-label="Send message"
+                  aria-label={t("sendMessage")}
                 >
                   <Send className="h-4 w-4" />
                 </Button>
@@ -1348,9 +1353,9 @@ function InputBar({
                 ))}
               </div>
               <div className="min-w-0">
-                <p className="font-medium leading-none">Listening...</p>
+                <p className="font-medium leading-none">{t("listening")}</p>
                 <p className={cn("text-xs text-red-700/80", isCompact ? "mt-1 truncate" : "mt-1")}>
-                  {isCompact ? "Tap send when ready." : "Tap send when you're ready."}
+                  {isCompact ? t("tapSendReady") : t("tapSendReadyFull")}
                 </p>
               </div>
               <span
@@ -1369,17 +1374,17 @@ function InputBar({
                   "h-10 rounded-xl border-border/60 text-muted-foreground hover:text-foreground",
                   isCompact ? "flex-1 px-3" : "px-3"
                 )}
-                aria-label="Cancel voice input"
+                aria-label={t("cancelVoiceInput")}
               >
-                <X className="mr-1.5 h-4 w-4" /> Cancel
+                <X className="mr-1.5 h-4 w-4" /> {t("cancel")}
               </Button>
               <Button
                 type="button"
                 onClick={onSubmitVoice}
                 className={cn("h-10 rounded-xl", isCompact ? "flex-1 px-3" : "px-4")}
-                aria-label="Send voice input"
+                aria-label={t("sendVoiceInput")}
               >
-                <Send className="mr-1.5 h-4 w-4" /> Send
+                <Send className="mr-1.5 h-4 w-4" /> {t("send")}
               </Button>
             </div>
           </div>
@@ -1391,7 +1396,7 @@ function InputBar({
             className="flex items-center justify-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
           >
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="font-medium">Processing voice...</span>
+            <span className="font-medium">{t("processingVoice")}</span>
           </div>
         ) : null}
       </div>
@@ -1403,11 +1408,11 @@ function InputBar({
           </p>
         ) : voiceState === "idle" && detectedLanguageLabel ? (
           <p className="text-[11px] text-muted-foreground/80">
-            Detected language: {detectedLanguageLabel}
+            {t("detectedLanguage", { lang: detectedLanguageLabel })}
           </p>
         ) : voiceState === "idle" ? (
           <p className="text-[11px] text-muted-foreground/70">
-            AI can make mistakes. Check important info.
+            {t("disclaimer")}
           </p>
         ) : null}
       </div>

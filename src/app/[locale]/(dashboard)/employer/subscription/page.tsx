@@ -10,6 +10,7 @@ import {
   Crown, Sparkles, Briefcase, Users, Eye, BarChart3,
   Clock, CheckCircle, AlertTriangle, FileText, MessageSquare,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { useMySubscription, type MySubscription } from "@/hooks/useSubscription";
@@ -34,23 +35,16 @@ function daysUntil(d: string | undefined) {
   return Math.ceil((new Date(d).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-const AI_LABELS: Record<string, string> = {
-  ai_chat: "AI Chat",
-  ai_daily_insights: "Daily Insights",
-  ai_job_matching: "Job Matching",
-  ai_cv_extraction: "CV Extraction",
-  ai_interview_questions: "Interview Questions",
-  ai_skills_gap: "Skills Gap",
-  ai_candidate_screening: "Candidate Screening",
-  ai_salary_benchmark: "Salary Benchmark",
-  ai_job_description: "Job Description Gen",
-  ai_hiring_reports: "Hiring Reports",
-  ai_voice_input: "Voice Input",
-};
+const AI_KEYS = [
+  "ai_chat", "ai_daily_insights", "ai_job_matching", "ai_cv_extraction",
+  "ai_interview_questions", "ai_skills_gap", "ai_candidate_screening",
+  "ai_salary_benchmark", "ai_job_description", "ai_hiring_reports", "ai_voice_input",
+];
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function EmployerSubscriptionPage() {
+  const t = useTranslations("subscription");
   const { data: subscription, isLoading } = useMySubscription();
   const { data: gateMap } = useFeatureGateMap();
   const { data: invoices } = useInvoices({});
@@ -60,7 +54,7 @@ export default function EmployerSubscriptionPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-4">
-        <PageHeader title="My Subscription" />
+        <PageHeader title={t("title")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-28 animate-pulse rounded-2xl bg-background/70" />
         ))}
@@ -72,11 +66,11 @@ export default function EmployerSubscriptionPage() {
     <div className="page-container space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <PageHeader
-          title="My Subscription"
-          description="View your plan, usage, and invoices"
+          title={t("title")}
+          description={t("description")}
         />
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>Display currency:</span>
+          <span>{t("displayCurrency")}</span>
           <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
           {rateSource === "live" && (
             <span className="text-[10px] text-emerald-500" title="Live exchange rates">● live</span>
@@ -114,6 +108,7 @@ function ActivePlanView({
   displayCurrency: string;
   rates: Record<string, number>;
 }) {
+  const t = useTranslations("subscription");
   const snap = subscription.planSnapshot;
   const limits = snap?.employerLimits as Record<string, unknown> | undefined;
   const usage = subscription.usage;
@@ -150,45 +145,45 @@ function ActivePlanView({
                 : "bg-amber-500/10 text-amber-400 border border-amber-500/30"
             }`}>
               {subscription.status === "active" ? (
-                <><CheckCircle className="h-3 w-3 mr-1" /> Active</>
+                <><CheckCircle className="h-3 w-3 mr-1" /> {t("active")}</>
               ) : (
                 <><AlertTriangle className="h-3 w-3 mr-1" /> {subscription.status}</>
               )}
             </Badge>
             <p className="text-xs text-muted-foreground mt-1">
-              {remaining > 0 ? `${remaining} days left` : "Expired"}
+              {remaining > 0 ? t("daysLeft", { count: remaining }) : t("expired")}
             </p>
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <InfoCard label="Start Date" value={formatDate(subscription.startDate)} icon={<Clock className="h-4 w-4" />} />
-          <InfoCard label="End Date" value={formatDate(subscription.endDate)} icon={<Clock className="h-4 w-4" />} />
-          <InfoCard label="Auto-Renew" value={subscription.autoRenew ? "Enabled" : "Disabled"} icon={<CheckCircle className="h-4 w-4" />} />
+          <InfoCard label={t("startDate")} value={formatDate(subscription.startDate)} icon={<Clock className="h-4 w-4" />} />
+          <InfoCard label={t("endDate")} value={formatDate(subscription.endDate)} icon={<Clock className="h-4 w-4" />} />
+          <InfoCard label={t("autoRenew")} value={subscription.autoRenew ? t("enabled") : t("disabled")} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
       </section>
 
       {/* ── Usage Meters ── */}
       <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <BarChart3 className="h-4 w-4" /> Usage
+          <BarChart3 className="h-4 w-4" /> {t("usage")}
         </h4>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <UsageMeter
-            label="Active Jobs"
+            label={t("activeJobs")}
             icon={<Briefcase className="h-4 w-4 text-sky-500" />}
             used={usage?.activeJobs ?? 0}
             max={(limits?.maxActiveJobs as number) ?? 0}
           />
           <UsageMeter
-            label="Applications Viewed"
+            label={t("applicationsViewed")}
             icon={<Eye className="h-4 w-4 text-sky-500" />}
             used={usage?.applicationsViewed ?? 0}
             max={(limits?.maxApplicationsViewPerMonth as number) ?? 0}
           />
           <UsageMeter
-            label="Team Members"
+            label={t("teamMembers")}
             icon={<Users className="h-4 w-4 text-sky-500" />}
             used={0}
             max={(limits?.maxTeamMembers as number) ?? 0}
@@ -199,13 +194,14 @@ function ActivePlanView({
       {/* ── AI Features Usage ── */}
       <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Sparkles className="h-4 w-4" /> AI Features
+          <Sparkles className="h-4 w-4" /> {t("aiFeatures")}
         </h4>
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {Object.entries(AI_LABELS).map(([key, label]) => {
+          {AI_KEYS.map((key) => {
             const gate = features[key];
             if (!gate) return null;
+            const label = t(`aiLabel_${key}` as Parameters<typeof t>[0]);
 
             return (
               <div
@@ -220,19 +216,19 @@ function ActivePlanView({
                   <span className="text-sm font-medium">{label}</span>
                   {gate.allowed ? (
                     <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-500/30">
-                      <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> On
+                      <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> {t("on")}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-xs text-red-400 border-red-500/30">
-                      Off
+                      {t("off")}
                     </Badge>
                   )}
                 </div>
                 {gate.limit !== undefined && (
                   <div className="mt-1.5">
                     <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>{gate.used ?? 0} used</span>
-                      <span>{gate.remaining ?? 0} left</span>
+                      <span>{gate.used ?? 0} {t("used")}</span>
+                      <span>{gate.remaining ?? 0} {t("left")}</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted">
                       <div
@@ -255,18 +251,18 @@ function ActivePlanView({
       {/* ── Boolean Features ── */}
       <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <FileText className="h-4 w-4" /> Plan Features
+          <FileText className="h-4 w-4" /> {t("planFeatures")}
         </h4>
 
         <div className="flex flex-wrap gap-2">
-          <FeaturePill label="Data Export" allowed={features.dataExport?.allowed} />
-          <FeaturePill label="Comm Templates" allowed={features.commTemplates?.allowed} />
-          <FeaturePill label="Scorecards" allowed={features.scorecardEvaluations?.allowed} />
-          <FeaturePill label="Matching Weights" allowed={features.matchingWeightCustomization?.allowed} />
-          <FeaturePill label="Workflow" allowed={features.workflowCustomization?.allowed} />
-          <FeaturePill label="Priority Support" allowed={features.prioritySupport?.allowed} />
-          <FeaturePill label="Branded Page" allowed={features.brandedCompanyPage?.allowed} />
-          <FeaturePill label="Analytics" allowed={features.analyticsLevel?.allowed} />
+          <FeaturePill label={t("dataExport")} allowed={features.dataExport?.allowed} />
+          <FeaturePill label={t("commTemplates")} allowed={features.commTemplates?.allowed} />
+          <FeaturePill label={t("scorecards")} allowed={features.scorecardEvaluations?.allowed} />
+          <FeaturePill label={t("matchingWeights")} allowed={features.matchingWeightCustomization?.allowed} />
+          <FeaturePill label={t("workflow")} allowed={features.workflowCustomization?.allowed} />
+          <FeaturePill label={t("prioritySupport")} allowed={features.prioritySupport?.allowed} />
+          <FeaturePill label={t("brandedPage")} allowed={features.brandedCompanyPage?.allowed} />
+          <FeaturePill label={t("analytics")} allowed={features.analyticsLevel?.allowed} />
         </div>
       </section>
 
@@ -277,9 +273,9 @@ function ActivePlanView({
       {(snap?.tier ?? 0) < 3 && (
         <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-center space-y-2">
           <Crown className="h-8 w-8 text-amber-500 mx-auto" />
-          <p className="font-semibold">Want more features?</p>
+          <p className="font-semibold">{t("upgradeTitle")}</p>
           <p className="text-sm text-muted-foreground">
-            Contact your account administrator to upgrade your plan
+            {t("upgradeEmployer")}
           </p>
         </section>
       )}

@@ -60,21 +60,7 @@ const AI_SEARCH_SUGGESTIONS = [
   "Saved candidates available within one month",
 ];
 
-const AVAILABILITY_OPTIONS = [
-  { value: "all", label: "Any availability" as string },
-  { value: "immediately", label: "Available now" },
-  { value: "within_month", label: "Within 1 month" },
-  { value: "within_3_months", label: "Within 3 months" },
-  { value: "not_available", label: "Not available" },
-] as const;
-
-const SCORE_FILTER_LABELS: Record<CandidateScoreFilter, string> = {
-  all: "All scores",
-  high: "High match",
-  good: "Good fit",
-  low: "Low fit",
-  unscored: "Unscored",
-};
+// AVAILABILITY_OPTIONS and SCORE_FILTER_LABELS moved into EmployerCandidatesPage as useMemo (needs t())
 
 interface AiCandidateSearchResponse {
   summary?: string;
@@ -267,7 +253,7 @@ function CandidateMatchCard({
           ? t("notAvailable")
           : t("availabilityUnknown");
 
-  const primaryMeta = [candidate.currentLocation, candidate.totalExperienceYears != null ? `${candidate.totalExperienceYears}+ yrs` : null]
+  const primaryMeta = [candidate.currentLocation, candidate.totalExperienceYears != null ? t("yrsExperience", { years: candidate.totalExperienceYears }) : null]
     .filter(Boolean)
     .join(" • ");
 
@@ -312,7 +298,7 @@ function CandidateMatchCard({
               ) : null}
               {isInReviewList ? (
                 <span className="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300 lg:inline-flex">
-                  Saved
+                  {t("savedLabel")}
                 </span>
               ) : null}
             </div>
@@ -321,7 +307,7 @@ function CandidateMatchCard({
         </div>
 
         <div className="min-w-0 space-y-1">
-          <p className="truncate text-xs font-medium text-foreground/85">{primaryMeta || "Location and experience not specified"}</p>
+          <p className="truncate text-xs font-medium text-foreground/85">{primaryMeta || t("locationExpNotSpecified")}</p>
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {visibleSkills.map((skill) => {
               const isRequired = requiredSkills.some((requiredSkill) => normalizeText(requiredSkill) === normalizeText(skill));
@@ -337,7 +323,7 @@ function CandidateMatchCard({
             })}
             {overflowSkillCount > 0 ? <span>+{overflowSkillCount} {t("moreSuffix")}</span> : null}
             {selectedJobData && matchedSkills.length === 0 && missingSkills.length > 0 ? (
-              <span className="text-amber-700 dark:text-amber-300">{missingSkills.length} gap{missingSkills.length === 1 ? "" : "s"}</span>
+              <span className="text-amber-700 dark:text-amber-300">{missingSkills.length === 1 ? t("skillGap", { count: missingSkills.length }) : t("skillGaps", { count: missingSkills.length })}</span>
             ) : null}
           </div>
         </div>
@@ -360,12 +346,12 @@ function CandidateMatchCard({
               onOpenInsights();
             }}
           >
-            View details
+            {t("viewDetails")}
           </Button>
           <Button
             size="sm"
             variant={isInReviewList ? "default" : "outline"}
-            aria-label={isInReviewList ? "Saved for review" : "Save for review"}
+            aria-label={isInReviewList ? t("savedForReview") : t("saveForReview")}
             className={isInReviewList ? "h-8 rounded-lg bg-sky-600 px-2.5 text-xs font-semibold text-white hover:bg-sky-700" : "h-8 rounded-lg border-border bg-background/80 px-2.5 text-xs"}
             onClick={(event) => {
               stopRowClick(event);
@@ -373,7 +359,7 @@ function CandidateMatchCard({
             }}
           >
             <Star className={`h-3.5 w-3.5 ${isInReviewList ? "fill-current" : ""}`} />
-            <span className="sr-only">{isInReviewList ? "Saved for review" : "Save for review"}</span>
+            <span className="sr-only">{isInReviewList ? t("savedForReview") : t("saveForReview")}</span>
           </Button>
           {hasSecondaryActions ? (
             <DropdownMenu>
@@ -381,30 +367,30 @@ function CandidateMatchCard({
                 <Button
                   size="sm"
                   variant="outline"
-                  aria-label={`More actions for ${candidateDisplayName}`}
+                  aria-label={t("moreActions", { name: candidateDisplayName })}
                   onClick={stopRowClick}
                   className="h-8 rounded-lg border-border bg-background/80 px-2.5 text-xs font-medium text-foreground/85"
                 >
                   <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">More</span>
+                  <span className="sr-only">{t("moreLabel")}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52 rounded-2xl border-border bg-popover p-1.5">
                 {candidate.cv?.originalUrl ? (
                   <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenCv(candidate)}>
                     <FileText className="mr-2 h-4 w-4" />
-                    View CV
+                    {t("viewCv")}
                   </DropdownMenuItem>
                 ) : null}
                 {messageRecipientId ? (
                   <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onStartMessage(messageRecipientId)}>
                     <MessageSquare className="mr-2 h-4 w-4" />
-                    Message
+                    {t("messageAction")}
                   </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenProfile(candidate._id)}>
                   <Eye className="mr-2 h-4 w-4" />
-                  Open profile
+                  {t("openProfile")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -460,37 +446,37 @@ function CandidateInsightsDialog({
                     {isInReviewList ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-background/80 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:border-sky-500/30 dark:text-sky-300">
                         <CheckCircle2 className="h-3 w-3" />
-                        Review list
+                        {t("reviewList")}
                       </span>
                     ) : null}
                     {candidate.matchScore != null ? (
                       <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold ${scoreBadgeClass(candidate.matchScore)}`}>
-                        {candidate.matchScore}% AI match
+                        {t("aiMatchPercent", { score: candidate.matchScore })}
                       </span>
                     ) : null}
                   </div>
                   <DialogDescription className="mt-1 text-sm text-muted-foreground">
                     {currentRole ?? t("roleNotSpecified")}
                     {candidate.currentLocation ? ` • ${candidate.currentLocation}` : ""}
-                    {candidate.totalExperienceYears != null ? ` • ${candidate.totalExperienceYears}+ years experience` : ""}
+                    {candidate.totalExperienceYears != null ? ` • ${t("yearsExperience", { years: candidate.totalExperienceYears })}` : ""}
                   </DialogDescription>
                 </div>
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   {candidate.cv?.originalUrl ? (
                     <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenCv(candidate)}>
                       <FileText className="mr-2 h-3.5 w-3.5" />
-                      View CV
+                      {t("viewCv")}
                     </Button>
                   ) : null}
                   {candidate.userId?._id ? (
                     <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onStartMessage(candidate.userId!._id)}>
                       <MessageSquare className="mr-2 h-3.5 w-3.5" />
-                      Message
+                      {t("messageAction")}
                     </Button>
                   ) : null}
                   <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenProfile(candidate._id)}>
                     <Eye className="mr-2 h-3.5 w-3.5" />
-                    Open profile
+                    {t("openProfile")}
                   </Button>
                 </div>
               </div>
@@ -500,29 +486,29 @@ function CandidateInsightsDialog({
           <div className="space-y-5 px-6 py-6 sm:px-8">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Availability</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("availability")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">
                   {candidate.availabilityStatus === "immediately"
-                    ? "Available now"
+                    ? t("availableNow")
                     : candidate.availabilityStatus === "within_month"
-                      ? "Within 1 month"
+                      ? t("withinMonth")
                       : candidate.availabilityStatus === "within_3_months"
-                        ? "Within 3 months"
+                        ? t("within3Months")
                         : candidate.availabilityStatus === "not_available"
-                          ? "Not available"
-                          : "Unknown"}
+                          ? t("notAvailable")
+                          : t("unknown")}
                 </p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Profile quality</p>
-                <p className="mt-2 text-sm font-semibold text-foreground">{candidate.profileCompleteness != null ? `${candidate.profileCompleteness}% complete` : "Awaiting signals"}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("profileQuality")}</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">{candidate.profileCompleteness != null ? t("percentComplete", { percent: candidate.profileCompleteness }) : t("awaitingSignals")}</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Matched skills</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("matchedSkills")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{matchedSkills.length}</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Missing signals</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("missingSignals")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{missingSkills.length}</p>
               </div>
             </div>
@@ -531,7 +517,7 @@ function CandidateInsightsDialog({
               <div className="space-y-4">
                 {candidate.matchSummary ? (
                   <div className="workspace-glass-panel rounded-[24px] p-5">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">AI summary</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiSummary")}</p>
                     <p className="mt-3 text-sm leading-7 text-muted-foreground">{candidate.matchSummary}</p>
                   </div>
                 ) : null}
@@ -540,7 +526,7 @@ function CandidateInsightsDialog({
                   <div className="workspace-glass-panel rounded-[24px] p-5">
                     <div className="mb-4 flex items-center gap-2">
                       <BarChart3 className="h-4 w-4 text-sky-600" />
-                      <p className="text-sm font-semibold text-foreground">Score breakdown</p>
+                      <p className="text-sm font-semibold text-foreground">{t("scoreBreakdown")}</p>
                     </div>
                     <div className="space-y-3">
                       {(Object.entries(candidate.matchBreakdown) as Array<[string, number]>).map(([key, value]) => (
@@ -564,7 +550,7 @@ function CandidateInsightsDialog({
 
               <div className="space-y-4">
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Key skills</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t("keySkills")}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {(candidate.skills ?? []).map((skill) => {
                       const isRequired = matchedSkills.some((matchedSkill) => normalizeText(matchedSkill) === normalizeText(skill));
@@ -583,7 +569,7 @@ function CandidateInsightsDialog({
 
                 {candidate.strengths?.length ? (
                   <div className="rounded-[24px] border border-emerald-200 bg-emerald-50/60 p-5">
-                    <p className="text-sm font-semibold text-emerald-700">Strengths</p>
+                    <p className="text-sm font-semibold text-emerald-700">{t("strengths")}</p>
                     <ul className="mt-3 space-y-2 text-sm text-slate-600">
                       {candidate.strengths.map((strength) => (
                         <li key={strength} className="flex gap-2">
@@ -597,28 +583,28 @@ function CandidateInsightsDialog({
 
                 {(candidate.gaps?.length || selectedJobData) ? (
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Role context</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t("roleContext")}</p>
                     {selectedJobData ? (
                       <div className="mt-3 space-y-3 text-sm text-slate-600">
                         <div>
                           <p className="font-semibold text-slate-950">{selectedJobData.title}</p>
                           <p className="mt-1 text-xs text-slate-500">
                             {selectedJobData.location?.isRemote
-                              ? "Remote role"
-                              : [selectedJobData.location?.city, selectedJobData.location?.country].filter(Boolean).join(", ") || "Location not specified"}
+                              ? t("remoteRole")
+                              : [selectedJobData.location?.city, selectedJobData.location?.country].filter(Boolean).join(", ") || t("locationNotSpecified")}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Matched requirements</p>
-                          <p className="mt-1">{matchedSkills.length > 0 ? matchedSkills.join(", ") : "No required skills matched yet."}</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{t("matchedRequirements")}</p>
+                          <p className="mt-1">{matchedSkills.length > 0 ? matchedSkills.join(", ") : t("noRequirementsMatched")}</p>
                         </div>
                       </div>
                     ) : (
-                      <p className="mt-3 text-sm text-slate-600">Choose a job to compare this candidate against a live benchmark.</p>
+                      <p className="mt-3 text-sm text-slate-600">{t("chooseJobBenchmark")}</p>
                     )}
                     {candidate.gaps?.length ? (
                       <div className="mt-4 border-t border-slate-100 pt-4">
-                        <p className="text-sm font-semibold text-rose-600">Gaps</p>
+                        <p className="text-sm font-semibold text-rose-600">{t("gaps")}</p>
                         <ul className="mt-3 space-y-2 text-sm text-slate-600">
                           {candidate.gaps.map((gap) => (
                             <li key={gap} className="flex gap-2">
@@ -642,7 +628,7 @@ function CandidateInsightsDialog({
                 onClick={() => onToggleReviewList(candidate._id)}
               >
                 <Star className={`mr-2 h-3.5 w-3.5 ${isInReviewList ? "fill-current" : ""}`} />
-                {isInReviewList ? "Saved for review" : "Save for review"}
+                {isInReviewList ? t("savedForReview") : t("saveForReview")}
               </Button>
             </div>
           </div>
@@ -667,6 +653,7 @@ interface ScreeningPanelProps {
 }
 
 function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: ScreeningPanelProps) {
+  const t = useTranslations("employerCandidates");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const shortlistCount = results.filter((c) => c.recommendation === "shortlist").length;
   const considerCount = results.filter((c) => c.recommendation === "consider").length;
@@ -678,30 +665,30 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
         <div>
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-sky-600" />
-            <h2 className="text-lg font-semibold text-foreground">AI Screening Results</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("aiScreeningResults")}</h2>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Screened <span className="font-semibold text-foreground">{totalReviewed}</span> candidates for <span className="font-semibold text-foreground">{jobTitle}</span>
+            {t("screenedCandidates")} <span className="font-semibold text-foreground">{totalReviewed}</span> {t("candidatesFor")} <span className="font-semibold text-foreground">{jobTitle}</span>
           </p>
         </div>
         <Button size="sm" variant="outline" className="h-9 rounded-xl border-border bg-background/80 px-3 text-xs" onClick={onClose}>
           <XCircle className="mr-2 h-3.5 w-3.5" />
-          Dismiss
+          {t("dismiss")}
         </Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="workspace-glass-panel rounded-2xl p-3 text-center">
           <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{shortlistCount}</p>
-          <p className="text-xs font-medium text-muted-foreground">Shortlist</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("shortlist")}</p>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-3 text-center">
           <p className="text-2xl font-semibold text-amber-600 dark:text-amber-400">{considerCount}</p>
-          <p className="text-xs font-medium text-muted-foreground">Consider</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("consider")}</p>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-3 text-center">
           <p className="text-2xl font-semibold text-rose-600 dark:text-rose-400">{passCount}</p>
-          <p className="text-xs font-medium text-muted-foreground">Pass</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("pass")}</p>
         </div>
       </div>
 
@@ -740,7 +727,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
                 <div className="border-t border-current/10 px-4 py-3 space-y-3">
                   {candidate.strengths.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold">Strengths</p>
+                      <p className="text-xs font-semibold">{t("strengths")}</p>
                       <ul className="mt-1 space-y-1">
                         {candidate.strengths.map((s) => (
                           <li key={s} className="flex items-start gap-2 text-xs">
@@ -753,7 +740,7 @@ function AIScreeningResultsPanel({ results, jobTitle, totalReviewed, onClose }: 
                   )}
                   {candidate.gaps.length > 0 && (
                     <div>
-                      <p className="text-xs font-semibold">Gaps</p>
+                      <p className="text-xs font-semibold">{t("gaps")}</p>
                       <ul className="mt-1 space-y-1">
                         {candidate.gaps.map((g) => (
                           <li key={g} className="flex items-start gap-2 text-xs">
@@ -778,6 +765,22 @@ export default function EmployerCandidatesPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("employerCandidates");
+
+  const AVAILABILITY_OPTIONS = useMemo(() => [
+    { value: "all", label: t("anyAvailability") },
+    { value: "immediately", label: t("availableNow") },
+    { value: "within_month", label: t("withinMonth") },
+    { value: "within_3_months", label: t("within3Months") },
+    { value: "not_available", label: t("notAvailable") },
+  ], [t]);
+
+  const SCORE_FILTER_LABELS: Record<CandidateScoreFilter, string> = useMemo(() => ({
+    all: t("allScores"),
+    high: t("highMatch"),
+    good: t("goodFit"),
+    low: t("lowFit"),
+    unscored: t("unscored"),
+  }), [t]);
 
   const [selectedJob, setSelectedJob] = useState("");
   const [page, setPage] = useState(1);
@@ -893,30 +896,40 @@ export default function EmployerCandidatesPage() {
   const scoredCount = structuredCandidates.filter((candidate) => candidate.matchScore != null).length;
   const reviewCount = reviewListIds.size;
   const hasLoadError = hasJobsError || hasCandidatesError;
-  const workflowState = getCandidateWorkflowState({
+  const workflowStateRaw = getCandidateWorkflowState({
     hasSelectedJob: Boolean(selectedJob),
     selectedJobTitle: selectedJobData?.title,
     hasScores: hasAnyScore,
     reviewCount,
   });
 
+  // Override with translated strings
+  const workflowTitle = !selectedJob
+    ? t("workflowStep1Title")
+    : !hasAnyScore
+      ? t("workflowStep2Title", { jobTitle: selectedJobData?.title ?? "" })
+      : reviewCount === 0
+        ? t("workflowStep3Title")
+        : t("workflowDoneTitle", { count: reviewCount });
+  const workflowState = { ...workflowStateRaw, title: workflowTitle };
+
   const hasSearchRefinements = Boolean(
     search.trim() || locationFilter.trim() || skillsFilter.trim() || availabilityFilter !== "all" || scoreFilter !== "all" || savedOnly
   );
   const advancedFilterCount = [skillsFilter.trim().length > 0, scoreFilter !== "all", savedOnly].filter(Boolean).length;
-  const availabilityLabel = AVAILABILITY_OPTIONS.find((option) => option.value === availabilityFilter)?.label ?? "Any availability";
+  const availabilityLabel = AVAILABILITY_OPTIONS.find((option) => option.value === availabilityFilter)?.label ?? t("anyAvailability");
   const activeFilterChips = [
     search.trim() ? { key: "search", label: `Search: ${search.trim()}` } : null,
     locationFilter.trim() ? { key: "location", label: `Location: ${locationFilter.trim()}` } : null,
     availabilityFilter !== "all" ? { key: "availability", label: availabilityLabel } : null,
     skillsFilter.trim() ? { key: "skills", label: `Skills: ${skillsFilter.trim()}` } : null,
     scoreFilter !== "all" ? { key: "score", label: SCORE_FILTER_LABELS[scoreFilter] } : null,
-    savedOnly ? { key: "saved", label: "Saved only" } : null,
+    savedOnly ? { key: "saved", label: t("savedLabel") } : null,
   ].filter((chip): chip is { key: string; label: string } => Boolean(chip));
 
   function openCandidateCv(candidate: Candidate) {
     if (!candidate.cv?.originalUrl) {
-      toast.error("CV not available for this candidate.");
+      toast.error(t("cvNotAvailable"));
       return;
     }
 
@@ -992,7 +1005,7 @@ export default function EmployerCandidatesPage() {
       applySelectedJob("");
       setMatchFeedback({
         type: "info",
-        message: "The previously selected job is no longer available. Choose another published role to continue.",
+        message: t("jobNoLongerAvailable"),
       });
     }
   }, [jobs, selectedJob]);
@@ -1003,7 +1016,7 @@ export default function EmployerCandidatesPage() {
         type: "info",
         message: !selectedJob
           ? t("chooseJobBeforeMatch")
-          : "There are no candidates on this page to score yet.",
+          : t("noCandidatesToScore"),
       });
       return;
     }
@@ -1053,7 +1066,7 @@ export default function EmployerCandidatesPage() {
     if (successCount === 0) {
       setMatchFeedback({
         type: "error",
-        message: "AI matching could not score candidates right now. Try again in a moment.",
+        message: t("aiMatchError"),
       });
       return;
     }
@@ -1061,8 +1074,8 @@ export default function EmployerCandidatesPage() {
     setMatchFeedback({
       type: failedCount > 0 ? "info" : "success",
       message: failedCount > 0
-        ? `Scored ${successCount} candidate${successCount === 1 ? "" : "s"}. ${failedCount} candidate${failedCount === 1 ? " could not be scored." : "s could not be scored."}`
-        : `Scored ${successCount} candidate${successCount === 1 ? "" : "s"} and ranked the page by AI match.`,
+        ? t("scoredWithFails", { success: successCount, failed: failedCount })
+        : t("scoredSuccess", { success: successCount }),
     });
   };
 
@@ -1077,7 +1090,7 @@ export default function EmployerCandidatesPage() {
 
   const runAIScreening = async () => {
     if (!selectedJob) {
-      setMatchFeedback({ type: "info", message: "Choose a published job before running AI screening." });
+      setMatchFeedback({ type: "info", message: t("chooseJobBeforeScreening") });
       return;
     }
     setScreeningResults(null);
@@ -1085,9 +1098,9 @@ export default function EmployerCandidatesPage() {
     try {
       const data = await screenMutation.mutateAsync({ jobId: selectedJob, maxCandidates: 20 });
       setScreeningResults(data);
-      toast.success(`AI screened ${data.totalReviewed} candidates for ${data.jobTitle}`);
+      toast.success(t("aiScreenedToast", { total: data.totalReviewed, jobTitle: data.jobTitle }));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "AI screening failed. Try again later.";
+      const message = err instanceof Error ? err.message : t("screeningFailed");
       setMatchFeedback({ type: "error", message });
     }
   };
@@ -1111,7 +1124,7 @@ export default function EmployerCandidatesPage() {
     } catch {
       setMatchFeedback({
         type: "error",
-        message: "Could not open a conversation with this candidate right now.",
+        message: t("messageFailed"),
       });
     }
   };
@@ -1131,8 +1144,8 @@ export default function EmployerCandidatesPage() {
   const matchHelperText = !selectedJob
     ? t("chooseJobForScoring")
     : structuredCandidates.length === 0
-      ? "No candidates are available on this page yet."
-      : "AI matching scores the candidates currently visible after your search and filters.";
+      ? t("noCandidatesYet")
+      : t("aiMatchDescription");
 
   async function handleApplyAiSearch() {
     const query = aiQuery.trim();
@@ -1175,12 +1188,12 @@ export default function EmployerCandidatesPage() {
         applySelectedJob(nextJobId);
       }
 
-      toast.success(data.degraded ? "AI search unavailable. Keyword search applied." : "AI search applied.");
+      toast.success(data.degraded ? t("aiSearchDegraded") : t("aiSearchApplied"));
     } catch {
       setSearch(query);
       setPage(1);
-      setAiSummary(`AI search was unavailable, so keyword results are being shown for "${query}".`);
-      toast.error("AI search unavailable. Keyword search applied instead.");
+      setAiSummary(t("aiSearchFallback", { query }));
+      toast.error(t("aiSearchFailed"));
     } finally {
       setIsApplyingAiSearch(false);
     }
@@ -1236,11 +1249,11 @@ export default function EmployerCandidatesPage() {
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-[1.7rem] font-semibold tracking-tight text-foreground">{t("heroTitle")}</h1>
               <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur">
-                {selectedJobData ? `Benchmark: ${selectedJobData.title}` : t("talentPoolView")}
+                {selectedJobData ? t("benchmark", { title: selectedJobData.title }) : t("talentPoolView")}
               </span>
               {isRefreshingCandidates ? (
                 <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-700 backdrop-blur dark:text-sky-300">
-                  Refreshing
+                  {t("refreshing")}
                 </span>
               ) : null}
             </div>
@@ -1296,13 +1309,13 @@ export default function EmployerCandidatesPage() {
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">Unable to load all candidate matching data</p>
+              <p className="text-sm font-semibold text-foreground">{t("unableToLoad")}</p>
               <p className="text-sm text-muted-foreground">
                 {hasJobsError && hasCandidatesError
-                  ? "Published jobs and candidates both failed to load."
+                  ? t("jobsAndCandidatesFailed")
                   : hasJobsError
-                    ? "Published jobs failed to load."
-                    : "Candidates failed to load."}
+                    ? t("jobsFailed")
+                    : t("candidatesFailed")}
               </p>
             </div>
           </div>
@@ -1315,7 +1328,7 @@ export default function EmployerCandidatesPage() {
               void refetchCandidates();
             }}
           >
-            Retry
+            {t("retryButton")}
           </Button>
             </div>
         </div>
@@ -1326,8 +1339,8 @@ export default function EmployerCandidatesPage() {
             <div className="flex items-start gap-3">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <div className="space-y-1">
-            <p className="text-sm font-semibold">No published jobs available yet</p>
-              <p className="text-sm text-amber-800/90 dark:text-amber-100/80">Publish a job first so this page has a role to compare candidates against.</p>
+            <p className="text-sm font-semibold">{t("noPublishedJobs")}</p>
+              <p className="text-sm text-amber-800/90 dark:text-amber-100/80">{t("publishJobFirst")}</p>
           </div>
             </div>
         </div>
@@ -1371,7 +1384,7 @@ export default function EmployerCandidatesPage() {
                 value={selectedJob || "none"}
                 onValueChange={(value) => applySelectedJob(value === "none" ? "" : value)}
                 disabled={jobsLoading || jobs.length === 0}
-                placeholder="Compare against job"
+                placeholder={t("compareAgainstJob")}
               />
             </div>
 
@@ -1379,7 +1392,7 @@ export default function EmployerCandidatesPage() {
               <Input
                 value={locationFilter}
                 onChange={(event) => setLocationFilter(event.target.value)}
-                placeholder="Filter by location"
+                placeholder={t("filterByLocation")}
                 className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none"
               />
             </div>
@@ -1390,7 +1403,7 @@ export default function EmployerCandidatesPage() {
                 options={AVAILABILITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
                 value={availabilityFilter}
                 onValueChange={setAvailabilityFilter}
-                placeholder="Availability"
+                placeholder={t("availability")}
               />
             </div>
           </div>
@@ -1430,7 +1443,7 @@ export default function EmployerCandidatesPage() {
                 disabled={!hasAnyScore || structuredCandidates.length === 0}
               >
                 <CheckCheck className="mr-2 h-3.5 w-3.5" />
-                Save Top Matches
+                {t("saveTopMatches")}
               </Button>
               {selectedJob && hasAnyScore ? (
                 <Button
@@ -1440,7 +1453,7 @@ export default function EmployerCandidatesPage() {
                   onClick={() => router.push(`/${locale}/employer/applications?jobId=${selectedJob}`)}
                 >
                   <Target className="mr-2 h-3.5 w-3.5" />
-                  Open Applications
+                  {t("openApplications")}
                 </Button>
               ) : null}
             </div>
@@ -1452,7 +1465,7 @@ export default function EmployerCandidatesPage() {
                 <span className="text-xs font-medium text-muted-foreground">{workflowState.title}</span>
                 {reviewCount > 0 ? (
                   <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-700 dark:text-sky-300">
-                    {reviewCount} saved
+                    {reviewCount} {t("savedCount")}
                   </span>
                 ) : null}
                 {activeFilterChips.map((chip) => (

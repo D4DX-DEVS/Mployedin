@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useState } from "react";
 import { User, Calendar, Award } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -27,12 +29,12 @@ const RECOMMENDATION_COLORS: Record<string, string> = {
   strong_no: "bg-red-100 text-red-700 border-red-300",
 };
 
-const RECOMMENDATION_LABELS: Record<string, string> = {
-  strong_yes: "Strong Yes",
-  yes: "Yes",
-  neutral: "Neutral",
-  no: "No",
-  strong_no: "Strong No",
+const RECOMMENDATION_LABELS_KEY: Record<string, string> = {
+  strong_yes: "strongYes",
+  yes: "yes",
+  neutral: "neutral",
+  no: "no",
+  strong_no: "strongNo",
 };
 
 function getScoreBadgeColor(score: number) {
@@ -44,6 +46,8 @@ function getScoreBadgeColor(score: number) {
 }
 
 export default function ScorecardListPage() {
+  const t = useTranslations("employerScorecards");
+  const tc = useTranslations("employerCommon");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
@@ -56,14 +60,14 @@ export default function ScorecardListPage() {
     { header: "Candidate", key: "_id", formatter: (v) => `Candidate #${String(v).slice(-4)}` },
     { header: "Interview Date", key: "interviewId", formatter: (_v, r) => new Date((r as Record<string, any>).interviewId?.scheduledAt).toLocaleDateString() },
     { header: "Overall Score", key: "overallScore", formatter: (v) => `${Number(v).toFixed(1)}/5` },
-    { header: "Recommendation", key: "recommendation", formatter: (v) => RECOMMENDATION_LABELS[String(v)] ?? String(v) },
+    { header: "Recommendation", key: "recommendation", formatter: (v) => RECOMMENDATION_LABELS_KEY[String(v)] ?? String(v) },
     { header: "Evaluated", key: "createdAt", formatter: (v) => new Date(String(v)).toLocaleDateString() },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: scorecards as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "scorecards",
-    title: "Interview Scorecards",
+    title: t("title"),
   });
 
   useEffect(() => {
@@ -74,7 +78,7 @@ export default function ScorecardListPage() {
     return (
       <div className="page-container">
         <PageHeader
-          title="Interview Scorecards"
+          title={t("title")}
           description="Loading scorecards..."
         />
         <div className="grid grid-cols-1 gap-4">
@@ -89,8 +93,8 @@ export default function ScorecardListPage() {
   return (
     <div className="page-container">
       <PageHeader
-        title="Interview Scorecards"
-        description={`${total} total scorecards`}
+        title={t("title")}
+        description={t("totalScorecards", { count: total })}
       />
 
       {/* Aggregate Feedback Trends */}
@@ -105,9 +109,9 @@ export default function ScorecardListPage() {
       {scorecards.length === 0 ? (
         <div className="card-base text-center py-16">
           <Award className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
-          <h3 className="font-semibold mb-1">No scorecards yet</h3>
+          <h3 className="font-semibold mb-1">{t("noScorecards")}</h3>
           <p className="text-sm text-muted-foreground">
-            Scorecards will appear here once you evaluate candidates
+            {t("noScorecardsDesc")}
           </p>
         </div>
       ) : (
@@ -115,11 +119,11 @@ export default function ScorecardListPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead>Candidate</TableHead>
-                <TableHead>Interview Date</TableHead>
-                <TableHead>Overall Score</TableHead>
-                <TableHead>Recommendation</TableHead>
-                <TableHead>Evaluated</TableHead>
+                <TableHead>{t("candidate")}</TableHead>
+                <TableHead>{t("date")}</TableHead>
+                <TableHead>{t("overallRating")}</TableHead>
+                <TableHead>{t("notes")}</TableHead>
+                <TableHead>{t("evaluatedBy")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -154,7 +158,7 @@ export default function ScorecardListPage() {
                         RECOMMENDATION_COLORS[scorecard.recommendation] || ""
                       }
                     >
-                      {RECOMMENDATION_LABELS[scorecard.recommendation]}
+                      {t(RECOMMENDATION_LABELS_KEY[scorecard.recommendation])}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">

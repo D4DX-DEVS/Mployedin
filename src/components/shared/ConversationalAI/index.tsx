@@ -11,6 +11,7 @@ import { Bot, X, Send, Minimize2, Maximize2, History, Plus, Trash2, UserCheck, E
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { useTranslations } from "next-intl";
 
 interface Message {
   role: "user" | "assistant";
@@ -120,19 +121,19 @@ interface QuickPrompt {
   label: string;
 }
 
-const CONTEXT_PROMPTS: Record<string, QuickPrompt[]> = {
-  super_agent_assist: [
-    { icon: <Users2 className="h-3.5 w-3.5 shrink-0" />, label: "Who is underperforming and why?" },
-    { icon: <TrendingUp className="h-3.5 w-3.5 shrink-0" />, label: "Why did conversions drop this week?" },
-    { icon: <BarChart3 className="h-3.5 w-3.5 shrink-0" />, label: "Compare my agents' performance" },
-    { icon: <MessageSquare className="h-3.5 w-3.5 shrink-0" />, label: "Suggest actions to improve the team" },
-  ],
-  general_assist: [
-    { icon: <Briefcase className="h-3.5 w-3.5 shrink-0" />, label: "Find jobs that match my profile" },
-    { icon: <Zap className="h-3.5 w-3.5 shrink-0" />, label: "What skills am I missing for top roles?" },
-    { icon: <TrendingUp className="h-3.5 w-3.5 shrink-0" />, label: "Help me improve my CV" },
-    { icon: <MessageSquare className="h-3.5 w-3.5 shrink-0" />, label: "Prepare me for an interview" },
-  ],
+const CONTEXT_PROMPT_ICONS: Record<string, Record<string, React.ReactNode>> = {
+  super_agent_assist: {
+    underperforming: <Users2 className="h-3.5 w-3.5 shrink-0" />,
+    conversions: <TrendingUp className="h-3.5 w-3.5 shrink-0" />,
+    compare: <BarChart3 className="h-3.5 w-3.5 shrink-0" />,
+    improve: <MessageSquare className="h-3.5 w-3.5 shrink-0" />,
+  },
+  general_assist: {
+    findJobs: <Briefcase className="h-3.5 w-3.5 shrink-0" />,
+    missingSkills: <Zap className="h-3.5 w-3.5 shrink-0" />,
+    improveCv: <TrendingUp className="h-3.5 w-3.5 shrink-0" />,
+    interviewPrep: <MessageSquare className="h-3.5 w-3.5 shrink-0" />,
+  },
 };
 
 function parseAIActions(text: string): AIAction[] {
@@ -163,6 +164,7 @@ export function ConversationalAI({
   const router = useRouter();
   const locale = useLocale();
   const isRtl = locale === "ar";
+  const t = useTranslations("ai");
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -349,7 +351,27 @@ export function ConversationalAI({
     if (threadId === id) newConversation();
   };
 
-  const quickPrompts = CONTEXT_PROMPTS[context] ?? [];
+  const quickPrompts: QuickPrompt[] = (() => {
+    const icons = CONTEXT_PROMPT_ICONS[context];
+    if (!icons) return [];
+    if (context === "super_agent_assist") {
+      return [
+        { icon: icons.underperforming, label: t("quickPrompts.superAgent.underperforming") },
+        { icon: icons.conversions, label: t("quickPrompts.superAgent.conversions") },
+        { icon: icons.compare, label: t("quickPrompts.superAgent.compare") },
+        { icon: icons.improve, label: t("quickPrompts.superAgent.improve") },
+      ];
+    }
+    if (context === "general_assist") {
+      return [
+        { icon: icons.findJobs, label: t("quickPrompts.jobSeeker.findJobs") },
+        { icon: icons.missingSkills, label: t("quickPrompts.jobSeeker.missingSkills") },
+        { icon: icons.improveCv, label: t("quickPrompts.jobSeeker.improveCv") },
+        { icon: icons.interviewPrep, label: t("quickPrompts.jobSeeker.interviewPrep") },
+      ];
+    }
+    return [];
+  })();
 
   async function sendMessage(overrideText?: string) {
     const text = overrideText ?? input;
@@ -441,7 +463,7 @@ export function ConversationalAI({
         const copy = [...prev];
         copy[copy.length - 1] = {
           ...copy[copy.length - 1],
-          content: "Sorry, something went wrong. Please try again.",
+          content: t("errorMessage"),
         };
         return copy;
       });
@@ -472,7 +494,7 @@ export function ConversationalAI({
             "bg-primary text-white hover:bg-primary/90 transition-all duration-200 hover:scale-105",
             className
           )}
-          aria-label="Open AI Assistant"
+          aria-label={t("openAssistant")}
         >
           <Bot className="h-6 w-6" />
         </button>
@@ -506,10 +528,10 @@ export function ConversationalAI({
           )}>
             <Bot className="h-5 w-5" />
             <div className="flex-1">
-              <p className="text-sm font-semibold">AI Assistant</p>
+              <p className="text-sm font-semibold">{t("assistant")}</p>
               {!minimized && (
                 <p className="text-xs text-white/70">
-                  {isStreaming ? "Thinking…" : "Ready to help"}
+                  {isStreaming ? t("thinking") : t("readyToHelp")}
                 </p>
               )}
             </div>
@@ -518,21 +540,21 @@ export function ConversationalAI({
                 <button
                   onClick={newConversation}
                   className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-                  title="New conversation"
+                  title={t("newConversation")}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => { setShowHistory((v) => !v); }}
                   className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-                  title="Chat history"
+                  title={t("chatHistory")}
                 >
                   <History className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => { setExpanded((e) => !e); setMinimized(false); }}
                   className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-                  title={expanded ? "Restore" : "Expand"}
+                  title={expanded ? t("restore") : t("expand")}
                 >
                   {expanded ? <Shrink className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
                 </button>
@@ -541,7 +563,7 @@ export function ConversationalAI({
             <button onClick={() => setMinimized((m) => !m)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
               {minimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
             </button>
-            <button onClick={() => { setOpen(false); setExpanded(false); setMinimized(false); }} className="text-white hover:bg-white/20 rounded-full p-1 transition-colors" title="Close">
+            <button onClick={() => { setOpen(false); setExpanded(false); setMinimized(false); }} className="text-white hover:bg-white/20 rounded-full p-1 transition-colors" title={t("close")}>
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -549,30 +571,30 @@ export function ConversationalAI({
           {!minimized && showHistory && (
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
-                Recent Conversations
+                {t("recentConversations")}
               </p>
               {loadingHistory && (
-                <p className="text-sm text-center text-muted-foreground py-4">Loading…</p>
+                <p className="text-sm text-center text-muted-foreground py-4">{t("loading")}</p>
               )}
               {!loadingHistory && threads.length === 0 && (
-                <p className="text-sm text-center text-muted-foreground py-4">No conversations yet</p>
+                <p className="text-sm text-center text-muted-foreground py-4">{t("noConversationsYet")}</p>
               )}
-              {threads.map((t) => (
+              {threads.map((th) => (
                 <div
-                  key={t._id}
-                  onClick={() => loadThread(t)}
+                  key={th._id}
+                  onClick={() => loadThread(th)}
                   className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/60 cursor-pointer group"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{t.title || "Untitled"}</p>
+                    <p className="text-sm font-medium truncate">{th.title || t("untitled")}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(t.updatedAt).toLocaleDateString()}
+                      {new Date(th.updatedAt).toLocaleDateString()}
                     </p>
                   </div>
                   <button
-                    onClick={(e) => deleteThread(t._id, e)}
+                    onClick={(e) => deleteThread(th._id, e)}
                     className="shrink-0 text-muted-foreground hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
-                    title="Delete conversation"
+                    title={t("deleteConversation")}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -588,14 +610,14 @@ export function ConversationalAI({
                 {messages.length === 0 && loadingHistory && (
                   <div className="text-center text-muted-foreground text-sm mt-12">
                     <Loader2 className="h-6 w-6 mx-auto mb-2 text-primary/50 animate-spin" />
-                    <p>Loading your conversation…</p>
+                    <p>{t("loadingConversation")}</p>
                   </div>
                 )}
                 {messages.length === 0 && !loadingHistory && (
                   <div className="text-center text-muted-foreground text-sm mt-8">
                     <Bot className="h-8 w-8 mx-auto mb-2 text-primary/50" />
-                    <p>Hi! I&apos;m your AI assistant.</p>
-                    <p>How can I help you today?</p>
+                    <p>{t("greeting")}</p>
+                    <p>{t("howCanIHelp")}</p>
 
                     {/* Context-aware quick prompts */}
                     {quickPrompts.length > 0 && (
@@ -618,12 +640,12 @@ export function ConversationalAI({
                       <div className="mt-4 mx-auto max-w-[300px] rounded-2xl border p-4 text-left" style={{ background: '#ffffff', borderColor: '#e5e7eb' }}>
                         <div className="flex items-center gap-1.5 text-sm font-semibold mb-3" style={{ color: '#2563eb' }}>
                           <UserCheck className="h-4 w-4" />
-                          Using your profile data
+                          {t("usingProfileData")}
                         </div>
                         {profileSummary.skills.length > 0 && (
                           <>
                             <div className="mb-3" style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
-                              <p className="text-sm font-bold mb-2" style={{ color: '#111827' }}>Skills:</p>
+                              <p className="text-sm font-bold mb-2" style={{ color: '#111827' }}>{t("skills")}</p>
                               <div className="flex flex-wrap gap-1.5">
                                 {profileSummary.skills.map((s) => (
                                   <span key={s} className="inline-block rounded-full px-3 py-1 text-xs font-medium" style={{ background: '#f3f4f6', color: '#111827' }}>
@@ -637,9 +659,9 @@ export function ConversationalAI({
                         {profileSummary.experience && (
                           <>
                             <div className="mb-3" style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px' }}>
-                              <p className="text-sm font-bold mb-2" style={{ color: '#111827' }}>Experience:</p>
+                              <p className="text-sm font-bold mb-2" style={{ color: '#111827' }}>{t("experience")}</p>
                               <span className="inline-block rounded-full px-3 py-1 text-xs font-medium" style={{ background: '#f3f4f6', color: '#111827' }}>
-                                {profileSummary.experience} exp
+                                {profileSummary.experience} {t("exp")}
                               </span>
                             </div>
                           </>
@@ -720,7 +742,7 @@ export function ConversationalAI({
                         autoResize();
                       }}
                       onKeyDown={handleKeyDown}
-                      placeholder={isRecording ? "Recording…" : isVoiceProcessing ? "Transcribing…" : "Ask me anything…"}
+                      placeholder={isRecording ? t("recording") : isVoiceProcessing ? t("transcribing") : t("placeholder")}
                       className={cn(
                         "resize-none text-sm overflow-y-auto transition-[height] duration-100",
                         isIdle
@@ -744,8 +766,8 @@ export function ConversationalAI({
                             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="font-medium leading-none">Listening...</p>
-                            <p className="mt-1 text-xs text-red-700/80">Tap send when ready.</p>
+                            <p className="font-medium leading-none">{t("listening")}</p>
+                            <p className="mt-1 text-xs text-red-700/80">{t("tapSendWhenReady")}</p>
                           </div>
                           <span className="font-mono text-sm tabular-nums">{durationLabel}</span>
                         </div>
@@ -756,17 +778,17 @@ export function ConversationalAI({
                             variant="outline"
                             onClick={cancelRecording}
                             className="h-10 flex-1 rounded-xl border-border/60 text-muted-foreground hover:text-foreground"
-                            aria-label="Cancel voice input"
+                            aria-label={t("cancelVoiceInput")}
                           >
-                            <X className="mr-1.5 h-4 w-4" /> Cancel
+                            <X className="mr-1.5 h-4 w-4" /> {t("cancel")}
                           </Button>
                           <Button
                             type="button"
                             onClick={submitRecording}
                             className="h-10 flex-1 rounded-xl"
-                            aria-label="Send voice input"
+                            aria-label={t("sendVoiceInput")}
                           >
-                            <Send className="mr-1.5 h-4 w-4" /> Send
+                            <Send className="mr-1.5 h-4 w-4" /> {t("send")}
                           </Button>
                         </div>
                       </div>
@@ -778,7 +800,7 @@ export function ConversationalAI({
                         className="mt-2 flex items-center justify-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"
                       >
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="font-medium">Processing voice...</span>
+                        <span className="font-medium">{t("processingVoice")}</span>
                       </div>
                     ) : (
                       <div className="mt-2 flex items-center gap-2 border-t border-border/50 pt-2">
@@ -786,8 +808,8 @@ export function ConversationalAI({
                           type="button"
                           disabled
                           className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted/70 px-3 text-[11px] font-medium text-muted-foreground"
-                          aria-label="Voice language: AUTO"
-                          title="Voice language: AUTO"
+                          aria-label={t("voiceLanguage")}
+                          title={t("voiceLanguage")}
                         >
                           <Globe className="h-3 w-3" />
                           <span>AUTO</span>
@@ -802,8 +824,8 @@ export function ConversationalAI({
                               "flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-background text-muted-foreground shadow-sm shadow-black/[0.04] transition-all duration-150 hover:bg-primary/10 hover:text-primary",
                               (isStreaming || isVoiceProcessing) && "cursor-not-allowed opacity-50"
                             )}
-                            aria-label="Start voice input"
-                            title="Start voice input"
+                            aria-label={t("startVoiceInput")}
+                            title={t("startVoiceInput")}
                           >
                             <Mic className="h-4 w-4" />
                           </button>
@@ -813,7 +835,7 @@ export function ConversationalAI({
                             className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 shadow-sm hover:from-primary/90 hover:to-indigo-600/90"
                             onClick={() => sendMessage()}
                             disabled={!input.trim() || isStreaming || isVoiceProcessing}
-                            aria-label="Send message"
+                            aria-label={t("sendMessage")}
                           >
                             <Send className="h-4 w-4" />
                           </Button>
@@ -828,7 +850,7 @@ export function ConversationalAI({
                     </p>
                   ) : (
                     <p className="text-[11px] text-muted-foreground/70">
-                      AI can make mistakes. Check important info.
+                      {t("disclaimer")}
                     </p>
                   )}
                 </div>

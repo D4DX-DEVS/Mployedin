@@ -21,6 +21,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument } from "@/hooks/useEmployerProfile";
 import type { CompanyData } from "@/hooks/useEmployerProfile";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
+import { useTranslations } from "next-intl";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -50,11 +51,11 @@ const VERIFICATION_BADGES: Record<string, { label: string; color: string; icon: 
 type TabKey = "profile" | "contact" | "hiring" | "notifications" | "account";
 
 const NAV_ITEMS: { key: TabKey; label: string; desc: string; icon: typeof Building2 }[] = [
-  { key: "profile", label: "Company Profile", desc: "Logo, name, industry & about", icon: Building2 },
-  { key: "contact", label: "Contact & Social", desc: "Email, phone, website & links", icon: Link2 },
-  { key: "hiring", label: "Hiring Preferences", desc: "Defaults for new job posts", icon: Briefcase },
-  { key: "notifications", label: "Notifications", desc: "Email & in-app alerts", icon: Bell },
-  { key: "account", label: "Account & Security", desc: "Verification, plan & danger zone", icon: Shield },
+  { key: "profile", label: "companyProfile", desc: "companyProfileDesc", icon: Building2 },
+  { key: "contact", label: "contactSocial", desc: "contactSocialDesc", icon: Link2 },
+  { key: "hiring", label: "hiringPreferences", desc: "hiringPreferencesDesc", icon: Briefcase },
+  { key: "notifications", label: "notifications", desc: "notificationsDesc", icon: Bell },
+  { key: "account", label: "accountSecurity", desc: "accountSecurityDesc", icon: Shield },
 ];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -211,6 +212,8 @@ function CompanySettingsPage() {
   const uploadDocMutation = useUploadDocument();
   const deleteDocMutation = useDeleteDocument();
   const saving = updateProfile.isPending;
+  const t = useTranslations("employerSettings");
+  const tc = useTranslations("employerCommon");
 
   // Populate form when company data changes
   useEffect(() => {
@@ -397,9 +400,9 @@ function CompanySettingsPage() {
       {ConfirmDialogNode}
       {/* ── Page Title ─────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Company Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage your company profile, preferences, and notifications
+          {t("description")}
         </p>
       </div>
 
@@ -435,7 +438,7 @@ function CompanySettingsPage() {
                 </Badge>
                 {company?.subscriptionType && (
                   <Badge variant="outline" className="text-[11px] font-medium capitalize px-2 py-0.5 inline-flex items-center leading-none">
-                    <span>{company.subscriptionType} Plan</span>
+                    <span>{company.subscriptionType} {t("plan")}</span>
                   </Badge>
                 )}
               </div>
@@ -449,12 +452,12 @@ function CompanySettingsPage() {
                 {company?.companySize && (
                   <span className="flex items-center gap-1">
                     <Users className="w-3 h-3" />
-                    {company.companySize} employees
+                    {company.companySize} {t("employees")}
                   </span>
                 )}
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  Member since {memberSince}
+                  {t("memberSince")} {memberSince}
                 </span>
                 {company?.verificationDocs && company.verificationDocs.length > 0 && (
                   <span className="flex items-center gap-1">
@@ -469,7 +472,7 @@ function CompanySettingsPage() {
           {/* Profile Completion */}
           <div className="mt-5 pt-4 border-t border-border/30">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Profile Completion</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("profileCompletion")}</span>
               <span className={`text-xs font-semibold ${profileCompletion === 100 ? "text-emerald-600" : "text-primary"}`}>
                 {profileCompletion}%
               </span>
@@ -477,7 +480,7 @@ function CompanySettingsPage() {
             <Progress value={profileCompletion} className="h-1.5" />
             {profileCompletion < 100 && (
               <p className="text-[11px] text-muted-foreground mt-2">
-                Complete your profile to build trust with candidates and improve your listing visibility.
+                {t("profileCompletionDesc")}
               </p>
             )}
           </div>
@@ -534,13 +537,13 @@ function CompanySettingsPage() {
                     <Icon className={`w-4 h-4 ${isActive ? "text-primary" : ""}`} />
                   </div>
                   <div className="hidden lg:block flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${isActive ? "text-primary" : ""}`}>{item.label}</p>
-                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">{item.desc}</p>
+                    <p className={`text-sm font-medium truncate ${isActive ? "text-primary" : ""}`}>{t(item.label)}</p>
+                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">{t(item.desc)}</p>
                   </div>
                   <span className="hidden lg:block text-xs text-muted-foreground ml-auto">
                     <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isActive ? "text-primary" : ""}`} />
                   </span>
-                  <span className="lg:hidden text-xs font-medium">{item.label.split(" ")[0]}</span>
+                  <span className="lg:hidden text-xs font-medium">{t(item.label).split(" ")[0]}</span>
                 </button>
               );
             })}
@@ -554,7 +557,7 @@ function CompanySettingsPage() {
               <>
                 {/* Logo Upload */}
                 <SectionCard>
-                  <SectionHeader icon={Camera} title="Company Logo" description="Upload your company logo. Shown on job listings and your profile." />
+                  <SectionHeader icon={Camera} title={t("companyLogo")} description={t("companyLogoDesc")} />
                   <div className="p-6">
                     <LogoUpload
                       currentLogo={company?.logo}
@@ -573,11 +576,11 @@ function CompanySettingsPage() {
 
                 {/* Basic info */}
                 <SectionCard>
-                  <SectionHeader icon={Building2} title="Company Information" description="Basic details about your organization" />
+                  <SectionHeader icon={Building2} title={t("companyInfo")} description={t("companyInfoDesc")} />
                   <div className="p-6 space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div data-field="companyName" className="transition-all duration-300">
-                        <FieldLabel required>Company Name</FieldLabel>
+                        <FieldLabel required>{t("companyName")}</FieldLabel>
                         <Input
                           value={form.companyName}
                           onChange={(e) => setField("companyName", e.target.value)}
@@ -586,19 +589,19 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div data-field="industry" className="transition-all duration-300">
-                        <FieldLabel>Industry</FieldLabel>
+                        <FieldLabel>{t("industry")}</FieldLabel>
                         <SearchableSelect
                           options={INDUSTRIES.map((i) => ({ value: i, label: i }))}
                           value={form.industry}
                           onValueChange={(v) => setField("industry", v)}
-                          placeholder="Select industry"
+                          placeholder={t("selectIndustry")}
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                       <div>
-                        <FieldLabel>Company Size</FieldLabel>
+                        <FieldLabel>{t("companySize")}</FieldLabel>
                         <SearchableSelect
                           options={COMPANY_SIZES.map((s) => ({ value: s, label: `${s} employees` }))}
                           value={form.companySize}
@@ -607,7 +610,7 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div>
-                        <FieldLabel>Founded Year</FieldLabel>
+                        <FieldLabel>{t("foundedYear")}</FieldLabel>
                         <Input
                           type="number"
                           placeholder="e.g. 2015"
@@ -618,7 +621,7 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div>
-                        <FieldLabel>Your Title / Designation</FieldLabel>
+                        <FieldLabel>{t("yourTitle")}</FieldLabel>
                         <Input
                           placeholder="e.g. HR Manager"
                           value={form.designation}
@@ -629,7 +632,7 @@ function CompanySettingsPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <FieldLabel>Address</FieldLabel>
+                        <FieldLabel>{t("address")}</FieldLabel>
                         <Input
                           placeholder="Company address"
                           value={form.address}
@@ -637,12 +640,12 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div data-field="country" className="transition-all duration-300">
-                        <FieldLabel>Country</FieldLabel>
+                        <FieldLabel>{t("country")}</FieldLabel>
                         <SearchableSelect
                           options={countries.map((c) => ({ value: c.code, label: `${c.name} (${c.currencyCode})` }))}
                           value={form.country}
                           onValueChange={(v) => setField("country", v)}
-                          placeholder="Select country"
+                          placeholder={t("selectCountry")}
                           searchPlaceholder="Search countries..."
                         />
                       </div>
@@ -651,7 +654,7 @@ function CompanySettingsPage() {
                     <Separator />
 
                     <div>
-                      <FieldLabel>About the Company</FieldLabel>
+                      <FieldLabel>{t("aboutCompany")}</FieldLabel>
                       <Textarea
                         placeholder="Tell candidates about your company culture, mission, and what makes you a great place to work..."
                         value={form.description}
@@ -661,7 +664,7 @@ function CompanySettingsPage() {
                       />
                       <div className="flex items-center justify-between mt-1.5">
                         <p className="text-[11px] text-muted-foreground">
-                          This appears on your public company profile and job listings.
+                          {t("aboutCompanyHint")}
                         </p>
                         <p className={`text-[11px] font-medium ${form.description.length > 1800 ? "text-amber-600" : "text-muted-foreground"}`}>
                           {form.description.length}/2,000
@@ -874,7 +877,7 @@ function CompanySettingsPage() {
                       <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
                         <div>
-                          <p className="text-[11px] text-muted-foreground">Member Since</p>
+                          <p className="text-[11px] text-muted-foreground">{t("memberSince")}</p>
                           <p className="text-sm font-medium">{memberSince}</p>
                         </div>
                       </div>
@@ -1013,7 +1016,7 @@ function CompanySettingsPage() {
             <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
               <div className="flex items-center gap-2.5 text-sm">
                 <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                <span className="text-muted-foreground font-medium">Unsaved changes</span>
+                <span className="text-muted-foreground font-medium">{t("unsavedChanges")}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Button
@@ -1027,11 +1030,11 @@ function CompanySettingsPage() {
                     setSuccess("");
                   }}
                 >
-                  Discard
+                  {t("discard")}
                 </Button>
                 <Button type="submit" size="sm" disabled={saving} className="px-6 shadow-sm">
                   <Save className="w-4 h-4 me-2" />
-                  {saving ? "Saving…" : "Save Changes"}
+                  {saving ? "Saving…" : t("saveChanges")}
                 </Button>
               </div>
             </div>

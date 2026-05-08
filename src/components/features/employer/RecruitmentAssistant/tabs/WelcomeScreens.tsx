@@ -2,6 +2,7 @@
 
 import { Briefcase, PenLine, Copy, LayoutList } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface QuickAction {
   icon: React.ReactNode;
@@ -16,30 +17,31 @@ interface TabWelcomeProps {
 }
 
 export function JobCreatorWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
+  const t = useTranslations("recruitmentAI");
   const actions: QuickAction[] = [
     {
       icon: <Briefcase className="h-5 w-5" />,
-      label: "Post a New Job",
-      desc: "Describe a new role via voice or text",
-      prompt: "I want to post a new job. Let's start — what details should I provide?",
+      label: t("jobCreator.actions.postNew"),
+      desc: t("jobCreator.actions.postNewDesc"),
+      prompt: t("jobCreator.actions.postNewPrompt"),
     },
     {
       icon: <PenLine className="h-5 w-5" />,
-      label: "Edit Existing Job",
-      desc: "Update an existing job posting",
-      prompt: "I want to update one of my existing job postings. Can you help me improve it?",
+      label: t("jobCreator.actions.editExisting"),
+      desc: t("jobCreator.actions.editExistingDesc"),
+      prompt: t("jobCreator.actions.editExistingPrompt"),
     },
     {
       icon: <Copy className="h-5 w-5" />,
-      label: "Clone a Job",
-      desc: "Duplicate and modify a previous posting",
-      prompt: "I want to create a similar job to one I've posted before. Help me clone and modify it.",
+      label: t("jobCreator.actions.cloneJob"),
+      desc: t("jobCreator.actions.cloneJobDesc"),
+      prompt: t("jobCreator.actions.cloneJobPrompt"),
     },
     {
       icon: <LayoutList className="h-5 w-5" />,
-      label: "Bulk Create",
-      desc: "Create multiple jobs at once",
-      prompt: "I need to create multiple job postings at once. Can you help me structure them efficiently?",
+      label: t("jobCreator.actions.bulkCreate"),
+      desc: t("jobCreator.actions.bulkCreateDesc"),
+      prompt: t("jobCreator.actions.bulkCreatePrompt"),
     },
   ];
 
@@ -50,16 +52,18 @@ export function JobCreatorWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           <Briefcase className="h-7 w-7 text-primary" />
         </div>
       }
-      title="What job do you want to create today?"
-      subtitle="Choose a starting point first. You can open a blank chat if you already know what to ask."
+      title={t("jobCreator.welcome")}
+      subtitle={t("welcomeSubtitles.jobCreator")}
       actions={actions}
       onAction={onAction}
       onStartBlank={onStartBlank}
+      blankLabel={t("openBlankChat")}
     />
   );
 }
 
 export function InterviewWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
+  const t = useTranslations("recruitmentAI");
   const actions: QuickAction[] = [
     {
       icon: (
@@ -67,9 +71,9 @@ export function InterviewWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      label: "Generate Questions",
-      desc: "AI-powered interview questions by role",
-      prompt: "Generate a set of interview questions for me. What role and type of interview should I specify?",
+      label: t("interview.actions.generateQuestions"),
+      desc: t("interview.actions.generateQuestionsDesc"),
+      prompt: t("interview.actions.generateQuestionsPrompt"),
     },
     {
       icon: (
@@ -77,9 +81,9 @@ export function InterviewWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       ),
-      label: "Schedule Interview",
-      desc: "Plan interview sessions with candidates",
-      prompt: "Help me structure an interview schedule for a candidate. What information do you need?",
+      label: t("interview.actions.scheduleInterview"),
+      desc: t("interview.actions.scheduleInterviewDesc"),
+      prompt: t("interview.actions.scheduleInterviewPrompt"),
     },
     {
       icon: (
@@ -87,9 +91,9 @@ export function InterviewWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
       ),
-      label: "Prep Candidate Brief",
-      desc: "Summarize candidate profile for interviewers",
-      prompt: "Help me create a candidate brief for interviewers. I'll share the candidate's details with you.",
+      label: t("interview.actions.prepBrief"),
+      desc: t("interview.actions.prepBriefDesc"),
+      prompt: t("interview.actions.prepBriefPrompt"),
     },
     {
       icon: (
@@ -97,9 +101,9 @@ export function InterviewWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
       ),
-      label: "Review Feedback",
-      desc: "Analyze interviewer scorecards",
-      prompt: "Help me analyze and summarize interview feedback from multiple interviewers.",
+      label: t("interview.actions.reviewFeedback"),
+      desc: t("interview.actions.reviewFeedbackDesc"),
+      prompt: t("interview.actions.reviewFeedbackPrompt"),
     },
   ];
 
@@ -112,16 +116,18 @@ export function InterviewWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           </svg>
         </div>
       }
-      title="How can I help with your interviews?"
-      subtitle="Pick the interview task first, or open a blank chat to ask in your own words."
+      title={t("interview.welcome")}
+      subtitle={t("welcomeSubtitles.interview")}
       actions={actions}
       onAction={onAction}
       onStartBlank={onStartBlank}
+      blankLabel={t("openBlankChat")}
     />
   );
 }
 
 export function ScreeningWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
+  const t = useTranslations("recruitmentAI");
   const actions: QuickAction[] = [
     {
       icon: (
@@ -129,9 +135,9 @@ export function ScreeningWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
         </svg>
       ),
-      label: "Screen Applicants",
-      desc: "Rank candidates by job fit score",
-      prompt: "Help me screen and rank applicants for a job. I'll provide the job requirements and candidate details.",
+      label: t("screening.actions.screenApplicants"),
+      desc: t("screening.actions.screenApplicantsDesc"),
+      prompt: t("screening.actions.screenApplicantsPrompt"),
     },
     {
       icon: (
@@ -139,9 +145,9 @@ export function ScreeningWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       ),
-      label: "Compare Candidates",
-      desc: "Side-by-side candidate comparison",
-      prompt: "I want to compare multiple candidates side by side. Help me evaluate them against the job requirements.",
+      label: t("screening.actions.compareCandidates"),
+      desc: t("screening.actions.compareCandidatesDesc"),
+      prompt: t("screening.actions.compareCandidatesPrompt"),
     },
     {
       icon: (
@@ -149,9 +155,9 @@ export function ScreeningWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       ),
-      label: "Skills Gap Report",
-      desc: "Find skill gaps in your applicant pool",
-      prompt: "Generate a skills gap analysis for my applicant pool. What's missing compared to the job requirements?",
+      label: t("screening.actions.skillsGap"),
+      desc: t("screening.actions.skillsGapDesc"),
+      prompt: t("screening.actions.skillsGapPrompt"),
     },
     {
       icon: (
@@ -159,9 +165,9 @@ export function ScreeningWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
         </svg>
       ),
-      label: "Shortlist Top 10",
-      desc: "Generate AI-ranked shortlist for a job",
-      prompt: "Create a shortlist of the top candidates for my job. I'll describe the role and share the applicant profiles.",
+      label: t("screening.actions.shortlist"),
+      desc: t("screening.actions.shortlistDesc"),
+      prompt: t("screening.actions.shortlistPrompt"),
     },
   ];
 
@@ -174,11 +180,12 @@ export function ScreeningWelcome({ onAction, onStartBlank }: TabWelcomeProps) {
           </svg>
         </div>
       }
-      title="What would you like to screen or analyze?"
-      subtitle="Choose the screening workflow first, or open a blank chat for a custom request."
+      title={t("screening.welcome")}
+      subtitle={t("welcomeSubtitles.screening")}
       actions={actions}
       onAction={onAction}
       onStartBlank={onStartBlank}
+      blankLabel={t("openBlankChat")}
     />
   );
 }
@@ -193,9 +200,10 @@ interface WelcomeScreenProps {
   actions: QuickAction[];
   onAction: (prompt: string) => void;
   onStartBlank: () => void;
+  blankLabel: string;
 }
 
-function WelcomeScreen({ icon, title, subtitle, actions, onAction, onStartBlank }: WelcomeScreenProps) {
+function WelcomeScreen({ icon, title, subtitle, actions, onAction, onStartBlank, blankLabel }: WelcomeScreenProps) {
   return (
     <div className="flex flex-col items-center px-4 py-6 gap-5">
       {icon}
@@ -229,7 +237,7 @@ function WelcomeScreen({ icon, title, subtitle, actions, onAction, onStartBlank 
         onClick={onStartBlank}
         className="inline-flex items-center justify-center rounded-full border border-border px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
       >
-        Open blank chat
+        {blankLabel}
       </button>
     </div>
   );

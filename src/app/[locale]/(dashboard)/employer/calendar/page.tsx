@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -11,6 +13,8 @@ import GoogleCalendar, {
 import { Briefcase } from "lucide-react";
 
 export default function EmployerCalendarPage() {
+  const t = useTranslations("employerCalendar");
+  const tc = useTranslations("employerCommon");
   const router = useRouter();
   const params = useParams();
   const locale = (params?.locale as string) ?? "en";
@@ -140,27 +144,27 @@ export default function EmployerCalendarPage() {
       {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Interview Calendar
+          {t("title")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Visual overview of all scheduled interviews
+          {t("description")}
         </p>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="workspace-glass-panel rounded-2xl p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Today
+              {t("today")}
             </p>
             <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              {todayCount} interviews
+              {todayCount} {t("interviews")}
             </p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              This Month
+              {t("thisMonth")}
             </p>
             <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              {upcomingCount} upcoming
+              {upcomingCount} {t("upcoming")}
             </p>
           </div>
         </div>

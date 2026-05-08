@@ -46,6 +46,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useTranslations } from "next-intl";
 
 type DateRange = "7d" | "30d" | "90d" | "180d" | "custom";
 
@@ -93,6 +94,8 @@ export default function EmployerAnalyticsPage() {
   const [customEnd, setCustomEnd] = useState("");
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
+  const t = useTranslations("employerAnalytics");
+  const tc = useTranslations("employerCommon");
 
   const { data, error, isLoading, refetch: refetchOverview } = useAnalyticsOverview();
   const { data: pipeline, refetch: refetchPipeline } = useAnalyticsPipeline(selectedJobId);
@@ -109,30 +112,30 @@ export default function EmployerAnalyticsPage() {
     activeTab === "pipeline" && data && pipeline
       ? [
           {
-            label: "Total Applied",
+            label: t("totalApplied"),
             value: data.conversion.applied,
-            description: "All inbound applications",
+            description: t("totalAppliedDesc"),
             icon: Users,
             color: "blue",
           },
           {
-            label: "In Pipeline",
+            label: t("inPipeline"),
             value: Math.max(0, data.conversion.applied - data.conversion.hired - (pipeline.perJob.reduce((sum, j) => sum + (j.stages.find((s) => s.status === "rejected")?.count || 0), 0))),
-            description: "Active candidates right now",
+            description: t("inPipelineDesc"),
             icon: TrendingUp,
             color: "indigo",
           },
           {
-            label: "Conversion Rate",
+            label: t("conversionRate"),
             value: `${pipeline.conversionRates.overallHireRate}%`,
-            description: "End-to-end hire rate",
+            description: t("conversionRateDesc"),
             icon: Zap,
             color: "purple",
           },
           {
-            label: "Hired (All-Time)",
+            label: t("hiredAllTime"),
             value: data.conversion.hired,
-            description: "Successful placements",
+            description: t("hiredAllTimeDesc"),
             icon: Sparkles,
             color: "green",
           },
@@ -222,13 +225,13 @@ export default function EmployerAnalyticsPage() {
         <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
-            Analytics workspace
+            {t("title")}
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            Analytics
+            {t("title")}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Pipeline funnel, trends, performance, and response-time insights in the same modern employer workspace.
+            {t("description")}
           </p>
         </section>
 
@@ -252,13 +255,13 @@ export default function EmployerAnalyticsPage() {
         <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
-            Analytics workspace
+            {t("title")}
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            Analytics
+            {t("title")}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Pipeline funnel, trends, performance, and response-time insights in the same modern employer workspace.
+            {t("description")}
           </p>
         </section>
 
@@ -266,7 +269,7 @@ export default function EmployerAnalyticsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-500">
-                Unable to load analytics
+                {tc("somethingWentWrong")}
               </p>
               <p className="mt-2 text-sm leading-6 text-red-700 dark:text-red-200">
                 Error: {error instanceof Error ? error.message : String(error)}
@@ -277,7 +280,7 @@ export default function EmployerAnalyticsPage() {
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-background/80 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-500/10 dark:text-red-200"
             >
               <RefreshCw className="h-4 w-4" />
-              Retry
+              {tc("tryAgain")}
             </button>
           </div>
         </AnalyticsPanel>
@@ -292,20 +295,20 @@ export default function EmployerAnalyticsPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
               <activeTabMeta.icon className="h-3.5 w-3.5" />
-              {activeTabMeta.label}
+              {t(activeTab === "response" ? "responseTime" : activeTab)}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Analytics Command Center
+              {t("title")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Review funnel health, hiring velocity, job-level performance, and response commitments from one cleaner employer workspace.
+              {t("description")}
             </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                View Focus
+                {t("viewFocus")}
               </p>
                 <p className="mt-1 text-lg font-semibold text-foreground">{activeTabMeta.label}</p>
                 <p className="text-xs text-muted-foreground">{activeTabMeta.description}</p>
@@ -314,7 +317,7 @@ export default function EmployerAnalyticsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Last Refresh
+                    {t("lastRefresh")}
                   </p>
                   <p className="mt-1 text-lg font-semibold text-foreground">
                     {lastRefresh.toLocaleTimeString([], {
@@ -324,7 +327,7 @@ export default function EmployerAnalyticsPage() {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {activeTab === "pipeline"
-                      ? `Live pipeline checks auto-refresh every ${AUTO_REFRESH_MS / 1000} seconds.`
+                      ? t("autoRefreshNote")
                       : "Manual refresh keeps this view current on demand."}
                   </p>
                 </div>
@@ -384,7 +387,7 @@ export default function EmployerAnalyticsPage() {
                   )}
                 >
                   <Icon className="h-4 w-4" />
-                  {tab.label}
+                  {t(tab.key === "response" ? "responseTime" : tab.key)}
                 </button>
               );
             })}
@@ -392,7 +395,7 @@ export default function EmployerAnalyticsPage() {
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Current Lens
+              {t("currentLens")}
             </p>
             <p className="mt-1 font-medium text-slate-900">{activeTabMeta.description}</p>
           </div>
@@ -439,7 +442,7 @@ export default function EmployerAnalyticsPage() {
 
       {activeTab === "pipeline" && (
         <p className="text-center text-xs text-muted-foreground">
-          Live pipeline analytics refresh automatically every {AUTO_REFRESH_MS / 1000} seconds.
+          {t("liveRefresh")} {AUTO_REFRESH_MS / 1000} {t("seconds")}
         </p>
       )}
     </div>
@@ -479,6 +482,8 @@ function PipelineTab({
   selectedJobId: string;
   setSelectedJobId: (id: string) => void;
 }) {
+  const t = useTranslations("employerAnalytics");
+  const tc = useTranslations("employerCommon");
   const conversionRates = {
     appliedToShortlisted:
       data.conversion.applied > 0
@@ -505,7 +510,7 @@ function PipelineTab({
   const funnelChartData = FUNNEL_STAGES.map((stage) => {
     const found = pipeline.stageDistribution.find((s) => s.stage === stage);
     return {
-      stage: STAGE_NAMES[stage] || stage,
+      stage: t(stage),
       count: found?.count ?? 0,
       fill: STAGE_COLORS[stage] || "#94a3b8",
     };
@@ -529,14 +534,14 @@ function PipelineTab({
         <AnalyticsPanel>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <AnalyticsSectionHeader
-              title="Pipeline scope"
-              description="Focus this funnel on one role or keep the full portfolio visible."
+              title={t("pipelineScope")}
+              description={t("scopeDescription")}
               icon={Filter}
-              eyebrow="Job filter"
+              eyebrow={t("jobFilter")}
             />
             <div className="min-w-full lg:min-w-[280px] xl:min-w-[340px]">
               <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Selected job
+                {t("selectedJob")}
               </label>
               <select
                 value={selectedJobId}
@@ -578,20 +583,20 @@ function PipelineTab({
 
       <section>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <ConversionCard label="Applied" count={data.conversion.applied} subtitle="100% of total" color="blue" />
-          <ConversionCard label="Shortlisted" count={data.conversion.shortlisted} subtitle={`${conversionRates.appliedToShortlisted}% from Applied`} color="indigo" />
-          <ConversionCard label="Interview" count={data.conversion.interview} subtitle={`${conversionRates.shortlistedToInterview}% from Shortlisted`} color="purple" />
-          <ConversionCard label="Selected" count={data.conversion.selected} subtitle={`${conversionRates.interviewToSelected}% from Interview`} color="amber" />
-          <ConversionCard label="Hired" count={data.conversion.hired} subtitle={`${conversionRates.appliedToHired}% overall hire rate`} color="green" />
+          <ConversionCard label={t("applied")} count={data.conversion.applied} subtitle={`100% ${t("ofTotal")}`} color="blue" />
+          <ConversionCard label={t("shortlisted")} count={data.conversion.shortlisted} subtitle={`${conversionRates.appliedToShortlisted}% ${t("fromApplied")}`} color="indigo" />
+          <ConversionCard label={t("interview")} count={data.conversion.interview} subtitle={`${conversionRates.shortlistedToInterview}% ${t("fromShortlisted")}`} color="purple" />
+          <ConversionCard label={t("selected")} count={data.conversion.selected} subtitle={`${conversionRates.interviewToSelected}% ${t("fromInterview")}`} color="amber" />
+          <ConversionCard label={t("hired")} count={data.conversion.hired} subtitle={`${conversionRates.appliedToHired}% ${t("overallHireRate")}`} color="green" />
         </div>
       </section>
 
       <AnalyticsPanel>
         <AnalyticsSectionHeader
-          title="Pipeline Funnel"
-          description="See how candidate volume compresses from first application to final hire."
+          title={t("pipelineFunnel")}
+          description={t("pipelineFunnelDesc")}
           icon={BarChart3}
-          eyebrow="Conversion"
+          eyebrow={t("conversion")}
         />
 
         {funnelChartData.every((d) => d.count === 0) ? (
@@ -613,20 +618,20 @@ function PipelineTab({
         )}
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <RateBadge label="Applied → Shortlisted" value={pipeline.conversionRates.appliedToShortlisted} />
-          <RateBadge label="Shortlisted → Interview" value={pipeline.conversionRates.shortlistedToInterview} />
-          <RateBadge label="Interview → Offer" value={pipeline.conversionRates.interviewToOffer} />
-          <RateBadge label="Offer → Hired" value={pipeline.conversionRates.offerToHired} />
-          <RateBadge label="Overall Hire Rate" value={pipeline.conversionRates.overallHireRate} highlight />
+          <RateBadge label={t("appliedToShortlisted")} value={pipeline.conversionRates.appliedToShortlisted} />
+          <RateBadge label={t("shortlistedToInterview")} value={pipeline.conversionRates.shortlistedToInterview} />
+          <RateBadge label={t("interviewToOffer")} value={pipeline.conversionRates.interviewToOffer} />
+          <RateBadge label={t("offerToHired")} value={pipeline.conversionRates.offerToHired} />
+          <RateBadge label={t("overallHireRate")} value={pipeline.conversionRates.overallHireRate} highlight />
         </div>
       </AnalyticsPanel>
 
       <AnalyticsPanel>
         <AnalyticsSectionHeader
-          title="Daily Applications"
-          description="Track inbound candidate momentum across the last 30 days."
+          title={t("dailyApplications")}
+          description={t("dailyApplicationsDesc")}
           icon={TrendingUp}
-          eyebrow="Trend"
+          eyebrow={t("trend")}
         />
 
         <ResponsiveContainer width="100%" height={280}>
@@ -644,10 +649,10 @@ function PipelineTab({
         <AnalyticsPanel className="overflow-hidden p-0">
           <div className="border-b border-border/60 px-5 py-5 sm:px-6">
             <AnalyticsSectionHeader
-              title="Per-Job Pipeline Breakdown"
-              description="Compare each role across the main funnel stages without leaving analytics."
+              title={t("perJobBreakdown")}
+              description={t("perJobBreakdownDesc")}
               icon={Briefcase}
-              eyebrow="Job detail"
+              eyebrow={t("jobDetail")}
               compact
             />
           </div>
@@ -656,12 +661,12 @@ function PipelineTab({
             <table className="w-full min-w-[860px] text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-background/60">
-                  <th className="px-4 py-3 text-left font-semibold text-foreground/85">Job Title</th>
-                  <th className="px-4 py-3 text-center font-semibold text-foreground/85">Total</th>
+                  <th className="px-4 py-3 text-left font-semibold text-foreground/85">{t("jobTitle")}</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground/85">{t("total")}</th>
                   {FUNNEL_STAGES.map((s) => (
-                    <th key={s} className="px-4 py-3 text-center font-semibold text-foreground/85">{STAGE_NAMES[s]}</th>
+                    <th key={s} className="px-4 py-3 text-center font-semibold text-foreground/85">{t(s)}</th>
                   ))}
-                  <th className="px-4 py-3 text-center font-semibold text-foreground/85">Rejected</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground/85">{t("rejected")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -706,10 +711,10 @@ function PipelineTab({
       <AnalyticsPanel className="overflow-hidden p-0">
         <div className="border-b border-border/60 px-5 py-5 sm:px-6">
           <AnalyticsSectionHeader
-            title="Top Jobs by Applications"
-            description="Identify which roles currently attract the highest candidate attention."
+            title={t("topJobsByApps")}
+            description={t("topJobsByAppsDesc")}
             icon={Briefcase}
-            eyebrow="Top roles"
+            eyebrow={t("topRoles")}
             compact
           />
         </div>
@@ -721,9 +726,9 @@ function PipelineTab({
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-background/60">
-                  <th className="px-4 py-3 text-left font-semibold text-foreground/85">Job Title</th>
-                  <th className="px-4 py-3 text-right font-semibold text-foreground/85">Applications</th>
-                  <th className="px-4 py-3 text-right font-semibold text-foreground/85">% of Total</th>
+                  <th className="px-4 py-3 text-left font-semibold text-foreground/85">{t("jobTitle")}</th>
+                  <th className="px-4 py-3 text-right font-semibold text-foreground/85">{t("applications")}</th>
+                  <th className="px-4 py-3 text-right font-semibold text-foreground/85">{t("percentOfTotal")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -767,6 +772,8 @@ function HistoricalTab({
   customEnd: string;
   setCustomEnd: (v: string) => void;
 }) {
+  const t = useTranslations("employerAnalytics");
+  const tc = useTranslations("employerCommon");
   const trendChartData = historical.trend.map((t) => {
     const d = new Date(t.date);
     return {
@@ -1126,6 +1133,8 @@ function HistoricalTab({
    ══════════════════════════════════════════════════════════════════ */
 
 function PerformanceTab({ performance }: { performance: PerformanceData }) {
+  const t = useTranslations("employerAnalytics");
+  const tc = useTranslations("employerCommon");
   const { jobs, summary } = performance;
 
   return (
@@ -1262,6 +1271,8 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
    ══════════════════════════════════════════════════════════════════ */
 
 function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
+  const t = useTranslations("employerAnalytics");
+  const tc = useTranslations("employerCommon");
   const { overall, commitment, perJob, distribution } = data;
 
   return (

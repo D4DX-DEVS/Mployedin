@@ -9,7 +9,10 @@ export type ConversationContext =
   | "employer_assist"
   | "agent_assist"
   | "super_agent_assist"
-  | "admin_assist";
+  | "admin_assist"
+  | "job_creator"
+  | "interview_ai"
+  | "screening_ai";
 
 export interface IMessage {
   role: MessageRole;
@@ -56,6 +59,9 @@ const ConversationThreadSchema = new Schema<IConversationThread>(
         "agent_assist",
         "super_agent_assist",
         "admin_assist",
+        "job_creator",
+        "interview_ai",
+        "screening_ai",
       ],
       required: true,
     },

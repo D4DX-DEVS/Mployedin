@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock, Pencil, Activity } from "lucide-react";
@@ -57,6 +59,12 @@ const ROLE_ICONS: Record<CompanyRole, React.ReactNode> = {
 };
 
 export default function TeamManagementPage() {
+  const t = useTranslations("employerTeam");
+  const tc = useTranslations("employerCommon");
+  const roleLabel = (role: CompanyRole) => {
+    const map: Record<CompanyRole, string> = { owner: t("owner"), admin: t("admin"), hiring_manager: t("hiringManager"), viewer: t("viewer") };
+    return map[role] ?? role;
+  };
   const { locale } = useParams<{ locale: string }>();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const { data: members = [], isLoading: loading } = useTeam();
@@ -83,7 +91,7 @@ export default function TeamManagementPage() {
   const showJobAccess = (role: CompanyRole) => role === "hiring_manager" || role === "viewer";
 
   useEffect(() => {
-    document.title = "Team Management · MPLOYEDIN";
+    document.title = t("pageTitle");
   }, []);
 
   async function handleInvite(e: React.FormEvent) {
@@ -103,14 +111,14 @@ export default function TeamManagementPage() {
       setShowInviteModal(false);
       setInviteData({ email: "", companyRole: "hiring_manager", jobAccess: [] });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to send invite");
+      setError(err instanceof Error ? err.message : t("failedToSendInvite"));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDeactivate(memberId: string) {
-    const ok = await confirmDialog("Are you sure you want to deactivate this team member?");
+    const ok = await confirmDialog(t("deactivateConfirm"));
     if (!ok) return;
     await removeMutation.mutateAsync(memberId);
   }
@@ -132,7 +140,7 @@ export default function TeamManagementPage() {
   }
 
   function getJobAccessLabel(member: TeamMember): string {
-    if (member.companyRole === "owner" || member.companyRole === "admin") return "All Jobs";
+    if (member.companyRole === "owner" || member.companyRole === "admin") return t("allJobs");
     if (!member.jobAccess || member.jobAccess.length === 0) return "All Jobs";
     return `${member.jobAccess.length} Job${member.jobAccess.length !== 1 ? "s" : ""}`;
   }
@@ -158,23 +166,23 @@ export default function TeamManagementPage() {
   const pagedMembers = filteredMembers.slice((page - 1) * limit, page * limit);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Name", key: "user", formatter: (_v, r) => (r as Record<string, any>).user?.name ?? "Pending Invite" },
-    { header: "Email", key: "email", formatter: (v) => String(v ?? "—") },
-    { header: "Role", key: "companyRole", formatter: (v) => ROLE_LABELS[String(v) as CompanyRole] ?? String(v) },
-    { header: "Status", key: "status", formatter: (v) => String(v ?? "—") },
-    { header: "Joined", key: "acceptedAt", formatter: (v, r) => v ? new Date(String(v)).toLocaleDateString() : (r as Record<string, any>).invitedAt ? `Invited ${new Date(String((r as Record<string, any>).invitedAt)).toLocaleDateString()}` : "—" },
+    { header: t("name"), key: "user", formatter: (_v, r) => (r as Record<string, any>).user?.name ?? t("pendingInvite") },
+    { header: t("email"), key: "email", formatter: (v) => String(v ?? "—") },
+    { header: t("role"), key: "companyRole", formatter: (v) => roleLabel(String(v) as CompanyRole) },
+    { header: t("status"), key: "status", formatter: (v) => String(v ?? "—") },
+    { header: t("joined"), key: "acceptedAt", formatter: (v, r) => v ? new Date(String(v)).toLocaleDateString() : (r as Record<string, any>).invitedAt ? t("invited", { date: new Date(String((r as Record<string, any>).invitedAt)).toLocaleDateString() }) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: filteredMembers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "team-members",
-    title: "Team Members",
+    title: t("teamMembers"),
   });
 
   const stats = [
-    { label: "Active Members", value: activeCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-background border-border/60 dark:bg-card" },
-    { label: "Pending Invites", value: pendingCount, icon: Clock, color: "text-amber-600", bg: "bg-background border-border/60 dark:bg-card" },
-    { label: "Total Members", value: totalCount, icon: Users, color: "text-primary", bg: "bg-background border-border/60 dark:bg-card" },
+    { label: t("activeMembers", { count: activeCount }), value: activeCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-background border-border/60 dark:bg-card" },
+    { label: t("inviteMember"), value: pendingCount, icon: Clock, color: "text-amber-600", bg: "bg-background border-border/60 dark:bg-card" },
+    { label: t("teamMembers"), value: totalCount, icon: Users, color: "text-primary", bg: "bg-background border-border/60 dark:bg-card" },
   ];
 
   return (
@@ -182,21 +190,21 @@ export default function TeamManagementPage() {
       {ConfirmDialogNode}
       {/* Header */}
       <PageHeader
-        title="Team Management"
-        description={`${activeCount} active member${activeCount !== 1 ? "s" : ""}${pendingCount > 0 ? ` · ${pendingCount} pending invite${pendingCount !== 1 ? "s" : ""}` : ""}`}
+        title={t("title")}
+        description={pendingCount > 0 ? t("descriptionWithPending", { activeCount, pendingCount }) : t("descriptionActiveOnly", { activeCount })}
         actions={
           <div className="flex items-center gap-2">
             <Link href={`/${locale}/employer/team/activity-logs`}>
               <Button variant="outline" size="sm">
                 <Activity className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Activity Logs</span>
-                <span className="sm:hidden">Logs</span>
+                <span className="hidden sm:inline">{t("activityLogs")}</span>
+                <span className="sm:hidden">{t("activityLogs")}</span>
               </Button>
             </Link>
             <Button onClick={() => setShowInviteModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Invite Member</span>
-              <span className="sm:hidden">Invite</span>
+              <span className="hidden sm:inline">{t("inviteMember")}</span>
+              <span className="sm:hidden">{t("inviteMember")}</span>
             </Button>
           </div>
         }
@@ -223,7 +231,7 @@ export default function TeamManagementPage() {
       {loading ? (
         <div className="card-base p-12 flex flex-col items-center justify-center gap-3">
           <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading team members…</p>
+          <p className="text-sm text-muted-foreground">{t("loading")}</p>
         </div>
       ) : members.length === 0 ? (
         /* ── Empty State ── */
@@ -260,11 +268,11 @@ export default function TeamManagementPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/40">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Member</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Job Access</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Joined</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("name")}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("role")}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("jobAccess")}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("status")}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{tc("edit")}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -279,7 +287,7 @@ export default function TeamManagementPage() {
                         <div className="min-w-0">
                           <div className="font-medium text-sm truncate">
                             {member.user?.name ?? (
-                              <span className="text-muted-foreground italic">Pending Invite</span>
+                              <span className="text-muted-foreground italic">{t("pendingInvite")}</span>
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground truncate">{member.email}</div>
@@ -290,22 +298,22 @@ export default function TeamManagementPage() {
                       {member.companyRole === "owner" ? (
                         <Badge variant="outline" className={`gap-1 ${ROLE_COLORS[member.companyRole]}`}>
                           {ROLE_ICONS[member.companyRole]}
-                          {ROLE_LABELS[member.companyRole]}
+                          {roleLabel(member.companyRole)}
                         </Badge>
                       ) : member.status === "active" ? (
                         <SearchableSelect
                           className="w-full sm:w-40 h-8 text-xs"
                           options={[
-                            { value: "admin", label: "Admin" },
-                            { value: "hiring_manager", label: "Hiring Manager" },
-                            { value: "viewer", label: "Viewer" },
+                            { value: "admin", label: roleLabel("admin") },
+                            { value: "hiring_manager", label: roleLabel("hiring_manager") },
+                            { value: "viewer", label: roleLabel("viewer") },
                           ]}
                           value={member.companyRole}
                           onValueChange={(val) => handleRoleChange(member._id, val as CompanyRole)}
                         />
                       ) : (
                         <Badge variant="outline" className={ROLE_COLORS[member.companyRole]}>
-                          {ROLE_LABELS[member.companyRole]}
+                          {roleLabel(member.companyRole)}
                         </Badge>
                       )}
                     </td>
@@ -337,7 +345,7 @@ export default function TeamManagementPage() {
                       {member.acceptedAt
                         ? new Date(member.acceptedAt).toLocaleDateString()
                         : member.invitedAt
-                          ? `Invited ${new Date(member.invitedAt).toLocaleDateString()}`
+                          ? t("invited", { date: new Date(member.invitedAt).toLocaleDateString() })
                           : "—"}
                     </td>
                     <td className="px-4 py-3.5 text-right">
@@ -372,7 +380,7 @@ export default function TeamManagementPage() {
                     <div className="min-w-0">
                       <div className="font-medium text-sm truncate">
                         {member.user?.name ?? (
-                          <span className="text-muted-foreground italic">Pending Invite</span>
+                          <span className="text-muted-foreground italic">{t("pendingInvite")}</span>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">{member.email}</div>
@@ -400,15 +408,15 @@ export default function TeamManagementPage() {
                   {member.companyRole === "owner" || member.status !== "active" ? (
                     <Badge variant="outline" className={`gap-1 ${ROLE_COLORS[member.companyRole]}`}>
                       {ROLE_ICONS[member.companyRole]}
-                      {ROLE_LABELS[member.companyRole]}
+                      {roleLabel(member.companyRole)}
                     </Badge>
                   ) : (
                     <SearchableSelect
                       className="h-7 text-xs w-full sm:w-36"
                       options={[
-                        { value: "admin", label: "Admin" },
-                        { value: "hiring_manager", label: "Hiring Manager" },
-                        { value: "viewer", label: "Viewer" },
+                        { value: "admin", label: roleLabel("admin") },
+                        { value: "hiring_manager", label: roleLabel("hiring_manager") },
+                        { value: "viewer", label: roleLabel("viewer") },
                       ]}
                       value={member.companyRole}
                       onValueChange={(val) => handleRoleChange(member._id, val as CompanyRole)}
@@ -434,7 +442,7 @@ export default function TeamManagementPage() {
                     {member.acceptedAt
                       ? new Date(member.acceptedAt).toLocaleDateString()
                       : member.invitedAt
-                        ? `Invited ${new Date(member.invitedAt).toLocaleDateString()}`
+                        ? t("invited", { date: new Date(member.invitedAt).toLocaleDateString() })
                         : "—"}
                   </span>
                 </div>
@@ -553,7 +561,7 @@ export default function TeamManagementPage() {
               Edit Job Access
             </DialogTitle>
             <DialogDescription>
-              {editingMember?.user?.name ?? editingMember?.email} — {editingMember ? ROLE_LABELS[editingMember.companyRole] : ""}
+              {editingMember?.user?.name ?? editingMember?.email} — {editingMember ? roleLabel(editingMember.companyRole) : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-1">

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ import type { Interview } from "@/hooks/useInterviews";
 import type { ExportColumn } from "@/lib/export";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { formatNumber } from "@/lib/formatNumber";
 
 interface AIQuestionsTarget {
   interviewId: string;
@@ -61,6 +63,8 @@ interface PrepBriefResult {
 export default function EmployerInterviewsPage() {
   const { locale } = useParams<{ locale: string }>();
   const router = useRouter();
+  const t = useTranslations("employerInterviews");
+  const tc = useTranslations("employerCommon");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const { can } = usePermissions();
@@ -299,21 +303,21 @@ export default function EmployerInterviewsPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Interview workspace
+              {t("title")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Keep interview momentum visible across every candidate touchpoint.
+              {t("subtitle")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Review upcoming sessions, reschedules, and completions in one cleaner operations view without losing the quick scheduling flow.
+              {t("description")}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current view</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{deduplicatedInterviews.length} active · {total} total</p>
-              <p className="text-xs text-muted-foreground">Active interviews on this page. {total} records match filters.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentView")}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{formatNumber(deduplicatedInterviews.length, locale)} {t("active")} · {formatNumber(total, locale)} {t("total")}</p>
+              <p className="text-xs text-muted-foreground">{t("activeDesc")} {t("totalDesc")}</p>
             </div>
             {can("interviews", "create") ? (
               <Button
@@ -321,7 +325,7 @@ export default function EmployerInterviewsPage() {
                 className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
               >
                 <Link href={`/${locale}/employer/interviews/bulk`}>
-                  Bulk Schedule
+                  {t("bulkSchedule")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -351,23 +355,23 @@ export default function EmployerInterviewsPage() {
               }}
             >
               <CalendarDays className="h-4 w-4" />
-              Export Calendar
+              {t("exportCalendar")}
             </Button>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: "Scheduled", value: scheduledTotal, note: "Interviews waiting to happen (scheduled + confirmed).", icon: CalendarDays, tone: "text-sky-600", chip: "bg-sky-50" },
-            { label: "Completed", value: completedTotal, note: "Interviews finished with outcome recorded.", icon: CircleCheckBig, tone: "text-emerald-600", chip: "bg-emerald-50" },
-            { label: "Needs attention", value: attentionTotal, note: "Rescheduled or cancelled sessions requiring follow-up.", icon: RotateCcw, tone: "text-amber-600", chip: "bg-amber-50" },
-            { label: "Confirmed", value: confirmedTotal, note: "Candidates who confirmed their attendance.", icon: Clock3, tone: "text-violet-600", chip: "bg-violet-50" },
+            { label: t("scheduled"), value: scheduledTotal, note: t("scheduledDesc"), icon: CalendarDays, tone: "text-sky-600", chip: "bg-sky-50" },
+            { label: t("completed"), value: completedTotal, note: t("completedDesc"), icon: CircleCheckBig, tone: "text-emerald-600", chip: "bg-emerald-50" },
+            { label: t("needsAttention"), value: attentionTotal, note: t("needsAttentionDesc"), icon: RotateCcw, tone: "text-amber-600", chip: "bg-amber-50" },
+            { label: t("confirmed"), value: confirmedTotal, note: t("confirmedDesc"), icon: Clock3, tone: "text-violet-600", chip: "bg-violet-50" },
           ].map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
+                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{formatNumber(value, locale)}</p>
                 </div>
                 <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
                   <Icon className={`h-5 w-5 ${tone}`} />
@@ -389,7 +393,7 @@ export default function EmployerInterviewsPage() {
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search by candidate name or role..."
+              placeholder={tc("search")}
               className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
             {search && (
@@ -402,7 +406,7 @@ export default function EmployerInterviewsPage() {
             {activeFilterCount > 0 && (
               <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-destructive"
                 onClick={() => { setStatus(""); setTypeFilter(""); setOutcomeFilter(""); setDateFrom(""); setDateTo(""); setPage(1); }}>
-                <X className="me-1 h-3 w-3" /> Clear filters
+                <X className="me-1 h-3 w-3" /> {tc("clearFilters")}
               </Button>
             )}
             <Button
@@ -412,7 +416,7 @@ export default function EmployerInterviewsPage() {
               onClick={() => setFiltersOpen(!filtersOpen)}
             >
               <Filter className="h-3.5 w-3.5" />
-              Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              {t("filters")}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               {filtersOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </Button>
           </div>
@@ -422,71 +426,71 @@ export default function EmployerInterviewsPage() {
         {filtersOpen && (
           <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Status</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("statusLabel")}</label>
               <SearchableSelect
                 className="w-full"
                 options={[
-                  { value: "all", label: "All Statuses" },
-                  { value: "scheduled", label: "Scheduled" },
-                  { value: "confirmed", label: "Confirmed" },
-                  { value: "completed", label: "Completed" },
-                  { value: "cancelled", label: "Cancelled" },
+                  { value: "all", label: t("allStatuses") },
+                  { value: "scheduled", label: t("scheduledStatus") },
+                  { value: "confirmed", label: t("confirmedStatus") },
+                  { value: "completed", label: t("completedStatus") },
+                  { value: "cancelled", label: t("cancelledStatus") },
                 ]}
                 value={status || "all"}
                 onValueChange={(v) => { setStatus(v === "all" ? "" : v); setPage(1); }}
-                placeholder="All Statuses"
+                placeholder={t("allStatuses")}
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Type</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("typeLabel")}</label>
               <SearchableSelect
                 className="w-full"
                 options={[
-                  { value: "all", label: "All Types" },
-                  { value: "video", label: "Video" },
-                  { value: "offline", label: "In-Person" },
-                  { value: "hybrid", label: "Hybrid" },
+                  { value: "all", label: t("allTypes") },
+                  { value: "video", label: t("video") },
+                  { value: "offline", label: t("inPerson") },
+                  { value: "hybrid", label: t("hybrid") },
                 ]}
                 value={typeFilter || "all"}
                 onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); setPage(1); }}
-                placeholder="All Types"
+                placeholder={t("allTypes")}
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Outcome</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("outcomeLabel")}</label>
               <SearchableSelect
                 className="w-full"
                 options={[
-                  { value: "all", label: "All Outcomes" },
-                  { value: "passed", label: "Passed" },
-                  { value: "failed", label: "Rejected" },
-                  { value: "hold", label: "On Hold" },
-                  { value: "no_show", label: "No Show" },
+                  { value: "all", label: t("allOutcomes") },
+                  { value: "passed", label: t("passed") },
+                  { value: "failed", label: t("rejected") },
+                  { value: "hold", label: t("onHold") },
+                  { value: "no_show", label: t("noShow") },
                 ]}
                 value={outcomeFilter || "all"}
                 onValueChange={(v) => { setOutcomeFilter(v === "all" ? "" : v); setPage(1); }}
-                placeholder="All Outcomes"
+                placeholder={t("allOutcomes")}
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Sort By</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("sortBy")}</label>
               <SearchableSelect
                 className="w-full"
                 options={[
-                  { value: "scheduledAt-asc", label: "Date (Earliest first)" },
-                  { value: "scheduledAt-desc", label: "Date (Latest first)" },
-                  { value: "createdAt-desc", label: "Recently added" },
+                  { value: "scheduledAt-asc", label: t("dateEarliest") },
+                  { value: "scheduledAt-desc", label: t("dateLatest") },
+                  { value: "createdAt-desc", label: t("recentlyAdded") },
                 ]}
                 value={`${sortBy}-${sortOrder}`}
                 onValueChange={(v) => {
                   const [field, order] = v.split("-") as [string, "asc" | "desc"];
                   setSortBy(field); setSortOrder(order); setPage(1);
                 }}
-                placeholder="Sort order"
+                placeholder={t("sortBy")}
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">From Date</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("fromDate")}</label>
               <input
                 type="date"
                 value={dateFrom}
@@ -495,7 +499,7 @@ export default function EmployerInterviewsPage() {
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">To Date</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("toDate")}</label>
               <input
                 type="date"
                 value={dateTo}
@@ -505,7 +509,7 @@ export default function EmployerInterviewsPage() {
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <Sparkles className="me-1 inline h-3 w-3 text-violet-500" /> AI Search
+                <Sparkles className="me-1 inline h-3 w-3 text-violet-500" /> {t("aiSearch")}
               </label>
               <div className="flex gap-2">
                 <input
@@ -539,14 +543,14 @@ export default function EmployerInterviewsPage() {
         <section className="workspace-panel-surface rounded-[28px] border border-destructive/30 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">Interview list</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Unable to load interviews right now</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">{t("interviewList")}</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{tc("somethingWentWrong")}</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {error instanceof Error ? error.message : "The interview workspace could not load. Try again in a moment."}
               </p>
             </div>
             <Button className="h-11 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700" onClick={() => void refetch()}>
-              Retry
+              {tc("tryAgain")}
             </Button>
           </div>
         </section>
@@ -555,13 +559,13 @@ export default function EmployerInterviewsPage() {
       <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Interview list</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Track who is meeting, when, and what needs attention next.</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("interviewList")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("description")}</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Candidate context, role detail, schedule timing, and AI question generation stay inside one consistent workspace.
+              {t("tableDesc")}
             </p>
           </div>
-          <p className="text-sm text-muted-foreground">{deduplicatedInterviews.length} interviews on this page</p>
+          <p className="text-sm text-muted-foreground">{deduplicatedInterviews.length} {t("interviewsOnPage")}</p>
         </div>
 
         <TableToolbar
@@ -575,15 +579,15 @@ export default function EmployerInterviewsPage() {
           <Table>
             <TableHeader>
               <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
-                <TableHead className="min-w-[220px]">Candidate</TableHead>
-                <TableHead className="min-w-[260px]">Role</TableHead>
-                <TableHead>Round</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Scheduled</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Outcome</TableHead>
-                <TableHead>AI</TableHead>
-                {can("interviews", "update") ? <TableHead className="text-right min-w-[280px]">Actions</TableHead> : null}
+                <TableHead className="min-w-[220px]">{t("candidate")}</TableHead>
+                <TableHead className="min-w-[260px]">{t("role")}</TableHead>
+                <TableHead>{t("round")}</TableHead>
+                <TableHead>{t("typeLabel")}</TableHead>
+                <TableHead>{t("scheduledCol")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead>{t("outcomeLabel")}</TableHead>
+                <TableHead>{t("ai")}</TableHead>
+                {can("interviews", "update") ? <TableHead className="text-right min-w-[280px]">{t("actions")}</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -603,8 +607,8 @@ export default function EmployerInterviewsPage() {
                         <Inbox className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-base font-semibold text-foreground">No interviews scheduled yet</p>
-                        <p className="mt-1 text-sm text-muted-foreground">Once candidates move into interview stages, they will appear here for tracking and follow-up.</p>
+                        <p className="text-base font-semibold text-foreground">{t("noInterviews")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -672,7 +676,7 @@ export default function EmployerInterviewsPage() {
                           title="Generate AI interview questions"
                         >
                           <Sparkles className="me-1 h-3.5 w-3.5" />
-                          Questions
+                          {t("questions")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -680,14 +684,14 @@ export default function EmployerInterviewsPage() {
                           className="h-8 rounded-xl px-3 text-xs font-semibold text-violet-700 hover:bg-violet-50 hover:text-violet-800"
                           onClick={() => generatePrepBrief(iv._id)}
                           disabled={loadingPrepBriefId === iv._id}
-                          title="AI interview prep brief"
+                          title={t("prepBrief")}
                         >
                           {loadingPrepBriefId === iv._id ? (
                             <Loader2 className="me-1 h-3.5 w-3.5 animate-spin" />
                           ) : (
                             <BookOpen className="me-1 h-3.5 w-3.5" />
                           )}
-                          Prep Brief
+                          {t("prepBrief")}
                         </Button>
                       </div>
                     </TableCell>
@@ -701,23 +705,23 @@ export default function EmployerInterviewsPage() {
                                 className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
                                 onClick={() => setModal({ kind: "complete", interview: iv })}>
                                 <CheckCircle2 className="me-1 h-3 w-3" />
-                                Complete
+                                {t("complete")}
                               </Button>
                               <Button variant="ghost" size="sm"
                                 className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-blue-700 hover:bg-blue-50"
                                 onClick={() => setModal({ kind: "reschedule", interview: iv })}>
                                 <CalendarClock className="me-1 h-3 w-3" />
-                                Reschedule
+                                {t("reschedule")}
                               </Button>
                               <Button variant="ghost" size="sm"
                                 className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-red-700 hover:bg-red-50"
                                 onClick={() => {
-                                  if (window.confirm(`Cancel interview with ${iv.jobSeekerId?.fullName ?? "this candidate"}?`)) {
+                                  if (window.confirm(`${t("cancelConfirm")} ${iv.jobSeekerId?.fullName ?? "this candidate"}?`)) {
                                     updateMutation.mutate({ id: iv._id, status: "cancelled" });
                                   }
                                 }}>
                                 <Ban className="me-1 h-3 w-3" />
-                                Cancel
+                                {t("cancelAction")}
                               </Button>
                             </>
                           )}
@@ -729,13 +733,13 @@ export default function EmployerInterviewsPage() {
                                 className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50"
                                 onClick={() => setModal({ kind: "next-round", interview: iv })}>
                                 <Forward className="me-1 h-3 w-3" />
-                                Next Round
+                                {t("nextRound")}
                               </Button>
                               <Button variant="ghost" size="sm"
                                 className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
                                 onClick={() => setModal({ kind: "offer", interview: iv })}>
                                 <FileText className="me-1 h-3 w-3" />
-                                Make Offer
+                                {t("makeOffer")}
                               </Button>
                             </>
                           )}
@@ -746,7 +750,7 @@ export default function EmployerInterviewsPage() {
                               className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-amber-700 hover:bg-amber-50"
                               onClick={() => setModal({ kind: "complete", interview: iv })}>
                               <AlertTriangle className="me-1 h-3 w-3" />
-                              Set Outcome
+                              {t("setOutcome")}
                             </Button>
                           )}
                         </div>
@@ -778,7 +782,7 @@ export default function EmployerInterviewsPage() {
               <DialogHeader className="shrink-0 border-b border-border px-6 py-5">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-violet-500" />
-                  <DialogTitle className="text-lg font-semibold">Interview Prep Brief</DialogTitle>
+                  <DialogTitle className="text-lg font-semibold">{t("interviewPrepBrief")}</DialogTitle>
                 </div>
                 <DialogDescription className="mt-1 text-sm text-muted-foreground">
                   {prepBrief.candidateName} — {prepBrief.jobTitle} (Round {prepBrief.round}, {prepBrief.duration}min {prepBrief.type})
@@ -787,20 +791,20 @@ export default function EmployerInterviewsPage() {
               <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
                 {/* Candidate Summary */}
                 <div className="workspace-glass-panel rounded-2xl p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Candidate Summary</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("candidateSummary")}</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{prepBrief.candidateSummary}</p>
                 </div>
 
                 {/* Strategy */}
                 <div className="workspace-glass-panel rounded-2xl p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Interview Strategy</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("interviewStrategy")}</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">{prepBrief.interviewStrategy}</p>
                 </div>
 
                 {/* Time Allocation */}
                 {prepBrief.timeAllocation && (
                   <div className="workspace-glass-panel rounded-2xl p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Time Allocation ({prepBrief.duration} min)</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("timeAllocation")} ({prepBrief.duration} {t("min")})</p>
                     <div className="mt-3 flex gap-1.5">
                       {Object.entries(prepBrief.timeAllocation).map(([key, mins]) => (
                         <div
@@ -819,7 +823,7 @@ export default function EmployerInterviewsPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   {/* Key Strengths */}
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
-                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Key Strengths to Explore</p>
+                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">{t("keyStrengths")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.keyStrengths.map((s) => (
                         <li key={s} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -832,7 +836,7 @@ export default function EmployerInterviewsPage() {
 
                   {/* Areas to Probe */}
                   <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
-                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">Areas to Probe</p>
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">{t("areasToProbe")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.areasToProbe.map((a) => (
                         <li key={a} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -846,7 +850,7 @@ export default function EmployerInterviewsPage() {
 
                 {/* Suggested Questions */}
                 <div className="workspace-glass-panel rounded-2xl p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Suggested Questions</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("suggestedQuestions")}</p>
                   <div className="mt-3 space-y-3">
                     {prepBrief.suggestedQuestions.map((q, i) => (
                       <div key={i} className="rounded-xl border border-border bg-background/60 p-3">
@@ -861,7 +865,7 @@ export default function EmployerInterviewsPage() {
                 {/* Red Flags */}
                 {prepBrief.redFlags.length > 0 && (
                   <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-500/20 dark:bg-rose-500/10">
-                    <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">Red Flags to Watch</p>
+                    <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">{t("redFlags")}</p>
                     <ul className="mt-2 space-y-1.5">
                       {prepBrief.redFlags.map((r) => (
                         <li key={r} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -902,6 +906,8 @@ function InterviewActionModal({
   locale: string;
   onOfferCreated: () => void;
 }) {
+  const t = useTranslations("employerInterviews");
+  const tc = useTranslations("employerCommon");
   const [outcome, setOutcome] = useState<string>("");
   const [feedback, setFeedback] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
@@ -979,10 +985,10 @@ function InterviewActionModal({
       updateMutation, nextRoundMutation, createOfferMutation, onClose, onOfferCreated]);
 
   const title = {
-    complete: "Complete Interview & Set Outcome",
-    reschedule: "Reschedule Interview",
-    "next-round": `Schedule Round ${(iv.interviewRound ?? 1) + 1}`,
-    offer: "Make Offer",
+    complete: t("completeTitle"),
+    reschedule: t("rescheduleTitle"),
+    "next-round": `${t("scheduleRound")} ${(iv.interviewRound ?? 1) + 1}`,
+    offer: t("makeOfferTitle"),
   }[modal.kind];
 
   const isScheduleForm = modal.kind === "reschedule" || modal.kind === "next-round";
@@ -1003,13 +1009,13 @@ function InterviewActionModal({
           {modal.kind === "complete" && (
             <>
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Interview Outcome</label>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("interviewOutcome")}</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: "passed", label: "Passed — Move Forward", icon: CheckCircle2, color: "border-emerald-300 bg-emerald-50 text-emerald-700" },
-                    { value: "failed", label: "Rejected", icon: XCircle, color: "border-red-300 bg-red-50 text-red-700" },
-                    { value: "hold", label: "On Hold", icon: Clock3, color: "border-amber-300 bg-amber-50 text-amber-700" },
-                    { value: "no_show", label: "No Show", icon: AlertTriangle, color: "border-gray-300 bg-gray-50 text-gray-700" },
+                    { value: "passed", label: t("passedMoveForward"), icon: CheckCircle2, color: "border-emerald-300 bg-emerald-50 text-emerald-700" },
+                    { value: "failed", label: t("rejected"), icon: XCircle, color: "border-red-300 bg-red-50 text-red-700" },
+                    { value: "hold", label: t("onHold"), icon: Clock3, color: "border-amber-300 bg-amber-50 text-amber-700" },
+                    { value: "no_show", label: t("noShow"), icon: AlertTriangle, color: "border-gray-300 bg-gray-50 text-gray-700" },
                   ].map(({ value, label, icon: Icon, color }) => (
                     <button key={value}
                       onClick={() => setOutcome(value)}
@@ -1022,14 +1028,14 @@ function InterviewActionModal({
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Feedback (optional)</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("feedbackOptional")}</label>
                 <textarea
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   rows={3}
                   maxLength={5000}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="Interview notes and feedback..."
+                  placeholder={t("feedbackPlaceholder")}
                 />
               </div>
             </>
@@ -1139,7 +1145,7 @@ function InterviewActionModal({
 
         <div className="mt-6 flex items-center justify-end gap-3">
           <Button variant="ghost" onClick={onClose} className="h-10 rounded-xl px-4 text-sm">
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -1151,10 +1157,10 @@ function InterviewActionModal({
             ) : (
               <Send className="h-4 w-4" />
             )}
-            {modal.kind === "complete" ? "Save Outcome" :
-             modal.kind === "reschedule" ? "Reschedule" :
-             modal.kind === "next-round" ? "Schedule Next Round" :
-             "Send Offer"}
+            {modal.kind === "complete" ? t("saveOutcome") :
+             modal.kind === "reschedule" ? t("reschedule") :
+             modal.kind === "next-round" ? t("scheduleNextRound") :
+             t("sendOffer")}
           </Button>
         </div>
       </div>
