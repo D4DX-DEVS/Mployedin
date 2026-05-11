@@ -68,6 +68,8 @@ import {
   ShieldCheck,
   Upload,
   History,
+  Crosshair,
+  ReceiptText,
   type LucideProps,
 } from "lucide-react";
 import type { FC } from "react";
@@ -135,7 +137,9 @@ export type IconName =
   | "CalendarDays"
   | "ShieldCheck"
   | "Upload"
-  | "History";
+  | "History"
+  | "Crosshair"
+  | "ReceiptText";
 
 const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   LayoutDashboard,
@@ -201,6 +205,8 @@ const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   ShieldCheck,
   Upload,
   History,
+  Crosshair,
+  ReceiptText,
 };
 
 /** Resolve an icon name to its Lucide component. Falls back to a square placeholder. */

@@ -118,3 +118,12 @@ export const invoiceUpdateSchema = z.object({
   status: z.enum(["paid", "void"]).optional(),
   notes: z.string().max(500).trim().optional(),
 });
+
+// ── POST /api/invoices/recruitment ──────────────────────────────────────────
+export const recruitmentInvoiceCreateSchema = z.object({
+  jobId: commonSchemas.objectId,
+  employerId: commonSchemas.objectId,
+  amount: z.number().min(0.01, "Amount must be greater than 0"),
+  currency: z.string().length(3).default("AED"),
+  notes: z.string().max(2000).trim().optional(),
+});

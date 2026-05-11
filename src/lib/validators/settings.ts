@@ -55,7 +55,7 @@ export const systemSettingsUpdateSchema = z.object({
   defaultCurrency: z.string().max(5).trim().optional(),
   smtp: z
     .object({
-      smtpEmail: z.string().email().max(254).optional(),
+      smtpEmail: z.union([z.string().email().max(254), z.literal("")]).optional(),
       smtpHost: z.string().max(200).optional(),
       smtpPort: z.number().int().min(1).max(65535).optional(),
       smtpSecure: z.boolean().optional(),

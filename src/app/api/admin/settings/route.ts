@@ -43,7 +43,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // Handle SMTP config separately
   if (body.smtp && typeof body.smtp === "object") {
     const smtp = body.smtp;
-    if (smtp.smtpEmail !== undefined) update["smtp.smtpEmail"] = smtp.smtpEmail;
+    if (smtp.smtpEmail !== undefined && smtp.smtpEmail !== "") update["smtp.smtpEmail"] = smtp.smtpEmail;
     if (smtp.smtpHost !== undefined) update["smtp.smtpHost"] = smtp.smtpHost;
     if (smtp.smtpPort !== undefined) update["smtp.smtpPort"] = smtp.smtpPort;
     if (smtp.smtpSecure !== undefined) update["smtp.smtpSecure"] = smtp.smtpSecure;

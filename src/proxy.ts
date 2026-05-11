@@ -6,6 +6,7 @@ import { getDashboardPath } from "@/lib/permissions/matrix";
 import type { UserRole } from "@/types/user";
 import { SECURITY_HEADERS, getSecurityHeaders } from "@/lib/security/headers";
 import { setCsrfCookie, validateCsrf, isCsrfExempt } from "@/lib/security/csrf";
+import { TENANT_COOKIE_NAME, verifyTenantCookie } from "@/lib/security/tenantCookie";
 
 const locales = ["en", "ar"] as const;
 const defaultLocale = "en";
@@ -216,8 +217,40 @@ export default auth(async function middleware(req: NextRequest) {
     }
   }
 
+  // ── Tenant view: let agents/super-agents/admin access /employer/* routes
+  // when they have a valid signed tenant-view cookie.
+  // We inject x-tenant-* headers so the layout and API routes can read the context.
+  //
+  // SECURITY: Always strip client-provided x-tenant-* headers first to prevent
+  // header injection attacks that could bypass authorization.
+  requestHeaders.delete("x-tenant-employer-id");
+  requestHeaders.delete("x-tenant-employer-user-id");
+  requestHeaders.delete("x-tenant-company-name");
+  requestHeaders.delete("x-tenant-actor-role");
+
+  let tenantViewAllowed = false;
+  if (session?.user) {
+    const strippedForTenant = pathname.replace(/^\/(?:en|ar)/, "") || "/";
+    if (strippedForTenant.startsWith("/employer")) {
+      const cookieVal = req.cookies.get(TENANT_COOKIE_NAME)?.value;
+      if (cookieVal) {
+        const payload = await verifyTenantCookie(
+          cookieVal,
+          process.env.NEXTAUTH_SECRET ?? ""
+        );
+        if (payload && payload.actorId === session.user.id) {
+          tenantViewAllowed = true;
+          requestHeaders.set("x-tenant-employer-id", payload.employerId);
+          requestHeaders.set("x-tenant-employer-user-id", payload.employerUserId);
+          requestHeaders.set("x-tenant-company-name", payload.companyName);
+          requestHeaders.set("x-tenant-actor-role", session.user.role);
+        }
+      }
+    }
+  }
+
   // Enforce role-based dashboard route access
-  if (session?.user && !isRoleAllowed(session.user.role, pathname)) {
+  if (session?.user && !tenantViewAllowed && !isRoleAllowed(session.user.role, pathname)) {
     const role = session.user.role;
     const urlLocale = pathname.split("/")[1] || defaultLocale;
     return withSecurityHeaders(

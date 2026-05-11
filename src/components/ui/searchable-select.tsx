@@ -29,6 +29,10 @@ interface SearchableSelectProps {
   className?: string;
   emptyMessage?: string;
   id?: string;
+  /** Portal container — pass a ref to the dialog content to render inside dialogs */
+  container?: HTMLElement | null;
+  /** Set to true when rendered inside a Dialog to fix z-index stacking */
+  modal?: boolean;
 }
 
 export function SearchableSelect({
@@ -41,13 +45,15 @@ export function SearchableSelect({
   className,
   emptyMessage = "No results found.",
   id,
+  container,
+  modal: modalProp = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const selectedLabel = options.find((o) => o.value === value)?.label;
   const triggerLabel = selectedLabel || placeholder;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={modalProp}>
       <PopoverTrigger asChild>
         <button
           id={id}
@@ -73,9 +79,10 @@ export function SearchableSelect({
       </PopoverTrigger>
       <PopoverContent
         data-testid="searchable-select-content"
-        className="p-0"
+        className="p-0 z-[10001]"
         align="start"
         sideOffset={4}
+        container={container}
         style={{
           width: "max-content",
           minWidth: "var(--radix-popover-trigger-width)",

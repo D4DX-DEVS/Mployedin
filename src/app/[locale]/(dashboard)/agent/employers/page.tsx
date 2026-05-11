@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -8,7 +10,8 @@ import { usePagination } from "@/hooks/usePagination";
 import { usePermissions } from "@/hooks/usePermissions";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, ChevronUp, Copy, Edit2, ExternalLink, Globe2, Link2, Loader2, MapPin, Power, PowerOff, Search, Sparkles, Tag, Trash2, UserPlus, Users } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ArrowRight, BriefcaseBusiness, Building2, Calendar, Check, ChevronDown, ChevronUp, Copy, Edit2, ExternalLink, Globe2, Link2, Loader2, MapPin, Power, PowerOff, Search, Sparkles, Tag, Trash2, UserPlus, Users, LogIn } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -42,6 +45,8 @@ const ONBOARD_FIELDS: CrudField[] = [
 
 export default function AgentEmployersPage() {
   const { can } = usePermissions();
+  const router = useRouter();
+  const locale = useLocale();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
   const [employers, setEmployers] = useState<Employer[]>([]);
@@ -67,6 +72,29 @@ export default function AgentEmployersPage() {
   } | null>(null);
   const [referralExpanded, setReferralExpanded] = useState(false);
   const [togglingActive, setTogglingActive] = useState(false);
+  const [switchingEmployerId, setSwitchingEmployerId] = useState<string | null>(null);
+
+  const handleSwitchToEmployerView = async (employerId: string) => {
+    setSwitchingEmployerId(employerId);
+    try {
+      const res = await fetch("/api/tenant/switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employerId }),
+      });
+      if (res.ok) {
+        router.push(`/${locale}/employer`);
+        router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error ?? "Failed to switch to employer view");
+      }
+    } catch {
+      alert("Network error — please try again");
+    } finally {
+      setSwitchingEmployerId(null);
+    }
+  };
 
   const loadEmployers = useCallback(async () => {
     setLoading(true);
@@ -445,20 +473,20 @@ export default function AgentEmployersPage() {
       ) : (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {employers.map((em) => (
-            <div key={em._id} className="workspace-panel-surface space-y-4 rounded-[28px] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_26px_64px_-42px_rgba(2,132,199,0.32)]">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="workspace-tone-sky flex h-11 w-11 items-center justify-center rounded-2xl">
+            <div key={em._id} className="workspace-panel-surface space-y-4 overflow-hidden rounded-[28px] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_26px_64px_-42px_rgba(2,132,199,0.32)]">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="workspace-tone-sky flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
                     <Building2 className="h-5 w-5" />
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{em.companyName ?? em.name}</p>
-                    <p className="text-xs text-muted-foreground">{em.email}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{em.companyName ?? em.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{em.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex shrink-0 items-center gap-1.5">
                   {em.isAgentVerified && (
-                    <span className="text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ Verified</span>
+                    <span className="whitespace-nowrap text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ Verified</span>
                   )}
                   <StatusBadge status={em.isActive ? "active" : "inactive"} />
                 </div>
@@ -469,40 +497,73 @@ export default function AgentEmployersPage() {
                 {em.location && <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /> Location: {em.location}</p>}
               </div>
 
-              <div className="flex gap-2 pt-1">
-                <Link
-                  href={`./jobs/new?employer=${em._id}`}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
-                >
-                  <BriefcaseBusiness className="h-3.5 w-3.5" /> Post Job
-                </Link>
-                <Link
-                  href={`./jobs?employer=${em._id}`}
-                  className="inline-flex items-center justify-center rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:text-primary"
-                >
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-                {can("employers", "update") && (
-                  <button
-                    onClick={() => { setEditEmployer(em); setModalOpen(true); }}
-                    className="rounded-xl p-2 transition-colors hover:bg-secondary/80"
-                    title="Edit"
-                    aria-label={`Edit ${em.companyName ?? em.name}`}
+              <TooltipProvider delayDuration={200}>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Link
+                    href={`./jobs/new?employer=${em._id}`}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
                   >
-                    <Edit2 className="h-3.5 w-3.5 text-blue-600" />
-                  </button>
-                )}
-                {can("employers", "delete") && (
-                  <button
-                    onClick={() => handleDelete(em._id)}
-                    className="rounded-xl p-2 transition-colors hover:bg-secondary/80"
-                    title="Delete"
-                    aria-label={`Delete ${em.companyName ?? em.name}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                  </button>
-                )}
-              </div>
+                    <BriefcaseBusiness className="h-3.5 w-3.5" /> Post Job
+                  </Link>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={`./jobs?employer=${em._id}`}
+                        className="inline-flex items-center justify-center rounded-xl border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/20 hover:text-primary"
+                        aria-label={`View ${em.companyName ?? em.name} jobs`}
+                      >
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>View Jobs</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handleSwitchToEmployerView(em._id)}
+                        disabled={switchingEmployerId === em._id || !em.isActive}
+                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-sky-400/50 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50 dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-900/30"
+                        aria-label={`Switch to ${em.companyName ?? em.name} workspace`}
+                      >
+                        {switchingEmployerId === em._id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <LogIn className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Switch to Workspace</TooltipContent>
+                  </Tooltip>
+                  {can("employers", "update") && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => { setEditEmployer(em); setModalOpen(true); }}
+                          className="rounded-xl p-2 transition-colors hover:bg-secondary/80"
+                          aria-label={`Edit ${em.companyName ?? em.name}`}
+                        >
+                          <Edit2 className="h-3.5 w-3.5 text-blue-600" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {can("employers", "delete") && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => handleDelete(em._id)}
+                          className="rounded-xl p-2 transition-colors hover:bg-secondary/80"
+                          aria-label={`Delete ${em.companyName ?? em.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              </TooltipProvider>
             </div>
           ))}
         </section>

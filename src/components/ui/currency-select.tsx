@@ -68,7 +68,7 @@ export function CurrencySelect({
       </PopoverTrigger>
 
       <PopoverContent
-        className="p-0 overflow-hidden"
+        className="p-0 overflow-hidden z-[10001]"
         align="start"
         sideOffset={6}
         style={{

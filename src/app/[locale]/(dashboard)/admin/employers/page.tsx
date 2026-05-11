@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -21,7 +23,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, UserX, Download, FileSpreadsheet } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, UserX, Download, FileSpreadsheet, LogIn, Loader2 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 
 interface Employer {
@@ -54,6 +56,8 @@ const EDIT_FIELDS: CrudField[] = FIELDS.filter(f => f.name !== "password");
 
 export default function AdminEmployersPage() {
   const { can } = usePermissions();
+  const router = useRouter();
+  const locale = useLocale();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +68,29 @@ export default function AdminEmployersPage() {
   const [verifyItem, setVerifyItem] = useState<Employer | null>(null);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [switchingEmployerId, setSwitchingEmployerId] = useState<string | null>(null);
+
+  const handleSwitchToEmployerView = async (employerId: string) => {
+    setSwitchingEmployerId(employerId);
+    try {
+      const res = await fetch("/api/tenant/switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employerId }),
+      });
+      if (res.ok) {
+        router.push(`/${locale}/employer`);
+        router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error ?? "Failed to switch to employer view");
+      }
+    } catch {
+      alert("Network error — please try again");
+    } finally {
+      setSwitchingEmployerId(null);
+    }
+  };
 
   const exportColumns: ExportColumn<Employer>[] = [
     { header: "Company", key: "companyName" },
@@ -275,6 +302,19 @@ export default function AdminEmployersPage() {
                           <UserX className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => handleSwitchToEmployerView(emp._id)}
+                        disabled={switchingEmployerId === emp._id || emp.isActive === false}
+                        title="Switch to employer workspace"
+                      >
+                        {switchingEmployerId === emp._id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-600" />
+                        ) : (
+                          <LogIn className="h-3.5 w-3.5 text-sky-600" />
+                        )}
+                      </Button>
                     </div>
                   </TableCell>
                 )}

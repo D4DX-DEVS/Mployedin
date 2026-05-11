@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
@@ -32,7 +33,19 @@ export default async function DashboardLayout({
   const locale = paramLocale;
   setRequestLocale(locale);
 
-  const navGroups = getNavGroups(role, locale);
+  // ── Tenant view detection ────────────────────────────────────────────────
+  // The middleware injects x-tenant-* headers when an agent/super-agent/admin
+  // has an active tenant view session for an employer.
+  const reqHeaders = await headers();
+  const tenantEmployerId = reqHeaders.get("x-tenant-employer-id");
+  const tenantCompanyName = reqHeaders.get("x-tenant-company-name");
+  const tenantActorRole = reqHeaders.get("x-tenant-actor-role") as UserRole | null;
+
+  const isTenantView = !!tenantEmployerId && role !== "employer";
+
+  // When in tenant view use employer nav so the full employer workspace is shown
+  const effectiveRole: UserRole = isTenantView ? "employer" : role;
+  const navGroups = getNavGroups(effectiveRole, locale);
 
   // Run maintenance check and shell data fetch in parallel
   const [isMaintenanceMode, { lastLogin, companyLogo }] = await Promise.all([
@@ -44,6 +57,15 @@ export default async function DashboardLayout({
     redirect(`/${paramLocale}/maintenance`);
   }
 
+  const tenantViewData = isTenantView
+    ? {
+        employerId: tenantEmployerId!,
+        companyName: tenantCompanyName ?? "Company",
+        actorRole: tenantActorRole ?? role,
+        locale,
+      }
+    : undefined;
+
   return (
     <SessionWrapper>
       <CsrfProvider>
@@ -53,14 +75,15 @@ export default async function DashboardLayout({
             locale={locale}
             userName={session.user.name ?? undefined}
             userEmail={session.user.email ?? undefined}
-            userRole={role}
+            userRole={effectiveRole}
             lastLogin={lastLogin}
             companyLogo={companyLogo}
+            tenantViewData={tenantViewData}
           >
             {children}
           </DashboardShell>
-          {/* Recruitment AI assistant — employer-only floating panel */}
-          {role === "employer" && <RecruitmentAssistantLoader />}
+          {/* Recruitment AI assistant — employer workspace (real or tenant view) */}
+          {effectiveRole === "employer" && <RecruitmentAssistantLoader />}
         </DashboardProviders>
       </CsrfProvider>
     </SessionWrapper>

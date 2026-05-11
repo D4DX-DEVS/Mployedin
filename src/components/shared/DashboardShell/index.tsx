@@ -27,7 +27,16 @@ import PublicFooter from "@/components/shared/PublicFooter";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
 import { JobSeekerTopNav, JobSeekerBottomNav } from "@/components/shared/JobSeekerTopNav";
+import { TenantViewBanner } from "@/components/features/tenant/TenantViewBanner";
 import type { NavGroup } from "@/lib/nav/menuConfig";
+import type { UserRole } from "@/types/user";
+
+interface TenantViewData {
+  employerId: string;
+  companyName: string;
+  actorRole: UserRole;
+  locale: string;
+}
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -38,6 +47,8 @@ interface DashboardShellProps {
   userRole?: string;
   lastLogin?: string;
   companyLogo?: string;
+  /** Present when an agent/super-agent/admin is viewing an employer's workspace */
+  tenantViewData?: TenantViewData;
 }
 
 export function DashboardShell({
@@ -49,6 +60,7 @@ export function DashboardShell({
   userRole,
   lastLogin,
   companyLogo,
+  tenantViewData,
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const isJobSeeker = userRole === "job_seeker";
@@ -74,6 +86,14 @@ export function DashboardShell({
 
       {/* Main content area */}
       <div className={`flex flex-1 flex-col min-w-0 ${isJobSeeker ? "" : "min-h-0 overflow-hidden"}`}>
+        {/* Tenant view banner — shown at the top of the content area */}
+        {tenantViewData && (
+          <TenantViewBanner
+            companyName={tenantViewData.companyName}
+            actorRole={tenantViewData.actorRole}
+            locale={tenantViewData.locale}
+          />
+        )}
         {/* Topbar */}
         <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-20" : isJobSeeker ? "h-20" : "h-16"}`}>
           <div className="flex h-full items-center gap-2 sm:gap-3 md:gap-4 px-4 sm:px-6 lg:px-8">

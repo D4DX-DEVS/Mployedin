@@ -10,7 +10,7 @@ export const ALL_RESOURCES: Resource[] = [
   "users", "notifications", "reports", "audit_logs",
   "ai_cv", "ai_match", "ai_assistant", "tasks", "design_system",
   "job_attributes", "location_data", "cms", "contact_submissions", "offers",
-  "subscriptions",
+  "subscriptions", "exhibitions", "resources", "targets",
 ];
 
 /** All available actions */
@@ -45,6 +45,9 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     contact_submissions: ["read", "update", "delete"],
     offers: ["create", "read", "update", "delete"],
     subscriptions: ["create", "read", "update", "delete", "export"],
+    exhibitions: ["create", "read", "update", "delete", "approve"],
+    resources: ["create", "read", "update", "delete"],
+    targets: ["create", "read", "update", "delete", "export"],
   },
   super_agent: {
     jobs: ["read", "approve", "export"],
@@ -60,6 +63,9 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     reports: ["read", "export"],
     ai_assistant: ["read"],
     subscriptions: ["create", "read", "update"],
+    exhibitions: ["read", "approve"],
+    resources: ["read"],
+    targets: ["create", "read", "update"],
   },
   agent: {
     jobs: ["create", "read", "update", "export"],
@@ -74,6 +80,9 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     ai_match: ["read"],
     ai_assistant: ["read"],
     subscriptions: ["create", "read"],
+    exhibitions: ["create", "read"],
+    resources: ["read"],
+    targets: ["read"],
   },
   employer: {
     jobs: ["create", "read", "update", "delete"],

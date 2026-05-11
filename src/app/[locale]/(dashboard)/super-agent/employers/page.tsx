@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   ArrowUpDown, Building2, ChevronDown, ChevronUp, DollarSign,
-  Link2, RotateCcw, ShieldCheck, UserPlus, Users,
+  Link2, LogIn, RotateCcw, ShieldCheck, UserPlus, Users,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -91,12 +93,37 @@ export default function SuperAgentEmployersPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+  const router = useRouter();
+  const locale = useLocale();
 
   const [facets, setFacets] = useState<Facets>({ industries: [], locations: [] });
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [referralDialogOpen, setReferralDialogOpen] = useState(false);
   const [currencyCode, setCurrencyCode] = useState("AED");
+  const [switchingEmployerId, setSwitchingEmployerId] = useState<string | null>(null);
+
+  const handleSwitchToEmployerView = async (employerId: string) => {
+    setSwitchingEmployerId(employerId);
+    try {
+      const res = await fetch("/api/tenant/switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employerId }),
+      });
+      if (res.ok) {
+        router.push(`/${locale}/employer`);
+        router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error ?? "Failed to switch to employer view");
+      }
+    } catch {
+      alert("Network error — please try again");
+    } finally {
+      setSwitchingEmployerId(null);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/super-agent/settings")
@@ -427,21 +454,20 @@ export default function SuperAgentEmployersPage() {
                 <TableHead>Industry</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Agent</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
+                <TableHead>Status</TableHead>                <TableHead className="w-[80px] text-right">Actions</TableHead>              </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 6 }).map((_, j) => (
+                    {Array.from({ length: 7 }).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : employers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-16 text-center">
+                  <TableCell colSpan={7} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                         <Building2 className="h-6 w-6" />
@@ -467,6 +493,20 @@ export default function SuperAgentEmployersPage() {
                       )}
                       <StatusBadge status={em.isActive ? "active" : "inactive"} />
                     </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <button
+                      onClick={() => handleSwitchToEmployerView(em._id)}
+                      disabled={switchingEmployerId === em._id || !em.isActive}
+                      className="inline-flex items-center gap-1 rounded-lg border border-sky-400/50 bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50 dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-900/30"
+                      title="Switch to employer workspace"
+                    >
+                      {switchingEmployerId === em._id ? (
+                        <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-600 border-t-transparent" /></>
+                      ) : (
+                        <LogIn className="h-3.5 w-3.5" />
+                      )}
+                    </button>
                   </TableCell>
                 </TableRow>
               ))}
