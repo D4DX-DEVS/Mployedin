@@ -118,7 +118,7 @@ function statusLabel(s: string) {
 }
 
 function sourceLabel(s?: string) {
-  return SOURCE_OPTIONS.find((o) => o.value === s)?.label ?? s ?? "ΓÇö";
+  return SOURCE_OPTIONS.find((o) => o.value === s)?.label ?? s ?? "—";
 }
 
 function InsightIcon({ type }: { type: string }) {
@@ -131,7 +131,7 @@ function InsightIcon({ type }: { type: string }) {
 }
 
 function ScoreBadge({ score }: { score?: number }) {
-  if (score == null) return <span className="text-xs text-muted-foreground">ΓÇö</span>;
+  if (score == null) return <span className="text-xs text-muted-foreground">—</span>;
   const color = score >= 80 ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400"
     : score >= 60 ? "text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400"
     : score >= 40 ? "text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400"
@@ -183,13 +183,13 @@ export default function AdminApplicationsPage() {
   const activeFilters = [status, employerId, source, scoreRange, dateFrom, dateTo].filter(Boolean).length;
 
   const exportColumns: ExportColumn<Application>[] = [
-    { header: "Applicant", key: "jobSeekerId" as keyof Application, formatter: (_v, r) => { const a = r as unknown as Application; return a.jobSeekerId?.fullName ?? a.jobSeekerId?.userId?.name ?? "ΓÇö"; } },
-    { header: "Job", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.title ?? "ΓÇö" },
-    { header: "Company", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.employerId?.companyName ?? "ΓÇö" },
+    { header: "Applicant", key: "jobSeekerId" as keyof Application, formatter: (_v, r) => { const a = r as unknown as Application; return a.jobSeekerId?.fullName ?? a.jobSeekerId?.userId?.name ?? "—"; } },
+    { header: "Job", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.title ?? "—" },
+    { header: "Company", key: "jobId" as keyof Application, formatter: (_v, r) => (r as unknown as Application).jobId?.employerId?.companyName ?? "—" },
     { header: "Status", key: "status" },
     { header: "Source", key: "source", formatter: (v) => sourceLabel(v as string) },
-    { header: "AI Score", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "ΓÇö" },
-    { header: "Applied", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "ΓÇö" },
+    { header: "AI Score", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
+    { header: "Applied", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],
@@ -458,7 +458,7 @@ export default function AdminApplicationsPage() {
                     <Zap className="h-3.5 w-3.5" /> Recommendations
                   </p>
                   {aiInsights.recommendations.map((rec, i) => (
-                    <p key={i} className="text-sm text-sky-900 dark:text-sky-200 pl-5">ΓÇó {rec}</p>
+                    <p key={i} className="text-sm text-sky-900 dark:text-sky-200 pl-5">• {rec}</p>
                   ))}
                 </div>
               )}
@@ -724,7 +724,7 @@ export default function AdminApplicationsPage() {
         </div>
       ) : (
         <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
-          {/* Column headers ΓÇô desktop */}
+          {/* Column headers – desktop */}
           <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
             <span>Candidate</span>
             <span>Role, Match, Skills</span>
@@ -744,7 +744,7 @@ export default function AdminApplicationsPage() {
               const jobLocation = job?.location
                 ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", "))
                 : null;
-              const locationExp = [jobLocation, seeker?.totalExperienceYears ? `${seeker.totalExperienceYears}+ yrs` : null].filter(Boolean).join(" ┬╖ ");
+              const locationExp = [jobLocation, seeker?.totalExperienceYears ? `${seeker.totalExperienceYears}+ yrs` : null].filter(Boolean).join(" · ");
               const topSkills = seeker?.skills?.slice(0, 3) ?? [];
               const appliedDate = new Date(app.appliedAt ?? app.createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
               const aiScoreLabel = app.aiMatchScore != null ? `${app.aiMatchScore}% match` : null;
@@ -782,10 +782,10 @@ export default function AdminApplicationsPage() {
                   {/* Role, Match, Skills */}
                   <div className="min-w-0 sm:px-2">
                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                      <span className="truncate text-sm font-medium text-foreground">{job?.title ?? "ΓÇö"}</span>
+                      <span className="truncate text-sm font-medium text-foreground">{job?.title ?? "—"}</span>
                       {locationExp && (
                         <>
-                          <span className="hidden text-border sm:inline">┬╖</span>
+                          <span className="hidden text-border sm:inline">·</span>
                           <span className="truncate text-xs text-muted-foreground">{locationExp}</span>
                         </>
                       )}

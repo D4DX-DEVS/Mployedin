@@ -77,10 +77,14 @@ export function withAuth(
     //
     // Routes like /api/tenant/switch must use skipTenantView to avoid circular
     // proxying (e.g. "exit" call would fail because ctx.role becomes "employer").
+    //
+    // Admin API routes (/api/admin/*) are always exempt from tenant view so that
+    // admins can browse employer workspaces without losing access to admin endpoints.
     let resolvedTenantEmployerId: string | null = null;
     let resolvedTenantEmployerUserId: string | null = null;
 
-    if (!skipTenantView && role !== "employer") {
+    const isAdminApi = req.nextUrl.pathname.startsWith("/api/admin");
+    if (!skipTenantView && !isAdminApi && role !== "employer") {
       const cookieVal = req.cookies.get(TENANT_COOKIE_NAME)?.value;
       if (cookieVal) {
         const payload = await verifyTenantCookie(
