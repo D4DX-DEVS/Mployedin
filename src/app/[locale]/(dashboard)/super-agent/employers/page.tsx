@@ -454,7 +454,9 @@ export default function SuperAgentEmployersPage() {
                 <TableHead>Industry</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Agent</TableHead>
-                <TableHead>Status</TableHead>                <TableHead className="w-[80px] text-right">Actions</TableHead>              </TableRow>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[80px] text-right">Actions</TableHead>
+              </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (

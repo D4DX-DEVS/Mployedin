@@ -9,12 +9,19 @@ export interface ISmtpConfig {
   smtpSecure?: boolean;
 }
 
+export interface ICommissionOverride {
+  countryCode: string;
+  rate: number;
+  label?: string;
+}
+
 export interface ISystemSettings extends Document {
   platformName: string;
   supportEmail: string;
   maintenanceMode: boolean;
   defaultCurrency: string;
   smtp?: ISmtpConfig;
+  commissionOverrides?: ICommissionOverride[];
   updatedAt: Date;
 }
 
@@ -31,6 +38,14 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
       smtpPort: { type: Number, default: 587 },
       smtpSecure: { type: Boolean, default: false },
     },
+    commissionOverrides: [
+      {
+        countryCode: { type: String, required: true, maxlength: 5 },
+        rate: { type: Number, required: true, min: 0, max: 100 },
+        label: { type: String, maxlength: 100 },
+        _id: false,
+      },
+    ],
   },
   { timestamps: true }
 );

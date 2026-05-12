@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Mail, Send, Globe } from "lucide-react";
+import { Eye, EyeOff, Mail, Send, Globe, Plus, Trash2, Percent } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,12 +15,19 @@ interface SmtpConfig {
   smtpSecure: boolean;
 }
 
+interface CommissionOverride {
+  countryCode: string;
+  rate: number;
+  label: string;
+}
+
 interface SystemSettings {
   platformName: string;
   supportEmail: string;
   maintenanceMode: boolean;
   defaultCurrency: string;
   smtp: SmtpConfig;
+  commissionOverrides: CommissionOverride[];
 }
 
 export default function AdminSettingsPage() {
@@ -42,6 +49,7 @@ export default function AdminSettingsPage() {
       smtpPort: 587,
       smtpSecure: false,
     },
+    commissionOverrides: [],
   });
 
   useEffect(() => {
@@ -61,6 +69,7 @@ export default function AdminSettingsPage() {
               smtpPort: data.settings.smtp?.smtpPort ?? 587,
               smtpSecure: data.settings.smtp?.smtpSecure ?? false,
             },
+            commissionOverrides: data.settings.commissionOverrides ?? [],
           });
         }
       })
@@ -174,6 +183,94 @@ export default function AdminSettingsPage() {
               }`}
             />
           </button>
+        </div>
+
+        {/* Commission Overrides */}
+        <div className="p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                <Percent className="h-4 w-4 text-blue-600" />
+                Country Commission Overrides
+              </h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Override default agent/super-agent commission rates per country. When an invoice is created for an employer in a listed country, the override rate takes precedence.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setSettings((s) => ({
+                  ...s,
+                  commissionOverrides: [...s.commissionOverrides, { countryCode: "", rate: 0, label: "" }],
+                }))
+              }
+            >
+              <Plus className="h-4 w-4 mr-1" /> Add
+            </Button>
+          </div>
+
+          {settings.commissionOverrides.length > 0 ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-[1fr_80px_1fr_40px] gap-2 text-xs font-medium text-muted-foreground px-1">
+                <span>Country Code</span>
+                <span>Rate (%)</span>
+                <span>Label</span>
+                <span />
+              </div>
+              {settings.commissionOverrides.map((ov, idx) => (
+                <div key={idx} className="grid grid-cols-[1fr_80px_1fr_40px] gap-2 items-center">
+                  <Input
+                    placeholder="e.g. AE"
+                    value={ov.countryCode}
+                    maxLength={2}
+                    onChange={(e) => {
+                      const updated = [...settings.commissionOverrides];
+                      updated[idx] = { ...updated[idx], countryCode: e.target.value.toUpperCase() };
+                      setSettings((s) => ({ ...s, commissionOverrides: updated }));
+                    }}
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={ov.rate}
+                    onChange={(e) => {
+                      const updated = [...settings.commissionOverrides];
+                      updated[idx] = { ...updated[idx], rate: parseFloat(e.target.value) || 0 };
+                      setSettings((s) => ({ ...s, commissionOverrides: updated }));
+                    }}
+                  />
+                  <Input
+                    placeholder="e.g. UAE Rate"
+                    value={ov.label}
+                    onChange={(e) => {
+                      const updated = [...settings.commissionOverrides];
+                      updated[idx] = { ...updated[idx], label: e.target.value };
+                      setSettings((s) => ({ ...s, commissionOverrides: updated }));
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive p-1"
+                    onClick={() => {
+                      const updated = settings.commissionOverrides.filter((_, i) => i !== idx);
+                      setSettings((s) => ({ ...s, commissionOverrides: updated }));
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              No overrides configured. The default commission rates from agent/super-agent profiles will be used.
+            </p>
+          )}
         </div>
 
         {/* GDPR */}

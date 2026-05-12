@@ -8,6 +8,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { validateBody } from "@/lib/validators";
 import { invoiceUpdateSchema } from "@/lib/validators/subscriptions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
 import type { UserRole } from "@/types/user";
@@ -78,6 +79,18 @@ async function patchHandler(
   }
 
   await invoice.save();
+
+  // Dispatch webhook for paid status
+  if (body.status === "paid") {
+    dispatchWebhook("invoice.paid", {
+      invoiceId: invoice._id.toString(),
+      invoiceNumber: invoice.invoiceNumber,
+      amount: invoice.amount,
+      currency: invoice.currency,
+      status: "paid",
+      paidAt: invoice.paidAt?.toISOString(),
+    });
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

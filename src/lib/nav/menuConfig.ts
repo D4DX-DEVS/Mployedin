@@ -596,6 +596,16 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 groupAr: "التكوين",
               },
               {
+                title: "Webhooks",
+                titleAr: "الويب هوك",
+                href: p("/admin/webhooks"),
+                icon: "Link2",
+                description: "Outbound webhook integrations",
+                descriptionAr: "تكاملات الويب هوك الصادرة",
+                group: "Configuration",
+                groupAr: "التكوين",
+              },
+              {
                 title: "Task Board",
                 titleAr: "لوحة المهام",
                 href: p("/admin/tasks"),
@@ -654,6 +664,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             icon: "CalendarDays",
             description: "Manage exhibition requests",
             descriptionAr: "إدارة طلبات المعارض",
+          },
+          {
+            title: "Exhibition Analytics",
+            titleAr: "تحليلات المعارض",
+            href: p("/admin/exhibitions/analytics"),
+            icon: "BarChart2",
+            description: "Exhibition performance reports",
+            descriptionAr: "تقارير أداء المعارض",
           },
           {
             title: "Resource Management",
@@ -841,6 +859,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             icon: "CalendarDays",
             description: "Review & approve exhibition requests",
             descriptionAr: "مراجعة واعتماد طلبات المعارض",
+          },
+          {
+            title: "Exhibition Analytics",
+            titleAr: "تحليلات المعارض",
+            href: p("/super-agent/exhibitions/analytics"),
+            icon: "BarChart2",
+            description: "Team exhibition performance",
+            descriptionAr: "أداء معارض الفريق",
           },
           {
             title: "Resource Downloads",

@@ -2728,5 +2728,24 @@
     "yearly": "سنوي",
     "monthlyBreakdown": "التفصيل الشهري",
     "monthlyBreakdownDescription": "الهدف مقابل الإنجاز حسب الشهر"
+  },
+  "webhooks": {
+    "title": "الويب هوك",
+    "subtitle": "إدارة تكاملات الويب هوك الصادرة",
+    "addWebhook": "إضافة ويب هوك",
+    "editWebhook": "تعديل ويب هوك",
+    "name": "الاسم",
+    "url": "رابط النقطة النهائية",
+    "events": "الأحداث",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "retryCount": "عدد المحاولات",
+    "lastTriggered": "آخر تشغيل",
+    "deleteConfirm": "حذف هذا الويب هوك؟",
+    "created": "تم إنشاء الويب هوك",
+    "updated": "تم تحديث الويب هوك",
+    "deleted": "تم حذف الويب هوك",
+    "secretWarning": "احفظ مفتاح التوقيع — لن يظهر مرة أخرى",
+    "noWebhooks": "لم يتم تكوين أي ويب هوك بعد"
   }
 }

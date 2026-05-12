@@ -62,6 +62,16 @@ export const systemSettingsUpdateSchema = z.object({
       smtpAppPassword: z.string().max(500).optional(),
     })
     .optional(),
+  commissionOverrides: z
+    .array(
+      z.object({
+        countryCode: z.string().min(1).max(5).trim(),
+        rate: z.number().min(0).max(100),
+        label: z.string().max(100).trim().optional(),
+      })
+    )
+    .max(200)
+    .optional(),
 });
 
 /** PATCH /api/admin/notification-config */

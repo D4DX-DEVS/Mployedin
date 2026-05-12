@@ -41,6 +41,7 @@ interface Employer {
   verificationLevel?: "basic" | "company" | "premium";
   domainVerified?: boolean;
   verificationDocs?: string[];
+  employerProfileId?: string;
 }
 
 const FIELDS: CrudField[] = [
@@ -305,11 +306,11 @@ export default function AdminEmployersPage() {
                       <Button
                         variant="ghost"
                         size="xs"
-                        onClick={() => handleSwitchToEmployerView(emp._id)}
-                        disabled={switchingEmployerId === emp._id || emp.isActive === false}
+                        onClick={() => handleSwitchToEmployerView(emp.employerProfileId ?? emp._id)}
+                        disabled={switchingEmployerId === (emp.employerProfileId ?? emp._id) || emp.isActive === false}
                         title="Switch to employer workspace"
                       >
-                        {switchingEmployerId === emp._id ? (
+                        {switchingEmployerId === (emp.employerProfileId ?? emp._id) ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-600" />
                         ) : (
                           <LogIn className="h-3.5 w-3.5 text-sky-600" />

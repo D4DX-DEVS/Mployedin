@@ -2728,5 +2728,24 @@
     "yearly": "Yearly",
     "monthlyBreakdown": "Monthly Breakdown",
     "monthlyBreakdownDescription": "Target vs achievement breakdown by month"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Manage outbound webhook integrations",
+    "addWebhook": "Add Webhook",
+    "editWebhook": "Edit Webhook",
+    "name": "Name",
+    "url": "Endpoint URL",
+    "events": "Events",
+    "active": "Active",
+    "inactive": "Inactive",
+    "retryCount": "Retry Count",
+    "lastTriggered": "Last Triggered",
+    "deleteConfirm": "Delete this webhook?",
+    "created": "Webhook created",
+    "updated": "Webhook updated",
+    "deleted": "Webhook deleted",
+    "secretWarning": "Save this signing secret — it won't be shown again",
+    "noWebhooks": "No webhooks configured yet"
   }
 }

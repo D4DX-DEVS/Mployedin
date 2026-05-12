@@ -6,6 +6,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { commissionUpdateSchema } from "@/lib/validators/commissions";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -50,6 +51,25 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   Object.assign(commission, update);
   await commission.save();
+
+  // Dispatch webhook for status changes
+  if (body.status === "approved") {
+    dispatchWebhook("commission.approved", {
+      commissionId: params?.id,
+      amount: commission.amount,
+      currency: commission.currency,
+      status: "approved",
+    });
+  } else if (body.status === "paid") {
+    dispatchWebhook("commission.paid", {
+      commissionId: params?.id,
+      amount: commission.amount,
+      currency: commission.currency,
+      status: "paid",
+      paidAt: commission.paidAt?.toISOString(),
+      paymentRef: commission.paymentRef,
+    });
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

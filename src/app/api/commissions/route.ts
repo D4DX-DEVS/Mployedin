@@ -6,6 +6,7 @@ import SystemSettings from "@/models/SystemSettings";
 import { validateBody } from "@/lib/validators";
 import { commissionCreateSchema } from "@/lib/validators/commissions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -132,6 +133,17 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     resourceId: String(commission._id),
     meta: { type, amount, currency: currency ?? defaultCurrency, placementId },
     req,
+  });
+
+  dispatchWebhook("commission.created", {
+    commissionId: String(commission._id),
+    type,
+    amount,
+    currency: currency ?? defaultCurrency,
+    rate,
+    agentId,
+    superAgentId,
+    status: "pending",
   });
 
   return NextResponse.json({ commission }, { status: 201 });

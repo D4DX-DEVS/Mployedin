@@ -11,6 +11,8 @@ import { validateBody } from "@/lib/validators";
 import { recruitmentInvoiceCreateSchema } from "@/lib/validators/subscriptions";
 import { generateInvoiceNumber } from "@/lib/subscription/invoiceNumber";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
+import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
 import Job from "@/models/Job";
@@ -91,34 +93,43 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     notes,
   });
 
-  // Auto-create commissions based on agent/super-agent rates
+  // Auto-create commissions based on agent/super-agent rates (with country overrides)
   const commissions = [];
+  const employerCountry = employer.country ?? null;
 
   if (agentDoc && agentDoc.commissionRate && agentDoc.commissionRate > 0) {
-    const agentCommissionAmount = (amount * agentDoc.commissionRate) / 100;
+    const resolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
+    const agentCommissionAmount = (amount * resolved.rate) / 100;
+    const sourceNote = resolved.source === "country_override"
+      ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]`
+      : "";
     const agentCommission = await Commission.create({
       agentId: agentDoc._id,
       superAgentId: agentDoc.superAgentId ?? undefined,
       type: "placement",
       amount: Math.round(agentCommissionAmount * 100) / 100,
       currency: currency ?? "AED",
-      rate: agentDoc.commissionRate,
+      rate: resolved.rate,
       status: "pending",
-      notes: `Auto-generated from invoice ${invoiceNumber}`,
+      notes: `Auto-generated from invoice ${invoiceNumber}${sourceNote}`,
     });
     commissions.push(agentCommission);
   }
 
   if (superAgentDoc && superAgentDoc.overrideRate && superAgentDoc.overrideRate > 0) {
-    const overrideAmount = (amount * superAgentDoc.overrideRate) / 100;
+    const resolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
+    const overrideAmount = (amount * resolved.rate) / 100;
+    const sourceNote = resolved.source === "country_override"
+      ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]`
+      : "";
     const overrideCommission = await Commission.create({
       superAgentId: superAgentDoc._id,
       type: "override",
       amount: Math.round(overrideAmount * 100) / 100,
       currency: currency ?? "AED",
-      rate: superAgentDoc.overrideRate,
+      rate: resolved.rate,
       status: "pending",
-      notes: `Override commission from invoice ${invoiceNumber}`,
+      notes: `Override commission from invoice ${invoiceNumber}${sourceNote}`,
     });
     commissions.push(overrideCommission);
   }
@@ -131,6 +142,18 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     resourceId: String(invoice._id),
     meta: { jobId, employerId, amount, currency, commissionsCreated: commissions.length },
     req,
+  });
+
+  // Dispatch webhook
+  dispatchWebhook("invoice.created", {
+    invoiceId: String(invoice._id),
+    invoiceNumber,
+    category: "recruitment",
+    amount,
+    currency: invoiceCurrency,
+    employerId,
+    jobId,
+    status: "issued",
   });
 
   return NextResponse.json({

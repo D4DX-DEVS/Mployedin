@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import Employer from "@/models/Employer";
 import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
 import { CompanyUser, getDefaultPermissions } from "@/models/CompanyUser";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
@@ -74,7 +75,101 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ employers, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
   }
 
-  // Non-agent roles: query User model directly
+  // Super-agents can only see employers under their agents
+  if (ctx.role === "super_agent") {
+    const superAgent = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
+    if (!superAgent) return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
+    const agentDocIds = superAgent.agentIds ?? [];
+    if (agentDocIds.length === 0) {
+      return NextResponse.json({ employers: [], pagination: { page, limit, total: 0, pages: 0 } });
+    }
+
+    const empQuery: Record<string, unknown> = { agentId: { $in: agentDocIds } };
+    if (search) {
+      const safe = escapeRegex(search);
+      empQuery.$or = [
+        { companyName: { $regex: safe, $options: "i" } },
+        { companyEmail: { $regex: safe, $options: "i" } },
+        { industry: { $regex: safe, $options: "i" } },
+      ];
+    }
+    const industry = searchParams.get("industry") ?? "";
+    const location = searchParams.get("location") ?? "";
+    const status = searchParams.get("status") ?? "";
+    const verified = searchParams.get("verified") ?? "";
+    const sortBy = searchParams.get("sortBy") ?? "companyName";
+    const sortOrder = searchParams.get("sortOrder") ?? "asc";
+    const distinct = searchParams.get("distinct");
+
+    if (industry) empQuery.industry = { $regex: escapeRegex(industry), $options: "i" };
+    if (location) empQuery.address = { $regex: escapeRegex(location), $options: "i" };
+    if (verified === "verified") empQuery.isAgentVerified = true;
+    else if (verified === "unverified") empQuery.isAgentVerified = { $ne: true };
+
+    const VALID_SORT = new Set(["companyName", "industry", "createdAt"]);
+    const sortField = VALID_SORT.has(sortBy) ? sortBy : "companyName";
+    const sortDir = sortOrder === "desc" ? -1 : 1;
+
+    const [profiles, total] = await Promise.all([
+      Employer.find(empQuery)
+        .populate("userId", "name email isActive createdAt")
+        .populate("agentId", "userId")
+        .sort({ [sortField]: sortDir })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Employer.countDocuments(empQuery),
+    ]);
+
+    // Resolve agent names
+    const agentUserIds = profiles
+      .map((p) => (p.agentId as { userId?: unknown } | undefined)?.userId)
+      .filter(Boolean) as string[];
+    const agentUsers = agentUserIds.length > 0
+      ? await User.find({ _id: { $in: agentUserIds } }).select("name").lean()
+      : [];
+    const agentNameMap = new Map(agentUsers.map((u) => [String(u._id), u.name]));
+
+    // Filter by user status if provided
+    const employers = profiles
+      .map((p) => {
+        const user = p.userId as { _id?: unknown; name?: string; email?: string; isActive?: boolean; createdAt?: Date } | null;
+        const agentProfile = p.agentId as { userId?: unknown } | undefined;
+        const agentUserId = agentProfile?.userId ? String(agentProfile.userId) : null;
+        return {
+          _id: p._id,
+          name: user?.name,
+          email: user?.email,
+          companyName: p.companyName,
+          industry: p.industry,
+          location: p.address ?? "",
+          isActive: user?.isActive ?? true,
+          createdAt: user?.createdAt,
+          verificationDocs: p.verificationDocs ?? [],
+          domainVerified: p.domainVerified ?? false,
+          verificationLevel: p.verificationLevel,
+          isAgentVerified: p.isAgentVerified ?? false,
+          assignedAgent: agentUserId ? { name: agentNameMap.get(agentUserId) ?? "Unknown" } : undefined,
+          jobCount: 0,
+          totalPaid: p.totalPaid ?? 0,
+        };
+      })
+      .filter((e) => {
+        if (status === "active") return e.isActive;
+        if (status === "inactive") return !e.isActive;
+        return true;
+      });
+
+    const facets = distinct === "true" ? await getEmployerFacets() : undefined;
+    return NextResponse.json({
+      employers,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      totalCount: total,
+      ...(facets ? { facets } : {}),
+    });
+  }
+
+  // Non-agent roles (admin): query User model directly
   const industry = searchParams.get("industry") ?? "";
   const status = searchParams.get("status") ?? ""; // active | inactive
   const verified = searchParams.get("verified") ?? ""; // verified | unverified
@@ -193,12 +288,15 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     : [];
   const agentNameMap = new Map(agentUsers.map((u) => [String(u._id), u.name]));
 
-  const employers = users.map((u) => {
-    const profile = profileMap.get(String(u._id));
+  const employers = users
+    .filter((u) => profileMap.has(String(u._id))) // exclude orphaned employer Users without Employer profile
+    .map((u) => {
+    const profile = profileMap.get(String(u._id))!;
     const agentProfile = profile?.agentId as { userId?: unknown } | undefined;
     const agentUserId = agentProfile?.userId ? String(agentProfile.userId) : null;
     return {
       ...u,
+      employerProfileId: String(profile._id), // canonical Employer._id for tenant switch
       companyName: profile?.companyName,
       industry: profile?.industry,
       location: profile?.address,
