@@ -115,15 +115,64 @@ export const subscriptionRenewSchema = z.object({
 
 // ── PATCH /api/invoices/[id] ─────────────────────────────────────────────────
 export const invoiceUpdateSchema = z.object({
-  status: z.enum(["paid", "void"]).optional(),
-  notes: z.string().max(500).trim().optional(),
+  status: z.enum(["draft", "issued", "sent", "paid", "overdue", "void", "cancelled"]).optional(),
+  notes: z.string().max(2000).trim().optional(),
+  internalNotes: z.string().max(2000).trim().optional(),
+  voidReason: z.string().max(500).trim().optional(),
 });
 
 // ── POST /api/invoices/recruitment ──────────────────────────────────────────
+const lineItemSchema = z.object({
+  description: z.string().min(1).max(500).trim(),
+  quantity: z.number().int().min(1).default(1),
+  unitPrice: z.number().min(0),
+  amount: z.number().min(0),
+  jobId: commonSchemas.objectId.optional(),
+});
+
+const billingDetailsSchema = z.object({
+  companyName: z.string().max(200).trim().optional(),
+  contactPerson: z.string().max(200).trim().optional(),
+  email: z.string().email().max(254).optional().or(z.literal("")),
+  phone: z.string().max(20).trim().optional(),
+  address: z.string().max(500).trim().optional(),
+  city: z.string().max(100).trim().optional(),
+  state: z.string().max(100).trim().optional(),
+  country: z.string().max(100).trim().optional(),
+  postalCode: z.string().max(20).trim().optional(),
+  taxId: z.string().max(50).trim().optional(),
+});
+
 export const recruitmentInvoiceCreateSchema = z.object({
   jobId: commonSchemas.objectId,
   employerId: commonSchemas.objectId,
+  // Line items (if empty, single-item invoice from amount)
+  lineItems: z.array(lineItemSchema).max(50).optional(),
+  // Pricing
   amount: z.number().min(0.01, "Amount must be greater than 0"),
   currency: z.string().length(3).default("AED"),
+  discountPercent: z.number().min(0).max(100).default(0),
+  taxType: z.enum(["gst", "vat", "none"]).default("none"),
+  taxPercent: z.number().min(0).max(100).default(0),
+  serviceCharge: z.number().min(0).default(0),
+  // Payment terms
+  paymentTerms: z.enum(["immediate", "net_7", "net_15", "net_30", "net_45", "net_60", "net_90", "custom"]).default("net_30"),
+  customPaymentDays: z.number().int().min(1).max(365).optional(),
+  dueDate: z.string().datetime().optional(),
+  // Billing
+  billingDetails: billingDetailsSchema.optional(),
+  // Notes
   notes: z.string().max(2000).trim().optional(),
+  internalNotes: z.string().max(2000).trim().optional(),
+  // Status
+  status: z.enum(["draft", "issued"]).default("issued"),
+});
+
+// ── POST /api/invoices/[id]/payments ────────────────────────────────────────
+export const invoicePaymentSchema = z.object({
+  amount: z.number().min(0.01, "Payment amount must be greater than 0"),
+  paymentDate: z.string().datetime().optional(),
+  paymentMethod: z.enum(["bank_transfer", "cash", "cheque", "credit_card", "online", "other"]).default("bank_transfer"),
+  referenceNumber: z.string().max(100).trim().optional(),
+  notes: z.string().max(500).trim().optional(),
 });

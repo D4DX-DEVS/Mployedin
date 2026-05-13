@@ -1,6 +1,6 @@
 /**
  * GET   /api/invoices/[id] — Get single invoice (IDOR-protected)
- * PATCH /api/invoices/[id] — Mark paid/void (admin only)
+ * PATCH /api/invoices/[id] — Update invoice status / notes (admin/super_agent)
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -22,7 +22,12 @@ async function getHandler(
   params?: Record<string, string>,
 ) {
   await connectDB();
-  const invoice = await Invoice.findById(params?.id).lean();
+  const invoice = await Invoice.findById(params?.id)
+    .populate("jobId", "title")
+    .populate("employerId", "companyName companyEmail phone address country taxId")
+    .populate("agentId", "userId commissionRate")
+    .populate("payments.recordedBy", "name email")
+    .lean();
   if (!invoice) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
@@ -56,10 +61,10 @@ async function patchHandler(
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
 
-  // Cannot modify already-void invoices
-  if (invoice.status === "void") {
+  // Cannot modify already-void/refunded invoices
+  if (["void", "refunded"].includes(invoice.status)) {
     return NextResponse.json(
-      { error: "Cannot modify a voided invoice" },
+      { error: `Cannot modify a ${invoice.status} invoice` },
       { status: 400 },
     );
   }
@@ -69,13 +74,28 @@ async function patchHandler(
   if (body.status === "paid") {
     invoice.status = "paid";
     invoice.paidAt = new Date();
+    invoice.paidAmount = invoice.totalAmount || invoice.amount;
+    invoice.balanceDue = 0;
     invoice.markedPaidBy = ctx.userId as unknown as typeof invoice.markedPaidBy;
-  } else if (body.status === "void") {
-    invoice.status = "void";
+  } else if (body.status === "issued") {
+    invoice.status = "issued";
+    invoice.issuedAt = new Date();
+  } else if (body.status === "sent") {
+    invoice.status = "sent";
+  } else if (body.status === "overdue") {
+    invoice.status = "overdue";
+  } else if (body.status === "void" || body.status === "cancelled") {
+    invoice.status = body.status;
+    invoice.voidedBy = ctx.userId as unknown as typeof invoice.voidedBy;
+    invoice.voidedAt = new Date();
+    if (body.voidReason) invoice.voidReason = body.voidReason;
   }
 
   if (body.notes !== undefined) {
     invoice.notes = body.notes;
+  }
+  if (body.internalNotes !== undefined) {
+    invoice.internalNotes = body.internalNotes;
   }
 
   await invoice.save();

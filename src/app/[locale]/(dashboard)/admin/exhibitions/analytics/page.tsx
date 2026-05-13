@@ -13,21 +13,43 @@ import {
 } from "@/components/ui/table";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { formatCurrency } from "@/lib/currency";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from "recharts";
 
 interface KPIs {
   totalRequests: number;
-  pending: number;
+  submitted: number;
   approved: number;
   rejected: number;
+  completed: number;
+  underReview: number;
   approvalRate: number;
+  totalEstimatedBudget: number;
   totalApprovedBudget: number;
+  totalActualSpend: number;
   avgBudget: number;
+  budgetVariance: number;
+}
+
+interface Performance {
+  totalLeads: number;
+  totalEmployers: number;
+  totalCandidates: number;
+  totalHires: number;
+  totalRevenue: number;
+  totalCost: number;
+  roi: number;
+  eventsReported: number;
 }
 
 interface MonthlyPoint {
   month: string;
-  pending: number;
+  submitted: number;
+  under_review: number;
   approved: number;
+  completed: number;
   rejected: number;
   total: number;
 }
@@ -49,6 +71,7 @@ interface TopAgent {
 interface AnalyticsData {
   year: number;
   kpis: KPIs;
+  performance: Performance;
   monthly: MonthlyPoint[];
   participation: ParticipationItem[];
   topAgents: TopAgent[];
@@ -94,8 +117,9 @@ export default function AdminExhibitionAnalyticsPage() {
     return <div className="p-6 text-muted-foreground">Failed to load analytics.</div>;
   }
 
-  const { kpis, monthly, participation, topAgents } = data;
+  const { kpis, performance, monthly, participation, topAgents } = data;
   const totalParticipation = participation.reduce((s, p) => s + p.count, 0);
+  const perf = performance ?? {} as Performance;
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -124,6 +148,7 @@ export default function AdminExhibitionAnalyticsPage() {
           label="Total Requests"
           value={kpis.totalRequests}
           icon={<CalendarDays className="h-5 w-5" />}
+          sub={`${kpis.completed ?? 0} completed`}
         />
         <KPICard
           label="Approval Rate"
@@ -135,82 +160,87 @@ export default function AdminExhibitionAnalyticsPage() {
           label="Total Approved Budget"
           value={formatCurrency(kpis.totalApprovedBudget, currencyCode)}
           icon={<DollarSign className="h-5 w-5" />}
+          sub={`Estimated: ${formatCurrency(kpis.totalEstimatedBudget ?? 0, currencyCode)}`}
         />
         <KPICard
-          label="Avg Budget per Exhibition"
-          value={formatCurrency(kpis.avgBudget, currencyCode)}
+          label="Actual Spend"
+          value={formatCurrency(kpis.totalActualSpend ?? 0, currencyCode)}
           icon={<TrendingUp className="h-5 w-5" />}
+          sub={`Variance: ${formatCurrency(kpis.budgetVariance ?? 0, currencyCode)}`}
         />
       </div>
+
+      {/* Performance KPIs */}
+      {perf.eventsReported > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <KPICard label="Leads Generated" value={perf.totalLeads} icon={<Users className="h-5 w-5" />} />
+          <KPICard label="Hires" value={perf.totalHires} icon={<CheckCircle2 className="h-5 w-5" />} sub={`from ${perf.eventsReported} events`} />
+          <KPICard label="Revenue" value={formatCurrency(perf.totalRevenue, currencyCode)} icon={<DollarSign className="h-5 w-5" />} />
+          <KPICard label="ROI" value={`${perf.roi?.toFixed(1) ?? 0}%`} icon={<TrendingUp className="h-5 w-5" />} sub={`Cost: ${formatCurrency(perf.totalCost, currencyCode)}`} />
+        </div>
+      )}
 
       {/* Status Breakdown */}
       <div className="rounded-xl border bg-card p-5">
         <h2 className="text-lg font-semibold mb-4">Status Breakdown</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <StatusBar label="Pending" count={kpis.pending} total={kpis.totalRequests} color="bg-amber-500" />
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <StatusBar label="Submitted" count={kpis.submitted} total={kpis.totalRequests} color="bg-blue-500" />
+          <StatusBar label="Under Review" count={kpis.underReview ?? 0} total={kpis.totalRequests} color="bg-amber-500" />
           <StatusBar label="Approved" count={kpis.approved} total={kpis.totalRequests} color="bg-emerald-500" />
+          <StatusBar label="Completed" count={kpis.completed ?? 0} total={kpis.totalRequests} color="bg-teal-500" />
           <StatusBar label="Rejected" count={kpis.rejected} total={kpis.totalRequests} color="bg-red-500" />
         </div>
       </div>
 
-      {/* Monthly Trend */}
+      {/* Monthly Trend Chart */}
       <div className="rounded-xl border bg-card p-5">
         <h2 className="text-lg font-semibold mb-4">Monthly Trend</h2>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Month</TableHead>
-                <TableHead className="text-center">Total</TableHead>
-                <TableHead className="text-center">
-                  <span className="flex items-center gap-1 justify-center"><Clock className="h-3.5 w-3.5" /> Pending</span>
-                </TableHead>
-                <TableHead className="text-center">
-                  <span className="flex items-center gap-1 justify-center"><CheckCircle2 className="h-3.5 w-3.5" /> Approved</span>
-                </TableHead>
-                <TableHead className="text-center">
-                  <span className="flex items-center gap-1 justify-center"><XCircle className="h-3.5 w-3.5" /> Rejected</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {monthly.map((m) => (
-                <TableRow key={m.month}>
-                  <TableCell className="font-medium">{m.month}</TableCell>
-                  <TableCell className="text-center">{m.total}</TableCell>
-                  <TableCell className="text-center">{m.pending || "—"}</TableCell>
-                  <TableCell className="text-center">{m.approved || "—"}</TableCell>
-                  <TableCell className="text-center">{m.rejected || "—"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monthly} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="month" className="text-xs" />
+              <YAxis className="text-xs" />
+              <Tooltip contentStyle={{ borderRadius: "8px", fontSize: "12px" }} />
+              <Legend wrapperStyle={{ fontSize: "12px" }} />
+              <Bar dataKey="submitted" fill="#3b82f6" name="Submitted" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="approved" fill="#10b981" name="Approved" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="completed" fill="#14b8a6" name="Completed" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="rejected" fill="#ef4444" name="Rejected" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Participation Type */}
+        {/* Participation Type Pie */}
         <div className="rounded-xl border bg-card p-5">
           <h2 className="text-lg font-semibold mb-4">By Participation Type</h2>
-          <div className="space-y-3">
-            {participation.map((p) => (
-              <div key={p.type} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="capitalize">{p.type}</Badge>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Progress
-                    value={totalParticipation > 0 ? (p.count / totalParticipation) * 100 : 0}
-                    className="w-24 h-2"
-                  />
-                  <span className="text-sm font-medium w-8 text-right">{p.count}</span>
-                </div>
+          {participation.length > 0 ? (
+            <>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={participation.map((p) => ({ name: p.type, value: p.count }))} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={(e) => e.name}>
+                      {participation.map((_, i) => (<Cell key={i} fill={["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444","#14b8a6","#ec4899","#6366f1"][i % 8]} />))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-            {participation.length === 0 && (
-              <p className="text-sm text-muted-foreground">No data</p>
-            )}
-          </div>
+              <div className="space-y-2 mt-3">
+                {participation.map((p) => (
+                  <div key={p.type} className="flex items-center justify-between">
+                    <Badge variant="outline" className="capitalize">{p.type}</Badge>
+                    <div className="flex items-center gap-3">
+                      <Progress value={totalParticipation > 0 ? (p.count / totalParticipation) * 100 : 0} className="w-24 h-2" />
+                      <span className="text-sm font-medium w-8 text-right">{p.count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (<p className="text-sm text-muted-foreground">No data</p>)}
         </div>
 
         {/* Top Agents */}

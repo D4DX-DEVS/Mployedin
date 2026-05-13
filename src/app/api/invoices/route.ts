@@ -27,7 +27,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Category filter
   const categoryParam = url.searchParams.get("category");
-  if (categoryParam && ["subscription", "recruitment"].includes(categoryParam)) {
+  if (categoryParam && ["subscription", "recruitment", "premium_posting", "featured_promotion", "exhibition", "bulk_hiring", "consulting", "custom_enterprise"].includes(categoryParam)) {
     filter.category = categoryParam;
   }
 
@@ -67,14 +67,22 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Status filter
   const statusParam = url.searchParams.get("status");
-  if (statusParam && ["draft", "issued", "paid", "void"].includes(statusParam)) {
+  if (statusParam && ["draft", "issued", "sent", "paid", "partially_paid", "overdue", "void", "cancelled", "refunded", "credit_note"].includes(statusParam)) {
     filter.status = statusParam;
   }
 
   // Type filter
   const typeParam = url.searchParams.get("type");
-  if (typeParam && ["new", "renewal", "upgrade", "downgrade", "recruitment"].includes(typeParam)) {
+  if (typeParam && ["new", "renewal", "upgrade", "downgrade", "recruitment", "premium_posting", "featured_promotion", "exhibition", "bulk_hiring", "consulting", "custom"].includes(typeParam)) {
     filter.type = typeParam;
+  }
+
+  // Search (invoice number or employer name)
+  const searchParam = url.searchParams.get("search");
+  if (searchParam?.trim()) {
+    const searchRegex = { $regex: searchParam.trim(), $options: "i" };
+    // We need to search across invoice number - employer matching is done via populate
+    filter.invoiceNumber = searchRegex;
   }
 
   // Date range
@@ -114,20 +122,29 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     {
       $group: {
         _id: "$status",
-        total: { $sum: "$amount" },
+        total: { $sum: "$totalAmount" },
         count: { $sum: 1 },
+        taxTotal: { $sum: "$taxAmount" },
+        paidTotal: { $sum: "$paidAmount" },
+        balanceTotal: { $sum: "$balanceDue" },
       },
     },
   ]);
 
-  const summary = { draft: 0, issued: 0, paid: 0, void: 0, totalAmount: 0, totalCount: 0 };
+  const summary = {
+    draft: 0, issued: 0, paid: 0, partially_paid: 0, overdue: 0, void: 0,
+    totalAmount: 0, totalCount: 0, totalTax: 0, totalPaid: 0, totalBalance: 0,
+  };
   for (const row of summaryAgg) {
     const s = row._id as string;
-    if (s === "draft" || s === "issued" || s === "paid" || s === "void") {
-      summary[s] = row.total;
-      summary.totalAmount += row.total;
-      summary.totalCount += row.count;
+    if (s in summary) {
+      (summary as Record<string, number>)[s] = row.total;
     }
+    summary.totalAmount += row.total;
+    summary.totalCount += row.count;
+    summary.totalTax += row.taxTotal || 0;
+    summary.totalPaid += row.paidTotal || 0;
+    summary.totalBalance += row.balanceTotal || 0;
   }
 
   return NextResponse.json({

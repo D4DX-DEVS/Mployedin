@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export type WebhookEvent =
   | "invoice.created"
   | "invoice.paid"
+  | "invoice.credit_note"
   | "commission.created"
   | "commission.approved"
   | "commission.paid";
@@ -10,6 +11,7 @@ export type WebhookEvent =
 export const WEBHOOK_EVENTS: WebhookEvent[] = [
   "invoice.created",
   "invoice.paid",
+  "invoice.credit_note",
   "commission.created",
   "commission.approved",
   "commission.paid",

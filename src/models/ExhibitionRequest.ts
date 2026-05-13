@@ -1,59 +1,207 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+/* ------------------------------------------------------------------ */
+/*  Status                                                             */
+/* ------------------------------------------------------------------ */
+
 export type ExhibitionRequestStatus =
-  | "pending"
+  | "draft"
+  | "submitted"
+  | "under_review"
   | "approved"
-  | "rejected";
+  | "revision_requested"
+  | "rejected"
+  | "budget_approved"
+  | "resources_assigned"
+  | "active"
+  | "completed"
+  | "archived";
+
+export const EXHIBITION_STATUSES: ExhibitionRequestStatus[] = [
+  "draft", "submitted", "under_review", "approved", "revision_requested",
+  "rejected", "budget_approved", "resources_assigned", "active",
+  "completed", "archived",
+];
+
+/* ------------------------------------------------------------------ */
+/*  Event category                                                     */
+/* ------------------------------------------------------------------ */
+
+export type ExhibitionCategory =
+  | "career_fair"
+  | "recruitment_expo"
+  | "employer_branding"
+  | "hiring_drive"
+  | "university_event"
+  | "gcc_recruitment"
+  | "job_fair"
+  | "other";
+
+export const EXHIBITION_CATEGORIES: ExhibitionCategory[] = [
+  "career_fair", "recruitment_expo", "employer_branding", "hiring_drive",
+  "university_event", "gcc_recruitment", "job_fair", "other",
+];
+
+/* ------------------------------------------------------------------ */
+/*  Participation types (multi-select)                                 */
+/* ------------------------------------------------------------------ */
 
 export type ExhibitionParticipationType =
-  | "standy"
+  | "standee"
   | "stall"
   | "booth"
   | "sponsorship"
+  | "flyers"
+  | "recruitment_desk"
+  | "branding_package"
   | "other";
+
+export const EXHIBITION_PARTICIPATION_TYPES: ExhibitionParticipationType[] = [
+  "standee", "stall", "booth", "sponsorship", "flyers",
+  "recruitment_desk", "branding_package", "other",
+];
+
+/* ------------------------------------------------------------------ */
+/*  Business objectives (multi-select)                                 */
+/* ------------------------------------------------------------------ */
+
+export type ExhibitionObjective =
+  | "employer_acquisition"
+  | "candidate_sourcing"
+  | "brand_awareness"
+  | "lead_generation"
+  | "direct_hiring"
+  | "market_expansion";
+
+export const EXHIBITION_OBJECTIVES: ExhibitionObjective[] = [
+  "employer_acquisition", "candidate_sourcing", "brand_awareness",
+  "lead_generation", "direct_hiring", "market_expansion",
+];
+
+/* ------------------------------------------------------------------ */
+/*  Required resources (multi-select)                                  */
+/* ------------------------------------------------------------------ */
+
+export type ExhibitionResourceType =
+  | "brochures"
+  | "standee"
+  | "flyers"
+  | "presentation_deck"
+  | "employer_catalog"
+  | "candidate_forms"
+  | "branding_banners"
+  | "video_assets"
+  | "business_cards"
+  | "booth_design";
+
+export const EXHIBITION_RESOURCE_TYPES: ExhibitionResourceType[] = [
+  "brochures", "standee", "flyers", "presentation_deck", "employer_catalog",
+  "candidate_forms", "branding_banners", "video_assets", "business_cards", "booth_design",
+];
+
+/* ------------------------------------------------------------------ */
+/*  Priority                                                           */
+/* ------------------------------------------------------------------ */
+
+export type ExhibitionPriority = "low" | "medium" | "high" | "critical";
+
+export const EXHIBITION_PRIORITIES: ExhibitionPriority[] = ["low", "medium", "high", "critical"];
+
+/* ------------------------------------------------------------------ */
+/*  Budget breakdown                                                   */
+/* ------------------------------------------------------------------ */
+
+export interface IBudgetBreakdown {
+  travel: number;
+  accommodation: number;
+  marketingMaterial: number;
+  stallCost: number;
+  miscellaneous: number;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Interface                                                          */
+/* ------------------------------------------------------------------ */
 
 export interface IExhibitionRequest extends Document {
   _id: mongoose.Types.ObjectId;
-  /** Agent who submitted the request */
   agentId: mongoose.Types.ObjectId;
-  /** Super agent who reviews the request */
   superAgentId?: mongoose.Types.ObjectId;
-  /** Exhibition / event name */
+
+  /* Step 1 — Event details */
   eventName: string;
-  /** Event description */
-  description?: string;
-  /** Where the event takes place */
-  eventLocation?: string;
-  /** Start date of the event */
+  eventCategory: ExhibitionCategory;
+  eventLocation: string;
+  venue?: string;
+  country?: string;
   eventStartDate: Date;
-  /** End date of the event */
   eventEndDate: Date;
-  /** What the agent wants to exhibit */
-  participationType: ExhibitionParticipationType;
-  /** Additional details about participation */
+  organizerName?: string;
+  organizerContact?: string;
+
+  /* Step 2 — Participation */
+  participationTypes: ExhibitionParticipationType[];
   participationDetails?: string;
-  /** Estimated budget */
-  estimatedBudget?: number;
-  /** Currency for the budget */
-  budgetCurrency?: string;
-  /** Current status */
+
+  /* Step 3 — Business objectives */
+  objectives: ExhibitionObjective[];
+
+  /* Step 4 — Budget */
+  estimatedBudget: number;
+  budgetBreakdown?: IBudgetBreakdown;
+  approvedBudget?: number;
+  actualSpend?: number;
+  budgetCurrency: string;
+  budgetNotes?: string;
+
+  /* Step 5 — Description */
+  description?: string;
+  executionPlan?: string;
+  expectedOutcome?: string;
+  expectedLeads?: number;
+
+  /* Step 6 — Required resources */
+  requiredResources: ExhibitionResourceType[];
+
+  /* Team assignment */
+  assignedTeam?: string[];
+
+  /* Logistics */
+  venueNotes?: string;
+
+  /* Priority */
+  priority: ExhibitionPriority;
+
+  /* Status */
   status: ExhibitionRequestStatus;
-  /** Reviewer (super agent or admin) who approved/rejected */
   reviewedBy?: mongoose.Types.ObjectId;
-  /** When it was reviewed */
   reviewedAt?: Date;
-  /** Review notes from the approver */
   reviewNote?: string;
-  /** Status change history */
   statusHistory: {
     status: ExhibitionRequestStatus;
     changedAt: Date;
     changedBy?: mongoose.Types.ObjectId;
     note?: string;
   }[];
+
   createdAt: Date;
   updatedAt: Date;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Schema                                                             */
+/* ------------------------------------------------------------------ */
+
+const BudgetBreakdownSchema = new Schema<IBudgetBreakdown>(
+  {
+    travel: { type: Number, default: 0, min: 0 },
+    accommodation: { type: Number, default: 0, min: 0 },
+    marketingMaterial: { type: Number, default: 0, min: 0 },
+    stallCost: { type: Number, default: 0, min: 0 },
+    miscellaneous: { type: Number, default: 0, min: 0 },
+  },
+  { _id: false },
+);
 
 const ExhibitionRequestSchema = new Schema<IExhibitionRequest>(
   {
@@ -68,39 +216,86 @@ const ExhibitionRequestSchema = new Schema<IExhibitionRequest>(
       ref: "User",
       index: true,
     },
+
+    /* Step 1 — Event details */
     eventName: { type: String, required: true, trim: true, maxlength: 200 },
-    description: { type: String, trim: true, maxlength: 2000 },
-    eventLocation: { type: String, trim: true, maxlength: 300 },
+    eventCategory: {
+      type: String,
+      enum: EXHIBITION_CATEGORIES,
+      required: true,
+      index: true,
+    },
+    eventLocation: { type: String, required: true, trim: true, maxlength: 300 },
+    venue: { type: String, trim: true, maxlength: 300 },
+    country: { type: String, trim: true, maxlength: 100 },
     eventStartDate: { type: Date, required: true },
     eventEndDate: { type: Date, required: true },
-    participationType: {
-      type: String,
-      enum: ["standy", "stall", "booth", "sponsorship", "other"],
-      required: true,
-    },
+    organizerName: { type: String, trim: true, maxlength: 200 },
+    organizerContact: { type: String, trim: true, maxlength: 200 },
+
+    /* Step 2 — Participation */
+    participationTypes: [{ type: String, enum: EXHIBITION_PARTICIPATION_TYPES }],
     participationDetails: { type: String, trim: true, maxlength: 1000 },
-    estimatedBudget: { type: Number, min: 0 },
+
+    /* Step 3 — Objectives */
+    objectives: [{ type: String, enum: EXHIBITION_OBJECTIVES }],
+
+    /* Step 4 — Budget */
+    estimatedBudget: { type: Number, min: 0, default: 0 },
+    budgetBreakdown: { type: BudgetBreakdownSchema },
+    approvedBudget: { type: Number, min: 0 },
+    actualSpend: { type: Number, min: 0 },
     budgetCurrency: { type: String, default: "USD", maxlength: 5 },
+    budgetNotes: { type: String, trim: true, maxlength: 1000 },
+
+    /* Step 5 — Description */
+    description: { type: String, trim: true, maxlength: 5000 },
+    executionPlan: { type: String, trim: true, maxlength: 5000 },
+    expectedOutcome: { type: String, trim: true, maxlength: 2000 },
+    expectedLeads: { type: Number, min: 0 },
+
+    /* Step 6 — Required resources */
+    requiredResources: [{ type: String, enum: EXHIBITION_RESOURCE_TYPES }],
+
+    /* Team */
+    assignedTeam: [{ type: String, trim: true, maxlength: 100 }],
+
+    /* Logistics */
+    venueNotes: { type: String, trim: true, maxlength: 1000 },
+
+    /* Priority */
+    priority: {
+      type: String,
+      enum: EXHIBITION_PRIORITIES,
+      default: "medium",
+    },
+
+    /* Status */
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
-      default: "pending",
+      enum: EXHIBITION_STATUSES,
+      default: "draft",
       index: true,
     },
     reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
     reviewedAt: { type: Date },
-    reviewNote: { type: String, trim: true, maxlength: 1000 },
+    reviewNote: { type: String, trim: true, maxlength: 2000 },
     statusHistory: [
       {
-        status: { type: String, enum: ["pending", "approved", "rejected"] },
+        _id: false,
+        status: { type: String, enum: EXHIBITION_STATUSES },
         changedAt: { type: Date, default: Date.now },
         changedBy: { type: Schema.Types.ObjectId, ref: "User" },
         note: { type: String, maxlength: 500 },
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
+
+ExhibitionRequestSchema.index({ status: 1, createdAt: -1 });
+ExhibitionRequestSchema.index({ eventCategory: 1 });
+ExhibitionRequestSchema.index({ priority: 1 });
 
 export default mongoose.models.ExhibitionRequest ??
   mongoose.model<IExhibitionRequest>("ExhibitionRequest", ExhibitionRequestSchema);

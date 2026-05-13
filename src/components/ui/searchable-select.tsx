@@ -31,7 +31,7 @@ interface SearchableSelectProps {
   id?: string;
   /** Portal container — pass a ref to the dialog content to render inside dialogs */
   container?: HTMLElement | null;
-  /** Set to true when rendered inside a Dialog to fix z-index stacking */
+  /** When true, Popover traps focus/pointer events — fixes click interception inside dialogs */
   modal?: boolean;
 }
 
