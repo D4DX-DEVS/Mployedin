@@ -9,12 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { getInvoiceDeliveryState, type InvoiceDeliveryState } from "@/lib/invoices/status";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Building2, FileText, CreditCard, Coins, History, AlertTriangle,
-  CheckCircle2, XCircle, Send, Loader2, Download,
+  CheckCircle2, XCircle, Send, Loader2, Download, Eye, BellRing,
 } from "lucide-react";
 
 interface InvoiceCommission {
@@ -57,8 +58,16 @@ interface InvoiceData {
   status: string;
   paymentTerms: string;
   dueDate?: string;
-  issuedAt: string;
+  issuedAt?: string;
+  sentAt?: string;
+  viewedAt?: string;
+  downloadedAt?: string;
+  reminderCount?: number;
+  lastReminderAt?: string;
+  approvedAt?: string;
   paidAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
   notes?: string;
   internalNotes?: string;
   billingDetails?: {
@@ -102,6 +111,25 @@ const PAYMENT_METHODS = [
   { value: "other", label: "Other" },
 ];
 
+const DELIVERY_STATE_LABELS: Record<InvoiceDeliveryState, string> = {
+  not_sent: "Not sent",
+  sent: "Sent",
+  viewed: "Viewed",
+  downloaded: "Downloaded",
+};
+
+const DELIVERY_STATE_STYLES: Record<InvoiceDeliveryState, string> = {
+  not_sent: "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-950/30 dark:text-slate-300",
+  sent: "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-300",
+  viewed: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/50 dark:bg-violet-950/30 dark:text-violet-300",
+  downloaded: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300",
+};
+
+function fmtDateTime(value?: string) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
 export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }: InvoiceDetailViewProps) {
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -118,6 +146,8 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
 
   // Status update
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const fetchInvoice = useCallback(async () => {
     if (!invoiceId) return;
@@ -138,17 +168,19 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
     if (open && invoiceId) { fetchInvoice(); setActiveTab("details"); }
   }, [open, invoiceId, fetchInvoice]);
 
-  const handleStatusUpdate = async (newStatus: string) => {
+  const handleStatusUpdate = async (newStatus: string, extraPayload?: Record<string, string | undefined>) => {
     if (!invoice) return;
     setUpdatingStatus(true);
     try {
       const res = await csrfFetch(`/api/invoices/${invoice._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, ...extraPayload }),
       });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
       toast.success(`Invoice ${newStatus}`);
+      setShowRejectForm(false);
+      setRejectionReason("");
       await fetchInvoice();
       onRefresh();
     } catch (err) {
@@ -156,6 +188,18 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
     } finally {
       setUpdatingStatus(false);
     }
+  };
+
+  const handleRejectInvoice = async () => {
+    if (invoice?.status !== "pending_approval") {
+      toast.error("Only pending invoices can be rejected");
+      return;
+    }
+    const trimmedReason = rejectionReason.trim();
+    await handleStatusUpdate("cancelled", {
+      rejectionReason: trimmedReason || undefined,
+      voidReason: trimmedReason || undefined,
+    });
   };
 
   const handleRecordPayment = async () => {
@@ -189,6 +233,28 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
 
   const fmt = (v: number) => `${invoice?.currency ?? "AED"} ${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const canManage = role === "admin" || role === "super_agent";
+  const deliveryState = invoice ? getInvoiceDeliveryState(invoice) : "not_sent";
+  const canRecordReminder = Boolean(invoice?.sentAt && invoice && ["sent", "partially_paid", "overdue"].includes(invoice.status));
+
+  const handleDeliveryAction = async (action: "sent" | "reminder") => {
+    if (!invoice) return;
+    setUpdatingStatus(true);
+    try {
+      const res = await csrfFetch(`/api/invoices/${invoice._id}/delivery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Failed"); }
+      toast.success(action === "sent" ? "Invoice marked sent" : "Reminder recorded");
+      await fetchInvoice();
+      onRefresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -203,7 +269,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
               <StatusBadge status={invoice.status} />
               <span className="text-xs text-muted-foreground">{invoice.category}</span>
               <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground">{new Date(invoice.issuedAt).toLocaleDateString()}</span>
+              <span className="text-xs text-muted-foreground">{invoice.issuedAt ? new Date(invoice.issuedAt).toLocaleDateString() : "Not issued yet"}</span>
             </div>
           )}
         </DialogHeader>
@@ -270,8 +336,39 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                         <p>Job: <span className="font-medium">{invoice.jobId?.title || "—"}</span></p>
                         <p>Terms: <span className="font-medium">{invoice.paymentTerms?.replace(/_/g, " ")}</span></p>
                         {invoice.dueDate && <p>Due Date: <span className="font-medium">{new Date(invoice.dueDate).toLocaleDateString()}</span></p>}
+                        {invoice.approvedAt && <p>Approved: <span className="font-medium">{new Date(invoice.approvedAt).toLocaleDateString()}</span></p>}
+                        {invoice.rejectedAt && <p>Rejected: <span className="font-medium">{new Date(invoice.rejectedAt).toLocaleDateString()}</span></p>}
                         <p>Tax: <span className="font-medium">{invoice.taxType !== "none" ? `${invoice.taxType.toUpperCase()} ${invoice.taxPercent}%` : "None"}</span></p>
+                        {invoice.rejectionReason && <p className="text-rose-600 dark:text-rose-300">Reason: {invoice.rejectionReason}</p>}
                         {invoice.description && <p className="text-muted-foreground">{invoice.description}</p>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Delivery */}
+                  <div className="rounded-xl border border-border/70 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2"><Send className="h-4 w-4 text-muted-foreground" /><p className="text-xs font-semibold uppercase text-muted-foreground">Delivery</p></div>
+                      <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${DELIVERY_STATE_STYLES[deliveryState]}`}>
+                        {DELIVERY_STATE_LABELS[deliveryState]}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-4">
+                      <div className="rounded-lg bg-secondary/30 p-3">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Send className="h-3.5 w-3.5" /> Sent</div>
+                        <p className="mt-1 text-xs font-medium">{fmtDateTime(invoice.sentAt)}</p>
+                      </div>
+                      <div className="rounded-lg bg-secondary/30 p-3">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Eye className="h-3.5 w-3.5" /> Viewed</div>
+                        <p className="mt-1 text-xs font-medium">{fmtDateTime(invoice.viewedAt)}</p>
+                      </div>
+                      <div className="rounded-lg bg-secondary/30 p-3">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Download className="h-3.5 w-3.5" /> Downloaded</div>
+                        <p className="mt-1 text-xs font-medium">{fmtDateTime(invoice.downloadedAt)}</p>
+                      </div>
+                      <div className="rounded-lg bg-secondary/30 p-3">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><BellRing className="h-3.5 w-3.5" /> Reminders</div>
+                        <p className="mt-1 text-xs font-medium">{invoice.reminderCount ?? 0}{invoice.lastReminderAt ? ` · ${fmtDateTime(invoice.lastReminderAt)}` : ""}</p>
                       </div>
                     </div>
                   </div>
@@ -315,7 +412,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold">Payment History</h4>
-                    {canManage && !["void", "cancelled", "refunded", "paid"].includes(invoice.status) && (
+                    {canManage && !["draft", "pending_approval", "void", "cancelled", "refunded", "paid", "credit_note"].includes(invoice.status) && (
                       <Button size="sm" onClick={() => setShowPaymentForm(!showPaymentForm)} className="h-8 gap-1.5 rounded-lg bg-sky-600 text-xs hover:bg-sky-700">
                         <CreditCard className="h-3.5 w-3.5" /> Record Payment
                       </Button>
@@ -396,11 +493,44 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
 
             {/* Footer Actions */}
             {canManage && (
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/80 px-6 py-3">
-                <div className="flex flex-wrap gap-1.5">
+              <div className="space-y-3 border-t border-border/80 px-6 py-3">
+                {invoice.status === "pending_approval" && showRejectForm && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3 dark:border-rose-900/50 dark:bg-rose-950/20">
+                    <Label className="text-xs text-rose-700 dark:text-rose-300">Rejection Reason</Label>
+                    <Textarea className="mt-1 rounded-lg" rows={2} value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder="Optional note for finance records" />
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap gap-1.5">
+                  {invoice.status === "pending_approval" && (
+                    <>
+                      <Button size="sm" onClick={() => handleStatusUpdate("issued")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg bg-sky-600 text-xs hover:bg-sky-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Approve & Issue
+                      </Button>
+                      {showRejectForm ? (
+                        <Button size="sm" variant="outline" onClick={handleRejectInvoice} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
+                          <XCircle className="h-3.5 w-3.5" /> Confirm Reject
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => setShowRejectForm(true)} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
+                          <XCircle className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                      )}
+                    </>
+                  )}
                   {invoice.status === "draft" && (
                     <Button size="sm" onClick={() => handleStatusUpdate("issued")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg bg-sky-600 text-xs hover:bg-sky-700">
                       <Send className="h-3.5 w-3.5" /> Issue Invoice
+                    </Button>
+                  )}
+                  {invoice.status === "issued" && (
+                    <Button size="sm" variant="outline" onClick={() => handleDeliveryAction("sent")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs">
+                      <Send className="h-3.5 w-3.5" /> Mark Sent
+                    </Button>
+                  )}
+                  {canRecordReminder && (
+                    <Button size="sm" variant="outline" onClick={() => handleDeliveryAction("reminder")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs">
+                      <BellRing className="h-3.5 w-3.5" /> Record Reminder
                     </Button>
                   )}
                   {["issued", "sent"].includes(invoice.status) && (
@@ -408,13 +538,14 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       <CheckCircle2 className="h-3.5 w-3.5" /> Mark Paid
                     </Button>
                   )}
-                  {!["void", "cancelled", "refunded", "paid", "credit_note"].includes(invoice.status) && (
+                  {!["pending_approval", "void", "cancelled", "refunded", "paid", "credit_note"].includes(invoice.status) && (
                     <Button size="sm" variant="outline" onClick={() => handleStatusUpdate("void")} disabled={updatingStatus} className="h-8 gap-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
                       <XCircle className="h-3.5 w-3.5" /> Void
                     </Button>
                   )}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={onClose} className="h-8 rounded-lg text-xs">Close</Button>
                 </div>
-                <Button variant="outline" size="sm" onClick={onClose} className="h-8 rounded-lg text-xs">Close</Button>
               </div>
             )}
           </>

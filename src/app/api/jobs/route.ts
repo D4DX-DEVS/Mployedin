@@ -53,6 +53,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     .slice(0, 8);
   const remote = searchParams.get("remote") === "true";
   const myJobs = searchParams.get("myJobs") === "true";
+  const invoiceableOnly = searchParams.get("invoiceableOnly") === "true";
   const employerId = searchParams.get("employerId") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,7 +66,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .lean();
     if (agentDoc) {
       const conditions: Record<string, unknown>[] = [{ agentId: agentDoc._id }];
-      if (agentDoc.assignedEmployerIds?.length) {
+      if (!invoiceableOnly && agentDoc.assignedEmployerIds?.length) {
         conditions.push({ employerId: { $in: agentDoc.assignedEmployerIds } });
       }
       query.$or = conditions;
@@ -134,6 +135,14 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .skip(skip)
       .limit(limit)
       .populate("employerId", "companyName country industry logo")
+      .populate({
+        path: "agentId",
+        select: "commissionRate userId superAgentId",
+        populate: [
+          { path: "userId", select: "name email" },
+          { path: "superAgentId", select: "overrideRate userId", populate: { path: "userId", select: "name" } },
+        ],
+      })
       .lean(),
     Job.countDocuments(query),
     // Status counts for stat cards (use base query without status filter)

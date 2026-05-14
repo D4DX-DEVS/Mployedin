@@ -51,6 +51,7 @@ interface Invoice {
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
   { value: "draft", label: "Draft" },
+  { value: "pending_approval", label: "Pending Approval" },
   { value: "issued", label: "Issued" },
   { value: "sent", label: "Sent" },
   { value: "paid", label: "Paid" },
@@ -85,7 +86,7 @@ export default function SuperAgentInvoicesPage() {
   const { data: analyticsData, loading: analyticsLoading, refresh: refreshAnalytics } = useInvoiceAnalytics(analyticsPeriod);
 
   const [summary, setSummary] = useState({
-    draft: 0, issued: 0, paid: 0, partially_paid: 0, overdue: 0,
+    draft: 0, pending_approval: 0, issued: 0, paid: 0, partially_paid: 0, overdue: 0,
     totalAmount: 0, totalPaid: 0, totalBalance: 0,
   });
 

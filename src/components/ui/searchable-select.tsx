@@ -23,11 +23,15 @@ interface SearchableSelectProps {
   options: SearchableSelectOption[];
   value?: string;
   onValueChange: (value: string) => void;
+  searchValue?: string;
+  onSearchValueChange?: (value: string) => void;
   placeholder?: string;
   searchPlaceholder?: string;
   disabled?: boolean;
   className?: string;
   emptyMessage?: string;
+  loading?: boolean;
+  loadingMessage?: string;
   id?: string;
   /** Portal container — pass a ref to the dialog content to render inside dialogs */
   container?: HTMLElement | null;
@@ -39,21 +43,51 @@ export function SearchableSelect({
   options,
   value,
   onValueChange,
+  searchValue,
+  onSearchValueChange,
   placeholder = "Select…",
   searchPlaceholder = "Search…",
   disabled = false,
   className,
   emptyMessage = "No results found.",
+  loading = false,
+  loadingMessage = "Searching…",
   id,
   container,
   modal: modalProp = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [internalSearchValue, setInternalSearchValue] = React.useState("");
   const selectedLabel = options.find((o) => o.value === value)?.label;
   const triggerLabel = selectedLabel || placeholder;
+  const isSearchControlled = searchValue !== undefined;
+  const resolvedSearchValue = isSearchControlled ? searchValue : internalSearchValue;
+
+  const handleSearchValueChange = React.useCallback((nextValue: string) => {
+    if (!isSearchControlled) {
+      setInternalSearchValue(nextValue);
+    }
+
+    onSearchValueChange?.(nextValue);
+  }, [isSearchControlled, onSearchValueChange]);
+
+  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen);
+
+    if (nextOpen) {
+      return;
+    }
+
+    if (isSearchControlled) {
+      onSearchValueChange?.("");
+      return;
+    }
+
+    setInternalSearchValue("");
+  }, [isSearchControlled, onSearchValueChange]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={modalProp}>
+    <Popover open={open} onOpenChange={handleOpenChange} modal={modalProp}>
       <PopoverTrigger asChild>
         <button
           id={id}
@@ -90,9 +124,14 @@ export function SearchableSelect({
         }}
       >
         <Command>
-          <CommandInput placeholder={searchPlaceholder} className="h-9" />
+          <CommandInput
+            placeholder={searchPlaceholder}
+            className="h-9"
+            value={resolvedSearchValue}
+            onValueChange={handleSearchValueChange}
+          />
           <CommandList>
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            <CommandEmpty>{loading ? loadingMessage : emptyMessage}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
                 <CommandItem
@@ -101,7 +140,7 @@ export function SearchableSelect({
                   disabled={option.disabled}
                   onSelect={() => {
                     onValueChange(option.value);
-                    setOpen(false);
+                    handleOpenChange(false);
                   }}
                 >
                   <Check

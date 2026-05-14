@@ -10,10 +10,21 @@ import TenantViewSession from "@/models/TenantViewSession";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { signTenantCookie, TENANT_COOKIE_NAME } from "@/lib/security/tenantCookie";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 const SESSION_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
+/** Max characters for companyName stored in the cookie to prevent size overflow */
+const MAX_COOKIE_COMPANY_NAME = 100;
 
 const ALLOWED_ROLES = ["admin", "super_agent", "agent"] as const;
+
+function extractIp(req: NextRequest): string {
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
 
 /**
  * POST /api/tenant/switch
@@ -27,6 +38,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   if (!(ALLOWED_ROLES as readonly string[]).includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Rate limit: 10 tenant switches per minute per user
+  const rlResult = checkRateLimit(`tenant_switch:${userId}`, {
+    limit: 10,
+    windowSec: 60,
+    prefix: "tenant",
+  });
+  if (!rlResult.allowed) {
+    return NextResponse.json(
+      { error: "Too many tenant switch requests. Please try again later." },
+      { status: 429 }
+    );
   }
 
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
@@ -132,8 +156,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   // admin: no restriction
 
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  const companyName = employer.companyName ?? "Company";
+  const companyNameRaw = employer.companyName ?? "Company";
+  // Truncate to prevent cookie size overflow (4096 byte browser limit)
+  const companyName = companyNameRaw.length > MAX_COOKIE_COMPANY_NAME
+    ? companyNameRaw.slice(0, MAX_COOKIE_COMPANY_NAME) + "…"
+    : companyNameRaw;
   const employerUserId = employer.userId.toString();
+  const ipAddress = extractIp(req);
 
   // Upsert — one active session per actor
   await TenantViewSession.findOneAndUpdate(
@@ -144,6 +173,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       employerId: canonicalEmployerId,
       employerUserId: employer.userId,
       companyName,
+      ipAddress,
       expiresAt,
     },
     { upsert: true, new: true }
@@ -154,7 +184,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     action: "tenant_view.start",
     resource: "employers",
     resourceId: canonicalEmployerId,
-    meta: { companyName },
+    meta: { companyName, ipAddress },
     req,
   });
 

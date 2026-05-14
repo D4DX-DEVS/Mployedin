@@ -444,6 +444,7 @@ export default function AdminSuperAgentsPage() {
               <div className="space-y-2">
                 <Label>Override Commission Rate (%)</Label>
                 <Input type="number" min="0" max="100" value={addForm.overrideCommissionRate} onChange={(e) => setAddForm((f) => ({ ...f, overrideCommissionRate: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">This override is applied to future recruitment invoices for placements under this supervisor.</p>
               </div>
             </div>
 
@@ -511,6 +512,7 @@ export default function AdminSuperAgentsPage() {
               <div className="space-y-2">
                 <Label>Override Commission Rate (%)</Label>
                 <Input type="number" min="0" max="100" value={editForm.overrideCommissionRate} onChange={(e) => setEditForm((f) => ({ ...f, overrideCommissionRate: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">Changes affect future recruitment invoice commissions and team payout previews only.</p>
               </div>
             </div>
 

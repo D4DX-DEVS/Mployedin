@@ -52,4 +52,31 @@ describe("SearchableSelect", () => {
       maxWidth: "min(24rem, calc(100vw - 2rem))",
     });
   });
+
+  it("supports controlled search text for remote option loading", async () => {
+    const handleSearchValueChange = jest.fn();
+    const handleValueChange = jest.fn();
+
+    render(
+      <SearchableSelect
+        options={[{ value: "acme", label: "Acme Corp" }]}
+        value=""
+        searchValue=""
+        onSearchValueChange={handleSearchValueChange}
+        onValueChange={handleValueChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("combobox"));
+
+    const input = await screen.findByPlaceholderText("Search…");
+    fireEvent.change(input, { target: { value: "ac" } });
+
+    expect(handleSearchValueChange).toHaveBeenCalledWith("ac");
+
+    fireEvent.click(screen.getByText("Acme Corp"));
+
+    expect(handleValueChange).toHaveBeenCalledWith("acme");
+    expect(handleSearchValueChange).toHaveBeenCalledWith("");
+  });
 });

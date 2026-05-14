@@ -13,17 +13,17 @@ import {
 } from "@/components/ui/table";
 import {
   CompactProgress, RiskBadge, PerformanceBadge, KpiCard, TargetEmptyState,
-  TargetTypeIcon, RankBadge,
+  TargetTypeIcon, RankBadge, CompletionStage, getCompletionStage, IncentiveTierBadge,
 } from "@/components/features/targets/TargetComponents";
 import {
   Plus, Building2, Users, DollarSign, Crosshair, Sparkles, ArrowRight,
   CalendarDays, RotateCcw, Eye, Trash2, ChevronDown, ChevronRight,
   UsersRound, Activity, ShieldAlert, BarChart3, Download, Copy,
-  TrendingUp, MapPin, Filter, MoreHorizontal, FileText, Award,
+  TrendingUp, MapPin, Filter, MoreHorizontal, FileText, Award, SplitSquareVertical,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -54,6 +54,7 @@ interface EnrichedProfile {
   employeePending: number;
   financePending: number;
   riskScore: "high" | "medium" | "low";
+  incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
   teamSize: number;
   status: string;
 }
@@ -80,6 +81,7 @@ interface LeaderboardEntry {
   employeeProgress: number;
   financeProgress: number;
   riskScore: "high" | "medium" | "low";
+  incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
 }
 
 interface UnderperformerEntry {
@@ -89,6 +91,14 @@ interface UnderperformerEntry {
   expectedProgress: number;
   gap: number;
   riskScore: "high" | "medium" | "low";
+  incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
+}
+
+interface ReassignSupervisorOption {
+  value: string;
+  label: string;
+  email: string;
+  teamSize: number;
 }
 
 type TabView = "dashboard" | "leaderboard";
@@ -100,21 +110,38 @@ type TabView = "dashboard" | "leaderboard";
 export default function AdminTargetManagementPage() {
   const t = useTranslations("targets");
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const locale = pathname.split("/")[1] || "en";
   const currentYear = new Date().getFullYear();
+  const requestedYear = Number.parseInt(searchParams.get("year") ?? "", 10);
+  const initialYearFilter = Number.isFinite(requestedYear) && requestedYear > 0
+    ? requestedYear
+    : currentYear;
 
   const [profiles, setProfiles] = useState<EnrichedProfile[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [loading, setLoading] = useState(true);
-  const [yearFilter, setYearFilter] = useState(currentYear);
+  const [yearFilter, setYearFilter] = useState(initialYearFilter);
   const [regionFilter, setRegionFilter] = useState("");
+  const [riskFilter, setRiskFilter] = useState<"all" | "high" | "medium" | "low">("all");
+  const [completionFilter, setCompletionFilter] = useState<"all" | CompletionStage>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tab, setTab] = useState<TabView>("dashboard");
+  const [regionOptions, setRegionOptions] = useState<string[]>([]);
+  const [reassigningId, setReassigningId] = useState<string | null>(null);
+  const [reassignAssigneeId, setReassignAssigneeId] = useState("");
+  const [reassignReason, setReassignReason] = useState("");
+  const [reassignOptions, setReassignOptions] = useState<ReassignSupervisorOption[]>([]);
+  const [reassignLoading, setReassignLoading] = useState(false);
 
   // Analytics
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [underperformers, setUnderperformers] = useState<UnderperformerEntry[]>([]);
+
+  useEffect(() => {
+    setYearFilter(initialYearFilter);
+  }, [initialYearFilter]);
 
   const fetchProfiles = useCallback(async () => {
     setLoading(true);
@@ -145,11 +172,53 @@ export default function AdminTargetManagementPage() {
     } catch { /* ignore */ }
   }, [yearFilter]);
 
+  const fetchRegions = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/target-profiles/regions?year=${yearFilter}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRegionOptions(data.regions ?? []);
+      }
+    } catch { /* ignore */ }
+  }, [yearFilter]);
+
+  const fetchReassignOptions = useCallback(async () => {
+    setReassignLoading(true);
+    try {
+      const params = new URLSearchParams({
+        directory: "create-target",
+        targetYear: String(yearFilter),
+        availability: "available",
+        limit: "500",
+      });
+      const res = await fetch(`/api/admin/super-agents?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setReassignOptions((data.superAgents ?? []).map((item: {
+          _id: string;
+          name: string;
+          email: string;
+          directory?: { teamSize?: number };
+        }) => ({
+          value: item._id,
+          label: item.name,
+          email: item.email,
+          teamSize: item.directory?.teamSize ?? 0,
+        })));
+      }
+    } catch { /* ignore */ }
+    finally { setReassignLoading(false); }
+  }, [yearFilter]);
+
   useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
+  useEffect(() => { fetchRegions(); }, [fetchRegions]);
+  useEffect(() => { fetchReassignOptions(); }, [fetchReassignOptions]);
 
   // Filter by search
   const filteredProfiles = profiles.filter((p) => {
+    if (riskFilter !== "all" && p.riskScore !== riskFilter) return false;
+    if (completionFilter !== "all" && getCompletionStage(p.overallProgress) !== completionFilter) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return p.assigneeName.toLowerCase().includes(q) ||
@@ -188,6 +257,47 @@ export default function AdminTargetManagementPage() {
     } catch { toast.error("Failed to clone"); }
   };
 
+  const openReassign = (profileId: string) => {
+    setReassigningId(profileId);
+    setReassignAssigneeId("");
+    setReassignReason("");
+  };
+
+  const closeReassign = () => {
+    setReassigningId(null);
+    setReassignAssigneeId("");
+    setReassignReason("");
+  };
+
+  const handleReassign = async () => {
+    if (!reassigningId || !reassignAssigneeId) return;
+
+    try {
+      const res = await csrfFetch(`/api/admin/target-profiles/${reassigningId}/reassign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newAssigneeId: reassignAssigneeId,
+          reason: reassignReason.trim() || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Target profile reassigned");
+        closeReassign();
+        fetchProfiles();
+        fetchAnalytics();
+        fetchReassignOptions();
+        return;
+      }
+
+      const err = await res.json();
+      toast.error(err.error ?? "Failed to reassign");
+    } catch {
+      toast.error("Failed to reassign");
+    }
+  };
+
   const handleExport = () => {
     const csvRows = [
       ["Supervisor", "Email", "Region", "Team Size", "Currency", "Employer Target", "Employer Achieved", "Employee Target", "Employee Achieved", "Finance Target", "Finance Achieved", "Overall %", "Risk"].join(","),
@@ -213,6 +323,7 @@ export default function AdminTargetManagementPage() {
   };
 
   const pct = (a: number, tgt: number) => tgt > 0 ? Math.round((a / tgt) * 100) : 0;
+  const reassignTarget = profiles.find((profile) => profile._id === reassigningId) ?? null;
 
   return (
     <div className="page-container space-y-6">
@@ -262,13 +373,13 @@ export default function AdminTargetManagementPage() {
                 aria-label="Year"
               />
             </div>
-            {totals && totals.regions.length > 0 && (
+            {regionOptions.length > 0 && (
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <SearchableSelect
                   options={[
                     { value: "", label: "All Regions" },
-                    ...totals.regions.map((r) => ({ value: r, label: r })),
+                    ...regionOptions.map((region) => ({ value: region, label: region })),
                   ]}
                   value={regionFilter}
                   onValueChange={setRegionFilter}
@@ -277,7 +388,31 @@ export default function AdminTargetManagementPage() {
                 />
               </div>
             )}
-            <Button variant="outline" size="sm" onClick={() => { setYearFilter(currentYear); setRegionFilter(""); }} className="rounded-lg">
+            <SearchableSelect
+              options={[
+                { value: "all", label: "All stages" },
+                { value: "not_started", label: "Not started" },
+                { value: "in_progress", label: "In progress" },
+                { value: "completed", label: "Completed" },
+              ]}
+              value={completionFilter}
+              onValueChange={(value) => setCompletionFilter(value as "all" | CompletionStage)}
+              placeholder="Stage"
+              className="h-11 w-40 rounded-xl"
+            />
+            <SearchableSelect
+              options={[
+                { value: "all", label: "All risk" },
+                { value: "high", label: "High risk" },
+                { value: "medium", label: "Medium risk" },
+                { value: "low", label: "Low risk" },
+              ]}
+              value={riskFilter}
+              onValueChange={(value) => setRiskFilter(value as "all" | "high" | "medium" | "low")}
+              placeholder="Risk"
+              className="h-11 w-36 rounded-xl"
+            />
+            <Button variant="outline" size="sm" onClick={() => { setYearFilter(currentYear); setRegionFilter(""); setRiskFilter("all"); setCompletionFilter("all"); }} className="rounded-lg">
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
             </Button>
             <div className="ml-auto flex rounded-xl border border-border/60 bg-card p-0.5">
@@ -290,7 +425,7 @@ export default function AdminTargetManagementPage() {
             </div>
           </div>
         }
-        hasActiveFilters={yearFilter !== currentYear || !!regionFilter}
+        hasActiveFilters={yearFilter !== currentYear || !!regionFilter || riskFilter !== "all" || completionFilter !== "all"}
       />
 
       {/* KPI Summary Row 1 */}
@@ -305,21 +440,21 @@ export default function AdminTargetManagementPage() {
         <KpiCard
           label="Employer"
           value={<>{totals?.employer.achieved ?? 0}<span className="text-lg text-muted-foreground">/{totals?.employer.target ?? 0}</span></>}
-          subtext={`${pct(totals?.employer.achieved ?? 0, totals?.employer.target ?? 0)}% achieved`}
+          subtext={`Assigned ${totals?.employer.target ?? 0} · Balance ${Math.max(0, (totals?.employer.target ?? 0) - (totals?.employer.achieved ?? 0))}`}
           icon={<Building2 className="h-5 w-5" />}
           toneClassName="workspace-tone-sky"
         />
         <KpiCard
           label="Employee"
           value={<>{totals?.employee.achieved ?? 0}<span className="text-lg text-muted-foreground">/{totals?.employee.target ?? 0}</span></>}
-          subtext={`${pct(totals?.employee.achieved ?? 0, totals?.employee.target ?? 0)}% achieved`}
+          subtext={`Assigned ${totals?.employee.target ?? 0} · Balance ${Math.max(0, (totals?.employee.target ?? 0) - (totals?.employee.achieved ?? 0))}`}
           icon={<Users className="h-5 w-5" />}
           toneClassName="workspace-tone-emerald"
         />
         <KpiCard
           label="Finance"
           value={<>{(totals?.finance.achieved ?? 0).toLocaleString()}<span className="text-lg text-muted-foreground">/{(totals?.finance.target ?? 0).toLocaleString()}</span></>}
-          subtext={`${profiles[0]?.currency ?? "AED"} · ${pct(totals?.finance.achieved ?? 0, totals?.finance.target ?? 0)}% achieved`}
+          subtext={`Assigned ${(profiles[0]?.currency ?? "AED")} ${(totals?.finance.target ?? 0).toLocaleString()} · Balance ${(profiles[0]?.currency ?? "AED")} ${Math.max(0, (totals?.finance.target ?? 0) - (totals?.finance.achieved ?? 0)).toLocaleString()}`}
           icon={<DollarSign className="h-5 w-5" />}
           toneClassName="workspace-tone-amber"
         />
@@ -357,6 +492,40 @@ export default function AdminTargetManagementPage() {
       {/* ============= DASHBOARD TAB ============= */}
       {tab === "dashboard" && (
         <>
+          {reassignTarget && (
+            <section className="workspace-glass-panel rounded-2xl p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">Reassign target profile</p>
+                  <p className="text-xs text-muted-foreground">
+                    Move {reassignTarget.assigneeName}'s {reassignTarget.year} target to another available supervisor.
+                  </p>
+                </div>
+                <SearchableSelect
+                  options={reassignOptions.map((option) => ({
+                    value: option.value,
+                    label: `${option.label} · ${option.teamSize} agents · ${option.email}`,
+                  }))}
+                  value={reassignAssigneeId}
+                  onValueChange={setReassignAssigneeId}
+                  placeholder={reassignLoading ? "Loading supervisors" : "Select supervisor"}
+                  loading={reassignLoading}
+                  className="h-11 min-w-64 rounded-xl"
+                />
+                <Input
+                  value={reassignReason}
+                  onChange={(event) => setReassignReason(event.target.value)}
+                  placeholder="Reason"
+                  className="h-11 rounded-xl lg:w-64"
+                />
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="h-11 rounded-lg" onClick={closeReassign}>Cancel</Button>
+                  <Button size="sm" className="h-11 rounded-lg" onClick={handleReassign} disabled={!reassignAssigneeId}>Reassign</Button>
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Main Table */}
           <div className="rounded-2xl border border-border/60 bg-card overflow-x-auto">
             <Table>
@@ -474,7 +643,10 @@ export default function AdminTargetManagementPage() {
                           <PerformanceBadge pct={row.overallProgress} />
                         </TableCell>
                         <TableCell>
-                          <RiskBadge risk={row.riskScore} />
+                            <div className="flex flex-col items-start gap-1.5">
+                              <RiskBadge risk={row.riskScore} />
+                              <IncentiveTierBadge tier={row.incentiveTier ?? "none"} />
+                            </div>
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
@@ -483,6 +655,9 @@ export default function AdminTargetManagementPage() {
                                 <Eye className="h-3.5 w-3.5" />
                               </Button>
                             </Link>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title="Reassign" onClick={() => openReassign(row._id)}>
+                              <SplitSquareVertical className="h-3.5 w-3.5" />
+                            </Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" title="Cancel" onClick={() => handleCancel(row._id)}>
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -515,7 +690,10 @@ export default function AdminTargetManagementPage() {
                         {u.overallProgress}% vs expected {u.expectedProgress}% ({u.gap}% gap)
                       </p>
                     </div>
-                    <RiskBadge risk={u.riskScore} />
+                    <div className="flex flex-col items-start gap-1.5">
+                      <RiskBadge risk={u.riskScore} />
+                      <IncentiveTierBadge tier={u.incentiveTier ?? "none"} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -575,7 +753,12 @@ export default function AdminTargetManagementPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
-                        <RiskBadge risk={entry.riskScore} />
+                        <div className="flex justify-center">
+                          <div className="flex flex-col items-start gap-1.5">
+                            <RiskBadge risk={entry.riskScore} />
+                            <IncentiveTierBadge tier={entry.incentiveTier ?? "none"} />
+                          </div>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

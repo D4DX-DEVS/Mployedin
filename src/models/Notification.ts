@@ -13,6 +13,7 @@ export type NotificationType =
   | "job_approved"
   | "job_rejected"
   | "lead_converted"
+  | "mention"
   | "profile_update"
   | "message"
   | "system"
@@ -21,7 +22,11 @@ export type NotificationType =
   | "agent_joined"
   | "employer_registered"
   | "placement_completed"
-  | "new_job_posted";
+  | "new_job_posted"
+  | "target_assigned"
+  | "target_updated"
+  | "target_at_risk"
+  | "target_milestone";
 
 export type NotificationChannel = "in_app" | "email" | "whatsapp";
 
@@ -60,6 +65,7 @@ const NotificationSchema = new Schema<INotification>(
         "job_approved",
         "job_rejected",
         "lead_converted",
+        "mention",
         "profile_update",
         "message",
         "system",
@@ -69,6 +75,10 @@ const NotificationSchema = new Schema<INotification>(
         "employer_registered",
         "placement_completed",
         "new_job_posted",
+        "target_assigned",
+        "target_updated",
+        "target_at_risk",
+        "target_milestone",
       ],
       required: true,
     },

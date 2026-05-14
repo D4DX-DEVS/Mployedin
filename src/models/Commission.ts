@@ -5,6 +5,7 @@ export type CommissionStatus = "pending" | "approved" | "paid" | "disputed";
 
 export interface ICommission extends Document {
   _id: mongoose.Types.ObjectId;
+  invoiceId?: mongoose.Types.ObjectId;
   placementId?: mongoose.Types.ObjectId;
   agentId?: mongoose.Types.ObjectId;
   superAgentId?: mongoose.Types.ObjectId;
@@ -24,6 +25,7 @@ export interface ICommission extends Document {
 
 const CommissionSchema = new Schema<ICommission>(
   {
+    invoiceId: { type: Schema.Types.ObjectId, ref: "Invoice" },
     placementId: { type: Schema.Types.ObjectId, ref: "Placement" },
     agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
     superAgentId: { type: Schema.Types.ObjectId, ref: "SuperAgent" },
@@ -52,6 +54,7 @@ const CommissionSchema = new Schema<ICommission>(
 CommissionSchema.index({ agentId: 1 });
 CommissionSchema.index({ superAgentId: 1 });
 CommissionSchema.index({ status: 1 });
+CommissionSchema.index({ invoiceId: 1 });
 CommissionSchema.index({ placementId: 1 });
 
 export const Commission =

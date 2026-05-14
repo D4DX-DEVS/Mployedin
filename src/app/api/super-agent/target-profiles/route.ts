@@ -14,6 +14,7 @@ import {
 } from "@/lib/targets/distributionStrategies";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { notifyTargetAssigned } from "@/lib/notifications/trigger";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
 
@@ -26,7 +27,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
-  const year = parseInt(searchParams.get("year") ?? String(new Date().getFullYear()));
+  const currentYear = new Date().getFullYear();
+  const requestedYear = parseInt(searchParams.get("year") ?? String(currentYear));
+  const year = Number.isFinite(requestedYear) ? requestedYear : currentYear;
   const view = searchParams.get("view") ?? "own"; // "own" | "team"
 
   if (view === "own") {
@@ -79,10 +82,26 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     .lean();
   const userMap = new Map(users.map((u) => [String(u._id), u]));
 
+  const agents = await Agent.find({ userId: { $in: userIds } })
+    .select("userId country currencyCode updatedAt")
+    .lean();
+  const agentMap = new Map(agents.map((agent) => [String(agent.userId), agent]));
+
   const enriched = await enrichProfiles(uniqueProfiles as unknown as Record<string, unknown>[]);
   const rows = enriched.map((p) => {
     const user = userMap.get(p.assigneeId);
-    return { ...p, assigneeName: user?.name ?? "Unknown", assigneeEmail: user?.email ?? "" };
+    const agent = agentMap.get(p.assigneeId);
+    const territory = p.region ?? agent?.country ?? "Unassigned";
+
+    return {
+      ...p,
+      assigneeName: user?.name ?? "Unknown",
+      assigneeEmail: user?.email ?? "",
+      region: territory,
+      territory,
+      regionalCurrency: agent?.currencyCode ?? p.currency ?? "AED",
+      lastActivityAt: p.updatedAt ?? agent?.updatedAt,
+    };
   });
 
   // Team totals
@@ -270,7 +289,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
             notes: alloc.notes,
           },
         }, { new: true });
-        created.push(updated ?? existing);
+        const targetProfile = updated ?? existing;
+        created.push(targetProfile);
+        void notifyTargetAssigned(
+          alloc.agentUserId,
+          "agent",
+          String(targetProfile._id),
+          body.year,
+          ctx.locale
+        );
         continue;
       }
 
@@ -291,6 +318,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         status: "active",
       });
       created.push(profile);
+      void notifyTargetAssigned(
+        alloc.agentUserId,
+        "agent",
+        String(profile._id),
+        body.year,
+        ctx.locale
+      );
     }
 
     await logActivity({
@@ -319,6 +353,26 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json(
       { error: "An active target profile already exists for this agent and year" },
       { status: 409 }
+    );
+  }
+
+  const scope = await getSuperAgentScope(ctx.userId);
+  if (!scope) {
+    return NextResponse.json(
+      { error: "Super agent scope could not be resolved" },
+      { status: 403 }
+    );
+  }
+
+  const scopedAgents = await Agent.find({ _id: { $in: scope.effectiveAgentIds } })
+    .select("userId")
+    .lean();
+  const allowedAgentUserIds = new Set(scopedAgents.map((agent) => String(agent.userId)));
+
+  if (!allowedAgentUserIds.has(body.assigneeId)) {
+    return NextResponse.json(
+      { error: "Selected agent is outside your team scope" },
+      { status: 403 }
     );
   }
 
@@ -357,6 +411,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     meta: { year: body.year, assigneeId: body.assigneeId },
     req,
   });
+
+  void notifyTargetAssigned(
+    String(profile.assigneeId),
+    "agent",
+    String(profile._id),
+    body.year,
+    ctx.locale
+  );
 
   return NextResponse.json({ profile }, { status: 201 });
 }

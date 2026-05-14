@@ -9,6 +9,8 @@ import {
   subscriptionCancelSchema,
   subscriptionRenewSchema,
   invoiceUpdateSchema,
+  invoiceDeliverySchema,
+  recruitmentInvoiceCreateSchema,
 } from "@/lib/validators/subscriptions";
 
 const validObjectId = "507f1f77bcf86cd799439011";
@@ -287,6 +289,10 @@ describe("invoiceUpdateSchema", () => {
     expect(invoiceUpdateSchema.safeParse({ status: "void" }).success).toBe(true);
   });
 
+  test("accepts status pending approval", () => {
+    expect(invoiceUpdateSchema.safeParse({ status: "pending_approval" }).success).toBe(true);
+  });
+
   test("accepts notes only", () => {
     expect(invoiceUpdateSchema.safeParse({ notes: "Payment received" }).success).toBe(true);
   });
@@ -295,11 +301,52 @@ describe("invoiceUpdateSchema", () => {
     expect(invoiceUpdateSchema.safeParse({}).success).toBe(true);
   });
 
-  test("rejects invalid status", () => {
+  test("rejects unsupported terminal status update", () => {
+    expect(invoiceUpdateSchema.safeParse({ status: "not_real" }).success).toBe(false);
+  });
+
+  test("rejects unsupported refunded status update", () => {
     expect(invoiceUpdateSchema.safeParse({ status: "refunded" }).success).toBe(false);
   });
 
-  test("rejects notes > 500 chars", () => {
-    expect(invoiceUpdateSchema.safeParse({ notes: "x".repeat(501) }).success).toBe(false);
+  test("rejects notes > 2000 chars", () => {
+    expect(invoiceUpdateSchema.safeParse({ notes: "x".repeat(2001) }).success).toBe(false);
+  });
+
+  test("accepts rejection reason", () => {
+    expect(invoiceUpdateSchema.safeParse({ status: "cancelled", rejectionReason: "Incorrect amount" }).success).toBe(true);
+  });
+});
+
+// ── invoiceDeliverySchema ───────────────────────────────────────────────────
+
+describe("invoiceDeliverySchema", () => {
+  test("accepts delivery actions", () => {
+    expect(invoiceDeliverySchema.safeParse({ action: "sent" }).success).toBe(true);
+    expect(invoiceDeliverySchema.safeParse({ action: "viewed" }).success).toBe(true);
+    expect(invoiceDeliverySchema.safeParse({ action: "downloaded" }).success).toBe(true);
+    expect(invoiceDeliverySchema.safeParse({ action: "reminder" }).success).toBe(true);
+  });
+
+  test("rejects invalid delivery actions", () => {
+    expect(invoiceDeliverySchema.safeParse({ action: "emailed" }).success).toBe(false);
+  });
+
+  test("rejects missing delivery action", () => {
+    expect(invoiceDeliverySchema.safeParse({}).success).toBe(false);
+  });
+});
+
+// ── recruitmentInvoiceCreateSchema ──────────────────────────────────────────
+
+describe("recruitmentInvoiceCreateSchema", () => {
+  test("accepts pending approval status", () => {
+    expect(recruitmentInvoiceCreateSchema.safeParse({
+      jobId: validObjectId,
+      employerId: validObjectId2,
+      amount: 2500,
+      currency: "AED",
+      status: "pending_approval",
+    }).success).toBe(true);
   });
 });

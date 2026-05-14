@@ -101,7 +101,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       .skip((page - 1) * limit)
       .limit(limit)
       .populate("employerId", "companyName country industry")
-      .populate({ path: "agentId", select: "userId superAgentId", populate: [{ path: "userId", select: "name email" }, { path: "superAgentId", select: "userId", populate: { path: "userId", select: "name" } }] })
+      .populate({ path: "agentId", select: "userId superAgentId commissionRate", populate: [{ path: "userId", select: "name email" }, { path: "superAgentId", select: "userId overrideRate", populate: { path: "userId", select: "name" } }] })
       .lean(),
     Job.countDocuments(query),
   ]);

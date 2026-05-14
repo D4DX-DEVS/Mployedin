@@ -13,6 +13,8 @@ import { recruitmentInvoiceCreateSchema } from "@/lib/validators/subscriptions";
 import { generateInvoiceNumber } from "@/lib/subscription/invoiceNumber";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
+import { createCommissionRecordsForInvoice } from "@/lib/invoices/commissionRecords";
+import { INVOICE_TERMINAL_STATUSES } from "@/lib/invoices/status";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
@@ -20,13 +22,16 @@ import Job from "@/models/Job";
 import Employer from "@/models/Employer";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
-import Commission from "@/models/Commission";
 import SystemSettings from "@/models/SystemSettings";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  if (!["admin", "super_agent", "agent"].includes(ctx.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await connectDB();
 
   const body = await validateBody(req, recruitmentInvoiceCreateSchema);
@@ -36,6 +41,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     taxPercent = 0, serviceCharge = 0, paymentTerms = "net_30",
     customPaymentDays, dueDate, billingDetails, status: invoiceStatus = "issued",
   } = body;
+  const finalInvoiceStatus = ctx.role === "agent" ? "pending_approval" : invoiceStatus;
 
   // Validate job exists
   const job = await Job.findById(jobId).lean();
@@ -48,6 +54,19 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // Verify job belongs to employer
   if (job.employerId.toString() !== employerId) {
     return NextResponse.json({ error: "Job does not belong to the specified employer" }, { status: 400 });
+  }
+
+  const existingInvoice = await Invoice.findOne({
+    category: "recruitment",
+    jobId,
+    employerId,
+    status: { $nin: INVOICE_TERMINAL_STATUSES },
+  }).select("_id invoiceNumber status").lean();
+
+  if (existingInvoice) {
+    return NextResponse.json({
+      error: `Invoice ${existingInvoice.invoiceNumber} already exists for this job and employer`,
+    }, { status: 409 });
   }
 
   // Determine agent
@@ -86,6 +105,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     : [{ description: `Recruitment fee — ${job.title}`, quantity: 1, unitPrice: amount, amount, jobId }];
 
   const subtotal = lineItems.reduce((sum: number, li: { amount: number }) => sum + li.amount, 0);
+  const discountAmount = Math.round((subtotal * discountPercent) / 100 * 100) / 100;
+  const discountedSubtotal = subtotal - discountAmount;
+  const taxAmount = Math.round((discountedSubtotal * taxPercent) / 100 * 100) / 100;
+  const billedTotal = Math.round((discountedSubtotal + taxAmount + serviceCharge) * 100) / 100;
 
   // Auto-fill billing details from employer if not provided
   const finalBilling = billingDetails ?? {
@@ -108,7 +131,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   if (agentDoc && agentDoc.commissionRate && agentDoc.commissionRate > 0) {
     const resolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
-    const agentAmount = Math.round((subtotal * resolved.rate) / 100 * 100) / 100;
+    const agentAmount = Math.round((billedTotal * resolved.rate) / 100 * 100) / 100;
     const sourceNote = resolved.source === "country_override"
       ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
 
@@ -121,23 +144,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       notes: `Agent placement commission${sourceNote}`,
     });
 
-    // Also create external Commission record
-    const ext = await Commission.create({
-      agentId: agentDoc._id,
-      superAgentId: agentDoc.superAgentId ?? undefined,
-      type: "placement",
-      amount: agentAmount,
-      currency: invoiceCurrency,
-      rate: resolved.rate,
-      status: "pending",
-      notes: `Auto-generated from invoice${sourceNote}`,
-    });
-    externalCommissions.push(ext);
+    if (agentDoc.superAgentId) {
+      commissions[commissions.length - 1].superAgentId = agentDoc.superAgentId;
+    }
   }
 
   if (superAgentDoc && superAgentDoc.overrideRate && superAgentDoc.overrideRate > 0) {
     const resolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
-    const overrideAmount = Math.round((subtotal * resolved.rate) / 100 * 100) / 100;
+    const overrideAmount = Math.round((billedTotal * resolved.rate) / 100 * 100) / 100;
     const sourceNote = resolved.source === "country_override"
       ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
 
@@ -150,21 +164,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       notes: `Super-agent override commission${sourceNote}`,
     });
 
-    const ext = await Commission.create({
-      superAgentId: superAgentDoc._id,
-      type: "override",
-      amount: overrideAmount,
-      currency: invoiceCurrency,
-      rate: resolved.rate,
-      status: "pending",
-      notes: `Override commission from invoice${sourceNote}`,
-    });
-    externalCommissions.push(ext);
   }
 
   // Generate invoice
   const invoiceNumber = await generateInvoiceNumber();
-  const invoice = await Invoice.create({
+  let invoice;
+  try {
+    invoice = await Invoice.create({
     invoiceNumber,
     category: "recruitment",
     userId: employer.userId,
@@ -176,23 +182,39 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     lineItems,
     subtotal,
     discountPercent,
+    discountAmount,
     taxType,
     taxPercent,
+    taxAmount,
     serviceCharge,
-    totalAmount: subtotal, // pre-save hook recalculates
-    amount: subtotal,
+    totalAmount: billedTotal,
+    amount: billedTotal,
     currency: invoiceCurrency,
     commissions,
     billingDetails: finalBilling,
     paymentTerms,
     customPaymentDays,
     dueDate: dueDate ? new Date(dueDate) : undefined,
-    status: invoiceStatus,
-    issuedAt: new Date(),
+    status: finalInvoiceStatus,
+    issuedAt: finalInvoiceStatus === "issued" ? new Date() : undefined,
     notes,
     internalNotes,
     createdBy: ctx.userId,
-  });
+    });
+  } catch (err: unknown) {
+    if ((err as { code?: number }).code === 11000) {
+      return NextResponse.json({ error: "An active invoice already exists for this job and employer" }, { status: 409 });
+    }
+    throw err;
+  }
+
+  if (finalInvoiceStatus === "issued") {
+    externalCommissions.push(...await createCommissionRecordsForInvoice({
+      invoiceId: invoice._id,
+      commissions: invoice.commissions ?? [],
+      currency: invoiceCurrency,
+    }));
+  }
 
   // Audit log
   await logActivity({
@@ -202,7 +224,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     resourceId: String(invoice._id),
     meta: {
       jobId, employerId, subtotal, discountPercent, taxType, taxPercent,
-      totalAmount: invoice.totalAmount, currency: invoiceCurrency,
+      totalAmount: invoice.totalAmount, currency: invoiceCurrency, status: finalInvoiceStatus,
       commissionsCreated: externalCommissions.length,
     },
     req,
@@ -219,13 +241,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     currency: invoiceCurrency,
     employerId,
     jobId,
-    status: invoiceStatus,
+    status: finalInvoiceStatus,
   });
 
   return NextResponse.json({
     invoice,
     commissions: externalCommissions,
-    message: `Invoice ${invoiceNumber} created. ${externalCommissions.length} commission(s) auto-generated.`,
+    message: finalInvoiceStatus === "pending_approval"
+      ? `Invoice ${invoiceNumber} submitted for approval.`
+      : `Invoice ${invoiceNumber} created. ${externalCommissions.length} commission(s) auto-generated.`,
   }, { status: 201 });
 }
 

@@ -25,11 +25,20 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ leaderboard: [], myRank: 0, totalAgents: 0 });
   }
 
-  // Find super-agent that has this agent
-  const superAgent = await SuperAgent.findOne({ agentIds: ctx.userId }).lean();
-  const peerIds: string[] = superAgent
-    ? (superAgent as { agentIds?: string[] }).agentIds ?? []
-    : [ctx.userId];
+  const superAgent = agentDoc.superAgentId
+    ? await SuperAgent.findById(agentDoc.superAgentId).lean()
+    : await SuperAgent.findOne({ agentIds: agentDoc._id }).lean();
+
+  const peerAgentDocIds = superAgent
+    ? ((superAgent as { agentIds?: unknown[] }).agentIds ?? []).map(String)
+    : [String(agentDoc._id)];
+
+  const peerAgents = await Agent.find({ _id: { $in: peerAgentDocIds } })
+    .select("userId")
+    .lean();
+  const peerIds = peerAgents.map((agent) => String(agent.userId));
+
+  if (peerIds.length === 0) peerIds.push(ctx.userId);
 
   // Get all yearly targets for these agents
   const allTargets = await Target.find({

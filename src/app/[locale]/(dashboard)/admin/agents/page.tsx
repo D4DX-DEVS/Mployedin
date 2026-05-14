@@ -411,6 +411,7 @@ export default function AdminAgentsPage() {
               <div className="space-y-2">
                 <Label>Commission Rate (%)</Label>
                 <Input type="number" min="0" max="100" value={addForm.commissionRate} onChange={(e) => setAddForm((f) => ({ ...f, commissionRate: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">This percentage is used when future recruitment invoices are generated for this agent&apos;s jobs.</p>
               </div>
             </div>
 
@@ -483,6 +484,7 @@ export default function AdminAgentsPage() {
               <div className="space-y-2">
                 <Label>Commission Rate (%)</Label>
                 <Input type="number" min="0" max="100" value={editForm.commissionRate} onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">Changes affect future recruitment invoice commissions, not previously created invoices.</p>
               </div>
             </div>
 

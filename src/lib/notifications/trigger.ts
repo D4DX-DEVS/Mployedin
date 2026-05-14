@@ -29,7 +29,22 @@ export type NotificationType =
   | "agent_joined"
   | "employer_registered"
   | "placement_completed"
-  | "new_job_posted";
+  | "new_job_posted"
+  | "target_assigned"
+  | "target_updated"
+  | "target_at_risk"
+  | "target_milestone"
+  | "commission_generated"
+  | "commission_approved"
+  | "commission_paid"
+  | "invoice_overdue";
+
+type TargetAssigneeRole = "agent" | "super_agent";
+
+function getTargetManagementLink(role: TargetAssigneeRole, locale = "en"): string {
+  const segment = role === "super_agent" ? "super-agent" : "agent";
+  return `/${locale}/${segment}/target-management`;
+}
 
 interface NotifyPayload {
   userId: string;
@@ -223,6 +238,80 @@ export async function notifyScorecardSubmitted(
   });
 }
 
+export async function notifyTargetAssigned(
+  assigneeId: string,
+  assigneeRole: TargetAssigneeRole,
+  profileId: string,
+  year: number,
+  locale = "en"
+): Promise<void> {
+  await notify({
+    userId: assigneeId,
+    type: "target_assigned",
+    title: "Target assigned",
+    message: `Your ${year} target plan is ready. Review your employer, employee, and finance goals.`,
+    link: getTargetManagementLink(assigneeRole, locale),
+    sendEmail: false,
+    metadata: { profileId, year, assigneeRole },
+  });
+}
+
+export async function notifyTargetUpdated(
+  assigneeId: string,
+  assigneeRole: TargetAssigneeRole,
+  profileId: string,
+  year: number,
+  locale = "en"
+): Promise<void> {
+  await notify({
+    userId: assigneeId,
+    type: "target_updated",
+    title: "Target updated",
+    message: `Your ${year} target plan has been updated. Check the latest allocation and monthly breakdown.`,
+    link: getTargetManagementLink(assigneeRole, locale),
+    sendEmail: false,
+    metadata: { profileId, year, assigneeRole },
+  });
+}
+
+export async function notifyTargetAtRisk(
+  assigneeId: string,
+  assigneeRole: TargetAssigneeRole,
+  profileId: string,
+  overallProgress: number,
+  expectedProgress: number,
+  locale = "en"
+): Promise<void> {
+  await notify({
+    userId: assigneeId,
+    type: "target_at_risk",
+    title: "Target needs attention",
+    message: `Current progress is ${overallProgress}% against an expected pace of ${expectedProgress}%.`,
+    link: getTargetManagementLink(assigneeRole, locale),
+    sendEmail: true,
+    metadata: { profileId, overallProgress, expectedProgress, assigneeRole },
+  });
+}
+
+export async function notifyTargetMilestone(
+  assigneeId: string,
+  assigneeRole: TargetAssigneeRole,
+  profileId: string,
+  tier: string,
+  overallProgress: number,
+  locale = "en"
+): Promise<void> {
+  await notify({
+    userId: assigneeId,
+    type: "target_milestone",
+    title: "Target milestone reached",
+    message: `You reached the ${tier} target tier at ${overallProgress}% overall progress.`,
+    link: getTargetManagementLink(assigneeRole, locale),
+    sendEmail: false,
+    metadata: { profileId, tier, overallProgress, assigneeRole },
+  });
+}
+
 // ─── Super-agent helper: resolve userId from agentId ───
 export async function getSuperAgentUserId(agentId: string): Promise<string | null> {
   const Agent = (await import("@/models/Agent")).default;
@@ -304,5 +393,84 @@ export async function notifySuperAgentPlacement(
     link: `/${locale}/super-agent/placements`,
     sendEmail: true,
     metadata: { placementId, candidateName, jobTitle, companyName },
+  });
+}
+
+// ─── Commission notification helpers ───
+
+export async function notifyCommissionGenerated(
+  userId: string,
+  role: "agent" | "super_agent",
+  amount: number,
+  currency: string,
+  invoiceNumber: string,
+  locale = "en",
+): Promise<void> {
+  const segment = role === "super_agent" ? "super-agent" : "agent";
+  await notify({
+    userId,
+    type: "commission_generated",
+    title: "Commission Generated",
+    message: `A commission of ${currency} ${amount.toLocaleString()} has been generated from invoice ${invoiceNumber}.`,
+    link: `/${locale}/${segment}/commissions`,
+    sendEmail: true,
+    metadata: { amount, currency, invoiceNumber, role },
+  });
+}
+
+export async function notifyCommissionApproved(
+  userId: string,
+  role: "agent" | "super_agent",
+  amount: number,
+  currency: string,
+  locale = "en",
+): Promise<void> {
+  const segment = role === "super_agent" ? "super-agent" : "agent";
+  await notify({
+    userId,
+    type: "commission_approved",
+    title: "Commission Approved",
+    message: `Your commission of ${currency} ${amount.toLocaleString()} has been approved for payout.`,
+    link: `/${locale}/${segment}/commissions`,
+    sendEmail: true,
+    metadata: { amount, currency, role },
+  });
+}
+
+export async function notifyCommissionPaid(
+  userId: string,
+  role: "agent" | "super_agent",
+  amount: number,
+  currency: string,
+  paymentRef: string,
+  locale = "en",
+): Promise<void> {
+  const segment = role === "super_agent" ? "super-agent" : "agent";
+  await notify({
+    userId,
+    type: "commission_paid",
+    title: "Commission Paid",
+    message: `Your commission of ${currency} ${amount.toLocaleString()} has been paid. Reference: ${paymentRef}.`,
+    link: `/${locale}/${segment}/commissions`,
+    sendEmail: true,
+    metadata: { amount, currency, paymentRef, role },
+  });
+}
+
+export async function notifyInvoiceOverdue(
+  adminUserId: string,
+  invoiceNumber: string,
+  amount: number,
+  currency: string,
+  locale = "en",
+): Promise<void> {
+  await notify({
+    userId: adminUserId,
+    type: "invoice_overdue",
+    title: "Invoice Overdue",
+    message: `Invoice ${invoiceNumber} (${currency} ${amount.toLocaleString()}) is now overdue.`,
+    link: `/${locale}/admin/invoices`,
+    sendEmail: true,
+    metadata: { invoiceNumber, amount, currency },
   });
 }

@@ -213,7 +213,10 @@ export function Sidebar({
         key={child.href}
         href={child.href}
         prefetch={false}
-        onClick={() => onMobileClose?.()}
+        onClick={() => {
+          if (usesDualTierLayout) setSubmenuExpanded(false);
+          onMobileClose?.();
+        }}
         className={cn(
           "flex transition-all duration-200 group relative overflow-hidden",
           usesSimpleEmployerMenu && variant === "panel"
@@ -395,8 +398,12 @@ export function Sidebar({
                   key={item.title}
                   type="button"
                   onClick={() => {
-                    setActiveMainTitle(item.title);
-                    setSubmenuExpanded(true);
+                    if (activeMainTitle === item.title) {
+                      setSubmenuExpanded((prev) => !prev);
+                    } else {
+                      setActiveMainTitle(item.title);
+                      setSubmenuExpanded(true);
+                    }
                   }}
                   className={dualTierClass}
                 >
@@ -584,10 +591,10 @@ export function Sidebar({
               "bg-surface-2 shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
               isRtl ? "border-l border-sidebar-border" : "border-r border-sidebar-border"
             ),
-        hasSubmenu ? "w-[240px]" : "w-0 border-r-0 border-l-0"
+        hasSubmenu && submenuExpanded ? "w-[240px]" : "w-0 border-r-0 border-l-0"
       )}
     >
-      {activeMainItem && hasSubmenu && (
+      {activeMainItem && hasSubmenu && submenuExpanded && (
         <div className="flex flex-col h-full min-w-[240px]">
           <div className={cn(
             "shrink-0 flex items-center px-5",

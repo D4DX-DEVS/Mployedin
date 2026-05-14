@@ -61,6 +61,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         name: user?.name,
         email: user?.email,
         companyName: p.companyName,
+        companyEmail: p.companyEmail,
+        phone: p.phone,
+        address: p.address,
+        country: p.country,
+        taxId: p.taxId,
         industry: p.industry,
         location: p.address ?? p.country ?? "",
         isActive: user?.isActive ?? true,
@@ -141,6 +146,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
           name: user?.name,
           email: user?.email,
           companyName: p.companyName,
+          companyEmail: p.companyEmail,
+          phone: p.phone,
+          address: p.address,
+          country: p.country,
+          taxId: p.taxId,
           industry: p.industry,
           location: p.address ?? "",
           isActive: user?.isActive ?? true,
@@ -268,7 +278,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Attach verificationDocs and domainVerified from Employer model
   const userIds = users.map((u) => u._id);
   const employerProfiles = await Employer.find({ userId: { $in: userIds } })
-    .select("userId companyName industry address verificationDocs domainVerified verificationLevel isAgentVerified agentId")
+    .select("userId companyName companyEmail phone address country taxId industry verificationDocs domainVerified verificationLevel isAgentVerified agentId")
     .populate("agentId", "userId")
     .lean();
 
@@ -298,6 +308,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       ...u,
       employerProfileId: String(profile._id), // canonical Employer._id for tenant switch
       companyName: profile?.companyName,
+      companyEmail: profile?.companyEmail,
+      phone: profile?.phone,
+      address: profile?.address,
+      country: profile?.country,
+      taxId: profile?.taxId,
       industry: profile?.industry,
       location: profile?.address,
       verificationDocs: profile?.verificationDocs ?? [],

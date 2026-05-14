@@ -7,6 +7,7 @@ import { validateBody } from "@/lib/validators";
 import { commissionUpdateSchema } from "@/lib/validators/commissions";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
+import { notifyCommissionApproved, notifyCommissionPaid } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -60,6 +61,21 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       currency: commission.currency,
       status: "approved",
     });
+    // Notify agent/super-agent about approval
+    const Agent = (await import("@/models/Agent")).default;
+    const SuperAgent = (await import("@/models/SuperAgent")).default;
+    if (commission.agentId) {
+      const agent = await Agent.findById(commission.agentId).select("userId").lean();
+      if (agent?.userId) {
+        notifyCommissionApproved(String(agent.userId), "agent", commission.amount, commission.currency).catch(() => {});
+      }
+    }
+    if (commission.superAgentId) {
+      const sa = await SuperAgent.findById(commission.superAgentId).select("userId").lean();
+      if (sa?.userId) {
+        notifyCommissionApproved(String(sa.userId), "super_agent", commission.amount, commission.currency).catch(() => {});
+      }
+    }
   } else if (body.status === "paid") {
     dispatchWebhook("commission.paid", {
       commissionId: params?.id,
@@ -69,6 +85,21 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       paidAt: commission.paidAt?.toISOString(),
       paymentRef: commission.paymentRef,
     });
+    // Notify agent/super-agent about payment
+    const Agent = (await import("@/models/Agent")).default;
+    const SuperAgent = (await import("@/models/SuperAgent")).default;
+    if (commission.agentId) {
+      const agent = await Agent.findById(commission.agentId).select("userId").lean();
+      if (agent?.userId) {
+        notifyCommissionPaid(String(agent.userId), "agent", commission.amount, commission.currency, commission.paymentRef ?? "—").catch(() => {});
+      }
+    }
+    if (commission.superAgentId) {
+      const sa = await SuperAgent.findById(commission.superAgentId).select("userId").lean();
+      if (sa?.userId) {
+        notifyCommissionPaid(String(sa.userId), "super_agent", commission.amount, commission.currency, commission.paymentRef ?? "—").catch(() => {});
+      }
+    }
   }
 
   await logActivity({

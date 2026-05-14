@@ -82,6 +82,41 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "*.digitaloceanspaces.com" },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/:locale(en|ar)/admin/targets",
+        destination: "/:locale/admin/target-management",
+        permanent: false,
+      },
+      {
+        // Legacy Target IDs do not map safely to TargetProfile IDs.
+        source: "/:locale(en|ar)/admin/targets/:id",
+        destination: "/:locale/admin/target-management",
+        permanent: false,
+      },
+      {
+        source: "/:locale(en|ar)/super-agent/targets",
+        destination: "/:locale/super-agent/target-management",
+        permanent: false,
+      },
+      {
+        source: "/:locale(en|ar)/super-agent/targets/:id",
+        destination: "/:locale/super-agent/target-management",
+        permanent: false,
+      },
+      {
+        source: "/:locale(en|ar)/agent/targets",
+        destination: "/:locale/agent/target-management",
+        permanent: false,
+      },
+      {
+        source: "/:locale(en|ar)/agent/targets/:id",
+        destination: "/:locale/agent/target-management",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
     return [

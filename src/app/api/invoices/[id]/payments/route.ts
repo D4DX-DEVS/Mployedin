@@ -10,6 +10,8 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { validateBody } from "@/lib/validators";
 import { invoicePaymentSchema } from "@/lib/validators/subscriptions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { canAccessInvoice } from "@/lib/invoices/access";
+import { PAYMENT_BLOCKED_INVOICE_STATUSES } from "@/lib/invoices/status";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
@@ -17,20 +19,40 @@ import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
+async function logAccessDenied(req: NextRequest, ctx: AuthCtx, invoice: { _id?: unknown; userId?: unknown; agentId?: unknown }, operation: string) {
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "invoice.access_denied",
+    resource: "subscriptions",
+    resourceId: String(invoice._id ?? "unknown"),
+    meta: {
+      operation,
+      invoiceUserId: String(invoice.userId ?? ""),
+      invoiceAgentId: String(invoice.agentId ?? ""),
+    },
+    req,
+  });
+}
+
 // ── GET: list payments ──────────────────────────────────────────────────────
 async function getHandler(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: AuthCtx,
   params?: Record<string, string>,
 ) {
   await connectDB();
   const invoice = await Invoice.findById(params?.id)
-    .select("invoiceNumber payments paidAmount balanceDue totalAmount currency status")
+    .select("invoiceNumber userId agentId payments paidAmount balanceDue totalAmount currency status")
     .populate("payments.recordedBy", "name email")
     .lean();
 
   if (!invoice) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+  }
+
+  if (!(await canAccessInvoice(ctx, invoice))) {
+    await logAccessDenied(req, ctx, invoice, "GET_PAYMENTS");
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   return NextResponse.json({
@@ -63,8 +85,13 @@ async function postHandler(
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
 
-  // Cannot pay void/cancelled/refunded invoices
-  if (["void", "cancelled", "refunded"].includes(invoice.status)) {
+  if (!(await canAccessInvoice(ctx, invoice))) {
+    await logAccessDenied(req, ctx, invoice, "POST_PAYMENT");
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Cannot pay drafts, unapproved, closed, or already-paid invoices
+  if ((PAYMENT_BLOCKED_INVOICE_STATUSES as readonly string[]).includes(invoice.status)) {
     return NextResponse.json({ error: `Cannot record payment on ${invoice.status} invoice` }, { status: 400 });
   }
 

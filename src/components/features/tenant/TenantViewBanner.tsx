@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { csrfFetch } from "@/lib/security/csrf-client";
 import type { UserRole } from "@/types/user";
 
 const ROLE_LABELS: Partial<Record<UserRole, string>> = {
@@ -35,7 +36,7 @@ export function TenantViewBanner({
   async function handleExit() {
     setExiting(true);
     try {
-      await fetch("/api/tenant/switch", {
+      await csrfFetch("/api/tenant/switch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ exit: true }),

@@ -105,6 +105,8 @@ function makeRequest(url: string, options?: { method?: string; body?: string; he
 // ── Tests ───────────────────────────────────────────────────────────────────
 describe("Jobs API", () => {
   const { auth } = require("@/lib/auth/config");
+  const Agent = require("@/models/Agent").default;
+  const Job = require("@/models/Job");
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -157,6 +159,28 @@ describe("Jobs API", () => {
     expect(query["requirements.skills"]).toEqual({ $all: [expect.any(RegExp), expect.any(RegExp)] });
     expect(query.showSalary).toBe(false);
     expect(Array.isArray(query.$and)).toBe(true);
+  });
+
+  it("GET /api/jobs keeps invoiceable agent lookup limited to directly assigned jobs", async () => {
+    auth.mockResolvedValue({ user: { id: "agent_user_001", role: "agent", locale: "en" } });
+
+    Agent.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          _id: "agent_doc_001",
+          assignedEmployerIds: ["emp_001", "emp_002"],
+        }),
+      }),
+    });
+
+    const { GET } = await import("@/app/api/jobs/route");
+    const req = makeRequest("/api/jobs?invoiceableOnly=true");
+
+    await GET(req, { params: Promise.resolve({}) });
+
+    const query = Job.find.mock.calls[0][0];
+    expect(query.status).toBeUndefined();
+    expect(query.$or).toEqual([{ agentId: "agent_doc_001" }]);
   });
 
   it("GET /api/jobs returns 401 when unauthenticated", async () => {

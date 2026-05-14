@@ -51,6 +51,15 @@ export const targetProfileUpdateSchema = z.object({
 });
 
 /* ------------------------------------------------------------------ */
+/*  Reassign — admin transfers an active profile                       */
+/* ------------------------------------------------------------------ */
+
+export const targetProfileReassignSchema = z.object({
+  newAssigneeId: commonSchemas.objectId,
+  reason: z.string().max(500).trim().optional(),
+});
+
+/* ------------------------------------------------------------------ */
 /*  Monthly distribution                                               */
 /* ------------------------------------------------------------------ */
 

@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 import { commonSchemas } from "./index";
+import { INVOICE_UPDATE_STATUSES } from "@/lib/invoices/status";
 
 // ── AI Feature Keys ──────────────────────────────────────────────────────────
 const AI_FEATURE_KEYS = [
@@ -115,10 +116,16 @@ export const subscriptionRenewSchema = z.object({
 
 // ── PATCH /api/invoices/[id] ─────────────────────────────────────────────────
 export const invoiceUpdateSchema = z.object({
-  status: z.enum(["draft", "issued", "sent", "paid", "overdue", "void", "cancelled"]).optional(),
+  status: z.enum(INVOICE_UPDATE_STATUSES).optional(),
   notes: z.string().max(2000).trim().optional(),
   internalNotes: z.string().max(2000).trim().optional(),
   voidReason: z.string().max(500).trim().optional(),
+  rejectionReason: z.string().max(500).trim().optional(),
+});
+
+// ── POST /api/invoices/[id]/delivery ────────────────────────────────────────
+export const invoiceDeliverySchema = z.object({
+  action: z.enum(["sent", "viewed", "downloaded", "reminder"]),
 });
 
 // ── POST /api/invoices/recruitment ──────────────────────────────────────────
@@ -165,7 +172,7 @@ export const recruitmentInvoiceCreateSchema = z.object({
   notes: z.string().max(2000).trim().optional(),
   internalNotes: z.string().max(2000).trim().optional(),
   // Status
-  status: z.enum(["draft", "issued"]).default("issued"),
+  status: z.enum(["draft", "pending_approval", "issued"]).default("issued"),
 });
 
 // ── POST /api/invoices/[id]/payments ────────────────────────────────────────

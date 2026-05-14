@@ -65,7 +65,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     ]),
     ExhibitionRequest.aggregate([
       { $match: baseFilter },
-      { $group: { _id: "$participationType", count: { $sum: 1 } } },
+      { $unwind: "$participationTypes" },
+      { $group: { _id: "$participationTypes", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
     ExhibitionRequest.aggregate([

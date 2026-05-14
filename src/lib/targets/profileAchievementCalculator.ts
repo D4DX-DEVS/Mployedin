@@ -154,6 +154,8 @@ export interface MonthlyAchievement extends AchievementResult {
   overallProgress: number;
 }
 
+export type IncentiveTier = "none" | "bronze" | "silver" | "gold" | "platinum";
+
 export interface EnrichedProfile {
   // Spread from ITargetProfile (lean)
   _id: string;
@@ -186,6 +188,7 @@ export interface EnrichedProfile {
   employeePending: number;
   financePending: number;
   riskScore: "high" | "medium" | "low";
+  incentiveTier: IncentiveTier;
   monthlyAchievements: MonthlyAchievement[];
 }
 
@@ -237,9 +240,11 @@ export async function calculateMonthlyAchievements(
       const ep = mt.employerTarget > 0 ? Math.min(Math.round((ea / mt.employerTarget) * 100), 999) : 0;
       const emp = mt.employeeTarget > 0 ? Math.min(Math.round((emA / mt.employeeTarget) * 100), 999) : 0;
       const fp = mt.financeTarget > 0 ? Math.min(Math.round((fA / mt.financeTarget) * 100), 999) : 0;
-      const totalTarget = mt.employerTarget + mt.employeeTarget;
-      const totalAchieved = ea + emA;
-      const overall = totalTarget > 0 ? Math.min(Math.round((totalAchieved / totalTarget) * 100), 999) : 0;
+      const overall = calculateOverallTargetProgress([
+        { target: mt.employerTarget, progress: ep },
+        { target: mt.employeeTarget, progress: emp },
+        { target: mt.financeTarget, progress: fp },
+      ]);
 
       return {
         month,
@@ -270,6 +275,27 @@ function pct(achieved: number, target: number): number {
   return target > 0 ? Math.min(Math.round((achieved / target) * 100), 999) : 0;
 }
 
+export function calculateOverallTargetProgress(
+  categories: { target: number; progress: number }[]
+): number {
+  const activeCategories = categories.filter((category) => category.target > 0);
+
+  if (activeCategories.length === 0) {
+    return 0;
+  }
+
+  const totalProgress = activeCategories.reduce((sum, category) => sum + category.progress, 0);
+  return Math.min(Math.round(totalProgress / activeCategories.length), 999);
+}
+
+export function getIncentiveTier(overallProgress: number): IncentiveTier {
+  if (overallProgress >= 100) return "platinum";
+  if (overallProgress >= 80) return "gold";
+  if (overallProgress >= 60) return "silver";
+  if (overallProgress >= 40) return "bronze";
+  return "none";
+}
+
 export async function enrichProfile(
   profile: Record<string, unknown>
 ): Promise<EnrichedProfile> {
@@ -290,10 +316,11 @@ export async function enrichProfile(
   const employerProgress = pct(achievements.employerAchieved, empTarget);
   const employeeProgress = pct(achievements.employeeAchieved, emplTarget);
   const financeProgress = pct(achievements.financeAchieved, finTarget);
-
-  const totalTarget = empTarget + emplTarget;
-  const totalAchieved = achievements.employerAchieved + achievements.employeeAchieved;
-  const overallProgress = totalTarget > 0 ? Math.min(Math.round((totalAchieved / totalTarget) * 100), 999) : 0;
+  const overallProgress = calculateOverallTargetProgress([
+    { target: empTarget, progress: employerProgress },
+    { target: emplTarget, progress: employeeProgress },
+    { target: finTarget, progress: financeProgress },
+  ]);
 
   // Risk calculation
   const currentMonth = new Date().getMonth() + 1;
@@ -331,6 +358,7 @@ export async function enrichProfile(
     employeePending: Math.max(0, emplTarget - achievements.employeeAchieved),
     financePending: Math.max(0, finTarget - achievements.financeAchieved),
     riskScore,
+    incentiveTier: getIncentiveTier(overallProgress),
     monthlyAchievements,
   } as EnrichedProfile;
 }

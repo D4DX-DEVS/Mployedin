@@ -114,6 +114,30 @@ export function withAuth(
         );
       }
 
+      // ── Write-scoping: agents and super-agents get READ-ONLY access.
+      // Only admin retains full write access during tenant view.
+      const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+      const isWriteRequest = WRITE_METHODS.has(req.method);
+      const actorCanWrite = role === "admin"; // only admin can write during tenant view
+
+      if (isWriteRequest && !actorCanWrite) {
+        return NextResponse.json(
+          { error: "Tenant view is read-only for your role" },
+          { status: 403 }
+        );
+      }
+
+      // ── Enforce RBAC guard even during tenant view
+      if (guard && "resource" in guard && "action" in guard) {
+        const allowed = canAccess("employer" as UserRole, guard.resource, guard.action);
+        if (!allowed) {
+          return NextResponse.json(
+            { error: "Forbidden — insufficient permissions" },
+            { status: 403 }
+          );
+        }
+      }
+
       // Build a tenant-view ctx: override userId and role so all employer API
       // lookups (Employer.findOne({ userId: ctx.userId })) work transparently.
       const tenantCtx: AuthContext = {

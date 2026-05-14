@@ -4,16 +4,43 @@ import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import TargetProfile from "@/models/TargetProfile";
 import "@/models/City";
 import "@/models/State";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import type { UserRole } from "@/types/user";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
 import bcrypt from "bcryptjs";
 import { validateBody } from "@/lib/validators";
 import { superAgentCreateSchema, superAgentUpdateSchema } from "@/lib/validators/admin";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
+
+type DirectoryAvailability = "available" | "has_active_target" | "inactive";
+
+interface DirectoryTargetProfileSummary {
+  id: string;
+  year: number;
+  region?: string;
+  overallProgress: number;
+  riskScore: "high" | "medium" | "low";
+}
+
+function getLocationName(location: unknown): string | null {
+  if (!location || typeof location !== "object") return null;
+
+  const candidate = location as { name?: unknown; nameAr?: unknown };
+  if (typeof candidate.name === "string" && candidate.name.trim()) return candidate.name.trim();
+  if (typeof candidate.nameAr === "string" && candidate.nameAr.trim()) return candidate.nameAr.trim();
+  return null;
+}
+
+function uniqueStrings(values: Array<string | null | undefined>): string[] {
+  return Array.from(
+    new Set(values.filter((value): value is string => Boolean(value && value.trim())))
+  );
+}
 
 /**
  * GET /api/admin/super-agents — list super agents with profile data
@@ -23,9 +50,14 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
+  const directoryMode = searchParams.get("directory") === "create-target";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-  const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
+  const limit = Math.min(directoryMode ? 500 : 100, parseInt(searchParams.get("limit") ?? "10"));
   const search = searchParams.get("search") ?? "";
+  const targetYear = Math.max(2020, parseInt(searchParams.get("targetYear") ?? String(new Date().getFullYear())));
+  const availabilityFilter = searchParams.get("availability") ?? "all";
+  const riskFilter = searchParams.get("riskScore") ?? "all";
+  const regionFilter = (searchParams.get("region") ?? "").trim().toLowerCase();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { role: "super_agent" };
@@ -37,15 +69,23 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     ];
   }
 
-  const [users, total] = await Promise.all([
-    User.find(query)
-      .select("-passwordHash")
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean(),
-    User.countDocuments(query),
-  ]);
+  const [users, total] = directoryMode
+    ? await Promise.all([
+        User.find(query)
+          .select("-passwordHash")
+          .sort({ isActive: -1, name: 1, createdAt: -1 })
+          .lean(),
+        User.countDocuments(query),
+      ])
+    : await Promise.all([
+        User.find(query)
+          .select("-passwordHash")
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean(),
+        User.countDocuments(query),
+      ]);
 
   // Fetch super agent profiles
   const userIds = users.map((u) => u._id);
@@ -93,10 +133,129 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     };
   });
 
-  return NextResponse.json({
-    superAgents: enriched,
-    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-  });
+      if (!directoryMode) {
+        return NextResponse.json({
+          superAgents: enriched,
+          pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+        });
+      }
+
+      const targetProfiles = await TargetProfile.find({
+        assigneeId: { $in: userIds },
+        assigneeRole: "super_agent",
+        year: targetYear,
+        status: "active",
+      }).lean();
+
+      const enrichedTargetProfiles = targetProfiles.length > 0
+        ? await enrichProfiles(targetProfiles as unknown as Record<string, unknown>[])
+        : [];
+
+      const targetProfileMap = new Map<string, DirectoryTargetProfileSummary>(
+        enrichedTargetProfiles.map((profile) => [
+          profile.assigneeId,
+          {
+            id: profile._id,
+            year: profile.year,
+            region: profile.region,
+            overallProgress: profile.overallProgress,
+            riskScore: profile.riskScore,
+          },
+        ])
+      );
+
+      const directoryRows = enriched.map((user) => {
+        const userId = user._id.toString();
+        const profile = profileMap.get(userId);
+        const regionNames = uniqueStrings([
+          ...(profile?.assignedStateIds ?? []).map(getLocationName),
+          ...(profile?.assignedCityIds ?? []).map(getLocationName),
+          profile?.country,
+        ]).sort((left, right) => left.localeCompare(right));
+        const targetProfile = targetProfileMap.get(userId) ?? null;
+        const availability: DirectoryAvailability = user.isActive === false
+          ? "inactive"
+          : targetProfile
+            ? "has_active_target"
+            : "available";
+
+        return {
+          ...user,
+          directory: {
+            teamSize: profile?.agentIds?.length ?? 0,
+            regionNames,
+            availability,
+            availabilityReason:
+              availability === "inactive"
+                ? "Inactive supervisor"
+                : availability === "has_active_target"
+                  ? `Active ${targetYear} target profile already exists`
+                  : null,
+            targetProfile,
+          },
+        };
+      });
+
+      const filteredRows = directoryRows
+        .filter((row) => {
+          const directory = row.directory;
+          if (availabilityFilter === "available" && directory.availability !== "available") return false;
+          if (availabilityFilter === "has_active_target" && directory.availability !== "has_active_target") return false;
+          if (availabilityFilter === "inactive" && directory.availability !== "inactive") return false;
+          if (riskFilter !== "all" && directory.targetProfile?.riskScore !== riskFilter) return false;
+
+          if (regionFilter) {
+            const rowRegions = [
+              ...directory.regionNames,
+              directory.targetProfile?.region ?? "",
+            ].map((value) => value.toLowerCase());
+
+            if (!rowRegions.some((value) => value.includes(regionFilter))) {
+              return false;
+            }
+          }
+
+          return true;
+        })
+        .sort((left, right) => {
+          const availabilityRank: Record<DirectoryAvailability, number> = {
+            available: 0,
+            has_active_target: 1,
+            inactive: 2,
+          };
+
+          const leftAvailability = left.directory.availability as DirectoryAvailability;
+          const rightAvailability = right.directory.availability as DirectoryAvailability;
+          const availabilityDelta = availabilityRank[leftAvailability] - availabilityRank[rightAvailability];
+          if (availabilityDelta !== 0) return availabilityDelta;
+          return left.name.localeCompare(right.name);
+        });
+
+      const startIndex = (page - 1) * limit;
+      const paginatedRows = filteredRows.slice(startIndex, startIndex + limit);
+      const directoryRegions = Array.from(
+        new Set(directoryRows.flatMap((row) => row.directory.regionNames))
+      ).sort((left, right) => left.localeCompare(right));
+
+      return NextResponse.json({
+        superAgents: paginatedRows,
+        directoryTotals: {
+          matchingSupervisors: filteredRows.length,
+          totalTeamSize: filteredRows.reduce((sum, row) => sum + row.directory.teamSize, 0),
+          withActiveTarget: filteredRows.filter((row) => row.directory.targetProfile).length,
+          highRiskProfiles: filteredRows.filter((row) => row.directory.targetProfile?.riskScore === "high").length,
+        },
+        directoryFilters: {
+          regions: directoryRegions,
+        },
+        pagination: {
+          page,
+          limit,
+          total: filteredRows.length,
+          pages: Math.max(1, Math.ceil(filteredRows.length / limit)),
+          unfilteredTotal: total,
+        },
+      });
 }
 
 /**

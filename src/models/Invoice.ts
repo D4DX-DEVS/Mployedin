@@ -1,7 +1,8 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { INVOICE_STATUSES, INVOICE_TERMINAL_STATUSES, type InvoiceStatusValue } from "@/lib/invoices/status";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-export type InvoiceStatus = "draft" | "issued" | "sent" | "paid" | "partially_paid" | "overdue" | "void" | "cancelled" | "refunded" | "credit_note";
+export type InvoiceStatus = InvoiceStatusValue;
 export type InvoiceType = "new" | "renewal" | "upgrade" | "downgrade" | "recruitment" | "premium_posting" | "featured_promotion" | "exhibition" | "bulk_hiring" | "consulting" | "custom";
 export type InvoiceCategory = "subscription" | "recruitment" | "premium_posting" | "featured_promotion" | "exhibition" | "bulk_hiring" | "consulting" | "custom_enterprise";
 export type TaxType = "gst" | "vat" | "reverse_charge" | "none";
@@ -110,9 +111,16 @@ export interface IInvoice extends Document {
 
   // Status
   status: InvoiceStatus;
-  issuedAt: Date;
+  issuedAt?: Date;
   paidAt?: Date;
   markedPaidBy?: mongoose.Types.ObjectId;
+
+  // Delivery tracking
+  sentAt?: Date;
+  viewedAt?: Date;
+  downloadedAt?: Date;
+  reminderCount: number;
+  lastReminderAt?: Date;
 
   // Notes
   notes?: string;
@@ -120,6 +128,11 @@ export interface IInvoice extends Document {
 
   // Audit
   createdBy?: mongoose.Types.ObjectId;
+  approvedBy?: mongoose.Types.ObjectId;
+  approvedAt?: Date;
+  rejectedBy?: mongoose.Types.ObjectId;
+  rejectedAt?: Date;
+  rejectionReason?: string;
   voidedBy?: mongoose.Types.ObjectId;
   voidedAt?: Date;
   voidReason?: string;
@@ -252,12 +265,19 @@ const InvoiceSchema = new Schema<IInvoice>(
     // Status
     status: {
       type: String,
-      enum: ["draft", "issued", "sent", "paid", "partially_paid", "overdue", "void", "cancelled", "refunded", "credit_note"],
+      enum: INVOICE_STATUSES,
       default: "issued",
     },
-    issuedAt: { type: Date, required: true, default: Date.now },
+    issuedAt: Date,
     paidAt: Date,
     markedPaidBy: { type: Schema.Types.ObjectId, ref: "User" },
+
+    // Delivery tracking
+    sentAt: Date,
+    viewedAt: Date,
+    downloadedAt: Date,
+    reminderCount: { type: Number, min: 0, default: 0 },
+    lastReminderAt: Date,
 
     // Notes
     notes: String,
@@ -265,6 +285,11 @@ const InvoiceSchema = new Schema<IInvoice>(
 
     // Audit
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    approvedAt: Date,
+    rejectedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    rejectedAt: Date,
+    rejectionReason: String,
     voidedBy: { type: Schema.Types.ObjectId, ref: "User" },
     voidedAt: Date,
     voidReason: String,
@@ -314,7 +339,7 @@ InvoiceSchema.pre("save", function () {
   this.platformRevenue = Math.round((this.totalAmount - totalCommission) * 100) / 100;
 
   // Auto-update status based on payments
-  if (!["void", "cancelled", "refunded"].includes(this.status)) {
+  if (!(INVOICE_TERMINAL_STATUSES as readonly string[]).includes(this.status)) {
     if (this.paidAmount >= this.totalAmount && this.totalAmount > 0) {
       this.status = "paid";
       if (!this.paidAt) this.paidAt = new Date();

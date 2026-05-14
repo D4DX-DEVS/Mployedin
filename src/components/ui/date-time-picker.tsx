@@ -33,6 +33,8 @@ interface DateTimePickerProps {
   required?: boolean;
   /** "datetime" shows date+time; "date" shows date only; "time" shows time only */
   mode?: "datetime" | "date" | "time";
+  container?: HTMLElement | null;
+  modal?: boolean;
 }
 
 export function DateTimePicker({
@@ -44,6 +46,8 @@ export function DateTimePicker({
   className,
   required,
   mode = "datetime",
+  container,
+  modal = false,
 }: DateTimePickerProps) {
   const t = useTranslations("calendar");
   const locale = useLocale();
@@ -146,7 +150,7 @@ export function DateTimePicker({
           {label} {required && <span className="text-destructive">*</span>}
         </label>
       )}
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={setOpen} modal={modal}>
         <PopoverTrigger asChild>
           <button
             type="button"
@@ -166,6 +170,7 @@ export function DateTimePicker({
           className="w-auto p-0 rounded-xl border border-border/60 shadow-xl"
           align="start"
           sideOffset={6}
+          container={container}
         >
           <div className="flex">
             {/* Calendar side */}

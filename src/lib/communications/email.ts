@@ -27,6 +27,12 @@ interface EmailPayload {
   employerId?: string;
   /** Sender display name override (e.g. company name) */
   senderName?: string;
+  /** File attachments */
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }>;
 }
 
 interface SmtpConfig {
@@ -174,6 +180,11 @@ export async function sendEmail(payload: EmailPayload): Promise<{ messageId: str
       text: payload.text ?? payload.html.replace(/<[^>]+>/g, ""),
       replyTo: payload.replyTo,
       headers,
+      attachments: payload.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
     });
 
     // Log successful delivery (non-blocking)

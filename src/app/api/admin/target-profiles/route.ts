@@ -11,10 +11,23 @@ import {
 import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
 import { generateMonthlyDistribution } from "@/lib/targets/distributionStrategies";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { notifyTargetAssigned } from "@/lib/notifications/trigger";
 import User from "@/models/User";
 import SuperAgent from "@/models/SuperAgent";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
+
+async function getEligibleAssigneeIds(assigneeIds: string[], assigneeRole: string): Promise<Set<string>> {
+  const users = await User.find({
+    _id: { $in: assigneeIds },
+    role: assigneeRole,
+    isActive: { $ne: false },
+  })
+    .select("_id")
+    .lean();
+
+  return new Set(users.map((user) => String(user._id)));
+}
 
 /* ------------------------------------------------------------------ */
 /*  GET  /api/admin/target-profiles                                    */
@@ -23,7 +36,9 @@ async function handler(req: NextRequest, _ctx: AuthCtx) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
-  const year = parseInt(searchParams.get("year") ?? String(new Date().getFullYear()));
+  const currentYear = new Date().getFullYear();
+  const requestedYear = parseInt(searchParams.get("year") ?? String(currentYear));
+  const year = Number.isFinite(requestedYear) ? requestedYear : currentYear;
   const status = searchParams.get("status") ?? "active";
   const region = searchParams.get("region");
   const assigneeRole = searchParams.get("assigneeRole");
@@ -37,7 +52,7 @@ async function handler(req: NextRequest, _ctx: AuthCtx) {
   if (assigneeRole && assigneeRole !== "all") query.assigneeRole = assigneeRole;
   // Only show top-level profiles (supervisor) by default
   if (!searchParams.has("includeAgents")) {
-    query.assigneeRole = assigneeRole || "super_agent";
+    query.assigneeRole = assigneeRole && assigneeRole !== "all" ? assigneeRole : "super_agent";
   }
 
   const [profiles, total] = await Promise.all([
@@ -123,6 +138,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // Bulk create
   if (action === "bulk") {
     const body = await validateBody(req, targetProfileBulkCreateSchema);
+    const eligibleAssigneeIds = await getEligibleAssigneeIds(body.assigneeIds, body.assigneeRole);
+
+    if (eligibleAssigneeIds.size !== body.assigneeIds.length) {
+      return NextResponse.json(
+        { error: "One or more selected assignees are inactive or no longer eligible for target assignment" },
+        { status: 400 }
+      );
+    }
+
     const results = [];
 
     for (const assigneeId of body.assigneeIds) {
@@ -160,6 +184,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         status: "active",
       });
       results.push(profile);
+      void notifyTargetAssigned(
+        String(profile.assigneeId),
+        body.assigneeRole,
+        String(profile._id),
+        body.year,
+        ctx.locale
+      );
     }
 
     await logActivity({
@@ -171,7 +202,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       req,
     });
 
-    return NextResponse.json({ profiles: results, created: results.length }, { status: 201 });
+    return NextResponse.json({
+      profiles: results,
+      created: results.length,
+      skipped: body.assigneeIds.length - results.length,
+    }, { status: 201 });
   }
 
   // Clone from previous year
@@ -226,6 +261,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         status: "active",
       });
       cloned.push(profile);
+      void notifyTargetAssigned(
+        String(profile.assigneeId),
+        src.assigneeRole as "agent" | "super_agent",
+        String(profile._id),
+        body.targetYear,
+        ctx.locale
+      );
     }
 
     await logActivity({
@@ -242,6 +284,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Single create
   const body = await validateBody(req, targetProfileCreateSchema);
+  const eligibleAssigneeIds = await getEligibleAssigneeIds([body.assigneeId], body.assigneeRole);
+
+  if (!eligibleAssigneeIds.has(body.assigneeId)) {
+    return NextResponse.json(
+      { error: "The selected assignee is inactive or no longer eligible for target assignment" },
+      { status: 400 }
+    );
+  }
 
   const existing = await TargetProfile.findOne({
     assigneeId: body.assigneeId,
@@ -288,6 +338,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     },
     req,
   });
+
+  void notifyTargetAssigned(
+    String(profile.assigneeId),
+    body.assigneeRole,
+    String(profile._id),
+    body.year,
+    ctx.locale
+  );
 
   return NextResponse.json({ profile }, { status: 201 });
 }

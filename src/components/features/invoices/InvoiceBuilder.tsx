@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -18,8 +19,22 @@ import {
 } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-interface Job { _id: string; title: string; employerId: { _id: string; companyName: string } | string }
-interface Employer { _id: string; companyName: string; companyEmail?: string; phone?: string; address?: string; country?: string; taxId?: string }
+interface Job {
+  _id: string;
+  title: string;
+  employerId: { _id: string; companyName: string } | string;
+  agentId?: {
+    _id?: string;
+    commissionRate?: number;
+    userId?: { name?: string; email?: string };
+    superAgentId?: {
+      _id?: string;
+      overrideRate?: number;
+      userId?: { name?: string };
+    } | string;
+  } | string;
+}
+interface Employer { _id: string; companyName: string; companyEmail?: string; phone?: string; address?: string; country?: string; taxId?: string; employerProfileId?: string }
 interface LineItem { description: string; quantity: number; unitPrice: number; amount: number }
 
 interface InvoiceBuilderProps {
@@ -27,6 +42,8 @@ interface InvoiceBuilderProps {
   onClose: () => void;
   onSuccess: () => void;
   defaultCurrency?: string;
+  searchScope?: "admin" | "standard";
+  role?: "admin" | "super_agent" | "agent";
 }
 
 const INVOICE_CATEGORIES = [
@@ -69,14 +86,40 @@ const STEPS = [
   { id: 6, label: "Review & Generate", icon: FileCheck },
 ];
 
-export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AED" }: InvoiceBuilderProps) {
+function getEmployerId(employer: Employer): string {
+  return employer.employerProfileId ?? employer._id;
+}
+
+function isPopulatedJobEmployer(employerId: Job["employerId"]): employerId is Exclude<Job["employerId"], string> {
+  return typeof employerId === "object" && employerId !== null;
+}
+
+function mergeById<T extends { _id: string }>(current: T[], incoming: T[]): T[] {
+  const merged = new Map(current.map((item) => [item._id, item]));
+
+  for (const item of incoming) {
+    const existing = merged.get(item._id);
+    merged.set(item._id, existing ? { ...existing, ...item } : item);
+  }
+
+  return Array.from(merged.values());
+}
+
+export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AED", searchScope = "standard", role = "agent" }: InvoiceBuilderProps) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const dialogContentRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const attemptedEmployerBackfillsRef = useRef<Set<string>>(new Set());
 
   // Step 1 - Employer
   const [jobs, setJobs] = useState<Job[]>([]);
   const [employers, setEmployers] = useState<Employer[]>([]);
+  const [jobSearch, setJobSearch] = useState("");
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [loadingEmployers, setLoadingEmployers] = useState(false);
+  const [jobSearchError, setJobSearchError] = useState<string | null>(null);
+  const [employerSearchError, setEmployerSearchError] = useState<string | null>(null);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [selectedEmployerId, setSelectedEmployerId] = useState("");
   const [billingCompanyName, setBillingCompanyName] = useState("");
@@ -109,12 +152,17 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
-  const [invoiceStatus, setInvoiceStatus] = useState("issued");
+  const [invoiceStatus, setInvoiceStatus] = useState(role === "agent" ? "pending_approval" : "issued");
+  const debouncedJobSearch = useDebounce(jobSearch, 300);
 
   // Reset form when opened
   useEffect(() => {
     if (open) {
       setStep(1);
+      setJobs([]); setEmployers([]);
+      setJobSearch("");
+      setJobSearchError(null); setEmployerSearchError(null);
+      attemptedEmployerBackfillsRef.current = new Set();
       setSelectedJobId(""); setSelectedEmployerId("");
       setBillingCompanyName(""); setBillingAddress(""); setBillingCountry(""); setBillingTaxId("");
       setBillingContactPerson(""); setBillingEmail(""); setBillingPhone("");
@@ -122,35 +170,96 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       setLineItems([{ description: "", quantity: 1, unitPrice: 0, amount: 0 }]);
       setDiscountPercent(0); setServiceCharge(0); setTaxType("none"); setTaxPercent(0);
       setCurrency(defaultCurrency); setPaymentTerms("net_30"); setCustomPaymentDays(30);
-      setDueDate(""); setNotes(""); setInternalNotes(""); setInvoiceStatus("issued");
+      setDueDate(""); setNotes(""); setInternalNotes(""); setInvoiceStatus(role === "agent" ? "pending_approval" : "issued");
       setAgentRate(0); setSuperAgentRate(0);
-      fetchJobs(); fetchEmployers();
     }
-  }, [open, defaultCurrency]);
+  }, [open, defaultCurrency, role]);
 
-  const fetchJobs = useCallback(async () => {
+  const fetchJobs = useCallback(async (search: string) => {
+    setLoadingJobs(true);
+    setJobSearchError(null);
+
     try {
-      const res = await fetch("/api/jobs?limit=500&status=active");
-      if (res.ok) { const d = await res.json(); setJobs(d.jobs ?? []); }
-    } catch { /* */ }
+      const endpoint = searchScope === "admin" ? "/api/admin/jobs" : "/api/jobs";
+      const params = new URLSearchParams({ limit: "25", page: "1" });
+      if (searchScope !== "admin") params.set("invoiceableOnly", "true");
+      if (search.trim()) params.set("search", search.trim());
+
+      const res = await fetch(`${endpoint}?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setJobs((current) => mergeById(current, data.jobs ?? []));
+      } else {
+        setJobSearchError("Jobs could not be loaded right now.");
+      }
+    } catch {
+      setJobSearchError("Jobs could not be loaded right now.");
+    } finally {
+      setLoadingJobs(false);
+    }
+  }, [searchScope]);
+
+  const fetchEmployers = useCallback(async (search: string) => {
+    setLoadingEmployers(true);
+    setEmployerSearchError(null);
+
+    try {
+      const params = new URLSearchParams({ limit: "25", page: "1" });
+      if (search.trim()) params.set("search", search.trim());
+
+      const res = await fetch(`/api/employers?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        const normalizedEmployers = (data.employers ?? []).map((employer: Employer) => ({
+          ...employer,
+          _id: getEmployerId(employer),
+        }));
+        setEmployers((current) => mergeById(current, normalizedEmployers));
+      } else {
+        setEmployerSearchError("Employers could not be loaded right now.");
+      }
+    } catch {
+      setEmployerSearchError("Employers could not be loaded right now.");
+    } finally {
+      setLoadingEmployers(false);
+    }
   }, []);
 
-  const fetchEmployers = useCallback(async () => {
-    try {
-      const res = await fetch("/api/employers?limit=500");
-      if (res.ok) { const d = await res.json(); setEmployers(d.employers ?? []); }
-    } catch { /* */ }
-  }, []);
+  useEffect(() => {
+    if (!open) return;
+    void fetchJobs(debouncedJobSearch);
+  }, [open, debouncedJobSearch, fetchJobs]);
 
   // When job selected, auto-populate employer
   useEffect(() => {
     if (selectedJobId) {
       const job = jobs.find(j => j._id === selectedJobId);
       if (job) {
-        const empId = typeof job.employerId === "object" ? job.employerId._id : job.employerId;
+        const empId = isPopulatedJobEmployer(job.employerId) ? job.employerId._id : job.employerId;
+        const assignedAgent = typeof job.agentId === "object" ? job.agentId : undefined;
+        const assignedSuperAgent = assignedAgent && typeof assignedAgent.superAgentId === "object"
+          ? assignedAgent.superAgentId
+          : undefined;
+
+        const populatedEmployer = isPopulatedJobEmployer(job.employerId) ? job.employerId : null;
+
+        if (populatedEmployer) {
+          setEmployers((current) => mergeById(current, [{
+            _id: populatedEmployer._id,
+            companyName: populatedEmployer.companyName,
+          }]));
+        }
+
+        setAgentRate(assignedAgent?.commissionRate ?? 0);
+        setSuperAgentRate(assignedSuperAgent?.overrideRate ?? 0);
         setSelectedEmployerId(empId);
+        return;
       }
     }
+
+    setSelectedEmployerId("");
+    setAgentRate(0);
+    setSuperAgentRate(0);
   }, [selectedJobId, jobs]);
 
   // When employer selected, auto-populate billing
@@ -164,9 +273,21 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         setBillingAddress(emp.address || "");
         setBillingCountry(emp.country || "");
         setBillingTaxId(emp.taxId || "");
+        const hasFullBillingProfile = Boolean(emp.companyEmail || emp.phone || emp.address || emp.country || emp.taxId);
+        if (hasFullBillingProfile) return;
+      }
+
+      const selectedJob = jobs.find((job) => job._id === selectedJobId);
+  if (selectedJob && isPopulatedJobEmployer(selectedJob.employerId) && selectedJob.employerId.companyName) {
+        if (attemptedEmployerBackfillsRef.current.has(selectedEmployerId)) {
+          return;
+        }
+
+        attemptedEmployerBackfillsRef.current.add(selectedEmployerId);
+        void fetchEmployers(selectedJob.employerId.companyName);
       }
     }
-  }, [selectedEmployerId, employers]);
+  }, [selectedEmployerId, employers, jobs, selectedJobId, fetchEmployers]);
 
   // Calculations
   const subtotal = lineItems.reduce((s, li) => s + (li.quantity * li.unitPrice), 0);
@@ -175,8 +296,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const taxAmount = Math.round(afterDiscount * taxPercent / 100 * 100) / 100;
   const totalAmount = Math.round((afterDiscount + taxAmount + serviceCharge) * 100) / 100;
 
-  const agentCommission = Math.round(subtotal * agentRate / 100 * 100) / 100;
-  const superAgentCommission = Math.round(subtotal * superAgentRate / 100 * 100) / 100;
+  const agentCommission = Math.round(totalAmount * agentRate / 100 * 100) / 100;
+  const superAgentCommission = Math.round(totalAmount * superAgentRate / 100 * 100) / 100;
   const companyGross = totalAmount;
   const companyNet = Math.round((totalAmount - agentCommission - superAgentCommission) * 100) / 100;
 
@@ -199,6 +320,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   };
 
   const handleSubmit = async () => {
+    if (!selectedJobId) { toast.error("Please select a job first"); setStep(1); return; }
     if (!selectedEmployerId) { toast.error("Please select an employer"); setStep(1); return; }
     if (lineItems.some(li => !li.description || li.unitPrice <= 0)) { toast.error("Please fill all line items"); setStep(3); return; }
 
@@ -260,7 +382,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
   const canProceed = () => {
     switch (step) {
-      case 1: return !!selectedEmployerId;
+      case 1: return !!selectedJobId && !!selectedEmployerId;
       case 2: return !!category;
       case 3: return lineItems.every(li => li.description && li.unitPrice > 0);
       case 4: return true;
@@ -270,10 +392,33 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   };
 
   const fmt = (v: number) => `${currency} ${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const selectedJob = jobs.find((job) => job._id === selectedJobId);
+  const selectedEmployer = employers.find((employer) => employer._id === selectedEmployerId);
+  const selectedAgent = selectedJob && typeof selectedJob.agentId === "object" ? selectedJob.agentId : undefined;
+  const selectedSuperAgent = selectedAgent && typeof selectedAgent.superAgentId === "object" ? selectedAgent.superAgentId : undefined;
+  const statusOptions = role === "agent"
+    ? [{ value: "pending_approval", label: "Submit for Approval" }]
+    : [{ value: "draft", label: "Save as Draft" }, { value: "issued", label: "Issue Immediately" }, { value: "pending_approval", label: "Submit for Approval" }];
+  const previewStatusLabel = invoiceStatus === "pending_approval"
+    ? "PENDING APPROVAL"
+    : invoiceStatus === "draft"
+      ? "DRAFT"
+      : "ISSUED";
+  const previewStatusClass = invoiceStatus === "pending_approval"
+    ? "text-sky-600"
+    : invoiceStatus === "draft"
+      ? "text-amber-600"
+      : "text-emerald-600";
+  const jobOptions = jobs.map((job) => ({
+      value: job._id,
+      label: isPopulatedJobEmployer(job.employerId) && job.employerId.companyName
+        ? `${job.title} - ${job.employerId.companyName}`
+        : job.title,
+    }));
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-hidden p-0">
+      <DialogContent ref={dialogContentRef} className="max-h-[90vh] max-w-3xl overflow-hidden p-0">
         <DialogHeader className="border-b border-border/80 px-6 py-4">
           <DialogTitle className="text-lg font-semibold">Professional Invoice Builder</DialogTitle>
           {/* Step Indicator */}
@@ -304,41 +449,68 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
           {/* STEP 1: Employer Details */}
           {step === 1 && (
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Employer & Billing Details</h3>
+              <h3 className="text-sm font-semibold text-foreground">Recruitment Job & Billing Details</h3>
+              <div className="rounded-xl border border-border/70 bg-secondary/30 px-4 py-3 text-sm text-muted-foreground">
+                Select the placement job first. The employer and commission setup are then pulled from that assignment so the invoice follows the real recruitment workflow.
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <Label className="text-xs">Job (optional)</Label>
+                  <Label className="text-xs">Placement Job *</Label>
                   <SearchableSelect
                     id="inv-job"
                     className="mt-1 h-10 w-full rounded-lg border-border bg-card"
-                    options={[{ value: "", label: "— No job selected —" }, ...jobs.map(j => ({ value: j._id, label: j.title }))]}
+                    options={jobOptions}
                     value={selectedJobId}
                     onValueChange={setSelectedJobId}
-                    placeholder="Select job"
+                    searchValue={jobSearch}
+                    onSearchValueChange={setJobSearch}
+                    searchPlaceholder="Search jobs by title or employer"
+                    loading={loadingJobs}
+                    emptyMessage={jobSearchError ?? (debouncedJobSearch ? "No matching jobs found." : "No jobs available yet.")}
+                    placeholder="Search and select the billed job"
+                    container={dialogContentRef.current}
+                    modal
                   />
+                  {jobSearchError ? <p className="mt-2 text-xs text-rose-600">{jobSearchError}</p> : null}
                 </div>
                 <div>
-                  <Label className="text-xs">Employer *</Label>
-                  <SearchableSelect
-                    id="inv-employer"
-                    className="mt-1 h-10 w-full rounded-lg border-border bg-card"
-                    options={employers.map(e => ({ value: e._id, label: e.companyName }))}
-                    value={selectedEmployerId}
-                    onValueChange={setSelectedEmployerId}
-                    placeholder="Select employer"
-                  />
+                  <Label className="text-xs">Employer</Label>
+                  <div className="mt-1 flex min-h-10 items-center rounded-lg border border-border/70 bg-secondary/30 px-3 py-2 text-sm">
+                    {selectedEmployer?.companyName
+                      ?? (selectedJob && isPopulatedJobEmployer(selectedJob.employerId) ? selectedJob.employerId.companyName : "Select a job to lock the employer")}
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">Employer is derived from the selected job and cannot be changed independently.</p>
+                  {employerSearchError ? <p className="mt-2 text-xs text-rose-600">{employerSearchError}</p> : null}
                 </div>
               </div>
+              {selectedJob ? (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Selected Job</p>
+                    <p className="mt-2 text-sm font-medium text-foreground">{selectedJob.title}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Assigned Agent Rate</p>
+                    <p className="mt-2 text-sm font-medium text-foreground">{agentRate}%</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{selectedAgent?.userId?.name ?? selectedAgent?.userId?.email ?? "No assigned agent profile"}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Supervisor Override</p>
+                    <p className="mt-2 text-sm font-medium text-foreground">{superAgentRate}%</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{selectedSuperAgent?.userId?.name ?? "No super agent override"}</p>
+                  </div>
+                </div>
+              ) : null}
               <div className="rounded-xl border border-border/70 bg-secondary/30 p-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Billing Information</p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div><Label className="text-xs">Company Name</Label><Input className="mt-1 h-9 rounded-lg" value={billingCompanyName} onChange={e => setBillingCompanyName(e.target.value)} /></div>
-                  <div><Label className="text-xs">Contact Person</Label><Input className="mt-1 h-9 rounded-lg" value={billingContactPerson} onChange={e => setBillingContactPerson(e.target.value)} /></div>
-                  <div><Label className="text-xs">Email</Label><Input type="email" className="mt-1 h-9 rounded-lg" value={billingEmail} onChange={e => setBillingEmail(e.target.value)} /></div>
-                  <div><Label className="text-xs">Phone</Label><Input className="mt-1 h-9 rounded-lg" value={billingPhone} onChange={e => setBillingPhone(e.target.value)} /></div>
-                  <div className="sm:col-span-2"><Label className="text-xs">Address</Label><Input className="mt-1 h-9 rounded-lg" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} /></div>
-                  <div><Label className="text-xs">Country</Label><Input className="mt-1 h-9 rounded-lg" value={billingCountry} onChange={e => setBillingCountry(e.target.value)} /></div>
-                  <div><Label className="text-xs">Tax ID / GSTIN / VAT</Label><Input className="mt-1 h-9 rounded-lg" value={billingTaxId} onChange={e => setBillingTaxId(e.target.value)} /></div>
+                  <div><Label className="text-xs">Company Name</Label><Input disabled={!selectedJobId} className="mt-1 h-9 rounded-lg" value={billingCompanyName} onChange={e => setBillingCompanyName(e.target.value)} /></div>
+                  <div><Label className="text-xs">Contact Person</Label><Input disabled={!selectedJobId} className="mt-1 h-9 rounded-lg" value={billingContactPerson} onChange={e => setBillingContactPerson(e.target.value)} /></div>
+                  <div><Label className="text-xs">Email</Label><Input disabled={!selectedJobId} type="email" className="mt-1 h-9 rounded-lg" value={billingEmail} onChange={e => setBillingEmail(e.target.value)} /></div>
+                  <div><Label className="text-xs">Phone</Label><Input disabled={!selectedJobId} className="mt-1 h-9 rounded-lg" value={billingPhone} onChange={e => setBillingPhone(e.target.value)} /></div>
+                  <div className="sm:col-span-2"><Label className="text-xs">Address</Label><Input disabled={!selectedJobId} className="mt-1 h-9 rounded-lg" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} /></div>
+                  <div><Label className="text-xs">Country</Label><Input disabled={!selectedJobId} className="mt-1 h-9 rounded-lg" value={billingCountry} onChange={e => setBillingCountry(e.target.value)} /></div>
+                  <div><Label className="text-xs">Tax ID / GSTIN / VAT</Label><Input disabled={!selectedJobId} className="mt-1 h-9 rounded-lg" value={billingTaxId} onChange={e => setBillingTaxId(e.target.value)} /></div>
                 </div>
               </div>
             </div>
@@ -347,18 +519,14 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
           {/* STEP 2: Service Details */}
           {step === 2 && (
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">Service & Category Details</h3>
+              <h3 className="text-sm font-semibold text-foreground">Recruitment Service Details</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <Label className="text-xs">Invoice Category *</Label>
-                  <SearchableSelect
-                    id="inv-category"
-                    className="mt-1 h-10 w-full rounded-lg border-border bg-card"
-                    options={INVOICE_CATEGORIES}
-                    value={category}
-                    onValueChange={setCategory}
-                    placeholder="Select category"
-                  />
+                  <Label className="text-xs">Invoice Type</Label>
+                  <div className="mt-1 flex min-h-10 items-center rounded-lg border border-border/70 bg-secondary/30 px-3 py-2 text-sm font-medium text-foreground">
+                    Recruitment placement invoice
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">This flow is optimized for employer invoices tied to a specific job placement.</p>
                 </div>
                 <div>
                   <Label className="text-xs">Currency</Label>
@@ -429,17 +597,25 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
           {step === 4 && (
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-foreground">Commission Engine</h3>
-              <p className="text-xs text-muted-foreground">Commissions are auto-calculated based on agent/supervisor profiles. Override rates here if needed.</p>
+              <p className="text-xs text-muted-foreground">Commission percentages come from the assigned agent and super-agent setup. These are estimated payout figures; final saved commissions still apply platform country override rules when they exist.</p>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div><Label className="text-xs">Agent Commission %</Label><Input type="number" min={0} max={100} step={0.5} className="mt-1 h-9 rounded-lg" value={agentRate} onChange={e => setAgentRate(parseFloat(e.target.value) || 0)} /></div>
-                <div><Label className="text-xs">Super Agent Commission %</Label><Input type="number" min={0} max={100} step={0.5} className="mt-1 h-9 rounded-lg" value={superAgentRate} onChange={e => setSuperAgentRate(parseFloat(e.target.value) || 0)} /></div>
+                <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Agent Rate Source</p>
+                  <p className="mt-2 text-xl font-semibold text-sky-600">{agentRate}%</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{selectedAgent?.userId?.name ?? selectedAgent?.userId?.email ?? "No assigned agent profile"}</p>
+                </div>
+                <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Super Agent Override</p>
+                  <p className="mt-2 text-xl font-semibold text-indigo-600">{superAgentRate}%</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{selectedSuperAgent?.userId?.name ?? "No super agent override"}</p>
+                </div>
               </div>
               <div className="rounded-xl border border-border/70 bg-secondary/30 p-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Commission Breakdown</p>
                 <div className="space-y-1.5 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Invoice Amount</span><span className="font-medium">{fmt(totalAmount)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Agent ({agentRate}%)</span><span className="font-medium text-sky-600">{fmt(agentCommission)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Super Agent ({superAgentRate}%)</span><span className="font-medium text-indigo-600">{fmt(superAgentCommission)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Billed Invoice Amount</span><span className="font-medium">{fmt(totalAmount)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Estimated Agent Payout ({agentRate}%)</span><span className="font-medium text-sky-600">{fmt(agentCommission)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Estimated Super Agent Payout ({superAgentRate}%)</span><span className="font-medium text-indigo-600">{fmt(superAgentCommission)}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Tax ({taxType !== "none" ? `${taxPercent}%` : "—"})</span><span className="font-medium text-amber-600">{fmt(taxAmount)}</span></div>
                   <div className="border-t border-border/70 pt-1.5" />
                   <div className="flex justify-between"><span className="text-muted-foreground">Company Gross Revenue</span><span className="font-bold">{fmt(companyGross)}</span></div>
@@ -467,10 +643,11 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                   <SearchableSelect
                     id="inv-status"
                     className="mt-1 h-10 w-full rounded-lg border-border bg-card"
-                    options={[{ value: "draft", label: "Save as Draft" }, { value: "issued", label: "Issue Immediately" }]}
+                    options={statusOptions}
                     value={invoiceStatus}
                     onValueChange={setInvoiceStatus}
                   />
+                  {role === "agent" ? <p className="mt-2 text-xs text-muted-foreground">Finance approval is required before the employer receives this invoice.</p> : null}
                 </div>
               </div>
               <div><Label className="text-xs">Notes (visible on invoice)</Label><Textarea className="mt-1 rounded-lg" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Payment instructions, bank details, etc." /></div>
@@ -487,8 +664,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 <div className="flex items-start justify-between border-b border-border/70 pb-4">
                   <div>
                     <p className="text-lg font-bold text-foreground">INVOICE</p>
-                    <p className="text-xs text-muted-foreground">{INVOICE_CATEGORIES.find(c => c.value === category)?.label}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Status: <span className={invoiceStatus === "draft" ? "text-amber-600" : "text-emerald-600"}>{invoiceStatus === "draft" ? "DRAFT" : "ISSUED"}</span></p>
+                    <p className="text-xs text-muted-foreground">Recruitment Placement</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Status: <span className={previewStatusClass}>{previewStatusLabel}</span></p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-foreground">{billingCompanyName || "—"}</p>
@@ -572,7 +749,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
               </Button>
             ) : (
               <Button onClick={handleSubmit} disabled={submitting} className="h-9 gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700">
-                {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><FileCheck className="h-4 w-4" /> Generate Invoice</>}
+                {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><FileCheck className="h-4 w-4" /> {role === "agent" ? "Submit Invoice" : "Generate Invoice"}</>}
               </Button>
             )}
           </div>

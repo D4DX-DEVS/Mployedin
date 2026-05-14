@@ -60,6 +60,11 @@ export function verifyCronRequest(req: NextRequest): NextResponse | null {
     return null; // authorised
   }
 
+  const bearer = req.headers.get("authorization");
+  if (bearer === `Bearer ${secret}`) {
+    return null;
+  }
+
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 

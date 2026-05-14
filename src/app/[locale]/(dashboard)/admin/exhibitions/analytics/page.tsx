@@ -1,22 +1,45 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import {
-  CalendarDays, CheckCircle2, Clock, TrendingUp, XCircle,
-  BarChart3, Percent, DollarSign, Users,
+  Activity,
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  Percent,
+  Target,
+  TrendingUp,
+  Trophy,
+  Users,
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import { formatCurrency } from "@/lib/currency";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formatCurrency } from "@/lib/currency";
 
 interface KPIs {
   totalRequests: number;
@@ -33,7 +56,7 @@ interface KPIs {
   budgetVariance: number;
 }
 
-interface Performance {
+interface PerformanceData {
   totalLeads: number;
   totalEmployers: number;
   totalCandidates: number;
@@ -47,7 +70,6 @@ interface Performance {
 interface MonthlyPoint {
   month: string;
   submitted: number;
-  under_review: number;
   approved: number;
   completed: number;
   rejected: number;
@@ -71,44 +93,131 @@ interface TopAgent {
 interface AnalyticsData {
   year: number;
   kpis: KPIs;
-  performance: Performance;
+  performance: PerformanceData;
   monthly: MonthlyPoint[];
   participation: ParticipationItem[];
   topAgents: TopAgent[];
 }
 
-const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => {
-  const y = new Date().getFullYear() - i;
-  return { value: String(y), label: String(y) };
+const YEAR_OPTIONS = Array.from({ length: 5 }, (_, index) => {
+  const year = new Date().getFullYear() - index;
+  return { value: String(year), label: String(year) };
 });
 
+const PARTICIPATION_COLORS = [
+  "#2563eb",
+  "#10b981",
+  "#f59e0b",
+  "#7c3aed",
+  "#ef4444",
+  "#14b8a6",
+  "#ec4899",
+  "#6366f1",
+];
+
+const DEFAULT_PERFORMANCE: PerformanceData = {
+  totalLeads: 0,
+  totalEmployers: 0,
+  totalCandidates: 0,
+  totalHires: 0,
+  totalRevenue: 0,
+  totalCost: 0,
+  roi: 0,
+  eventsReported: 0,
+};
+
 export default function AdminExhibitionAnalyticsPage() {
-  const t = useTranslations("exhibitions");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [currencyCode, setCurrencyCode] = useState("AED");
 
   useEffect(() => {
-    fetch("/api/admin/settings")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.settings?.defaultCurrency) setCurrencyCode(d.settings.defaultCurrency); })
-      .catch(() => {});
+    const controller = new AbortController();
+
+    fetch("/api/admin/settings", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to load admin settings");
+        }
+
+        return response.json();
+      })
+      .then((payload) => {
+        if (payload?.settings?.defaultCurrency) {
+          setCurrencyCode(payload.settings.defaultCurrency);
+        }
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        toast.error("Failed to load admin settings. Using the default currency.");
+      });
+
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const parsedYear = Number.parseInt(year, 10);
+
+    if (!Number.isInteger(parsedYear) || parsedYear < 2020 || parsedYear > new Date().getFullYear() + 1) {
+      setData(null);
+      setLoading(false);
+      toast.error("Invalid year selected.");
+      return () => controller.abort();
+    }
+
     setLoading(true);
-    fetch(`/api/exhibitions/analytics?year=${year}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d) setData(d); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    setData(null);
+    fetch(`/api/exhibitions/analytics?year=${parsedYear}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to load exhibition analytics");
+        }
+
+        return response.json();
+      })
+      .then((payload) => {
+        setData(payload);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setData(null);
+        toast.error("Failed to load exhibition analytics.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      });
+
+    return () => controller.abort();
   }, [year]);
+
+  const statusBreakdown = useMemo(() => {
+    if (!data) {
+      return [];
+    }
+
+    return [
+      { key: "submitted", label: "Submitted", value: data.kpis.submitted, color: "bg-sky-500" },
+      { key: "underReview", label: "Under review", value: data.kpis.underReview, color: "bg-amber-500" },
+      { key: "approved", label: "Approved", value: data.kpis.approved, color: "bg-emerald-500" },
+      { key: "completed", label: "Completed", value: data.kpis.completed, color: "bg-teal-500" },
+      { key: "rejected", label: "Rejected", value: data.kpis.rejected, color: "bg-rose-500" },
+    ];
+  }, [data]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Clock className="h-5 w-5 animate-spin mr-2" /> Loading analytics...
+      <div className="flex items-center justify-center py-24 text-muted-foreground">
+        <Clock className="mr-2 h-5 w-5 animate-spin" /> Loading analytics...
       </div>
     );
   }
@@ -117,199 +226,357 @@ export default function AdminExhibitionAnalyticsPage() {
     return <div className="p-6 text-muted-foreground">Failed to load analytics.</div>;
   }
 
-  const { kpis, performance, monthly, participation, topAgents } = data;
-  const totalParticipation = participation.reduce((s, p) => s + p.count, 0);
-  const perf = performance ?? {} as Performance;
+  const { kpis, monthly, participation, topAgents } = data;
+  const performance = data.performance ?? DEFAULT_PERFORMANCE;
+  const totalParticipation = participation.reduce((sum, item) => sum + item.count, 0);
+  const strongestMonth = monthly.length > 0 ? [...monthly].sort((left, right) => right.total - left.total)[0] : null;
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <BarChart3 className="h-6 w-6" />
-            Exhibition Analytics
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Performance metrics and trends for exhibition requests
-          </p>
-        </div>
-        <SearchableSelect
-          options={YEAR_OPTIONS}
-          value={year}
-          onValueChange={setYear}
-          placeholder="Select year"
-        />
-      </div>
+      <section className="overflow-hidden rounded-3xl border bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 text-white shadow-sm">
+        <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1.4fr_0.9fr] lg:px-8">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/10">Admin Analytics</Badge>
+              <Badge className="border-sky-400/25 bg-sky-400/10 text-sky-100 hover:bg-sky-400/10">Year {data.year}</Badge>
+            </div>
+            <div>
+              <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight">
+                <BarChart3 className="h-7 w-7 text-sky-300" />
+                Exhibition performance across the platform
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-slate-300">
+                Monitor exhibition demand, approval flow, spend, and hiring outcomes across all agents from one operations view.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <HeroStat
+                label="Requests"
+                value={kpis.totalRequests}
+                sub={strongestMonth ? `${strongestMonth.month} is the busiest month` : "No monthly data yet"}
+              />
+              <HeroStat
+                label="Approval rate"
+                value={`${kpis.approvalRate}%`}
+                sub={`${kpis.approved} approved vs ${kpis.rejected} rejected`}
+              />
+              <HeroStat
+                label="ROI"
+                value={`${performance.roi}%`}
+                sub={performance.eventsReported > 0 ? `${performance.eventsReported} events reported` : "Awaiting performance reports"}
+              />
+            </div>
+          </div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KPICard
-          label="Total Requests"
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-300">Scope</p>
+                <p className="mt-1 text-lg font-semibold">Platform summary</p>
+              </div>
+              <div className="min-w-[10rem]">
+                <SearchableSelect
+                  options={YEAR_OPTIONS}
+                  value={year}
+                  onValueChange={setYear}
+                  placeholder="Select year"
+                />
+              </div>
+            </div>
+            <div className="mt-5 space-y-4">
+              <div className="rounded-2xl bg-black/20 p-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-300">Approved budget</p>
+                <p className="mt-2 text-2xl font-semibold">{formatCurrency(kpis.totalApprovedBudget, currencyCode)}</p>
+                <p className="mt-1 text-xs text-slate-300">
+                  Actual spend {formatCurrency(kpis.totalActualSpend, currencyCode)}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <MiniMetric label="Leads generated" value={performance.totalLeads} />
+                <MiniMetric label="Employers engaged" value={performance.totalEmployers} />
+                <MiniMetric label="Candidates sourced" value={performance.totalCandidates} />
+                <MiniMetric label="Hires generated" value={performance.totalHires} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Total requests"
           value={kpis.totalRequests}
           icon={<CalendarDays className="h-5 w-5" />}
-          sub={`${kpis.completed ?? 0} completed`}
+          sub={`${kpis.submitted} newly submitted`}
         />
-        <KPICard
-          label="Approval Rate"
-          value={`${kpis.approvalRate}%`}
-          icon={<Percent className="h-5 w-5" />}
-          sub={`${kpis.approved} approved / ${kpis.rejected} rejected`}
-        />
-        <KPICard
-          label="Total Approved Budget"
-          value={formatCurrency(kpis.totalApprovedBudget, currencyCode)}
+        <MetricCard
+          label="Avg. request budget"
+          value={formatCurrency(kpis.avgBudget, currencyCode)}
           icon={<DollarSign className="h-5 w-5" />}
-          sub={`Estimated: ${formatCurrency(kpis.totalEstimatedBudget ?? 0, currencyCode)}`}
+          sub={`Estimated total ${formatCurrency(kpis.totalEstimatedBudget, currencyCode)}`}
         />
-        <KPICard
-          label="Actual Spend"
-          value={formatCurrency(kpis.totalActualSpend ?? 0, currencyCode)}
+        <MetricCard
+          label="Budget variance"
+          value={formatCurrency(kpis.budgetVariance, currencyCode)}
           icon={<TrendingUp className="h-5 w-5" />}
-          sub={`Variance: ${formatCurrency(kpis.budgetVariance ?? 0, currencyCode)}`}
+          sub={kpis.budgetVariance >= 0 ? "Underspend against approved budget" : "Overspend vs approved budget"}
         />
-      </div>
+        <MetricCard
+          label="Completion rate"
+          value={`${kpis.totalRequests > 0 ? Math.round((kpis.completed / kpis.totalRequests) * 100) : 0}%`}
+          icon={<CheckCircle2 className="h-5 w-5" />}
+          sub={`${kpis.completed} completed exhibitions`}
+        />
+      </section>
 
-      {/* Performance KPIs */}
-      {perf.eventsReported > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <KPICard label="Leads Generated" value={perf.totalLeads} icon={<Users className="h-5 w-5" />} />
-          <KPICard label="Hires" value={perf.totalHires} icon={<CheckCircle2 className="h-5 w-5" />} sub={`from ${perf.eventsReported} events`} />
-          <KPICard label="Revenue" value={formatCurrency(perf.totalRevenue, currencyCode)} icon={<DollarSign className="h-5 w-5" />} />
-          <KPICard label="ROI" value={`${perf.roi?.toFixed(1) ?? 0}%`} icon={<TrendingUp className="h-5 w-5" />} sub={`Cost: ${formatCurrency(perf.totalCost, currencyCode)}`} />
+      <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Monthly request flow</h2>
+              <p className="text-sm text-muted-foreground">Compare submissions, approvals, completions, and rejections month by month.</p>
+            </div>
+            <Badge variant="outline">12 months</Badge>
+          </div>
+          <div className="h-[22rem]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthly} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} className="text-xs" />
+                <YAxis axisLine={false} tickLine={false} className="text-xs" />
+                <Tooltip
+                  cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
+                  contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)" }}
+                />
+                <Legend />
+                <Bar dataKey="submitted" fill="#0ea5e9" name="Submitted" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="approved" fill="#10b981" name="Approved" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="completed" fill="#14b8a6" name="Completed" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="rejected" fill="#f43f5e" name="Rejected" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      )}
 
-      {/* Status Breakdown */}
-      <div className="rounded-xl border bg-card p-5">
-        <h2 className="text-lg font-semibold mb-4">Status Breakdown</h2>
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatusBar label="Submitted" count={kpis.submitted} total={kpis.totalRequests} color="bg-blue-500" />
-          <StatusBar label="Under Review" count={kpis.underReview ?? 0} total={kpis.totalRequests} color="bg-amber-500" />
-          <StatusBar label="Approved" count={kpis.approved} total={kpis.totalRequests} color="bg-emerald-500" />
-          <StatusBar label="Completed" count={kpis.completed ?? 0} total={kpis.totalRequests} color="bg-teal-500" />
-          <StatusBar label="Rejected" count={kpis.rejected} total={kpis.totalRequests} color="bg-red-500" />
+        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Request pipeline</h2>
+              <p className="text-sm text-muted-foreground">Current distribution across the decision flow.</p>
+            </div>
+            <Activity className="h-5 w-5 text-primary" />
+          </div>
+          <div className="space-y-4">
+            {statusBreakdown.map((item) => (
+              <div key={item.key} className="space-y-2 rounded-2xl border bg-muted/25 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                  <span className="text-sm font-semibold">{item.value}</span>
+                </div>
+                <Progress value={kpis.totalRequests > 0 ? (item.value / kpis.totalRequests) * 100 : 0} className="h-2.5" />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Monthly Trend Chart */}
-      <div className="rounded-xl border bg-card p-5">
-        <h2 className="text-lg font-semibold mb-4">Monthly Trend</h2>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthly} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="month" className="text-xs" />
-              <YAxis className="text-xs" />
-              <Tooltip contentStyle={{ borderRadius: "8px", fontSize: "12px" }} />
-              <Legend wrapperStyle={{ fontSize: "12px" }} />
-              <Bar dataKey="submitted" fill="#3b82f6" name="Submitted" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="approved" fill="#10b981" name="Approved" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="completed" fill="#14b8a6" name="Completed" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="rejected" fill="#ef4444" name="Rejected" radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Participation Type Pie */}
-        <div className="rounded-xl border bg-card p-5">
-          <h2 className="text-lg font-semibold mb-4">By Participation Type</h2>
+      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Participation mix</h2>
+              <p className="text-sm text-muted-foreground">See which exhibition participation styles are requested most often across the platform.</p>
+            </div>
+            <Target className="h-5 w-5 text-primary" />
+          </div>
           {participation.length > 0 ? (
             <>
-              <div className="h-48">
+              <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={participation.map((p) => ({ name: p.type, value: p.count }))} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={(e) => e.name}>
-                      {participation.map((_, i) => (<Cell key={i} fill={["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444","#14b8a6","#ec4899","#6366f1"][i % 8]} />))}
+                    <Pie
+                      data={participation.map((item) => ({ name: item.type.replace(/_/g, " "), value: item.count }))}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={58}
+                      outerRadius={86}
+                      paddingAngle={3}
+                    >
+                      {participation.map((item, index) => (
+                        <Cell key={item.type} fill={PARTICIPATION_COLORS[index % PARTICIPATION_COLORS.length]} />
+                      ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip formatter={(value) => [Number(value ?? 0), "Requests"]} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="space-y-2 mt-3">
-                {participation.map((p) => (
-                  <div key={p.type} className="flex items-center justify-between">
-                    <Badge variant="outline" className="capitalize">{p.type}</Badge>
-                    <div className="flex items-center gap-3">
-                      <Progress value={totalParticipation > 0 ? (p.count / totalParticipation) * 100 : 0} className="w-24 h-2" />
-                      <span className="text-sm font-medium w-8 text-right">{p.count}</span>
+              <div className="mt-4 space-y-3">
+                {participation.map((item, index) => (
+                  <div key={item.type} className="rounded-2xl border bg-muted/20 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: PARTICIPATION_COLORS[index % PARTICIPATION_COLORS.length] }}
+                        />
+                        <span className="font-medium capitalize">{item.type.replace(/_/g, " ")}</span>
+                      </div>
+                      <span className="text-sm font-semibold">{item.count}</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-3">
+                      <Progress value={totalParticipation > 0 ? (item.count / totalParticipation) * 100 : 0} className="h-2.5 flex-1" />
+                      <span className="w-12 text-right text-xs text-muted-foreground">
+                        {totalParticipation > 0 ? Math.round((item.count / totalParticipation) * 100) : 0}%
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
             </>
-          ) : (<p className="text-sm text-muted-foreground">No data</p>)}
+          ) : (
+            <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+              No participation data yet for the selected year.
+            </div>
+          )}
         </div>
 
-        {/* Top Agents */}
-        <div className="rounded-xl border bg-card p-5">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Users className="h-5 w-5" /> Top Exhibitors
-          </h2>
+        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Top exhibiting agents</h2>
+              <p className="text-sm text-muted-foreground">Ranked by submitted volume with approval and budget context.</p>
+            </div>
+            <Trophy className="h-5 w-5 text-primary" />
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Agent</TableHead>
                 <TableHead className="text-center">Requests</TableHead>
-                <TableHead className="text-center">Approved</TableHead>
+                <TableHead className="text-center">Approval</TableHead>
                 <TableHead className="text-right">Budget</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {topAgents.map((agent) => (
                 <TableRow key={agent.agentId}>
-                  <TableCell className="font-medium">{agent.name}</TableCell>
-                  <TableCell className="text-center">{agent.total}</TableCell>
-                  <TableCell className="text-center">
-                    {agent.approved} ({agent.approvalRate}%)
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                        {agent.name.slice(0, 1).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium">{agent.name}</p>
+                        <p className="text-xs text-muted-foreground">{agent.approved} approved</p>
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-center font-medium">{agent.total}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="outline">{agent.approvalRate}%</Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
                     {formatCurrency(agent.totalBudget, currencyCode)}
                   </TableCell>
                 </TableRow>
               ))}
               {topAgents.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                    No exhibition data
+                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                    No exhibition activity found for the selected year.
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <MiniSummaryCard
+              label="Revenue"
+              value={formatCurrency(performance.totalRevenue, currencyCode)}
+              icon={<DollarSign className="h-4 w-4" />}
+            />
+            <MiniSummaryCard
+              label="Cost"
+              value={formatCurrency(performance.totalCost, currencyCode)}
+              icon={<Percent className="h-4 w-4" />}
+            />
+            <MiniSummaryCard
+              label="Team reach"
+              value={performance.totalEmployers + performance.totalCandidates}
+              icon={<Users className="h-4 w-4" />}
+            />
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
 
-function KPICard({ label, value, icon, sub }: { label: string; value: string | number; icon: React.ReactNode; sub?: string }) {
+function HeroStat({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-start justify-between">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+      <p className="text-xs uppercase tracking-[0.2em] text-slate-300">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-1 text-xs text-slate-300">{sub}</p>
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  icon,
+  sub,
+}: {
+  label: string;
+  value: string | number;
+  icon: ReactNode;
+  sub: string;
+}) {
+  return (
+    <div className="rounded-3xl border bg-card p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
           <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
-          {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
+          <p className="mt-2 text-sm text-muted-foreground">{sub}</p>
         </div>
-        <div className="rounded-xl bg-primary/10 p-2.5 text-primary">{icon}</div>
+        <div className="rounded-2xl bg-primary/10 p-3 text-primary">{icon}</div>
       </div>
     </div>
   );
 }
 
-function StatusBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+function MiniMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-medium">{label}</span>
-        <span className="text-muted-foreground">{count} ({pct}%)</span>
-      </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+      <p className="text-xs uppercase tracking-[0.18em] text-slate-300">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+    </div>
+  );
+}
+
+function MiniSummaryCard({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string | number;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border bg-muted/20 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+          <p className="mt-2 text-lg font-semibold">{value}</p>
+        </div>
+        <div className="rounded-xl bg-primary/10 p-2 text-primary">{icon}</div>
       </div>
     </div>
   );

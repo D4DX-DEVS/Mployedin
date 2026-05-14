@@ -9,6 +9,8 @@ export interface ITenantViewSession extends Document {
   /** The employer's own User._id — used to proxy API calls */
   employerUserId: mongoose.Types.ObjectId;
   companyName: string;
+  /** IP address of the actor when the session was created */
+  ipAddress?: string;
   createdAt: Date;
   expiresAt: Date;
 }
@@ -20,6 +22,7 @@ const TenantViewSessionSchema = new Schema<ITenantViewSession>(
     employerId: { type: Schema.Types.ObjectId, ref: "Employer", required: true },
     employerUserId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     companyName: { type: String, required: true },
+    ipAddress: { type: String },
     expiresAt: { type: Date, required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

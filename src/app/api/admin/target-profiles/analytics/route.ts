@@ -15,13 +15,21 @@ async function handler(req: NextRequest, _ctx: AuthCtx) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
-  const year = parseInt(searchParams.get("year") ?? String(new Date().getFullYear()));
+  const currentYear = new Date().getFullYear();
+  const requestedYear = parseInt(searchParams.get("year") ?? String(currentYear));
+  const year = Number.isFinite(requestedYear) ? requestedYear : currentYear;
+  const assigneeRole = searchParams.get("assigneeRole") ?? "super_agent";
 
-  const profiles = await TargetProfile.find({
+  const query: Record<string, unknown> = {
     year,
     status: "active",
-    assigneeRole: "super_agent",
-  }).lean();
+  };
+
+  if (["super_agent", "agent"].includes(assigneeRole)) {
+    query.assigneeRole = assigneeRole;
+  }
+
+  const profiles = await TargetProfile.find(query).lean();
 
   if (profiles.length === 0) {
     return NextResponse.json({
@@ -110,20 +118,31 @@ async function handler(req: NextRequest, _ctx: AuthCtx) {
   const quarterlyForecast = quarters.map((q) => {
     const maxMonth = Math.max(...q.months);
     const isComplete = currentMonth > maxMonth;
-    const forecastMonths = isComplete ? 3 : Math.max(0, maxMonth - monthsElapsed + 1);
+    const remainingQuarterMonths = q.months.filter((month) => month > currentMonth).length;
+    const quarterActual = rows.reduce(
+      (total, row) => {
+        const quarterMonths = row.monthlyAchievements.filter((month) => q.months.includes(month.month));
+        return {
+          employer: total.employer + quarterMonths.reduce((sum, month) => sum + month.employerAchieved, 0),
+          employee: total.employee + quarterMonths.reduce((sum, month) => sum + month.employeeAchieved, 0),
+          finance: total.finance + quarterMonths.reduce((sum, month) => sum + month.financeAchieved, 0),
+        };
+      },
+      { employer: 0, employee: 0, finance: 0 }
+    );
 
     return {
       label: q.label,
       isComplete,
       employerForecast: isComplete
-        ? totalEmpAchieved // Use actual for past quarters
-        : Math.round(totalEmpAchieved + monthlyRate.employer * forecastMonths),
+        ? quarterActual.employer
+        : Math.round(quarterActual.employer + monthlyRate.employer * remainingQuarterMonths),
       employeeForecast: isComplete
-        ? totalEmplAchieved
-        : Math.round(totalEmplAchieved + monthlyRate.employee * forecastMonths),
+        ? quarterActual.employee
+        : Math.round(quarterActual.employee + monthlyRate.employee * remainingQuarterMonths),
       financeForecast: isComplete
-        ? totalFinAchieved
-        : Math.round(totalFinAchieved + monthlyRate.finance * forecastMonths),
+        ? quarterActual.finance
+        : Math.round(quarterActual.finance + monthlyRate.finance * remainingQuarterMonths),
     };
   });
 
@@ -141,6 +160,7 @@ async function handler(req: NextRequest, _ctx: AuthCtx) {
       expectedProgress: expectedPct,
       gap: expectedPct - r.overallProgress,
       riskScore: r.riskScore,
+      incentiveTier: r.incentiveTier,
     }));
 
   // Top performers

@@ -3,8 +3,10 @@
 import { Progress } from "@/components/ui/progress";
 import {
   Building2, Users, DollarSign, AlertTriangle, CheckCircle2,
-  Clock, TrendingUp, TrendingDown, Target, Zap,
+  Clock, TrendingUp, TrendingDown, Target, Zap, Award,
 } from "lucide-react";
+
+export type IncentiveTier = "none" | "bronze" | "silver" | "gold" | "platinum";
 
 /* ------------------------------------------------------------------ */
 /*  Compact Progress Cell (table cell with achieved/target + bar)      */
@@ -64,6 +66,63 @@ export function RiskBadge({ risk }: { risk: "high" | "medium" | "low" }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
       <CheckCircle2 className="h-3 w-3" /> Low
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Completion Stage                                                   */
+/* ------------------------------------------------------------------ */
+
+export type CompletionStage = "not_started" | "in_progress" | "completed";
+
+export function getCompletionStage(progress: number): CompletionStage {
+  if (progress >= 100) return "completed";
+  if (progress > 0) return "in_progress";
+  return "not_started";
+}
+
+export function CompletionBadge({ stage }: { stage: CompletionStage }) {
+  if (stage === "completed") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+        <CheckCircle2 className="h-3 w-3" /> Completed
+      </span>
+    );
+  }
+
+  if (stage === "in_progress") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+        <Clock className="h-3 w-3" /> In progress
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      <Target className="h-3 w-3" /> Not started
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Incentive Tier Badge                                               */
+/* ------------------------------------------------------------------ */
+
+export function IncentiveTierBadge({ tier }: { tier: IncentiveTier }) {
+  if (tier === "none") return null;
+
+  const toneMap: Record<Exclude<IncentiveTier, "none">, string> = {
+    bronze: "bg-amber-700/10 text-amber-700 dark:text-amber-300",
+    silver: "bg-slate-400/15 text-slate-600 dark:text-slate-300",
+    gold: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-300",
+    platinum: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  };
+
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${toneMap[tier]}`}>
+      <Award className="h-3 w-3" /> {tier}
     </span>
   );
 }
@@ -215,7 +274,7 @@ export function TargetSummaryCard({
             <div className="grid grid-cols-3 gap-2 text-sm mb-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Target
+                  Assigned
                 </p>
                 <p className="font-semibold tabular-nums">{fmt(tgt)}</p>
               </div>
@@ -227,7 +286,7 @@ export function TargetSummaryCard({
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Pending
+                  Balance
                 </p>
                 <p className="font-semibold tabular-nums text-amber-600 dark:text-amber-400">
                   {fmt(pending)}

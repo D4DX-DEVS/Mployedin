@@ -11,11 +11,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
+import Employer from "@/models/Employer";
+import Job from "@/models/Job";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
+import { escapeRegex } from "@/lib/security/sanitize";
+import { isInvoiceStatus } from "@/lib/invoices/status";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
+
+type InvoiceFilter = Record<string, unknown>;
+const RELATED_ENTITY_SEARCH_LIMIT = 150;
+
+function appendSearchConditions(filter: InvoiceFilter, conditions: InvoiceFilter[]) {
+  const scopedOr = Array.isArray(filter.$or) ? (filter.$or as InvoiceFilter[]) : null;
+
+  if (scopedOr) {
+    const existingAnd = Array.isArray(filter.$and) ? (filter.$and as InvoiceFilter[]) : [];
+    filter.$and = [...existingAnd, { $or: scopedOr }, { $or: conditions }];
+    delete filter.$or;
+    return;
+  }
+
+  filter.$or = conditions;
+}
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
@@ -67,7 +87,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Status filter
   const statusParam = url.searchParams.get("status");
-  if (statusParam && ["draft", "issued", "sent", "paid", "partially_paid", "overdue", "void", "cancelled", "refunded", "credit_note"].includes(statusParam)) {
+  if (isInvoiceStatus(statusParam)) {
     filter.status = statusParam;
   }
 
@@ -80,9 +100,33 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Search (invoice number or employer name)
   const searchParam = url.searchParams.get("search");
   if (searchParam?.trim()) {
-    const searchRegex = { $regex: searchParam.trim(), $options: "i" };
-    // We need to search across invoice number - employer matching is done via populate
-    filter.invoiceNumber = searchRegex;
+    const searchTerm = searchParam.trim();
+    const searchRegex = new RegExp(escapeRegex(searchTerm), "i");
+    const shouldExpandRelatedEntities = searchTerm.length >= 3;
+    const [matchingEmployers, matchingJobs] = shouldExpandRelatedEntities
+      ? await Promise.all([
+          Employer.find({ companyName: searchRegex }).select("_id").limit(RELATED_ENTITY_SEARCH_LIMIT).lean(),
+          Job.find({ title: searchRegex }).select("_id").limit(RELATED_ENTITY_SEARCH_LIMIT).lean(),
+        ])
+      : [[], []];
+
+    const employerIds = matchingEmployers.map((employer) => employer._id);
+    const jobIds = matchingJobs.map((job) => job._id);
+    const searchConditions: InvoiceFilter[] = [
+      { invoiceNumber: searchRegex },
+      { "billingDetails.companyName": searchRegex },
+      { description: searchRegex },
+    ];
+
+    if (employerIds.length > 0) {
+      searchConditions.push({ employerId: { $in: employerIds } });
+    }
+
+    if (jobIds.length > 0) {
+      searchConditions.push({ jobId: { $in: jobIds } });
+    }
+
+    appendSearchConditions(filter, searchConditions);
   }
 
   // Date range

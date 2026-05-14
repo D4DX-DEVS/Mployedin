@@ -7,6 +7,7 @@ import { targetProfileUpdateSchema } from "@/lib/validators/targetProfiles";
 import { enrichProfile } from "@/lib/targets/profileAchievementCalculator";
 import { validateDistributionSum } from "@/lib/targets/distributionStrategies";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { notifyTargetUpdated } from "@/lib/notifications/trigger";
 import User from "@/models/User";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
@@ -101,6 +102,25 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     meta: body,
     req,
   });
+
+  const shouldNotify = [
+    "employerTarget",
+    "employeeTarget",
+    "financeTarget",
+    "currency",
+    "distributionStrategy",
+    "monthlyTargets",
+  ].some((key) => key in body);
+
+  if (shouldNotify) {
+    void notifyTargetUpdated(
+      String(profile.assigneeId),
+      profile.assigneeRole as "agent" | "super_agent",
+      id,
+      profile.year,
+      ctx.locale
+    );
+  }
 
   return NextResponse.json({ profile });
 }

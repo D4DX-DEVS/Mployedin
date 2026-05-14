@@ -14,7 +14,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
-  const year = parseInt(searchParams.get("year") ?? String(new Date().getFullYear()));
+  const currentYear = new Date().getFullYear();
+  const requestedYear = parseInt(searchParams.get("year") ?? String(currentYear));
+  const year = Number.isFinite(requestedYear) ? requestedYear : currentYear;
   const view = searchParams.get("view") ?? "own"; // "own" | "leaderboard"
 
   if (view === "own") {
@@ -36,20 +38,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     const currentMonth = now.getMonth() + 1;
     const daysInMonth = new Date(year, currentMonth, 0).getDate();
     const dayOfMonth = now.getDate();
-    const remainingDays = daysInMonth - dayOfMonth;
+    const remainingDays = Math.max(daysInMonth - dayOfMonth + 1, 1);
     const monthlyTarget = enriched.monthlyAchievements.find((m) => m.month === currentMonth);
 
     const dailyGoals = monthlyTarget
       ? {
-          employer: remainingDays > 0
-            ? Math.ceil(Math.max(0, monthlyTarget.employerTarget - monthlyTarget.employerAchieved) / remainingDays)
-            : 0,
-          employee: remainingDays > 0
-            ? Math.ceil(Math.max(0, monthlyTarget.employeeTarget - monthlyTarget.employeeAchieved) / remainingDays)
-            : 0,
-          finance: remainingDays > 0
-            ? Math.ceil(Math.max(0, monthlyTarget.financeTarget - monthlyTarget.financeAchieved) / remainingDays)
-            : 0,
+          employer: Math.ceil(Math.max(0, monthlyTarget.employerTarget - monthlyTarget.employerAchieved) / remainingDays),
+          employee: Math.ceil(Math.max(0, monthlyTarget.employeeTarget - monthlyTarget.employeeAchieved) / remainingDays),
+          finance: Math.ceil(Math.max(0, monthlyTarget.financeTarget - monthlyTarget.financeAchieved) / remainingDays),
         }
       : null;
 
@@ -69,12 +65,26 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     });
   }
 
-  // Leaderboard — all agents with profiles for this year
+  // Leaderboard — agents in the same distributed target group only
   if (view === "leaderboard") {
+    const ownProfile = await TargetProfile.findOne({
+      assigneeId: ctx.userId,
+      year,
+      assigneeRole: "agent",
+      status: "active",
+    }).lean();
+
+    if (!ownProfile) {
+      return NextResponse.json({ leaderboard: [], myRank: null, totalParticipants: 0 });
+    }
+
     const allAgentProfiles = await TargetProfile.find({
       year,
       assigneeRole: "agent",
       status: "active",
+      ...(ownProfile.parentProfileId
+        ? { parentProfileId: ownProfile.parentProfileId }
+        : { _id: ownProfile._id }),
     }).lean();
 
     const userIds = [...new Set(allAgentProfiles.map((p) => String(p.assigneeId)))];
@@ -96,6 +106,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
           employeeProgress: p.employeeProgress,
           financeProgress: p.financeProgress,
           riskScore: p.riskScore,
+          incentiveTier: p.incentiveTier,
         };
       })
       .sort((a, b) => b.overallProgress - a.overallProgress)
