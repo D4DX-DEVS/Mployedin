@@ -89,7 +89,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       return NextResponse.json({ employers: [], pagination: { page, limit, total: 0, pages: 0 } });
     }
 
-    const empQuery: Record<string, unknown> = { agentId: { $in: agentDocIds } };
+    // Optional agentId filter: narrow to a specific agent's employers
+    const agentIdParam = searchParams.get("agentId") ?? "";
+    const scopedAgentIds = agentIdParam && agentDocIds.map(String).includes(agentIdParam)
+      ? [agentIdParam]
+      : agentDocIds;
+
+    const empQuery: Record<string, unknown> = { agentId: { $in: scopedAgentIds } };
     if (search) {
       const safe = escapeRegex(search);
       empQuery.$or = [
@@ -193,12 +199,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   else if (status === "inactive") query.isActive = false;
   else query.isActive = true; // default to active
 
-  // Build employer profile filter for industry/location/verified
+  // Build employer profile filter for industry/location/verified/agentId
   const empFilter: Record<string, unknown> = {};
   if (industry) empFilter.industry = { $regex: escapeRegex(industry), $options: "i" };
   if (location) empFilter.address = { $regex: escapeRegex(location), $options: "i" };
   if (verified === "verified") empFilter.isAgentVerified = true;
   else if (verified === "unverified") empFilter.isAgentVerified = { $ne: true };
+  const agentIdParam = searchParams.get("agentId") ?? "";
+  if (agentIdParam) empFilter.agentId = agentIdParam;
 
   // Search spans both User (name, email) AND Employer (companyName, industry)
   // We need to find userIds from Employer matches and merge with User-level matches

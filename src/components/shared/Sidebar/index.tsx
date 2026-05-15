@@ -303,7 +303,7 @@ export function Sidebar({
         className={cn(
           "shrink-0 flex items-center gap-3",
           usesDualTierLayout
-            ? "h-16 px-3 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
+            ? "h-20 px-3 border-b border-border/75 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))]"
             : cn("px-4",
               usesModernWorkspaceShell
                 ? usesLightWorkspaceSidebar

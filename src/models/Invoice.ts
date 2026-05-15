@@ -122,9 +122,34 @@ export interface IInvoice extends Document {
   reminderCount: number;
   lastReminderAt?: Date;
 
+  // Employer payment notifications
+  paymentNotifications: Array<{
+    paymentMethod: string;
+    referenceNumber?: string;
+    notes?: string;
+    notifiedAt: Date;
+    notifiedBy: mongoose.Types.ObjectId;
+    verified?: boolean;
+    verifiedBy?: mongoose.Types.ObjectId;
+    verifiedAt?: Date;
+  }>;
+
   // Notes
   notes?: string;
   internalNotes?: string;
+
+  // Billing disputes
+  disputes: Array<{
+    reason: string;
+    category: "wrong_amount" | "tax_issue" | "duplicate" | "refund_request" | "other";
+    description: string;
+    status: "open" | "under_review" | "resolved" | "rejected";
+    raisedAt: Date;
+    raisedBy: mongoose.Types.ObjectId;
+    resolvedAt?: Date;
+    resolvedBy?: mongoose.Types.ObjectId;
+    resolution?: string;
+  }>;
 
   // Audit
   createdBy?: mongoose.Types.ObjectId;
@@ -279,9 +304,42 @@ const InvoiceSchema = new Schema<IInvoice>(
     reminderCount: { type: Number, min: 0, default: 0 },
     lastReminderAt: Date,
 
+    // Employer payment notifications
+    paymentNotifications: [{
+      paymentMethod: { type: String, maxlength: 50 },
+      referenceNumber: { type: String, maxlength: 200 },
+      notes: { type: String, maxlength: 500 },
+      notifiedAt: { type: Date, default: Date.now },
+      notifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      verified: { type: Boolean, default: false },
+      verifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      verifiedAt: Date,
+    }],
+
     // Notes
     notes: String,
     internalNotes: String,
+
+    // Billing disputes
+    disputes: [{
+      reason: { type: String, required: true, maxlength: 200 },
+      category: {
+        type: String,
+        enum: ["wrong_amount", "tax_issue", "duplicate", "refund_request", "other"],
+        default: "other",
+      },
+      description: { type: String, maxlength: 1000 },
+      status: {
+        type: String,
+        enum: ["open", "under_review", "resolved", "rejected"],
+        default: "open",
+      },
+      raisedAt: { type: Date, default: Date.now },
+      raisedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      resolvedAt: Date,
+      resolvedBy: { type: Schema.Types.ObjectId, ref: "User" },
+      resolution: { type: String, maxlength: 1000 },
+    }],
 
     // Audit
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },

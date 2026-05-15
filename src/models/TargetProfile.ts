@@ -91,10 +91,10 @@ const TargetProfileSchema = new Schema<ITargetProfile>(
   { timestamps: true }
 );
 
-// One unified profile per person per year
+// One active unified profile per person per year.
 TargetProfileSchema.index(
-  { assigneeId: 1, year: 1, status: 1 },
-  { unique: false }
+  { assigneeId: 1, year: 1, assigneeRole: 1 },
+  { unique: true, partialFilterExpression: { status: "active" } }
 );
 TargetProfileSchema.index({ assignedBy: 1 });
 TargetProfileSchema.index({ parentProfileId: 1 });

@@ -37,6 +37,10 @@ interface SearchableSelectProps {
   container?: HTMLElement | null;
   /** When true, Popover traps focus/pointer events — fixes click interception inside dialogs */
   modal?: boolean;
+  /** Override max-height on the options list (default: max-h-[300px]) */
+  listClassName?: string;
+  /** Content rendered below the list (e.g. result count) */
+  footerContent?: React.ReactNode;
 }
 
 export function SearchableSelect({
@@ -55,6 +59,8 @@ export function SearchableSelect({
   id,
   container,
   modal: modalProp = false,
+  listClassName,
+  footerContent,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [internalSearchValue, setInternalSearchValue] = React.useState("");
@@ -117,10 +123,12 @@ export function SearchableSelect({
         align="start"
         sideOffset={4}
         container={container}
+        avoidCollisions
+        collisionPadding={8}
         style={{
           width: "max-content",
           minWidth: "var(--radix-popover-trigger-width)",
-          maxWidth: "min(24rem, calc(100vw - 2rem))",
+          maxWidth: "min(28rem, calc(100vw - 2rem))",
         }}
       >
         <Command>
@@ -130,7 +138,7 @@ export function SearchableSelect({
             value={resolvedSearchValue}
             onValueChange={handleSearchValueChange}
           />
-          <CommandList>
+          <CommandList className={cn("max-h-[300px] overflow-y-auto", listClassName)}>
             <CommandEmpty>{loading ? loadingMessage : emptyMessage}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
@@ -154,6 +162,7 @@ export function SearchableSelect({
               ))}
             </CommandGroup>
           </CommandList>
+          {footerContent}
         </Command>
       </PopoverContent>
     </Popover>

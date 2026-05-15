@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import TargetProfile from "@/models/TargetProfile";
+import TargetProfile, { type ITargetProfile } from "@/models/TargetProfile";
 import { validateBody } from "@/lib/validators";
 import {
   targetProfileCreateSchema,
@@ -9,13 +9,56 @@ import {
   targetProfileCloneSchema,
 } from "@/lib/validators/targetProfiles";
 import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
-import { generateMonthlyDistribution } from "@/lib/targets/distributionStrategies";
+import {
+  generateMonthlyDistribution,
+  validateDistributionSum,
+} from "@/lib/targets/distributionStrategies";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notifyTargetAssigned } from "@/lib/notifications/trigger";
 import User from "@/models/User";
 import SuperAgent from "@/models/SuperAgent";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
+
+interface AnnualTargets {
+  employerTarget: number;
+  employeeTarget: number;
+  financeTarget: number;
+}
+
+interface MonthlyTargetInput extends AnnualTargets {
+  month: number;
+}
+
+function resolveMonthlyTargets(
+  annualTargets: AnnualTargets,
+  distributionStrategy: "equal" | "custom" | "seasonal",
+  monthlyTargets?: MonthlyTargetInput[],
+): { monthlyTargets: MonthlyTargetInput[] } | { error: string; details: string[] } {
+  const resolvedMonthlyTargets = monthlyTargets ?? generateMonthlyDistribution(
+    annualTargets,
+    distributionStrategy,
+  );
+
+  const validation = validateDistributionSum(annualTargets, resolvedMonthlyTargets);
+  if (!validation.valid) {
+    return {
+      error: "Monthly distribution must equal annual targets",
+      details: validation.errors,
+    };
+  }
+
+  return { monthlyTargets: resolvedMonthlyTargets };
+}
+
+function isDuplicateKeyError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: number }).code === 11000,
+  );
+}
 
 async function getEligibleAssigneeIds(assigneeIds: string[], assigneeRole: string): Promise<Set<string>> {
   const users = await User.find({
@@ -147,7 +190,26 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       );
     }
 
+    const annualTargets = {
+      employerTarget: body.employerTarget,
+      employeeTarget: body.employeeTarget,
+      financeTarget: body.financeTarget,
+    };
+    const monthlyResolution = resolveMonthlyTargets(
+      annualTargets,
+      body.distributionStrategy ?? "equal",
+      body.monthlyTargets,
+    );
+
+    if ("error" in monthlyResolution) {
+      return NextResponse.json(
+        { error: monthlyResolution.error, details: monthlyResolution.details },
+        { status: 400 },
+      );
+    }
+
     const results = [];
+    const skippedDetails: Array<{ assigneeId: string; reason: string }> = [];
 
     for (const assigneeId of body.assigneeIds) {
       const existing = await TargetProfile.findOne({
@@ -157,32 +219,36 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         status: "active",
       }).lean();
 
-      if (existing) continue; // skip duplicates silently
+      if (existing) {
+        skippedDetails.push({ assigneeId, reason: "active_profile_exists" });
+        continue;
+      }
 
-      const monthlyTargets = generateMonthlyDistribution(
-        {
+      let profile: ITargetProfile;
+      try {
+        profile = await TargetProfile.create({
+          assigneeId,
+          assigneeRole: body.assigneeRole,
+          assignedBy: ctx.userId,
+          year: body.year,
+          region: body.region,
           employerTarget: body.employerTarget,
           employeeTarget: body.employeeTarget,
           financeTarget: body.financeTarget,
-        },
-        body.distributionStrategy ?? "equal"
-      );
+          currency: body.currency ?? "AED",
+          distributionStrategy: body.distributionStrategy ?? "equal",
+          monthlyTargets: monthlyResolution.monthlyTargets,
+          notes: body.notes,
+          status: "active",
+        });
+      } catch (error) {
+        if (isDuplicateKeyError(error)) {
+          skippedDetails.push({ assigneeId, reason: "active_profile_created_concurrently" });
+          continue;
+        }
 
-      const profile = await TargetProfile.create({
-        assigneeId,
-        assigneeRole: body.assigneeRole,
-        assignedBy: ctx.userId,
-        year: body.year,
-        region: body.region,
-        employerTarget: body.employerTarget,
-        employeeTarget: body.employeeTarget,
-        financeTarget: body.financeTarget,
-        currency: body.currency ?? "AED",
-        distributionStrategy: body.distributionStrategy ?? "equal",
-        monthlyTargets,
-        notes: body.notes,
-        status: "active",
-      });
+        throw error;
+      }
       results.push(profile);
       void notifyTargetAssigned(
         String(profile.assigneeId),
@@ -205,7 +271,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({
       profiles: results,
       created: results.length,
-      skipped: body.assigneeIds.length - results.length,
+      skipped: skippedDetails.length,
+      skippedDetails,
     }, { status: 201 });
   }
 
@@ -307,22 +374,41 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     );
   }
 
-  const monthlyTargets = body.monthlyTargets ??
-    generateMonthlyDistribution(
-      {
-        employerTarget: body.employerTarget,
-        employeeTarget: body.employeeTarget,
-        financeTarget: body.financeTarget,
-      },
-      body.distributionStrategy ?? "equal"
-    );
+  const monthlyResolution = resolveMonthlyTargets(
+    {
+      employerTarget: body.employerTarget,
+      employeeTarget: body.employeeTarget,
+      financeTarget: body.financeTarget,
+    },
+    body.distributionStrategy ?? "equal",
+    body.monthlyTargets,
+  );
 
-  const profile = await TargetProfile.create({
-    ...body,
-    assignedBy: ctx.userId,
-    monthlyTargets,
-    status: "active",
-  });
+  if ("error" in monthlyResolution) {
+    return NextResponse.json(
+      { error: monthlyResolution.error, details: monthlyResolution.details },
+      { status: 400 },
+    );
+  }
+
+  let profile: ITargetProfile;
+  try {
+    profile = await TargetProfile.create({
+      ...body,
+      assignedBy: ctx.userId,
+      monthlyTargets: monthlyResolution.monthlyTargets,
+      status: "active",
+    });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      return NextResponse.json(
+        { error: "An active target profile already exists for this person and year" },
+        { status: 409 },
+      );
+    }
+
+    throw error;
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

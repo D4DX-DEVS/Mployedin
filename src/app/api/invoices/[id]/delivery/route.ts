@@ -15,10 +15,10 @@ import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
-type DeliveryAction = "sent" | "viewed" | "downloaded" | "reminder";
+type DeliveryAction = "sent" | "viewed" | "downloaded" | "reminder" | "payment_notification";
 
 const STAFF_ACTIONS: readonly DeliveryAction[] = ["sent", "reminder"];
-const EMPLOYER_ACTIONS: readonly DeliveryAction[] = ["viewed", "downloaded"];
+const EMPLOYER_ACTIONS: readonly DeliveryAction[] = ["viewed", "downloaded", "payment_notification"];
 const SENDABLE_STATUSES = ["issued", "sent", "partially_paid", "overdue"];
 const REMINDABLE_STATUSES = ["sent", "partially_paid", "overdue"];
 const EMPLOYER_EVENT_STATUSES = ["sent", "partially_paid", "overdue", "paid"];
@@ -160,6 +160,24 @@ async function postHandler(
       changed = true;
     }
     activityAction = "invoice.delivery_downloaded";
+  } else if (body.action === "payment_notification") {
+    // Employer notifies admin they've made a payment
+    const payableStatuses = ["issued", "sent", "partially_paid", "overdue"];
+    if (!payableStatuses.includes(invoice.status)) {
+      return NextResponse.json({ error: "Cannot submit payment notification for this invoice status" }, { status: 400 });
+    }
+    if (!invoice.paymentNotifications) {
+      invoice.paymentNotifications = [];
+    }
+    invoice.paymentNotifications.push({
+      paymentMethod: body.paymentMethod ?? "bank_transfer",
+      referenceNumber: body.referenceNumber ?? undefined,
+      notes: body.notes ?? undefined,
+      notifiedAt: now,
+      notifiedBy: ctx.userId as unknown as typeof invoice.markedPaidBy,
+    });
+    changed = true;
+    activityAction = "invoice.payment_notification";
   }
 
   if (!changed) {
@@ -180,4 +198,4 @@ async function postHandler(
   return NextResponse.json({ invoice: deliverySummary(invoice) });
 }
 
-export const POST = withAuth(postHandler, { resource: "subscriptions", action: "update" });
+export const POST = withAuth(postHandler, { resource: "subscriptions", action: "read" });

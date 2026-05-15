@@ -6,6 +6,8 @@ export interface CompanyData {
   companyEmail: string;
   phone: string;
   designation?: string;
+  registrationNo?: string;
+  taxId?: string;
   address?: string;
   country?: string;
   website?: string;

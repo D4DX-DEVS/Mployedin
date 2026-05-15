@@ -125,7 +125,10 @@ export const invoiceUpdateSchema = z.object({
 
 // ── POST /api/invoices/[id]/delivery ────────────────────────────────────────
 export const invoiceDeliverySchema = z.object({
-  action: z.enum(["sent", "viewed", "downloaded", "reminder"]),
+  action: z.enum(["sent", "viewed", "downloaded", "reminder", "payment_notification"]),
+  paymentMethod: z.string().max(50).optional(),
+  referenceNumber: z.string().max(200).optional(),
+  notes: z.string().max(500).optional(),
 });
 
 // ── POST /api/invoices/recruitment ──────────────────────────────────────────
@@ -159,20 +162,20 @@ export const recruitmentInvoiceCreateSchema = z.object({
   amount: z.number().min(0.01, "Amount must be greater than 0"),
   currency: z.string().length(3).default("AED"),
   discountPercent: z.number().min(0).max(100).default(0),
-  taxType: z.enum(["gst", "vat", "none"]).default("none"),
+  taxType: z.string().max(50).default("none"),
   taxPercent: z.number().min(0).max(100).default(0),
   serviceCharge: z.number().min(0).default(0),
   // Payment terms
   paymentTerms: z.enum(["immediate", "net_7", "net_15", "net_30", "net_45", "net_60", "net_90", "custom"]).default("net_30"),
   customPaymentDays: z.number().int().min(1).max(365).optional(),
-  dueDate: z.string().datetime().optional(),
+  dueDate: z.string().optional(),
   // Billing
   billingDetails: billingDetailsSchema.optional(),
   // Notes
   notes: z.string().max(2000).trim().optional(),
   internalNotes: z.string().max(2000).trim().optional(),
   // Status
-  status: z.enum(["draft", "pending_approval", "issued"]).default("issued"),
+  status: z.string().max(50).default("issued"),
 });
 
 // ── POST /api/invoices/[id]/payments ────────────────────────────────────────

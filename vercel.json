@@ -5,10 +5,6 @@
     {
       "path": "/api/cron/target-risk-check",
       "schedule": "0 8 * * 1"
-    },
-    {
-      "path": "/api/cron/invoice-overdue",
-      "schedule": "0 7 * * *"
     }
   ]
 }

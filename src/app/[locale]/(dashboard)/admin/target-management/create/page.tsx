@@ -414,7 +414,12 @@ export default function CreateTargetProfilePage() {
 
   const selectVisibleSupervisors = () => {
     if (selectionMode === "single") {
-      setSelectedAgents(visibleSelectableIds.slice(0, 1));
+      const firstVisibleId = visibleSelectableIds[0];
+      setSelectedAgents(firstVisibleId ? [firstVisibleId] : []);
+      setSelectedSupervisorDetails(() => {
+        const supervisor = superAgents.find((agent) => agent.value === firstVisibleId);
+        return supervisor ? { [supervisor.value]: supervisor } : {};
+      });
       return;
     }
 
@@ -525,6 +530,12 @@ export default function CreateTargetProfilePage() {
   };
 
   const handleCreate = async () => {
+    if (selectedAgents.length === 0) {
+      toast.error("Select at least one supervisor before creating a target profile");
+      setStep(1);
+      return;
+    }
+
     setCreating(true);
     try {
       const isBulk = selectedAgents.length > 1;
@@ -540,6 +551,7 @@ export default function CreateTargetProfilePage() {
             financeTarget,
             currency,
             distributionStrategy: strategy,
+            monthlyTargets,
             notes: "",
           }
         : {
@@ -823,7 +835,10 @@ export default function CreateTargetProfilePage() {
                   variant="outline"
                   size="sm"
                   className="rounded-lg"
-                  onClick={() => setSelectedAgents([])}
+                  onClick={() => {
+                    setSelectedAgents([]);
+                    setSelectedSupervisorDetails({});
+                  }}
                   disabled={selectedAgents.length === 0}
                 >
                   Clear Selection

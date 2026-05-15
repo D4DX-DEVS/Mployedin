@@ -10,7 +10,7 @@ import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Plus, Sparkles, RotateCcw, CalendarDays, ArrowRight, Inbox,
-  Eye, BarChart3, FileText, ReceiptText, RefreshCw,
+  Eye, BarChart3, FileText, ReceiptText, RefreshCw, ClipboardList,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { InvoiceBuilder } from "@/components/features/invoices/InvoiceBuilder";
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
 import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
+import { UninvoicedPlacementsQueue } from "@/components/features/invoices/UninvoicedPlacementsQueue";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -106,7 +107,7 @@ const TYPE_OPTIONS = [
 export default function AdminInvoicesPage() {
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
-  const [activeView, setActiveView] = useState<"table" | "analytics">("table");
+  const [activeView, setActiveView] = useState<"queue" | "table" | "analytics">("queue");
 
   // Table data
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -253,7 +254,10 @@ export default function AdminInvoicesPage() {
             </div>
             {/* View Toggle */}
             <div className="inline-flex rounded-lg border border-border/70 bg-card">
-              <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <button onClick={() => setActiveView("queue")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "queue" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                <ClipboardList className="mr-1 inline-block h-3.5 w-3.5" /> Queue
+              </button>
+              <button onClick={() => setActiveView("table")} className={`px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                 <FileText className="mr-1 inline-block h-3.5 w-3.5" /> Invoices
               </button>
               <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
@@ -295,6 +299,14 @@ export default function AdminInvoicesPage() {
       {/* KPI Cards */}
       {analyticsData && (
         <RevenueKPICards kpi={analyticsData.kpi} currency={displayCurrency} variant="admin" />
+      )}
+
+      {/* Queue View — Uninvoiced Placements */}
+      {activeView === "queue" && (
+        <UninvoicedPlacementsQueue
+          onInvoicesCreated={() => { fetchInvoices(); refreshAnalytics(); }}
+          defaultCurrency={displayCurrency}
+        />
       )}
 
       {/* Analytics View */}
@@ -426,6 +438,8 @@ export default function AdminInvoicesPage() {
         onClose={() => setShowBuilder(false)}
         onSuccess={() => { fetchInvoices(); refreshAnalytics(); }}
         defaultCurrency={displayCurrency}
+        searchScope="admin"
+        role="admin"
       />
 
       {/* Invoice Detail View */}

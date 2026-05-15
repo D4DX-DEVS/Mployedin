@@ -83,7 +83,16 @@ export const targetProfileBulkCreateSchema = z.object({
   financeTarget: z.number().min(0),
   currency: z.string().length(3).default("AED"),
   distributionStrategy: z.enum(["equal", "custom", "seasonal"]).default("equal"),
+  monthlyTargets: z.array(monthlyTargetSchema).length(12).optional(),
   notes: z.string().max(2000).trim().optional(),
+}).superRefine((data, ctx) => {
+  if (data.distributionStrategy === "custom" && !data.monthlyTargets) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Custom monthly distribution requires monthly targets",
+      path: ["monthlyTargets"],
+    });
+  }
 });
 
 /* ------------------------------------------------------------------ */

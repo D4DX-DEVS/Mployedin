@@ -9,10 +9,17 @@ import { validateBody } from "@/lib/validators";
 import { invoiceUpdateSchema } from "@/lib/validators/subscriptions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { canAccessInvoice } from "@/lib/invoices/access";
-import { createCommissionRecordsForInvoice, reverseCommissionsForInvoice } from "@/lib/invoices/commissionRecords";
+import {
+  approvePendingCommissionsForPaidInvoice,
+  createCommissionRecordsForInvoice,
+  revertApprovedCommissions,
+  reverseCommissionsForInvoice,
+  sendCommissionApprovalNotifications,
+} from "@/lib/invoices/commissionRecords";
 import { PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
+import logger from "@/lib/logger";
 import Invoice from "@/models/Invoice";
 import type { UserRole } from "@/types/user";
 
@@ -102,14 +109,34 @@ async function patchHandler(
   let commissionsCreated = 0;
   let commissionsReversed = 0;
   let commissionsAlreadyPaid = 0;
+  let commissionsApproved = 0;
+  let commissionNotificationFailures = 0;
+  let commissionApprovalFailed = false;
+  let embeddedCommissionSyncFailed = false;
 
   if (body.status === "paid") {
     if (!(PAYABLE_INVOICE_STATUSES as readonly string[]).includes(invoice.status)) {
       return NextResponse.json({ error: "Invoice must be issued before it can be marked paid" }, { status: 400 });
     }
+    const paidAt = new Date();
+    const total = invoice.totalAmount || invoice.amount;
+    const currentPaid = invoice.paidAmount || 0;
+    const remainingBalance = Math.max(0, Math.round((total - currentPaid) * 100) / 100);
+
+    if (remainingBalance > 0) {
+      invoice.payments.push({
+        amount: remainingBalance,
+        paymentDate: paidAt,
+        paymentMethod: "other",
+        referenceNumber: "STATUS-PAID",
+        notes: "Recorded automatically when the invoice was marked paid.",
+        recordedBy: ctx.userId as unknown as typeof invoice.markedPaidBy,
+      });
+    }
+
     invoice.status = "paid";
-    invoice.paidAt = new Date();
-    invoice.paidAmount = invoice.totalAmount || invoice.amount;
+    invoice.paidAt = paidAt;
+    invoice.paidAmount = total;
     invoice.balanceDue = 0;
     invoice.markedPaidBy = ctx.userId as unknown as typeof invoice.markedPaidBy;
   } else if (body.status === "issued") {
@@ -184,6 +211,62 @@ async function patchHandler(
 
   await invoice.save();
 
+  if (body.status === "paid") {
+    try {
+      const approvedCommissionsResult = await approvePendingCommissionsForPaidInvoice(
+        invoice._id,
+        ctx.userId,
+        { sendNotifications: false },
+      );
+      commissionsApproved = approvedCommissionsResult.approved;
+
+      if (commissionsApproved > 0) {
+        for (const commission of invoice.commissions ?? []) {
+          if (commission.status === "pending") {
+            commission.status = "approved";
+          }
+        }
+        try {
+          await invoice.save();
+        } catch (err) {
+          embeddedCommissionSyncFailed = true;
+          logger.error({
+            err,
+            invoiceId: String(invoice._id),
+            approvedCommissionIds: approvedCommissionsResult.approvedCommissionIds.map(String),
+          }, "Embedded commission sync failed; rolling back external approvals");
+
+          try {
+            await revertApprovedCommissions(approvedCommissionsResult.approvedCommissionIds);
+          } catch (rollbackErr) {
+            logger.error({
+              err: rollbackErr,
+              invoiceId: String(invoice._id),
+              approvedCommissionIds: approvedCommissionsResult.approvedCommissionIds.map(String),
+            }, "Commission approval rollback failed");
+            throw rollbackErr;
+          }
+
+          commissionsApproved = 0;
+        }
+
+        if (!embeddedCommissionSyncFailed) {
+          try {
+            commissionNotificationFailures = await sendCommissionApprovalNotifications(
+              approvedCommissionsResult.notifications,
+            );
+          } catch (err) {
+            logger.error({ err, invoiceId: String(invoice._id) }, "Commission approval notifications failed");
+            commissionNotificationFailures = approvedCommissionsResult.notifications.length;
+          }
+        }
+      }
+    } catch (err) {
+      logger.error({ err, invoiceId: String(invoice._id) }, "Commission approval failed after invoice payment");
+      commissionApprovalFailed = true;
+    }
+  }
+
   // Dispatch webhook for paid status
   if (body.status === "paid") {
     dispatchWebhook("invoice.paid", {
@@ -202,11 +285,11 @@ async function patchHandler(
     resource: "subscriptions",
     resourceId: invoice._id.toString(),
     changes: { before, after: { status: invoice.status, notes: invoice.notes, internalNotes: invoice.internalNotes } },
-    meta: { commissionsCreated, commissionsReversed, commissionsAlreadyPaid },
+    meta: { commissionsCreated, commissionsReversed, commissionsAlreadyPaid, commissionsApproved, commissionNotificationFailures, commissionApprovalFailed, embeddedCommissionSyncFailed },
     req,
   });
 
-  return NextResponse.json({ invoice, commissionsCreated, commissionsReversed, commissionsAlreadyPaid });
+  return NextResponse.json({ invoice, commissionsCreated, commissionsReversed, commissionsAlreadyPaid, commissionsApproved, commissionNotificationFailures, commissionApprovalFailed, embeddedCommissionSyncFailed });
 }
 
 export const GET = withAuth(getHandler, { resource: "subscriptions", action: "read" });

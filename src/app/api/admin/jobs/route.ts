@@ -58,14 +58,25 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
 
   if (employerId && Types.ObjectId.isValid(employerId)) {
-    // The dropdown may send either an Employer profile _id or a User _id.
-    // Resolve User _id → Employer profile _id so the filter matches Job.employerId.
-    const empById = await Employer.exists({ _id: new Types.ObjectId(employerId) });
-    if (empById) {
-      query.employerId = new Types.ObjectId(employerId);
+    // Resolve the employer and expand to all profiles sharing the same companyName
+    // (handles data where the same company has multiple Employer documents).
+    const emp = await Employer.findById(new Types.ObjectId(employerId)).select("companyName").lean();
+    if (emp) {
+      const sameNameIds = await Employer.find({ companyName: emp.companyName }).select("_id").lean();
+      query.employerId = sameNameIds.length > 1
+        ? { $in: sameNameIds.map(e => e._id) }
+        : emp._id;
     } else {
-      const empByUser = await Employer.findOne({ userId: new Types.ObjectId(employerId) }).select("_id").lean();
-      query.employerId = empByUser ? empByUser._id : new Types.ObjectId(employerId);
+      // Fallback: try resolving as a User _id → Employer profile _id
+      const empByUser = await Employer.findOne({ userId: new Types.ObjectId(employerId) }).select("_id companyName").lean();
+      if (empByUser) {
+        const sameNameIds = await Employer.find({ companyName: empByUser.companyName }).select("_id").lean();
+        query.employerId = sameNameIds.length > 1
+          ? { $in: sameNameIds.map(e => e._id) }
+          : empByUser._id;
+      } else {
+        query.employerId = new Types.ObjectId(employerId);
+      }
     }
   }
   if (agentId && Types.ObjectId.isValid(agentId)) query.agentId = new Types.ObjectId(agentId);
@@ -80,18 +91,46 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Search: use $text when possible, fall back to regex when $or already exists
+  // Auto-scope: super_agent sees only jobs from their own agents (unless already filtered)
+  if (ctx.role === "super_agent" && !query.agentId) {
+    const saDoc = await SuperAgent.findOne({ userId: ctx.userId }).select("agentIds").lean();
+    if (saDoc?.agentIds?.length) {
+      query.agentId = { $in: saDoc.agentIds };
+    } else {
+      return NextResponse.json({ jobs: [], pagination: { page, limit, total: 0, pages: 0 } });
+    }
+  }
+
+  // Search: match jobs by title/desc/tags AND also by employer company name
   if (search) {
+    const escaped = escapeRegex(search);
+    const searchRegex = { $regex: escaped, $options: "i" };
+
+    // Find employers whose company name matches the search term
+    const matchingEmployers = await Employer.find(
+      { companyName: { $regex: escaped, $options: "i" } },
+    ).select("_id").lean();
+    const matchingEmpIds = matchingEmployers.map((e) => e._id);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const searchConditions: any[] = [
+      { title: searchRegex },
+      { description: searchRegex },
+      { tags: searchRegex },
+      { "location.city": searchRegex },
+    ];
+    if (matchingEmpIds.length > 0) {
+      searchConditions.push({ employerId: { $in: matchingEmpIds } });
+    }
+
     if (query.$or) {
-      const escaped = escapeRegex(search);
-      const searchRegex = { $regex: escaped, $options: "i" };
       query.$and = [
         { $or: query.$or },
-        { $or: [{ title: searchRegex }, { description: searchRegex }, { tags: searchRegex }] },
+        { $or: searchConditions },
       ];
       delete query.$or;
     } else {
-      query.$text = { $search: search };
+      query.$or = searchConditions;
     }
   }
 

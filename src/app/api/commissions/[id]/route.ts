@@ -8,18 +8,52 @@ import { commissionUpdateSchema } from "@/lib/validators/commissions";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import { notifyCommissionApproved, notifyCommissionPaid } from "@/lib/notifications/trigger";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
-async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
+function toComparableId(value: unknown): string | null {
+  if (!value) return null;
+  if (typeof value === "object" && "_id" in value) {
+    const entity = value as { _id?: unknown };
+    return entity._id ? String(entity._id) : null;
+  }
+  return String(value);
+}
+
+async function canAccessCommission(
+  ctx: AuthCtx,
+  commission: { agentId?: unknown; superAgentId?: unknown },
+): Promise<boolean> {
+  if (ctx.role === "admin") return true;
+
+  if (ctx.role === "agent") {
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    return Boolean(agent?._id && toComparableId(commission.agentId) === String(agent._id));
+  }
+
+  if (ctx.role === "super_agent") {
+    const superAgent = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
+    return Boolean(superAgent?._id && toComparableId(commission.superAgentId) === String(superAgent._id));
+  }
+
+  return false;
+}
+
+async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
+
   const commission = await Commission.findById(params?.id)
     .populate("agentId", "fullName")
     .populate("placementId", "jobTitle candidateName")
     .lean();
   if (!commission) return NextResponse.json({ error: "Commission not found" }, { status: 404 });
+  if (!(await canAccessCommission(ctx, commission))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   return NextResponse.json({ commission });
 }
 
@@ -29,11 +63,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const commission = await Commission.findById(params?.id);
   if (!commission) return NextResponse.json({ error: "Commission not found" }, { status: 404 });
 
-  // IDOR: non-admins can only modify their own commissions
-  if (ctx.role === "agent" && String(commission.agentId) !== ctx.userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  if (ctx.role === "super_agent" && String(commission.superAgentId) !== ctx.userId) {
+  if (!(await canAccessCommission(ctx, commission))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -62,8 +92,6 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       status: "approved",
     });
     // Notify agent/super-agent about approval
-    const Agent = (await import("@/models/Agent")).default;
-    const SuperAgent = (await import("@/models/SuperAgent")).default;
     if (commission.agentId) {
       const agent = await Agent.findById(commission.agentId).select("userId").lean();
       if (agent?.userId) {
@@ -86,8 +114,6 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       paymentRef: commission.paymentRef,
     });
     // Notify agent/super-agent about payment
-    const Agent = (await import("@/models/Agent")).default;
-    const SuperAgent = (await import("@/models/SuperAgent")).default;
     if (commission.agentId) {
       const agent = await Agent.findById(commission.agentId).select("userId").lean();
       if (agent?.userId) {

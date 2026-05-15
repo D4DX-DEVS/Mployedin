@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { withSubscription } from "@/lib/subscription/withSubscription";
@@ -126,7 +127,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       $all: skills.map((skill) => new RegExp(`^${escapeRegex(skill)}$`, "i")),
     };
   }
-  if (employerId) query.employerId = employerId;
+  if (employerId && Types.ObjectId.isValid(employerId)) {
+    // Expand to all employer profiles sharing the same companyName (handles duplicate profiles)
+    const emp = await Employer.findById(new Types.ObjectId(employerId)).select("companyName").lean();
+    if (emp) {
+      const sameNameIds = await Employer.find({ companyName: emp.companyName }).select("_id").lean();
+      query.employerId = sameNameIds.length > 1
+        ? { $in: sameNameIds.map(e => e._id) }
+        : emp._id;
+    } else {
+      query.employerId = new Types.ObjectId(employerId);
+    }
+  }
 
   const skip = (page - 1) * limit;
   const [jobs, total, statusAgg] = await Promise.all([

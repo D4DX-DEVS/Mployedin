@@ -1,5 +1,8 @@
 import Commission, { type ICommission } from "@/models/Commission";
+import Agent from "@/models/Agent";
 import type { IInvoiceCommission } from "@/models/Invoice";
+import SuperAgent from "@/models/SuperAgent";
+import { notifyCommissionApproved } from "@/lib/notifications/trigger";
 
 interface CreateCommissionRecordsForInvoiceInput {
   invoiceId: unknown;
@@ -10,6 +13,24 @@ interface CreateCommissionRecordsForInvoiceInput {
 interface ReverseCommissionsResult {
   reversed: number;
   alreadyPaid: number;
+}
+
+interface ApproveCommissionsResult {
+  approved: number;
+  notificationFailures: number;
+  approvedCommissionIds: unknown[];
+  notifications: CommissionApprovalNotification[];
+}
+
+interface ApproveCommissionsOptions {
+  sendNotifications?: boolean;
+}
+
+export interface CommissionApprovalNotification {
+  userId: string;
+  role: "agent" | "super_agent";
+  amount: number;
+  currency: string;
 }
 
 function invoiceCommissionNote(notes?: string): string {
@@ -91,4 +112,107 @@ export async function reverseCommissionsForInvoice(
     reversed: reversible.length,
     alreadyPaid: alreadyPaid.length,
   };
+}
+
+export async function approvePendingCommissionsForPaidInvoice(
+  invoiceId: unknown,
+  approvedBy: unknown,
+  options: ApproveCommissionsOptions = {},
+): Promise<ApproveCommissionsResult> {
+  const approvedAt = new Date();
+  const pendingCommissions = await Commission.find({ invoiceId, status: "pending" })
+    .select("_id agentId superAgentId amount currency")
+    .lean();
+
+  if (pendingCommissions.length === 0) {
+    return { approved: 0, notificationFailures: 0, approvedCommissionIds: [], notifications: [] };
+  }
+
+  const commissionIds = pendingCommissions.map((commission) => commission._id);
+  const result = await Commission.updateMany(
+    { _id: { $in: commissionIds } },
+    {
+      $set: {
+        status: "approved",
+        approvedBy,
+        approvedAt,
+      },
+    },
+  );
+
+  const agentIds = pendingCommissions
+    .map((commission) => commission.agentId)
+    .filter(Boolean);
+  const superAgentIds = pendingCommissions
+    .map((commission) => commission.superAgentId)
+    .filter(Boolean);
+
+  const [agents, superAgents] = await Promise.all([
+    agentIds.length > 0
+      ? Agent.find({ _id: { $in: agentIds } }).select("_id userId").lean()
+      : Promise.resolve([]),
+    superAgentIds.length > 0
+      ? SuperAgent.find({ _id: { $in: superAgentIds } }).select("_id userId").lean()
+      : Promise.resolve([]),
+  ]);
+
+  const agentUserMap = new Map(agents.map((agent) => [String(agent._id), String(agent.userId)]));
+  const superAgentUserMap = new Map(superAgents.map((superAgent) => [String(superAgent._id), String(superAgent.userId)]));
+
+  const notifications = pendingCommissions.flatMap((commission) => {
+    const tasks: CommissionApprovalNotification[] = [];
+    if (commission.agentId) {
+      const userId = agentUserMap.get(String(commission.agentId));
+      if (userId) {
+        tasks.push({ userId, role: "agent", amount: commission.amount, currency: commission.currency });
+      }
+    }
+    if (commission.superAgentId) {
+      const userId = superAgentUserMap.get(String(commission.superAgentId));
+      if (userId) {
+        tasks.push({ userId, role: "super_agent", amount: commission.amount, currency: commission.currency });
+      }
+    }
+    return tasks;
+  });
+
+  const notificationFailures = options.sendNotifications === false
+    ? 0
+    : await sendCommissionApprovalNotifications(notifications);
+
+  return {
+    approved: result.modifiedCount ?? 0,
+    notificationFailures,
+    approvedCommissionIds: commissionIds,
+    notifications,
+  };
+}
+
+export async function revertApprovedCommissions(commissionIds: unknown[]): Promise<number> {
+  if (commissionIds.length === 0) return 0;
+
+  const result = await Commission.updateMany(
+    { _id: { $in: commissionIds }, status: "approved" },
+    {
+      $set: { status: "pending" },
+      $unset: { approvedBy: 1, approvedAt: 1 },
+    },
+  );
+
+  return result.modifiedCount ?? 0;
+}
+
+export async function sendCommissionApprovalNotifications(
+  notifications: CommissionApprovalNotification[],
+): Promise<number> {
+  const notificationResults = await Promise.allSettled(
+    notifications.map((notification) => notifyCommissionApproved(
+      notification.userId,
+      notification.role,
+      notification.amount,
+      notification.currency,
+    )),
+  );
+
+  return notificationResults.filter((item) => item.status === "rejected").length;
 }

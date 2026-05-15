@@ -67,6 +67,8 @@ interface FormData {
   companySize: string;
   foundedYear: string;
   designation: string;
+  registrationNo: string;
+  taxId: string;
   address: string;
   country: string;
   companyEmail: string;
@@ -94,6 +96,8 @@ function buildInitialForm(emp?: CompanyData | null): FormData {
     companySize: emp?.companySize ?? "",
     foundedYear: emp?.foundedYear ? String(emp.foundedYear) : "",
     designation: emp?.designation ?? "",
+    registrationNo: emp?.registrationNo ?? "",
+    taxId: emp?.taxId ?? "",
     address: emp?.address ?? "",
     country: emp?.country ?? "",
     companyEmail: emp?.companyEmail ?? "",
@@ -312,6 +316,8 @@ function CompanySettingsPage() {
       companyEmail: form.companyEmail,
       phone: form.phone,
       designation: form.designation,
+      registrationNo: form.registrationNo || undefined,
+      taxId: form.taxId || undefined,
       address: form.address,
       country: form.country || undefined,
       website: form.website ? normalizeUrl(form.website) : "",
@@ -648,6 +654,26 @@ function CompanySettingsPage() {
                           placeholder={t("selectCountry")}
                           searchPlaceholder="Search countries..."
                         />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div>
+                        <FieldLabel>Registration No.</FieldLabel>
+                        <Input
+                          placeholder="Company registration number (optional)"
+                          value={form.registrationNo}
+                          onChange={(e) => setField("registrationNo", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <FieldLabel>Tax ID</FieldLabel>
+                        <Input
+                          placeholder="VAT / GST / Tax ID (optional)"
+                          value={form.taxId}
+                          onChange={(e) => setField("taxId", e.target.value)}
+                        />
+                        <p className="mt-1 text-[10px] text-muted-foreground">Used for invoice billing. e.g. VAT number, GST number, TIN</p>
                       </div>
                     </div>
 

@@ -231,7 +231,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
     }
   };
 
-  const fmt = (v: number) => `${invoice?.currency ?? "AED"} ${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt = (v: number | undefined | null) => `${invoice?.currency ?? "AED"} ${(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const canManage = role === "admin" || role === "super_agent";
   const deliveryState = invoice ? getInvoiceDeliveryState(invoice) : "not_sent";
   const canRecordReminder = Boolean(invoice?.sentAt && invoice && ["sent", "partially_paid", "overdue"].includes(invoice.status));
@@ -338,7 +338,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                         {invoice.dueDate && <p>Due Date: <span className="font-medium">{new Date(invoice.dueDate).toLocaleDateString()}</span></p>}
                         {invoice.approvedAt && <p>Approved: <span className="font-medium">{new Date(invoice.approvedAt).toLocaleDateString()}</span></p>}
                         {invoice.rejectedAt && <p>Rejected: <span className="font-medium">{new Date(invoice.rejectedAt).toLocaleDateString()}</span></p>}
-                        <p>Tax: <span className="font-medium">{invoice.taxType !== "none" ? `${invoice.taxType.toUpperCase()} ${invoice.taxPercent}%` : "None"}</span></p>
+                        <p>Tax: <span className="font-medium">{invoice.taxType && invoice.taxType !== "none" ? `${invoice.taxType.toUpperCase()} ${invoice.taxPercent}%` : "None"}</span></p>
                         {invoice.rejectionReason && <p className="text-rose-600 dark:text-rose-300">Reason: {invoice.rejectionReason}</p>}
                         {invoice.description && <p className="text-muted-foreground">{invoice.description}</p>}
                       </div>

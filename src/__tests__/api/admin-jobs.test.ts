@@ -78,7 +78,7 @@ describe("Admin Jobs API", () => {
     const { GET } = await import("@/app/api/admin/jobs/route");
     const req = makeRequest("/api/admin/jobs?limit=25&page=1");
 
-    const res = await GET(req);
+    const res = await GET(req, { params: Promise.resolve({}) });
 
     expect(res.status).toBe(200);
     const query = Job.find.mock.calls[0][0];

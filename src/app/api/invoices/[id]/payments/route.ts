@@ -11,9 +11,15 @@ import { validateBody } from "@/lib/validators";
 import { invoicePaymentSchema } from "@/lib/validators/subscriptions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { canAccessInvoice } from "@/lib/invoices/access";
+import {
+  approvePendingCommissionsForPaidInvoice,
+  revertApprovedCommissions,
+  sendCommissionApprovalNotifications,
+} from "@/lib/invoices/commissionRecords";
 import { PAYMENT_BLOCKED_INVOICE_STATUSES } from "@/lib/invoices/status";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
+import logger from "@/lib/logger";
 import Invoice from "@/models/Invoice";
 import type { UserRole } from "@/types/user";
 
@@ -103,7 +109,6 @@ async function postHandler(
       error: `Payment of ${body.amount} would exceed balance due of ${total - currentPaid}`,
     }, { status: 400 });
   }
-
   // Add payment record
   invoice.payments.push({
     amount: body.amount,
@@ -116,6 +121,66 @@ async function postHandler(
 
   // Pre-save hook will recalculate paidAmount, balanceDue, and status
   await invoice.save();
+  let commissionsApproved = 0;
+  let commissionNotificationFailures = 0;
+  let commissionApprovalFailed = false;
+  let embeddedCommissionSyncFailed = false;
+
+  if (invoice.status === "paid") {
+    try {
+      const approvedCommissionsResult = await approvePendingCommissionsForPaidInvoice(
+        invoice._id,
+        ctx.userId,
+        { sendNotifications: false },
+      );
+      commissionsApproved = approvedCommissionsResult.approved;
+
+      if (commissionsApproved > 0) {
+        for (const commission of invoice.commissions ?? []) {
+          if (commission.status === "pending") {
+            commission.status = "approved";
+          }
+        }
+        try {
+          await invoice.save();
+        } catch (err) {
+          embeddedCommissionSyncFailed = true;
+          logger.error({
+            err,
+            invoiceId: String(invoice._id),
+            approvedCommissionIds: approvedCommissionsResult.approvedCommissionIds.map(String),
+          }, "Embedded commission sync failed; rolling back external approvals");
+
+          try {
+            await revertApprovedCommissions(approvedCommissionsResult.approvedCommissionIds);
+          } catch (rollbackErr) {
+            logger.error({
+              err: rollbackErr,
+              invoiceId: String(invoice._id),
+              approvedCommissionIds: approvedCommissionsResult.approvedCommissionIds.map(String),
+            }, "Commission approval rollback failed");
+            throw rollbackErr;
+          }
+
+          commissionsApproved = 0;
+        }
+
+        if (!embeddedCommissionSyncFailed) {
+          try {
+            commissionNotificationFailures = await sendCommissionApprovalNotifications(
+              approvedCommissionsResult.notifications,
+            );
+          } catch (err) {
+            logger.error({ err, invoiceId: String(invoice._id) }, "Commission approval notifications failed");
+            commissionNotificationFailures = approvedCommissionsResult.notifications.length;
+          }
+        }
+      }
+    } catch (err) {
+      logger.error({ err, invoiceId: String(invoice._id) }, "Commission approval failed after invoice payment");
+      commissionApprovalFailed = true;
+    }
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -128,6 +193,10 @@ async function postHandler(
       newPaidAmount: invoice.paidAmount,
       newBalance: invoice.balanceDue,
       newStatus: invoice.status,
+      commissionsApproved,
+      commissionNotificationFailures,
+      commissionApprovalFailed,
+      embeddedCommissionSyncFailed,
     },
     req,
   });
@@ -153,6 +222,10 @@ async function postHandler(
       balanceDue: invoice.balanceDue,
       status: invoice.status,
       payments: invoice.payments,
+      commissionsApproved,
+      commissionNotificationFailures,
+      commissionApprovalFailed,
+      embeddedCommissionSyncFailed,
     },
   });
 }
