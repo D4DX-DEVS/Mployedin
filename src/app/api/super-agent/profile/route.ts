@@ -59,9 +59,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   const saUpdates: Record<string, unknown> = {};
   const userUpdates: Record<string, unknown> = {};
 
-  if (body.overrideRate != null) {
-    saUpdates.overrideRate = body.overrideRate;
-  }
+  // overrideRate is admin-only — super agents cannot change their own commission
   if (typeof body.name === "string" && body.name.trim()) {
     userUpdates.name = body.name.trim();
   }

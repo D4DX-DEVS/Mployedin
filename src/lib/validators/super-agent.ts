@@ -20,9 +20,8 @@ export const assignLeadsSchema = z.object({
   maxLeads: z.number().int().min(1).max(20).default(5),
 });
 
-/** PATCH /api/super-agent/agents/[id] — SA updates agent profile */
+/** PATCH /api/super-agent/agents/[id] — SA updates agent profile (commission is admin-only) */
 export const saAgentUpdateSchema = z.object({
-  commissionRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
   assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
   workingHoursStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),

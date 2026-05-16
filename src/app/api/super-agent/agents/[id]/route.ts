@@ -156,7 +156,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx, params) => {
   }
 
   const body = await validateBody(req, saAgentUpdateSchema);
-  const { commissionRate, assignedCityIds, assignedStateIds, workingHoursStart, workingHoursEnd, workingDays, isActive } = body;
+  const { assignedCityIds, assignedStateIds, workingHoursStart, workingHoursEnd, workingDays, isActive } = body;
 
   // Validate region changes against SA's own territory
   if (assignedCityIds !== undefined || assignedStateIds !== undefined) {
@@ -180,9 +180,8 @@ export const PATCH = withAuth(async (req: NextRequest, ctx, params) => {
     }
   }
 
-  // Build update
+  // Build update (commissionRate is admin-only, not editable by super agents)
   const agentUpdate: Record<string, unknown> = {};
-  if (commissionRate !== undefined) agentUpdate.commissionRate = commissionRate;
   if (assignedCityIds !== undefined) agentUpdate.assignedCityIds = assignedCityIds;
   if (assignedStateIds !== undefined) agentUpdate.assignedStateIds = assignedStateIds;
   if (workingHoursStart !== undefined) agentUpdate.workingHoursStart = workingHoursStart;

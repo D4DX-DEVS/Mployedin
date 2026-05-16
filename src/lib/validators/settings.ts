@@ -16,7 +16,6 @@ export const agentSettingsUpdateSchema = z.object({
 
 /** PATCH /api/super-agent/profile */
 export const superAgentProfileUpdateSchema = z.object({
-  overrideRate: z.number().min(0).max(100).optional(),
   name: z.string().min(1).max(80).trim().optional(),
   phone: z.string().max(20).trim().optional(),
 });

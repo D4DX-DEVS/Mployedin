@@ -122,7 +122,7 @@ export default function SuperAgentAgentsPage() {
 
   // Create agent modal state
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", commissionRate: "0" });
+  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "" });
   const [createCityIds, setCreateCityIds] = useState<string[]>([]);
   const [createStateIds, setCreateStateIds] = useState<string[]>([]);
   const [createLoading, setCreateLoading] = useState(false);
@@ -171,7 +171,6 @@ export default function SuperAgentAgentsPage() {
           name: createForm.name.trim(),
           email: createForm.email.trim(),
           password: createForm.password,
-          commissionRate: parseFloat(createForm.commissionRate) || 0,
           assignedCityIds: createCityIds,
           assignedStateIds: createStateIds,
         }),
@@ -182,7 +181,7 @@ export default function SuperAgentAgentsPage() {
         return;
       }
       setShowCreate(false);
-      setCreateForm({ name: "", email: "", password: "", commissionRate: "0" });
+      setCreateForm({ name: "", email: "", password: "" });
       setCreateCityIds([]);
       setCreateStateIds([]);
       fetchAgents();
@@ -614,14 +613,10 @@ export default function SuperAgentAgentsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Commission Rate (%)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={createForm.commissionRate}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, commissionRate: e.target.value }))}
-                />
+                <Label className="text-xs text-muted-foreground">Commission Rate</Label>
+                <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-muted/30 px-3">
+                  <span className="text-sm text-muted-foreground">Set by Admin</span>
+                </div>
               </div>
             </div>
 

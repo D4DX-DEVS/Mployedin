@@ -51,10 +51,8 @@ export default function SuperAgentCommissionsPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
-  // Override rate settings
+  // Override rate display (read-only, set by admin)
   const [overrideRate, setOverrideRate] = useState<number>(0);
-  const [savingRate, setSavingRate] = useState(false);
-  const [rateMessage, setRateMessage] = useState("");
   const [currencyCode, setCurrencyCode] = useState("AED");
 
   useEffect(() => {
@@ -70,28 +68,6 @@ export default function SuperAgentCommissionsPage() {
       })
       .catch(() => {});
   }, []);
-
-  const saveOverrideRate = async () => {
-    setSavingRate(true);
-    setRateMessage("");
-    try {
-      const res = await fetch("/api/super-agent/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ overrideRate }),
-      });
-      if (res.ok) {
-        setRateMessage("Saved ✓");
-        setTimeout(() => setRateMessage(""), 2000);
-      } else {
-        setRateMessage("Failed to save");
-      }
-    } catch {
-      setRateMessage("Network error");
-    } finally {
-      setSavingRate(false);
-    }
-  };
 
   const fetchCommissions = useCallback(async () => {
     setLoading(true);
@@ -188,29 +164,20 @@ export default function SuperAgentCommissionsPage() {
         title="Configure the regional override and filter payout status"
         description="Adjust the commission override rate and move between payout states without changing the current backend behavior."
       >
-        {/* Override rate row */}
+        {/* Override rate row — read-only, set by admin */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/70 bg-secondary/50 p-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-secondary/50 p-4">
             <div className="flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-muted-foreground" />
-              <Label htmlFor="overrideRate" className="whitespace-nowrap text-sm font-medium text-foreground">
-                Commission Override Rate (%)
+              <Label className="whitespace-nowrap text-sm font-medium text-foreground">
+                Commission Override Rate
               </Label>
             </div>
-            <Input
-              id="overrideRate"
-              type="number"
-              min={0}
-              max={100}
-              step={0.5}
-              value={overrideRate}
-              onChange={(e) => setOverrideRate(Number(e.target.value))}
-              className="h-11 w-28 rounded-xl bg-background/85 text-foreground shadow-none"
-            />
-            <Button size="sm" onClick={saveOverrideRate} disabled={savingRate} className="h-11 rounded-xl px-4">
-              {savingRate ? "Saving..." : "Save"}
-            </Button>
-            {rateMessage ? <span className="text-xs text-muted-foreground">{rateMessage}</span> : null}
+            <div className="flex items-center gap-2 h-11 rounded-xl border border-border bg-muted/30 px-4">
+              <span className="text-lg font-semibold text-foreground">{overrideRate}%</span>
+              <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-wide">Set by Admin</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Contact admin to change your commission rate.</p>
           </div>
         </div>
 

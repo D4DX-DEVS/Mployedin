@@ -16,12 +16,12 @@ interface InvoiceAccessSubject {
 function idString(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
-  if (typeof value === "object" && "_id" in value) {
-    return idString((value as { _id?: unknown })._id);
-  }
   if (typeof value === "object" && "toHexString" in value) {
     const maybeObjectId = value as { toHexString?: () => string };
     if (typeof maybeObjectId.toHexString === "function") return maybeObjectId.toHexString();
+  }
+  if (typeof value === "object" && "_id" in value) {
+    return idString((value as { _id?: unknown })._id);
   }
   return null;
 }

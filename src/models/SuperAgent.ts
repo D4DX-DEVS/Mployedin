@@ -11,6 +11,7 @@ export interface ISuperAgent extends Document {
     paid: number;
   };
   overrideRate?: number; // commission override %
+  defaultAgentCommissionRate?: number; // default commission for agents under this SA
   country?: string;
   currencyCode?: string;
   timezone?: string;
@@ -34,6 +35,7 @@ const SuperAgentSchema = new Schema<ISuperAgent>(
       paid: { type: Number, default: 0 },
     },
     overrideRate: { type: Number, default: 0 },
+    defaultAgentCommissionRate: { type: Number, default: 0 },
     country: { type: String, default: "" },
     currencyCode: { type: String, default: "AED" },
     timezone: { type: String, default: "Asia/Dubai" },

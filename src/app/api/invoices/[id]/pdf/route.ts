@@ -12,6 +12,9 @@ import { generateInvoicePdf } from "@/lib/invoices/generatePdf";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
+import "@/models/Job";
+import "@/models/Employer";
+import "@/models/Agent";
 
 async function handler(
   req: NextRequest,

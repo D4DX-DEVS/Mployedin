@@ -135,7 +135,6 @@ const saAgentCreateSchema = z.object({
   name: z.string().min(1).max(100).trim(),
   email: commonSchemas.email,
   password: z.string().min(8).max(128),
-  commissionRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
   assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
 });
@@ -156,11 +155,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
   }
 
-  const { name, email, password, commissionRate, assignedCityIds, assignedStateIds } = parsed.data;
+  const { name, email, password, assignedCityIds, assignedStateIds } = parsed.data;
 
-  // Get super agent profile
+  // Get super agent profile (including defaultAgentCommissionRate)
   const saProfile = await SuperAgent.findOne({ userId: ctx.userId })
-    .select("_id assignedCityIds assignedStateIds")
+    .select("_id assignedCityIds assignedStateIds defaultAgentCommissionRate")
     .lean();
   if (!saProfile) {
     return NextResponse.json({ error: "Super-agent profile not found" }, { status: 404 });
@@ -210,7 +209,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const agentDoc = await Agent.create({
       userId: user._id,
       superAgentId: saProfile._id,
-      commissionRate: commissionRate ?? 0,
+      commissionRate: saProfile.defaultAgentCommissionRate ?? 0,
       assignedCityIds: agentCities,
       assignedStateIds: agentStates,
     });

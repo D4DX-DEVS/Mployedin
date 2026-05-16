@@ -1243,31 +1243,29 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 </div>
               </div>
 
-              {/* Commission — editable for admin/super_agent, read-only for agents */}
+              {/* Commission — always read-only, derived from agent profile */}
               <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Commission Split</p>
                 {agentRate === 0 && superAgentRate === 0 && selectedJobId && (
                   <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-400">
-                    ⚠ Commission rates are 0%. {role === "admin" ? "You can set them below or update the agent profile." : "Ask admin to set commission rate on the agent profile."}
+                    ⚠ Commission rates are 0%. Update the agent profile to set commission rates.
                   </div>
                 )}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div>
                     <Label className="text-xs text-sky-600">Agent Rate (%)</Label>
-                    {role === "admin" || role === "super_agent" ? (
-                      <Input type="number" min={0} max={100} step={0.5} className="mt-1 h-8 rounded-lg text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={agentRate || ""} onChange={e => setAgentRate(e.target.value === "" ? 0 : parseFloat(e.target.value))} onBlur={() => { if (isNaN(agentRate)) setAgentRate(0); }} placeholder="0" />
-                    ) : (
-                      <p className="mt-1 text-sm font-semibold text-sky-600">{agentRate}%</p>
-                    )}
+                    <div className="mt-1 flex items-center gap-2 h-8 rounded-lg border border-border bg-muted/30 px-3">
+                      <span className="text-sm font-semibold text-sky-600">{agentRate}%</span>
+                      <span className="ml-auto text-[9px] text-muted-foreground uppercase tracking-wide">Fixed</span>
+                    </div>
                     <p className="mt-0.5 text-[10px] text-muted-foreground">{selectedAgent?.userId?.name ?? "—"}</p>
                   </div>
                   <div>
                     <Label className="text-xs text-indigo-600">Super Agent Rate (%)</Label>
-                    {role === "admin" || role === "super_agent" ? (
-                      <Input type="number" min={0} max={100} step={0.5} className="mt-1 h-8 rounded-lg text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={superAgentRate || ""} onChange={e => setSuperAgentRate(e.target.value === "" ? 0 : parseFloat(e.target.value))} onBlur={() => { if (isNaN(superAgentRate)) setSuperAgentRate(0); }} placeholder="0" />
-                    ) : (
-                      <p className="mt-1 text-sm font-semibold text-indigo-600">{superAgentRate}%</p>
-                    )}
+                    <div className="mt-1 flex items-center gap-2 h-8 rounded-lg border border-border bg-muted/30 px-3">
+                      <span className="text-sm font-semibold text-indigo-600">{superAgentRate}%</span>
+                      <span className="ml-auto text-[9px] text-muted-foreground uppercase tracking-wide">Fixed</span>
+                    </div>
                     <p className="mt-0.5 text-[10px] text-muted-foreground">{selectedSuperAgent?.userId?.name ?? "—"}</p>
                   </div>
                   <div>
@@ -1284,9 +1282,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50/60 p-3 dark:border-sky-900/40 dark:bg-sky-950/20">
                   <p className="text-[11px] font-semibold text-sky-800 dark:text-sky-300">How Commission Works</p>
                   <ul className="mt-1.5 space-y-1 text-[10px] leading-relaxed text-sky-700/90 dark:text-sky-400/80">
-                    <li>• The <span className="font-semibold">Admin</span> sets each agent&apos;s commission rate in their profile.</li>
-                    <li>• Super agent override rates are configured separately on the super agent profile.</li>
-                    <li>• When an invoice is created, the system auto-resolves rates — including country-specific overrides from System Settings.</li>
+                    <li>• Commission rates are set when creating an agent and remain fixed for all invoices.</li>
+                    <li>• To change rates, update the agent or super agent profile directly.</li>
+                    <li>• The system auto-resolves rates — including country-specific overrides from System Settings.</li>
                   </ul>
                   {role === "admin" && (
                     <p className="mt-2 rounded bg-sky-100/80 px-2 py-1 text-[10px] text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">

@@ -10,6 +10,8 @@ import ExhibitionRequest, {
   EXHIBITION_PRIORITIES,
   type ExhibitionRequestStatus,
 } from "@/models/ExhibitionRequest";
+import User from "@/models/User";
+import { sendEmail } from "@/lib/communications/email";
 
 /** Valid status transitions per role */
 const VALID_TRANSITIONS: Record<string, Record<string, ExhibitionRequestStatus[]>> = {
@@ -143,6 +145,12 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     if (priority !== undefined && EXHIBITION_PRIORITIES.includes(priority)) item.priority = priority;
 
     await item.save();
+
+    // Send email notification to agent on status change
+    if (status) {
+      sendExhibitionStatusEmail(item.agentId.toString(), item.eventName, status, reviewNote).catch(() => {});
+    }
+
     return NextResponse.json(item);
   }
 
@@ -172,3 +180,75 @@ async function deleteHandler(_req: NextRequest, ctx: AuthContext, params?: Recor
 export const GET = withAuth(getHandler, { resource: "exhibitions", action: "read" });
 export const PATCH = withAuth(patchHandler, { resource: "exhibitions", action: "read" });
 export const DELETE = withAuth(deleteHandler, { resource: "exhibitions", action: "delete" });
+
+// ── Exhibition status email ──────────────────────────────────────────
+
+const STATUS_EMAIL_CONFIG: Record<string, { emoji: string; color: string; label: string }> = {
+  under_review: { emoji: "🔍", color: "#2563eb", label: "Under Review" },
+  approved: { emoji: "✅", color: "#059669", label: "Approved" },
+  rejected: { emoji: "❌", color: "#dc2626", label: "Rejected" },
+  revision_requested: { emoji: "✏️", color: "#d97706", label: "Revision Requested" },
+  budget_approved: { emoji: "💰", color: "#059669", label: "Budget Approved" },
+  resources_assigned: { emoji: "📦", color: "#7c3aed", label: "Resources Assigned" },
+  active: { emoji: "🚀", color: "#059669", label: "Active" },
+  completed: { emoji: "🏆", color: "#0891b2", label: "Completed" },
+};
+
+async function sendExhibitionStatusEmail(
+  agentUserId: string,
+  eventName: string,
+  newStatus: string,
+  reviewNote?: string,
+) {
+  const config = STATUS_EMAIL_CONFIG[newStatus];
+  if (!config) return; // Don't email for trivial transitions
+
+  const user = await User.findById(agentUserId).select("name email isActive").lean();
+  if (!user?.email || !user.isActive) return;
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
+  const agentName = user.name ?? "Agent";
+
+  const html = `
+<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:0 auto;background:#fff">
+  <div style="background:linear-gradient(135deg,#0D6FD8 0%,#0A5BB8 100%);padding:24px;border-radius:8px 8px 0 0;text-align:center">
+    <h1 style="color:#fff;margin:0;font-size:20px">MPLOYEDIN</h1>
+    <p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:12px">Exhibition Request Update</p>
+  </div>
+  <div style="padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+    <p style="font-size:15px;color:#374151;margin:0 0 16px">Hi <strong>${esc(agentName)}</strong>,</p>
+    <p style="font-size:14px;color:#6b7280;margin:0 0 20px">Your exhibition request has been updated:</p>
+
+    <div style="background:${config.color}08;border:1px solid ${config.color}30;border-radius:8px;padding:16px;margin-bottom:20px">
+      <p style="font-size:16px;font-weight:700;color:${config.color};margin:0">${config.emoji} ${config.label}</p>
+      <p style="font-size:14px;color:#374151;margin:8px 0 0;font-weight:600">${esc(eventName)}</p>
+    </div>
+
+    ${reviewNote ? `
+    <div style="background:#f9fafb;border-left:3px solid ${config.color};padding:12px 16px;margin-bottom:20px;border-radius:0 6px 6px 0">
+      <p style="font-size:11px;font-weight:600;color:#6b7280;margin:0;text-transform:uppercase;letter-spacing:0.5px">Reviewer Note</p>
+      <p style="font-size:14px;color:#374151;margin:6px 0 0">${esc(reviewNote)}</p>
+    </div>` : ""}
+
+    <div style="text-align:center;margin:24px 0">
+      <a href="${baseUrl}/en/agent/exhibitions" style="background:#0D6FD8;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block">View Exhibition</a>
+    </div>
+  </div>
+  <div style="padding:12px;text-align:center">
+    <p style="color:#9ca3af;font-size:11px;margin:0">© ${new Date().getFullYear()} MPLOYEDIN</p>
+  </div>
+</div>`;
+
+  await sendEmail({
+    to: user.email,
+    subject: `${config.emoji} Exhibition "${eventName}" — ${config.label}`,
+    html,
+    userId: agentUserId,
+    source: "exhibition-status",
+    category: "exhibitions",
+  });
+}
+
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}

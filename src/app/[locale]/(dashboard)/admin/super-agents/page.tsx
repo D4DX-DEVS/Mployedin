@@ -69,7 +69,7 @@ export default function AdminSuperAgentsPage() {
 
   // Create modal
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ name: "", email: "", password: "", overrideCommissionRate: "0" });
+  const [addForm, setAddForm] = useState({ name: "", email: "", password: "", overrideCommissionRate: "0", defaultAgentCommissionRate: "0" });
   const [addCityIds, setAddCityIds] = useState<string[]>([]);
   const [addStateIds, setAddStateIds] = useState<string[]>([]);
   const [addAgentIds, setAddAgentIds] = useState<string[]>([]);
@@ -78,7 +78,7 @@ export default function AdminSuperAgentsPage() {
 
   // Edit modal
   const [editSA, setEditSA] = useState<SuperAgent | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", isActive: "true", overrideCommissionRate: "0" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", isActive: "true", overrideCommissionRate: "0", defaultAgentCommissionRate: "0" });
   const [editCityIds, setEditCityIds] = useState<string[]>([]);
   const [editStateIds, setEditStateIds] = useState<string[]>([]);
   const [editAgentIds, setEditAgentIds] = useState<string[]>([]);
@@ -150,6 +150,7 @@ export default function AdminSuperAgentsPage() {
           email: addForm.email,
           password: addForm.password,
           overrideCommissionRate: parseFloat(addForm.overrideCommissionRate) || 0,
+          defaultAgentCommissionRate: parseFloat(addForm.defaultAgentCommissionRate) || 0,
           assignedCityIds: addCityIds,
           assignedStateIds: addStateIds,
           agentIds: addAgentIds,
@@ -161,7 +162,7 @@ export default function AdminSuperAgentsPage() {
         return;
       }
       setShowAdd(false);
-      setAddForm({ name: "", email: "", password: "", overrideCommissionRate: "0" });
+      setAddForm({ name: "", email: "", password: "", overrideCommissionRate: "0", defaultAgentCommissionRate: "0" });
       setAddCityIds([]);
       setAddStateIds([]);
       setAddAgentIds([]);
@@ -180,6 +181,7 @@ export default function AdminSuperAgentsPage() {
       email: sa.email,
       isActive: String(sa.isActive !== false),
       overrideCommissionRate: String(sa.superAgentProfile?.overrideCommissionRate ?? 0),
+      defaultAgentCommissionRate: String(sa.superAgentProfile?.defaultAgentCommissionRate ?? 0),
     });
     setEditCityIds(sa.superAgentProfile?.assignedCityIds?.map((c) => c._id) ?? []);
     setEditStateIds(sa.superAgentProfile?.assignedStateIds?.map((s) => s._id) ?? []);
@@ -201,6 +203,7 @@ export default function AdminSuperAgentsPage() {
           email: editForm.email,
           isActive: editForm.isActive === "true",
           overrideCommissionRate: parseFloat(editForm.overrideCommissionRate) || 0,
+          defaultAgentCommissionRate: parseFloat(editForm.defaultAgentCommissionRate) || 0,
           assignedCityIds: editCityIds,
           assignedStateIds: editStateIds,
           agentIds: editAgentIds,
@@ -444,7 +447,12 @@ export default function AdminSuperAgentsPage() {
               <div className="space-y-2">
                 <Label>Override Commission Rate (%)</Label>
                 <Input type="number" min="0" max="100" value={addForm.overrideCommissionRate} onChange={(e) => setAddForm((f) => ({ ...f, overrideCommissionRate: e.target.value }))} />
-                <p className="text-xs text-muted-foreground">This override is applied to future recruitment invoices for placements under this supervisor.</p>
+                <p className="text-xs text-muted-foreground">Super agent&apos;s own commission on recruitment invoices.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Default Agent Commission Rate (%)</Label>
+                <Input type="number" min="0" max="100" value={addForm.defaultAgentCommissionRate} onChange={(e) => setAddForm((f) => ({ ...f, defaultAgentCommissionRate: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">Agents created under this super agent will receive this commission rate.</p>
               </div>
             </div>
 
@@ -512,7 +520,12 @@ export default function AdminSuperAgentsPage() {
               <div className="space-y-2">
                 <Label>Override Commission Rate (%)</Label>
                 <Input type="number" min="0" max="100" value={editForm.overrideCommissionRate} onChange={(e) => setEditForm((f) => ({ ...f, overrideCommissionRate: e.target.value }))} />
-                <p className="text-xs text-muted-foreground">Changes affect future recruitment invoice commissions and team payout previews only.</p>
+                <p className="text-xs text-muted-foreground">Super agent&apos;s own commission on recruitment invoices.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Default Agent Commission Rate (%)</Label>
+                <Input type="number" min="0" max="100" value={editForm.defaultAgentCommissionRate} onChange={(e) => setEditForm((f) => ({ ...f, defaultAgentCommissionRate: e.target.value }))} />
+                <p className="text-xs text-muted-foreground">Agents under this super agent will receive this commission. Only applies to newly created agents.</p>
               </div>
             </div>
 

@@ -197,10 +197,19 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // Create profile document for agent/super_agent roles
   try {
     if (role === "agent") {
+      // If commissionRate not explicitly set and agent belongs to a SA, use SA's default
+      let resolvedCommission = commissionRate ?? 0;
+      if (resolvedCommission === 0 && superAgentId) {
+        const saDoc = await SuperAgent.findById(superAgentId).select("defaultAgentCommissionRate").lean();
+        if (saDoc?.defaultAgentCommissionRate) {
+          resolvedCommission = saDoc.defaultAgentCommissionRate;
+        }
+      }
+
       await Agent.create({
         userId: user._id,
         superAgentId: superAgentId || undefined,
-        commissionRate: commissionRate ?? 0,
+        commissionRate: resolvedCommission,
         assignedCityIds: assignedCityIds ?? [],
         assignedStateIds: assignedStateIds ?? [],
       });

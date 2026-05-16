@@ -124,6 +124,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         ? {
             _id: profile._id,
             overrideCommissionRate: profile.overrideRate ?? 0,
+            defaultAgentCommissionRate: profile.defaultAgentCommissionRate ?? 0,
             assignedCityIds: profile.assignedCityIds,
             assignedStateIds: profile.assignedStateIds,
             agents,
@@ -266,7 +267,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const body = await validateBody(req, superAgentCreateSchema);
-  const { name, email, password, overrideCommissionRate, assignedCityIds, assignedStateIds, agentIds } = body;
+  const { name, email, password, overrideCommissionRate, defaultAgentCommissionRate, assignedCityIds, assignedStateIds, agentIds } = body;
 
   if (!name || !email || !password) {
     return NextResponse.json({ error: "name, email, and password are required" }, { status: 400 });
@@ -290,6 +291,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     const saDoc = await SuperAgent.create({
       userId: user._id,
       overrideRate: overrideCommissionRate ?? 0,
+      defaultAgentCommissionRate: defaultAgentCommissionRate ?? 0,
       assignedCityIds: assignedCityIds ?? [],
       assignedStateIds: assignedStateIds ?? [],
       agentIds: agentIds ?? [],
@@ -327,7 +329,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const body = await validateBody(req, superAgentUpdateSchema);
-  const { userId, name, email, isActive, overrideCommissionRate, assignedCityIds, assignedStateIds, agentIds } = body;
+  const { userId, name, email, isActive, overrideCommissionRate, defaultAgentCommissionRate, assignedCityIds, assignedStateIds, agentIds } = body;
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
 
@@ -344,6 +346,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   // Update or create super agent profile
   const profileUpdate: Record<string, unknown> = {};
   if (overrideCommissionRate !== undefined) profileUpdate.overrideRate = overrideCommissionRate;
+  if (defaultAgentCommissionRate !== undefined) profileUpdate.defaultAgentCommissionRate = defaultAgentCommissionRate;
   if (assignedCityIds !== undefined) profileUpdate.assignedCityIds = assignedCityIds;
   if (assignedStateIds !== undefined) profileUpdate.assignedStateIds = assignedStateIds;
   if (agentIds !== undefined) profileUpdate.agentIds = agentIds;
