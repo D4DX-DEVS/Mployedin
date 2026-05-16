@@ -6,12 +6,14 @@ import {
   Globe, DollarSign, Save, CheckCircle2, Bell, Shield, Clock,
   Users, Calendar, FileText, Briefcase, Mail, ChevronRight, Percent,
   MapPin, AlertTriangle, Camera, Loader2, Trash2, UserCircle,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   SuperAgentPageIntro,
   SuperAgentSection,
@@ -29,12 +31,13 @@ const COUNTRIES = Object.entries(COUNTRY_CURRENCIES).map(([code, info]) => ({
   label: `${code} — ${info.label} (${info.code})`,
 }));
 
-type TabKey = "profile" | "region" | "commission" | "notifications" | "availability" | "security";
+type TabKey = "profile" | "region" | "commission" | "invoice" | "notifications" | "availability" | "security";
 
 const NAV_ITEMS: { key: TabKey; label: string; desc: string; icon: typeof Globe }[] = [
   { key: "profile", label: "Profile & Avatar", desc: "Photo, name & display info", icon: UserCircle },
   { key: "region", label: "Region & Currency", desc: "Country, currency, display", icon: Globe },
   { key: "commission", label: "Commission Rate", desc: "Override rate for placements", icon: Percent },
+  { key: "invoice", label: "Invoice Defaults", desc: "Billing & invoice presets", icon: Receipt },
   { key: "notifications", label: "Notifications", desc: "Email & in-app alerts", icon: Bell },
   { key: "availability", label: "Availability", desc: "Timezone & working hours", icon: Clock },
   { key: "security", label: "Account & Security", desc: "Password & account actions", icon: Shield },
@@ -1051,6 +1054,329 @@ function AvailabilityTab() {
   );
 }
 
+// ─── Tab: Invoice Defaults ────────────────────────────────────────────────────
+
+const INVOICE_CATEGORIES = [
+  { value: "recruitment", label: "Recruitment Placement" },
+  { value: "subscription", label: "Employer Subscription" },
+  { value: "premium_posting", label: "Premium Job Posting" },
+  { value: "featured_promotion", label: "Featured Employer Promotion" },
+  { value: "exhibition", label: "Exhibition Billing" },
+  { value: "bulk_hiring", label: "Bulk Hiring Package" },
+  { value: "consulting", label: "Consulting Fee" },
+  { value: "custom_enterprise", label: "Custom Enterprise Billing" },
+];
+
+const INVOICE_TAX_TYPES = [
+  { value: "none", label: "No Tax" },
+  { value: "gst", label: "GST" },
+  { value: "vat", label: "VAT" },
+  { value: "reverse_charge", label: "Reverse Charge" },
+  { value: "sales_tax", label: "Sales Tax" },
+  { value: "service_tax", label: "Service Tax" },
+  { value: "withholding_tax", label: "Withholding Tax" },
+  { value: "tds", label: "TDS" },
+  { value: "pst", label: "PST" },
+  { value: "hst", label: "HST" },
+];
+
+const INVOICE_PAYMENT_TERMS = [
+  { value: "immediate", label: "Immediate" },
+  { value: "net_7", label: "Net 7 days" },
+  { value: "net_15", label: "Net 15 days" },
+  { value: "net_30", label: "Net 30 days" },
+  { value: "net_45", label: "Net 45 days" },
+  { value: "net_60", label: "Net 60 days" },
+  { value: "net_90", label: "Net 90 days" },
+  { value: "custom", label: "Custom" },
+];
+
+interface InvoiceDefaultsState {
+  defaultCurrency: string;
+  defaultPaymentTerms: string;
+  customPaymentDays: number;
+  defaultTaxType: string;
+  defaultTaxPercent: number;
+  defaultCategory: string;
+  defaultNotes: string;
+  billingCompanyName: string;
+  billingContactPerson: string;
+  billingEmail: string;
+  billingPhone: string;
+  billingAddress: string;
+  billingCountry: string;
+  billingTaxId: string;
+}
+
+const EMPTY_DEFAULTS: InvoiceDefaultsState = {
+  defaultCurrency: "AED",
+  defaultPaymentTerms: "net_30",
+  customPaymentDays: 30,
+  defaultTaxType: "none",
+  defaultTaxPercent: 0,
+  defaultCategory: "recruitment",
+  defaultNotes: "",
+  billingCompanyName: "",
+  billingContactPerson: "",
+  billingEmail: "",
+  billingPhone: "",
+  billingAddress: "",
+  billingCountry: "",
+  billingTaxId: "",
+};
+
+function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defaults" }: { apiBase?: string }) {
+  const [form, setForm] = useState<InvoiceDefaultsState>(EMPTY_DEFAULTS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [serverSnap, setServerSnap] = useState("");
+
+  useEffect(() => {
+    fetch(apiBase)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.invoiceDefaults) {
+          const d = data.invoiceDefaults;
+          const state: InvoiceDefaultsState = {
+            defaultCurrency: d.defaultCurrency ?? "AED",
+            defaultPaymentTerms: d.defaultPaymentTerms ?? "net_30",
+            customPaymentDays: d.customPaymentDays ?? 30,
+            defaultTaxType: d.defaultTaxType ?? "none",
+            defaultTaxPercent: d.defaultTaxPercent ?? 0,
+            defaultCategory: d.defaultCategory ?? "recruitment",
+            defaultNotes: d.defaultNotes ?? "",
+            billingCompanyName: d.billingCompanyName ?? "",
+            billingContactPerson: d.billingContactPerson ?? "",
+            billingEmail: d.billingEmail ?? "",
+            billingPhone: d.billingPhone ?? "",
+            billingAddress: d.billingAddress ?? "",
+            billingCountry: d.billingCountry ?? "",
+            billingTaxId: d.billingTaxId ?? "",
+          };
+          setForm(state);
+          setServerSnap(JSON.stringify(state));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [apiBase]);
+
+  const hasChanges = serverSnap ? JSON.stringify(form) !== serverSnap : false;
+
+  const update = (key: keyof InvoiceDefaultsState, value: string | number) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleBillingCountryChange = (country: string) => {
+    update("billingCountry", country);
+    if (country) {
+      const info = currencyForCountry(country);
+      update("defaultCurrency", info.code);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(apiBase, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const d = data.invoiceDefaults;
+        const state: InvoiceDefaultsState = {
+          defaultCurrency: d.defaultCurrency ?? "AED",
+          defaultPaymentTerms: d.defaultPaymentTerms ?? "net_30",
+          customPaymentDays: d.customPaymentDays ?? 30,
+          defaultTaxType: d.defaultTaxType ?? "none",
+          defaultTaxPercent: d.defaultTaxPercent ?? 0,
+          defaultCategory: d.defaultCategory ?? "recruitment",
+          defaultNotes: d.defaultNotes ?? "",
+          billingCompanyName: d.billingCompanyName ?? "",
+          billingContactPerson: d.billingContactPerson ?? "",
+          billingEmail: d.billingEmail ?? "",
+          billingPhone: d.billingPhone ?? "",
+          billingAddress: d.billingAddress ?? "",
+          billingCountry: d.billingCountry ?? "",
+          billingTaxId: d.billingTaxId ?? "",
+        };
+        setForm(state);
+        setServerSnap(JSON.stringify(state));
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="h-64 animate-pulse rounded-xl bg-muted/30" />;
+
+  return (
+    <>
+      {/* Info Banner */}
+      <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
+        <div className="flex items-start gap-3">
+          <Receipt className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Speed up invoice creation</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Set your default billing details, tax configuration, and payment terms here. These will auto-fill every new invoice you create — no need to retype the same information.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Billing Entity */}
+      <SectionCard>
+        <SectionHeader icon={FileText} title="Your Billing Entity" description="Company or individual details that appear on your invoices" />
+        <div className="p-6 space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="inv-company" className="text-sm font-medium">Company / Entity Name</Label>
+              <Input id="inv-company" placeholder="e.g. Acme Recruitment LLC" value={form.billingCompanyName} onChange={(e) => update("billingCompanyName", e.target.value)} maxLength={200} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inv-contact" className="text-sm font-medium">Contact Person</Label>
+              <Input id="inv-contact" placeholder="e.g. John Smith" value={form.billingContactPerson} onChange={(e) => update("billingContactPerson", e.target.value)} maxLength={200} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inv-email" className="text-sm font-medium">Billing Email</Label>
+              <Input id="inv-email" type="email" placeholder="billing@company.com" value={form.billingEmail} onChange={(e) => update("billingEmail", e.target.value)} maxLength={200} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inv-phone" className="text-sm font-medium">Billing Phone</Label>
+              <Input id="inv-phone" type="tel" placeholder="+971 50 123 4567" value={form.billingPhone} onChange={(e) => update("billingPhone", e.target.value)} maxLength={50} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="inv-address" className="text-sm font-medium">Billing Address</Label>
+            <Textarea id="inv-address" placeholder="Street address, building, floor…" value={form.billingAddress} onChange={(e) => update("billingAddress", e.target.value)} maxLength={500} rows={2} className="resize-none" />
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="inv-country" className="text-sm font-medium">Billing Country</Label>
+              <select
+                id="inv-country"
+                value={form.billingCountry}
+                onChange={(e) => handleBillingCountryChange(e.target.value)}
+                className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
+              >
+                <option value="">Select country</option>
+                {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+              </select>
+              <p className="text-[11px] text-muted-foreground">Selecting a country auto-updates the default currency.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inv-taxid" className="text-sm font-medium">Tax ID / VAT Number</Label>
+              <Input id="inv-taxid" placeholder="e.g. TRN 100234567890003" value={form.billingTaxId} onChange={(e) => update("billingTaxId", e.target.value)} maxLength={50} />
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Invoice Preferences */}
+      <SectionCard>
+        <SectionHeader icon={Receipt} title="Invoice Preferences" description="Default values pre-filled when creating new invoices" />
+        <div className="p-6 space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="inv-category" className="text-sm font-medium">Default Invoice Type</Label>
+              <select
+                id="inv-category"
+                value={form.defaultCategory}
+                onChange={(e) => update("defaultCategory", e.target.value)}
+                className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
+              >
+                {INVOICE_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inv-currency" className="text-sm font-medium">Default Currency</Label>
+              <select
+                id="inv-currency"
+                value={form.defaultCurrency}
+                onChange={(e) => update("defaultCurrency", e.target.value)}
+                className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
+              >
+                {SUPPORTED_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.symbol} — {c.code} ({c.label})</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Tax Configuration */}
+          <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Tax Configuration</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="inv-taxtype" className="text-sm font-medium">Tax Type</Label>
+                <select
+                  id="inv-taxtype"
+                  value={form.defaultTaxType}
+                  onChange={(e) => update("defaultTaxType", e.target.value)}
+                  className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
+                >
+                  {INVOICE_TAX_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="inv-taxpct" className="text-sm font-medium">Tax Rate (%)</Label>
+                <Input id="inv-taxpct" type="number" min={0} max={100} step={0.5} value={form.defaultTaxPercent} onChange={(e) => update("defaultTaxPercent", parseFloat(e.target.value) || 0)} />
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Terms */}
+          <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Payment Terms</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="inv-terms" className="text-sm font-medium">Default Terms</Label>
+                <select
+                  id="inv-terms"
+                  value={form.defaultPaymentTerms}
+                  onChange={(e) => update("defaultPaymentTerms", e.target.value)}
+                  className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
+                >
+                  {INVOICE_PAYMENT_TERMS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              {form.defaultPaymentTerms === "custom" && (
+                <div className="space-y-2">
+                  <Label htmlFor="inv-custom-days" className="text-sm font-medium">Custom Days</Label>
+                  <Input id="inv-custom-days" type="number" min={1} max={365} value={form.customPaymentDays} onChange={(e) => update("customPaymentDays", parseInt(e.target.value) || 30)} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Default Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="inv-notes" className="text-sm font-medium">Default Invoice Notes</Label>
+            <Textarea
+              id="inv-notes"
+              placeholder="Standard payment terms, bank details, or any recurring notes to include on every invoice…"
+              value={form.defaultNotes}
+              onChange={(e) => update("defaultNotes", e.target.value)}
+              maxLength={1000}
+              rows={3}
+              className="resize-none"
+            />
+            <p className="text-[11px] text-muted-foreground">{form.defaultNotes.length}/1000 characters</p>
+          </div>
+
+          <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label="Save Invoice Defaults" />
+        </div>
+      </SectionCard>
+    </>
+  );
+}
+
 // ─── Tab: Account & Security ──────────────────────────────────────────────────
 
 function SecurityTab() {
@@ -1183,6 +1509,7 @@ export default function SuperAgentSettingsPage() {
           {activeTab === "profile" && <ProfileTab />}
           {activeTab === "region" && <RegionTab />}
           {activeTab === "commission" && <CommissionTab />}
+          {activeTab === "invoice" && <InvoiceDefaultsTab apiBase="/api/super-agent/settings/invoice-defaults" />}
           {activeTab === "notifications" && <NotificationsTab />}
           {activeTab === "availability" && <AvailabilityTab />}
           {activeTab === "security" && <SecurityTab />}

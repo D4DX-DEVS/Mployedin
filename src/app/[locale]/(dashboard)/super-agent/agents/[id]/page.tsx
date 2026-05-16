@@ -196,7 +196,10 @@ export default function AgentDetailPage() {
     setEditLoading(true);
     try {
       const payload: Record<string, unknown> = {};
-      // commissionRate is admin-only, not sent from SA edit form
+      // Super agent can now update commission rate
+      if (editForm.commissionRate !== "" && parseFloat(editForm.commissionRate) !== (data?.agent.commissionRate ?? 0)) {
+        payload.commissionRate = parseFloat(editForm.commissionRate) || 0;
+      }
       if (editForm.workingHoursStart && editForm.workingHoursStart !== data?.agent.workingHoursStart) payload.workingHoursStart = editForm.workingHoursStart;
       if (editForm.workingHoursEnd && editForm.workingHoursEnd !== data?.agent.workingHoursEnd) payload.workingHoursEnd = editForm.workingHoursEnd;
       if (editForm.workingDays.length > 0) payload.workingDays = editForm.workingDays;
@@ -498,11 +501,17 @@ export default function AgentDetailPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Commission Rate</Label>
-                <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-muted/30 px-3">
-                  <span className="text-sm font-semibold">{editForm.commissionRate || 0}%</span>
-                  <span className="ml-auto text-[9px] text-muted-foreground uppercase tracking-wide">Set by Admin</span>
-                </div>
+                <Label>Commission Rate (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={editForm.commissionRate}
+                  onChange={(e) => setEditForm((f) => ({ ...f, commissionRate: e.target.value }))}
+                  placeholder="0"
+                />
+                <p className="text-[10px] text-muted-foreground">Agent commission rate (0–100%)</p>
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>

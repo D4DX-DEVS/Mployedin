@@ -20,7 +20,7 @@ export const assignLeadsSchema = z.object({
   maxLeads: z.number().int().min(1).max(20).default(5),
 });
 
-/** PATCH /api/super-agent/agents/[id] — SA updates agent profile (commission is admin-only) */
+/** PATCH /api/super-agent/agents/[id] — SA updates agent profile */
 export const saAgentUpdateSchema = z.object({
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
   assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
@@ -28,6 +28,7 @@ export const saAgentUpdateSchema = z.object({
   workingHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   workingDays: z.array(z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])).max(7).optional(),
   isActive: z.boolean().optional(),
+  commissionRate: z.number().min(0).max(100).optional(),
 });
 
 /** POST /api/super-agent/insights/feedback */

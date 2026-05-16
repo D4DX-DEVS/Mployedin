@@ -188,6 +188,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const [taxPercent, setTaxPercent] = useState(0);
   const [agentRate, setAgentRate] = useState(0);
   const [superAgentRate, setSuperAgentRate] = useState(0);
+  const [commissionEnabled, setCommissionEnabled] = useState(false);
+  const [customAgentRate, setCustomAgentRate] = useState(0);
+  const [customSuperAgentRate, setCustomSuperAgentRate] = useState(0);
   const [paymentTerms, setPaymentTerms] = useState("net_30");
   const [customPaymentDays, setCustomPaymentDays] = useState(30);
   const [dueDate, setDueDate] = useState("");
@@ -225,8 +228,38 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       setDueDate(""); setNotes(""); setInternalNotes("");
       setInvoiceStatus(role === "agent" ? "pending_approval" : "issued");
       setAgentRate(0); setSuperAgentRate(0);
+      setCommissionEnabled(false); setCustomAgentRate(0); setCustomSuperAgentRate(0);
     }
   }, [open, defaultCurrency, role]);
+
+  // ── Load user invoice defaults on open ─────────────────────────────────────
+  useEffect(() => {
+    if (!open || role === "admin") return;
+    const endpoint = role === "super_agent"
+      ? "/api/super-agent/settings/invoice-defaults"
+      : "/api/agent/settings/invoice-defaults";
+    fetch(endpoint)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data?.invoiceDefaults) return;
+        const d = data.invoiceDefaults;
+        if (d.defaultCurrency) setCurrency(d.defaultCurrency);
+        if (d.defaultPaymentTerms) setPaymentTerms(d.defaultPaymentTerms);
+        if (d.customPaymentDays) setCustomPaymentDays(d.customPaymentDays);
+        if (d.defaultTaxType) setTaxType(d.defaultTaxType);
+        if (d.defaultTaxPercent != null) setTaxPercent(d.defaultTaxPercent);
+        if (d.defaultCategory) setCategory(d.defaultCategory);
+        if (d.defaultNotes) setNotes(d.defaultNotes);
+        if (d.billingCompanyName) setBillingCompanyName(d.billingCompanyName);
+        if (d.billingContactPerson) setBillingContactPerson(d.billingContactPerson);
+        if (d.billingEmail) setBillingEmail(d.billingEmail);
+        if (d.billingPhone) setBillingPhone(d.billingPhone);
+        if (d.billingAddress) setBillingAddress(d.billingAddress);
+        if (d.billingCountry) setBillingCountry(d.billingCountry);
+        if (d.billingTaxId) setBillingTaxId(d.billingTaxId);
+      })
+      .catch(() => {});
+  }, [open, role]);
 
   // ── Fetch super agents & agents for admin cascade filter ──────────────────
   useEffect(() => {
@@ -537,8 +570,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const subtotal = lineItems.reduce((s, li) => s + (li.quantity * li.unitPrice), 0);
   const taxAmount = taxType !== "none" ? Math.round(subtotal * taxPercent / 100 * 100) / 100 : 0;
   const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
-  const agentCommission = Math.round(totalAmount * agentRate / 100 * 100) / 100;
-  const superAgentCommission = Math.round(totalAmount * superAgentRate / 100 * 100) / 100;
+  const effectiveAgentRate = commissionEnabled ? customAgentRate : agentRate;
+  const effectiveSuperAgentRate = commissionEnabled ? customSuperAgentRate : superAgentRate;
+  const agentCommission = Math.round(totalAmount * effectiveAgentRate / 100 * 100) / 100;
+  const superAgentCommission = Math.round(totalAmount * effectiveSuperAgentRate / 100 * 100) / 100;
   const companyNet = Math.round((totalAmount - agentCommission - superAgentCommission) * 100) / 100;
 
   const updateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
@@ -637,6 +672,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         notes: notes || undefined,
         internalNotes: internalNotes || undefined,
         status: invoiceStatus,
+        ...(commissionEnabled && (role === "admin" || role === "super_agent") ? {
+          overrideAgentRate: customAgentRate,
+          overrideSuperAgentRate: customSuperAgentRate,
+        } : {}),
       };
 
       const res = await csrfFetch("/api/invoices/recruitment", {
@@ -1243,68 +1282,100 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 </div>
               </div>
 
-              {/* Commission — always read-only, derived from agent profile */}
+              {/* Commission — toggle to enable custom rates */}
               <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Commission Split</p>
-                {agentRate === 0 && superAgentRate === 0 && selectedJobId && (
-                  <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-400">
-                    ⚠ Commission rates are 0%. Update the agent profile to set commission rates.
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Commission Split</p>
+                  {(role === "admin" || role === "super_agent") && (
+                    <label className="relative inline-flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={commissionEnabled}
+                        onChange={(e) => {
+                          setCommissionEnabled(e.target.checked);
+                          if (e.target.checked) {
+                            setCustomAgentRate(agentRate);
+                            setCustomSuperAgentRate(superAgentRate);
+                          }
+                        }}
+                        className="peer sr-only"
+                      />
+                      <div className="peer h-5 w-9 rounded-full bg-muted-foreground/20 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:ring-2 peer-focus:ring-primary/25" />
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        {commissionEnabled ? "Custom" : "Default (0%)"}
+                      </span>
+                    </label>
+                  )}
+                </div>
+
+                {!commissionEnabled && (
+                  <div className="rounded-lg border border-border/50 bg-muted/20 p-3 text-center">
+                    <p className="text-sm text-muted-foreground">Commission is <span className="font-semibold">disabled</span> for this invoice.</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground/70">Toggle on to set custom agent and super-agent commission rates.</p>
                   </div>
                 )}
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <Label className="text-xs text-sky-600">Agent Rate (%)</Label>
-                    <div className="mt-1 flex items-center gap-2 h-8 rounded-lg border border-border bg-muted/30 px-3">
-                      <span className="text-sm font-semibold text-sky-600">{agentRate}%</span>
-                      <span className="ml-auto text-[9px] text-muted-foreground uppercase tracking-wide">Fixed</span>
+
+                {commissionEnabled && (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div>
+                        <Label className="text-xs text-sky-600">Agent Rate (%)</Label>
+                        {(role === "admin" || role === "super_agent") ? (
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={0.5}
+                            className="mt-1 h-8 rounded-lg text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            value={customAgentRate || ""}
+                            onChange={(e) => setCustomAgentRate(parseFloat(e.target.value) || 0)}
+                            placeholder="0"
+                          />
+                        ) : (
+                          <div className="mt-1 flex items-center gap-2 h-8 rounded-lg border border-border bg-muted/30 px-3">
+                            <span className="text-sm font-semibold text-sky-600">{effectiveAgentRate}%</span>
+                            <span className="ml-auto text-[9px] text-muted-foreground uppercase tracking-wide">Fixed</span>
+                          </div>
+                        )}
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">{selectedAgent?.userId?.name ?? "—"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-indigo-600">Super Agent Rate (%)</Label>
+                        {(role === "admin" || role === "super_agent") ? (
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={0.5}
+                            className="mt-1 h-8 rounded-lg text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            value={customSuperAgentRate || ""}
+                            onChange={(e) => setCustomSuperAgentRate(parseFloat(e.target.value) || 0)}
+                            placeholder="0"
+                          />
+                        ) : (
+                          <div className="mt-1 flex items-center gap-2 h-8 rounded-lg border border-border bg-muted/30 px-3">
+                            <span className="text-sm font-semibold text-indigo-600">{effectiveSuperAgentRate}%</span>
+                            <span className="ml-auto text-[9px] text-muted-foreground uppercase tracking-wide">Fixed</span>
+                          </div>
+                        )}
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">{selectedSuperAgent?.userId?.name ?? "—"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-emerald-600">Company Net</Label>
+                        <p className="mt-1 text-sm font-bold text-emerald-600">{fmt(companyNet)}</p>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">
+                          A: {fmt(agentCommission)} · SA: {fmt(superAgentCommission)}
+                        </p>
+                      </div>
                     </div>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">{selectedAgent?.userId?.name ?? "—"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-indigo-600">Super Agent Rate (%)</Label>
-                    <div className="mt-1 flex items-center gap-2 h-8 rounded-lg border border-border bg-muted/30 px-3">
-                      <span className="text-sm font-semibold text-indigo-600">{superAgentRate}%</span>
-                      <span className="ml-auto text-[9px] text-muted-foreground uppercase tracking-wide">Fixed</span>
-                    </div>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">{selectedSuperAgent?.userId?.name ?? "—"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-emerald-600">Company Net</Label>
-                    <p className="mt-1 text-sm font-bold text-emerald-600">{fmt(companyNet)}</p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">
-                      A: {fmt(agentCommission)} · SA: {fmt(superAgentCommission)}
+                    {(effectiveAgentRate + effectiveSuperAgentRate) > 100 && (
+                      <p className="mt-2 text-xs text-rose-600">⚠ Total commission exceeds 100%</p>
+                    )}
+                    <p className="mt-2 text-[9px] italic text-muted-foreground/60">
+                      Custom rates override profile defaults for this invoice only. Final amounts are calculated server-side.
                     </p>
-                  </div>
-                </div>
-                {(agentRate + superAgentRate) > 100 && (
-                  <p className="mt-2 text-xs text-rose-600">⚠ Total commission exceeds 100%</p>
+                  </>
                 )}
-                <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50/60 p-3 dark:border-sky-900/40 dark:bg-sky-950/20">
-                  <p className="text-[11px] font-semibold text-sky-800 dark:text-sky-300">How Commission Works</p>
-                  <ul className="mt-1.5 space-y-1 text-[10px] leading-relaxed text-sky-700/90 dark:text-sky-400/80">
-                    <li>• Commission rates are set when creating an agent and remain fixed for all invoices.</li>
-                    <li>• To change rates, update the agent or super agent profile directly.</li>
-                    <li>• The system auto-resolves rates — including country-specific overrides from System Settings.</li>
-                  </ul>
-                  {role === "admin" && (
-                    <p className="mt-2 rounded bg-sky-100/80 px-2 py-1 text-[10px] text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">
-                      <span className="font-semibold">Admin:</span> You can adjust rates above for this invoice preview, or update them permanently via <span className="font-semibold">Admin → Agents</span> and <span className="font-semibold">Super Agent Profiles</span>.
-                    </p>
-                  )}
-                  {role === "super_agent" && (
-                    <p className="mt-2 rounded bg-indigo-100/80 px-2 py-1 text-[10px] text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
-                      <span className="font-semibold">Super Agent:</span> You can adjust the preview rates above. Your override rate is managed in your <span className="font-semibold">Commissions</span> page. Agent rates are set by the admin.
-                    </p>
-                  )}
-                  {role === "agent" && (
-                    <p className="mt-2 rounded bg-amber-100/80 px-2 py-1 text-[10px] text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                      <span className="font-semibold">Note:</span> Your commission rate is set by your admin. Contact your admin or super agent if it needs updating.
-                    </p>
-                  )}
-                  <p className="mt-2 text-[9px] italic text-sky-600/60 dark:text-sky-500/60">
-                    These values are a preview only. Final amounts are calculated server-side and may differ if country-specific overrides apply.
-                  </p>
-                </div>
               </div>
 
               {/* Payment terms + notes */}
@@ -1401,14 +1472,20 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                 </div>
 
                 {/* Commission */}
-                {(agentRate > 0 || superAgentRate > 0) && (
+                {commissionEnabled && (effectiveAgentRate > 0 || effectiveSuperAgentRate > 0) && (
                   <div className="mt-3 rounded-lg bg-muted/30 p-3 text-xs">
                     <p className="font-semibold text-muted-foreground">COMMISSION SPLIT</p>
                     <div className="mt-1 space-y-0.5">
-                      {agentRate > 0 && <p>Agent: {agentRate}% = {fmt(agentCommission)}</p>}
-                      {superAgentRate > 0 && <p>Super Agent: {superAgentRate}% = {fmt(superAgentCommission)}</p>}
+                      {effectiveAgentRate > 0 && <p>Agent: {effectiveAgentRate}% = {fmt(agentCommission)}</p>}
+                      {effectiveSuperAgentRate > 0 && <p>Super Agent: {effectiveSuperAgentRate}% = {fmt(superAgentCommission)}</p>}
                       <p className="font-medium text-emerald-600">Company Net: {fmt(companyNet)}</p>
                     </div>
+                  </div>
+                )}
+                {!commissionEnabled && (
+                  <div className="mt-3 rounded-lg bg-muted/30 p-3 text-xs">
+                    <p className="font-semibold text-muted-foreground">COMMISSION</p>
+                    <p className="mt-1 text-muted-foreground">No commission applied (0%)</p>
                   </div>
                 )}
 

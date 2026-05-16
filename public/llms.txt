@@ -3,17 +3,29 @@
 
 MPLOYEDIN is a dual-sided recruitment marketplace connecting employers worldwide
 with top talent using AI-powered candidate matching and data-driven hiring tools.
+The platform supports Arabic (RTL) and English, serving the GCC region (UAE, Saudi Arabia, Qatar, Kuwait, Bahrain, Oman) and beyond.
+
+## What MPLOYEDIN Does
+
+- Connects employers with qualified candidates globally using AI-powered matching
+- Enables job seekers to discover and apply to international opportunities
+- Provides data-driven hiring insights and recruitment analytics
+- Supports Arabic and English with full RTL interface
 
 ## Public Pages
 
-- /en/: Platform homepage
-- /en/jobs: Browse active job listings worldwide
-- /en/blog: Recruitment insights, job market trends, hiring guides
-- /en/faq: Frequently asked questions about the platform
-- /en/about: About MPLOYEDIN
-- /en/contact: Contact information
+- https://mployedin-8a4rc.ondigitalocean.app/en/: Platform homepage (English)
+- https://mployedin-8a4rc.ondigitalocean.app/ar/: Platform homepage (Arabic)
+- https://mployedin-8a4rc.ondigitalocean.app/en/jobs: Browse active job listings worldwide
+- https://mployedin-8a4rc.ondigitalocean.app/en/blog: Recruitment insights, job market trends, hiring guides
+- https://mployedin-8a4rc.ondigitalocean.app/en/faq: Frequently asked questions
+- https://mployedin-8a4rc.ondigitalocean.app/en/companies: Browse verified employers
+- https://mployedin-8a4rc.ondigitalocean.app/en/salary-explorer: Explore salary benchmarks by role and region
+- https://mployedin-8a4rc.ondigitalocean.app/en/about: About MPLOYEDIN
+- https://mployedin-8a4rc.ondigitalocean.app/en/contact: Contact information
 
-## Arabic (RTL) versions available at /ar/
+## Sitemap
+https://mployedin-8a4rc.ondigitalocean.app/sitemap.xml
 
 ## Contact
 info@mployedin.com

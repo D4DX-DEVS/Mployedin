@@ -10,15 +10,44 @@ export const revalidate = 60;
 // searchParams opt-out static rendering per-request but ISR still applies
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Browse Jobs | mployedin",
-  description: "Discover thousands of jobs in the UAE, Saudi Arabia, Qatar and across the GCC. Search by skills, location, and salary.",
-  openGraph: {
-    title: "Browse Jobs | mployedin",
-    description: "Find your next career opportunity in the GCC region.",
-    type: "website",
-  },
-};
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin-8a4rc.ondigitalocean.app";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === "ar";
+  const canonicalUrl = `${BASE_URL}/${locale}/jobs`;
+
+  return {
+    title: isAr
+      ? "تصفح الوظائف | MPLOYEDIN"
+      : "Browse Jobs in UAE, GCC & Worldwide | MPLOYEDIN",
+    description: isAr
+      ? "اكتشف آلاف الوظائف في الإمارات والسعودية وقطر ودول الخليج. ابحث حسب المهارات والموقع والراتب."
+      : "Discover thousands of jobs in the UAE, Saudi Arabia, Qatar and across the GCC. Search by skills, location, and salary.",
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        en: `${BASE_URL}/en/jobs`,
+        ar: `${BASE_URL}/ar/jobs`,
+        "x-default": `${BASE_URL}/en/jobs`,
+      },
+    },
+    openGraph: {
+      title: isAr
+        ? "تصفح الوظائف | MPLOYEDIN"
+        : "Browse Jobs in UAE, GCC & Worldwide | MPLOYEDIN",
+      description: isAr
+        ? "ابحث عن فرصتك المهنية القادمة في دول الخليج والعالم."
+        : "Find your next career opportunity across the GCC region and worldwide.",
+      type: "website",
+      url: canonicalUrl,
+    },
+  };
+}
 
 const PAGE_SIZE = 20;
 

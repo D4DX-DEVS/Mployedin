@@ -15,8 +15,10 @@ interface PageProps {
   params: Promise<{ locale: string; id: string }>;
 }
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin-8a4rc.ondigitalocean.app";
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
+  const { locale, id } = await params;
   await connectDB();
   const job = await Job.findById(id)
     .populate("employerId", "companyName")
@@ -29,15 +31,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const employer = job.employerId as any;
   const title = `${job.title} at ${employer?.companyName ?? "Company"} | mployedin`;
   const description = job.description?.slice(0, 160);
-  const ogImageUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/og/job?id=${id}`;
+  const ogImageUrl = `${BASE_URL}/api/og/job?id=${id}`;
+  const canonicalUrl = `${BASE_URL}/${locale}/jobs/${id}`;
 
   return {
     title,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        en: `${BASE_URL}/en/jobs/${id}`,
+        ar: `${BASE_URL}/ar/jobs/${id}`,
+        "x-default": `${BASE_URL}/en/jobs/${id}`,
+      },
+    },
     openGraph: {
       title,
       description,
       type: "website",
+      url: canonicalUrl,
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
     },
     twitter: {
@@ -111,39 +123,61 @@ export default async function JobDetailPage({ params }: PageProps) {
   const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0]) : null;
   const daysLeft = closesInDays(job.expiresAt as Date | null);
 
+  // Map internal employment type values to schema.org equivalents
+  const employmentTypeMap: Record<string, string> = {
+    full_time: "FULL_TIME",
+    part_time: "PART_TIME",
+    contract: "CONTRACTOR",
+    internship: "INTERN",
+    freelance: "CONTRACTOR",
+    walk_in: "OTHER",
+  };
+
   // JSON-LD structured data for Google Jobs
-  const jsonLd = {
+  const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     title: job.title,
-    description: job.description,
-    datePosted: job.createdAt,
-    validThrough: job.expiresAt,
+    description: job.description ?? "",
+    url: `${BASE_URL}/${locale}/jobs/${String(job._id)}`,
+    datePosted: job.createdAt instanceof Date ? job.createdAt.toISOString() : String(job.createdAt),
     hiringOrganization: {
       "@type": "Organization",
       name: employer?.companyName ?? "Company",
+      ...(employer?.website ? { sameAs: employer.website } : {}),
     },
-    jobLocation: {
-      "@type": "Place",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: job.location?.city,
-        addressCountry: job.location?.country,
-      },
-    },
-    ...(job.location?.isRemote && { jobLocationType: "TELECOMMUTE" }),
-    ...(job.salary?.min && {
-      baseSalary: {
-        "@type": "MonetaryAmount",
-        currency: job.salary.currency ?? "AED",
-        value: {
-          "@type": "QuantitativeValue",
-          minValue: job.salary.min,
-          maxValue: job.salary.max,
-          unitText: "MONTH",
+    jobLocation: job.location?.isRemote
+      ? { "@type": "Place", address: { "@type": "PostalAddress", addressCountry: job.location?.country ?? "" } }
+      : {
+          "@type": "Place",
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: job.location?.city ?? "",
+            addressCountry: job.location?.country ?? "",
+          },
         },
-      },
-    }),
+    ...(job.location?.isRemote && { jobLocationType: "TELECOMMUTE" }),
+    ...(job.expiresAt ? { validThrough: new Date(job.expiresAt).toISOString() } : {}),
+    ...(job.employmentType ? { employmentType: employmentTypeMap[job.employmentType] ?? "OTHER" } : {}),
+    ...(job.showSalary !== false && job.salary?.min
+      ? {
+          baseSalary: {
+            "@type": "MonetaryAmount",
+            currency: job.salary.currency ?? "AED",
+            value: {
+              "@type": "QuantitativeValue",
+              minValue: job.salary.min,
+              ...(job.salary.max ? { maxValue: job.salary.max } : {}),
+              unitText: "MONTH",
+            },
+          },
+        }
+      : {}),
+    identifier: {
+      "@type": "PropertyValue",
+      name: "mployedin",
+      value: String(job._id),
+    },
   };
 
   return (

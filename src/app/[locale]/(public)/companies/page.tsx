@@ -5,10 +5,40 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, MapPin, Users, Briefcase, CheckCircle2 } from "lucide-react";
 
-export const metadata: Metadata = {
-  title: "Companies | mployedin",
-  description: "Browse top companies hiring on mployedin. Find your next employer.",
-};
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin-8a4rc.ondigitalocean.app";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === "ar";
+  const canonicalUrl = `${BASE_URL}/${locale}/companies`;
+
+  return {
+    title: isAr ? "الشركات | MPLOYEDIN" : "Top Hiring Companies in GCC & Worldwide | MPLOYEDIN",
+    description: isAr
+      ? "تصفح أفضل الشركات التي توظف على MPLOYEDIN. اعثر على صاحب عملك القادم."
+      : "Browse top companies hiring on MPLOYEDIN. Discover employers in UAE, Saudi Arabia, Qatar and worldwide.",
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        en: `${BASE_URL}/en/companies`,
+        ar: `${BASE_URL}/ar/companies`,
+        "x-default": `${BASE_URL}/en/companies`,
+      },
+    },
+    openGraph: {
+      title: isAr ? "الشركات | MPLOYEDIN" : "Top Hiring Companies | MPLOYEDIN",
+      description: isAr
+        ? "تصفح أفضل الشركات التي توظف على MPLOYEDIN."
+        : "Browse top companies hiring on MPLOYEDIN.",
+      type: "website",
+      url: canonicalUrl,
+    },
+  };
+}
 
 interface PageProps {
   params: Promise<{ locale: string }>;

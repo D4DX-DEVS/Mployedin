@@ -35,6 +35,7 @@ interface AgentRef {
 interface SAProfile {
   _id: string;
   overrideCommissionRate?: number;
+  defaultAgentCommissionRate?: number;
   assignedCityIds?: { _id: string; name: string }[];
   assignedStateIds?: { _id: string; name: string }[];
   agents: AgentRef[];

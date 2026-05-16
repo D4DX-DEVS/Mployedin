@@ -176,6 +176,9 @@ export const recruitmentInvoiceCreateSchema = z.object({
   internalNotes: z.string().max(2000).trim().optional(),
   // Status
   status: z.string().max(50).default("issued"),
+  // Commission overrides (admin/super-agent only, 0-100%)
+  overrideAgentRate: z.number().min(0).max(100).optional(),
+  overrideSuperAgentRate: z.number().min(0).max(100).optional(),
 });
 
 // ── POST /api/invoices/[id]/payments ────────────────────────────────────────

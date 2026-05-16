@@ -37,4 +37,4 @@ User-agent: Googlebot-Extended
 Allow: /en/
 Allow: /ar/
 
-Sitemap: https://mployedin.vercel.app/sitemap.xml
+Sitemap: https://mployedin-8a4rc.ondigitalocean.app/sitemap.xml

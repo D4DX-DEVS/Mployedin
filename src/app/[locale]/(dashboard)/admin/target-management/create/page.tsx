@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,7 +14,7 @@ import {
 } from "@/components/features/targets/TargetComponents";
 import {
   ArrowLeft, ArrowRight, Check, Building2, Users, DollarSign,
-  CalendarDays, MapPin, Sparkles, SplitSquareVertical,
+  CalendarDays, MapPin, ChevronDown, ChevronUp,
   Eye, Target, Loader2, Search,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -31,11 +30,6 @@ interface MonthlyTarget {
   employeeTarget: number;
   financeTarget: number;
 }
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 
 const MONTHS_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -134,30 +128,30 @@ function RiskBadge({ risk }: { risk?: DirectoryRisk | null }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Wizard Step Components                                             */
+/*  Simplified 2-Step Indicator                                        */
 /* ------------------------------------------------------------------ */
 
-function StepIndicator({ step, total }: { step: number; total: number }) {
-  const labels = ["Select", "Set Targets", "Distribution", "Quarterly", "Review"];
+function StepIndicator({ step }: { step: number }) {
+  const labels = ["Setup", "Review & Create"];
   return (
-    <div className="flex items-center gap-2 mb-8">
-      {Array.from({ length: total }, (_, i) => {
+    <div className="flex items-center gap-3">
+      {labels.map((label, i) => {
         const s = i + 1;
         const isActive = s === step;
         const isComplete = s < step;
         return (
           <div key={s} className="flex items-center gap-2">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+            <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
               isComplete ? "bg-emerald-500 text-white" :
               isActive ? "bg-sky-600 text-white ring-4 ring-sky-500/20" :
               "bg-muted text-muted-foreground"
             }`}>
-              {isComplete ? <Check className="h-4 w-4" /> : s}
+              {isComplete ? <Check className="h-3.5 w-3.5" /> : s}
             </div>
-            <span className={`hidden sm:inline text-xs font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-              {labels[i]}
+            <span className={`text-sm font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+              {label}
             </span>
-            {s < total && <div className={`h-px w-6 sm:w-12 ${s < step ? "bg-emerald-500" : "bg-border"}`} />}
+            {s < 2 && <div className={`h-px w-8 sm:w-16 ${s < step ? "bg-emerald-500" : "bg-border"}`} />}
           </div>
         );
       })}
@@ -178,8 +172,9 @@ export default function CreateTargetProfilePage() {
 
   const [step, setStep] = useState(1);
   const [creating, setCreating] = useState(false);
+  const [showDistribution, setShowDistribution] = useState(false);
 
-  // Step 1
+  // Supervisor selection
   const [superAgents, setSuperAgents] = useState<SupervisorDirectoryRow[]>([]);
   const [selectedSupervisorDetails, setSelectedSupervisorDetails] = useState<Record<string, SupervisorDirectoryRow>>({});
   const [directoryLoading, setDirectoryLoading] = useState(true);
@@ -196,13 +191,13 @@ export default function CreateTargetProfilePage() {
   const [year, setYear] = useState(currentYear);
   const [region, setRegion] = useState("");
 
-  // Step 2
+  // Targets
   const [employerTarget, setEmployerTarget] = useState(0);
   const [employeeTarget, setEmployeeTarget] = useState(0);
   const [financeTarget, setFinanceTarget] = useState(0);
   const [currency, setCurrency] = useState("AED");
 
-  // Step 3
+  // Distribution
   const [strategy, setStrategy] = useState<"equal" | "custom" | "seasonal">("equal");
   const [monthlyTargets, setMonthlyTargets] = useState<MonthlyTarget[]>([]);
 
@@ -438,7 +433,7 @@ export default function CreateTargetProfilePage() {
     });
   };
 
-  // Generate monthly distribution when strategy changes
+  // Generate monthly distribution
   const generateDistribution = useCallback(() => {
     if (strategy === "equal") {
       return Array.from({ length: 12 }, (_, i) => {
@@ -465,7 +460,6 @@ export default function CreateTargetProfilePage() {
         employeeTarget: Math.round(employeeTarget * w),
         financeTarget: Math.round(financeTarget * w),
       }));
-      // Fix rounding
       const empSum = months.reduce((s, m) => s + m.employerTarget, 0);
       const emplSum = months.reduce((s, m) => s + m.employeeTarget, 0);
       const finSum = months.reduce((s, m) => s + m.financeTarget, 0);
@@ -474,7 +468,6 @@ export default function CreateTargetProfilePage() {
       months[11].financeTarget += financeTarget - finSum;
       return months;
     }
-    // Custom — start with equal then user edits
     return Array.from({ length: 12 }, (_, i) => ({
       month: i + 1,
       employerTarget: Math.floor(employerTarget / 12) + (i < (employerTarget % 12) ? 1 : 0),
@@ -483,8 +476,9 @@ export default function CreateTargetProfilePage() {
     }));
   }, [strategy, employerTarget, employeeTarget, financeTarget]);
 
+  // Auto-generate distribution when moving to review
   useEffect(() => {
-    if (step === 3) {
+    if (step === 2) {
       setMonthlyTargets(generateDistribution());
     }
   }, [step, generateDistribution]);
@@ -508,7 +502,6 @@ export default function CreateTargetProfilePage() {
     });
   }, [monthlyTargets]);
 
-  // Sums
   const monthlySum = useMemo(() => ({
     employer: monthlyTargets.reduce((s, m) => s + m.employerTarget, 0),
     employee: monthlyTargets.reduce((s, m) => s + m.employeeTarget, 0),
@@ -520,14 +513,9 @@ export default function CreateTargetProfilePage() {
     monthlySum.employee === employeeTarget &&
     monthlySum.finance === financeTarget;
 
-  // Navigation
-  const canNext = () => {
-    if (step === 1) return selectedAgents.length > 0 && year > 0;
-    if (step === 2) return employerTarget > 0 || employeeTarget > 0 || financeTarget > 0;
-    if (step === 3) return sumValid;
-    if (step === 4) return true;
-    return true;
-  };
+  // Can proceed to review?
+  const canProceed = selectedAgents.length > 0 && year > 0 &&
+    (employerTarget > 0 || employeeTarget > 0 || financeTarget > 0);
 
   const handleCreate = async () => {
     if (selectedAgents.length === 0) {
@@ -535,6 +523,9 @@ export default function CreateTargetProfilePage() {
       setStep(1);
       return;
     }
+
+    // Re-generate distribution to ensure it's fresh
+    const finalMonthly = generateDistribution();
 
     setCreating(true);
     try {
@@ -551,7 +542,7 @@ export default function CreateTargetProfilePage() {
             financeTarget,
             currency,
             distributionStrategy: strategy,
-            monthlyTargets,
+            monthlyTargets: finalMonthly,
             notes: "",
           }
         : {
@@ -564,7 +555,7 @@ export default function CreateTargetProfilePage() {
             financeTarget,
             currency,
             distributionStrategy: strategy,
-            monthlyTargets,
+            monthlyTargets: finalMonthly,
           };
 
       const res = await csrfFetch(url, {
@@ -611,7 +602,7 @@ export default function CreateTargetProfilePage() {
   };
 
   return (
-    <div className="page-container max-w-6xl mx-auto space-y-6">
+    <div className="page-container max-w-5xl mx-auto space-y-5">
       {/* Back */}
       <button
         onClick={() => router.push(`/${locale}/admin/target-management`)}
@@ -620,134 +611,118 @@ export default function CreateTargetProfilePage() {
         <ArrowLeft className="h-4 w-4" /> Back to Target Management
       </button>
 
-      {/* Header */}
-      <div className="workspace-glass-panel rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="workspace-tone-sky rounded-2xl p-3">
-            <Target className="h-6 w-6" />
+      {/* Header — compact */}
+      <div className="workspace-glass-panel rounded-2xl p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="workspace-tone-sky rounded-xl p-2.5">
+              <Target className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight">Create Target Profile</h1>
+              <p className="text-xs text-muted-foreground">
+                Assign supervisor, set targets, and you&apos;re done
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">Create Target Profile</h1>
-            <p className="text-sm text-muted-foreground">
-              Set unified annual targets with employer, employee, and finance metrics
-            </p>
-          </div>
+          <StepIndicator step={step} />
         </div>
-        <StepIndicator step={step} total={5} />
       </div>
 
-      {/* ============= STEP 1: Select ============= */}
+      {/* ============= STEP 1: SETUP (All-in-one) ============= */}
       {step === 1 && (
-        <div className="workspace-glass-panel rounded-2xl p-6 space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="rounded-xl bg-sky-500/10 p-2 text-sky-600"><Users className="h-4 w-4" /></div>
-            <h2 className="text-lg font-semibold">Step 1: Select Supervisor</h2>
-          </div>
+        <div className="space-y-5">
 
-          <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-            <div className="grid gap-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Planning Year *</Label>
-              <div className="relative">
-                <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="number"
-                  value={year}
-                  onChange={(e) => setYear(parseInt(e.target.value) || currentYear)}
-                  className="h-11 rounded-xl border-border bg-card pl-9"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Target status, performance, and risk badges update for the selected year.</p>
-            </div>
-            <div className="grid gap-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Target Region</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  placeholder="e.g. Dubai, Abu Dhabi"
-                  className="h-11 rounded-xl border-border bg-card pl-9"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">This region is saved on the new target profile. It is separate from directory filtering.</p>
-            </div>
-          </div>
-
-          <div className="space-y-4 rounded-2xl border border-border/60 bg-card/60 p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-sky-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
-                  <Sparkles className="h-3.5 w-3.5" /> Enterprise Selection Mode
+          {/* --- Section A: Year & Region (inline) --- */}
+          <div className="workspace-glass-panel rounded-2xl p-5">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">Planning Year *</Label>
+                <div className="relative">
+                  <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    value={year}
+                    onChange={(e) => setYear(parseInt(e.target.value) || currentYear)}
+                    className="h-10 rounded-xl border-border bg-card pl-9"
+                  />
                 </div>
-                <p className="mt-3 text-sm font-medium text-foreground">Supervisor Directory</p>
-                <p className="text-sm text-muted-foreground">Search, filter, compare team coverage, and select supervisors without relying on a long dropdown.</p>
               </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">Target Region</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    placeholder="e.g. Dubai, Abu Dhabi"
+                    className="h-10 rounded-xl border-border bg-card pl-9"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">Currency</Label>
+                <Input
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
+                  maxLength={3}
+                  className="h-10 rounded-xl border-border bg-card text-center font-semibold"
+                />
+              </div>
+            </div>
+          </div>
 
-              <div className="grid gap-2 sm:grid-cols-3">
+          {/* --- Section B: Supervisor Selection --- */}
+          <div className="workspace-glass-panel rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-sky-600" />
+                <h2 className="text-sm font-semibold">Select Supervisor</h2>
+                {selectedAgents.length > 0 && (
+                  <Badge variant="info" className="ml-2">{selectedAgents.length} selected</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
                 {([
-                  { key: "single", label: "Individual", hint: "One supervisor" },
-                  { key: "bulk", label: "Bulk", hint: "Multi-select" },
-                  { key: "region", label: "Region", hint: "Bulk by filter" },
+                  { key: "single", label: "Individual" },
+                  { key: "bulk", label: "Bulk" },
+                  { key: "region", label: "Region" },
                 ] as const).map((mode) => (
                   <button
                     key={mode.key}
                     type="button"
                     onClick={() => setSelectionMode(mode.key)}
-                    className={`rounded-xl border px-4 py-3 text-left transition-all ${selectionMode === mode.key ? "border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/15" : "border-border bg-background hover:border-border/80"}`}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${selectionMode === mode.key ? "border-sky-500 bg-sky-500/10 text-sky-700" : "border-border text-muted-foreground hover:border-border/80"}`}
                   >
-                    <p className="text-sm font-semibold text-foreground">{mode.label}</p>
-                    <p className="text-[11px] text-muted-foreground">{mode.hint}</p>
+                    {mode.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,0.8fr))]">
-              <div className="grid gap-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Search</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={directorySearch}
-                    onChange={(e) => setDirectorySearch(e.target.value)}
-                    placeholder="Search supervisor, email, or territory"
-                    className="h-11 rounded-xl border-border bg-background pl-9"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Availability</Label>
-                <SearchableSelect
-                  options={[
-                    { value: "all", label: "All supervisors" },
-                    { value: "available", label: "Available" },
-                    { value: "has_active_target", label: "Already targeted" },
-                    { value: "inactive", label: "Inactive" },
-                  ]}
-                  value={availabilityFilter}
-                  onValueChange={(value) => setAvailabilityFilter(value as "all" | DirectoryAvailability)}
-                  className="h-11 rounded-xl border-border bg-background"
+            {/* Search + Filters — compact row */}
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={directorySearch}
+                  onChange={(e) => setDirectorySearch(e.target.value)}
+                  placeholder="Search supervisor, email, or territory..."
+                  className="h-9 rounded-lg border-border bg-background pl-9 text-sm"
                 />
               </div>
-
-              <div className="grid gap-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Risk</Label>
-                <SearchableSelect
-                  options={[
-                    { value: "all", label: "All risk levels" },
-                    { value: "high", label: "High risk" },
-                    { value: "medium", label: "Medium risk" },
-                    { value: "low", label: "Low risk" },
-                  ]}
-                  value={riskFilter}
-                  onValueChange={(value) => setRiskFilter(value as "all" | DirectoryRisk)}
-                  className="h-11 rounded-xl border-border bg-background"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Territory</Label>
+              <SearchableSelect
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "available", label: "Available" },
+                  { value: "has_active_target", label: "Targeted" },
+                  { value: "inactive", label: "Inactive" },
+                ]}
+                value={availabilityFilter}
+                onValueChange={(value) => setAvailabilityFilter(value as "all" | DirectoryAvailability)}
+                className="h-9 rounded-lg border-border bg-background text-xs w-[120px]"
+              />
+              {territoryOptions.length > 0 && (
                 <SearchableSelect
                   options={[
                     { value: "all", label: "All territories" },
@@ -755,136 +730,86 @@ export default function CreateTargetProfilePage() {
                   ]}
                   value={territoryFilter}
                   onValueChange={setTerritoryFilter}
-                  className="h-11 rounded-xl border-border bg-background"
+                  className="h-9 rounded-lg border-border bg-background text-xs w-[140px]"
                 />
-              </div>
-
-              <div className="grid gap-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sort</Label>
-                <SearchableSelect
-                  options={[
-                    { value: "recommended", label: "Recommended" },
-                    { value: "performance", label: "Performance" },
-                    { value: "team", label: "Team size" },
-                    { value: "name", label: "Name" },
-                  ]}
-                  value={sortBy}
-                  onValueChange={(value) => setSortBy(value as DirectorySort)}
-                  className="h-11 rounded-xl border-border bg-background"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <SupervisorSummaryCard
-                label="Matching Supervisors"
-                value={directoryTotals.matchingSupervisors.toLocaleString()}
-                hint="Visible after search and filter rules"
-              />
-              <SupervisorSummaryCard
-                label="Team Coverage"
-                value={directoryTotals.totalTeamSize.toLocaleString()}
-                hint="Direct agents across visible supervisors"
-              />
-              <SupervisorSummaryCard
-                label="Existing Profiles"
-                value={directoryTotals.withActiveTarget.toLocaleString()}
-                hint={`Supervisors already holding a ${year} target`}
-              />
-              <SupervisorSummaryCard
-                label="At Risk"
-                value={directoryTotals.highRiskProfiles.toLocaleString()}
-                hint="High-risk active target profiles"
+              )}
+              <SearchableSelect
+                options={[
+                  { value: "recommended", label: "Recommended" },
+                  { value: "performance", label: "Performance" },
+                  { value: "team", label: "Team size" },
+                  { value: "name", label: "Name" },
+                ]}
+                value={sortBy}
+                onValueChange={(value) => setSortBy(value as DirectorySort)}
+                className="h-9 rounded-lg border-border bg-background text-xs w-[130px]"
               />
             </div>
 
-            {directoryTotalCount > superAgents.length && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-800">
-                Showing {superAgents.length} of {directoryTotalCount} matching supervisors. Refine search or filters further to bring more supervisors into the current directory slice.
-              </div>
-            )}
-
-            <div className="flex flex-col gap-3 rounded-xl border border-dashed border-border/70 bg-background/70 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">{selectedAgents.length} supervisor{selectedAgents.length === 1 ? "" : "s"} selected</p>
-                <p className="text-xs text-muted-foreground">
-                  {selectionMode === "single"
-                    ? "Choose one supervisor for an individual allocation."
-                    : selectionMode === "bulk"
-                      ? "Pick multiple supervisors for a bulk target rollout."
-                      : territoryFilter === "all"
-                        ? "Choose a territory filter, then select visible supervisors by region."
-                        : `Use ${territoryFilter} to bulk assign by territory.`}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {selectionMode !== "single" && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="rounded-lg"
-                    onClick={selectVisibleSupervisors}
-                    disabled={visibleSelectableIds.length === 0 || (selectionMode === "region" && territoryFilter === "all")}
-                  >
-                    {selectionMode === "region" ? "Select Visible Region" : "Select Visible"}
-                  </Button>
-                )}
+            {/* Selection actions */}
+            {selectionMode !== "single" && (
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="rounded-lg"
-                  onClick={() => {
-                    setSelectedAgents([]);
-                    setSelectedSupervisorDetails({});
-                  }}
+                  className="rounded-lg h-7 text-xs"
+                  onClick={selectVisibleSupervisors}
+                  disabled={visibleSelectableIds.length === 0 || (selectionMode === "region" && territoryFilter === "all")}
+                >
+                  Select All Visible
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-lg h-7 text-xs"
+                  onClick={() => { setSelectedAgents([]); setSelectedSupervisorDetails({}); }}
                   disabled={selectedAgents.length === 0}
                 >
-                  Clear Selection
+                  Clear
                 </Button>
               </div>
-            </div>
+            )}
 
+            {/* Selected badges */}
             {selectedSupervisorRows.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {selectedSupervisorRows.slice(0, 6).map((agent) => (
-                  <Badge key={agent.value} variant="info" className="px-3 py-1.5 text-[11px]">
+              <div className="flex flex-wrap gap-1.5">
+                {selectedSupervisorRows.slice(0, 5).map((agent) => (
+                  <Badge key={agent.value} variant="info" className="px-2 py-1 text-[11px]">
                     {agent.label}
-                    {agent.regionNames[0] ? ` · ${agent.regionNames[0]}` : ""}
                   </Badge>
                 ))}
-                {selectedSupervisorRows.length > 6 && (
-                  <Badge variant="outline" className="px-3 py-1.5 text-[11px]">+{selectedSupervisorRows.length - 6} more</Badge>
+                {selectedSupervisorRows.length > 5 && (
+                  <Badge variant="outline" className="px-2 py-1 text-[11px]">+{selectedSupervisorRows.length - 5} more</Badge>
                 )}
               </div>
             )}
 
-            <div className="hidden lg:block overflow-hidden rounded-2xl border border-border/70 bg-background">
+            {/* Supervisor Table — compact */}
+            <div className="hidden lg:block overflow-hidden rounded-xl border border-border/70 bg-background max-h-[360px] overflow-y-auto">
               <table className="w-full text-sm">
-                <thead className="bg-muted/35">
+                <thead className="bg-muted/35 sticky top-0">
                   <tr>
-                    <th className="w-16 px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Select</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Supervisor</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Territory</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Team</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Performance</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Risk</th>
+                    <th className="w-12 px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"></th>
+                    <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Supervisor</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Territory</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Team</th>
+                    <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {directoryLoading ? (
-                    Array.from({ length: 5 }).map((_, index) => (
+                    Array.from({ length: 4 }).map((_, index) => (
                       <tr key={index} className="border-t border-border/60">
-                        <td colSpan={7} className="px-4 py-4">
-                          <div className="h-12 animate-pulse rounded-xl bg-muted/50" />
+                        <td colSpan={5} className="px-3 py-3">
+                          <div className="h-8 animate-pulse rounded-lg bg-muted/50" />
                         </td>
                       </tr>
                     ))
                   ) : filteredSuperAgents.length === 0 ? (
                     <tr className="border-t border-border/60">
-                      <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No supervisors match the current filters.</td>
+                      <td colSpan={5} className="px-3 py-6 text-center text-sm text-muted-foreground">No supervisors match the current filters.</td>
                     </tr>
                   ) : (
                     filteredSuperAgents.map((agent) => {
@@ -895,11 +820,13 @@ export default function CreateTargetProfilePage() {
                         <tr
                           key={agent.value}
                           onClick={() => selectable && toggleSupervisorSelection(agent.value)}
-                          className={`border-t border-border/60 transition-colors ${selectable ? "cursor-pointer hover:bg-sky-500/[0.03]" : "cursor-not-allowed bg-muted/20"} ${selected ? "bg-sky-500/[0.06]" : ""}`}
+                          className={`border-t border-border/40 transition-colors ${selectable ? "cursor-pointer hover:bg-sky-500/[0.04]" : "cursor-not-allowed opacity-50"} ${selected ? "bg-sky-500/[0.07]" : ""}`}
                         >
-                          <td className="px-4 py-4">
+                          <td className="px-3 py-2.5">
                             {selectionMode === "single" ? (
-                              <Badge variant={selected ? "info" : "outline"}>{selected ? "Selected" : "Choose"}</Badge>
+                              <div className={`h-4 w-4 rounded-full border-2 ${selected ? "border-sky-500 bg-sky-500" : "border-border"}`}>
+                                {selected && <Check className="h-3 w-3 text-white" />}
+                              </div>
                             ) : (
                               <div onClick={(event) => event.stopPropagation()}>
                                 <Checkbox
@@ -910,47 +837,24 @@ export default function CreateTargetProfilePage() {
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-4 align-top">
-                            <p className="font-medium text-foreground">{agent.label}</p>
-                            <p className="text-xs text-muted-foreground">{agent.email || "No email"}</p>
+                          <td className="px-3 py-2.5">
+                            <p className="text-sm font-medium text-foreground">{agent.label}</p>
+                            <p className="text-[11px] text-muted-foreground">{agent.email || ""}</p>
                           </td>
-                          <td className="px-4 py-4 align-top">
-                            <div className="flex flex-wrap gap-1.5">
-                              {agent.regionNames.length > 0 ? agent.regionNames.slice(0, 3).map((territory) => (
-                                <Badge key={territory} variant="outline">{territory}</Badge>
+                          <td className="px-3 py-2.5">
+                            <div className="flex flex-wrap gap-1">
+                              {agent.regionNames.length > 0 ? agent.regionNames.slice(0, 2).map((territory) => (
+                                <span key={territory} className="text-[11px] text-muted-foreground">{territory}</span>
                               )) : (
-                                <Badge variant="outline">Unassigned</Badge>
-                              )}
-                              {agent.regionNames.length > 3 && (
-                                <Badge variant="outline">+{agent.regionNames.length - 3}</Badge>
+                                <span className="text-[11px] text-muted-foreground">—</span>
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-4 align-top">
-                            <p className="font-semibold tabular-nums text-foreground">{agent.teamSize}</p>
-                            <p className="text-xs text-muted-foreground">direct agents</p>
+                          <td className="px-3 py-2.5">
+                            <span className="text-sm font-medium tabular-nums">{agent.teamSize}</span>
                           </td>
-                          <td className="px-4 py-4 align-top">
+                          <td className="px-3 py-2.5">
                             <AvailabilityBadge availability={agent.availability} />
-                            {agent.availabilityReason && (
-                              <p className="mt-2 max-w-[180px] text-xs text-muted-foreground">{agent.availabilityReason}</p>
-                            )}
-                          </td>
-                          <td className="px-4 py-4 align-top">
-                            {agent.targetProfile ? (
-                              <div className="min-w-[180px] space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-muted-foreground">{agent.targetProfile.year} progress</span>
-                                  <span className="font-semibold tabular-nums text-foreground">{agent.targetProfile.overallProgress}%</span>
-                                </div>
-                                <Progress value={Math.min(agent.targetProfile.overallProgress, 100)} className="h-2" />
-                              </div>
-                            ) : (
-                              <p className="text-xs text-muted-foreground">No active target profile</p>
-                            )}
-                          </td>
-                          <td className="px-4 py-4 align-top">
-                            <RiskBadge risk={agent.targetProfile?.riskScore} />
                           </td>
                         </tr>
                       );
@@ -960,355 +864,286 @@ export default function CreateTargetProfilePage() {
               </table>
             </div>
 
-            <div className="grid gap-3 lg:hidden">
+            {/* Mobile cards */}
+            <div className="grid gap-2 lg:hidden max-h-[400px] overflow-y-auto">
               {directoryLoading ? (
-                Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="h-32 animate-pulse rounded-2xl bg-muted/50" />
+                Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-16 animate-pulse rounded-xl bg-muted/50" />
                 ))
               ) : filteredSuperAgents.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">No supervisors match the current filters.</div>
+                <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">No supervisors match.</div>
               ) : (
                 filteredSuperAgents.map((agent) => {
                   const selected = selectedAgents.includes(agent.value);
                   const selectable = canSelectSupervisor(agent);
 
                   return (
-                    <button
+                    <div
                       key={agent.value}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => selectable && toggleSupervisorSelection(agent.value)}
-                      className={`rounded-2xl border p-4 text-left transition-all ${selected ? "border-sky-500 bg-sky-500/[0.05] ring-2 ring-sky-500/15" : "border-border bg-background"} ${selectable ? "hover:border-border/80" : "opacity-75"}`}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectable && toggleSupervisorSelection(agent.value); } }}
+                      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${selected ? "border-sky-500 bg-sky-500/[0.05]" : "border-border bg-background"} ${selectable ? "cursor-pointer hover:border-border/80" : "opacity-60"}`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-foreground">{agent.label}</p>
-                          <p className="text-xs text-muted-foreground">{agent.email || "No email"}</p>
-                        </div>
-                        {selectionMode === "single" ? (
-                          <Badge variant={selected ? "info" : "outline"}>{selected ? "Selected" : "Choose"}</Badge>
-                        ) : (
-                          <div onClick={(event) => event.stopPropagation()}>
-                            <Checkbox
-                              checked={selected}
-                              disabled={!selectable}
-                              onCheckedChange={(checked) => toggleSupervisorSelection(agent.value, checked === true)}
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {agent.regionNames.length > 0 ? agent.regionNames.map((territory) => (
-                          <Badge key={territory} variant="outline">{territory}</Badge>
-                        )) : <Badge variant="outline">Unassigned</Badge>}
-                      </div>
-
-                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Team Size</p>
-                          <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">{agent.teamSize}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</p>
-                          <div className="mt-1"><AvailabilityBadge availability={agent.availability} /></div>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Risk</p>
-                          <div className="mt-1"><RiskBadge risk={agent.targetProfile?.riskScore} /></div>
-                        </div>
-                      </div>
-
-                      {agent.targetProfile ? (
-                        <div className="mt-4 space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">{agent.targetProfile.year} progress</span>
-                            <span className="font-semibold tabular-nums text-foreground">{agent.targetProfile.overallProgress}%</span>
-                          </div>
-                          <Progress value={Math.min(agent.targetProfile.overallProgress, 100)} className="h-2" />
+                      {selectionMode === "single" ? (
+                        <div className={`h-4 w-4 shrink-0 rounded-full border-2 ${selected ? "border-sky-500 bg-sky-500" : "border-border"}`}>
+                          {selected && <Check className="h-3 w-3 text-white" />}
                         </div>
                       ) : (
-                        <p className="mt-4 text-xs text-muted-foreground">No active target profile for {year}.</p>
+                        <Checkbox checked={selected} disabled={!selectable} />
                       )}
-
-                      {agent.availabilityReason && (
-                        <p className="mt-3 text-xs text-muted-foreground">{agent.availabilityReason}</p>
-                      )}
-                    </button>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">{agent.label}</p>
+                        <p className="text-[11px] text-muted-foreground">Team: {agent.teamSize} · {agent.regionNames[0] || "No territory"}</p>
+                      </div>
+                      <AvailabilityBadge availability={agent.availability} />
+                    </div>
                   );
                 })
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Supervisor(s) *</Label>
-                <p className="rounded-xl border border-border/60 bg-background px-4 py-3 text-sm text-muted-foreground">
-                  {selectedSupervisorRows.length > 0
-                    ? selectedSupervisorRows.map((agent) => agent.label).join(", ")
-                    : "No supervisor selected yet"}
-                </p>
-              </div>
-              <div className="grid gap-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Selection Guardrails</Label>
-                <p className="rounded-xl border border-border/60 bg-background px-4 py-3 text-sm text-muted-foreground">
-                  Active targets and inactive supervisors remain visible for planning, but they cannot be selected.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============= STEP 2: Set Annual Targets ============= */}
-      {step === 2 && (
-        <div className="workspace-glass-panel rounded-2xl p-6 space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="rounded-xl bg-emerald-500/10 p-2 text-emerald-600"><Target className="h-4 w-4" /></div>
-            <h2 className="text-lg font-semibold">Step 2: Set Annual Targets</h2>
+            {directoryTotalCount > superAgents.length && (
+              <p className="text-xs text-muted-foreground">
+                Showing {superAgents.length} of {directoryTotalCount}. Refine search to see more.
+              </p>
+            )}
           </div>
 
-          <div className="grid gap-6">
-            {/* Employer */}
-            <div className="workspace-glass-panel rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <TargetTypeIcon type="employer" size="sm" />
-                <span className="text-sm font-semibold">{t("employerTarget")}</span>
-              </div>
-              <Input
-                type="number"
-                value={employerTarget || ""}
-                onChange={(e) => setEmployerTarget(parseInt(e.target.value) || 0)}
-                placeholder="e.g. 1200"
-                className="h-11 rounded-xl border-border bg-card text-lg font-semibold"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">Number of employers to acquire this year</p>
+          {/* --- Section C: Annual Targets --- */}
+          <div className="workspace-glass-panel rounded-2xl p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-emerald-600" />
+              <h2 className="text-sm font-semibold">Annual Targets</h2>
             </div>
 
-            {/* Employee */}
-            <div className="workspace-glass-panel rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <TargetTypeIcon type="employee" size="sm" />
-                <span className="text-sm font-semibold">{t("employeeTarget")}</span>
-              </div>
-              <Input
-                type="number"
-                value={employeeTarget || ""}
-                onChange={(e) => setEmployeeTarget(parseInt(e.target.value) || 0)}
-                placeholder="e.g. 5000"
-                className="h-11 rounded-xl border-border bg-card text-lg font-semibold"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">Number of employee placements this year</p>
-            </div>
-
-            {/* Finance */}
-            <div className="workspace-glass-panel rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <TargetTypeIcon type="finance" size="sm" />
-                <span className="text-sm font-semibold">{t("financeTarget")}</span>
-              </div>
-              <div className="flex gap-3">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <TargetTypeIcon type="employer" size="sm" />
+                  <Label className="text-xs font-medium text-muted-foreground">Employers</Label>
+                </div>
                 <Input
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
-                  maxLength={3}
-                  className="h-11 w-20 rounded-xl border-border bg-card text-center font-semibold"
+                  type="number"
+                  value={employerTarget || ""}
+                  onChange={(e) => setEmployerTarget(parseInt(e.target.value) || 0)}
+                  placeholder="e.g. 1200"
+                  className="h-10 rounded-xl border-border bg-card text-base font-semibold"
                 />
+                <p className="text-[11px] text-muted-foreground">Companies to acquire</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <TargetTypeIcon type="employee" size="sm" />
+                  <Label className="text-xs font-medium text-muted-foreground">Employees</Label>
+                </div>
+                <Input
+                  type="number"
+                  value={employeeTarget || ""}
+                  onChange={(e) => setEmployeeTarget(parseInt(e.target.value) || 0)}
+                  placeholder="e.g. 5000"
+                  className="h-10 rounded-xl border-border bg-card text-base font-semibold"
+                />
+                <p className="text-[11px] text-muted-foreground">Placements this year</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <TargetTypeIcon type="finance" size="sm" />
+                  <Label className="text-xs font-medium text-muted-foreground">Revenue ({currency})</Label>
+                </div>
                 <Input
                   type="number"
                   value={financeTarget || ""}
                   onChange={(e) => setFinanceTarget(parseInt(e.target.value) || 0)}
                   placeholder="e.g. 5000000"
-                  className="h-11 flex-1 rounded-xl border-border bg-card text-lg font-semibold"
+                  className="h-10 rounded-xl border-border bg-card text-base font-semibold"
                 />
+                <p className="text-[11px] text-muted-foreground">Revenue target</p>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">Revenue target for the year</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============= STEP 3: Monthly Distribution ============= */}
-      {step === 3 && (
-        <div className="space-y-4">
-          <div className="workspace-glass-panel rounded-2xl p-6 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="rounded-xl bg-amber-500/10 p-2 text-amber-600"><SplitSquareVertical className="h-4 w-4" /></div>
-              <h2 className="text-lg font-semibold">Step 3: Monthly Distribution</h2>
-            </div>
-
-            {/* Strategy selector */}
-            <div className="grid grid-cols-3 gap-3">
-              {(["equal", "seasonal", "custom"] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setStrategy(s)}
-                  className={`rounded-xl border p-3 text-left transition-all ${
-                    strategy === s
-                      ? "border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/20"
-                      : "border-border hover:border-border/80"
-                  }`}
-                >
-                  <p className="text-sm font-semibold capitalize">{s}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {s === "equal" ? "Divide evenly across 12 months" :
-                     s === "seasonal" ? "Q1 & Q3 weighted higher (30/20/30/20)" :
-                     "Custom month-by-month editing"}
-                  </p>
-                </button>
-              ))}
             </div>
           </div>
 
-          {/* Monthly grid */}
-          <div className="workspace-glass-panel rounded-2xl p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/60">
-                    <th className="py-2 pr-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Month</th>
-                    <th className="py-2 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <div className="flex items-center justify-end gap-1"><Building2 className="h-3 w-3" /> Employer</div>
-                    </th>
-                    <th className="py-2 px-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <div className="flex items-center justify-end gap-1"><Users className="h-3 w-3" /> Employee</div>
-                    </th>
-                    <th className="py-2 pl-3 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      <div className="flex items-center justify-end gap-1"><DollarSign className="h-3 w-3" /> Finance</div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthlyTargets.map((m) => (
-                    <tr key={m.month} className="border-b border-border/30">
-                      <td className="py-2 pr-3 text-xs font-medium">{MONTHS[m.month - 1]}</td>
-                      <td className="py-2 px-3">
-                        <Input
-                          type="number"
-                          value={m.employerTarget || ""}
-                          onChange={(e) => updateMonthly(m.month, "employerTarget", parseInt(e.target.value) || 0)}
-                          disabled={strategy !== "custom"}
-                          className="h-8 w-24 ml-auto rounded-lg text-right text-sm tabular-nums"
-                        />
-                      </td>
-                      <td className="py-2 px-3">
-                        <Input
-                          type="number"
-                          value={m.employeeTarget || ""}
-                          onChange={(e) => updateMonthly(m.month, "employeeTarget", parseInt(e.target.value) || 0)}
-                          disabled={strategy !== "custom"}
-                          className="h-8 w-24 ml-auto rounded-lg text-right text-sm tabular-nums"
-                        />
-                      </td>
-                      <td className="py-2 pl-3">
-                        <Input
-                          type="number"
-                          value={m.financeTarget || ""}
-                          onChange={(e) => updateMonthly(m.month, "financeTarget", parseInt(e.target.value) || 0)}
-                          disabled={strategy !== "custom"}
-                          className="h-8 w-28 ml-auto rounded-lg text-right text-sm tabular-nums"
-                        />
-                      </td>
-                    </tr>
+          {/* --- Section D: Distribution (collapsible advanced) --- */}
+          <div className="workspace-glass-panel rounded-2xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowDistribution(!showDistribution)}
+              className="w-full flex items-center justify-between p-5 hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-amber-600" />
+                <span className="text-sm font-semibold">Monthly Distribution</span>
+                <Badge variant="outline" className="text-[10px] capitalize">{strategy}</Badge>
+              </div>
+              {showDistribution ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+
+            {showDistribution && (
+              <div className="border-t border-border/60 p-5 space-y-4">
+                {/* Strategy picker */}
+                <div className="grid grid-cols-3 gap-2">
+                  {(["equal", "seasonal", "custom"] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => { setStrategy(s); setMonthlyTargets(generateDistribution()); }}
+                      className={`rounded-lg border p-2.5 text-left transition-all ${
+                        strategy === s
+                          ? "border-sky-500 bg-sky-500/5 ring-1 ring-sky-500/20"
+                          : "border-border hover:border-border/80"
+                      }`}
+                    >
+                      <p className="text-xs font-semibold capitalize">{s}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {s === "equal" ? "Even split across months" :
+                         s === "seasonal" ? "Q1 & Q3 higher (30/20/30/20)" :
+                         "Edit each month manually"}
+                      </p>
+                    </button>
                   ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-border font-semibold">
-                    <td className="py-2 pr-3 text-xs">Total</td>
-                    <td className={`py-2 px-3 text-right tabular-nums ${monthlySum.employer !== employerTarget ? "text-red-500" : "text-emerald-600"}`}>
-                      {monthlySum.employer.toLocaleString()} / {employerTarget.toLocaleString()}
-                    </td>
-                    <td className={`py-2 px-3 text-right tabular-nums ${monthlySum.employee !== employeeTarget ? "text-red-500" : "text-emerald-600"}`}>
-                      {monthlySum.employee.toLocaleString()} / {employeeTarget.toLocaleString()}
-                    </td>
-                    <td className={`py-2 pl-3 text-right tabular-nums ${monthlySum.finance !== financeTarget ? "text-red-500" : "text-emerald-600"}`}>
-                      {currency} {monthlySum.finance.toLocaleString()} / {currency} {financeTarget.toLocaleString()}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+                </div>
 
-      {/* ============= STEP 4: Quarterly Planning ============= */}
-      {step === 4 && (
-        <div className="workspace-glass-panel rounded-2xl p-6 space-y-6">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="rounded-xl bg-violet-500/10 p-2 text-violet-600"><CalendarDays className="h-4 w-4" /></div>
-            <h2 className="text-lg font-semibold">Step 4: Quarterly Planning</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Review the quarterly breakdown generated from your monthly distribution.
-          </p>
-          <QuarterlyBreakdownGrid quarters={quarterlyBreakdown} currency={currency} />
-        </div>
-      )}
-
-      {/* ============= STEP 5: Review + Confirm ============= */}
-      {step === 5 && (
-        <div className="space-y-4">
-          <div className="workspace-glass-panel rounded-2xl p-6 space-y-6">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="rounded-xl bg-emerald-500/10 p-2 text-emerald-600"><Eye className="h-4 w-4" /></div>
-              <h2 className="text-lg font-semibold">Step 5: Review & Confirm</h2>
-            </div>
-
-            {/* Summary */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="workspace-glass-panel rounded-xl p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Assignment</p>
-                <p className="text-sm font-medium">
-                  {selectedAgents.length} supervisor{selectedAgents.length > 1 ? "s" : ""} selected
-                </p>
-                <p className="text-xs text-muted-foreground">Year: {year} · Region: {region || "All"}</p>
-                <p className="text-xs text-muted-foreground">Strategy: {strategy}</p>
+                {/* Monthly grid — compact */}
+                {(employerTarget > 0 || employeeTarget > 0 || financeTarget > 0) && (
+                  <div className="overflow-x-auto rounded-lg border border-border/50">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/30">
+                        <tr>
+                          <th className="px-2.5 py-2 text-left font-semibold text-muted-foreground">Month</th>
+                          <th className="px-2.5 py-2 text-right font-semibold text-muted-foreground">Employer</th>
+                          <th className="px-2.5 py-2 text-right font-semibold text-muted-foreground">Employee</th>
+                          <th className="px-2.5 py-2 text-right font-semibold text-muted-foreground">Finance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(monthlyTargets.length > 0 ? monthlyTargets : generateDistribution()).map((m) => (
+                          <tr key={m.month} className="border-t border-border/30">
+                            <td className="px-2.5 py-1.5 font-medium">{MONTHS_SHORT[m.month - 1]}</td>
+                            <td className="px-2.5 py-1.5 text-right">
+                              {strategy === "custom" ? (
+                                <Input
+                                  type="number"
+                                  value={m.employerTarget || ""}
+                                  onChange={(e) => updateMonthly(m.month, "employerTarget", parseInt(e.target.value) || 0)}
+                                  className="h-6 w-16 ml-auto rounded text-right text-xs tabular-nums"
+                                />
+                              ) : (
+                                <span className="tabular-nums">{m.employerTarget}</span>
+                              )}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-right">
+                              {strategy === "custom" ? (
+                                <Input
+                                  type="number"
+                                  value={m.employeeTarget || ""}
+                                  onChange={(e) => updateMonthly(m.month, "employeeTarget", parseInt(e.target.value) || 0)}
+                                  className="h-6 w-16 ml-auto rounded text-right text-xs tabular-nums"
+                                />
+                              ) : (
+                                <span className="tabular-nums">{m.employeeTarget}</span>
+                              )}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-right">
+                              {strategy === "custom" ? (
+                                <Input
+                                  type="number"
+                                  value={m.financeTarget || ""}
+                                  onChange={(e) => updateMonthly(m.month, "financeTarget", parseInt(e.target.value) || 0)}
+                                  className="h-6 w-20 ml-auto rounded text-right text-xs tabular-nums"
+                                />
+                              ) : (
+                                <span className="tabular-nums">{m.financeTarget.toLocaleString()}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-              <div className="workspace-glass-panel rounded-xl p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Annual Targets</p>
-                <div className="space-y-1 text-sm">
+            )}
+          </div>
+
+          {/* --- Proceed button --- */}
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setStep(2)}
+              disabled={!canProceed}
+              className="rounded-xl gap-2 bg-sky-600 hover:bg-sky-700 px-6"
+            >
+              Review & Create <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ============= STEP 2: REVIEW & CREATE ============= */}
+      {step === 2 && (
+        <div className="space-y-5">
+          <div className="workspace-glass-panel rounded-2xl p-5 space-y-5">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-emerald-600" />
+              <h2 className="text-sm font-semibold">Review & Create</h2>
+            </div>
+
+            {/* Summary cards */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Assignment</p>
+                <p className="text-sm font-medium">
+                  {selectedAgents.length} supervisor{selectedAgents.length > 1 ? "s" : ""}
+                </p>
+                {selectedSupervisorRows.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {selectedSupervisorRows.slice(0, 3).map((agent) => (
+                      <Badge key={agent.value} variant="outline" className="text-[10px]">{agent.label}</Badge>
+                    ))}
+                    {selectedSupervisorRows.length > 3 && (
+                      <Badge variant="outline" className="text-[10px]">+{selectedSupervisorRows.length - 3}</Badge>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">Year: {year} · Region: {region || "All"} · Distribution: {strategy}</p>
+              </div>
+
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Annual Targets</p>
+                <div className="space-y-1.5 text-sm">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5 text-muted-foreground" /> Employer</div>
+                    <div className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5 text-sky-500" /> Employers</div>
                     <span className="font-semibold tabular-nums">{employerTarget.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-muted-foreground" /> Employee</div>
+                    <div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-emerald-500" /> Employees</div>
                     <span className="font-semibold tabular-nums">{employeeTarget.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5 text-muted-foreground" /> Finance</div>
+                    <div className="flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5 text-amber-500" /> Revenue</div>
                     <span className="font-semibold tabular-nums">{currency} {financeTarget.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Quarterly preview */}
-            <QuarterlyBreakdownGrid quarters={quarterlyBreakdown} currency={currency} />
+            {/* Quarterly breakdown */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Quarterly Breakdown</p>
+              <QuarterlyBreakdownGrid quarters={quarterlyBreakdown} currency={currency} />
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={() => setStep((s) => Math.max(1, s - 1))}
-          disabled={step === 1}
-          className="rounded-xl gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back
-        </Button>
-        <div className="flex items-center gap-2">
-          {step < 5 ? (
+          {/* Action buttons */}
+          <div className="flex items-center justify-between">
             <Button
-              onClick={() => setStep((s) => Math.min(5, s + 1))}
-              disabled={!canNext()}
-              className="rounded-xl gap-2 bg-sky-600 hover:bg-sky-700"
+              variant="outline"
+              onClick={() => setStep(1)}
+              className="rounded-xl gap-2"
             >
-              Next <ArrowRight className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" /> Edit
             </Button>
-          ) : (
             <Button
               onClick={handleCreate}
               disabled={creating}
@@ -1320,9 +1155,9 @@ export default function CreateTargetProfilePage() {
                 <><Check className="h-4 w-4" /> Create Target Profile</>
               )}
             </Button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

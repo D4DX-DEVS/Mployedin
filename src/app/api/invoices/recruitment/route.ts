@@ -40,6 +40,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     lineItems: rawLineItems, discountPercent = 0, taxType = "none",
     taxPercent = 0, serviceCharge = 0, paymentTerms = "net_30",
     customPaymentDays, dueDate, billingDetails, status: invoiceStatus = "issued",
+    overrideAgentRate, overrideSuperAgentRate,
   } = body;
   const finalInvoiceStatus = ctx.role === "agent" ? "pending_approval" : invoiceStatus;
 
@@ -122,6 +123,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   };
 
   // Build commission breakdown (embedded in invoice)
+  // Admin/super_agent can override rates via overrideAgentRate/overrideSuperAgentRate
+  const canOverride = ["admin", "super_agent"].includes(ctx.role);
   const employerCountry = employer.country ?? null;
   const commissions: Array<{
     agentId?: unknown; superAgentId?: unknown; role: "agent" | "super_agent";
@@ -129,16 +132,27 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   }> = [];
   const externalCommissions = [];
 
-  if (agentDoc && agentDoc.commissionRate && agentDoc.commissionRate > 0) {
-    const resolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
-    const agentAmount = Math.round((billedTotal * resolved.rate) / 100 * 100) / 100;
-    const sourceNote = resolved.source === "country_override"
-      ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
+  // Determine effective agent commission rate
+  const useAgentOverride = canOverride && overrideAgentRate !== undefined;
+  const effectiveAgentRate = useAgentOverride ? overrideAgentRate : (agentDoc?.commissionRate ?? 0);
+
+  if (agentDoc && effectiveAgentRate > 0) {
+    let finalRate = effectiveAgentRate;
+    let sourceNote = "";
+    if (!useAgentOverride) {
+      const resolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
+      finalRate = resolved.rate;
+      sourceNote = resolved.source === "country_override"
+        ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
+    } else {
+      sourceNote = " [Manual override]";
+    }
+    const agentAmount = Math.round((billedTotal * finalRate) / 100 * 100) / 100;
 
     commissions.push({
       agentId: agentDoc._id,
       role: "agent",
-      rate: resolved.rate,
+      rate: finalRate,
       amount: agentAmount,
       status: "pending",
       notes: `Agent placement commission${sourceNote}`,
@@ -149,16 +163,27 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  if (superAgentDoc && superAgentDoc.overrideRate && superAgentDoc.overrideRate > 0) {
-    const resolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
-    const overrideAmount = Math.round((billedTotal * resolved.rate) / 100 * 100) / 100;
-    const sourceNote = resolved.source === "country_override"
-      ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
+  // Determine effective super-agent commission rate
+  const useSAOverride = canOverride && overrideSuperAgentRate !== undefined;
+  const effectiveSARate = useSAOverride ? overrideSuperAgentRate : (superAgentDoc?.overrideRate ?? 0);
+
+  if (superAgentDoc && effectiveSARate > 0) {
+    let finalRate = effectiveSARate;
+    let sourceNote = "";
+    if (!useSAOverride) {
+      const resolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
+      finalRate = resolved.rate;
+      sourceNote = resolved.source === "country_override"
+        ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
+    } else {
+      sourceNote = " [Manual override]";
+    }
+    const overrideAmount = Math.round((billedTotal * finalRate) / 100 * 100) / 100;
 
     commissions.push({
       superAgentId: superAgentDoc._id,
       role: "super_agent",
-      rate: resolved.rate,
+      rate: finalRate,
       amount: overrideAmount,
       status: "pending",
       notes: `Super-agent override commission${sourceNote}`,

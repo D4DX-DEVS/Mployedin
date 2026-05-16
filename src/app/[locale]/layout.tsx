@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 
 const locales = ["en", "ar"];
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.vercel.app";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin-8a4rc.ondigitalocean.app";
 
 export async function generateMetadata({
   params,
@@ -23,7 +23,8 @@ export async function generateMetadata({
     description: "AI-Powered International Recruitment Platform connecting employers and top talent worldwide.",
     metadataBase: new URL(BASE_URL),
     alternates: {
-      canonical: url,
+      // Do not set canonical here — each page sets its own via generateMetadata.
+      // Hreflang is set per-page as well; this is a fallback for unlisted pages.
       languages: {
         en: `${BASE_URL}/en`,
         ar: `${BASE_URL}/ar`,

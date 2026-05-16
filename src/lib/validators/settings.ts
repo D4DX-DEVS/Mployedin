@@ -14,6 +14,24 @@ export const agentSettingsUpdateSchema = z.object({
   workingDays: z.array(z.enum(VALID_DAYS)).max(7).optional(),
 });
 
+/** PATCH /api/agent/settings/invoice-defaults & /api/super-agent/settings/invoice-defaults */
+export const invoiceDefaultsUpdateSchema = z.object({
+  defaultCurrency: z.string().max(5).trim().optional(),
+  defaultPaymentTerms: z.enum(["immediate", "net_7", "net_15", "net_30", "net_45", "net_60", "net_90", "custom"]).optional(),
+  customPaymentDays: z.number().int().min(1).max(365).optional(),
+  defaultTaxType: z.string().max(30).trim().optional(),
+  defaultTaxPercent: z.number().min(0).max(100).optional(),
+  defaultCategory: z.string().max(50).trim().optional(),
+  defaultNotes: z.string().max(1000).trim().optional(),
+  billingCompanyName: z.string().max(200).trim().optional(),
+  billingContactPerson: z.string().max(200).trim().optional(),
+  billingEmail: z.string().max(200).email().optional().or(z.literal("")),
+  billingPhone: z.string().max(50).trim().optional(),
+  billingAddress: z.string().max(500).trim().optional(),
+  billingCountry: z.string().max(5).trim().optional(),
+  billingTaxId: z.string().max(50).trim().optional(),
+});
+
 /** PATCH /api/super-agent/profile */
 export const superAgentProfileUpdateSchema = z.object({
   name: z.string().min(1).max(80).trim().optional(),

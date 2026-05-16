@@ -137,6 +137,7 @@ const saAgentCreateSchema = z.object({
   password: z.string().min(8).max(128),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
   assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
+  commissionRate: z.number().min(0).max(100).optional(),
 });
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -155,7 +156,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
   }
 
-  const { name, email, password, assignedCityIds, assignedStateIds } = parsed.data;
+  const { name, email, password, assignedCityIds, assignedStateIds, commissionRate } = parsed.data;
 
   // Get super agent profile (including defaultAgentCommissionRate)
   const saProfile = await SuperAgent.findOne({ userId: ctx.userId })
@@ -209,7 +210,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const agentDoc = await Agent.create({
       userId: user._id,
       superAgentId: saProfile._id,
-      commissionRate: saProfile.defaultAgentCommissionRate ?? 0,
+      commissionRate: commissionRate ?? saProfile.defaultAgentCommissionRate ?? 0,
       assignedCityIds: agentCities,
       assignedStateIds: agentStates,
     });

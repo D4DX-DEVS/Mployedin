@@ -1,5 +1,22 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+export interface ISAInvoiceDefaults {
+  defaultCurrency?: string;
+  defaultPaymentTerms?: string;
+  customPaymentDays?: number;
+  defaultTaxType?: string;
+  defaultTaxPercent?: number;
+  defaultCategory?: string;
+  defaultNotes?: string;
+  billingCompanyName?: string;
+  billingContactPerson?: string;
+  billingEmail?: string;
+  billingPhone?: string;
+  billingAddress?: string;
+  billingCountry?: string;
+  billingTaxId?: string;
+}
+
 export interface ISuperAgent extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;  referralCode: string;  assignedCityIds: mongoose.Types.ObjectId[];
@@ -18,6 +35,7 @@ export interface ISuperAgent extends Document {
   workingHoursStart?: string;
   workingHoursEnd?: string;
   workingDays?: string[];
+  invoiceDefaults?: ISAInvoiceDefaults;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,6 +60,22 @@ const SuperAgentSchema = new Schema<ISuperAgent>(
     workingHoursStart: { type: String, default: "09:00" },
     workingHoursEnd: { type: String, default: "18:00" },
     workingDays: { type: [String], default: ["Mon", "Tue", "Wed", "Thu", "Fri"] },
+    invoiceDefaults: {
+      defaultCurrency: { type: String },
+      defaultPaymentTerms: { type: String },
+      customPaymentDays: { type: Number },
+      defaultTaxType: { type: String },
+      defaultTaxPercent: { type: Number },
+      defaultCategory: { type: String },
+      defaultNotes: { type: String, maxlength: 1000 },
+      billingCompanyName: { type: String, maxlength: 200 },
+      billingContactPerson: { type: String, maxlength: 200 },
+      billingEmail: { type: String, maxlength: 200 },
+      billingPhone: { type: String, maxlength: 50 },
+      billingAddress: { type: String, maxlength: 500 },
+      billingCountry: { type: String, maxlength: 5 },
+      billingTaxId: { type: String, maxlength: 50 },
+    },
   },
   { timestamps: true }
 );

@@ -6,17 +6,20 @@ import CookieConsent from "@/components/shared/CookieConsent";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { DashboardProviders } from "@/components/shared/DashboardProviders";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.vercel.app";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin-8a4rc.ondigitalocean.app";
 
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "MPLOYEDIN",
   url: BASE_URL,
-  logo: `${BASE_URL}/logo.png`,
+  logo: `${BASE_URL}/mployedin-logo.png`,
   description:
     "AI-Powered International Recruitment Platform connecting employers and top talent worldwide.",
   areaServed: "Worldwide",
+  sameAs: [
+    "https://www.linkedin.com/company/mployedin",
+  ],
 };
 
 const websiteSchema = {
@@ -26,7 +29,10 @@ const websiteSchema = {
   name: "MPLOYEDIN",
   potentialAction: {
     "@type": "SearchAction",
-    target: `${BASE_URL}/en/jobs?q={search_term_string}`,
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: `${BASE_URL}/en/jobs?search={search_term_string}`,
+    },
     "query-input": "required name=search_term_string",
   },
 };
