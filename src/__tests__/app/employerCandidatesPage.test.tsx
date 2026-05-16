@@ -502,7 +502,7 @@ describe("EmployerCandidatesPage", () => {
     });
     pendingMatches.get("user-2")?.reject(new Error("rate limited"));
 
-    await waitFor(() => expect(screen.getByText("Scored 1 candidate. 1 candidate could not be scored.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Scored 1 candidate(s). 1 candidate(s) could not be scored.")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /run ai match/i })).toBeEnabled();
     expect(screen.getByText("91% AI match")).toBeInTheDocument();
   });

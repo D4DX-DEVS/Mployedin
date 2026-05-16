@@ -49,7 +49,7 @@ describe("SearchableSelect", () => {
     expect(content).toHaveStyle({
       width: "max-content",
       minWidth: "var(--radix-popover-trigger-width)",
-      maxWidth: "min(24rem, calc(100vw - 2rem))",
+      maxWidth: "min(28rem, calc(100vw - 2rem))",
     });
   });
 

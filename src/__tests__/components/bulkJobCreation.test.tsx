@@ -23,9 +23,7 @@ jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
 }));
 
-jest.mock("next-intl", () => ({
-  useLocale: () => "en",
-}));
+// next-intl is handled by the global moduleNameMapper in jest.config.ts
 
 jest.mock("react-dom", () => {
   const actual = jest.requireActual("react-dom");

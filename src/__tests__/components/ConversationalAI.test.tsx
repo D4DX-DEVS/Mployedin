@@ -98,7 +98,7 @@ describe("ConversationalAI", () => {
     await waitFor(() => expect(screen.getByRole("textbox")).toBeVisible());
 
     expect(screen.getByRole("textbox")).toHaveAttribute("placeholder", "Ask me anything…");
-    expect(screen.getByRole("button", { name: "Voice language: AUTO" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Voice language" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Start voice input" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Send message" })).toBeVisible();
   });

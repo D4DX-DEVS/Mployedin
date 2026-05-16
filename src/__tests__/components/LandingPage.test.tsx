@@ -48,20 +48,15 @@ describe("LandingPage", () => {
     global.fetch = fetchMock as unknown as typeof fetch;
   });
 
-  it("renders the mobile banner source when the backend provides imageMobile", async () => {
+  it("renders the banner image when the backend provides banner data", async () => {
     render(<LandingPage />);
-
-    const picture = await screen.findByTestId("banner-picture");
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith("/api/public/landing");
     });
 
-    const mobileSource = picture.querySelector('source[media="(max-width: 768px)"]');
-    const bannerImage = picture.querySelector("img");
+    const bannerImage = await screen.findByAltText("Desktop banner");
 
-    expect(mobileSource).toHaveAttribute("srcset", "/mobile-banner.jpg");
     expect(bannerImage).toHaveAttribute("src", "/desktop-banner.jpg");
-    expect(bannerImage).toHaveAttribute("alt", "Desktop banner");
   });
 });

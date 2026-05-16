@@ -29,6 +29,13 @@ jest.mock("sonner", () => ({
   },
 }));
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  useParams: () => ({ locale: "en" }),
+  usePathname: () => "/en/admin/jobs",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 describe("AdminJobsPage", () => {
   const fetchMock = jest.fn();
   const toastErrorMock = jest.mocked(toast.error);
