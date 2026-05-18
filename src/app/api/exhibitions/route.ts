@@ -95,11 +95,11 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     status: requestedStatus,
   } = body;
 
-  if (!eventName || !eventCategory || !eventLocation || !eventStartDate || !eventEndDate) {
-    return NextResponse.json({ error: "Missing required fields: eventName, eventCategory, eventLocation, dates" }, { status: 400 });
+  if (!eventName) {
+    return NextResponse.json({ error: "Missing required field: eventName" }, { status: 400 });
   }
 
-  if (!EXHIBITION_CATEGORIES.includes(eventCategory)) {
+  if (eventCategory && !EXHIBITION_CATEGORIES.includes(eventCategory)) {
     return NextResponse.json({ error: "Invalid event category" }, { status: 400 });
   }
 
@@ -136,12 +136,12 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     agentId: ctx.userId,
     superAgentId: agentProfile?.superAgentId ?? undefined,
     eventName: eventName.trim(),
-    eventCategory,
-    eventLocation: eventLocation.trim(),
+    eventCategory: eventCategory || "career_fair",
+    eventLocation: eventLocation?.trim() || "TBD",
     venue: venue?.trim(),
     country: country?.trim(),
-    eventStartDate: new Date(eventStartDate),
-    eventEndDate: new Date(eventEndDate),
+    eventStartDate: eventStartDate ? new Date(eventStartDate) : undefined,
+    eventEndDate: eventEndDate ? new Date(eventEndDate) : undefined,
     organizerName: organizerName?.trim(),
     organizerContact: organizerContact?.trim(),
     participationTypes: participationTypes ?? [],

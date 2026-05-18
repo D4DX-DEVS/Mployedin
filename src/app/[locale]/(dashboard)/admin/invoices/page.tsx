@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -23,7 +25,6 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 
-import { InvoiceBuilder } from "@/components/features/invoices/InvoiceBuilder";
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
 import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
@@ -132,7 +133,8 @@ export default function AdminInvoicesPage() {
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   // Invoice Builder & Detail View
-  const [showBuilder, setShowBuilder] = useState(false);
+  const router = useRouter();
+  const locale = useLocale();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   // Analytics
@@ -267,7 +269,7 @@ export default function AdminInvoicesPage() {
           </div>
         }
         actions={can("subscriptions", "create") ? (
-          <Button onClick={() => setShowBuilder(true)} className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
+          <Button onClick={() => router.push(`/${locale}/admin/invoices/new`)} className="h-9 gap-2 rounded-lg bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
             <Plus className="h-4 w-4" /> Create Invoice
           </Button>
         ) : undefined}
@@ -432,15 +434,7 @@ export default function AdminInvoicesPage() {
         </>
       )}
 
-      {/* Invoice Builder Dialog */}
-      <InvoiceBuilder
-        open={showBuilder}
-        onClose={() => setShowBuilder(false)}
-        onSuccess={() => { fetchInvoices(); refreshAnalytics(); }}
-        defaultCurrency={displayCurrency}
-        searchScope="admin"
-        role="admin"
-      />
+
 
       {/* Invoice Detail View */}
       <InvoiceDetailView

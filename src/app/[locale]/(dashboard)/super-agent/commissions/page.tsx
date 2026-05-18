@@ -36,6 +36,9 @@ interface Commission {
   currency?: string;
   status: string;
   notes?: string;
+  disputeReason?: string;
+  clawbackAmount?: number;
+  clawbackReason?: string;
   createdAt: string;
 }
 

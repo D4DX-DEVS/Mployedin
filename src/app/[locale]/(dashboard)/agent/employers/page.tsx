@@ -185,13 +185,19 @@ export default function AgentEmployersPage() {
     if (!referralData) return;
     setTogglingActive(true);
     try {
-      const res = await fetch(`/api/referral-links/${referralData.linkId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !referralData.isActive }),
-      });
-      if (res.ok) {
-        setReferralData((prev) => prev ? { ...prev, isActive: !prev.isActive } : prev);
+      if (!referralData.isActive) {
+        // Re-enabling: fetch a fresh referral link (new code generated on backend)
+        await handleGetReferralLink();
+      } else {
+        // Disabling: just toggle isActive to false
+        const res = await fetch(`/api/referral-links/${referralData.linkId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: false }),
+        });
+        if (res.ok) {
+          setReferralData((prev) => prev ? { ...prev, isActive: false } : prev);
+        }
       }
     } finally {
       setTogglingActive(false);

@@ -89,6 +89,7 @@ const statusVariants: Record<
   },
   paid: { label: "Paid", className: "status-selected" },
   disputed: { label: "Disputed", className: "status-rejected" },
+  clawed_back: { label: "Clawed Back", className: "status-rejected" },
 
   // Generic
   true: { label: "Yes", className: "status-selected" },

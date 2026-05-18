@@ -32,10 +32,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   let agentUserIds: string[] = [];
   // Map from userId → Agent doc _id for lead lookups
   const userToAgentMap = new Map<string, string>();
+  // Map from userId → Agent profile data (country, currencyCode)
+  const userToAgentProfileMap = new Map<string, { country?: string; currencyCode?: string }>();
   if (assignedAgentDocIds.length > 0) {
-    const agentDocs = await Agent.find({ _id: { $in: assignedAgentDocIds } }).select("userId").lean();
+    const agentDocs = await Agent.find({ _id: { $in: assignedAgentDocIds } }).select("userId country currencyCode").lean();
     agentUserIds = agentDocs.map((a) => a.userId.toString());
-    agentDocs.forEach((a) => userToAgentMap.set(a.userId.toString(), a._id.toString()));
+    agentDocs.forEach((a) => {
+      userToAgentMap.set(a.userId.toString(), a._id.toString());
+      userToAgentProfileMap.set(a.userId.toString(), {
+        country: a.country,
+        currencyCode: a.currencyCode,
+      });
+    });
   }
 
   // Build user filter — only agents that belong to this super agent
@@ -58,6 +66,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   let items = users.map((u) => {
     const agentDocId = userToAgentMap.get(u._id.toString());
+    const agentProfile = userToAgentProfileMap.get(u._id.toString());
     const agentLeads = leads.filter((l) => l.agentId?.toString() === agentDocId);
     const converted = agentLeads.filter((l) => l.status === "converted").length;
 
@@ -78,6 +87,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       agentId: agentDocId,
       name: u.name,
       email: u.email,
+      country: agentProfile?.country ?? "",
+      currencyCode: agentProfile?.currencyCode ?? "AED",
       leadsCount: agentLeads.length,
       conversions: converted,
       placements: 0, // would come from Placement model

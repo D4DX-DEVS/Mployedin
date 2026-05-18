@@ -27,17 +27,16 @@ interface MonthlyTarget {
   financeTarget: number;
 }
 
-interface SupervisorRow {
+interface AgentRow {
   id: string;
   name: string;
   email: string;
-  teamSize: number;
   territory: string;
   currency: string;
 }
 
 interface TargetRow {
-  supervisorId: string;
+  agentId: string;
   employerTarget: number;
   employeeTarget: number;
   financeTarget: number;
@@ -71,7 +70,7 @@ function generateEqualDistribution(annual: { employerTarget: number; employeeTar
 /*  Main Component                                                     */
 /* ------------------------------------------------------------------ */
 
-export default function CreateTargetProfilePage() {
+export default function SuperAgentCreateTargetPage() {
   const t = useTranslations("targets");
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
@@ -82,58 +81,50 @@ export default function CreateTargetProfilePage() {
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Supervisors list
-  const [supervisors, setSupervisors] = useState<SupervisorRow[]>([]);
+  // Agents list under this super agent
+  const [agents, setAgents] = useState<AgentRow[]>([]);
 
-  // Target data per supervisor
+  // Target data per agent
   const [targetRows, setTargetRows] = useState<Record<string, TargetRow>>({});
 
   // Filters
   const [showFilters, setShowFilters] = useState(false);
   const [filterName, setFilterName] = useState("");
   const [filterRegion, setFilterRegion] = useState("");
-  const [filterTeamSize, setFilterTeamSize] = useState<"all" | "small" | "medium" | "large">("all");
 
-  // Fetch supervisors under admin
+  // Fetch agents under the super agent
   useEffect(() => {
     const controller = new AbortController();
     (async () => {
       setLoading(true);
       try {
-        const params = new URLSearchParams({
-          directory: "create-target",
-          targetYear: String(year),
-          limit: "500",
-        });
-        const res = await fetch(`/api/admin/super-agents?${params.toString()}`, {
+        const res = await fetch("/api/super-agent/agents?sortBy=name&sortOrder=asc&limit=200", {
           signal: controller.signal,
         });
-        if (!res.ok) throw new Error("Failed to load supervisors");
+        if (!res.ok) throw new Error("Failed to load agents");
         const data = await res.json();
-        const rows: SupervisorRow[] = (data.superAgents ?? data.items ?? []).map(
-          (sa: {
-            _id?: string;
-            userId?: string;
-            name?: string;
-            email?: string;
-            user?: { name?: string; _id?: string };
-            directory?: { teamSize?: number; regionNames?: string[]; currencyCode?: string };
+        const rows: AgentRow[] = (data.items ?? []).map(
+          (agent: {
+            _id: string;
+            name: string;
+            email: string;
+            country?: string;
+            currencyCode?: string;
           }) => ({
-            id: sa.userId ?? sa.user?._id ?? sa._id ?? "",
-            name: sa.name ?? sa.user?.name ?? "Unknown",
-            email: sa.email ?? "",
-            teamSize: sa.directory?.teamSize ?? 0,
-            territory: sa.directory?.regionNames?.[0] ?? "",
-            currency: sa.directory?.currencyCode ?? "AED",
+            id: agent._id,
+            name: agent.name ?? "Unknown",
+            email: agent.email ?? "",
+            territory: agent.country ?? "",
+            currency: agent.currencyCode ?? "AED",
           })
         );
-        setSupervisors(rows);
+        setAgents(rows);
 
         // Initialize target rows
         const initial: Record<string, TargetRow> = {};
-        for (const sup of rows) {
-          initial[sup.id] = {
-            supervisorId: sup.id,
+        for (const agent of rows) {
+          initial[agent.id] = {
+            agentId: agent.id,
             employerTarget: 0,
             employeeTarget: 0,
             financeTarget: 0,
@@ -144,88 +135,78 @@ export default function CreateTargetProfilePage() {
         setTargetRows(initial);
       } catch {
         if (!controller.signal.aborted) {
-          toast.error("Failed to load supervisors");
+          toast.error("Failed to load agents");
         }
       } finally {
         setLoading(false);
       }
     })();
     return () => controller.abort();
-  }, [year]);
+  }, []);
 
-  // Update annual target for a supervisor
-  const updateTarget = useCallback((supervisorId: string, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => {
+  // Update annual target for an agent
+  const updateTarget = useCallback((agentId: string, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => {
     setTargetRows((prev) => {
-      const row = prev[supervisorId];
+      const row = prev[agentId];
       if (!row) return prev;
       const updated = { ...row, [field]: value };
-      // Regenerate monthly distribution
       updated.monthlyTargets = generateEqualDistribution({
         employerTarget: updated.employerTarget,
         employeeTarget: updated.employeeTarget,
         financeTarget: updated.financeTarget,
       });
-      return { ...prev, [supervisorId]: updated };
+      return { ...prev, [agentId]: updated };
     });
   }, []);
 
   // Toggle monthly distribution view
-  const toggleMonthly = useCallback((supervisorId: string) => {
+  const toggleMonthly = useCallback((agentId: string) => {
     setTargetRows((prev) => {
-      const row = prev[supervisorId];
+      const row = prev[agentId];
       if (!row) return prev;
-      return { ...prev, [supervisorId]: { ...row, showMonthly: !row.showMonthly } };
+      return { ...prev, [agentId]: { ...row, showMonthly: !row.showMonthly } };
     });
   }, []);
 
-  // Update monthly target for a supervisor
-  const updateMonthlyTarget = useCallback((supervisorId: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => {
+  // Update monthly target for an agent
+  const updateMonthlyTarget = useCallback((agentId: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => {
     setTargetRows((prev) => {
-      const row = prev[supervisorId];
+      const row = prev[agentId];
       if (!row) return prev;
       const updatedMonthly = row.monthlyTargets.map((m) =>
         m.month === month ? { ...m, [field]: value } : m
       );
-      return { ...prev, [supervisorId]: { ...row, monthlyTargets: updatedMonthly } };
+      return { ...prev, [agentId]: { ...row, monthlyTargets: updatedMonthly } };
     });
   }, []);
 
   // Derived region options
   const regionOptions = useMemo(() => {
-    const regions = [...new Set(supervisors.map((s) => s.territory).filter(Boolean))].sort();
+    const regions = [...new Set(agents.map((a) => a.territory).filter(Boolean))].sort();
     return regions;
-  }, [supervisors]);
+  }, [agents]);
 
-  // Filtered supervisors
-  const filteredSupervisors = useMemo(() => {
-    return supervisors.filter((sup) => {
-      // Name/email filter
+  // Filtered agents
+  const filteredAgents = useMemo(() => {
+    return agents.filter((agent) => {
       if (filterName.trim()) {
         const q = filterName.trim().toLowerCase();
-        if (!sup.name.toLowerCase().includes(q) && !sup.email.toLowerCase().includes(q)) {
+        if (!agent.name.toLowerCase().includes(q) && !agent.email.toLowerCase().includes(q)) {
           return false;
         }
       }
-      // Region filter
       if (filterRegion) {
-        if (sup.territory !== filterRegion) return false;
-      }
-      // Team size filter
-      if (filterTeamSize !== "all") {
-        if (filterTeamSize === "small" && sup.teamSize > 3) return false;
-        if (filterTeamSize === "medium" && (sup.teamSize < 4 || sup.teamSize > 8)) return false;
-        if (filterTeamSize === "large" && sup.teamSize < 9) return false;
+        if (agent.territory !== filterRegion) return false;
       }
       return true;
     });
-  }, [supervisors, filterName, filterRegion, filterTeamSize]);
+  }, [agents, filterName, filterRegion]);
 
-  const hasActiveFilters = filterName.trim() !== "" || filterRegion !== "" || filterTeamSize !== "all";
+  const hasActiveFilters = filterName.trim() !== "" || filterRegion !== "";
 
   const clearFilters = () => {
     setFilterName("");
     setFilterRegion("");
-    setFilterTeamSize("all");
   };
 
   // Get rows that have at least one target value > 0
@@ -250,31 +231,30 @@ export default function CreateTargetProfilePage() {
   // Submit targets
   const handleCreate = async () => {
     if (validRows.length === 0) {
-      toast.error("Enter targets for at least one supervisor");
+      toast.error("Enter targets for at least one agent");
       return;
     }
 
     setCreating(true);
     try {
       const payload = {
-        assigneeIds: validRows.map((r) => r.supervisorId),
-        assigneeRole: "super_agent" as const,
         year,
-        targets: validRows.map((row) => {
-          const sup = supervisors.find((s) => s.id === row.supervisorId);
+        allocationMode: "manual" as const,
+        allocations: validRows.map((row) => {
+          const agent = agents.find((a) => a.id === row.agentId);
           return {
-            assigneeId: row.supervisorId,
+            agentUserId: row.agentId,
             employerTarget: row.employerTarget,
             employeeTarget: row.employeeTarget,
             financeTarget: row.financeTarget,
-            currency: sup?.currency ?? "AED",
+            currency: agent?.currency ?? "AED",
             distributionStrategy: "custom" as const,
             monthlyTargets: row.monthlyTargets,
           };
         }),
       };
 
-      const res = await csrfFetch("/api/admin/target-profiles?action=bulk-tabular", {
+      const res = await csrfFetch("/api/super-agent/target-profiles?action=distribute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -282,14 +262,14 @@ export default function CreateTargetProfilePage() {
 
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const created = Number(data.created ?? 0);
-        toast.success(`${created} target profile${created !== 1 ? "s" : ""} created successfully`);
-        router.push(`/${locale}/admin/target-management?year=${year}`);
+        const created = Number(data.created ?? data.profiles?.length ?? validRows.length);
+        toast.success(`${created} agent target${created !== 1 ? "s" : ""} created successfully`);
+        router.push(`/${locale}/super-agent/target-management?year=${year}`);
       } else {
         toast.error(data.error ?? "Failed to create targets");
       }
     } catch {
-      toast.error("Failed to create target profiles");
+      toast.error("Failed to create agent targets");
     } finally {
       setCreating(false);
     }
@@ -299,7 +279,7 @@ export default function CreateTargetProfilePage() {
     <div className="page-container max-w-6xl mx-auto space-y-5">
       {/* Back */}
       <button
-        onClick={() => router.push(`/${locale}/admin/target-management`)}
+        onClick={() => router.push(`/${locale}/super-agent/target-management`)}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> Back to Target Management
@@ -313,9 +293,9 @@ export default function CreateTargetProfilePage() {
               <Target className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold tracking-tight">Create Target Profiles</h1>
+              <h1 className="text-lg font-semibold tracking-tight">Assign Agent Targets</h1>
               <p className="text-xs text-muted-foreground">
-                Set annual targets for supervisors in a tabular format
+                Set annual targets for your team agents
               </p>
             </div>
           </div>
@@ -346,7 +326,7 @@ export default function CreateTargetProfilePage() {
             Filters
             {hasActiveFilters && (
               <Badge variant="info" className="text-[10px] px-1.5 py-0">
-                {[filterName, filterRegion, filterTeamSize !== "all" ? filterTeamSize : ""].filter(Boolean).length}
+                {[filterName, filterRegion].filter(Boolean).length}
               </Badge>
             )}
             {showFilters ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -365,7 +345,7 @@ export default function CreateTargetProfilePage() {
         {/* Collapsible Filter Panel */}
         {showFilters && (
           <div className="px-4 py-3 bg-muted/20 border-b border-border/50">
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               {/* Name Search */}
               <div className="space-y-1">
                 <Label className="text-[11px] font-medium text-muted-foreground">Name / Email</Label>
@@ -382,7 +362,7 @@ export default function CreateTargetProfilePage() {
 
               {/* Region Filter */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Region</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">Region / Country</Label>
                 <SearchableSelect
                   value={filterRegion}
                   onValueChange={(val) => setFilterRegion(val)}
@@ -396,28 +376,10 @@ export default function CreateTargetProfilePage() {
                   className="h-8 text-xs"
                 />
               </div>
-
-              {/* Team Size Filter */}
-              <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">Team Size</Label>
-                <SearchableSelect
-                  value={filterTeamSize}
-                  onValueChange={(val) => setFilterTeamSize(val as "all" | "small" | "medium" | "large")}
-                  options={[
-                    { value: "all", label: "All sizes" },
-                    { value: "small", label: "Small (1–3)" },
-                    { value: "medium", label: "Medium (4–8)" },
-                    { value: "large", label: "Large (9+)" },
-                  ]}
-                  placeholder="All sizes"
-                  searchPlaceholder="Search sizes..."
-                  className="h-8 text-xs"
-                />
-              </div>
             </div>
             {hasActiveFilters && (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Showing {filteredSupervisors.length} of {supervisors.length} supervisors
+                Showing {filteredAgents.length} of {agents.length} agents
               </p>
             )}
           </div>
@@ -430,10 +392,10 @@ export default function CreateTargetProfilePage() {
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : supervisors.length === 0 ? (
+        ) : agents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Users className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground">No supervisors found</p>
+            <p className="text-sm text-muted-foreground">No agents in your team</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -441,7 +403,7 @@ export default function CreateTargetProfilePage() {
               <thead className="bg-muted/40 border-b border-border/70">
                 <tr>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[200px]">
-                    Supervisor
+                    Agent
                   </th>
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[130px]">
                     <div className="flex items-center justify-center gap-1.5">
@@ -467,22 +429,22 @@ export default function CreateTargetProfilePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {filteredSupervisors.length === 0 && !loading ? (
+                {filteredAgents.length === 0 && !loading ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      No supervisors match the current filters
+                      No agents match the current filters
                     </td>
                   </tr>
                 ) : (
-                  filteredSupervisors.map((sup) => {
-                    const row = targetRows[sup.id];
+                  filteredAgents.map((agent) => {
+                    const row = targetRows[agent.id];
                     if (!row) return null;
                     return (
-                      <SupervisorTargetRow
-                        key={sup.id}
-                        supervisor={sup}
+                      <AgentTargetRow
+                        key={agent.id}
+                        agent={agent}
                         row={row}
-                        currency={sup.currency}
+                        currency={agent.currency}
                         onUpdateTarget={updateTarget}
                         onToggleMonthly={toggleMonthly}
                         onUpdateMonthly={updateMonthlyTarget}
@@ -495,7 +457,7 @@ export default function CreateTargetProfilePage() {
               <tfoot className="bg-muted/30 border-t-2 border-border">
                 <tr>
                   <td className="px-4 py-3 text-sm font-semibold text-foreground">
-                    Total ({validRows.length} supervisor{validRows.length !== 1 ? "s" : ""})
+                    Total ({validRows.length} agent{validRows.length !== 1 ? "s" : ""})
                   </td>
                   <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
                     {totals.employer.toLocaleString()}
@@ -522,7 +484,7 @@ export default function CreateTargetProfilePage() {
           className="gap-2 rounded-xl px-6"
         >
           {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Create Targets ({validRows.length})
+          Assign Targets ({validRows.length})
         </Button>
       </div>
     </div>
@@ -530,11 +492,11 @@ export default function CreateTargetProfilePage() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Supervisor Row Component                                           */
+/*  Agent Row Component                                                */
 /* ------------------------------------------------------------------ */
 
-interface SupervisorTargetRowProps {
-  supervisor: SupervisorRow;
+interface AgentTargetRowProps {
+  agent: AgentRow;
   row: TargetRow;
   currency: string;
   onUpdateTarget: (id: string, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
@@ -542,26 +504,26 @@ interface SupervisorTargetRowProps {
   onUpdateMonthly: (id: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
 }
 
-function SupervisorTargetRow({
-  supervisor,
+function AgentTargetRow({
+  agent,
   row,
   currency,
   onUpdateTarget,
   onToggleMonthly,
   onUpdateMonthly,
-}: SupervisorTargetRowProps) {
+}: AgentTargetRowProps) {
   const hasTarget = row.employerTarget > 0 || row.employeeTarget > 0 || row.financeTarget > 0;
 
   return (
     <>
       <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50 dark:bg-sky-950/20" : "hover:bg-muted/20"}`}>
-        {/* Supervisor Info */}
+        {/* Agent Info */}
         <td className="px-4 py-3">
           <div>
-            <p className="font-medium text-foreground">{supervisor.name}</p>
-            <p className="text-[11px] text-muted-foreground">{supervisor.email}</p>
-            {supervisor.territory && (
-              <p className="text-[10px] text-muted-foreground mt-0.5">{supervisor.territory}</p>
+            <p className="font-medium text-foreground">{agent.name}</p>
+            <p className="text-[11px] text-muted-foreground">{agent.email}</p>
+            {agent.territory && (
+              <p className="text-[10px] text-muted-foreground mt-0.5">{agent.territory}</p>
             )}
           </div>
         </td>
@@ -572,7 +534,7 @@ function SupervisorTargetRow({
             type="number"
             min={0}
             value={row.employerTarget || ""}
-            onChange={(e) => onUpdateTarget(supervisor.id, "employerTarget", parseInt(e.target.value) || 0)}
+            onChange={(e) => onUpdateTarget(agent.id, "employerTarget", parseInt(e.target.value) || 0)}
             placeholder="0"
             className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums"
           />
@@ -584,7 +546,7 @@ function SupervisorTargetRow({
             type="number"
             min={0}
             value={row.employeeTarget || ""}
-            onChange={(e) => onUpdateTarget(supervisor.id, "employeeTarget", parseInt(e.target.value) || 0)}
+            onChange={(e) => onUpdateTarget(agent.id, "employeeTarget", parseInt(e.target.value) || 0)}
             placeholder="0"
             className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums"
           />
@@ -597,7 +559,7 @@ function SupervisorTargetRow({
               type="number"
               min={0}
               value={row.financeTarget || ""}
-              onChange={(e) => onUpdateTarget(supervisor.id, "financeTarget", parseInt(e.target.value) || 0)}
+              onChange={(e) => onUpdateTarget(agent.id, "financeTarget", parseInt(e.target.value) || 0)}
               placeholder="0"
               className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums pr-12"
             />
@@ -614,7 +576,7 @@ function SupervisorTargetRow({
             variant={row.showMonthly ? "default" : "outline"}
             size="sm"
             className="rounded-lg h-8 text-xs gap-1"
-            onClick={() => onToggleMonthly(supervisor.id)}
+            onClick={() => onToggleMonthly(agent.id)}
             disabled={!hasTarget}
           >
             <CalendarDays className="h-3.5 w-3.5" />
@@ -628,7 +590,7 @@ function SupervisorTargetRow({
         <tr className="bg-muted/10">
           <td colSpan={5} className="px-4 py-3">
             <MonthlyDistributionTable
-              supervisorId={supervisor.id}
+              agentId={agent.id}
               monthly={row.monthlyTargets}
               currency={currency}
               annualTargets={{
@@ -650,15 +612,15 @@ function SupervisorTargetRow({
 /* ------------------------------------------------------------------ */
 
 interface MonthlyDistributionTableProps {
-  supervisorId: string;
+  agentId: string;
   monthly: MonthlyTarget[];
   currency: string;
   annualTargets: { employerTarget: number; employeeTarget: number; financeTarget: number };
-  onUpdate: (supervisorId: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
+  onUpdate: (agentId: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
 }
 
 function MonthlyDistributionTable({
-  supervisorId,
+  agentId,
   monthly,
   currency,
   annualTargets,
@@ -707,7 +669,7 @@ function MonthlyDistributionTable({
                     type="number"
                     min={0}
                     value={m.employerTarget || ""}
-                    onChange={(e) => onUpdate(supervisorId, m.month, "employerTarget", parseInt(e.target.value) || 0)}
+                    onChange={(e) => onUpdate(agentId, m.month, "employerTarget", parseInt(e.target.value) || 0)}
                     className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
                   />
                 </td>
@@ -716,7 +678,7 @@ function MonthlyDistributionTable({
                     type="number"
                     min={0}
                     value={m.employeeTarget || ""}
-                    onChange={(e) => onUpdate(supervisorId, m.month, "employeeTarget", parseInt(e.target.value) || 0)}
+                    onChange={(e) => onUpdate(agentId, m.month, "employeeTarget", parseInt(e.target.value) || 0)}
                     className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
                   />
                 </td>
@@ -725,7 +687,7 @@ function MonthlyDistributionTable({
                     type="number"
                     min={0}
                     value={m.financeTarget || ""}
-                    onChange={(e) => onUpdate(supervisorId, m.month, "financeTarget", parseInt(e.target.value) || 0)}
+                    onChange={(e) => onUpdate(agentId, m.month, "financeTarget", parseInt(e.target.value) || 0)}
                     className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
                   />
                 </td>

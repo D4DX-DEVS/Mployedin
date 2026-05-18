@@ -2213,6 +2213,8 @@
     "owner": "المالك",
     "admin": "مدير",
     "hiringManager": "مدير التوظيف",
+    "accounting": "المحاسبة",
+    "financeViewer": "مراجع مالي",
     "viewer": "مشاهد",
     "deactivateConfirm": "هل أنت متأكد من رغبتك في إلغاء تنشيط هذا العضو؟",
     "allJobs": "جميع الوظائف",

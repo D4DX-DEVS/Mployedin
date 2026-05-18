@@ -190,7 +190,7 @@ const InvoiceCommissionSchema = new Schema<IInvoiceCommission>(
     role: { type: String, enum: ["agent", "super_agent"], required: true },
     rate: { type: Number, required: true, min: 0 },
     amount: { type: Number, required: true, min: 0 },
-    status: { type: String, enum: ["pending", "approved", "paid", "disputed"], default: "pending" },
+    status: { type: String, enum: ["pending", "approved", "paid", "disputed", "clawed_back"], default: "pending" },
     paidAt: Date,
     notes: String,
   },

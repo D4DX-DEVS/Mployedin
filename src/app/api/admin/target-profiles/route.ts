@@ -276,6 +276,115 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }, { status: 201 });
   }
 
+  // Bulk tabular: each supervisor gets individual targets
+  if (action === "bulk-tabular") {
+    const rawBody = await req.json();
+    const { assigneeIds, assigneeRole, year, currency, targets } = rawBody as {
+      assigneeIds: string[];
+      assigneeRole: "super_agent" | "agent";
+      year: number;
+      currency?: string;
+      targets: Array<{
+        assigneeId: string;
+        employerTarget: number;
+        employeeTarget: number;
+        financeTarget: number;
+        currency?: string;
+        distributionStrategy?: "equal" | "custom" | "seasonal";
+        monthlyTargets?: MonthlyTargetInput[];
+      }>;
+    };
+
+    if (!assigneeIds?.length || !targets?.length || !year) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const eligibleIds = await getEligibleAssigneeIds(assigneeIds, assigneeRole);
+    const results = [];
+    const skippedDetails: Array<{ assigneeId: string; reason: string }> = [];
+
+    for (const target of targets) {
+      if (!eligibleIds.has(target.assigneeId)) {
+        skippedDetails.push({ assigneeId: target.assigneeId, reason: "ineligible" });
+        continue;
+      }
+
+      const existing = await TargetProfile.findOne({
+        assigneeId: target.assigneeId,
+        year,
+        assigneeRole,
+        status: "active",
+      }).lean();
+
+      if (existing) {
+        skippedDetails.push({ assigneeId: target.assigneeId, reason: "active_profile_exists" });
+        continue;
+      }
+
+      const annualTargets: AnnualTargets = {
+        employerTarget: target.employerTarget,
+        employeeTarget: target.employeeTarget,
+        financeTarget: target.financeTarget,
+      };
+      const monthlyResolution = resolveMonthlyTargets(
+        annualTargets,
+        target.distributionStrategy ?? "equal",
+        target.monthlyTargets,
+      );
+
+      if ("error" in monthlyResolution) {
+        skippedDetails.push({ assigneeId: target.assigneeId, reason: "distribution_invalid" });
+        continue;
+      }
+
+      try {
+        const profile = await TargetProfile.create({
+          assigneeId: target.assigneeId,
+          assigneeRole,
+          assignedBy: ctx.userId,
+          year,
+          employerTarget: target.employerTarget,
+          employeeTarget: target.employeeTarget,
+          financeTarget: target.financeTarget,
+          currency: target.currency ?? currency ?? "AED",
+          distributionStrategy: target.distributionStrategy ?? "custom",
+          monthlyTargets: monthlyResolution.monthlyTargets,
+          status: "active",
+        });
+        results.push(profile);
+        void notifyTargetAssigned(
+          String(profile.assigneeId),
+          assigneeRole,
+          String(profile._id),
+          year,
+          ctx.locale
+        );
+      } catch (error) {
+        if (isDuplicateKeyError(error)) {
+          skippedDetails.push({ assigneeId: target.assigneeId, reason: "active_profile_created_concurrently" });
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "target_profile.bulk_tabular_create",
+      resource: "targets",
+      resourceId: "bulk-tabular",
+      meta: { count: results.length, year },
+      req,
+    });
+
+    return NextResponse.json({
+      profiles: results,
+      created: results.length,
+      skipped: skippedDetails.length,
+      skippedDetails,
+    }, { status: 201 });
+  }
+
   // Clone from previous year
   if (action === "clone") {
     const body = await validateBody(req, targetProfileCloneSchema);

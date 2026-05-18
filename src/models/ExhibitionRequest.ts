@@ -134,8 +134,8 @@ export interface IExhibitionRequest extends Document {
   eventLocation: string;
   venue?: string;
   country?: string;
-  eventStartDate: Date;
-  eventEndDate: Date;
+  eventStartDate?: Date;
+  eventEndDate?: Date;
   organizerName?: string;
   organizerContact?: string;
 
@@ -225,11 +225,11 @@ const ExhibitionRequestSchema = new Schema<IExhibitionRequest>(
       required: true,
       index: true,
     },
-    eventLocation: { type: String, required: true, trim: true, maxlength: 300 },
+    eventLocation: { type: String, trim: true, maxlength: 300, default: "TBD" },
     venue: { type: String, trim: true, maxlength: 300 },
     country: { type: String, trim: true, maxlength: 100 },
-    eventStartDate: { type: Date, required: true },
-    eventEndDate: { type: Date, required: true },
+    eventStartDate: { type: Date },
+    eventEndDate: { type: Date },
     organizerName: { type: String, trim: true, maxlength: 200 },
     organizerContact: { type: String, trim: true, maxlength: 200 },
 

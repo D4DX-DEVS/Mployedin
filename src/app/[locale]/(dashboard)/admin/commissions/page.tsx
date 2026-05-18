@@ -31,6 +31,10 @@ interface Commission {
   type?: string;
   rate?: number;
   notes?: string;
+  disputeReason?: string;
+  disputeResolution?: string;
+  clawbackAmount?: number;
+  clawbackReason?: string;
   createdAt: string;
 }
 
@@ -52,6 +56,7 @@ const STATUS_OPTIONS = [
   { value: "approved", label: "Approved" },
   { value: "paid", label: "Paid" },
   { value: "disputed", label: "Disputed" },
+  { value: "clawed_back", label: "Clawed Back" },
 ];
 
 const TYPE_OPTIONS = [
@@ -191,6 +196,64 @@ export default function AdminCommissionsPage() {
       await fetchCommissions();
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Failed to update commission status");
+    }
+  };
+
+  const handleDispute = async (id: string) => {
+    const reason = prompt("Enter dispute reason:");
+    if (!reason?.trim()) return;
+    try {
+      const res = await csrfFetch(`/api/commissions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "disputed", disputeReason: reason.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to dispute commission");
+      toast.success("Commission marked as disputed");
+      await fetchCommissions();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to dispute commission");
+    }
+  };
+
+  const handleClawback = async (id: string, amount: number) => {
+    const reason = prompt("Enter clawback reason:");
+    if (!reason?.trim()) return;
+    const amountStr = prompt(`Clawback amount (full amount: ${amount}):`, String(amount));
+    if (!amountStr) return;
+    const clawbackAmount = Number(amountStr);
+    if (isNaN(clawbackAmount) || clawbackAmount <= 0 || clawbackAmount > amount) {
+      toast.error("Invalid clawback amount");
+      return;
+    }
+    try {
+      const res = await csrfFetch(`/api/commissions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "clawed_back", clawbackReason: reason.trim(), clawbackAmount }),
+      });
+      if (!res.ok) throw new Error("Failed to clawback commission");
+      toast.success("Commission clawed back");
+      await fetchCommissions();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to clawback commission");
+    }
+  };
+
+  const handleResolveDispute = async (id: string) => {
+    const ok = await confirmDialog("Resolve this dispute? The commission will return to its previous approved status.");
+    if (!ok) return;
+    try {
+      const res = await csrfFetch(`/api/commissions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ disputeResolution: "resolved" }),
+      });
+      if (!res.ok) throw new Error("Failed to resolve dispute");
+      toast.success("Dispute resolved");
+      await fetchCommissions();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to resolve dispute");
     }
   };
 
@@ -492,6 +555,39 @@ export default function AdminCommissionsPage() {
                           className="text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950/40"
                         >
                           Mark Paid
+                        </Button>
+                      )}
+                      {can("commissions", "approve") && (c.status === "approved" || c.status === "paid") && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => handleDispute(c._id)}
+                          className="text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                          title="Open dispute"
+                        >
+                          Dispute
+                        </Button>
+                      )}
+                      {can("commissions", "approve") && c.status === "paid" && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => handleClawback(c._id, c.amount)}
+                          className="text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                          title="Clawback commission"
+                        >
+                          Clawback
+                        </Button>
+                      )}
+                      {can("commissions", "approve") && c.status === "disputed" && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => handleResolveDispute(c._id)}
+                          className="text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                          title="Resolve dispute"
+                        >
+                          Resolve
                         </Button>
                       )}
                       {can("commissions", "update") && (

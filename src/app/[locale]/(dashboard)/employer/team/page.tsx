@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock, Pencil, Activity } from "lucide-react";
+import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock, Pencil, Activity, Calculator, FileBarChart } from "lucide-react";
 import Link from "next/link";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Label } from "@/components/ui/label";
 import { useTeam, useInviteTeamMember, useUpdateTeamMember, useRemoveTeamMember } from "@/hooks/useTeam";
 import { usePagination } from "@/hooks/usePagination";
@@ -35,6 +34,8 @@ const ROLE_LABELS: Record<CompanyRole, string> = {
   owner: "Owner",
   admin: "Admin",
   hiring_manager: "Hiring Manager",
+  accounting: "Accounting",
+  finance_viewer: "Finance Viewer",
   viewer: "Viewer",
 };
 
@@ -42,6 +43,8 @@ const ROLE_COLORS: Record<CompanyRole, string> = {
   owner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30",
   admin: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30",
   hiring_manager: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30",
+  accounting: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30",
+  finance_viewer: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-500/15 dark:text-teal-300 dark:border-teal-500/30",
   viewer: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700",
 };
 
@@ -55,6 +58,8 @@ const ROLE_ICONS: Record<CompanyRole, React.ReactNode> = {
   owner: <Crown className="h-4 w-4" />,
   admin: <Shield className="h-4 w-4" />,
   hiring_manager: <Briefcase className="h-4 w-4" />,
+  accounting: <Calculator className="h-4 w-4" />,
+  finance_viewer: <FileBarChart className="h-4 w-4" />,
   viewer: <Eye className="h-4 w-4" />,
 };
 
@@ -62,7 +67,7 @@ export default function TeamManagementPage() {
   const t = useTranslations("employerTeam");
   const tc = useTranslations("employerCommon");
   const roleLabel = (role: CompanyRole) => {
-    const map: Record<CompanyRole, string> = { owner: t("owner"), admin: t("admin"), hiring_manager: t("hiringManager"), viewer: t("viewer") };
+    const map: Record<CompanyRole, string> = { owner: t("owner"), admin: t("admin"), hiring_manager: t("hiringManager"), accounting: t("accounting"), finance_viewer: t("financeViewer"), viewer: t("viewer") };
     return map[role] ?? role;
   };
   const { locale } = useParams<{ locale: string }>();
@@ -72,7 +77,7 @@ export default function TeamManagementPage() {
   const updateMutation = useUpdateTeamMember();
   const removeMutation = useRemoveTeamMember();
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteData, setInviteData] = useState({ email: "", companyRole: "hiring_manager" as CompanyRole, jobAccess: [] as string[] });
+  const [inviteData, setInviteData] = useState({ email: "", companyRoles: ["hiring_manager"] as CompanyRole[], jobAccess: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -88,7 +93,16 @@ export default function TeamManagementPage() {
     label: `${j.title}${typeof j.location === "string" ? ` — ${j.location}` : j.location?.city ? ` — ${j.location.city}` : ""}`,
   }));
 
-  const showJobAccess = (role: CompanyRole) => role === "hiring_manager" || role === "viewer";
+  const showJobAccess = (role: CompanyRole) => role === "hiring_manager" || role === "viewer" || role === "finance_viewer";
+  const showJobAccessForRoles = (roles: CompanyRole[]) => roles.some(showJobAccess);
+
+  const roleOptions = [
+    { value: "admin", label: "Admin — Full access, can manage team" },
+    { value: "hiring_manager", label: "Hiring Manager — Manage assigned jobs" },
+    { value: "accounting", label: "Accounting — Billing, invoices & commissions" },
+    { value: "finance_viewer", label: "Finance Viewer — View-only financial access" },
+    { value: "viewer", label: "Viewer — Read-only access" },
+  ];
 
   useEffect(() => {
     document.title = t("pageTitle");
@@ -96,20 +110,24 @@ export default function TeamManagementPage() {
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
+    if (inviteData.companyRoles.length === 0) {
+      setError("Please select at least one role");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
-      const payload: { email: string; companyRole: CompanyRole; jobAccess?: string[] } = {
+      const payload: { email: string; companyRoles: CompanyRole[]; jobAccess?: string[] } = {
         email: inviteData.email,
-        companyRole: inviteData.companyRole,
+        companyRoles: inviteData.companyRoles,
       };
       // Only send jobAccess for restricted roles
-      if (showJobAccess(inviteData.companyRole) && inviteData.jobAccess.length > 0) {
+      if (showJobAccessForRoles(inviteData.companyRoles) && inviteData.jobAccess.length > 0) {
         payload.jobAccess = inviteData.jobAccess;
       }
       await inviteMutation.mutateAsync(payload);
       setShowInviteModal(false);
-      setInviteData({ email: "", companyRole: "hiring_manager", jobAccess: [] });
+      setInviteData({ email: "", companyRoles: ["hiring_manager"], jobAccess: [] });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("failedToSendInvite"));
     } finally {
@@ -140,7 +158,7 @@ export default function TeamManagementPage() {
   }
 
   function getJobAccessLabel(member: TeamMember): string {
-    if (member.companyRole === "owner" || member.companyRole === "admin") return t("allJobs");
+    if (member.companyRole === "owner" || member.companyRole === "admin" || member.companyRole === "accounting") return t("allJobs");
     if (!member.jobAccess || member.jobAccess.length === 0) return "All Jobs";
     return `${member.jobAccess.length} Job${member.jobAccess.length !== 1 ? "s" : ""}`;
   }
@@ -300,21 +318,15 @@ export default function TeamManagementPage() {
                           {ROLE_ICONS[member.companyRole]}
                           {roleLabel(member.companyRole)}
                         </Badge>
-                      ) : member.status === "active" ? (
-                        <SearchableSelect
-                          className="w-full sm:w-40 h-8 text-xs"
-                          options={[
-                            { value: "admin", label: roleLabel("admin") },
-                            { value: "hiring_manager", label: roleLabel("hiring_manager") },
-                            { value: "viewer", label: roleLabel("viewer") },
-                          ]}
-                          value={member.companyRole}
-                          onValueChange={(val) => handleRoleChange(member._id, val as CompanyRole)}
-                        />
                       ) : (
-                        <Badge variant="outline" className={ROLE_COLORS[member.companyRole]}>
-                          {roleLabel(member.companyRole)}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1">
+                          {(member.companyRoles && member.companyRoles.length > 0 ? member.companyRoles : [member.companyRole]).map((role) => (
+                            <Badge key={role} variant="outline" className={`gap-1 text-xs ${ROLE_COLORS[role]}`}>
+                              {ROLE_ICONS[role]}
+                              {roleLabel(role)}
+                            </Badge>
+                          ))}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3.5">
@@ -322,7 +334,7 @@ export default function TeamManagementPage() {
                         <Badge variant="outline" className="text-xs whitespace-nowrap">
                           {getJobAccessLabel(member)}
                         </Badge>
-                        {showJobAccess(member.companyRole) && member.status !== "deactivated" && (
+                        {showJobAccessForRoles(member.companyRoles && member.companyRoles.length > 0 ? member.companyRoles : [member.companyRole]) && member.status !== "deactivated" && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -405,28 +417,24 @@ export default function TeamManagementPage() {
                     {member.status === "pending" && <Mail className="h-3 w-3" />}
                     {member.status.charAt(0).toUpperCase() + member.status.slice(1)}
                   </Badge>
-                  {member.companyRole === "owner" || member.status !== "active" ? (
+                  {member.companyRole === "owner" ? (
                     <Badge variant="outline" className={`gap-1 ${ROLE_COLORS[member.companyRole]}`}>
                       {ROLE_ICONS[member.companyRole]}
                       {roleLabel(member.companyRole)}
                     </Badge>
                   ) : (
-                    <SearchableSelect
-                      className="h-7 text-xs w-full sm:w-36"
-                      options={[
-                        { value: "admin", label: roleLabel("admin") },
-                        { value: "hiring_manager", label: roleLabel("hiring_manager") },
-                        { value: "viewer", label: roleLabel("viewer") },
-                      ]}
-                      value={member.companyRole}
-                      onValueChange={(val) => handleRoleChange(member._id, val as CompanyRole)}
-                    />
+                    (member.companyRoles && member.companyRoles.length > 0 ? member.companyRoles : [member.companyRole]).map((role) => (
+                      <Badge key={role} variant="outline" className={`gap-1 text-xs ${ROLE_COLORS[role]}`}>
+                        {ROLE_ICONS[role]}
+                        {roleLabel(role)}
+                      </Badge>
+                    ))
                   )}
                   <div className="flex items-center gap-1">
                     <Badge variant="outline" className="text-xs">
                       {getJobAccessLabel(member)}
                     </Badge>
-                    {showJobAccess(member.companyRole) && member.status !== "deactivated" && (
+                    {showJobAccessForRoles(member.companyRoles && member.companyRoles.length > 0 ? member.companyRoles : [member.companyRole]) && member.status !== "deactivated" && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -467,7 +475,7 @@ export default function TeamManagementPage() {
 
       {/* Invite Modal */}
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
-        <DialogContent className="w-full max-w-md mx-auto">
+        <DialogContent className="w-full max-w-md mx-auto overflow-visible">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -491,21 +499,20 @@ export default function TeamManagementPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="invite-role">Role</Label>
-              <SearchableSelect
-                id="invite-role"
-                className="w-full"
-                options={[
-                  { value: "admin", label: "Admin — Full access, can manage team" },
-                  { value: "hiring_manager", label: "Hiring Manager — Manage assigned jobs only" },
-                  { value: "viewer", label: "Viewer — Read-only access" },
-                ]}
-                value={inviteData.companyRole}
-                onValueChange={(val) => setInviteData({ ...inviteData, companyRole: val as CompanyRole, jobAccess: [] })}
+              <Label>Roles</Label>
+              <p className="text-xs text-muted-foreground">
+                Select one or more roles for this member.
+              </p>
+              <FormMultiSelect
+                placeholder="Select roles…"
+                options={roleOptions}
+                value={inviteData.companyRoles}
+                onChange={(val) => setInviteData({ ...inviteData, companyRoles: val as CompanyRole[], jobAccess: [] })}
+                maxSelections={5}
               />
             </div>
 
-            {showJobAccess(inviteData.companyRole) && (
+            {showJobAccessForRoles(inviteData.companyRoles) && (
               <div className="space-y-2">
                 <Label>Job Access</Label>
                 <p className="text-xs text-muted-foreground">

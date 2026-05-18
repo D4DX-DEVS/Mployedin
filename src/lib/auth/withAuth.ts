@@ -175,11 +175,11 @@ export function withAuth(
 
       // Enforce team-level restrictions for employer users
       if (role === "employer" && companyUserRole) {
-        // Viewers cannot perform write operations
+        // Viewers and finance_viewers cannot perform write operations
         const writeActions: Action[] = ["create", "update", "delete", "approve"];
-        if (companyUserRole === "viewer" && writeActions.includes(guard.action)) {
+        if ((companyUserRole === "viewer" || companyUserRole === "finance_viewer") && writeActions.includes(guard.action)) {
           return NextResponse.json(
-            { error: "Forbidden — viewer role is read-only" },
+            { error: "Forbidden — your role is read-only" },
             { status: 403 }
           );
         }

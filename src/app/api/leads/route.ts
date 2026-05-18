@@ -8,6 +8,8 @@ import { validateBody } from "@/lib/validators";
 import { leadCreateSchema } from "@/lib/validators/leads";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { calculateLeadScore, deriveQualification } from "@/lib/leads/scoring";
+import { autoRouteLead } from "@/lib/leads/autoRouter";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
@@ -16,6 +18,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const limit = parseInt(searchParams.get("limit") ?? "10");
   const status = searchParams.get("status");
   const search = searchParams.get("search");
+  const exhibitionId = searchParams.get("exhibitionId");
 
   const filter: Record<string, unknown> = {};
 
@@ -27,6 +30,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 
   if (status) filter.status = status;
+  if (exhibitionId) filter.exhibitionId = exhibitionId;
   if (search) {
     const safe = escapeRegex(search);
     filter.$or = [
@@ -64,10 +68,35 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
   if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
 
+  // Calculate initial lead score
+  const score = calculateLeadScore({
+    status: "new",
+    hasEmail: !!body.contactEmail,
+    hasPhone: !!body.contactPhone,
+    hasExpectedRevenue: !!body.expectedRevenue,
+    hasIndustry: !!body.industry,
+    activityCount: 0,
+  });
+  const qualificationLevel = deriveQualification(score);
+
+  // Auto-route to territory if no superAgent assigned
+  const routeResult = await autoRouteLead({
+    country: body.country,
+    city: body.city,
+    superAgentId: undefined,
+  });
+
   const lead = await Lead.create({
     ...body,
     agentId: agentDoc._id,
     status: "new",
+    score,
+    qualificationLevel,
+    ...(routeResult && {
+      territoryId: routeResult.territoryId,
+      superAgentId: routeResult.superAgentId,
+      autoRouted: true,
+    }),
   });
 
   // Increment agent performance counter

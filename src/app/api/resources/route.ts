@@ -84,6 +84,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
   const category = (formData.get("category") as string) ?? "other";
   const tagsRaw = formData.get("tags") as string | null;
   const accessLevel = (formData.get("accessLevel") as string) ?? "all_staff";
+  const nextReviewDateRaw = formData.get("nextReviewDate") as string | null;
 
   if (!title?.trim()) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -138,6 +139,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     files: uploadedFiles,
     uploadedBy: ctx.userId,
     accessLevel,
+    nextReviewDate: nextReviewDateRaw ? new Date(nextReviewDateRaw) : undefined,
     version: 1,
     versionHistory: uploadedFiles.length > 0 ? [{
       version: 1,

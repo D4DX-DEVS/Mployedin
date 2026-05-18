@@ -7,6 +7,8 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { leadUpdateSchema } from "@/lib/validators/leads";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { calculateLeadScore, deriveQualification } from "@/lib/leads/scoring";
+import { autoRouteLead } from "@/lib/leads/autoRouter";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -45,12 +47,45 @@ export const PATCH = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
 
   // Auto-set convertedAt when status transitions to "converted"
-  if (update.status === "converted") {
-    const current = await Lead.findById(id).select("status").lean() as { status?: string } | null;
-    if (current && current.status !== "converted") {
-      update.convertedAt = new Date();
+  const current = await Lead.findById(id).lean() as Record<string, unknown> | null;
+  if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (update.status === "converted" && current.status !== "converted") {
+    update.convertedAt = new Date();
+  }
+
+  // Re-route if country changed and lead has no manual superAgent assignment
+  if (update.country && !current.superAgentId) {
+    const routeResult = await autoRouteLead({
+      country: update.country as string,
+      city: (update.city ?? current.city) as string | undefined,
+      superAgentId: undefined,
+    });
+    if (routeResult) {
+      update.territoryId = routeResult.territoryId;
+      update.superAgentId = routeResult.superAgentId;
+      update.autoRouted = true;
     }
   }
+
+  // Recalculate score with merged state
+  const mergedStatus = (update.status ?? current.status) as string;
+  const mergedEmail = update.contactEmail ?? current.contactEmail;
+  const mergedPhone = update.contactPhone ?? current.contactPhone;
+  const mergedRevenue = update.expectedRevenue ?? current.expectedRevenue;
+  const mergedIndustry = update.industry ?? current.industry;
+  const activityCount = Array.isArray(current.activityLog) ? current.activityLog.length : 0;
+
+  const score = calculateLeadScore({
+    status: mergedStatus as Parameters<typeof calculateLeadScore>[0]["status"],
+    hasEmail: !!mergedEmail,
+    hasPhone: !!mergedPhone,
+    hasExpectedRevenue: !!mergedRevenue,
+    hasIndustry: !!mergedIndustry,
+    activityCount,
+  });
+  update.score = score;
+  update.qualificationLevel = deriveQualification(score);
 
   const lead = await Lead.findByIdAndUpdate(id, { $set: update }, { new: true });
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });

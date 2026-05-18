@@ -80,6 +80,29 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     update.paidAt = new Date();
   }
 
+  // Auto-track dispute
+  if (body.status === "disputed" && commission.status !== "disputed") {
+    update.disputedBy = ctx.userId;
+    update.disputedAt = new Date();
+  }
+
+  // Auto-track dispute resolution
+  if (body.disputeResolution && !commission.resolvedAt) {
+    update.resolvedBy = ctx.userId;
+    update.resolvedAt = new Date();
+    // If dispute is resolved, revert status back to the pre-dispute status
+    if (body.disputeResolution === "resolved" && !body.status) {
+      update.status = commission.approvedAt ? "approved" : "pending";
+    }
+  }
+
+  // Auto-track clawback
+  if (body.status === "clawed_back" && commission.status !== "clawed_back") {
+    update.clawbackBy = ctx.userId;
+    update.clawbackAt = new Date();
+    if (!update.clawbackAmount) update.clawbackAmount = commission.amount;
+  }
+
   Object.assign(commission, update);
   await commission.save();
 
@@ -126,6 +149,23 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         notifyCommissionPaid(String(sa.userId), "super_agent", commission.amount, commission.currency, commission.paymentRef ?? "—").catch(() => {});
       }
     }
+  } else if (body.status === "disputed") {
+    dispatchWebhook("commission.disputed", {
+      commissionId: params?.id,
+      amount: commission.amount,
+      currency: commission.currency,
+      status: "disputed",
+      disputeReason: body.disputeReason,
+    });
+  } else if (body.status === "clawed_back") {
+    dispatchWebhook("commission.clawed_back", {
+      commissionId: params?.id,
+      amount: commission.amount,
+      currency: commission.currency,
+      clawbackAmount: commission.clawbackAmount ?? commission.amount,
+      clawbackReason: body.clawbackReason,
+      status: "clawed_back",
+    });
   }
 
   await logActivity({

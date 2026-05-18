@@ -55,7 +55,7 @@ export function canAccessJob(
  * Check if a team role allows write operations.
  */
 export function canWrite(companyRole: CompanyRole): boolean {
-  return companyRole !== "viewer";
+  return companyRole !== "viewer" && companyRole !== "finance_viewer";
 }
 
 /**
@@ -69,6 +69,6 @@ export function canModifyRole(
   targetRole: CompanyRole
 ): boolean {
   if (actorRole === "owner") return true;
-  if (actorRole === "admin" && (targetRole === "hiring_manager" || targetRole === "viewer")) return true;
+  if (actorRole === "admin" && (targetRole === "hiring_manager" || targetRole === "accounting" || targetRole === "finance_viewer" || targetRole === "viewer")) return true;
   return false;
 }

@@ -599,8 +599,8 @@ export function Sidebar({
           <div className={cn(
             "shrink-0 flex items-center px-5",
             usesDualTierLayout
-              ? "h-16 border-b border-border/50 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))] backdrop-blur-sm"
-              : "h-16 border-b border-sidebar-border/50 bg-background/50 backdrop-blur-sm"
+              ? "h-20 border-b border-border/50 bg-[linear-gradient(180deg,_hsl(var(--card)/0.72),_hsl(var(--card)/0.24))] backdrop-blur-sm"
+              : "h-20 border-b border-sidebar-border/50 bg-background/50 backdrop-blur-sm"
           )}>
             <h2 className={cn(
               "text-[15px] font-bold tracking-tight",

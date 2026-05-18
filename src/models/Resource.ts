@@ -96,6 +96,7 @@ export interface IResource extends Document {
   version: number;
   versionHistory: IResourceVersion[];
   downloadCount: number;
+  nextReviewDate?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -158,6 +159,7 @@ const ResourceSchema = new Schema<IResource>(
     version: { type: Number, default: 1 },
     versionHistory: { type: [ResourceVersionSchema], default: [] },
     downloadCount: { type: Number, default: 0, min: 0 },
+    nextReviewDate: { type: Date, default: null },
   },
   { timestamps: true },
 );

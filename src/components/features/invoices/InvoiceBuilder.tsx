@@ -7,10 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { SUPPORTED_CURRENCIES } from "@/lib/currency";
+import { SUPPORTED_CURRENCIES, currencyForCountry } from "@/lib/currency";
+
+const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: `${c.code} — ${c.label}` }));
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useDebounce } from "@/hooks/useDebounce";
-import { findTaxPreset } from "@/lib/invoices/taxPresets";
+import { findTaxPreset, INTERNATIONAL_TAX_PRESETS } from "@/lib/invoices/taxPresets";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -53,6 +55,7 @@ interface InvoiceBuilderProps {
   defaultCurrency?: string;
   searchScope?: "admin" | "standard";
   role?: "admin" | "super_agent" | "agent";
+  mode?: "dialog" | "page";
 }
 
 // ── Default invoice types + dynamic custom ──────────────────────────────────
@@ -64,8 +67,29 @@ const DEFAULT_INVOICE_TYPES = [
   { value: "exhibition", label: "Exhibition Billing" },
   { value: "bulk_hiring", label: "Bulk Hiring Package" },
   { value: "consulting", label: "Consulting Fee" },
+  { value: "candidate_db", label: "Candidate Database Access" },
+  { value: "visa_processing", label: "Visa Processing" },
   { value: "custom_enterprise", label: "Custom Enterprise Billing" },
 ];
+
+/** Auto-generate description template based on invoice reason + job title */
+function generateInvoiceDescription(reason: string, jobTitle?: string, employerName?: string): string {
+  const job = jobTitle ?? "position";
+  const emp = employerName ? ` — ${employerName}` : "";
+  switch (reason) {
+    case "recruitment": return `Recruitment placement fee for ${job}${emp}`;
+    case "subscription": return `Employer subscription plan${emp}`;
+    case "premium_posting": return `Premium job posting for ${job}${emp}`;
+    case "featured_promotion": return `Featured employer promotion${emp}`;
+    case "exhibition": return `Exhibition / event billing${emp}`;
+    case "bulk_hiring": return `Bulk hiring package for ${job}${emp}`;
+    case "consulting": return `Consulting fee${emp}`;
+    case "candidate_db": return `Candidate database access${emp}`;
+    case "visa_processing": return `Visa processing support for ${job}${emp}`;
+    case "custom_enterprise": return `Enterprise billing${emp}`;
+    default: return "";
+  }
+}
 
 const DEFAULT_TAX_TYPES = [
   { value: "none", label: "No Tax" },
@@ -100,16 +124,12 @@ const PAYMENT_TERMS = [
   { value: "net_45", label: "Net 45 days" },
   { value: "net_60", label: "Net 60 days" },
   { value: "net_90", label: "Net 90 days" },
-  { value: "custom", label: "Custom" },
 ];
 
-const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map(c => ({ value: c.code, label: `${c.code} — ${c.label}` }));
-
-// Simplified to 3 steps (was 6)
+// Simplified to 2 steps: create + review
 const STEPS = [
-  { id: 1, label: "Job & Company", icon: Building2 },
-  { id: 2, label: "Invoice Details", icon: FileText },
-  { id: 3, label: "Review & Generate", icon: FileCheck },
+  { id: 1, label: "Create Invoice", icon: FileText },
+  { id: 2, label: "Review & Generate", icon: FileCheck },
 ];
 
 function getEmployerId(employer: Employer): string {
@@ -131,7 +151,7 @@ function mergeById<T extends { _id: string }>(current: T[], incoming: T[]): T[] 
   return Array.from(merged.values());
 }
 
-export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AED", searchScope = "standard", role = "agent" }: InvoiceBuilderProps) {
+export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AED", searchScope = "standard", role = "agent", mode = "dialog" }: InvoiceBuilderProps) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const dialogContentRef = useRef<HTMLDivElement>(null);
@@ -193,6 +213,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const [customSuperAgentRate, setCustomSuperAgentRate] = useState(0);
   const [paymentTerms, setPaymentTerms] = useState("net_30");
   const [customPaymentDays, setCustomPaymentDays] = useState(30);
+  const [customPaymentTerms, setCustomPaymentTerms] = useState<Array<{ value: string; label: string }>>([]);
+  const [showAddPaymentTerm, setShowAddPaymentTerm] = useState(false);
+  const [customPaymentLabel, setCustomPaymentLabel] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
@@ -200,6 +223,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
   const debouncedJobSearch = useDebounce(jobSearch, 300);
   const allInvoiceTypes = [...DEFAULT_INVOICE_TYPES, ...customInvoiceTypes];
+  const allPaymentTerms = [...PAYMENT_TERMS, ...customPaymentTerms];
   const allTaxTypes = [...DEFAULT_TAX_TYPES, ...customTaxTypes];
   const allStatusOptions = role === "agent"
     ? [{ value: "pending_approval", label: "Submit for Approval" }]
@@ -483,7 +507,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       .finally(() => setLoadingCascadeEmployers(false));
   }, [open, role, selectedAgentFilter]);
 
-  // When job selected, auto-populate employer + commission rates
+  // When job selected, auto-populate employer + commission rates + description
   useEffect(() => {
     if (selectedJobId) {
       const job = jobs.find(j => j._id === selectedJobId);
@@ -502,13 +526,25 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         setAgentRate(assignedAgent?.commissionRate ?? 0);
         setSuperAgentRate(assignedSuperAgent?.overrideRate ?? 0);
         setSelectedEmployerId(empId);
+        // Auto-fill first line item description from job + reason
+        const empName = populatedEmployer?.companyName;
+        const desc = generateInvoiceDescription(category, job.title, empName);
+        if (desc) {
+          setLineItems(prev => {
+            const updated = [...prev];
+            if (!updated[0].description) {
+              updated[0] = { ...updated[0], description: desc };
+            }
+            return updated;
+          });
+        }
         return;
       }
     }
     setSelectedEmployerId("");
     setAgentRate(0);
     setSuperAgentRate(0);
-  }, [selectedJobId, jobs]);
+  }, [selectedJobId, jobs, category]);
 
   // Fetch full employer profile by ID for billing auto-fill
   const fetchEmployerById = useCallback(async (empId: string) => {
@@ -556,13 +592,16 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     }
   }, [selectedEmployerId, employers, jobs, selectedJobId, fetchEmployers, fetchEmployerById]);
 
-  // Auto-detect tax when billing country changes
+  // Auto-detect tax + currency when billing country changes
   useEffect(() => {
     if (!billingCountry) return;
     const preset = findTaxPreset(billingCountry);
     if (preset) {
       setTaxType(preset.taxType);
       setTaxPercent(preset.defaultRate);
+      // Auto-set currency from country code
+      const ci = currencyForCountry(preset.countryCode);
+      if (ci) setCurrency(ci.code);
     }
   }, [billingCountry]);
 
@@ -570,8 +609,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const subtotal = lineItems.reduce((s, li) => s + (li.quantity * li.unitPrice), 0);
   const taxAmount = taxType !== "none" ? Math.round(subtotal * taxPercent / 100 * 100) / 100 : 0;
   const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
-  const effectiveAgentRate = commissionEnabled ? customAgentRate : agentRate;
-  const effectiveSuperAgentRate = commissionEnabled ? customSuperAgentRate : superAgentRate;
+  // Commission: admin=toggle, super_agent=always profile rates, agent=none
+  const effectiveAgentRate = role === "super_agent" ? agentRate : (commissionEnabled ? customAgentRate : 0);
+  const effectiveSuperAgentRate = role === "super_agent" ? superAgentRate : (commissionEnabled ? customSuperAgentRate : 0);
   const agentCommission = Math.round(totalAmount * effectiveAgentRate / 100 * 100) / 100;
   const superAgentCommission = Math.round(totalAmount * effectiveSuperAgentRate / 100 * 100) / 100;
   const companyNet = Math.round((totalAmount - agentCommission - superAgentCommission) * 100) / 100;
@@ -620,6 +660,20 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     setShowAddTaxType(false);
   };
 
+  const addCustomPaymentTerm = () => {
+    const trimmed = customPaymentLabel.trim();
+    if (!trimmed) return;
+    const value = trimmed.toLowerCase().replace(/\s+/g, "_");
+    if (allPaymentTerms.some(t => t.value === value)) {
+      toast.error("This payment term already exists");
+      return;
+    }
+    setCustomPaymentTerms(prev => [...prev, { value, label: trimmed }]);
+    setPaymentTerms(value);
+    setCustomPaymentLabel("");
+    setShowAddPaymentTerm(false);
+  };
+
   const addCustomStatus = () => {
     const trimmed = customStatusLabel.trim();
     if (!trimmed) return;
@@ -638,7 +692,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const handleSubmit = async () => {
     if (!selectedJobId) { toast.error("Please select a job first"); setStep(1); return; }
     if (!selectedEmployerId) { toast.error("Please select an employer"); setStep(1); return; }
-    if (lineItems.some(li => !li.description || li.unitPrice <= 0)) { toast.error("Please fill all line items with description and price"); setStep(2); return; }
+    if (lineItems.some(li => !li.description || li.unitPrice <= 0)) { toast.error("Please fill all line items with description and price"); setStep(1); return; }
 
     setSubmitting(true);
     try {
@@ -672,7 +726,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         notes: notes || undefined,
         internalNotes: internalNotes || undefined,
         status: invoiceStatus,
-        ...(commissionEnabled && (role === "admin" || role === "super_agent") ? {
+        ...(role === "super_agent" ? {
+          overrideAgentRate: agentRate,
+          overrideSuperAgentRate: superAgentRate,
+        } : commissionEnabled && role === "admin" ? {
           overrideAgentRate: customAgentRate,
           overrideSuperAgentRate: customSuperAgentRate,
         } : {}),
@@ -702,8 +759,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
   const canProceed = () => {
     switch (step) {
-      case 1: return !!selectedJobId && !!selectedEmployerId;
-      case 2: return lineItems.every(li => li.description && li.unitPrice > 0);
+      case 1: return !!selectedJobId && !!selectedEmployerId && lineItems.every(li => li.description && li.unitPrice > 0);
       default: return true;
     }
   };
@@ -762,12 +818,937 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const previewStatusLabel = (allStatusOptions.find(s => s.value === invoiceStatus)?.label ?? invoiceStatus).toUpperCase();
   const previewStatusClass = invoiceStatus === "pending_approval" ? "text-sky-600" : invoiceStatus === "draft" ? "text-amber-600" : invoiceStatus === "issued" ? "text-emerald-600" : "text-violet-600";
 
+  // ── Shared inner content ─────────────────────────────────────────────────
+  const headerContent = (
+    <>
+      <div className="flex items-center justify-between">
+        <h1 className={mode === "page" ? "text-xl font-bold" : "text-lg font-semibold"}>New Invoice</h1>
+      </div>
+      {/* Step indicator */}
+      <div className="mt-3 flex items-center gap-1">
+        {STEPS.map((s, i) => (
+          <div key={s.id} className="flex items-center">
+            <button
+              onClick={() => setStep(s.id)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                step === s.id
+                  ? "bg-primary text-primary-foreground"
+                  : step > s.id
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                    : "bg-muted text-muted-foreground"
+              }`}
+            >
+              <s.icon className="h-3.5 w-3.5" />
+              {s.label}
+            </button>
+            {i < STEPS.length - 1 && <div className="mx-1 h-px w-4 bg-border" />}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+
+  const footerContent = (
+    <div className="flex shrink-0 items-center justify-between border-t border-border/80 bg-muted/30 px-6 py-3">
+      <Button variant="outline" onClick={() => step > 1 ? setStep(step - 1) : onClose()} className="h-9 gap-1.5 rounded-lg">
+        <ChevronLeft className="h-4 w-4" />
+        {step > 1 ? "Back" : "Cancel"}
+      </Button>
+      <div className="flex items-center gap-2">
+        {step < 2 ? (
+          <Button onClick={() => setStep(step + 1)} disabled={!canProceed()} className="h-9 gap-1.5 rounded-lg bg-sky-600 hover:bg-sky-700">
+            Next <ChevronRight className="h-4 w-4" />
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => { setInvoiceStatus("draft"); handleSubmit(); }}
+              disabled={submitting}
+              className="h-9 gap-1.5 rounded-lg"
+            >
+              Save as Draft
+            </Button>
+            <Button onClick={handleSubmit} disabled={submitting} className="h-9 gap-1.5 rounded-lg bg-sky-600 hover:bg-sky-700">
+              {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : <><FileCheck className="h-4 w-4" /> {role === "agent" ? "Submit Invoice" : "Save and Send"}</>}
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  const sidebarContent = role === "admin" && (
+    <div className="hidden w-[300px] shrink-0 self-start sticky top-[73px] max-h-[calc(100vh-10rem)] overflow-y-auto bg-muted/20 p-4 lg:block">
+      <div className="space-y-4">
+        {/* Invoice Summary */}
+        <div className="rounded-xl border border-border/70 bg-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Invoice Summary</p>
+          <div className="mt-3 space-y-2 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-medium">{fmt(subtotal)}</span>
+            </div>
+            {taxType !== "none" && taxPercent > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Tax ({taxType.toUpperCase()} {taxPercent}%)</span>
+                <span className="font-medium">{fmt(taxAmount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Discount</span>
+              <span className="font-medium">{fmt(0)}</span>
+            </div>
+            <div className="border-t border-border/70 pt-2" />
+            <div className="flex justify-between">
+              <span className="text-sm font-semibold">Total Amount</span>
+              <span className="text-lg font-bold text-primary">{fmt(totalAmount)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Payment Terms */}
+        <div className="rounded-xl border border-border/70 bg-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment Terms</p>
+          <div className="mt-2 text-xs">
+            <p className="font-medium">{allPaymentTerms.find(t => t.value === paymentTerms)?.label ?? paymentTerms}</p>
+            {dueDate && <p className="mt-1 text-muted-foreground">Due on {dueDate}</p>}
+          </div>
+        </div>
+
+        {/* Commission Preview (Internal) */}
+        <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">Commission Preview (Internal)</p>
+          <div className="mt-2 space-y-1.5 text-xs">
+            {selectedAgent?.userId?.name ? (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Agent ({selectedAgent.userId.name})</span>
+                <span className="font-medium">{agentRate}% &nbsp; {fmt(agentCommission)}</span>
+              </div>
+            ) : (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Agent Commission</span>
+                <span className="font-medium">{agentRate}% &nbsp; {fmt(agentCommission)}</span>
+              </div>
+            )}
+            {selectedSuperAgent?.userId?.name ? (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">SA ({selectedSuperAgent.userId.name})</span>
+                <span className="font-medium">{superAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
+              </div>
+            ) : (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Super Agent Commission</span>
+                <span className="font-medium">{superAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
+              </div>
+            )}
+            <div className="border-t border-amber-200/70 pt-1.5 dark:border-amber-800/40">
+              <div className="flex justify-between font-medium text-emerald-700 dark:text-emerald-400">
+                <span>Platform Revenue</span>
+                <span>{fmt(companyNet)}</span>
+              </div>
+            </div>
+            <p className="mt-1 text-[9px] italic text-amber-600/80 dark:text-amber-400/60">Internal preview — not visible to employer.</p>
+          </div>
+        </div>
+
+        {/* Notes to Customer */}
+        <div className="rounded-xl border border-border/70 bg-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Notes to Customer</p>
+          <p className="mt-2 text-xs text-muted-foreground whitespace-pre-line">
+            {notes || "Thanks for your business.\nWe appreciate your trust in our services."}
+          </p>
+        </div>
+
+        {/* Payment Gateway */}
+        <div className="rounded-xl border border-border/70 bg-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment Gateway (After Generation)</p>
+          <div className="mt-2 flex items-center gap-3">
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <div className="h-4 w-4 rounded bg-sky-100 dark:bg-sky-900/50" />
+              <span>Razorpay</span>
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <div className="h-4 w-4 rounded bg-violet-100 dark:bg-violet-900/50" />
+              <span>Stripe</span>
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <div className="h-4 w-4 rounded bg-emerald-100 dark:bg-emerald-900/50" />
+              <span>Bank Transfer</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Shared step content (used by both page and dialog mode) ─────────────────
+  const stepContent = (
+    <>
+  
+            {/* ═══════════════════════════════════════════════════════════════════
+                STEP 1: Job & Company
+                ═══════════════════════════════════════════════════════════════════ */}
+            {step === 1 && (
+              <div className="space-y-5">
+                {/* Admin cascade filters: Region → Super Agent → Agent → Jobs (optional) */}
+                {(role === "admin" || role === "super_agent") && (
+                  <details className="rounded-xl border border-sky-200/80 bg-gradient-to-br from-sky-50/60 to-transparent dark:border-sky-900/40 dark:from-sky-950/30">
+                    {/* Header — clickable to expand */}
+                    <summary className="flex cursor-pointer select-none items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-5 w-5 items-center justify-center rounded bg-sky-100 dark:bg-sky-900/50">
+                          <Users className="h-3 w-3 text-sky-700 dark:text-sky-300" />
+                        </div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                          {role === "admin" ? "Filter by Team" : "Filter by Agent"}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground">(optional)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {(selectedSuperAgentFilter || selectedAgentFilter || selectedEmployerFilter) && (
+                          <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                            Filtered
+                          </span>
+                        )}
+                        {role === "admin" && !loadingFilters && (
+                          <span className="text-[10px] text-muted-foreground">{regionFilteredSuperAgents.length} SA · {filteredAgents.length} agents</span>
+                        )}
+                        <ChevronDown className="h-4 w-4 text-sky-500 transition-transform [[open]>&]:rotate-180" />
+                      </div>
+                    </summary>
+  
+                    {/* Advanced location filters — collapsible */}
+                    {role === "admin" && allRegions.length > 0 && (
+                      <div className="mx-4 mt-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                          className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-sky-300/60 bg-sky-50/50 px-3 py-1.5 text-[11px] font-medium text-sky-600 transition-colors hover:bg-sky-100/60 dark:border-sky-800/40 dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-900/30"
+                        >
+                          <MapPin className="h-3 w-3" />
+                          Narrow by Region
+                          <ChevronDown className={`ml-auto h-3 w-3 transition-transform ${showAdvancedFilters ? "rotate-180" : ""}`} />
+                          {selectedRegionFilter && (
+                            <span className="ml-1 rounded-full bg-sky-200 px-1.5 py-0.5 text-[9px] font-semibold text-sky-800 dark:bg-sky-800 dark:text-sky-200">
+                              {selectedRegionFilter}
+                            </span>
+                          )}
+                        </button>
+                        {showAdvancedFilters && (
+                          <div className="mt-2 flex items-end gap-2">
+                            <div className="flex-1">
+                              <Label className="text-[10px] text-muted-foreground">Region / State</Label>
+                              <SearchableSelect
+                                id="inv-region-filter"
+                                className="mt-1 h-8 w-full rounded-lg border-border bg-card text-xs"
+                                options={[
+                                  { value: "", label: "All Regions" },
+                                  ...allRegions.map(r => {
+                                    const saCount = superAgents.filter(sa => sa.regions.includes(r)).length;
+                                    return { value: r, label: `${r} (${saCount} SA)` };
+                                  }),
+                                ]}
+                                value={selectedRegionFilter}
+                                onValueChange={(v) => {
+                                  setSelectedRegionFilter(v);
+                                  setSelectedSuperAgentFilter("");
+                                  setSelectedAgentFilter("");
+                                  setSelectedEmployerFilter("");
+                                }}
+                                placeholder="All Regions"
+                                container={dialogContentRef.current}
+                                modal
+                              />
+                            </div>
+                            {selectedRegionFilter && (
+                              <button
+                                type="button"
+                                onClick={() => { setSelectedRegionFilter(""); setSelectedSuperAgentFilter(""); setSelectedAgentFilter(""); setSelectedEmployerFilter(""); }}
+                                className="mb-0.5 rounded-md p-1.5 text-muted-foreground hover:bg-accent"
+                                title="Clear region filter"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+  
+                    {/* SA → Agent → Employer cascade */}
+                    <div className="space-y-3 p-4">
+                      {role === "admin" && (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Super Agent</Label>
+                            <SearchableSelect
+                              id="inv-sa-filter"
+                              className="mt-1 h-9 w-full rounded-lg border-border bg-card"
+                              options={superAgentOptions}
+                              value={selectedSuperAgentFilter}
+                              onValueChange={(v) => { setSelectedSuperAgentFilter(v); setSelectedAgentFilter(""); setSelectedEmployerFilter(""); }}
+                              placeholder="All Super Agents"
+                              loading={loadingFilters}
+                              container={dialogContentRef.current}
+                              modal
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Agent</Label>
+                            <SearchableSelect
+                              id="inv-ag-filter"
+                              className="mt-1 h-9 w-full rounded-lg border-border bg-card"
+                              options={agentOptions}
+                              value={selectedAgentFilter}
+                              onValueChange={(v) => { setSelectedAgentFilter(v); setSelectedEmployerFilter(""); }}
+                              placeholder="All Agents"
+                              loading={loadingFilters}
+                              container={dialogContentRef.current}
+                              modal
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {role === "super_agent" && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Agent</Label>
+                          <SearchableSelect
+                            id="inv-ag-filter"
+                            className="mt-1 h-9 w-full rounded-lg border-border bg-card"
+                            options={agentOptions}
+                            value={selectedAgentFilter}
+                            onValueChange={(v) => { setSelectedAgentFilter(v); setSelectedEmployerFilter(""); }}
+                            placeholder="All Agents"
+                            loading={loadingFilters}
+                            container={dialogContentRef.current}
+                            modal
+                          />
+                        </div>
+                      )}
+                      {/* Employer filter — shown when agent selected (cascade) or jobs loaded with employer data */}
+                      {(employerFilterOptions.length > 1 || loadingCascadeEmployers) && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">
+                            <Building2 className="mr-1 inline-block h-3 w-3" />Employer
+                          </Label>
+                          <SearchableSelect
+                            id="inv-emp-filter"
+                            className="mt-1 h-9 w-full rounded-lg border-border bg-card"
+                            options={employerFilterOptions}
+                            value={selectedEmployerFilter}
+                            onValueChange={setSelectedEmployerFilter}
+                            placeholder={selectedAgentFilter ? "Select employer…" : "All Employers"}
+                            loading={loadingCascadeEmployers}
+                            container={dialogContentRef.current}
+                            modal
+                          />
+                          {selectedAgentFilter && cascadeEmployers.length === 0 && !loadingCascadeEmployers && (
+                            <p className="mt-1 text-[10px] text-muted-foreground">No employers found for this agent</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                )}
+  
+                {/* Job select — inline search + results */}
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-5 w-5 items-center justify-center rounded bg-primary/10">
+                        <span className="text-[10px] font-bold text-primary">1</span>
+                      </div>
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-foreground">Select Job *</Label>
+                    </div>
+                    {loadingCount ? (
+                      <span className="text-[10px] text-muted-foreground">Loading…</span>
+                    ) : totalJobCount > 0 ? (
+                      <span className="text-[10px] text-muted-foreground">{totalJobCount.toLocaleString()} jobs total</span>
+                    ) : totalJobCount === 0 ? (
+                      <span className="text-[10px] text-amber-600">No jobs found</span>
+                    ) : null}
+                  </div>
+  
+                  {/* Selected job chip */}
+                  {selectedJobId && selectedJob && (
+                    <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/30">
+                      <Check className="h-4 w-4 shrink-0 text-emerald-600" />
+                      <div className="min-w-0 flex-1">
+                        <span className="truncate text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                          {selectedJob.title}
+                        </span>
+                        {isPopulatedJobEmployer(selectedJob.employerId) && (
+                          <span className="ml-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                            — {selectedJob.employerId.companyName}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedJobId(""); setJobSearch(""); }}
+                        className="shrink-0 rounded-full p-0.5 text-emerald-600 hover:bg-emerald-200 dark:hover:bg-emerald-800"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+  
+                  {/* Job Details Card — shown after selection (admin) */}
+                  {selectedJobId && selectedJob && role === "admin" && (
+                    <div className="mb-2 grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-lg border border-border/50 bg-muted/20 px-4 py-3 text-xs sm:grid-cols-5">
+                      <div>
+                        <p className="text-[9px] font-semibold uppercase text-muted-foreground">Job ID</p>
+                        <p className="mt-0.5 font-mono font-medium text-foreground">{selectedJob._id.slice(-8).toUpperCase()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold uppercase text-muted-foreground">Employer</p>
+                        <p className="mt-0.5 font-medium text-foreground">{isPopulatedJobEmployer(selectedJob.employerId) ? selectedJob.employerId.companyName : "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold uppercase text-muted-foreground">Position</p>
+                        <p className="mt-0.5 font-medium text-foreground">{selectedJob.title}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold uppercase text-muted-foreground">Location</p>
+                        <p className="mt-0.5 font-medium text-foreground">{selectedJob.location?.city ?? "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold uppercase text-muted-foreground">Type</p>
+                        <p className="mt-0.5 font-medium capitalize text-foreground">{selectedJob.employmentType?.replace(/_/g, " ") ?? "Permanent"}</p>
+                      </div>
+                    </div>
+                  )}
+  
+                  {/* Search input — always visible */}
+                  {!selectedJobId && (
+                    <>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="inv-job-search"
+                          className="h-10 rounded-lg pl-9 pr-3 text-sm"
+                          placeholder="Search jobs by title or employer…"
+                          value={jobSearch}
+                          onChange={(e) => setJobSearch(e.target.value)}
+                          autoComplete="off"
+                        />
+                        {loadingJobs && (
+                          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+  
+                      {/* Results list — shown when searching OR auto-loaded (small count) */}
+                      {(debouncedJobSearch.trim() || loadingJobs || (jobs.length > 0 && totalJobCount <= AUTO_LOAD_THRESHOLD)) ? (
+                        <div className="mt-2 max-h-[35vh] overflow-y-auto rounded-lg border border-border/50">
+                          {filteredJobs.length > 0 ? (
+                            <>
+                              {filteredJobs.map((job) => {
+                                const employer = isPopulatedJobEmployer(job.employerId) ? job.employerId : null;
+                                const city = job.location?.city;
+                                const sal = job.salary;
+                                const salaryText = sal?.min && sal?.max
+                                  ? `${(sal.currency ?? "INR")} ${sal.min.toLocaleString()}–${sal.max.toLocaleString()}`
+                                  : sal?.min ? `${(sal.currency ?? "INR")} ${sal.min.toLocaleString()}+` : null;
+                                const typeLabel = job.employmentType?.replace(/_/g, " ") ?? "";
+                                return (
+                                  <button
+                                    key={job._id}
+                                    type="button"
+                                    onClick={() => setSelectedJobId(job._id)}
+                                    className="flex w-full items-start gap-3 border-b border-border/30 px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-accent"
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-sm font-medium text-foreground">{job.title}</p>
+                                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                        {employer && (
+                                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                            <Building2 className="h-3 w-3 shrink-0" />{employer.companyName}
+                                          </span>
+                                        )}
+                                        {city && (
+                                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                            <MapPin className="h-3 w-3 shrink-0" />{city}
+                                          </span>
+                                        )}
+                                        {salaryText && (
+                                          <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">{salaryText}</span>
+                                        )}
+                                        {typeLabel && (
+                                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">{typeLabel}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {job.status && (
+                                      <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                        job.status === "active" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                                        job.status === "closed" ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" :
+                                        "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                      }`}>{job.status}</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                              {totalJobCount > filteredJobs.length && (
+                                <p className="px-3 py-2 text-center text-[10px] text-muted-foreground">
+                                  Showing {filteredJobs.length} of {totalJobCount.toLocaleString()} — refine your search to see more
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                              {jobSearchError ?? (loadingJobs || loadingCount ? "Loading jobs…" : "No matching jobs found.")}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex flex-col items-center gap-1 rounded-lg border border-dashed border-border/60 py-6 text-center">
+                          <Search className="h-5 w-5 text-muted-foreground/50" />
+                          <p className="text-sm text-muted-foreground">
+                            {loadingCount
+                              ? "Loading jobs…"
+                              : totalJobCount > 0
+                                ? <><span className="font-medium text-foreground">{totalJobCount.toLocaleString()}</span> jobs available</>
+                                : totalJobCount === 0
+                                  ? "No jobs available for the selected filters."
+                                  : "Loading…"
+                            }
+                          </p>
+                          {totalJobCount > 0 && (
+                            <p className="text-[11px] text-muted-foreground/70">
+                              Type a job title or employer name above to search
+                            </p>
+                          )}
+                        </div>
+                      )}
+  
+                      {jobSearchError && <p className="mt-1 text-xs text-rose-600">{jobSearchError}</p>}
+                    </>
+                  )}
+                </div>
+  
+                {employerSearchError && <p className="text-xs text-rose-600">{employerSearchError}</p>}
+  
+                {/* ── Inline Invoice Details (shown after job selected) ──────── */}
+                {selectedJob && (
+                  <div className="space-y-4">
+                    {/* Employer + auto-detected tax & currency — click to override */}
+                    <details className="rounded-lg border border-emerald-200/70 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                      <summary className="flex cursor-pointer select-none flex-wrap items-center gap-2 px-3 py-2">
+                        <Building2 className="h-4 w-4 text-emerald-600" />
+                        <span className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                          {selectedEmployer?.companyName ?? (isPopulatedJobEmployer(selectedJob.employerId) ? selectedJob.employerId.companyName : "—")}
+                        </span>
+                        <div className="ml-auto flex items-center gap-1.5">
+                          {currency && (
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                              {currency}
+                            </span>
+                          )}
+                          {billingCountry && findTaxPreset(billingCountry) && (
+                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                              {findTaxPreset(billingCountry)!.label}
+                            </span>
+                          )}
+                          <ChevronDown className="h-3.5 w-3.5 text-emerald-500 transition-transform [[open]>&]:rotate-180" />
+                        </div>
+                      </summary>
+                      <div className="grid gap-3 border-t border-emerald-200/50 px-3 py-3 dark:border-emerald-900/30 sm:grid-cols-3">
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">Currency</Label>
+                          <SearchableSelect
+                            id="inv-currency-override"
+                            className="mt-1 h-8 w-full rounded-lg border-border bg-card text-xs"
+                            options={CURRENCY_OPTIONS}
+                            value={currency}
+                            onValueChange={setCurrency}
+                            placeholder="Currency"
+                            container={dialogContentRef.current}
+                            modal
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">Tax Type</Label>
+                          <SearchableSelect
+                            id="inv-tax-override"
+                            className="mt-1 h-8 w-full rounded-lg border-border bg-card text-xs"
+                            options={allTaxTypes}
+                            value={taxType}
+                            onValueChange={(val) => {
+                              setTaxType(val);
+                              if (val === "none") {
+                                setTaxPercent(0);
+                              } else {
+                                const bc = billingCountry?.trim().toUpperCase();
+                                const match = bc
+                                  ? INTERNATIONAL_TAX_PRESETS.find(p => p.taxType === val && (p.countryCode.toUpperCase() === bc || p.country.toUpperCase() === bc))
+                                  : undefined;
+                                const fallback = INTERNATIONAL_TAX_PRESETS.find(p => p.taxType === val && p.defaultRate > 0);
+                                const rate = (match ?? fallback)?.defaultRate;
+                                if (rate !== undefined) setTaxPercent(rate);
+                                // types not in presets (WHT, sales_tax, etc.) keep current %
+                              }
+                            }}
+                            placeholder="Tax type"
+                            container={dialogContentRef.current}
+                            modal
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-muted-foreground">Tax %</Label>
+                          <Input
+                            type="number" min={0} max={100} step={0.5}
+                            className="mt-1 h-8 rounded-lg text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            value={taxPercent || ""}
+                            onChange={e => setTaxPercent(parseFloat(e.target.value) || 0)}
+                            disabled={taxType === "none"}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                    </details>
+  
+                    {/* Invoice Meta — Date, Category, Terms, Due Date */}
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">
+                      <div>
+                        <Label className="mb-1 block text-xs font-medium text-muted-foreground">Invoice Date</Label>
+                        <Input
+                          type="date"
+                          className="h-9 rounded-lg border-border/60 text-sm"
+                          defaultValue={new Date().toISOString().split("T")[0]}
+                          readOnly
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-medium text-muted-foreground">Invoice Category *</Label>
+                          {!showAddType && (
+                            <button type="button" onClick={() => setShowAddType(true)} className="text-[10px] font-medium text-primary hover:underline">+ Add custom</button>
+                          )}
+                        </div>
+                        {showAddType ? (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <Input
+                              autoFocus
+                              className="h-9 flex-1 rounded-lg text-sm"
+                              placeholder="e.g. Relocation Fee"
+                              value={customCategory}
+                              onChange={e => setCustomCategory(e.target.value)}
+                              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomType(); } if (e.key === "Escape") setShowAddType(false); }}
+                            />
+                            <Button type="button" size="sm" variant="default" className="h-9 px-3 text-xs" onClick={addCustomType} disabled={!customCategory.trim()}>Add</Button>
+                            <Button type="button" size="sm" variant="ghost" className="h-9 px-2 text-xs" onClick={() => { setShowAddType(false); setCustomCategory(""); }}>✕</Button>
+                          </div>
+                        ) : (
+                        <SearchableSelect
+                          id="inv-reason"
+                          className="mt-1 h-9 w-full rounded-lg border-border bg-card"
+                          options={allInvoiceTypes}
+                          value={category}
+                          onValueChange={(v) => {
+                            setCategory(v);
+                            const empName = selectedEmployer?.companyName ?? (isPopulatedJobEmployer(selectedJob.employerId) ? selectedJob.employerId.companyName : undefined);
+                            const desc = generateInvoiceDescription(v, selectedJob.title, empName);
+                            if (desc) {
+                              setLineItems(prev => {
+                                const updated = [...prev];
+                                if (!updated[0].description || updated[0].description === generateInvoiceDescription(category, selectedJob.title, empName)) {
+                                  updated[0] = { ...updated[0], description: desc };
+                                }
+                                return updated;
+                              });
+                            }
+                          }}
+                          placeholder="Select category…"
+                          container={dialogContentRef.current}
+                          modal
+                        />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-medium text-muted-foreground">Terms</Label>
+                          {!showAddPaymentTerm && (
+                            <button type="button" onClick={() => setShowAddPaymentTerm(true)} className="text-[10px] font-medium text-primary hover:underline">+ Add custom</button>
+                          )}
+                        </div>
+                        {showAddPaymentTerm ? (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <Input
+                              autoFocus
+                              className="h-9 flex-1 rounded-lg text-sm"
+                              placeholder="e.g. Net 120 days"
+                              value={customPaymentLabel}
+                              onChange={e => setCustomPaymentLabel(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === "Enter") { e.preventDefault(); addCustomPaymentTerm(); }
+                                if (e.key === "Escape") setShowAddPaymentTerm(false);
+                              }}
+                            />
+                            <Button type="button" size="sm" variant="default" className="h-9 px-3 text-xs" onClick={addCustomPaymentTerm} disabled={!customPaymentLabel.trim()}>Add</Button>
+                            <Button type="button" size="sm" variant="ghost" className="h-9 px-2 text-xs" onClick={() => { setShowAddPaymentTerm(false); setCustomPaymentLabel(""); }}>✕</Button>
+                          </div>
+                        ) : (
+                        <SearchableSelect
+                          id="inv-pay-terms"
+                          className="mt-1 h-9 w-full rounded-lg border-border bg-card"
+                          options={allPaymentTerms}
+                          value={paymentTerms}
+                          onValueChange={setPaymentTerms}
+                          container={dialogContentRef.current}
+                          modal
+                        />
+                        )}
+                      </div>
+                      <div>
+                        <Label className="mb-1 block text-xs font-medium text-muted-foreground">Due Date</Label>
+                        <Input
+                          type="date"
+                          className="h-9 rounded-lg border-border/60 text-sm"
+                          value={dueDate}
+                          onChange={e => setDueDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+  
+                    {/* Line Items — ERP-style table */}
+                    <div className="rounded-lg border border-border/60 bg-card">
+                      <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Item Table</p>
+                        <Button variant="outline" size="sm" onClick={addLineItem} className="h-7 gap-1 rounded-lg text-[10px]">
+                          <Plus className="h-3 w-3" /> Add New Row
+                        </Button>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-border/50 bg-muted/30">
+                              <th className="w-[36px] px-2 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">#</th>
+                              <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Description</th>
+                              <th className="w-[70px] px-2 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Qty</th>
+                              <th className="w-[110px] px-2 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Unit Rate ({currency})</th>
+                              <th className="w-[80px] px-2 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tax</th>
+                              <th className="w-[110px] px-2 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Amount ({currency})</th>
+                              <th className="w-[36px] px-2 py-2.5"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lineItems.map((li, i) => {
+                              const itemTax = taxType !== "none" ? (li.quantity * li.unitPrice * taxPercent / 100) : 0;
+                              const itemTotal = (li.quantity * li.unitPrice) + itemTax;
+                              return (
+                              <tr key={i} className="border-b border-border/30 last:border-b-0">
+                                <td className="px-2 py-2 text-center text-muted-foreground">{i + 1}</td>
+                                <td className="px-3 py-2">
+                                  <Input className="h-9 rounded border-border/50 text-sm" value={li.description} onChange={e => updateLineItem(i, "description", e.target.value)} placeholder="Enter description" />
+                                </td>
+                                <td className="px-2 py-2">
+                                  <Input type="number" min={1} className="h-9 rounded border-border/50 text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={li.quantity} onChange={e => updateLineItem(i, "quantity", parseInt(e.target.value) || 1)} />
+                                </td>
+                                <td className="px-2 py-2">
+                                  <Input type="number" min={0} step="0.01" className="h-9 rounded border-border/50 text-right text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={li.unitPrice || ""} onChange={e => updateLineItem(i, "unitPrice", parseFloat(e.target.value) || 0)} placeholder="0.00" />
+                                </td>
+                                <td className="px-2 py-2 text-center">
+                                  <span className="inline-block rounded bg-muted/60 px-2 py-1 text-[10px] font-medium">
+                                    {taxType !== "none" ? `${taxPercent}%` : "—"}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-2 text-right">
+                                  <span className="text-sm font-semibold">{itemTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </td>
+                                <td className="px-2 py-2">
+                                  <Button variant="ghost" size="sm" onClick={() => removeLineItem(i)} disabled={lineItems.length <= 1} className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                </td>
+                              </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+  
+                    {/* Total Summary */}
+                    <div className="rounded-lg border border-border/70 bg-card">
+                      <div className="flex items-center justify-between border-b border-border/50 px-4 py-2">
+                        <span className="text-xs text-muted-foreground">Subtotal</span>
+                        <span className="text-sm font-medium">{fmt(subtotal)}</span>
+                      </div>
+                      {taxType !== "none" && taxPercent > 0 && (
+                        <div className="flex items-center justify-between border-b border-border/50 px-4 py-2">
+                          <span className="text-xs text-muted-foreground">Tax ({taxType.toUpperCase()} {taxPercent}%)</span>
+                          <span className="text-sm font-medium">{fmt(taxAmount)}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between bg-primary/5 px-4 py-3">
+                        <span className="text-sm font-semibold">Total ({currency})</span>
+                        <span className="text-lg font-bold text-primary">{fmt(totalAmount)}</span>
+                      </div>
+                    </div>
+  
+                    {/* Customer Notes */}
+                    <div>
+                      <Label className="text-xs font-medium text-muted-foreground">Customer Notes</Label>
+                      <Textarea className="mt-1.5 rounded-lg border-border/60 text-sm" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Thanks for your business." />
+                      <p className="mt-1 text-[10px] text-muted-foreground">Will be displayed on the invoice</p>
+                    </div>
+  
+                    {/* Internal Notes — hidden from customer */}
+                    {(role === "admin" || role === "super_agent") && (
+                      <div>
+                        <Label className="text-xs font-medium text-muted-foreground">Internal Notes (not shown on invoice)</Label>
+                        <Textarea className="mt-1.5 rounded-lg border-border/60 text-sm" rows={2} value={internalNotes} onChange={e => setInternalNotes(e.target.value)} placeholder="Finance team notes…" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+  
+            {/* ═══════════════════════════════════════════════════════════════════
+                STEP 2: Review & Generate
+                ═══════════════════════════════════════════════════════════════════ */}
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-border bg-card p-5">
+                  {/* Header */}
+                  <div className="flex items-start justify-between border-b border-border/70 pb-3">
+                    <div>
+                      <p className="text-lg font-bold text-foreground">INVOICE PREVIEW</p>
+                      <p className="mt-1 text-sm font-medium text-primary capitalize">{allInvoiceTypes.find(t => t.value === category)?.label ?? category}</p>
+                      <p className="mt-0.5 text-xs">Status: <span className={previewStatusClass}>{previewStatusLabel}</span></p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{billingCompanyName || "—"}</p>
+                      <p className="text-xs text-muted-foreground">{billingEmail}</p>
+                      {billingCountry && <p className="text-xs text-muted-foreground">{billingCountry}</p>}
+                      {billingTaxId && <p className="text-[10px] text-muted-foreground">Tax ID: {billingTaxId}</p>}
+                    </div>
+                  </div>
+  
+                  {/* Invoice Meta */}
+                  <div className="mt-3 grid grid-cols-2 gap-4 rounded-lg bg-muted/30 px-4 py-3 text-xs sm:grid-cols-4">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">Invoice Date</p>
+                      <p className="mt-0.5 font-medium">{new Date().toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">Terms</p>
+                      <p className="mt-0.5 font-medium">{allPaymentTerms.find(t => t.value === paymentTerms)?.label ?? paymentTerms}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">Due Date</p>
+                      <p className="mt-0.5 font-medium">{dueDate || "Per terms"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">Currency</p>
+                      <p className="mt-0.5 font-medium">{currency}</p>
+                    </div>
+                  </div>
+  
+                  {/* Line Items Table */}
+                  <div className="mt-4 overflow-hidden rounded-lg border border-border/70">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-muted/50">
+                          <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Item Details</th>
+                          <th className="px-3 py-2.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Quantity</th>
+                          <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Rate</th>
+                          <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lineItems.map((li, i) => (
+                          <tr key={i} className="border-t border-border/50">
+                            <td className="px-3 py-2.5 text-sm">{li.description || "—"}</td>
+                            <td className="px-3 py-2.5 text-center">{li.quantity}</td>
+                            <td className="px-3 py-2.5 text-right">{fmt(li.unitPrice)}</td>
+                            <td className="px-3 py-2.5 text-right font-medium">{fmt(li.quantity * li.unitPrice)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+  
+                  {/* Total Summary */}
+                  <div className="ml-auto mt-4 max-w-xs">
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="font-medium">{fmt(subtotal)}</span></div>
+                      {taxType !== "none" && taxPercent > 0 && (
+                        <div className="flex justify-between"><span className="text-muted-foreground">Tax ({taxType.toUpperCase()} {taxPercent}%)</span><span className="font-medium">{fmt(taxAmount)}</span></div>
+                      )}
+                      <div className="border-t border-border/70 pt-2" />
+                      <div className="flex justify-between text-sm font-bold"><span>Total ({currency})</span><span className="text-primary">{fmt(totalAmount)}</span></div>
+                    </div>
+                  </div>
+  
+                  {/* Payment & Billing Details */}
+                  <div className="mt-4 grid gap-4 border-t border-border/50 pt-4 sm:grid-cols-2">
+                    <div className="text-xs">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Billing To</p>
+                      <p className="mt-1.5 font-medium">{billingCompanyName}</p>
+                      {billingContactPerson && <p className="text-muted-foreground">{billingContactPerson}</p>}
+                      {billingEmail && <p className="text-muted-foreground">{billingEmail}</p>}
+                      {billingPhone && <p className="text-muted-foreground">{billingPhone}</p>}
+                      {billingAddress && <p className="text-muted-foreground">{billingAddress}</p>}
+                    </div>
+                    <div className="text-xs">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Job Reference</p>
+                      <p className="mt-1.5 font-medium">{selectedJob?.title ?? "—"}</p>
+                      {selectedJob && isPopulatedJobEmployer(selectedJob.employerId) && (
+                        <p className="text-muted-foreground">{selectedJob.employerId.companyName}</p>
+                      )}
+                      {selectedJob?.location?.city && <p className="text-muted-foreground">{selectedJob.location.city}</p>}
+                    </div>
+                  </div>
+  
+                  {notes && (
+                    <div className="mt-4 border-t border-border/50 pt-3 text-xs">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Customer Notes</p>
+                      <p className="mt-1 text-muted-foreground">{notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+    </>
+  );
+
+  if (mode === "page") {
+    return (
+      <div ref={dialogContentRef}>
+        {/* Header — sticky at top of scroll area */}
+        <div className="sticky top-0 z-10 border-b border-border/80 bg-background/95 px-6 py-4 backdrop-blur-sm">
+          {headerContent}
+        </div>
+
+        {/* Body: Main + Sidebar */}
+        <div className="flex">
+          {/* Main content */}
+          <div className="min-w-0 flex-1 border-r border-border/50 px-6 py-5">
+
+            {stepContent}
+
+            {/* Footer inline */}
+            <div className="mt-6">
+              {footerContent}
+            </div>
+          </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              RIGHT SIDEBAR — Admin only (Invoice Summary, Commission, Payment)
+              ═══════════════════════════════════════════════════════════════════ */}
+          {sidebarContent}
+        </div>
+      </div>
+    );
+  }
+
+  // ── DIALOG MODE: Standard popup for agent/super_agent ──────────────────────
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent ref={dialogContentRef} className="flex max-h-[92vh] max-w-4xl flex-col overflow-hidden p-0">
-        <DialogHeader className="border-b border-border/80 px-6 py-4">
-          <DialogTitle className="text-lg font-semibold">Create Invoice</DialogTitle>
-          {/* Simplified 3-step indicator */}
+        <DialogHeader className="border-b border-border/80 px-6 py-4 pr-12">
+          <DialogTitle className="text-lg font-semibold">New Invoice</DialogTitle>
           <div className="mt-3 flex items-center gap-1">
             {STEPS.map((s, i) => (
               <div key={s.id} className="flex items-center">
@@ -790,745 +1771,12 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
           </div>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-
-          {/* ═══════════════════════════════════════════════════════════════════
-              STEP 1: Job & Company
-              ═══════════════════════════════════════════════════════════════════ */}
-          {step === 1 && (
-            <div className="space-y-5">
-              {/* Admin cascade filters: Region → Super Agent → Agent → Jobs */}
-              {(role === "admin" || role === "super_agent") && (
-                <div className="rounded-xl border border-sky-200/80 bg-gradient-to-br from-sky-50/60 to-transparent dark:border-sky-900/40 dark:from-sky-950/30">
-                  {/* Header with count summary */}
-                  <div className="flex items-center justify-between px-4 pt-4">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-5 w-5 items-center justify-center rounded bg-sky-100 dark:bg-sky-900/50">
-                        <span className="text-[10px] font-bold text-sky-700 dark:text-sky-300">1</span>
-                      </div>
-                      <p className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-300">
-                        {role === "admin" ? "Filter by Team" : "Filter by Agent"}
-                      </p>
-                    </div>
-                    {role === "admin" && !loadingFilters && (
-                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                        <span className="flex items-center gap-1"><Users className="h-3 w-3" />{regionFilteredSuperAgents.length} SA</span>
-                        <span>{filteredAgents.length} agents</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Advanced location filters — collapsible */}
-                  {role === "admin" && allRegions.length > 0 && (
-                    <div className="mx-4 mt-3">
-                      <button
-                        type="button"
-                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                        className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-sky-300/60 bg-sky-50/50 px-3 py-1.5 text-[11px] font-medium text-sky-600 transition-colors hover:bg-sky-100/60 dark:border-sky-800/40 dark:bg-sky-950/20 dark:text-sky-400 dark:hover:bg-sky-900/30"
-                      >
-                        <MapPin className="h-3 w-3" />
-                        Narrow by Region
-                        <ChevronDown className={`ml-auto h-3 w-3 transition-transform ${showAdvancedFilters ? "rotate-180" : ""}`} />
-                        {selectedRegionFilter && (
-                          <span className="ml-1 rounded-full bg-sky-200 px-1.5 py-0.5 text-[9px] font-semibold text-sky-800 dark:bg-sky-800 dark:text-sky-200">
-                            {selectedRegionFilter}
-                          </span>
-                        )}
-                      </button>
-                      {showAdvancedFilters && (
-                        <div className="mt-2 flex items-end gap-2">
-                          <div className="flex-1">
-                            <Label className="text-[10px] text-muted-foreground">Region / State</Label>
-                            <SearchableSelect
-                              id="inv-region-filter"
-                              className="mt-1 h-8 w-full rounded-lg border-border bg-card text-xs"
-                              options={[
-                                { value: "", label: "All Regions" },
-                                ...allRegions.map(r => {
-                                  const saCount = superAgents.filter(sa => sa.regions.includes(r)).length;
-                                  return { value: r, label: `${r} (${saCount} SA)` };
-                                }),
-                              ]}
-                              value={selectedRegionFilter}
-                              onValueChange={(v) => {
-                                setSelectedRegionFilter(v);
-                                setSelectedSuperAgentFilter("");
-                                setSelectedAgentFilter("");
-                                setSelectedEmployerFilter("");
-                              }}
-                              placeholder="All Regions"
-                              container={dialogContentRef.current}
-                              modal
-                            />
-                          </div>
-                          {selectedRegionFilter && (
-                            <button
-                              type="button"
-                              onClick={() => { setSelectedRegionFilter(""); setSelectedSuperAgentFilter(""); setSelectedAgentFilter(""); setSelectedEmployerFilter(""); }}
-                              className="mb-0.5 rounded-md p-1.5 text-muted-foreground hover:bg-accent"
-                              title="Clear region filter"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* SA → Agent → Employer cascade */}
-                  <div className="space-y-3 p-4">
-                    {role === "admin" && (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Super Agent</Label>
-                          <SearchableSelect
-                            id="inv-sa-filter"
-                            className="mt-1 h-9 w-full rounded-lg border-border bg-card"
-                            options={superAgentOptions}
-                            value={selectedSuperAgentFilter}
-                            onValueChange={(v) => { setSelectedSuperAgentFilter(v); setSelectedAgentFilter(""); setSelectedEmployerFilter(""); }}
-                            placeholder="All Super Agents"
-                            loading={loadingFilters}
-                            container={dialogContentRef.current}
-                            modal
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Agent</Label>
-                          <SearchableSelect
-                            id="inv-ag-filter"
-                            className="mt-1 h-9 w-full rounded-lg border-border bg-card"
-                            options={agentOptions}
-                            value={selectedAgentFilter}
-                            onValueChange={(v) => { setSelectedAgentFilter(v); setSelectedEmployerFilter(""); }}
-                            placeholder="All Agents"
-                            loading={loadingFilters}
-                            container={dialogContentRef.current}
-                            modal
-                          />
-                        </div>
-                      </div>
-                    )}
-                    {role === "super_agent" && (
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Agent</Label>
-                        <SearchableSelect
-                          id="inv-ag-filter"
-                          className="mt-1 h-9 w-full rounded-lg border-border bg-card"
-                          options={agentOptions}
-                          value={selectedAgentFilter}
-                          onValueChange={(v) => { setSelectedAgentFilter(v); setSelectedEmployerFilter(""); }}
-                          placeholder="All Agents"
-                          loading={loadingFilters}
-                          container={dialogContentRef.current}
-                          modal
-                        />
-                      </div>
-                    )}
-                    {/* Employer filter — shown when agent selected (cascade) or jobs loaded with employer data */}
-                    {(employerFilterOptions.length > 1 || loadingCascadeEmployers) && (
-                      <div>
-                        <Label className="text-xs text-muted-foreground">
-                          <Building2 className="mr-1 inline-block h-3 w-3" />Employer
-                        </Label>
-                        <SearchableSelect
-                          id="inv-emp-filter"
-                          className="mt-1 h-9 w-full rounded-lg border-border bg-card"
-                          options={employerFilterOptions}
-                          value={selectedEmployerFilter}
-                          onValueChange={setSelectedEmployerFilter}
-                          placeholder={selectedAgentFilter ? "Select employer…" : "All Employers"}
-                          loading={loadingCascadeEmployers}
-                          container={dialogContentRef.current}
-                          modal
-                        />
-                        {selectedAgentFilter && cascadeEmployers.length === 0 && !loadingCascadeEmployers && (
-                          <p className="mt-1 text-[10px] text-muted-foreground">No employers found for this agent</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Job select — inline search + results */}
-              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-5 w-5 items-center justify-center rounded bg-primary/10">
-                      <span className="text-[10px] font-bold text-primary">{role === "admin" || role === "super_agent" ? "2" : "1"}</span>
-                    </div>
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-foreground">Select Job *</Label>
-                  </div>
-                  {loadingCount ? (
-                    <span className="text-[10px] text-muted-foreground">Loading…</span>
-                  ) : totalJobCount > 0 ? (
-                    <span className="text-[10px] text-muted-foreground">{totalJobCount.toLocaleString()} jobs total</span>
-                  ) : totalJobCount === 0 ? (
-                    <span className="text-[10px] text-amber-600">No jobs found</span>
-                  ) : null}
-                </div>
-
-                {/* Selected job chip */}
-                {selectedJobId && selectedJob && (
-                  <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-800 dark:bg-emerald-950/30">
-                    <Check className="h-4 w-4 shrink-0 text-emerald-600" />
-                    <div className="min-w-0 flex-1">
-                      <span className="truncate text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                        {selectedJob.title}
-                      </span>
-                      {isPopulatedJobEmployer(selectedJob.employerId) && (
-                        <span className="ml-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-                          — {selectedJob.employerId.companyName}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { setSelectedJobId(""); setJobSearch(""); }}
-                      className="shrink-0 rounded-full p-0.5 text-emerald-600 hover:bg-emerald-200 dark:hover:bg-emerald-800"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Search input — always visible */}
-                {!selectedJobId && (
-                  <>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="inv-job-search"
-                        className="h-10 rounded-lg pl-9 pr-3 text-sm"
-                        placeholder="Search jobs by title or employer…"
-                        value={jobSearch}
-                        onChange={(e) => setJobSearch(e.target.value)}
-                        autoComplete="off"
-                      />
-                      {loadingJobs && (
-                        <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                      )}
-                    </div>
-
-                    {/* Results list — shown when searching OR auto-loaded (small count) */}
-                    {(debouncedJobSearch.trim() || loadingJobs || (jobs.length > 0 && totalJobCount <= AUTO_LOAD_THRESHOLD)) ? (
-                      <div className="mt-2 max-h-[35vh] overflow-y-auto rounded-lg border border-border/50">
-                        {filteredJobs.length > 0 ? (
-                          <>
-                            {filteredJobs.map((job) => {
-                              const employer = isPopulatedJobEmployer(job.employerId) ? job.employerId : null;
-                              const city = job.location?.city;
-                              const sal = job.salary;
-                              const salaryText = sal?.min && sal?.max
-                                ? `${(sal.currency ?? "INR")} ${sal.min.toLocaleString()}–${sal.max.toLocaleString()}`
-                                : sal?.min ? `${(sal.currency ?? "INR")} ${sal.min.toLocaleString()}+` : null;
-                              const typeLabel = job.employmentType?.replace(/_/g, " ") ?? "";
-                              return (
-                                <button
-                                  key={job._id}
-                                  type="button"
-                                  onClick={() => setSelectedJobId(job._id)}
-                                  className="flex w-full items-start gap-3 border-b border-border/30 px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-accent"
-                                >
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-medium text-foreground">{job.title}</p>
-                                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                                      {employer && (
-                                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                                          <Building2 className="h-3 w-3 shrink-0" />{employer.companyName}
-                                        </span>
-                                      )}
-                                      {city && (
-                                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                                          <MapPin className="h-3 w-3 shrink-0" />{city}
-                                        </span>
-                                      )}
-                                      {salaryText && (
-                                        <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">{salaryText}</span>
-                                      )}
-                                      {typeLabel && (
-                                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">{typeLabel}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {job.status && (
-                                    <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                      job.status === "active" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" :
-                                      job.status === "closed" ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300" :
-                                      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                                    }`}>{job.status}</span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                            {totalJobCount > filteredJobs.length && (
-                              <p className="px-3 py-2 text-center text-[10px] text-muted-foreground">
-                                Showing {filteredJobs.length} of {totalJobCount.toLocaleString()} — refine your search to see more
-                              </p>
-                            )}
-                          </>
-                        ) : (
-                          <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                            {jobSearchError ?? (loadingJobs || loadingCount ? "Loading jobs…" : "No matching jobs found.")}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="mt-2 flex flex-col items-center gap-1 rounded-lg border border-dashed border-border/60 py-6 text-center">
-                        <Search className="h-5 w-5 text-muted-foreground/50" />
-                        <p className="text-sm text-muted-foreground">
-                          {loadingCount
-                            ? "Loading jobs…"
-                            : totalJobCount > 0
-                              ? <><span className="font-medium text-foreground">{totalJobCount.toLocaleString()}</span> jobs available</>
-                              : totalJobCount === 0
-                                ? "No jobs available for the selected filters."
-                                : "Loading…"
-                          }
-                        </p>
-                        {totalJobCount > 0 && (
-                          <p className="text-[11px] text-muted-foreground/70">
-                            Type a job title or employer name above to search
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {jobSearchError && <p className="mt-1 text-xs text-rose-600">{jobSearchError}</p>}
-                  </>
-                )}
-              </div>
-
-              {/* Auto-populated employer & agent info */}
-              {selectedJob && (
-                <div className="rounded-xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/40 to-transparent p-4 dark:border-emerald-900/40 dark:from-emerald-950/20">
-                  <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Auto-populated from Job</p>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg border border-border/50 bg-background/80 p-3">
-                      <p className="text-[10px] font-medium text-muted-foreground">Employer</p>
-                      <p className="mt-0.5 text-sm font-semibold">
-                        {selectedEmployer?.companyName ?? (isPopulatedJobEmployer(selectedJob.employerId) ? selectedJob.employerId.companyName : "—")}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-border/50 bg-background/80 p-3">
-                      <p className="text-[10px] font-medium text-muted-foreground">Agent</p>
-                      <p className="mt-0.5 text-sm font-semibold">{selectedAgent?.userId?.name ?? selectedAgent?.userId?.email ?? "—"}</p>
-                      {agentRate > 0 && <p className="mt-0.5 text-[11px] text-sky-600 dark:text-sky-400">{agentRate}% commission</p>}
-                    </div>
-                    <div className="rounded-lg border border-border/50 bg-background/80 p-3">
-                      <p className="text-[10px] font-medium text-muted-foreground">Super Agent</p>
-                      <p className="mt-0.5 text-sm font-semibold">{selectedSuperAgent?.userId?.name ?? "—"}</p>
-                      {superAgentRate > 0 && <p className="mt-0.5 text-[11px] text-indigo-600 dark:text-indigo-400">{superAgentRate}% override</p>}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Billing - collapsible */}
-              {selectedJob && (
-                <details className="rounded-xl border border-border/60 bg-card/50">
-                  <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground">
-                    ▸ Billing Information <span className="font-normal normal-case tracking-normal">(auto-filled from employer — click to edit)</span>
-                  </summary>
-                  <div className="grid gap-3 border-t border-border/40 px-4 py-4 sm:grid-cols-2">
-                    <div><Label className="text-xs text-muted-foreground">Company</Label><Input className="mt-1 h-8 rounded-lg text-sm" value={billingCompanyName} onChange={e => setBillingCompanyName(e.target.value)} placeholder="Company name" /></div>
-                    <div><Label className="text-xs text-muted-foreground">Contact Person</Label><Input className="mt-1 h-8 rounded-lg text-sm" value={billingContactPerson} onChange={e => setBillingContactPerson(e.target.value)} placeholder="Full name" /></div>
-                    <div><Label className="text-xs text-muted-foreground">Email</Label><Input type="email" className="mt-1 h-8 rounded-lg text-sm" value={billingEmail} onChange={e => setBillingEmail(e.target.value)} placeholder="billing@company.com" /></div>
-                    <div><Label className="text-xs text-muted-foreground">Phone</Label><Input className="mt-1 h-8 rounded-lg text-sm" type="tel" inputMode="tel" value={billingPhone} onChange={e => { const v = e.target.value.replace(/[^0-9+\-()\s]/g, ""); setBillingPhone(v); }} placeholder="+91 98765 43210" /></div>
-                    <div className="sm:col-span-2"><Label className="text-xs text-muted-foreground">Address</Label><Input className="mt-1 h-8 rounded-lg text-sm" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} placeholder="Street, city, state, zip" /></div>
-                    <div><Label className="text-xs text-muted-foreground">Country</Label><Input className="mt-1 h-8 rounded-lg text-sm" value={billingCountry} onChange={e => setBillingCountry(e.target.value)} placeholder="e.g. India" /></div>
-                    <div><Label className="text-xs text-muted-foreground">Tax ID</Label><Input className="mt-1 h-8 rounded-lg text-sm" value={billingTaxId} onChange={e => setBillingTaxId(e.target.value)} placeholder="e.g. GSTIN / VAT number" /></div>
-                  </div>
-                </details>
-              )}
-              {employerSearchError && <p className="text-xs text-rose-600">{employerSearchError}</p>}
-            </div>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════════════════
-              STEP 2: Invoice Details (type + currency + items + tax + commission + payment)
-              ═══════════════════════════════════════════════════════════════════ */}
-          {step === 2 && (
-            <div className="space-y-4">
-              {/* Invoice type + currency row */}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <Label className="text-xs">Invoice Type</Label>
-                  <SearchableSelect
-                    id="inv-type"
-                    className="mt-1 h-9 w-full rounded-lg border-border bg-card"
-                    options={allInvoiceTypes}
-                    value={category}
-                    onValueChange={setCategory}
-                    placeholder="Select type"
-                    container={dialogContentRef.current}
-                    modal
-                  />
-                  {!showAddType ? (
-                    <button onClick={() => setShowAddType(true)} className="mt-1 text-[10px] text-sky-600 hover:underline">
-                      + Add custom type
-                    </button>
-                  ) : (
-                    <div className="mt-1 flex gap-1">
-                      <Input
-                        className="h-7 rounded text-xs"
-                        placeholder="e.g. Background Verification"
-                        value={customCategory}
-                        onChange={e => setCustomCategory(e.target.value)}
-                        onKeyDown={e => e.key === "Enter" && addCustomType()}
-                      />
-                      <Button variant="outline" size="sm" onClick={addCustomType} className="h-7 px-2 text-xs">Add</Button>
-                      <Button variant="ghost" size="sm" onClick={() => { setShowAddType(false); setCustomCategory(""); }} className="h-7 px-2 text-xs">✕</Button>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-xs">Currency</Label>
-                  <SearchableSelect
-                    id="inv-currency"
-                    className="mt-1 h-9 w-full rounded-lg border-border bg-card"
-                    options={CURRENCY_OPTIONS}
-                    value={currency}
-                    onValueChange={setCurrency}
-                    placeholder="Select currency"
-                    container={dialogContentRef.current}
-                    modal
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Invoice Status</Label>
-                  <SearchableSelect
-                    id="inv-status"
-                    className="mt-1 h-9 w-full rounded-lg border-border bg-card"
-                    options={statusOptions}
-                    value={invoiceStatus}
-                    onValueChange={setInvoiceStatus}
-                    placeholder="Select status"
-                    container={dialogContentRef.current}
-                    modal
-                  />
-                  {role !== "agent" && (
-                    !showAddStatus ? (
-                      <button onClick={() => setShowAddStatus(true)} className="mt-1 text-[10px] text-sky-600 hover:underline">+ Add custom status</button>
-                    ) : (
-                      <div className="mt-1 flex gap-1">
-                        <Input className="h-7 rounded text-xs" placeholder="e.g. Awaiting PO" value={customStatusLabel} onChange={e => setCustomStatusLabel(e.target.value)} onKeyDown={e => e.key === "Enter" && addCustomStatus()} />
-                        <Button variant="outline" size="sm" onClick={addCustomStatus} className="h-7 px-2 text-xs">Add</Button>
-                        <Button variant="ghost" size="sm" onClick={() => { setShowAddStatus(false); setCustomStatusLabel(""); }} className="h-7 px-2 text-xs">✕</Button>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-
-              {/* Line Items */}
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Invoice Items</Label>
-                  <Button variant="outline" size="sm" onClick={addLineItem} className="h-7 gap-1 rounded-lg text-[10px]">
-                    <Plus className="h-3 w-3" /> Add Item
-                  </Button>
-                </div>
-                <div className="mt-2 space-y-2">
-                  {lineItems.map((li, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_60px_90px_90px_28px] items-end gap-1.5 rounded-lg border border-border/60 bg-secondary/20 p-2">
-                      <div><Label className="text-[9px] text-muted-foreground">Description</Label><Input className="mt-0.5 h-8 rounded text-sm" value={li.description} onChange={e => updateLineItem(i, "description", e.target.value)} placeholder="Service description…" /></div>
-                      <div><Label className="text-[9px] text-muted-foreground">Qty</Label><Input type="number" min={1} className="mt-0.5 h-8 rounded text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={li.quantity} onChange={e => updateLineItem(i, "quantity", parseInt(e.target.value) || 1)} placeholder="1" /></div>
-                      <div><Label className="text-[9px] text-muted-foreground">Price</Label><Input type="number" min={0} step="0.01" className="mt-0.5 h-8 rounded text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={li.unitPrice || ""} onChange={e => updateLineItem(i, "unitPrice", parseFloat(e.target.value) || 0)} placeholder="0.00" /></div>
-                      <div><Label className="text-[9px] text-muted-foreground">Amount</Label><div className="mt-0.5 flex h-8 items-center rounded bg-muted/50 px-2 text-xs font-medium">{fmt(li.quantity * li.unitPrice)}</div></div>
-                      <Button variant="ghost" size="sm" onClick={() => removeLineItem(i)} disabled={lineItems.length <= 1} className="h-8 w-7 p-0 text-muted-foreground hover:text-rose-500"><Trash2 className="h-3 w-3" /></Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tax row */}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <Label className="text-xs">Tax Type</Label>
-                  <SearchableSelect
-                    id="inv-tax-type"
-                    className="mt-1 h-9 w-full rounded-lg border-border bg-card"
-                    options={allTaxTypes}
-                    value={taxType}
-                    onValueChange={setTaxType}
-                    container={dialogContentRef.current}
-                    modal
-                  />
-                  {billingCountry && findTaxPreset(billingCountry) && (
-                    <p className="mt-0.5 text-[10px] text-sky-600">Auto: {findTaxPreset(billingCountry)!.label}</p>
-                  )}
-                  {!showAddTaxType ? (
-                    <button onClick={() => setShowAddTaxType(true)} className="mt-1 text-[10px] text-sky-600 hover:underline">+ Add custom tax type</button>
-                  ) : (
-                    <div className="mt-1 flex gap-1">
-                      <Input className="h-7 rounded text-xs" placeholder="e.g. Zakat" value={customTaxLabel} onChange={e => setCustomTaxLabel(e.target.value)} onKeyDown={e => e.key === "Enter" && addCustomTaxType()} />
-                      <Button variant="outline" size="sm" onClick={addCustomTaxType} className="h-7 px-2 text-xs">Add</Button>
-                      <Button variant="ghost" size="sm" onClick={() => { setShowAddTaxType(false); setCustomTaxLabel(""); }} className="h-7 px-2 text-xs">✕</Button>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-xs">Tax %</Label>
-                  <Input type="number" min={0} max={100} step={0.5} className="mt-1 h-9 rounded-lg [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={taxPercent || ""} onChange={e => setTaxPercent(parseFloat(e.target.value) || 0)} disabled={taxType === "none"} placeholder="0" />
-                </div>
-                <div className="flex items-end">
-                  <div className="rounded-lg border border-border/70 bg-secondary/30 px-3 py-2 text-sm">
-                    <span className="text-muted-foreground">Total: </span>
-                    <span className="font-bold text-primary">{fmt(totalAmount)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Commission — toggle to enable custom rates */}
-              <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Commission Split</p>
-                  {(role === "admin" || role === "super_agent") && (
-                    <label className="relative inline-flex cursor-pointer items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={commissionEnabled}
-                        onChange={(e) => {
-                          setCommissionEnabled(e.target.checked);
-                          if (e.target.checked) {
-                            setCustomAgentRate(agentRate);
-                            setCustomSuperAgentRate(superAgentRate);
-                          }
-                        }}
-                        className="peer sr-only"
-                      />
-                      <div className="peer h-5 w-9 rounded-full bg-muted-foreground/20 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:ring-2 peer-focus:ring-primary/25" />
-                      <span className="text-[11px] font-medium text-muted-foreground">
-                        {commissionEnabled ? "Custom" : "Default (0%)"}
-                      </span>
-                    </label>
-                  )}
-                </div>
-
-                {!commissionEnabled && (
-                  <div className="rounded-lg border border-border/50 bg-muted/20 p-3 text-center">
-                    <p className="text-sm text-muted-foreground">Commission is <span className="font-semibold">disabled</span> for this invoice.</p>
-                    <p className="mt-1 text-[10px] text-muted-foreground/70">Toggle on to set custom agent and super-agent commission rates.</p>
-                  </div>
-                )}
-
-                {commissionEnabled && (
-                  <>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div>
-                        <Label className="text-xs text-sky-600">Agent Rate (%)</Label>
-                        {(role === "admin" || role === "super_agent") ? (
-                          <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            step={0.5}
-                            className="mt-1 h-8 rounded-lg text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                            value={customAgentRate || ""}
-                            onChange={(e) => setCustomAgentRate(parseFloat(e.target.value) || 0)}
-                            placeholder="0"
-                          />
-                        ) : (
-                          <div className="mt-1 flex items-center gap-2 h-8 rounded-lg border border-border bg-muted/30 px-3">
-                            <span className="text-sm font-semibold text-sky-600">{effectiveAgentRate}%</span>
-                            <span className="ml-auto text-[9px] text-muted-foreground uppercase tracking-wide">Fixed</span>
-                          </div>
-                        )}
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">{selectedAgent?.userId?.name ?? "—"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-indigo-600">Super Agent Rate (%)</Label>
-                        {(role === "admin" || role === "super_agent") ? (
-                          <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            step={0.5}
-                            className="mt-1 h-8 rounded-lg text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                            value={customSuperAgentRate || ""}
-                            onChange={(e) => setCustomSuperAgentRate(parseFloat(e.target.value) || 0)}
-                            placeholder="0"
-                          />
-                        ) : (
-                          <div className="mt-1 flex items-center gap-2 h-8 rounded-lg border border-border bg-muted/30 px-3">
-                            <span className="text-sm font-semibold text-indigo-600">{effectiveSuperAgentRate}%</span>
-                            <span className="ml-auto text-[9px] text-muted-foreground uppercase tracking-wide">Fixed</span>
-                          </div>
-                        )}
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">{selectedSuperAgent?.userId?.name ?? "—"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-emerald-600">Company Net</Label>
-                        <p className="mt-1 text-sm font-bold text-emerald-600">{fmt(companyNet)}</p>
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">
-                          A: {fmt(agentCommission)} · SA: {fmt(superAgentCommission)}
-                        </p>
-                      </div>
-                    </div>
-                    {(effectiveAgentRate + effectiveSuperAgentRate) > 100 && (
-                      <p className="mt-2 text-xs text-rose-600">⚠ Total commission exceeds 100%</p>
-                    )}
-                    <p className="mt-2 text-[9px] italic text-muted-foreground/60">
-                      Custom rates override profile defaults for this invoice only. Final amounts are calculated server-side.
-                    </p>
-                  </>
-                )}
-              </div>
-
-              {/* Payment terms + notes */}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <Label className="text-xs">Payment Terms</Label>
-                  <SearchableSelect
-                    id="inv-pay-terms"
-                    className="mt-1 h-9 w-full rounded-lg border-border bg-card"
-                    options={PAYMENT_TERMS}
-                    value={paymentTerms}
-                    onValueChange={setPaymentTerms}
-                    container={dialogContentRef.current}
-                    modal
-                  />
-                </div>
-                {paymentTerms === "custom" && (
-                  <div>
-                    <Label className="text-xs">Custom Days</Label>
-                    <Input type="number" min={1} max={365} className="mt-1 h-9 rounded-lg [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={customPaymentDays} onChange={e => setCustomPaymentDays(parseInt(e.target.value) || 30)} placeholder="30" />
-                  </div>
-                )}
-                <div>
-                  <Label className="text-xs">Due Date (override)</Label>
-                  <Input type="date" className="mt-1 h-9 rounded-lg" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label className="text-xs">Notes (on invoice)</Label>
-                  <Textarea className="mt-1 rounded-lg text-sm" rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Payment instructions, bank details…" />
-                </div>
-                <div>
-                  <Label className="text-xs">Internal Notes</Label>
-                  <Textarea className="mt-1 rounded-lg text-sm" rows={2} value={internalNotes} onChange={e => setInternalNotes(e.target.value)} placeholder="Finance team only…" />
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <Label className="text-xs">Description</Label>
-                <Textarea className="mt-1 rounded-lg text-sm" rows={2} value={description} onChange={e => setDescription(e.target.value)} placeholder="Invoice description…" />
-              </div>
-            </div>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════════════════
-              STEP 3: Review & Generate
-              ═══════════════════════════════════════════════════════════════════ */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-border bg-card p-5">
-                {/* Header */}
-                <div className="flex items-start justify-between border-b border-border/70 pb-3">
-                  <div>
-                    <p className="text-lg font-bold text-foreground">INVOICE</p>
-                    <p className="text-xs text-muted-foreground capitalize">{allInvoiceTypes.find(t => t.value === category)?.label ?? category}</p>
-                    <p className="mt-1 text-xs">Status: <span className={previewStatusClass}>{previewStatusLabel}</span></p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{billingCompanyName || "—"}</p>
-                    <p className="text-xs text-muted-foreground">{billingEmail}</p>
-                    {billingCountry && <p className="text-xs text-muted-foreground">{billingCountry}</p>}
-                  </div>
-                </div>
-
-                {/* Line Items */}
-                <div className="mt-3 overflow-hidden rounded-lg border border-border/70">
-                  <table className="w-full text-xs">
-                    <thead><tr className="bg-muted/50"><th className="px-3 py-2 text-left font-semibold">Description</th><th className="px-3 py-2 text-right font-semibold">Qty</th><th className="px-3 py-2 text-right font-semibold">Price</th><th className="px-3 py-2 text-right font-semibold">Amount</th></tr></thead>
-                    <tbody>
-                      {lineItems.map((li, i) => (
-                        <tr key={i} className="border-t border-border/50">
-                          <td className="px-3 py-2">{li.description || "—"}</td>
-                          <td className="px-3 py-2 text-right">{li.quantity}</td>
-                          <td className="px-3 py-2 text-right">{fmt(li.unitPrice)}</td>
-                          <td className="px-3 py-2 text-right font-medium">{fmt(li.quantity * li.unitPrice)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Totals */}
-                <div className="ml-auto mt-3 max-w-xs space-y-1 text-xs">
-                  <div className="flex justify-between"><span>Subtotal</span><span className="font-medium">{fmt(subtotal)}</span></div>
-                  {taxType !== "none" && taxPercent > 0 && (
-                    <div className="flex justify-between"><span>Tax ({taxType.toUpperCase()} {taxPercent}%)</span><span>{fmt(taxAmount)}</span></div>
-                  )}
-                  <div className="border-t border-border/70 pt-1" />
-                  <div className="flex justify-between text-sm font-bold"><span>Total</span><span className="text-primary">{fmt(totalAmount)}</span></div>
-                </div>
-
-                {/* Commission */}
-                {commissionEnabled && (effectiveAgentRate > 0 || effectiveSuperAgentRate > 0) && (
-                  <div className="mt-3 rounded-lg bg-muted/30 p-3 text-xs">
-                    <p className="font-semibold text-muted-foreground">COMMISSION SPLIT</p>
-                    <div className="mt-1 space-y-0.5">
-                      {effectiveAgentRate > 0 && <p>Agent: {effectiveAgentRate}% = {fmt(agentCommission)}</p>}
-                      {effectiveSuperAgentRate > 0 && <p>Super Agent: {effectiveSuperAgentRate}% = {fmt(superAgentCommission)}</p>}
-                      <p className="font-medium text-emerald-600">Company Net: {fmt(companyNet)}</p>
-                    </div>
-                  </div>
-                )}
-                {!commissionEnabled && (
-                  <div className="mt-3 rounded-lg bg-muted/30 p-3 text-xs">
-                    <p className="font-semibold text-muted-foreground">COMMISSION</p>
-                    <p className="mt-1 text-muted-foreground">No commission applied (0%)</p>
-                  </div>
-                )}
-
-                {/* Payment & Notes */}
-                <div className="mt-3 grid grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <p className="font-semibold text-muted-foreground">PAYMENT</p>
-                    <p className="mt-1">Terms: {PAYMENT_TERMS.find(t => t.value === paymentTerms)?.label ?? paymentTerms}</p>
-                    <p>Currency: {currency}</p>
-                    {dueDate && <p>Due: {dueDate}</p>}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-muted-foreground">BILLING</p>
-                    <p className="mt-1">{billingCompanyName}</p>
-                    <p className="text-muted-foreground">{billingAddress}</p>
-                    {billingTaxId && <p className="text-muted-foreground">Tax ID: {billingTaxId}</p>}
-                  </div>
-                </div>
-
-                {notes && <div className="mt-3 text-xs text-muted-foreground"><p className="font-semibold">Notes:</p><p>{notes}</p></div>}
-              </div>
-            </div>
-          )}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {stepContent}
         </div>
 
         {/* Footer */}
-        <div className="flex shrink-0 items-center justify-between border-t border-border/80 px-6 py-3">
-          <Button variant="outline" onClick={() => step > 1 ? setStep(step - 1) : onClose()} className="h-9 gap-1.5 rounded-lg">
-            <ChevronLeft className="h-4 w-4" />
-            {step > 1 ? "Back" : "Cancel"}
-          </Button>
-          <div className="flex items-center gap-2">
-            {step < 3 ? (
-              <Button onClick={() => setStep(step + 1)} disabled={!canProceed()} className="h-9 gap-1.5 rounded-lg bg-sky-600 hover:bg-sky-700">
-                Next <ChevronRight className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button onClick={handleSubmit} disabled={submitting} className="h-9 gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700">
-                {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><FileCheck className="h-4 w-4" /> {role === "agent" ? "Submit Invoice" : "Generate Invoice"}</>}
-              </Button>
-            )}
-          </div>
-        </div>
+        {footerContent}
       </DialogContent>
     </Dialog>
   );

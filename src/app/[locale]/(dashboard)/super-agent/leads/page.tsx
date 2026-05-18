@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/table";
 import {
   Activity, ArrowUpDown, ChevronDown, ChevronUp,
-  CircleSlash, Handshake, Loader2, RotateCcw,
+  CircleSlash, Gauge, Handshake, Loader2, RotateCcw,
   Sparkles, Target, X,
 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -29,6 +29,14 @@ import type { ExportColumn } from "@/lib/export";
 /* ------------------------------------------------------------------ */
 
 type LeadStatus = "new" | "contacted" | "interested" | "negotiating" | "converted" | "lost";
+type LeadQualification = "cold" | "warm" | "hot" | "qualified";
+
+const QUAL_STYLES: Record<string, string> = {
+  qualified: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300",
+  hot: "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300",
+  warm: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300",
+  cold: "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300",
+};
 
 interface Lead {
   _id: string;
@@ -40,6 +48,10 @@ interface Lead {
   industry?: string;
   source?: string;
   notes?: string;
+  score?: number;
+  qualificationLevel?: LeadQualification;
+  exhibitionId?: string;
+  autoRouted?: boolean;
   status: LeadStatus;
   agentId?: { _id?: string; userId?: { _id?: string; name?: string } };
   followUpAt?: string;
@@ -87,6 +99,7 @@ const SORT_OPTIONS = [
   { value: "createdAt", label: "Date Created" },
   { value: "companyName", label: "Company Name" },
   { value: "status", label: "Stage" },
+  { value: "score", label: "Score" },
   { value: "followUpAt", label: "Follow-up Date" },
   { value: "country", label: "Country" },
   { value: "industry", label: "Industry" },
@@ -258,8 +271,11 @@ export default function SuperAgentLeadsPage() {
     { header: "Country", key: "country" },
     { header: "Industry", key: "industry" },
     { header: "Source", key: "source" },
+    { header: "Exhibition Linked", key: "exhibitionId", formatter: (v) => v ? "Yes" : "" },
     { header: "Agent", key: "agentId", formatter: (_v, row) => (row.agentId as { userId?: { name?: string } })?.userId?.name ?? "" },
     { header: "Stage", key: "status" },
+    { header: "Score", key: "score" },
+    { header: "Qualification", key: "qualificationLevel" },
     { header: "Follow Up", key: "followUpAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
     { header: "Created", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
   ];
@@ -568,7 +584,9 @@ export default function SuperAgentLeadsPage() {
                   <TableHead><SortHeader field="country">Country</SortHeader></TableHead>
                   <TableHead><SortHeader field="industry">Industry</SortHeader></TableHead>
                   <TableHead>Source</TableHead>
+                  <TableHead>Exhibition</TableHead>
                   <TableHead><SortHeader field="status">Stage</SortHeader></TableHead>
+                  <TableHead><SortHeader field="score">Score</SortHeader></TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead><SortHeader field="followUpAt">Follow-up</SortHeader></TableHead>
                   <TableHead><SortHeader field="createdAt">Date</SortHeader></TableHead>
@@ -578,14 +596,14 @@ export default function SuperAgentLeadsPage() {
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 9 }).map((_, j) => (
+                      {Array.from({ length: 11 }).map((_, j) => (
                         <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : leads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center">
+                    <TableCell colSpan={11} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                           <Target className="h-6 w-6" />
@@ -606,10 +624,26 @@ export default function SuperAgentLeadsPage() {
                         <div className="text-foreground/85">{lead.contactPerson}</div>
                         {lead.contactEmail && <div className="text-xs text-muted-foreground/70">{lead.contactEmail}</div>}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{lead.country ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <span>{lead.country ?? "—"}</span>
+                        {lead.autoRouted && (
+                          <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">Routed</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{lead.industry ?? "—"}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{lead.source ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{lead.exhibitionId ? "Linked" : "—"}</TableCell>
                       <TableCell><StatusBadge status={lead.status} /></TableCell>
+                      <TableCell>
+                        {lead.score != null ? (
+                          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${QUAL_STYLES[lead.qualificationLevel ?? "cold"] ?? QUAL_STYLES.cold}`}>
+                            <Gauge className="h-3 w-3" />
+                            {lead.score}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/50">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{lead.agentId?.userId?.name ?? "—"}</TableCell>
                       <TableCell className="text-xs">
                         {lead.followUpAt ? (

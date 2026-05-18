@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export type CommissionType = "placement" | "override" | "bonus";
-export type CommissionStatus = "pending" | "approved" | "paid" | "disputed";
+export type CommissionStatus = "pending" | "approved" | "paid" | "disputed" | "clawed_back";
 
 export interface ICommission extends Document {
   _id: mongoose.Types.ObjectId;
@@ -19,6 +19,18 @@ export interface ICommission extends Document {
   paidAt?: Date;
   paymentRef?: string;
   notes?: string;
+  // Dispute fields
+  disputeReason?: string;
+  disputedBy?: mongoose.Types.ObjectId;
+  disputedAt?: Date;
+  disputeResolution?: "resolved" | "rejected" | "escalated";
+  resolvedBy?: mongoose.Types.ObjectId;
+  resolvedAt?: Date;
+  // Clawback fields
+  clawbackAmount?: number;
+  clawbackReason?: string;
+  clawbackBy?: mongoose.Types.ObjectId;
+  clawbackAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,7 +51,7 @@ const CommissionSchema = new Schema<ICommission>(
     rate: Number,
     status: {
       type: String,
-      enum: ["pending", "approved", "paid", "disputed"],
+      enum: ["pending", "approved", "paid", "disputed", "clawed_back"],
       default: "pending",
     },
     approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
@@ -47,6 +59,18 @@ const CommissionSchema = new Schema<ICommission>(
     paidAt: Date,
     paymentRef: String,
     notes: String,
+    // Dispute
+    disputeReason: { type: String, maxlength: 1000 },
+    disputedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    disputedAt: Date,
+    disputeResolution: { type: String, enum: ["resolved", "rejected", "escalated"] },
+    resolvedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    resolvedAt: Date,
+    // Clawback
+    clawbackAmount: { type: Number, min: 0 },
+    clawbackReason: { type: String, maxlength: 1000 },
+    clawbackBy: { type: Schema.Types.ObjectId, ref: "User" },
+    clawbackAt: Date,
   },
   { timestamps: true }
 );

@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
 
 export interface CrudField {
   name: string;
@@ -34,9 +34,13 @@ interface CrudModalProps {
   fields: CrudField[];
   initialValues?: Record<string, string>;
   onSubmit: (values: Record<string, string>) => Promise<void>;
+  /** Optional warning node (e.g. duplicate detection) displayed above fields */
+  warningNode?: React.ReactNode;
+  /** Called when any field value changes */
+  onValuesChange?: (values: Record<string, string>) => void;
 }
 
-export function CrudModal({ open, onClose, title, description, fields, initialValues, onSubmit }: CrudModalProps) {
+export function CrudModal({ open, onClose, title, description, fields, initialValues, onSubmit, warningNode, onValuesChange }: CrudModalProps) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -49,6 +53,14 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
       setError("");
     }
   }, [open, initialValues, fields]);
+
+  const updateValue = (name: string, value: string) => {
+    setValues((prev) => {
+      const next = { ...prev, [name]: value };
+      onValuesChange?.(next);
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -81,6 +93,8 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
               </div>
             )}
 
+            {warningNode}
+
             <div className="grid gap-4">
               {fields.map((field) => (
                 <div key={field.name} className="space-y-2">
@@ -94,14 +108,14 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
                       id={field.name}
                       options={field.options ?? []}
                       value={values[field.name] ?? ""}
-                      onValueChange={(v) => setValues((prev) => ({ ...prev, [field.name]: v }))}
+                      onValueChange={(v) => updateValue(field.name, v)}
                       placeholder={field.placeholder || "Select\u2026"}
                     />
                   ) : field.type === "textarea" ? (
                     <Textarea
                       id={field.name}
                       value={values[field.name] ?? ""}
-                      onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
+                      onChange={(e) => updateValue(field.name, e.target.value)}
                       required={field.required}
                       placeholder={field.placeholder}
                       rows={3}
@@ -111,7 +125,7 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
                       id={field.name}
                       type={field.type}
                       value={values[field.name] ?? ""}
-                      onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
+                      onChange={(e) => updateValue(field.name, e.target.value)}
                       required={field.required}
                       placeholder={field.placeholder}
                       min={field.min}

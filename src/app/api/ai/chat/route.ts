@@ -558,7 +558,7 @@ Use this data to answer questions about team performance, identify underperforme
             }
           }
         } finally {
-          controller.close();
+          try { controller.close(); } catch { /* already closed */ }
         }
       },
     });

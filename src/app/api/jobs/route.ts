@@ -10,6 +10,9 @@ import { Employer } from "@/models/Employer";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import { CompanyUser } from "@/models/CompanyUser";
+
+// Force Mongoose model registration (prevents tree-shaking)
+void SuperAgent;
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";

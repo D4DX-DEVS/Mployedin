@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -20,9 +20,6 @@ import {
 import {
   AlertTriangle,
   CalendarDays,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Copy,
   Edit,
@@ -37,15 +34,10 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useConfirm } from "@/hooks/useConfirm";
-import { useCountrySearch } from "@/hooks/useCountrySearch";
 import { SUPPORTED_CURRENCIES, formatCurrency } from "@/lib/currency";
 import {
-  AGENT_EXHIBITION_TEMPLATES,
   EMPTY_AGENT_EXHIBITION_FORM,
-  applyExhibitionTemplate,
   createDuplicatedExhibitionForm,
-  getCountryCurrencyCode,
-  hasManualCurrencyOverride,
   resolveCountryCode,
   type AgentExhibitionFormState,
 } from "@/lib/exhibitions/agent-request";
@@ -75,6 +67,7 @@ interface ExhibitionRequest {
     miscellaneous: number;
   };
   budgetCurrency: string;
+  approvedBudget?: number;
   description?: string;
   executionPlan?: string;
   expectedOutcome?: string;
@@ -167,13 +160,6 @@ const RESOURCE_TYPES = [
   { value: "booth_design", label: "Booth Design" },
 ];
 
-const PRIORITIES = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "critical", label: "Critical" },
-];
-
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
   { value: "draft", label: "Draft" },
@@ -183,12 +169,6 @@ const STATUS_OPTIONS = [
   { value: "revision_requested", label: "Revision Requested" },
   { value: "completed", label: "Completed" },
   { value: "rejected", label: "Rejected" },
-];
-
-const WIZARD_STEPS = [
-  { id: 1, title: "Event Basics", description: "Template, location, schedule, and currency" },
-  { id: 2, title: "Request Details", description: "Participation, notes, budget, and tags" },
-  { id: 3, title: "Review & Submit", description: "Confirm the request before sending" },
 ];
 
 const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map((currency) => ({
@@ -209,65 +189,31 @@ export default function AgentExhibitionsPage() {
   const [search, setSearch] = useState("");
   const [showWizard, setShowWizard] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [wizardStep, setWizardStep] = useState(1);
   const [form, setForm] = useState<AgentExhibitionFormState>({ ...EMPTY_AGENT_EXHIBITION_FORM });
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
-  const [countrySearch, setCountrySearch] = useState("");
-  const [currencyOverridden, setCurrencyOverridden] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const wizardDialogContentRef = useRef<HTMLDivElement | null>(null);
-  const [wizardDialogContainer, setWizardDialogContainer] = useState<HTMLDivElement | null>(null);
+  const dialogContentRef = useRef<HTMLDivElement | null>(null);
+  const [dialogContainer, setDialogContainer] = useState<HTMLDivElement | null>(null);
+  const [agentCurrency, setAgentCurrency] = useState<string>("AED");
+  const [agentCountry, setAgentCountry] = useState<string>("");
 
-  const { data: countries = [], isLoading: countriesLoading } = useCountrySearch(countrySearch, { loadAll: true });
-
-  const countryDirectory = useMemo(() => {
-    const map = new Map<string, { name: string; code: string; currencyCode: string }>();
-
-    for (const country of countries) {
-      map.set(country.code, {
-        name: country.name,
-        code: country.code,
-        currencyCode: country.currencyCode,
-      });
-    }
-
-    if (form.country) {
-      const resolvedCode = form.countryCode || resolveCountryCode(form.country);
-      if (resolvedCode && !map.has(resolvedCode)) {
-        map.set(resolvedCode, {
-          name: form.country,
-          code: resolvedCode,
-          currencyCode: getCountryCurrencyCode(form.country, resolvedCode),
-        });
-      }
-    }
-
-    return map;
-  }, [countries, form.country, form.countryCode]);
-
-  const countryOptions = useMemo(() => Array.from(countryDirectory.values()).map((country) => ({
-    value: country.code,
-    label: `${country.name} (${country.currencyCode})`,
-  })), [countryDirectory]);
-
-  const autoCurrency = useMemo(() => {
-    if (form.countryCode) {
-      const matchedCountry = countryDirectory.get(form.countryCode);
-      if (matchedCountry?.currencyCode) {
-        return matchedCountry.currencyCode;
-      }
-    }
-
-    return getCountryCurrencyCode(form.country, form.countryCode);
-  }, [countryDirectory, form.country, form.countryCode]);
+  // Fetch agent's default currency and country on mount
+  useEffect(() => {
+    fetch("/api/agent/settings/invoice-defaults")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.invoiceDefaults?.defaultCurrency) {
+          setAgentCurrency(data.invoiceDefaults.defaultCurrency);
+        }
+        if (data?.invoiceDefaults?.billingCountry) {
+          setAgentCountry(data.invoiceDefaults.billingCountry);
+        }
+      })
+      .catch(() => { /* silent fallback */ });
+  }, []);
 
   const resetForm = useCallback(() => {
-    setForm({ ...EMPTY_AGENT_EXHIBITION_FORM });
+    setForm((prev) => ({ ...EMPTY_AGENT_EXHIBITION_FORM, budgetCurrency: prev.budgetCurrency }));
     setEditingId(null);
-    setWizardStep(1);
-    setCountrySearch("");
-    setCurrencyOverridden(false);
-    setSelectedTemplateId(null);
   }, []);
 
   const fetchItems = useCallback(async () => {
@@ -296,17 +242,6 @@ export default function AgentExhibitionsPage() {
     fetchItems();
   }, [fetchItems]);
 
-  useEffect(() => {
-    if (!form.country || currencyOverridden || !autoCurrency || form.budgetCurrency === autoCurrency) {
-      return;
-    }
-
-    setForm((currentForm) => ({
-      ...currentForm,
-      budgetCurrency: autoCurrency,
-    }));
-  }, [autoCurrency, currencyOverridden, form.budgetCurrency, form.country]);
-
   const updateForm = useCallback(<Key extends keyof AgentExhibitionFormState>(field: Key, value: AgentExhibitionFormState[Key]) => {
     setForm((currentForm) => ({
       ...currentForm,
@@ -314,62 +249,28 @@ export default function AgentExhibitionsPage() {
     }));
   }, []);
 
-  const toggleArray = useCallback((values: string[], nextValue: string) => (
-    values.includes(nextValue)
-      ? values.filter((value) => value !== nextValue)
-      : [...values, nextValue]
-  ), []);
-
   const openNewRequest = () => {
-    resetForm();
+    setForm({ ...EMPTY_AGENT_EXHIBITION_FORM, budgetCurrency: agentCurrency, country: agentCountry });
+    setEditingId(null);
     setShowWizard(true);
   };
 
-  const applyTemplate = async (templateId: string) => {
-    const template = AGENT_EXHIBITION_TEMPLATES.find((item) => item.id === templateId);
-    if (!template) {
-      return;
+  // Date validation helpers
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const startDateMin = today;
+  const endDateMin = useMemo(() => {
+    if (form.eventStartDate) {
+      const d = new Date(form.eventStartDate);
+      d.setHours(0, 0, 0, 0);
+      return d;
     }
-
-    if (
-      form.participationTypes.length > 0 || form.objectives.length > 0 || form.requiredResources.length > 0
-    ) {
-      const shouldApplyTemplate = await confirm({
-        title: "Apply template",
-        message: "Applying a template will replace your current participation, objective, and requirement selections in request details (step 2).",
-        confirmLabel: "Apply template",
-        variant: "default",
-      });
-
-      if (!shouldApplyTemplate) {
-        return;
-      }
-    }
-
-    setForm((currentForm) => applyExhibitionTemplate(currentForm, template));
-    setSelectedTemplateId(template.id);
-    toast.success(`${template.name} template applied. The preset selections are shown below and in step 2.`);
-  };
-
-  const handleCountryChange = (countryCode: string) => {
-    const nextCountry = countryDirectory.get(countryCode);
-    if (!nextCountry) {
-      return;
-    }
-
-    setForm((currentForm) => ({
-      ...currentForm,
-      country: nextCountry.name,
-      countryCode: nextCountry.code,
-      budgetCurrency: currencyOverridden ? currentForm.budgetCurrency : nextCountry.currencyCode,
-    }));
-    setCountrySearch("");
-  };
-
-  const handleCurrencyChange = (budgetCurrency: string) => {
-    setCurrencyOverridden(true);
-    updateForm("budgetCurrency", budgetCurrency);
-  };
+    return today;
+  }, [form.eventStartDate, today]);
 
   const handleBudgetChange = (value: string) => {
     const sanitized = value.replace(/[^\d.]/g, "");
@@ -378,96 +279,50 @@ export default function AgentExhibitionsPage() {
     updateForm("estimatedBudget", normalizedValue);
   };
 
-  const handleExpectedLeadsChange = (value: string) => {
-    updateForm("expectedLeads", value.replace(/\D/g, ""));
+  const handleCurrencyChange = (budgetCurrency: string) => {
+    updateForm("budgetCurrency", budgetCurrency);
   };
 
-  const resetCurrencyToCountryDefault = () => {
-    setCurrencyOverridden(false);
-    updateForm("budgetCurrency", autoCurrency);
-  };
-
-  const validateStepOne = () => {
-    if (!form.eventName.trim() || !form.eventCategory || !form.country || !form.eventLocation.trim() || !form.eventStartDate || !form.eventEndDate) {
-      toast.error("Fill in the event basics before continuing.");
+  const validateForm = () => {
+    if (!form.eventName.trim()) {
+      toast.error("Please enter an exhibition title.");
       return false;
     }
-
-    if (new Date(form.eventEndDate) < new Date(form.eventStartDate)) {
-      toast.error("End date cannot be earlier than start date.");
-      return false;
+    if (form.eventStartDate) {
+      const start = new Date(form.eventStartDate);
+      if (start < today) {
+        toast.error("Start date cannot be in the past.");
+        return false;
+      }
+      if (form.eventEndDate && new Date(form.eventEndDate) < start) {
+        toast.error("End date cannot be earlier than start date.");
+        return false;
+      }
     }
-
     return true;
-  };
-
-  const validateStepTwo = () => {
-    if (form.participationTypes.length === 0) {
-      toast.error("Select at least one participation type before continuing.");
-      return false;
-    }
-
-    return true;
-  };
-
-  const goToStep = (targetStep: number) => {
-    if (targetStep > 1 && !validateStepOne()) {
-      return;
-    }
-
-    if (targetStep > 2 && !validateStepTwo()) {
-      return;
-    }
-
-    setWizardStep(targetStep);
-  };
-
-  const handleNextStep = () => {
-    if (wizardStep === 1 && !validateStepOne()) {
-      return;
-    }
-
-    if (wizardStep === 2 && !validateStepTwo()) {
-      return;
-    }
-
-    setWizardStep((currentStep) => Math.min(currentStep + 1, WIZARD_STEPS.length));
   };
 
   const handleSubmit = async (asDraft: boolean) => {
-    if (!validateStepOne()) {
-      setWizardStep(1);
-      return;
-    }
-
-    if (!asDraft && form.participationTypes.length === 0) {
-      toast.error("Choose at least one participation type before submitting.");
-      setWizardStep(2);
+    if (!asDraft && !validateForm()) {
       return;
     }
 
     try {
       const parsedBudget = form.estimatedBudget ? Number(form.estimatedBudget) : 0;
-      const parsedExpectedLeads = form.expectedLeads ? Number(form.expectedLeads) : undefined;
       const payload = {
         eventName: form.eventName.trim(),
-        eventCategory: form.eventCategory,
-        eventLocation: form.eventLocation.trim(),
+        eventCategory: form.eventCategory || "career_fair",
+        eventLocation: form.eventLocation.trim() || "TBD",
         venue: form.venue.trim() || undefined,
         country: form.country.trim() || undefined,
-        eventStartDate: form.eventStartDate,
-        eventEndDate: form.eventEndDate,
+        eventStartDate: form.eventStartDate || undefined,
+        eventEndDate: form.eventEndDate || undefined,
         organizerName: form.organizerName.trim() || undefined,
         organizerContact: form.organizerContact.trim() || undefined,
-        participationTypes: form.participationTypes,
-        participationDetails: form.participationDetails.trim() || undefined,
-        objectives: form.objectives,
         estimatedBudget: Number.isFinite(parsedBudget) ? parsedBudget : 0,
         budgetCurrency: form.budgetCurrency,
         description: form.description.trim() || undefined,
-        expectedLeads: parsedExpectedLeads !== undefined && Number.isFinite(parsedExpectedLeads) ? parsedExpectedLeads : undefined,
-        requiredResources: form.requiredResources,
-        priority: form.priority,
+        priority: form.priority || "medium",
         status: asDraft ? "draft" : "submitted",
       };
 
@@ -518,15 +373,14 @@ export default function AgentExhibitionsPage() {
   };
 
   const startEdit = (item: ExhibitionRequest) => {
-    const countryCode = resolveCountryCode(item.country);
-    const nextForm: AgentExhibitionFormState = {
+    setForm({
       ...EMPTY_AGENT_EXHIBITION_FORM,
       eventName: item.eventName,
       eventCategory: item.eventCategory ?? EMPTY_AGENT_EXHIBITION_FORM.eventCategory,
       eventLocation: item.eventLocation ?? "",
       venue: item.venue ?? "",
       country: item.country ?? "",
-      countryCode,
+      countryCode: resolveCountryCode(item.country),
       eventStartDate: item.eventStartDate?.slice(0, 10) ?? "",
       eventEndDate: item.eventEndDate?.slice(0, 10) ?? "",
       organizerName: item.organizerName ?? "",
@@ -540,13 +394,8 @@ export default function AgentExhibitionsPage() {
       expectedLeads: item.expectedLeads?.toString() ?? "",
       requiredResources: item.requiredResources ?? [],
       priority: item.priority ?? EMPTY_AGENT_EXHIBITION_FORM.priority,
-    };
-
-    setForm(nextForm);
+    });
     setEditingId(item._id);
-    setWizardStep(1);
-    setCurrencyOverridden(hasManualCurrencyOverride(nextForm.country, nextForm.budgetCurrency, nextForm.countryCode));
-    setSelectedTemplateId(null);
     setShowWizard(true);
   };
 
@@ -554,9 +403,6 @@ export default function AgentExhibitionsPage() {
     const duplicatedForm = createDuplicatedExhibitionForm(item);
     setForm(duplicatedForm);
     setEditingId(null);
-    setWizardStep(1);
-    setCurrencyOverridden(hasManualCurrencyOverride(duplicatedForm.country, duplicatedForm.budgetCurrency, duplicatedForm.countryCode));
-    setSelectedTemplateId(null);
     setShowWizard(true);
     toast.success("Request copied. Update the dates and submit when ready.");
   };
@@ -590,20 +436,14 @@ export default function AgentExhibitionsPage() {
   const labelFor = (options: { value: string; label: string }[], value: string) => (
     options.find((option) => option.value === value)?.label ?? value
   );
-  const selectedTemplate = AGENT_EXHIBITION_TEMPLATES.find((template) => template.id === selectedTemplateId) ?? null;
   const isEditing = editingId !== null;
-  const setWizardDialogRef = useCallback((node: HTMLDivElement | null) => {
-    wizardDialogContentRef.current = node;
-    setWizardDialogContainer(node);
+  const setDialogRef = useCallback((node: HTMLDivElement | null) => {
+    dialogContentRef.current = node;
+    setDialogContainer(node);
   }, []);
-  const wizardSelectProps = {
-    container: wizardDialogContainer,
-    modal: true,
-  };
-  const wizardControlsReady = wizardDialogContainer !== null;
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="page-container space-y-6">
       {ConfirmDialogNode}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -637,18 +477,18 @@ export default function AgentExhibitionsPage() {
       </div>
 
       {!loading && items.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            { label: "Total", value: items.length, color: "text-gray-700 dark:text-gray-300" },
-            { label: "Submitted", value: items.filter((item) => item.status === "submitted").length, color: "text-blue-600" },
-            { label: "Approved", value: items.filter((item) => ["approved", "budget_approved", "resources_assigned", "active"].includes(item.status)).length, color: "text-emerald-600" },
-            { label: "Active", value: items.filter((item) => item.status === "active").length, color: "text-purple-600" },
-            { label: "Completed", value: items.filter((item) => item.status === "completed").length, color: "text-green-600" },
-            { label: "Revision", value: items.filter((item) => item.status === "revision_requested").length, color: "text-orange-600" },
+            { label: "Total", value: items.length, color: "text-slate-700 dark:text-slate-200", bg: "from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/30" },
+            { label: "Submitted", value: items.filter((item) => item.status === "submitted").length, color: "text-blue-600 dark:text-blue-400", bg: "from-blue-50 to-white dark:from-blue-950/40 dark:to-blue-900/10" },
+            { label: "Approved", value: items.filter((item) => ["approved", "budget_approved", "resources_assigned"].includes(item.status)).length, color: "text-emerald-600 dark:text-emerald-400", bg: "from-emerald-50 to-white dark:from-emerald-950/40 dark:to-emerald-900/10" },
+            { label: "Active", value: items.filter((item) => item.status === "active").length, color: "text-purple-600 dark:text-purple-400", bg: "from-purple-50 to-white dark:from-purple-950/40 dark:to-purple-900/10" },
+            { label: "Completed", value: items.filter((item) => item.status === "completed").length, color: "text-green-600 dark:text-green-400", bg: "from-green-50 to-white dark:from-green-950/40 dark:to-green-900/10" },
+            { label: "Revision", value: items.filter((item) => item.status === "revision_requested").length, color: "text-orange-600 dark:text-orange-400", bg: "from-orange-50 to-white dark:from-orange-950/40 dark:to-orange-900/10" },
           ].map((stat) => (
-            <div key={stat.label} className="rounded-lg border bg-card p-3 text-center">
-              <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
+            <div key={stat.label} className={`rounded-xl border bg-gradient-to-br ${stat.bg} p-4 text-center shadow-sm transition-shadow hover:shadow-md`}>
+              <p className={`text-3xl font-bold tracking-tight ${stat.color}`}>{stat.value}</p>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -667,69 +507,68 @@ export default function AgentExhibitionsPage() {
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-xl border shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="p-3 text-left font-medium">Event</th>
-                <th className="hidden p-3 text-left font-medium md:table-cell">Category</th>
-                <th className="hidden p-3 text-left font-medium lg:table-cell">Location</th>
-                <th className="p-3 text-left font-medium">Dates</th>
-                <th className="hidden p-3 text-left font-medium sm:table-cell">Budget</th>
-                <th className="p-3 text-left font-medium">Status</th>
-                <th className="hidden p-3 text-left font-medium md:table-cell">Priority</th>
-                <th className="p-3 text-right font-medium">Actions</th>
+              <tr className="border-b bg-gradient-to-r from-muted/80 to-muted/40">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
+                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Category</th>
+                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Location</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dates</th>
+                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">Budget</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Priority</th>
+                <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item._id} className="border-b transition-colors hover:bg-muted/30">
-                  <td className="p-3">
-                    <button onClick={() => setDetailItem(item)} className="text-left font-medium text-primary hover:underline">
+            <tbody className="divide-y divide-border/60">
+              {items.map((item, idx) => (
+                <tr key={item._id} className={`transition-colors hover:bg-primary/[0.03] ${idx % 2 === 0 ? "bg-background" : "bg-muted/20"}`}>
+                  <td className="px-4 py-3.5">
+                    <button onClick={() => setDetailItem(item)} className="text-left font-semibold text-foreground hover:text-primary hover:underline">
                       {item.eventName}
                     </button>
-                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.description}</p>
+                    {item.description && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.description}</p>}
                   </td>
-                  <td className="hidden p-3 md:table-cell">
-                    <Badge variant="outline" className="text-xs capitalize">
+                  <td className="hidden px-4 py-3.5 md:table-cell">
+                    <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/5 text-xs font-medium">
                       {labelFor(EVENT_CATEGORIES, item.eventCategory)}
                     </Badge>
                   </td>
-                  <td className="hidden p-3 lg:table-cell">
-                    <span className="flex items-center gap-1 text-xs">
-                      <MapPin className="h-3 w-3" /> {item.eventLocation}
+                  <td className="hidden px-4 py-3.5 lg:table-cell">
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5 text-primary/60" /> {item.eventLocation}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap p-3 text-xs">
-                    {formatDate(item.eventStartDate)} - {formatDate(item.eventEndDate)}
-                    <br />
-                    <span className="text-muted-foreground">{dayCount(item.eventStartDate, item.eventEndDate)} days</span>
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    <p className="text-xs font-medium">{formatDate(item.eventStartDate)}{item.eventEndDate ? ` – ${formatDate(item.eventEndDate)}` : ""}</p>
+                    {item.eventEndDate && <p className="mt-0.5 text-[11px] text-muted-foreground">{dayCount(item.eventStartDate, item.eventEndDate)} days</p>}
                   </td>
-                  <td className="hidden whitespace-nowrap p-3 sm:table-cell">{formatCurrency(item.estimatedBudget, item.budgetCurrency)}</td>
-                  <td className="p-3">
-                    <Badge className={STATUS_COLORS[item.status] ?? STATUS_COLORS.draft}>
+                  <td className="hidden whitespace-nowrap px-4 py-3.5 font-medium sm:table-cell">{formatCurrency(item.estimatedBudget, item.budgetCurrency)}</td>
+                  <td className="px-4 py-3.5">
+                    <Badge className={`${STATUS_COLORS[item.status] ?? STATUS_COLORS.draft} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>
                       {STATUS_LABELS[item.status] ?? item.status}
                     </Badge>
                   </td>
-                  <td className="hidden p-3 md:table-cell">
-                    <Badge className={PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium}>{item.priority}</Badge>
+                  <td className="hidden px-4 py-3.5 md:table-cell">
+                    <Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge>
                   </td>
-                  <td className="p-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => setDetailItem(item)}>
-                        <Eye className="h-3.5 w-3.5" />
+                  <td className="px-4 py-3.5 text-right">
+                    <div className="flex items-center justify-end gap-0.5">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" onClick={() => setDetailItem(item)}>
+                        <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDuplicate(item)}>
-                        <Copy className="h-3.5 w-3.5" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" onClick={() => handleDuplicate(item)}>
+                        <Copy className="h-4 w-4" />
                       </Button>
                       {["draft", "submitted", "revision_requested"].includes(item.status) && (
                         <>
-                          <Button variant="ghost" size="sm" onClick={() => startEdit(item)}>
-                            <Edit className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" onClick={() => startEdit(item)}>
+                            <Edit className="h-4 w-4" />
                           </Button>
                           {["draft", "submitted"].includes(item.status) && (
-                            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(item._id)}>
-                              <Trash2 className="h-3.5 w-3.5" />
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive" onClick={() => handleDelete(item._id)}>
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </>
@@ -747,7 +586,7 @@ export default function AgentExhibitionsPage() {
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-0">
           {detailItem && (
             <>
-              <DialogHeader className="border-b bg-gradient-to-r from-primary/8 via-background to-emerald-50/60 px-6 pb-5 pt-6 dark:to-emerald-950/10">
+              <DialogHeader className="border-b bg-gradient-to-r from-primary/8 via-background to-emerald-50/60 px-6 pb-5 pr-12 pt-6 dark:to-emerald-950/10">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -759,7 +598,7 @@ export default function AgentExhibitionsPage() {
                       {labelFor(EVENT_CATEGORIES, detailItem.eventCategory)} in {detailItem.eventLocation}{detailItem.country ? `, ${detailItem.country}` : ""}
                     </DialogDescription>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-[22rem]">
+                  <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-[20rem]">
                     <div className="rounded-xl border bg-background/80 p-3">
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Budget</p>
                       <p className="mt-1 font-semibold">{formatCurrency(detailItem.estimatedBudget, detailItem.budgetCurrency)}</p>
@@ -784,8 +623,8 @@ export default function AgentExhibitionsPage() {
                   {[
                     { label: "Venue", value: detailItem.venue ?? "-" },
                     { label: "Country", value: detailItem.country ?? "-" },
-                    { label: "Dates", value: `${formatDate(detailItem.eventStartDate)} - ${formatDate(detailItem.eventEndDate)}` },
-                    { label: "Duration", value: `${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)} days` },
+                    { label: "Dates", value: detailItem.eventEndDate ? `${formatDate(detailItem.eventStartDate)} – ${formatDate(detailItem.eventEndDate)}` : formatDate(detailItem.eventStartDate) },
+                    { label: "Duration", value: detailItem.eventEndDate ? `${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)} days` : "—" },
                     { label: "Organizer", value: detailItem.organizerName ?? "-" },
                     { label: "Contact", value: detailItem.organizerContact ?? "-" },
                     { label: "Category", value: labelFor(EVENT_CATEGORIES, detailItem.eventCategory) },
@@ -842,6 +681,15 @@ export default function AgentExhibitionsPage() {
                     </div>
                   </div>
                 )}
+                {detailItem.approvedBudget != null && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Approved Budget</p>
+                    <p className="mt-2 text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(detailItem.approvedBudget, detailItem.budgetCurrency)}</p>
+                    {detailItem.approvedBudget !== detailItem.estimatedBudget && (
+                      <p className="mt-1 text-xs text-muted-foreground">Estimated was {formatCurrency(detailItem.estimatedBudget, detailItem.budgetCurrency)}</p>
+                    )}
+                  </div>
+                )}
                 {detailItem.description && (
                   <div className="rounded-xl border bg-card p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Description</p>
@@ -875,484 +723,133 @@ export default function AgentExhibitionsPage() {
         }}
       >
         <DialogContent
-          ref={setWizardDialogRef}
-          className="flex max-h-[calc(100dvh-2rem)] w-[min(96vw,72rem)] max-w-6xl flex-col overflow-hidden p-0"
+          ref={setDialogRef}
+          className="w-[min(96vw,36rem)] max-w-xl p-0"
         >
-          <div className="shrink-0 border-b bg-background px-5 pb-3 pt-4">
-            <DialogHeader>
-              <DialogTitle className="text-lg">{isEditing ? "Edit Exhibition Request" : "New Exhibition Request"}</DialogTitle>
-              <DialogDescription>
-                Step {wizardStep} of {WIZARD_STEPS.length} - {WIZARD_STEPS[wizardStep - 1].description}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              {WIZARD_STEPS.map((step) => {
-                const isCurrent = step.id === wizardStep;
-                const isPast = step.id < wizardStep;
+          <DialogHeader className="border-b px-6 pb-4 pt-5">
+            <DialogTitle className="text-lg">{isEditing ? "Edit Exhibition Request" : "New Exhibition Request"}</DialogTitle>
+            <DialogDescription>
+              Fill in the details below to submit your request for approval.
+            </DialogDescription>
+          </DialogHeader>
 
-                return (
-                  <button
-                    key={step.id}
-                    type="button"
-                    onClick={() => goToStep(step.id)}
-                    className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${isCurrent ? "border-primary bg-primary/10 text-primary" : isPast ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-400" : "border-border/60 bg-card text-foreground hover:bg-muted/60"}`}
-                  >
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      {isPast ? <CheckCircle2 className="h-4 w-4" /> : <span className="flex h-6 w-6 items-center justify-center rounded-full bg-background text-xs">{step.id}</span>}
-                      {step.title}
-                    </div>
-                    <p className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">{step.description}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {wizardControlsReady && (
-            <div className="space-y-4 px-5 py-4">
-            {wizardStep === 1 && (
-              <div className="space-y-4">
-                {!isEditing && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <h3 className="text-sm font-semibold">Quick start templates</h3>
-                      <p className="text-xs text-muted-foreground">Prefills participation, objectives, and requirement tags.</p>
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                      {AGENT_EXHIBITION_TEMPLATES.map((template) => {
-                        const isSelected = selectedTemplateId === template.id;
-                        return (
-                          <button
-                            key={template.id}
-                            type="button"
-                            onClick={() => applyTemplate(template.id)}
-                            className={`rounded-xl border p-3 text-left transition-colors ${isSelected ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-medium">{template.name}</p>
-                              {isSelected && <Badge className="bg-primary/10 text-primary">Applied</Badge>}
-                            </div>
-                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{template.description}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {selectedTemplate && (
-                      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                          <div>
-                            <p className="font-medium">{selectedTemplate.name} is applied</p>
-                            <p className="mt-1 text-muted-foreground">
-                              Most preset values affect request details in step 2. You will also see the full summary again in step 3.
-                            </p>
-                          </div>
-                          <Badge className="w-fit bg-primary/10 text-primary">Ready</Badge>
-                        </div>
-
-                        <div className="mt-4 grid gap-4 lg:grid-cols-3">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Basics updated now</p>
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              <Badge variant="outline">{labelFor(EVENT_CATEGORIES, form.eventCategory)}</Badge>
-                              <Badge className={PRIORITY_COLORS[form.priority] ?? PRIORITY_COLORS.medium}>{form.priority}</Badge>
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Step 2 participation</p>
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {form.participationTypes.length > 0 ? form.participationTypes.map((participationType) => (
-                                <Badge key={participationType} variant="outline" className="text-xs capitalize">
-                                  {labelFor(PARTICIPATION_TYPES, participationType)}
-                                </Badge>
-                              )) : <span className="text-xs text-muted-foreground">No preset participation</span>}
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Step 2 goals and tags</p>
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {form.objectives.map((objective) => (
-                                <Badge key={objective} variant="outline" className="text-xs">
-                                  {labelFor(OBJECTIVES, objective)}
-                                </Badge>
-                              ))}
-                              {form.requiredResources.map((resource) => (
-                                <Badge key={resource} variant="outline" className="text-xs">
-                                  {labelFor(RESOURCE_TYPES, resource)}
-                                </Badge>
-                              ))}
-                              {form.objectives.length === 0 && form.requiredResources.length === 0 && (
-                                <span className="text-xs text-muted-foreground">No preset objectives or tags</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="grid gap-3 lg:grid-cols-3">
-                  <div className="lg:col-span-3">
-                    <Label>Exhibition Title *</Label>
-                    <Input
-                      value={form.eventName}
-                      onChange={(event) => updateForm("eventName", event.target.value)}
-                      placeholder="e.g., Dubai Career Expo 2026"
-                    />
-                  </div>
-                  <div>
-                    <Label>Event Category *</Label>
-                    <SearchableSelect
-                      options={EVENT_CATEGORIES}
-                      value={form.eventCategory}
-                      onValueChange={(value) => updateForm("eventCategory", value)}
-                      placeholder="Select category"
-                      {...wizardSelectProps}
-                    />
-                  </div>
-                  <div>
-                    <Label>Priority</Label>
-                    <SearchableSelect
-                      options={PRIORITIES}
-                      value={form.priority}
-                      onValueChange={(value) => updateForm("priority", value)}
-                      placeholder="Select priority"
-                      {...wizardSelectProps}
-                    />
-                  </div>
-                  <div>
-                    <Label>Country *</Label>
-                    <SearchableSelect
-                      options={countryOptions}
-                      value={form.countryCode || undefined}
-                      onValueChange={handleCountryChange}
-                      searchValue={countrySearch}
-                      onSearchValueChange={setCountrySearch}
-                      placeholder="Select country"
-                      searchPlaceholder="Search country..."
-                      loading={countriesLoading}
-                      loadingMessage="Loading countries..."
-                      {...wizardSelectProps}
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <Label>Budget Currency *</Label>
-                      {currencyOverridden && (
-                        <button type="button" onClick={resetCurrencyToCountryDefault} className="text-xs font-medium text-primary hover:underline">
-                          Reset to {autoCurrency}
-                        </button>
-                      )}
-                    </div>
-                    <SearchableSelect
-                      options={CURRENCY_OPTIONS}
-                      value={form.budgetCurrency}
-                      onValueChange={handleCurrencyChange}
-                      placeholder="Select currency"
-                      {...wizardSelectProps}
-                    />
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {currencyOverridden ? "Manual override active." : `Auto-selected from ${form.country || "the chosen country"}.`}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Region / City *</Label>
-                    <Input
-                      value={form.eventLocation}
-                      onChange={(event) => updateForm("eventLocation", event.target.value)}
-                      placeholder="Dubai, Riyadh, Bangalore..."
-                    />
-                  </div>
-                  <div>
-                    <Label>Venue</Label>
-                    <Input
-                      value={form.venue}
-                      onChange={(event) => updateForm("venue", event.target.value)}
-                      placeholder="Convention center, hotel, campus..."
-                    />
-                  </div>
-                  <div>
-                    <Label>Start Date *</Label>
-                    <DateTimePicker
-                      value={form.eventStartDate}
-                      onChange={(value) => updateForm("eventStartDate", value)}
-                      mode="date"
-                      placeholder="Select start date"
-                      container={wizardDialogContainer}
-                      modal
-                    />
-                  </div>
-                  <div>
-                    <Label>End Date *</Label>
-                    <DateTimePicker
-                      value={form.eventEndDate}
-                      onChange={(value) => updateForm("eventEndDate", value)}
-                      mode="date"
-                      placeholder="Select end date"
-                      container={wizardDialogContainer}
-                      modal
-                    />
-                  </div>
-                  <div>
-                    <Label>Organizer Name</Label>
-                    <Input
-                      value={form.organizerName}
-                      onChange={(event) => updateForm("organizerName", event.target.value)}
-                      placeholder="Organizer or company"
-                    />
-                  </div>
-                  <div>
-                    <Label>Organizer Contact</Label>
-                    <Input
-                      value={form.organizerContact}
-                      onChange={(event) => updateForm("organizerContact", event.target.value)}
-                      placeholder="Phone or email"
-                    />
-                  </div>
-                </div>
-
-                {form.eventStartDate && form.eventEndDate && (
-                  <div className="rounded-xl border bg-muted/40 p-4 text-sm">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-medium">Schedule summary</p>
-                        <p className="text-muted-foreground">{dayCount(form.eventStartDate, form.eventEndDate)} day event in {form.country || "your selected country"}.</p>
-                      </div>
-                      <Badge variant="outline">Currency: {form.budgetCurrency}</Badge>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {wizardStep === 2 && (
-              <div className="space-y-6">
-                {selectedTemplate && (
-                  <div className="rounded-xl border bg-primary/5 p-4 text-sm">
-                    <p className="font-medium">Template: {selectedTemplate.name}</p>
-                    <p className="mt-1 text-muted-foreground">You can adjust any of the suggested participation, objectives, or requirement tags below.</p>
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  <Label>Select Participation Types *</Label>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                    {PARTICIPATION_TYPES.map((participationType) => {
-                      const selected = form.participationTypes.includes(participationType.value);
-                      return (
-                        <button
-                          key={participationType.value}
-                          type="button"
-                          onClick={() => updateForm("participationTypes", toggleArray(form.participationTypes, participationType.value))}
-                          className={`rounded-xl border p-3 text-sm text-center transition-colors ${selected ? "border-primary bg-primary/10 font-medium text-primary" : "hover:bg-muted/50"}`}
-                        >
-                          {participationType.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label>Estimated Budget ({form.budgetCurrency})</Label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      className={SPINNERLESS_INPUT_CLASS}
-                      value={form.estimatedBudget}
-                      onChange={(event) => handleBudgetChange(event.target.value)}
-                      placeholder="Optional budget"
-                    />
-                  </div>
-                  <div>
-                    <Label>Expected Leads</Label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      className={SPINNERLESS_INPUT_CLASS}
-                      value={form.expectedLeads}
-                      onChange={(event) => handleExpectedLeadsChange(event.target.value)}
-                      placeholder="e.g., 120"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label>Description / Notes</Label>
-                    <Textarea
-                      value={form.description}
-                      onChange={(event) => updateForm("description", event.target.value)}
-                      placeholder="What makes this exhibition worth attending? Add optional notes for the reviewer."
-                      rows={4}
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label>Participation Notes</Label>
-                    <Textarea
-                      value={form.participationDetails}
-                      onChange={(event) => updateForm("participationDetails", event.target.value)}
-                      placeholder="Any setup details, sponsorship notes, or booth expectations."
-                      rows={3}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Business Objectives</Label>
-                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                    {OBJECTIVES.map((objective) => {
-                      const selected = form.objectives.includes(objective.value);
-                      return (
-                        <button
-                          key={objective.value}
-                          type="button"
-                          onClick={() => updateForm("objectives", toggleArray(form.objectives, objective.value))}
-                          className={`rounded-xl border p-4 text-left transition-colors ${selected ? "border-primary bg-primary/10" : "hover:bg-muted/50"}`}
-                        >
-                          <span className={`font-medium ${selected ? "text-primary" : ""}`}>{objective.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Requirement Tags</Label>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                    {RESOURCE_TYPES.map((resource) => {
-                      const selected = form.requiredResources.includes(resource.value);
-                      return (
-                        <button
-                          key={resource.value}
-                          type="button"
-                          onClick={() => updateForm("requiredResources", toggleArray(form.requiredResources, resource.value))}
-                          className={`rounded-xl border p-3 text-sm text-center transition-colors ${selected ? "border-primary bg-primary/10 font-medium text-primary" : "hover:bg-muted/50"}`}
-                        >
-                          {resource.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {wizardStep === 3 && (
-              <div className="space-y-4">
-                <div className="rounded-xl border p-5">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">{form.eventName || "Untitled exhibition request"}</h3>
-                      <p className="text-sm text-muted-foreground">{labelFor(EVENT_CATEGORIES, form.eventCategory)} in {form.eventLocation || "selected region"}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">{form.country || "No country selected"}</Badge>
-                      <Badge className={PRIORITY_COLORS[form.priority] ?? PRIORITY_COLORS.medium}>{form.priority}</Badge>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-3 text-sm md:grid-cols-2">
-                    <div><span className="text-muted-foreground">Venue:</span> {form.venue || "-"}</div>
-                    <div><span className="text-muted-foreground">Dates:</span> {form.eventStartDate || "-"} - {form.eventEndDate || "-"}</div>
-                    <div><span className="text-muted-foreground">Organizer:</span> {form.organizerName || "-"}</div>
-                    <div><span className="text-muted-foreground">Contact:</span> {form.organizerContact || "-"}</div>
-                    <div><span className="text-muted-foreground">Budget:</span> {formatCurrency(form.estimatedBudget || 0, form.budgetCurrency)}</div>
-                    <div><span className="text-muted-foreground">Expected Leads:</span> {form.expectedLeads || "-"}</div>
-                  </div>
-
-                  {form.participationTypes.length > 0 && (
-                    <div className="mt-5">
-                      <p className="text-sm text-muted-foreground">Participation</p>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {form.participationTypes.map((participationType) => (
-                          <Badge key={participationType} variant="outline" className="text-xs capitalize">
-                            {labelFor(PARTICIPATION_TYPES, participationType)}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {form.objectives.length > 0 && (
-                    <div className="mt-5">
-                      <p className="text-sm text-muted-foreground">Objectives</p>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {form.objectives.map((objective) => (
-                          <Badge key={objective} variant="outline" className="text-xs">
-                            {labelFor(OBJECTIVES, objective)}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {form.requiredResources.length > 0 && (
-                    <div className="mt-5">
-                      <p className="text-sm text-muted-foreground">Requirement Tags</p>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {form.requiredResources.map((resource) => (
-                          <Badge key={resource} variant="outline" className="text-xs">
-                            {labelFor(RESOURCE_TYPES, resource)}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {form.description && (
-                    <div className="mt-5 text-sm">
-                      <p className="text-muted-foreground">Description</p>
-                      <p className="mt-1">{form.description}</p>
-                    </div>
-                  )}
-
-                  {form.participationDetails && (
-                    <div className="mt-5 text-sm">
-                      <p className="text-muted-foreground">Participation Notes</p>
-                      <p className="mt-1">{form.participationDetails}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                  Draft saves the request without notifying reviewers. Submit sends it into the approval queue.
-                </div>
-              </div>
-            )}
-            </div>
-            )}
-          </div>
-
-          <div className="flex shrink-0 items-center justify-between border-t bg-background px-6 py-4">
+          <div className="space-y-4 px-6 py-5">
             <div>
-              {wizardStep > 1 && (
-                <Button variant="outline" onClick={() => setWizardStep((currentStep) => currentStep - 1)}>
-                  <ChevronLeft className="mr-1 h-4 w-4" /> Back
-                </Button>
-              )}
+              <Label>Exhibition Title *</Label>
+              <Input
+                value={form.eventName}
+                onChange={(event) => updateForm("eventName", event.target.value)}
+                placeholder="e.g., Dubai Career Expo 2026"
+              />
             </div>
-            <div className="flex items-center gap-2">
-              {wizardStep === WIZARD_STEPS.length ? (
-                <>
-                  <Button variant="outline" onClick={() => handleSubmit(true)}>
-                    <Save className="mr-1 h-4 w-4" /> Save Draft
-                  </Button>
-                  <Button onClick={() => handleSubmit(false)}>
-                    <Send className="mr-1 h-4 w-4" /> Submit Request
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={handleNextStep}>
-                  Next <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              )}
+
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                value={form.description}
+                onChange={(event) => updateForm("description", event.target.value)}
+                placeholder="Brief description of the exhibition and its purpose..."
+                rows={3}
+              />
             </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Start Date</Label>
+                <DateTimePicker
+                  value={form.eventStartDate}
+                  onChange={(value) => {
+                    updateForm("eventStartDate", value);
+                    // Clear end date if it's now before start
+                    if (form.eventEndDate && new Date(form.eventEndDate) < new Date(value)) {
+                      updateForm("eventEndDate", "");
+                    }
+                  }}
+                  mode="date"
+                  placeholder="Select start date"
+                  minDate={startDateMin}
+                  container={dialogContainer}
+                  modal
+                />
+              </div>
+              <div>
+                <Label>End Date</Label>
+                <DateTimePicker
+                  value={form.eventEndDate}
+                  onChange={(value) => updateForm("eventEndDate", value)}
+                  mode="date"
+                  placeholder="Select end date"
+                  minDate={endDateMin}
+                  container={dialogContainer}
+                  modal
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <Label>Venue <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Input
+                  value={form.venue}
+                  onChange={(event) => updateForm("venue", event.target.value)}
+                  placeholder="e.g., Dubai World Trade Centre"
+                />
+              </div>
+              <div>
+                <Label>Organizer <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Input
+                  value={form.organizerName}
+                  onChange={(event) => updateForm("organizerName", event.target.value)}
+                  placeholder="e.g., DWTC Events"
+                />
+              </div>
+              <div>
+                <Label>Contact <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Input
+                  value={form.organizerContact}
+                  onChange={(event) => updateForm("organizerContact", event.target.value)}
+                  placeholder="Email or phone"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Estimated Budget</Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  className={SPINNERLESS_INPUT_CLASS}
+                  value={form.estimatedBudget}
+                  onChange={(event) => handleBudgetChange(event.target.value)}
+                  placeholder="e.g., 5000"
+                />
+              </div>
+              <div>
+                <Label>Currency</Label>
+                <SearchableSelect
+                  options={CURRENCY_OPTIONS}
+                  value={form.budgetCurrency}
+                  onValueChange={handleCurrencyChange}
+                  placeholder="Select currency"
+                  container={dialogContainer}
+                  modal
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 border-t px-6 py-4">
+            <Button variant="outline" onClick={() => handleSubmit(true)}>
+              <Save className="mr-1 h-4 w-4" /> Save Draft
+            </Button>
+            <Button onClick={() => handleSubmit(false)}>
+              <Send className="mr-1 h-4 w-4" /> Submit Request
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+

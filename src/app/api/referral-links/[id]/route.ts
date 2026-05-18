@@ -7,6 +7,11 @@ import SuperAgent from "@/models/SuperAgent";
 import { validateBody } from "@/lib/validators";
 import { referralLinkUpdateSchema } from "@/lib/validators/referral-links";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import crypto from "crypto";
+
+function generateCode(): string {
+  return `MPL-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+}
 
 interface AuthCtx {
   userId: string;
@@ -73,6 +78,52 @@ async function handlePatch(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   }
 
   const body = await validateBody(req, referralLinkUpdateSchema);
+
+  // If re-enabling a disabled link, create a NEW link with a fresh code instead
+  if (body.isActive === true && !link.isActive) {
+    // Generate unique code
+    let code = generateCode();
+    let attempts = 0;
+    while (await ReferralLink.exists({ code })) {
+      code = generateCode();
+      attempts++;
+      if (attempts > 10) {
+        return NextResponse.json({ error: "Failed to generate unique code" }, { status: 500 });
+      }
+    }
+
+    const newLink = await ReferralLink.create({
+      code,
+      createdBy: link.createdBy,
+      creatorRole: link.creatorRole,
+      ...(link.agentId ? { agentId: link.agentId } : {}),
+      ...(link.superAgentId ? { superAgentId: link.superAgentId } : {}),
+      label: body.label ?? link.label,
+      maxUses: body.maxUses ?? link.maxUses,
+      expiresAt: body.expiresAt !== undefined
+        ? (body.expiresAt ? new Date(body.expiresAt) : undefined)
+        : link.expiresAt,
+      isActive: true,
+    });
+
+    // Update the agent/super-agent referral code to the new one
+    if (link.creatorRole === "agent" && link.agentId) {
+      await Agent.findByIdAndUpdate(link.agentId, { referralCode: code });
+    } else if (link.creatorRole === "super_agent" && link.superAgentId) {
+      await SuperAgent.findByIdAndUpdate(link.superAgentId, { referralCode: code });
+    }
+
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "referral_link.regenerate",
+      resource: "referral_links",
+      resourceId: newLink._id.toString(),
+      meta: { oldCode: link.code, newCode: code, oldLinkId: id },
+      req,
+    });
+
+    return NextResponse.json({ link: newLink, regenerated: true, oldLinkId: id });
+  }
 
   if (body.label !== undefined) link.label = body.label;
   if (body.isActive !== undefined) link.isActive = body.isActive;

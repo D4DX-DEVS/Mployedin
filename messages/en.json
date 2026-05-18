@@ -2213,6 +2213,8 @@
     "owner": "Owner",
     "admin": "Admin",
     "hiringManager": "Hiring Manager",
+    "accounting": "Accounting",
+    "financeViewer": "Finance Viewer",
     "viewer": "Viewer",
     "deactivateConfirm": "Are you sure you want to deactivate this team member?",
     "allJobs": "All Jobs",

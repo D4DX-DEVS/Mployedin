@@ -1,17 +1,17 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  FolderOpen, Clock, Search, Inbox, FileText, Image, Video,
-  Download, Eye, Tag, Shield, History,
+  FolderOpen, Search, Inbox, FileText, Image, Video,
+  Download, Eye, Tag, History, Sparkles,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
@@ -32,7 +32,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 const CATEGORY_OPTIONS = [{ value: "all", label: "All Categories" }, ...Object.entries(CATEGORY_LABELS).map(([v, l]) => ({ value: v, label: l }))];
 const SORT_OPTIONS = [
-  { value: "newest", label: "Newest" }, { value: "popular", label: "Most Downloaded" }, { value: "a-z", label: "A â†’ Z" },
+  { value: "newest", label: "Newest" }, { value: "popular", label: "Most Downloaded" }, { value: "a-z", label: "A \u2192 Z" },
 ];
 
 function formatFileSize(bytes: number): string {
@@ -49,7 +49,7 @@ export default function ResourceDownloadsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [search, setSearch] = useState("");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<{url: string; type: string} | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -64,72 +64,133 @@ export default function ResourceDownloadsPage() {
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const trackDownload = async (item: Resource, file: ResourceFile) => {
-    try { await csrfFetch(`/api/resources/${item._id}`, { method: "POST" }); } catch { /* ignore */ }
+    try {
+      await csrfFetch(`/api/resources/${item._id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileKey: file.key, fileName: file.fileName }),
+      });
+    } catch { /* ignore */ }
     window.open(file.url, "_blank");
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><FolderOpen className="h-6 w-6 text-primary" /> {t("downloadsTitle")}</h1>
-        <p className="text-muted-foreground text-sm mt-1">{t("downloadsSubtitle")}</p>
-      </div>
+    <div className="page-container space-y-6 pb-6">
+      {/* Hero Section */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
+        <div className="max-w-2xl">
+          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            <Sparkles className="h-3.5 w-3.5" />
+            Resources
+          </div>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+            {t("downloadsTitle")}
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+            {t("downloadsSubtitle")}
+          </p>
+        </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" /></div>
-        <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder="Category" />
-        <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder="Sort" />
-      </div>
+        {/* Filters */}
+        <div className="mt-5 flex items-center gap-2 rounded-2xl bg-background/40 px-3 py-2 ring-1 ring-inset ring-border/40">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm border-0 bg-transparent shadow-none focus-visible:ring-0" />
+          </div>
+          <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder="Category" />
+          <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder="Sort" />
+          {categoryFilter !== 'all' && (
+            <button onClick={() => setCategoryFilter('all')} className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 shrink-0">Clear</button>
+          )}
+        </div>
+      </section>
 
+      {/* Resource Grid */}
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground"><Clock className="h-5 w-5 animate-spin mr-2" /> {tc("loading")}</div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (<div key={i} className="h-48 animate-pulse rounded-2xl bg-background/70" />))}
+        </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground"><Inbox className="h-12 w-12 mb-3 opacity-40" /><p>{t("noResources")}</p></div>
+        <section className="workspace-panel-surface rounded-[28px] p-10 sm:p-14 text-center">
+          <div className="flex flex-col items-center">
+            <div className="workspace-glass-panel rounded-2xl p-4 mb-5">
+              <Inbox className="h-8 w-8 text-muted-foreground/50" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground">{t("noResources")}</h3>
+            <p className="mt-2 text-sm text-muted-foreground max-w-sm">
+              Resources uploaded by your team will appear here for download.
+            </p>
+          </div>
+        </section>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
             const CatIcon = item.files?.[0]?.contentType?.startsWith("video/") ? Video : item.files?.[0]?.contentType?.startsWith("image/") ? Image : FileText;
             return (
-              <div key={item._id} className="rounded-xl border bg-card p-4 hover:shadow-md transition-shadow">
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <CatIcon className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+              <article key={item._id} className="workspace-glass-panel rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]">
+                <div className="p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-2xl p-2 ring-1 ring-inset ring-border/60 bg-background/80 shrink-0">
+                      <CatIcon className="h-4 w-4 text-muted-foreground" />
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-sm truncate">{item.title}</h3>
+                      <h3 className="text-[15px] font-semibold text-foreground truncate">{item.title}</h3>
                       <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[item.category] ?? item.category}</p>
                     </div>
                   </div>
-                  {item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
-                  {item.tags?.length > 0 && (<div className="flex flex-wrap gap-1">{item.tags.slice(0, 3).map((tag) => (<Badge key={tag} variant="outline" className="text-xs"><Tag className="h-2.5 w-2.5 mr-0.5" />{tag}</Badge>))}{item.tags.length > 3 && <Badge variant="outline" className="text-xs">+{item.tags.length - 3}</Badge>}</div>)}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Download className="h-3 w-3" /> {item.downloadCount ?? 0}</span>
-                    <span className="flex items-center gap-1"><History className="h-3 w-3" /> v{item.version ?? 1}</span>
+
+                  {item.description && <p className="text-sm leading-6 text-muted-foreground line-clamp-2">{item.description}</p>}
+
+                  {item.tags?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.tags.slice(0, 3).map((tag) => (
+                        <span key={tag} className="inline-flex items-center gap-0.5 rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"><Tag className="h-2.5 w-2.5" />{tag}</span>
+                      ))}
+                      {item.tags.length > 3 && <span className="rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">+{item.tags.length - 3}</span>}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><Download className="h-3.5 w-3.5" /> {item.downloadCount ?? 0}</span>
+                    <span className="flex items-center gap-1.5"><History className="h-3.5 w-3.5" /> v{item.version ?? 1}</span>
                   </div>
-                  <div className="space-y-1.5">
+
+                  <div className="space-y-2">
                     {item.files.map((file) => (
-                      <div key={file.key} className="flex items-center justify-between rounded border px-3 py-2 text-xs bg-muted/30 hover:bg-muted/60 transition-colors">
-                        <span className="truncate mr-2">{file.fileName} <span className="text-muted-foreground">({formatFileSize(file.size)})</span></span>
+                      <div key={file.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/60 px-3 py-2.5 text-xs">
+                        <span className="truncate font-medium text-foreground">{file.fileName} <span className="text-muted-foreground">({formatFileSize(file.size)})</span></span>
                         <div className="flex gap-1 shrink-0">
                           {(file.contentType?.startsWith("image/") || file.contentType === "application/pdf") && (
-                            <button onClick={() => setPreviewUrl(file.url)} className="p-1 rounded hover:bg-accent"><Eye className="h-3.5 w-3.5" /></button>
+                            <button onClick={() => setPreviewUrl({url: file.url, type: file.contentType})} className="p-1.5 rounded-lg hover:bg-card transition-colors"><Eye className="h-3.5 w-3.5 text-muted-foreground" /></button>
                           )}
-                          <button onClick={() => trackDownload(item, file)} className="p-1 rounded hover:bg-accent text-primary"><Download className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => trackDownload(item, file)} className="p-1.5 rounded-lg hover:bg-card transition-colors text-primary"><Download className="h-3.5 w-3.5" /></button>
                         </div>
                       </div>
                     ))}
                   </div>
+
                   <p className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleDateString()}</p>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
       )}
 
+      {/* Preview Dialog */}
       <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh]">
+        <DialogContent className="max-w-3xl max-h-[85vh]">
           <DialogHeader><DialogTitle>{t("preview")}</DialogTitle></DialogHeader>
-          {previewUrl && (previewUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)/i) ? <img src={previewUrl} alt="Preview" className="max-h-[60vh] w-full object-contain" /> : <iframe src={previewUrl} className="w-full h-[60vh]" title="Preview" />)}
+          {previewUrl && (
+            previewUrl.type.startsWith("image/")
+              ? <img src={previewUrl.url} alt="Preview" className="max-h-[65vh] w-full object-contain rounded-lg" />
+              : <embed src={previewUrl.url} type="application/pdf" className="w-full h-[65vh] rounded-lg" />
+          )}
+          {previewUrl && (
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => window.open(previewUrl.url, '_blank')}>Open in new tab</Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

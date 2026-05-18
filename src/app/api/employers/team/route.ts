@@ -5,7 +5,8 @@ import { withSubscription } from "@/lib/subscription/withSubscription";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { teamInviteSchema } from "@/lib/validators/team";
-import { CompanyUser, getDefaultPermissions } from "@/models/CompanyUser";
+import { CompanyUser, getDefaultPermissions, getMergedPermissions, getPrimaryRole } from "@/models/CompanyUser";
+import type { CompanyRole } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import { User } from "@/models/User";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -85,21 +86,38 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   }
 
   // Cannot invite owner role
-  if ((body as { companyRole: string }).companyRole === "owner") {
+  const rawBody = body as {
+    email: string;
+    companyRole?: CompanyRole;
+    companyRoles?: CompanyRole[];
+    jobAccess?: string[];
+    permissions?: Record<string, boolean>;
+  };
+
+  // Resolve roles array (support both single and multi)
+  const resolvedRoles: CompanyRole[] = rawBody.companyRoles && rawBody.companyRoles.length > 0
+    ? rawBody.companyRoles
+    : rawBody.companyRole
+      ? [rawBody.companyRole]
+      : [];
+
+  if (resolvedRoles.length === 0) {
+    return NextResponse.json({ error: "At least one role is required" }, { status: 400 });
+  }
+
+  if (resolvedRoles.includes("owner" as CompanyRole)) {
     return NextResponse.json({ error: "Cannot invite as owner" }, { status: 400 });
   }
 
   // Admin cannot invite another admin (only owner can)
-  if (callerMember.companyRole === "admin" && (body as { companyRole: string }).companyRole === "admin") {
+  if (callerMember.companyRole === "admin" && resolvedRoles.includes("admin")) {
     return NextResponse.json({ error: "Only owners can invite admins" }, { status: 403 });
   }
 
-  const { email, companyRole, jobAccess, permissions: customPerms } = body as {
-    email: string;
-    companyRole: "admin" | "hiring_manager" | "viewer";
-    jobAccess?: string[];
-    permissions?: Record<string, boolean>;
-  };
+  const email = rawBody.email;
+  const jobAccess = rawBody.jobAccess;
+  const customPerms = rawBody.permissions;
+  const primaryRole = getPrimaryRole(resolvedRoles);
 
   // Check if already a member
   const existing = await CompanyUser.findOne({ companyId: employer._id, email });
@@ -107,7 +125,8 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     if (existing.status === "deactivated") {
       // Reactivate
       existing.status = "pending";
-      existing.companyRole = companyRole;
+      existing.companyRole = primaryRole;
+      existing.companyRoles = resolvedRoles;
       existing.inviteToken = randomBytes(32).toString("hex");
       existing.inviteExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
       existing.invitedBy = ctx.userId as unknown as typeof existing.invitedBy;
@@ -129,7 +148,9 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   }
 
   const inviteToken = randomBytes(32).toString("hex");
-  const defaultPermissions = getDefaultPermissions(companyRole);
+  const defaultPermissions = resolvedRoles.length > 1
+    ? getMergedPermissions(resolvedRoles)
+    : getDefaultPermissions(primaryRole);
   const finalPermissions = customPerms
     ? { ...defaultPermissions, ...customPerms }
     : defaultPermissions;
@@ -141,7 +162,8 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     companyId: employer._id,
     userId: existingUser?._id ?? undefined,
     email,
-    companyRole,
+    companyRole: primaryRole,
+    companyRoles: resolvedRoles,
     jobAccess: jobAccess ?? [],
     permissions: finalPermissions,
     invitedBy: ctx.userId,
@@ -154,7 +176,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   // Send invite notification/email
   const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const acceptUrl = `${baseUrl}/en/employer/team/accept?token=${inviteToken}`;
-  const roleName = companyRole.replace("_", " ");
+  const roleName = resolvedRoles.map((r) => r.replace("_", " ")).join(", ");
 
   if (existingUser) {
     await notify({
@@ -191,7 +213,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     action: "team.invite",
     resource: "employers",
     resourceId: String(employer._id),
-    changes: { after: { email, companyRole } },
+    changes: { after: { email, companyRole: primaryRole, companyRoles: resolvedRoles } },
     req,
   });
 

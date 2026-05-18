@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export type CompanyRole = "owner" | "admin" | "hiring_manager" | "viewer";
+export type CompanyRole = "owner" | "admin" | "hiring_manager" | "accounting" | "finance_viewer" | "viewer";
 export type CompanyUserStatus = "pending" | "active" | "deactivated";
 
 export interface ICompanyUserPermissions {
@@ -8,6 +8,10 @@ export interface ICompanyUserPermissions {
   canManageTeam: boolean;
   canViewAnalytics: boolean;
   canExportData: boolean;
+  canManageBilling: boolean;
+  canViewReports: boolean;
+  canApproveInvoices: boolean;
+  canViewCommissions: boolean;
 }
 
 export interface ICompanyUser extends Document {
@@ -16,6 +20,7 @@ export interface ICompanyUser extends Document {
   userId?: mongoose.Types.ObjectId;
   email: string;
   companyRole: CompanyRole;
+  companyRoles: CompanyRole[];
   jobAccess: mongoose.Types.ObjectId[];
   permissions: ICompanyUserPermissions;
   invitedBy: mongoose.Types.ObjectId;
@@ -29,14 +34,44 @@ export interface ICompanyUser extends Document {
 }
 
 const DEFAULT_PERMISSIONS: Record<CompanyRole, ICompanyUserPermissions> = {
-  owner: { canCreateJobs: true, canManageTeam: true, canViewAnalytics: true, canExportData: true },
-  admin: { canCreateJobs: true, canManageTeam: true, canViewAnalytics: true, canExportData: true },
-  hiring_manager: { canCreateJobs: true, canManageTeam: false, canViewAnalytics: false, canExportData: false },
-  viewer: { canCreateJobs: false, canManageTeam: false, canViewAnalytics: false, canExportData: false },
+  owner: { canCreateJobs: true, canManageTeam: true, canViewAnalytics: true, canExportData: true, canManageBilling: true, canViewReports: true, canApproveInvoices: true, canViewCommissions: true },
+  admin: { canCreateJobs: true, canManageTeam: true, canViewAnalytics: true, canExportData: true, canManageBilling: true, canViewReports: true, canApproveInvoices: true, canViewCommissions: true },
+  hiring_manager: { canCreateJobs: true, canManageTeam: false, canViewAnalytics: false, canExportData: false, canManageBilling: false, canViewReports: false, canApproveInvoices: false, canViewCommissions: false },
+  accounting: { canCreateJobs: false, canManageTeam: false, canViewAnalytics: true, canExportData: true, canManageBilling: true, canViewReports: true, canApproveInvoices: true, canViewCommissions: true },
+  finance_viewer: { canCreateJobs: false, canManageTeam: false, canViewAnalytics: true, canExportData: false, canManageBilling: false, canViewReports: true, canApproveInvoices: false, canViewCommissions: true },
+  viewer: { canCreateJobs: false, canManageTeam: false, canViewAnalytics: false, canExportData: false, canManageBilling: false, canViewReports: false, canApproveInvoices: false, canViewCommissions: false },
 };
 
 export function getDefaultPermissions(role: CompanyRole): ICompanyUserPermissions {
   return { ...DEFAULT_PERMISSIONS[role] };
+}
+
+/** Merge permissions from multiple roles (union — any true wins) */
+export function getMergedPermissions(roles: CompanyRole[]): ICompanyUserPermissions {
+  const merged: ICompanyUserPermissions = {
+    canCreateJobs: false, canManageTeam: false, canViewAnalytics: false,
+    canExportData: false, canManageBilling: false, canViewReports: false,
+    canApproveInvoices: false, canViewCommissions: false,
+  };
+  for (const role of roles) {
+    const perms = DEFAULT_PERMISSIONS[role];
+    if (!perms) continue;
+    for (const key of Object.keys(merged) as (keyof ICompanyUserPermissions)[]) {
+      if (perms[key]) merged[key] = true;
+    }
+  }
+  return merged;
+}
+
+/** Role priority for determining primary role (highest privilege first) */
+const ROLE_PRIORITY: CompanyRole[] = ["owner", "admin", "hiring_manager", "accounting", "finance_viewer", "viewer"];
+
+/** Get the highest-privilege role from an array of roles */
+export function getPrimaryRole(roles: CompanyRole[]): CompanyRole {
+  for (const r of ROLE_PRIORITY) {
+    if (roles.includes(r)) return r;
+  }
+  return roles[0] ?? "viewer";
 }
 
 const CompanyUserSchema = new Schema<ICompanyUser>(
@@ -46,8 +81,12 @@ const CompanyUserSchema = new Schema<ICompanyUser>(
     email: { type: String, required: true, lowercase: true, trim: true },
     companyRole: {
       type: String,
-      enum: ["owner", "admin", "hiring_manager", "viewer"],
+      enum: ["owner", "admin", "hiring_manager", "accounting", "finance_viewer", "viewer"],
       required: true,
+    },
+    companyRoles: {
+      type: [{ type: String, enum: ["owner", "admin", "hiring_manager", "accounting", "finance_viewer", "viewer"] }],
+      default: [],
     },
     jobAccess: [{ type: Schema.Types.ObjectId, ref: "Job" }],
     permissions: {
@@ -55,6 +94,10 @@ const CompanyUserSchema = new Schema<ICompanyUser>(
       canManageTeam: { type: Boolean, default: false },
       canViewAnalytics: { type: Boolean, default: false },
       canExportData: { type: Boolean, default: false },
+      canManageBilling: { type: Boolean, default: false },
+      canViewReports: { type: Boolean, default: false },
+      canApproveInvoices: { type: Boolean, default: false },
+      canViewCommissions: { type: Boolean, default: false },
     },
     invitedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     inviteToken: { type: String, select: false },

@@ -61,7 +61,7 @@ async function patchHandler(
     permissions?: Record<string, boolean>;
   };
 
-  if (companyRole && !canModifyRole(callerMember.companyRole, companyRole as "admin" | "hiring_manager" | "viewer")) {
+  if (companyRole && !canModifyRole(callerMember.companyRole, companyRole as "admin" | "hiring_manager" | "accounting" | "finance_viewer" | "viewer")) {
     return NextResponse.json({ error: "Cannot assign this role" }, { status: 403 });
   }
 

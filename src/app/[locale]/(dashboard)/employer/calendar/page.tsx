@@ -140,7 +140,7 @@ export default function EmployerCalendarPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="page-container space-y-6">
       {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">

@@ -91,10 +91,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     },
   ]);
 
-  const summary = { pending: 0, approved: 0, paid: 0, disputed: 0, currency: (currency && currency !== "all") ? currency : ((await SystemSettings.findOne().lean())?.defaultCurrency ?? "AED") };
+  const summary: Record<string, unknown> = { pending: 0, approved: 0, paid: 0, disputed: 0, clawed_back: 0, currency: (currency && currency !== "all") ? currency : ((await SystemSettings.findOne().lean())?.defaultCurrency ?? "AED") };
   for (const row of summaryAgg) {
     const s = row._id as string;
-    if (s === "pending" || s === "approved" || s === "paid" || s === "disputed") {
+    if (s === "pending" || s === "approved" || s === "paid" || s === "disputed" || s === "clawed_back") {
       summary[s] = row.total;
       summary.currency = row.currency ?? summary.currency;
     }

@@ -185,6 +185,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
           directory: {
             teamSize: profile?.agentIds?.length ?? 0,
             regionNames,
+            currencyCode: profile?.currencyCode ?? "AED",
             availability,
             availabilityReason:
               availability === "inactive"

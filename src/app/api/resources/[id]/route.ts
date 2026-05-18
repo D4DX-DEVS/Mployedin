@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import Resource, { RESOURCE_CATEGORIES, RESOURCE_ACCESS_LEVELS } from "@/models/Resource";
+import ResourceDownloadLog from "@/models/ResourceDownloadLog";
 import { uploadBuffer, deleteFile, type UploadFolder } from "@/lib/storage/spaces";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
@@ -64,6 +65,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     const isActive = formData.get("isActive");
     const sortOrder = formData.get("sortOrder");
     const versionNote = formData.get("versionNote") as string | null;
+    const nextReviewDateRaw = formData.get("nextReviewDate") as string | null;
 
     if (title) item.title = title.trim();
     if (description !== null) item.description = description?.trim();
@@ -72,6 +74,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     if (accessLevel && RESOURCE_ACCESS_LEVELS.includes(accessLevel as never)) item.accessLevel = accessLevel as typeof item.accessLevel;
     if (isActive !== null) item.isActive = isActive === "true";
     if (sortOrder !== null) item.sortOrder = Number(sortOrder);
+    if (nextReviewDateRaw !== null) item.nextReviewDate = nextReviewDateRaw ? new Date(nextReviewDateRaw) : undefined;
 
     const fileEntries = formData.getAll("files");
     const newFiles = [];
@@ -119,6 +122,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     if (body.accessLevel && RESOURCE_ACCESS_LEVELS.includes(body.accessLevel)) item.accessLevel = body.accessLevel;
     if (body.isActive !== undefined) item.isActive = body.isActive;
     if (body.sortOrder !== undefined) item.sortOrder = body.sortOrder;
+    if (body.nextReviewDate !== undefined) item.nextReviewDate = body.nextReviewDate ? new Date(body.nextReviewDate) : null;
     if (body.removeFileKeys && Array.isArray(body.removeFileKeys)) {
       for (const key of body.removeFileKeys) {
         try { await deleteFile(key); } catch { /* ignore storage errors */ }
@@ -133,14 +137,29 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
   return NextResponse.json(item);
 }
 
-/** POST /api/resources/[id]/download — track download count */
-async function postHandler(_req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
+/** POST /api/resources/[id] — track download count + log entry */
+async function postHandler(req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
   if (!["admin", "super_agent", "agent"].includes(ctx.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   await connectDB();
-  await Resource.findByIdAndUpdate(params?.id, { $inc: { downloadCount: 1 } });
+  const id = params?.id;
+  await Resource.findByIdAndUpdate(id, { $inc: { downloadCount: 1 } });
+
+  // Log individual download
+  try {
+    const body = await req.json().catch(() => ({}));
+    if (body.fileKey && body.fileName) {
+      await ResourceDownloadLog.create({
+        resourceId: id,
+        userId: ctx.userId,
+        fileKey: body.fileKey,
+        fileName: body.fileName,
+      });
+    }
+  } catch { /* best-effort logging */ }
+
   return NextResponse.json({ success: true });
 }
 

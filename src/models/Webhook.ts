@@ -6,7 +6,9 @@ export type WebhookEvent =
   | "invoice.credit_note"
   | "commission.created"
   | "commission.approved"
-  | "commission.paid";
+  | "commission.paid"
+  | "commission.disputed"
+  | "commission.clawed_back";
 
 export const WEBHOOK_EVENTS: WebhookEvent[] = [
   "invoice.created",
@@ -15,6 +17,8 @@ export const WEBHOOK_EVENTS: WebhookEvent[] = [
   "commission.created",
   "commission.approved",
   "commission.paid",
+  "commission.disputed",
+  "commission.clawed_back",
 ];
 
 export interface IWebhookDelivery {

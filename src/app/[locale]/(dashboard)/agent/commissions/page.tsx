@@ -24,6 +24,9 @@ interface Commission {
   status: string;
   type: string;
   placementId?: { jobTitle?: string; candidateName?: string };
+  disputeReason?: string;
+  clawbackAmount?: number;
+  clawbackReason?: string;
   createdAt: string;
   paidAt?: string;
 }
@@ -33,6 +36,7 @@ interface Summary {
   approved: number;
   paid: number;
   disputed: number;
+  clawed_back: number;
   currency: string;
 }
 

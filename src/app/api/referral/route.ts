@@ -39,9 +39,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
     // Ensure a ReferralLink document exists so it shows on the Referral Links page
     let rl = await ReferralLink.findOne({ code: agent.referralCode });
-    if (!rl) {
+    if (!rl || !rl.isActive) {
+      // If old link is disabled or doesn't exist, generate a fresh link
+      const newCode = generateReferralCode();
+      agent.referralCode = newCode;
+      await agent.save();
+
       rl = await ReferralLink.create({
-        code: agent.referralCode,
+        code: newCode,
         createdBy: ctx.userId,
         creatorRole: "agent",
         agentId: agent._id,
@@ -79,9 +84,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     }
 
     let rl = await ReferralLink.findOne({ code: sa.referralCode });
-    if (!rl) {
+    if (!rl || !rl.isActive) {
+      // If old link is disabled or doesn't exist, generate a fresh link
+      const newCode = generateReferralCode();
+      sa.referralCode = newCode;
+      await sa.save();
+
       rl = await ReferralLink.create({
-        code: sa.referralCode,
+        code: newCode,
         createdBy: ctx.userId,
         creatorRole: "super_agent",
         superAgentId: sa._id,

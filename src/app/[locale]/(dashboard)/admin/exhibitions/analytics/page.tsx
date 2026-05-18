@@ -232,20 +232,20 @@ export default function AdminExhibitionAnalyticsPage() {
   const strongestMonth = monthly.length > 0 ? [...monthly].sort((left, right) => right.total - left.total)[0] : null;
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <section className="overflow-hidden rounded-3xl border bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 text-white shadow-sm">
-        <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1.4fr_0.9fr] lg:px-8">
+    <div className="page-container space-y-6">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/10">Admin Analytics</Badge>
-              <Badge className="border-sky-400/25 bg-sky-400/10 text-sky-100 hover:bg-sky-400/10">Year {data.year}</Badge>
+              <Badge className="border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">Admin Analytics</Badge>
+              <Badge className="border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/10">Year {data.year}</Badge>
             </div>
             <div>
-              <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight">
-                <BarChart3 className="h-7 w-7 text-sky-300" />
+              <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground">
+                <BarChart3 className="h-7 w-7 text-primary" />
                 Exhibition performance across the platform
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-slate-300">
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
                 Monitor exhibition demand, approval flow, spend, and hiring outcomes across all agents from one operations view.
               </p>
             </div>
@@ -268,11 +268,11 @@ export default function AdminExhibitionAnalyticsPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+          <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-300">Scope</p>
-                <p className="mt-1 text-lg font-semibold">Platform summary</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Scope</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">Platform summary</p>
               </div>
               <div className="min-w-[10rem]">
                 <SearchableSelect
@@ -284,10 +284,10 @@ export default function AdminExhibitionAnalyticsPage() {
               </div>
             </div>
             <div className="mt-5 space-y-4">
-              <div className="rounded-2xl bg-black/20 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-300">Approved budget</p>
-                <p className="mt-2 text-2xl font-semibold">{formatCurrency(kpis.totalApprovedBudget, currencyCode)}</p>
-                <p className="mt-1 text-xs text-slate-300">
+              <div className="rounded-2xl border border-border/60 bg-muted/40 p-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Approved budget</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{formatCurrency(kpis.totalApprovedBudget, currencyCode)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Actual spend {formatCurrency(kpis.totalActualSpend, currencyCode)}
                 </p>
               </div>
@@ -330,7 +330,7 @@ export default function AdminExhibitionAnalyticsPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Monthly request flow</h2>
@@ -358,7 +358,7 @@ export default function AdminExhibitionAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Request pipeline</h2>
@@ -384,7 +384,7 @@ export default function AdminExhibitionAnalyticsPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Participation mix</h2>
@@ -443,7 +443,7 @@ export default function AdminExhibitionAnalyticsPage() {
           )}
         </div>
 
-        <div className="rounded-3xl border bg-card p-5 shadow-sm">
+        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Top exhibiting agents</h2>
@@ -518,10 +518,10 @@ export default function AdminExhibitionAnalyticsPage() {
 
 function HeroStat({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-300">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-      <p className="mt-1 text-xs text-slate-300">{sub}</p>
+    <div className="workspace-glass-panel rounded-2xl p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
     </div>
   );
 }
@@ -538,11 +538,11 @@ function MetricCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-3xl border bg-card p-5 shadow-sm">
+    <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-          <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
           <p className="mt-2 text-sm text-muted-foreground">{sub}</p>
         </div>
         <div className="rounded-2xl bg-primary/10 p-3 text-primary">{icon}</div>
@@ -553,9 +553,9 @@ function MetricCard({
 
 function MiniMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-      <p className="text-xs uppercase tracking-[0.18em] text-slate-300">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+    <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
     </div>
   );
 }

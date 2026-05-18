@@ -1,14 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Inbox, Plus, X } from "lucide-react";
+import { Search, Inbox, Plus, X, Edit2, Trash2, UserCheck, MapPin } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+
+interface SuperAgentOption { _id: string; name: string; email: string; }
 
 interface Territory {
   _id: string;
   name: string;
-  superAgentId?: { name?: string; email?: string };
+  superAgentId?: { _id?: string; name?: string; email?: string } | string | null;
   countries?: string[];
   createdAt?: string;
 }
@@ -19,9 +23,18 @@ export default function AdminTerritoryPage() {
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", countries: [] as string[] });
+  const [form, setForm] = useState({ name: "", countries: [] as string[], superAgentId: "" });
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [superAgents, setSuperAgents] = useState<SuperAgentOption[]>([]);
+
+  // Edit dialog
+  const [editTerritory, setEditTerritory] = useState<Territory | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", countries: [] as string[], superAgentId: "" });
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Delete confirm
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchTerritories = useCallback(async () => {
     setLoading(true);
@@ -37,29 +50,90 @@ export default function AdminTerritoryPage() {
 
   useEffect(() => { fetchTerritories(); }, [fetchTerritories]);
 
+  // Fetch super-agents for assignment dropdown
+  useEffect(() => {
+    fetch("/api/admin/users?role=super_agent&limit=200")
+      .then((r) => r.ok ? r.json() : { users: [] })
+      .then((d) => setSuperAgents((d.users ?? d.items ?? []).map((u: { _id: string; name?: string; email?: string }) => ({ _id: u._id, name: u.name ?? "", email: u.email ?? "" }))))
+      .catch(() => {});
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const payload: Record<string, unknown> = { name: form.name, countries: form.countries };
+    if (form.superAgentId) payload.superAgentId = form.superAgentId;
     const res = await fetch("/api/admin/territories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
+      toast.success("Territory created");
       setShowForm(false);
-      setForm({ name: "", countries: [] });
+      setForm({ name: "", countries: [], superAgentId: "" });
       fetchTerritories();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error ?? "Failed to create");
     }
     setSaving(false);
   };
 
-  const toggleCountry = (country: string) => {
-    setForm((prev) => ({
+  const toggleCountry = (country: string, target: "form" | "edit") => {
+    const setter = target === "form" ? setForm : setEditForm;
+    setter((prev) => ({
       ...prev,
       countries: prev.countries.includes(country)
         ? prev.countries.filter((c) => c !== country)
         : [...prev.countries, country],
     }));
+  };
+
+  const openEdit = (t: Territory) => {
+    const saId = typeof t.superAgentId === "object" && t.superAgentId?._id ? t.superAgentId._id : "";
+    setEditTerritory(t);
+    setEditForm({ name: t.name, countries: t.countries ?? [], superAgentId: saId });
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTerritory) return;
+    setEditSaving(true);
+    const payload: Record<string, unknown> = { name: editForm.name, countries: editForm.countries };
+    payload.superAgentId = editForm.superAgentId || null;
+    const res = await fetch(`/api/admin/territories/${editTerritory._id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      toast.success("Territory updated");
+      setEditTerritory(null);
+      fetchTerritories();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error ?? "Failed to update");
+    }
+    setEditSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const res = await fetch(`/api/admin/territories/${deleteId}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Territory deleted");
+      setDeleteId(null);
+      fetchTerritories();
+    } else {
+      toast.error("Failed to delete");
+    }
+  };
+
+  const getSaName = (sa: Territory["superAgentId"]) => {
+    if (!sa) return "Unassigned";
+    if (typeof sa === "string") return "Assigned";
+    return sa.name ?? sa.email ?? "Assigned";
   };
 
   return (
@@ -68,8 +142,8 @@ export default function AdminTerritoryPage() {
         {/* Compact header row */}
         <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Territory Management</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">Manage geographic territories and super-agent assignments.</p>
+            <h1 className="text-lg font-semibold text-foreground flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> Territory Management</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">Manage geographic territories, assign super-agents, and control lead routing.</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -110,18 +184,22 @@ export default function AdminTerritoryPage() {
                 <label className="text-xs font-medium text-muted-foreground">Countries</label>
                 <div className="flex flex-wrap gap-2">
                   {GCC_COUNTRIES.map((c) => (
-                    <Button
-                      key={c}
-                      type="button"
-                      variant={form.countries.includes(c) ? "default" : "outline"}
-                      size="xs"
-                      onClick={() => toggleCountry(c)}
-                      className="rounded-full"
-                    >
-                      {c}
-                    </Button>
+                    <Button key={c} type="button" variant={form.countries.includes(c) ? "default" : "outline"} size="xs" onClick={() => toggleCountry(c, "form")} className="rounded-full">{c}</Button>
                   ))}
                 </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Assign Super-Agent</label>
+                <select
+                  value={form.superAgentId}
+                  onChange={(e) => setForm((p) => ({ ...p, superAgentId: e.target.value }))}
+                  className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
+                >
+                  <option value="">— No assignment —</option>
+                  {superAgents.map((sa) => (
+                    <option key={sa._id} value={sa._id}>{sa.name} ({sa.email})</option>
+                  ))}
+                </select>
               </div>
               <Button type="submit" size="sm" disabled={saving} className="bg-sky-600 hover:bg-sky-700 text-white">
                 {saving ? "Saving…" : "Create Territory"}
@@ -147,17 +225,23 @@ export default function AdminTerritoryPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {territories.map((t) => (
-                <div key={t._id} className="rounded-xl border border-border/60 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-sm">
+                <div key={t._id} className="group rounded-xl border border-border/60 bg-card p-4 transition-all hover:border-primary/40 hover:shadow-sm">
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold text-foreground">{t.name}</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Manager: {(t.superAgentId as { name?: string })?.name ?? "Unassigned"}
+                      <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                        <UserCheck className="h-3 w-3" />
+                        {getSaName(t.superAgentId)}
                       </p>
                     </div>
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      Active
-                    </span>
+                    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Button variant="ghost" size="xs" onClick={() => openEdit(t)} title="Edit">
+                        <Edit2 className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                      <Button variant="ghost" size="xs" onClick={() => setDeleteId(t._id)} title="Delete">
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                   {t.countries?.length ? (
                     <div className="mt-3 flex flex-wrap gap-1">
@@ -165,13 +249,70 @@ export default function AdminTerritoryPage() {
                         <span key={c} className="rounded-full bg-muted px-2 py-0.5 text-xs">{c}</span>
                       ))}
                     </div>
-                  ) : null}
+                  ) : (
+                    <p className="mt-3 text-xs text-muted-foreground/50">No countries assigned</p>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
       </section>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editTerritory} onOpenChange={(open) => { if (!open) setEditTerritory(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Territory</DialogTitle>
+            <DialogDescription>Update territory details and super-agent assignment.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Name</label>
+              <Input value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} required className="h-9" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Countries</label>
+              <div className="flex flex-wrap gap-2">
+                {GCC_COUNTRIES.map((c) => (
+                  <Button key={c} type="button" variant={editForm.countries.includes(c) ? "default" : "outline"} size="xs" onClick={() => toggleCountry(c, "edit")} className="rounded-full">{c}</Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Assign Super-Agent</label>
+              <select
+                value={editForm.superAgentId}
+                onChange={(e) => setEditForm((p) => ({ ...p, superAgentId: e.target.value }))}
+                className="h-9 w-full rounded-lg border border-border bg-background px-3 text-sm"
+              >
+                <option value="">— Unassigned —</option>
+                {superAgents.map((sa) => (
+                  <option key={sa._id} value={sa._id}>{sa.name} ({sa.email})</option>
+                ))}
+              </select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditTerritory(null)}>Cancel</Button>
+              <Button type="submit" disabled={editSaving}>{editSaving ? "Saving…" : "Save"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Territory</DialogTitle>
+            <DialogDescription>This will permanently remove the territory. Leads already routed to it will keep their assignment.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

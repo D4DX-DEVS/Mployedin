@@ -6,7 +6,7 @@ import Lead from "@/models/Lead";
 import { escapeRegex } from "@/lib/security/sanitize";
 
 const VALID_STATUSES = new Set(["new", "contacted", "interested", "negotiating", "converted", "lost"]);
-const VALID_SORT_FIELDS = new Set(["createdAt", "companyName", "status", "followUpAt", "country", "industry"]);
+const VALID_SORT_FIELDS = new Set(["createdAt", "companyName", "status", "score", "followUpAt", "country", "industry"]);
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
@@ -27,6 +27,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const followUpTo = searchParams.get("followUpTo");
   const hasNotes = searchParams.get("hasNotes");
   const hasFollowUp = searchParams.get("hasFollowUp");
+  const exhibitionId = searchParams.get("exhibitionId");
   const sortBy = searchParams.get("sortBy") ?? "createdAt";
   const sortOrder = searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
@@ -48,6 +49,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   if (country) filter.country = { $regex: escapeRegex(country), $options: "i" };
   if (industry) filter.industry = { $regex: escapeRegex(industry), $options: "i" };
   if (source) filter.source = { $regex: escapeRegex(source), $options: "i" };
+  if (exhibitionId) filter.exhibitionId = exhibitionId;
 
   // Date range filters
   if (dateFrom || dateTo) {

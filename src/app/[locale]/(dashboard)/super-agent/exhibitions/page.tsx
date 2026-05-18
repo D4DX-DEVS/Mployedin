@@ -183,8 +183,19 @@ export default function SuperAgentExhibitionsPage() {
     setReviewItem(item); setReviewAction(action); setReviewNote(""); setApprovedBudget(item.approvedBudget?.toString() ?? item.estimatedBudget?.toString() ?? "");
   };
 
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString();
-  const dayCount = (s: string, e: string) => Math.max(1, Math.ceil((new Date(e).getTime() - new Date(s).getTime()) / 86400000) + 1);
+  const fmtDate = (d: string | undefined | null) => {
+    if (!d) return "—";
+    const parsed = new Date(d);
+    if (isNaN(parsed.getTime())) return "—";
+    return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  };
+  const dayCount = (s: string | undefined | null, e: string | undefined | null) => {
+    if (!s || !e) return null;
+    const start = new Date(s);
+    const end = new Date(e);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1);
+  };
 
   // Stats
   const pendingCount = items.filter((i) => i.status === "submitted").length;
@@ -206,15 +217,15 @@ export default function SuperAgentExhibitionsPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { label: "Total Requests", value: items.length, color: "text-gray-700 dark:text-gray-300" },
-          { label: "Pending Review", value: pendingCount + reviewCount, color: "text-amber-600" },
-          { label: "Approved", value: approvedCount, color: "text-emerald-600" },
-          { label: "Budget Requested", value: `${totalBudgetRequested.toLocaleString()}`, color: "text-blue-600" },
-          { label: "Budget Approved", value: `${totalBudgetApproved.toLocaleString()}`, color: "text-teal-600" },
+          { label: "Total Requests", value: items.length, color: "text-slate-700 dark:text-slate-200", bg: "from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/30" },
+          { label: "Pending Review", value: pendingCount + reviewCount, color: "text-amber-600 dark:text-amber-400", bg: "from-amber-50 to-white dark:from-amber-950/40 dark:to-amber-900/10" },
+          { label: "Approved", value: approvedCount, color: "text-emerald-600 dark:text-emerald-400", bg: "from-emerald-50 to-white dark:from-emerald-950/40 dark:to-emerald-900/10" },
+          { label: "Budget Requested", value: `${totalBudgetRequested.toLocaleString()}`, color: "text-blue-600 dark:text-blue-400", bg: "from-blue-50 to-white dark:from-blue-950/40 dark:to-blue-900/10" },
+          { label: "Budget Approved", value: `${totalBudgetApproved.toLocaleString()}`, color: "text-teal-600 dark:text-teal-400", bg: "from-teal-50 to-white dark:from-teal-950/40 dark:to-teal-900/10" },
         ].map((s) => (
-          <div key={s.label} className="rounded-lg border bg-card p-4">
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+          <div key={s.label} className={`rounded-xl border bg-gradient-to-br ${s.bg} p-4 shadow-sm transition-shadow hover:shadow-md`}>
+            <p className={`text-2xl font-bold tracking-tight ${s.color}`}>{s.value}</p>
+            <p className="mt-1 text-xs font-medium text-muted-foreground">{s.label}</p>
           </div>
         ))}
       </div>
@@ -231,10 +242,21 @@ export default function SuperAgentExhibitionsPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground"><Clock className="h-5 w-5 animate-spin mr-2" /> {tc("loading")}</div>
+        <div className="overflow-hidden rounded-xl border shadow-sm">
+          <div className="bg-gradient-to-r from-muted/80 to-muted/40 px-4 py-3.5"><div className="h-4 w-48 rounded bg-muted animate-pulse" /></div>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className={`flex items-center gap-4 px-4 py-4 border-b last:border-0 ${i % 2 === 0 ? "bg-background" : "bg-muted/20"}`}>
+              <div className="h-4 w-36 rounded bg-muted/60 animate-pulse" />
+              <div className="hidden md:block h-4 w-28 rounded bg-muted/40 animate-pulse" />
+              <div className="h-4 w-24 rounded bg-muted/50 animate-pulse" />
+              <div className="h-5 w-16 rounded-full bg-muted/40 animate-pulse" />
+              <div className="ml-auto h-7 w-20 rounded-lg bg-muted/30 animate-pulse" />
+            </div>
+          ))}
+        </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <Inbox className="h-12 w-12 mb-3 opacity-40" /><p>No exhibition requests found</p>
+        <div className="flex flex-col items-center justify-center rounded-xl border py-16 text-muted-foreground">
+          <Inbox className="h-12 w-12 mb-3 opacity-40" /><p className="text-sm">No exhibition requests found</p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
@@ -304,7 +326,7 @@ export default function SuperAgentExhibitionsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div><span className="text-muted-foreground">Agent:</span> <strong>{detailItem.agentId?.name}</strong></div>
                 <div><span className="text-muted-foreground">Venue:</span> {detailItem.venue ?? "â€”"}</div>
-                <div><span className="text-muted-foreground">Dates:</span> {fmtDate(detailItem.eventStartDate)} â€“ {fmtDate(detailItem.eventEndDate)} ({dayCount(detailItem.eventStartDate, detailItem.eventEndDate)}d)</div>
+              <div><span className="text-muted-foreground">Dates:</span> {fmtDate(detailItem.eventStartDate)}{detailItem.eventEndDate ? ` – ${fmtDate(detailItem.eventEndDate)}` : ""}{dayCount(detailItem.eventStartDate, detailItem.eventEndDate) ? ` (${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)}d)` : ""}</div>
                 <div><span className="text-muted-foreground">Organizer:</span> {detailItem.organizerName ?? "â€”"}</div>
                 <div><span className="text-muted-foreground">Budget Requested:</span> {detailItem.budgetCurrency} {detailItem.estimatedBudget?.toLocaleString()}</div>
                 <div><span className="text-muted-foreground">Budget Approved:</span> {detailItem.approvedBudget ? `${detailItem.budgetCurrency} ${detailItem.approvedBudget.toLocaleString()}` : "â€”"}</div>
