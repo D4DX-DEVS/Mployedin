@@ -365,10 +365,205 @@ export async function enrichProfile(
 
 /* ------------------------------------------------------------------ */
 /*  Batch enrich multiple profiles                                     */
+/*  Optimized: uses aggregate pipelines to count all agents in one     */
+/*  query per collection instead of N queries per agent per month.     */
 /* ------------------------------------------------------------------ */
+
+async function batchCalcEmployerByMonth(
+  agentDocIds: string[],
+  year: number
+): Promise<Map<string, Map<number, number>>> {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year, 11, 31, 23, 59, 59, 999);
+
+  const results = await Employer.aggregate([
+    { $match: { agentId: { $in: agentDocIds }, createdAt: { $gte: start, $lte: end } } },
+    { $group: { _id: { agentId: "$agentId", month: { $month: "$createdAt" } }, count: { $sum: 1 } } },
+  ]);
+
+  const map = new Map<string, Map<number, number>>();
+  for (const r of results) {
+    const agentId = String(r._id.agentId);
+    if (!map.has(agentId)) map.set(agentId, new Map());
+    map.get(agentId)!.set(r._id.month, r.count);
+  }
+  return map;
+}
+
+async function batchCalcEmployeeByMonth(
+  agentDocIds: string[],
+  year: number
+): Promise<Map<string, Map<number, number>>> {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year, 11, 31, 23, 59, 59, 999);
+
+  const results = await Placement.aggregate([
+    { $match: { agentId: { $in: agentDocIds }, createdAt: { $gte: start, $lte: end } } },
+    { $group: { _id: { agentId: "$agentId", month: { $month: "$createdAt" } }, count: { $sum: 1 } } },
+  ]);
+
+  const map = new Map<string, Map<number, number>>();
+  for (const r of results) {
+    const agentId = String(r._id.agentId);
+    if (!map.has(agentId)) map.set(agentId, new Map());
+    map.get(agentId)!.set(r._id.month, r.count);
+  }
+  return map;
+}
+
+async function batchCalcFinanceByMonth(
+  agentDocIds: string[],
+  year: number
+): Promise<Map<string, Map<number, number>>> {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year, 11, 31, 23, 59, 59, 999);
+
+  const results = await Commission.aggregate([
+    { $match: { agentId: { $in: agentDocIds }, status: { $in: ["approved", "paid"] }, createdAt: { $gte: start, $lte: end } } },
+    { $group: { _id: { agentId: "$agentId", month: { $month: "$createdAt" } }, total: { $sum: "$amount" } } },
+  ]);
+
+  const map = new Map<string, Map<number, number>>();
+  for (const r of results) {
+    const agentId = String(r._id.agentId);
+    if (!map.has(agentId)) map.set(agentId, new Map());
+    map.get(agentId)!.set(r._id.month, r.total);
+  }
+  return map;
+}
 
 export async function enrichProfiles(
   profiles: Record<string, unknown>[]
 ): Promise<EnrichedProfile[]> {
-  return Promise.all(profiles.map(enrichProfile));
+  if (profiles.length === 0) return [];
+  await connectDB();
+
+  // Check if all profiles are agents (common case for super-agent team view)
+  const allAgentRole = profiles.every((p) => p.assigneeRole === "agent");
+
+  if (!allAgentRole || profiles.length <= 1) {
+    // Fallback to individual enrichment for mixed roles or single profiles
+    return Promise.all(profiles.map(enrichProfile));
+  }
+
+  // Batch approach: resolve all agent doc IDs in one query
+  const userIds = [...new Set(profiles.map((p) => String(p.assigneeId)))];
+  const year = profiles[0].year as number;
+
+  const agents = await Agent.find({ userId: { $in: userIds } })
+    .select("_id userId")
+    .lean();
+  const userToAgentId = new Map(agents.map((a) => [String(a.userId), String(a._id)]));
+  const agentIdToUserId = new Map(agents.map((a) => [String(a._id), String(a.userId)]));
+  const agentDocIds = agents.map((a) => String(a._id));
+
+  // 3 aggregate queries total (instead of 3 × 12 × N individual queries)
+  const [employerMap, employeeMap, financeMap] = await Promise.all([
+    batchCalcEmployerByMonth(agentDocIds, year),
+    batchCalcEmployeeByMonth(agentDocIds, year),
+    batchCalcFinanceByMonth(agentDocIds, year),
+  ]);
+
+  // Helper to sum all months for an agent
+  function sumAllMonths(monthMap: Map<number, number> | undefined): number {
+    if (!monthMap) return 0;
+    let total = 0;
+    for (const v of monthMap.values()) total += v;
+    return total;
+  }
+
+  return profiles.map((profile) => {
+    const userId = String(profile.assigneeId);
+    const agentDocId = userToAgentId.get(userId) ?? "";
+    const monthlyTargets = (profile.monthlyTargets ?? []) as IMonthlyTarget[];
+
+    const empMonths = employerMap.get(agentDocId);
+    const emplMonths = employeeMap.get(agentDocId);
+    const finMonths = financeMap.get(agentDocId);
+
+    const employerAchieved = sumAllMonths(empMonths);
+    const employeeAchieved = sumAllMonths(emplMonths);
+    const financeAchieved = sumAllMonths(finMonths);
+
+    const empTarget = (profile.employerTarget as number) ?? 0;
+    const emplTarget = (profile.employeeTarget as number) ?? 0;
+    const finTarget = (profile.financeTarget as number) ?? 0;
+
+    const employerProgress = pct(employerAchieved, empTarget);
+    const employeeProgress = pct(employeeAchieved, emplTarget);
+    const financeProgress = pct(financeAchieved, finTarget);
+    const overallProgress = calculateOverallTargetProgress([
+      { target: empTarget, progress: employerProgress },
+      { target: emplTarget, progress: employeeProgress },
+      { target: finTarget, progress: financeProgress },
+    ]);
+
+    // Monthly achievements from batch data
+    const monthlyAchievements: MonthlyAchievement[] = monthlyTargets.map((mt) => {
+      const ea = empMonths?.get(mt.month) ?? 0;
+      const emA = emplMonths?.get(mt.month) ?? 0;
+      const fA = finMonths?.get(mt.month) ?? 0;
+      const ep = mt.employerTarget > 0 ? Math.min(Math.round((ea / mt.employerTarget) * 100), 999) : 0;
+      const emp = mt.employeeTarget > 0 ? Math.min(Math.round((emA / mt.employeeTarget) * 100), 999) : 0;
+      const fp = mt.financeTarget > 0 ? Math.min(Math.round((fA / mt.financeTarget) * 100), 999) : 0;
+      const monthOverall = calculateOverallTargetProgress([
+        { target: mt.employerTarget, progress: ep },
+        { target: mt.employeeTarget, progress: emp },
+        { target: mt.financeTarget, progress: fp },
+      ]);
+      return {
+        month: mt.month,
+        employerTarget: mt.employerTarget,
+        employeeTarget: mt.employeeTarget,
+        financeTarget: mt.financeTarget,
+        employerAchieved: ea,
+        employeeAchieved: emA,
+        financeAchieved: fA,
+        employerProgress: ep,
+        employeeProgress: emp,
+        financeProgress: fp,
+        overallProgress: monthOverall,
+      };
+    });
+
+    const currentMonth = new Date().getMonth() + 1;
+    const expectedPct = Math.round((currentMonth / 12) * 100);
+    const riskScore: "high" | "medium" | "low" =
+      overallProgress < expectedPct - 20 ? "high" :
+      overallProgress < expectedPct - 10 ? "medium" :
+      "low";
+
+    return {
+      _id: String(profile._id),
+      assigneeId: userId,
+      assigneeRole: "agent",
+      assignedBy: String(profile.assignedBy),
+      year,
+      region: profile.region as string | undefined,
+      employerTarget: empTarget,
+      employeeTarget: emplTarget,
+      financeTarget: finTarget,
+      currency: (profile.currency as string) ?? "AED",
+      distributionStrategy: (profile.distributionStrategy as string) ?? "equal",
+      monthlyTargets,
+      parentProfileId: profile.parentProfileId ? String(profile.parentProfileId) : undefined,
+      notes: profile.notes as string | undefined,
+      status: (profile.status as string) ?? "active",
+      createdAt: String(profile.createdAt),
+      updatedAt: String(profile.updatedAt),
+      employerAchieved,
+      employeeAchieved,
+      financeAchieved,
+      employerProgress,
+      employeeProgress,
+      financeProgress,
+      overallProgress,
+      employerPending: Math.max(0, empTarget - employerAchieved),
+      employeePending: Math.max(0, emplTarget - employeeAchieved),
+      financePending: Math.max(0, finTarget - financeAchieved),
+      riskScore,
+      incentiveTier: getIncentiveTier(overallProgress),
+      monthlyAchievements,
+    } as EnrichedProfile;
+  });
 }

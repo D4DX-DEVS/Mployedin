@@ -10,6 +10,7 @@ import { z } from "zod";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { getSuperAgentOwnRegion, getSuperAgentScope, isRegionSubset } from "@/lib/auth/agentRestrictions";
 import { commonSchemas } from "@/lib/validators";
+import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
@@ -239,6 +240,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       meta: { createdBy: "super_agent" },
       req,
     });
+
+    // Send welcome email to the new agent with credentials
+    const saUser = await User.findById(ctx.userId).select("name").lean();
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
+    const loginUrl = `${baseUrl}/en/login`;
+    sendEmail({
+      to: email,
+      ...EmailTemplates.agentWelcome(name, email, password, saUser?.name ?? "Your Super Agent", loginUrl),
+      source: "agent-creation",
+      category: "system",
+    }).catch((err) =>
+      console.error("[super-agent/agents] Failed to send welcome email:", err)
+    );
 
     return NextResponse.json(
       { success: true, userId: user._id, agentId: agentDoc._id },

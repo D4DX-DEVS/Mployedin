@@ -14,10 +14,16 @@ import {
 } from "@/components/ui/table";
 import {
   AlertCircle, AlertTriangle, Building2, Calendar,
-  Edit2, Eye, Flame, Gauge, Inbox, LayoutGrid, List,
+  Edit2, Eye, Flame, Gauge, GripVertical, Inbox, LayoutGrid, List,
   Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Search,
   Sparkles, Target, Trash2, TrendingUp, User, XCircle,
 } from "lucide-react";
+import {
+  DndContext, DragOverlay, closestCorners, useSensor, useSensors, PointerSensor,
+  type DragStartEvent, type DragEndEvent, type DragOverEvent,
+} from "@dnd-kit/core";
+import { useDroppable, useDraggable } from "@dnd-kit/core";
+import { useRouter } from "next/navigation";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -142,7 +148,7 @@ const LEAD_FIELDS: CrudField[] = [
 
 /* ─── Lead Card (Kanban) ────────────────────────────────────────────────── */
 
-function LeadCard({
+function DraggableLeadCard({
   lead,
   onEdit,
   onScore,
@@ -161,6 +167,53 @@ function LeadCard({
   converting: boolean;
   exhibitions: { _id: string; eventName: string }[];
 }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: lead._id,
+    data: { lead },
+  });
+
+  const style = transform
+    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, opacity: isDragging ? 0.5 : 1 }
+    : undefined;
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <LeadCard
+        lead={lead}
+        onEdit={onEdit}
+        onScore={onScore}
+        onConvert={onConvert}
+        onStatusChange={onStatusChange}
+        scoring={scoring}
+        converting={converting}
+        exhibitions={exhibitions}
+        dragListeners={listeners}
+      />
+    </div>
+  );
+}
+
+function LeadCard({
+  lead,
+  onEdit,
+  onScore,
+  onConvert,
+  onStatusChange,
+  scoring,
+  converting,
+  exhibitions,
+  dragListeners,
+}: {
+  lead: Lead;
+  onEdit: (lead: Lead) => void;
+  onScore: (id: string) => void;
+  onConvert: (lead: Lead) => void;
+  onStatusChange: (id: string, status: LeadStatus) => void;
+  scoring: boolean;
+  converting: boolean;
+  exhibitions: { _id: string; eventName: string }[];
+  dragListeners?: Record<string, unknown>;
+}) {
   const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
   const exhibition = lead.exhibitionId ? exhibitions.find((e) => e._id === lead.exhibitionId) : null;
   const stageIdx = STAGES.indexOf(lead.status);
@@ -171,6 +224,16 @@ function LeadCard({
       className="group relative cursor-pointer rounded-2xl border border-border/60 bg-background p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:border-border hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
       onClick={() => onEdit(lead)}
     >
+      {/* Drag handle */}
+      {dragListeners && (
+        <div
+          {...dragListeners}
+          className="absolute left-1 top-1/2 -translate-y-1/2 cursor-grab rounded p-1 text-muted-foreground/30 opacity-0 transition group-hover:opacity-100 hover:text-muted-foreground active:cursor-grabbing"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-4 w-4" />
+        </div>
+      )}
       {/* Top: Company + Score */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -271,7 +334,7 @@ function LeadCard({
 
 /* ─── Kanban Column ─────────────────────────────────────────────────────── */
 
-function KanbanColumn({
+function DroppableKanbanColumn({
   stage,
   leads,
   onEdit,
@@ -296,11 +359,12 @@ function KanbanColumn({
   exhibitions: { _id: string; eventName: string }[];
   canCreate: boolean;
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `column-${stage}` });
   const config = STAGE_CONFIG[stage];
   const totalRevenue = leads.reduce((sum, l) => sum + (l.expectedRevenue ?? 0), 0);
 
   return (
-    <div className="flex h-full w-[300px] min-w-[300px] flex-col rounded-2xl border border-border/50 bg-muted/30 dark:bg-muted/10">
+    <div className={`flex h-full w-[300px] min-w-[300px] flex-col rounded-2xl border bg-muted/30 transition-colors dark:bg-muted/10 ${isOver ? "border-primary/50 bg-primary/5 dark:bg-primary/10" : "border-border/50"}`}>
       {/* Column Header */}
       <div className={`flex items-center gap-3 rounded-t-2xl border-b px-4 py-3 ${config.bgColor} ${config.borderColor}`}>
         <span className={config.color}>{config.icon}</span>
@@ -329,7 +393,7 @@ function KanbanColumn({
       </div>
 
       {/* Cards */}
-      <div className="flex-1 space-y-3 overflow-y-auto p-3" style={{ maxHeight: "calc(100vh - 340px)" }}>
+      <div ref={setNodeRef} className="flex-1 space-y-3 overflow-y-auto p-3" style={{ maxHeight: "calc(100vh - 340px)" }}>
         {leads.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             <div className={`rounded-full p-3 ${config.bgColor}`}>
@@ -339,7 +403,7 @@ function KanbanColumn({
           </div>
         ) : (
           leads.map((lead) => (
-            <LeadCard
+            <DraggableLeadCard
               key={lead._id}
               lead={lead}
               onEdit={onEdit}
@@ -360,6 +424,7 @@ function KanbanColumn({
 /* ─── Main Page ─────────────────────────────────────────────────────────── */
 
 export default function AgentLeadsPage() {
+  const router = useRouter();
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
@@ -377,8 +442,42 @@ export default function AgentLeadsPage() {
   const [convertingLeadId, setConvertingLeadId] = useState<string | null>(null);
   const [exhibitions, setExhibitions] = useState<{ _id: string; eventName: string }[]>([]);
   const [duplicates, setDuplicates] = useState<{ _id: string; companyName: string; contactEmail?: string; contactPhone?: string; matchType: string; confidence: string; status: string }[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [viewMode, setViewMode] = useState<ViewMode>("board");
+  const [activeDragLead, setActiveDragLead] = useState<Lead | null>(null);
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const dupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // DnD sensors — require 8px drag distance to avoid accidental drags
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const lead = (event.active.data.current as { lead: Lead })?.lead;
+    if (lead) setActiveDragLead(lead);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveDragLead(null);
+    const { active, over } = event;
+    if (!over) return;
+    const overId = String(over.id);
+    if (!overId.startsWith("column-")) return;
+    const newStatus = overId.replace("column-", "") as LeadStatus;
+    const leadId = String(active.id);
+    const lead = leads.find((l) => l._id === leadId);
+    if (!lead || lead.status === newStatus) return;
+    // Optimistic update
+    setLeads((prev) => prev.map((l) => l._id === leadId ? { ...l, status: newStatus } : l));
+    // Persist to API (fire-and-forget, fetchLeads will re-sync)
+    fetch(`/api/leads/${leadId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    }).then((res) => {
+      if (!res.ok) toast.error("Failed to move lead");
+    }).catch(() => toast.error("Failed to move lead"));
+  }, [leads]);
 
   useEffect(() => {
     fetch("/api/exhibitions?limit=200")
@@ -696,27 +795,42 @@ export default function AgentLeadsPage() {
           <span className="ml-2 text-sm text-muted-foreground">Loading pipeline...</span>
         </div>
       ) : viewMode === "board" ? (
-        /* ──── KANBAN BOARD ──── */
-        <section className="overflow-x-auto pb-4">
-          <div className="flex gap-4" style={{ minWidth: "fit-content" }}>
-            {STAGES.filter((s) => !statusFilter || s === statusFilter).map((stage) => (
-              <KanbanColumn
-                key={stage}
-                stage={stage}
-                leads={leadsByStage[stage]}
-                onEdit={openEdit}
-                onScore={scoreLead}
-                onConvert={convertLead}
-                onStatusChange={updateStatus}
-                onAdd={openAdd}
-                scoringLeadId={scoringLeadId}
-                convertingLeadId={convertingLeadId}
-                exhibitions={exhibitions}
-                canCreate={can("leads", "create")}
-              />
-            ))}
-          </div>
-        </section>
+        /* ──── KANBAN BOARD with Drag & Drop ──── */
+        <DndContext
+          sensors={dndSensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <section className="overflow-x-auto pb-4">
+            <div className="flex gap-4" style={{ minWidth: "fit-content" }}>
+              {STAGES.filter((s) => !statusFilter || s === statusFilter).map((stage) => (
+                <DroppableKanbanColumn
+                  key={stage}
+                  stage={stage}
+                  leads={leadsByStage[stage]}
+                  onEdit={openEdit}
+                  onScore={scoreLead}
+                  onConvert={convertLead}
+                  onStatusChange={updateStatus}
+                  onAdd={openAdd}
+                  scoringLeadId={scoringLeadId}
+                  convertingLeadId={convertingLeadId}
+                  exhibitions={exhibitions}
+                  canCreate={can("leads", "create")}
+                />
+              ))}
+            </div>
+          </section>
+          <DragOverlay>
+            {activeDragLead ? (
+              <div className="w-[280px] rotate-2 rounded-2xl border border-primary/50 bg-background p-4 shadow-xl">
+                <h4 className="truncate text-sm font-semibold text-foreground">{activeDragLead.companyName}</h4>
+                <p className="mt-1 text-xs text-muted-foreground">{activeDragLead.contactPerson}</p>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       ) : (
         /* ──── TABLE VIEW ──── */
         <>
@@ -839,7 +953,7 @@ export default function AgentLeadsPage() {
                           <TableCell className="pr-5 text-right">
                             <div className="inline-flex items-center gap-0.5">
                               <button
-                                onClick={() => setDetailLead(lead)}
+                                onClick={() => router.push(`leads/${lead._id}`)}
                                 className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
                                 title="View Details"
                               >

@@ -189,6 +189,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   // Cascade employers fetched from API (for SA/admin when agent is selected)
   const [cascadeEmployers, setCascadeEmployers] = useState<Array<{ _id: string; companyName: string }>>([]);
   const [loadingCascadeEmployers, setLoadingCascadeEmployers] = useState(false);
+  // Duplicate invoice warning
+  const [duplicateWarning, setDuplicateWarning] = useState<{ invoiceNumber: string; status: string } | null>(null);
 
   // ── Step 2: Invoice Details (merged: service + pricing + commission + payment) ──
   const [category, setCategory] = useState("recruitment");
@@ -243,6 +245,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
       setSelectedSuperAgentFilter(""); setSelectedAgentFilter(""); setSelectedEmployerFilter("");
       setSelectedRegionFilter(""); setShowAdvancedFilters(false);
       setCascadeEmployers([]);
+      setDuplicateWarning(null);
       setCategory("recruitment"); setCustomCategory(""); setShowAddType(false); setDescription("");
       setShowAddTaxType(false); setCustomTaxLabel("");
       setShowAddStatus(false); setCustomStatusLabel("");
@@ -546,6 +549,25 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     setSuperAgentRate(0);
   }, [selectedJobId, jobs, category]);
 
+  // Check for duplicate invoice when job + employer are selected
+  useEffect(() => {
+    if (!selectedJobId || !selectedEmployerId) {
+      setDuplicateWarning(null);
+      return;
+    }
+    const params = new URLSearchParams({ jobId: selectedJobId, employerId: selectedEmployerId });
+    fetch(`/api/invoices/check-duplicate?${params}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.exists) {
+          setDuplicateWarning({ invoiceNumber: data.invoiceNumber, status: data.status });
+        } else {
+          setDuplicateWarning(null);
+        }
+      })
+      .catch(() => setDuplicateWarning(null));
+  }, [selectedJobId, selectedEmployerId]);
+
   // Fetch full employer profile by ID for billing auto-fill
   const fetchEmployerById = useCallback(async (empId: string) => {
     try {
@@ -759,7 +781,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
   const canProceed = () => {
     switch (step) {
-      case 1: return !!selectedJobId && !!selectedEmployerId && lineItems.every(li => li.description && li.unitPrice > 0);
+      case 1: return !!selectedJobId && !!selectedEmployerId && !duplicateWarning && lineItems.every(li => li.description && li.unitPrice > 0);
       default: return true;
     }
   };
@@ -878,7 +900,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     </div>
   );
 
-  const sidebarContent = role === "admin" && (
+  const sidebarContent = (role === "admin" || role === "super_agent") && (
     <div className="hidden w-[300px] shrink-0 self-start sticky top-[73px] max-h-[calc(100vh-10rem)] overflow-y-auto bg-muted/20 p-4 lg:block">
       <div className="space-y-4">
         {/* Invoice Summary */}
@@ -1191,6 +1213,21 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
+                    </div>
+                  )}
+
+                  {/* Duplicate invoice warning */}
+                  {duplicateWarning && (
+                    <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
+                      <div className="flex items-start gap-2">
+                        <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Invoice Already Exists</p>
+                          <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">
+                            An active invoice <span className="font-mono font-semibold">{duplicateWarning.invoiceNumber}</span> (status: <span className="capitalize">{duplicateWarning.status.replace(/_/g, " ")}</span>) already exists for this job and employer. Creating another will be rejected.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
   

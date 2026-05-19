@@ -407,6 +407,32 @@ export const EmailTemplates = {
     `,
   }),
 
+  agentWelcome: (agentName: string, email: string, password: string, superAgentName: string, loginUrl: string) => ({
+    subject: "Welcome to MPLOYEDIN – Your Agent Account is Ready",
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #0D6FD8 0%, #0A5BB8 100%); padding: 32px 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">MPLOYEDIN</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Recruitment Agent Portal</p>
+        </div>
+        <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${agentName}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Your recruitment agent account has been created by <strong>${superAgentName}</strong>. You can now start managing leads, employers, and placements on MPLOYEDIN.</p>
+          <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Email:</strong> ${email}</p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Password:</strong> ${password}</p>
+          </div>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${loginUrl}" style="background: #0D6FD8; color: white; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block; box-shadow: 0 2px 4px rgba(13,111,216,0.3);">Log In Now</a>
+          </div>
+          <p style="color: #ef4444; font-size: 14px; font-weight: 600;">Please change your password after your first login.</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+          <p style="color: #6b7280; font-size: 13px; text-align: center; margin: 0;">MPLOYEDIN — Connecting Talent with Opportunity</p>
+        </div>
+      </div>
+    `,
+  }),
+
   passwordReset: (resetUrl: string) => ({
     subject: "Reset Your Password – MPLOYEDIN",
     html: `

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   user.emailVerificationToken = hashedToken;
   await user.save();
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}`;
 
   await sendEmail({

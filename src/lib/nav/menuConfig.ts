@@ -1275,6 +1275,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "عرض جميع أنشطة أعضاء الفريق",
           },
           {
+            title: "Agent Activity History",
+            titleAr: "سجل نشاط الوكيل",
+            href: p("/employer/activity-history"),
+            icon: "History",
+            description: "Actions performed on your behalf by agents & admins",
+            descriptionAr: "الإجراءات التي تمت نيابة عنك من قبل الوكلاء والمسؤولين",
+          },
+          {
             title: "Company Settings",
             titleAr: "إعدادات الشركة",
             href: p("/employer/settings"),

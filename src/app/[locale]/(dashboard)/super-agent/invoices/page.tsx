@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -21,7 +23,6 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
-import { InvoiceBuilder } from "@/components/features/invoices/InvoiceBuilder";
 import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
 
@@ -72,6 +73,8 @@ const CATEGORY_OPTIONS = [
 ];
 
 export default function SuperAgentInvoicesPage() {
+  const router = useRouter();
+  const locale = useLocale();
   const [activeView, setActiveView] = useState<"table" | "analytics">("table");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +86,6 @@ export default function SuperAgentInvoicesPage() {
   const [displayCurrency, setDisplayCurrency] = useState("AED");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
-  const [showBuilder, setShowBuilder] = useState(false);
   const [analyticsPeriod, setAnalyticsPeriod] = useState("30d");
   const { data: analyticsData, loading: analyticsLoading, refresh: refreshAnalytics } = useInvoiceAnalytics(analyticsPeriod);
 
@@ -163,7 +165,7 @@ export default function SuperAgentInvoicesPage() {
         }
         right={
           <div className="flex items-center gap-2">
-            <Button onClick={() => setShowBuilder(true)} className="h-9 gap-1.5 rounded-xl text-xs font-semibold">
+            <Button onClick={() => router.push(`/${locale}/super-agent/invoices/new`)} className="h-9 gap-1.5 rounded-xl text-xs font-semibold">
               <FileText className="h-3.5 w-3.5" /> Create Invoice
             </Button>
             <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
@@ -308,15 +310,6 @@ export default function SuperAgentInvoicesPage() {
         role="super_agent"
       />
 
-      {/* Invoice Builder */}
-      <InvoiceBuilder
-        open={showBuilder}
-        onClose={() => setShowBuilder(false)}
-        onSuccess={fetchInvoices}
-        defaultCurrency={displayCurrency}
-        searchScope="admin"
-        role="super_agent"
-      />
     </div>
   );
 }

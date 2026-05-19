@@ -4,6 +4,7 @@ import { canAccess } from "@/lib/permissions/matrix";
 import { connectDB } from "@/lib/db/mongoose";
 import TenantViewSession from "@/models/TenantViewSession";
 import { verifyTenantCookie, TENANT_COOKIE_NAME } from "@/lib/security/tenantCookie";
+import { logActivity } from "@/lib/audit/log";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import type { CompanyRole } from "@/models/CompanyUser";
 
@@ -78,13 +79,18 @@ export function withAuth(
     // Routes like /api/tenant/switch must use skipTenantView to avoid circular
     // proxying (e.g. "exit" call would fail because ctx.role becomes "employer").
     //
-    // Admin API routes (/api/admin/*) are always exempt from tenant view so that
-    // admins can browse employer workspaces without losing access to admin endpoints.
+    // Role-specific API routes are always exempt from tenant view so that
+    // admins/super-agents/agents can browse employer workspaces without losing
+    // access to their own dashboard endpoints.
     let resolvedTenantEmployerId: string | null = null;
     let resolvedTenantEmployerUserId: string | null = null;
 
-    const isAdminApi = req.nextUrl.pathname.startsWith("/api/admin");
-    if (!skipTenantView && !isAdminApi && role !== "employer") {
+    const pathname = req.nextUrl.pathname;
+    const isRoleSpecificApi =
+      pathname.startsWith("/api/admin") ||
+      pathname.startsWith("/api/super-agent") ||
+      pathname.startsWith("/api/agent");
+    if (!skipTenantView && !isRoleSpecificApi && role !== "employer") {
       const cookieVal = req.cookies.get(TENANT_COOKIE_NAME)?.value;
       if (cookieVal) {
         const payload = await verifyTenantCookie(
@@ -114,15 +120,14 @@ export function withAuth(
         );
       }
 
-      // ── Write-scoping: agents and super-agents get READ-ONLY access.
-      // Only admin retains full write access during tenant view.
+      // ── Write-scoping: all roles (admin, super_agent, agent) can write
+      // during tenant view, except DELETE which is restricted to admins.
       const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
       const isWriteRequest = WRITE_METHODS.has(req.method);
-      const actorCanWrite = role === "admin"; // only admin can write during tenant view
 
-      if (isWriteRequest && !actorCanWrite) {
+      if (isWriteRequest && req.method === "DELETE" && role !== "admin") {
         return NextResponse.json(
-          { error: "Tenant view is read-only for your role" },
+          { error: "Only admins can delete resources in tenant view" },
           { status: 403 }
         );
       }
@@ -153,7 +158,37 @@ export function withAuth(
       };
 
       try {
-        return await handler(req, tenantCtx, resolvedParams);
+        const response = await handler(req, tenantCtx, resolvedParams);
+
+        // ── Auto-audit: log all write actions performed on behalf of employer
+        if (isWriteRequest && response.status >= 200 && response.status < 300) {
+          const pathname = req.nextUrl.pathname;
+          // Derive resource from URL path (e.g. /api/employers/jobs → "jobs")
+          const pathParts = pathname.split("/").filter(Boolean);
+          const resource = pathParts[pathParts.length - 1] ?? "unknown";
+          const methodToAction: Record<string, string> = {
+            POST: "create",
+            PUT: "update",
+            PATCH: "update",
+            DELETE: "delete",
+          };
+          logActivity({
+            actorId: userId,
+            actorRole: role,
+            action: `tenant_view.${methodToAction[req.method] ?? "write"}`,
+            resource,
+            resourceId: resolvedTenantEmployerId,
+            meta: {
+              onBehalfOf: resolvedTenantEmployerUserId,
+              employerId: resolvedTenantEmployerId,
+              method: req.method,
+              path: pathname,
+            },
+            req,
+          });
+        }
+
+        return response;
       } catch (err) {
         if (err instanceof NextResponse) return err;
         console.error("[withAuth:tenantView] Unhandled error:", err);

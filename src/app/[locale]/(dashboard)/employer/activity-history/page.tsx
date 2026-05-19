@@ -1,0 +1,386 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
+import {
+  History,
+  User,
+  Globe,
+  Calendar,
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  RefreshCw,
+  LogIn,
+  LogOut,
+  FilePlus,
+  FileEdit,
+  Trash2,
+  FileText,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface ActivityEntry {
+  id: string;
+  actorName: string;
+  actorRole: string;
+  actorEmail?: string;
+  action: string;
+  method: string | null;
+  path: string | null;
+  ipAddress?: string;
+  country?: string;
+  createdAt: string;
+}
+
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const ACTION_META: Record<string, { label: string; color: string; icon: typeof History }> = {
+  create: { label: "Created", color: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30", icon: FilePlus },
+  update: { label: "Updated", color: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30", icon: FileEdit },
+  delete: { label: "Deleted", color: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30", icon: Trash2 },
+  start: { label: "Session Started", color: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30", icon: LogIn },
+  exit: { label: "Session Ended", color: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:border-slate-500/30", icon: LogOut },
+  write: { label: "Modified", color: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30", icon: FileText },
+};
+
+const ROLE_META: Record<string, { label: string; color: string }> = {
+  admin: { label: "Admin", color: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400" },
+  super_agent: { label: "Super Agent", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400" },
+  agent: { label: "Agent", color: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" },
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getResourceFromPath(path: string | null): string {
+  if (!path) return "";
+  const parts = path.split("/").filter(Boolean);
+  // Walk backwards to find the meaningful segment (skip ObjectIds)
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (!/^[0-9a-f]{24}$/i.test(parts[i])) {
+      return parts[i].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+  }
+  return parts[parts.length - 1] ?? "";
+}
+
+function getDetailedDescription(entry: ActivityEntry): string {
+  const resource = getResourceFromPath(entry.path);
+  switch (entry.action) {
+    case "start":
+      return "Started a session to manage your account";
+    case "exit":
+      return "Ended their management session";
+    case "create":
+      return resource ? `Created a new ${resource.toLowerCase()} on your account` : "Created a new resource";
+    case "update":
+      return resource ? `Updated ${resource.toLowerCase()} on your account` : "Updated a resource";
+    case "delete":
+      return resource ? `Deleted ${resource.toLowerCase()} from your account` : "Deleted a resource";
+    default:
+      return resource ? `Performed an action on ${resource.toLowerCase()}` : "Performed an action";
+  }
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export default function ActivityHistoryPage() {
+  const t = useTranslations("employerActivity");
+  const [entries, setEntries] = useState<ActivityEntry[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    page: 1, limit: 15, total: 0, totalPages: 0, hasNext: false, hasPrev: false,
+  });
+  const [loading, setLoading] = useState(true);
+  const [actionFilter, setActionFilter] = useState<string>("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = useCallback(async (page: number, action?: string, role?: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: "15" });
+      if (action && action !== "all") params.set("action", action);
+      if (role && role !== "all") params.set("role", role);
+      const res = await fetch(`/api/employers/activity-history?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEntries(data.items);
+        setPagination(data.pagination);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData(1, actionFilter, roleFilter);
+  }, [actionFilter, roleFilter, fetchData]);
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > pagination.totalPages) return;
+    fetchData(page, actionFilter, roleFilter);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchData(pagination.page, actionFilter, roleFilter);
+    setRefreshing(false);
+  };
+
+  // Generate page numbers for pagination
+  const getPageNumbers = (): (number | "...")[] => {
+    const { page, totalPages } = pagination;
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages: (number | "...")[] = [1];
+    if (page > 3) pages.push("...");
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+      pages.push(i);
+    }
+    if (page < totalPages - 2) pages.push("...");
+    pages.push(totalPages);
+    return pages;
+  };
+
+  return (
+    <div className="page-container employer-legacy-surface space-y-6">
+      {/* Hero + Filters Combined */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-6">
+          {/* Top: Title + Stats */}
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-3xl">
+              <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+                <Sparkles className="h-3.5 w-3.5" />
+                {t("title")}
+              </div>
+              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+                {t("title")}
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {t("description")}
+              </p>
+            </div>
+
+            {/* Stats pills */}
+            <div className="flex gap-3 flex-wrap">
+              <div className="workspace-glass-panel rounded-2xl px-4 py-3 min-w-[120px]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {t("totalEntries")}
+                </p>
+                <p className="mt-1 text-2xl font-bold text-foreground">{pagination.total}</p>
+              </div>
+              <div className="workspace-glass-panel rounded-2xl px-4 py-3 min-w-[120px]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {t("pageInfo", { page: pagination.page, totalPages: pagination.totalPages || 1 })}
+                </p>
+                <p className="mt-1 text-2xl font-bold text-foreground">{entries.length}</p>
+                <p className="text-[11px] text-muted-foreground">{t("onThisPage")}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom: Inline Filters */}
+          <div className="flex flex-wrap items-end gap-3 border-t border-slate-200/50 pt-5 dark:border-slate-700/50">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {t("actionType")}
+              </label>
+              <Select value={actionFilter} onValueChange={setActionFilter}>
+                <SelectTrigger className="w-[150px] rounded-xl h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("allActions")}</SelectItem>
+                  <SelectItem value="start">Session Start</SelectItem>
+                  <SelectItem value="exit">Session End</SelectItem>
+                  <SelectItem value="create">{t("created")}</SelectItem>
+                  <SelectItem value="update">{t("updated")}</SelectItem>
+                  <SelectItem value="delete">{t("deleted")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {t("role")}
+              </label>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-[150px] rounded-xl h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("allRoles")}</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="super_agent">Super Agent</SelectItem>
+                  <SelectItem value="agent">Agent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-9 ml-auto"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} />
+              {t("refresh")}
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Activity List */}
+      <section className="space-y-3">
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="h-[92px] animate-pulse rounded-[20px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] dark:border-slate-800 dark:bg-slate-900/60"
+              />
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 py-20 text-center dark:border-slate-700">
+            <History className="h-14 w-14 text-muted-foreground/30 mb-5" />
+            <h3 className="text-lg font-semibold text-foreground">{t("noActivity")}</h3>
+            <p className="text-sm text-muted-foreground mt-2 max-w-md">{t("noActivityDescription")}</p>
+          </div>
+        ) : (
+          entries.map((entry) => {
+            const actionMeta = ACTION_META[entry.action] ?? ACTION_META.write;
+            const roleMeta = ROLE_META[entry.actorRole] ?? { label: entry.actorRole, color: "bg-slate-100 text-slate-700" };
+            const ActionIcon = actionMeta.icon;
+
+            return (
+              <div
+                key={entry.id}
+                className="flex items-start gap-4 rounded-[20px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.94))] p-4 sm:p-5 shadow-[0_2px_12px_-4px_rgba(15,23,42,0.06)] transition-all hover:shadow-[0_6px_20px_-6px_rgba(15,23,42,0.1)] dark:border-slate-800 dark:bg-[linear-gradient(135deg,_rgba(15,23,42,0.98),_rgba(30,41,59,0.94))]"
+              >
+                {/* Action Icon */}
+                <div className={cn(
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+                  roleMeta.color,
+                )}>
+                  <ActionIcon className="h-5 w-5" />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm text-foreground">{entry.actorName}</span>
+                    <Badge variant="outline" className="text-[10px] font-medium rounded-lg px-2 py-0.5">
+                      {roleMeta.label}
+                    </Badge>
+                    <Badge variant="outline" className={cn("text-[10px] font-medium rounded-lg px-2 py-0.5", actionMeta.color)}>
+                      {actionMeta.label}
+                    </Badge>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                    {getDetailedDescription(entry)}
+                  </p>
+
+                  <div className="flex items-center gap-4 mt-2.5 text-xs text-muted-foreground flex-wrap">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      {new Date(entry.createdAt).toLocaleDateString(undefined, {
+                        weekday: "short",
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    {entry.country && (
+                      <span className="flex items-center gap-1.5">
+                        <Globe className="h-3.5 w-3.5 shrink-0" />
+                        {entry.country}
+                      </span>
+                    )}
+                    {entry.path && entry.action !== "start" && entry.action !== "exit" && (
+                      <span className="flex items-center gap-1.5 font-mono text-[11px] bg-slate-100 dark:bg-slate-800 rounded px-1.5 py-0.5">
+                        <ArrowUpRight className="h-3 w-3 shrink-0" />
+                        {entry.method} {getResourceFromPath(entry.path)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </section>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between rounded-[20px] border border-slate-200 bg-white/90 px-5 py-3.5 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
+          <p className="text-sm text-muted-foreground">
+            Showing <span className="font-medium text-foreground">{(pagination.page - 1) * pagination.limit + 1}</span>
+            –<span className="font-medium text-foreground">{Math.min(pagination.page * pagination.limit, pagination.total)}</span>
+            {" "}of <span className="font-medium text-foreground">{pagination.total}</span>
+          </p>
+
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-8 w-8 p-0"
+              disabled={!pagination.hasPrev}
+              onClick={() => handlePageChange(pagination.page - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            {getPageNumbers().map((pageNum, idx) =>
+              pageNum === "..." ? (
+                <span key={`dots-${idx}`} className="px-1.5 text-sm text-muted-foreground">…</span>
+              ) : (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === pagination.page ? "default" : "ghost"}
+                  size="sm"
+                  className={cn(
+                    "rounded-xl h-8 w-8 p-0 text-sm",
+                    pageNum === pagination.page && "pointer-events-none"
+                  )}
+                  onClick={() => handlePageChange(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              )
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-8 w-8 p-0"
+              disabled={!pagination.hasNext}
+              onClick={() => handlePageChange(pagination.page + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

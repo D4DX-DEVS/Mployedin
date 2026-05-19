@@ -560,110 +560,66 @@ function RegionTab() {
 // ─── Tab: Commission Rate Override ────────────────────────────────────────────
 
 function CommissionTab() {
-  const [overrideRate, setOverrideRate] = useState<string>("");
+  const [overrideRate, setOverrideRate] = useState<number>(0);
+  const [currencyCode, setCurrencyCode] = useState("AED");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [serverSnap, setServerSnap] = useState("");
 
   useEffect(() => {
     fetch("/api/super-agent/profile")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.profile) {
-          const rate = data.profile.overrideRate != null ? String(data.profile.overrideRate) : "";
-          setOverrideRate(rate);
-          setServerSnap(rate);
+          setOverrideRate(data.profile.overrideRate ?? 0);
+          setCurrencyCode(data.profile.currencyCode ?? "AED");
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const hasChanges = overrideRate !== serverSnap;
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const body: Record<string, unknown> = {};
-      if (overrideRate !== "") {
-        const parsed = parseFloat(overrideRate);
-        if (isNaN(parsed) || parsed < 0 || parsed > 100) return;
-        body.overrideRate = parsed;
-      } else {
-        body.overrideRate = null;
-      }
-      const res = await fetch("/api/super-agent/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        setServerSnap(overrideRate);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2500);
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (loading) return <div className="h-48 animate-pulse rounded-xl bg-muted/30" />;
 
   return (
     <>
       <SectionCard>
-        <SectionHeader icon={Percent} title="Commission Override Rate" description="Set a custom commission rate that overrides the default platform rate" />
+        <SectionHeader icon={Percent} title="Commission Override Rate" description="Your current commission override rate set by the administrator" />
         <div className="p-6 space-y-6">
           <div className="max-w-md space-y-3">
-            <Label htmlFor="override-rate" className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Percent className="h-4 w-4 text-muted-foreground" />
-              Override Rate (%)
+              Current Override Rate
             </Label>
-            <div className="relative">
-              <Input
-                id="override-rate"
-                type="number"
-                min={0}
-                max={100}
-                step={0.5}
-                placeholder="e.g. 8.5"
-                value={overrideRate}
-                onChange={(e) => setOverrideRate(e.target.value)}
-                className="pr-10"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+            <div className="flex items-center gap-2 h-11 rounded-xl border border-border bg-muted/30 px-4">
+              <span className="text-lg font-semibold text-foreground">{overrideRate}%</span>
+              <Badge variant="outline" className="ml-auto text-[10px] shrink-0">Set by Admin</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Leave blank to use the platform default. This rate applies to all your agent placements.
+              Your commission override rate is managed by the administrator. Contact admin to request changes.
             </p>
           </div>
 
-          <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20 p-4">
+          <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 dark:border-blue-800/40 dark:bg-blue-950/20 p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Rate change notice</p>
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                  Changing the override rate will affect future commission calculations only. Existing commissions are not retroactively adjusted.
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">How it works</p>
+                <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                  This rate is applied when invoices are created for employers. Country-based overrides configured by admin may take precedence over this rate.
                 </p>
               </div>
             </div>
           </div>
-
-          <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label="Save Commission Rate" />
         </div>
       </SectionCard>
 
       {/* Commission Preview */}
-      {overrideRate && !isNaN(parseFloat(overrideRate)) && (
+      {overrideRate > 0 && (
         <SectionCard>
           <SectionHeader icon={DollarSign} title="Rate Preview" description="Projected commission at different placement values" />
           <div className="p-6">
             <div className="grid gap-4 sm:grid-cols-3">
               {[50000, 120000, 300000].map((salary) => {
-                const rate = parseFloat(overrideRate) / 100;
-                const commission = salary * rate;
+                const commission = salary * (overrideRate / 100);
                 return (
                   <div key={salary} className="rounded-xl border border-border/50 bg-muted/20 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

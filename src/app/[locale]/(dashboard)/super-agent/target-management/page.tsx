@@ -21,6 +21,14 @@ import {
   CompletionStage, getCompletionStage, IncentiveTierBadge,
 } from "@/components/features/targets/TargetComponents";
 import { TeamAllocationDialog } from "@/components/features/targets/TeamAllocationDialog";
+import { AgentDetailDialog } from "@/components/features/targets/AgentDetailDialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
+  ResponsiveContainer, Cell, PieChart, Pie,
+} from "recharts";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
@@ -29,6 +37,7 @@ import {
   Search, AlertCircle, CheckCircle2,
   ClipboardList, TimerReset, Target, Info, MapPin,
   Eye, SlidersHorizontal, CircleDollarSign,
+  ChevronLeft, ChevronRight, BarChart3,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -251,6 +260,7 @@ export default function SuperAgentTargetProfilesPage() {
     : currentYear;
 
   const [yearFilter, setYearFilter] = useState(initialYearFilter);
+  const [yearInput, setYearInput] = useState(String(initialYearFilter));
   const [tab, setTab] = useState<"own" | "team" | "analytics">("team");
   const [loading, setLoading] = useState(true);
   const [teamLoading, setTeamLoading] = useState(true);
@@ -269,6 +279,16 @@ export default function SuperAgentTargetProfilesPage() {
 
   // Distribute dialog
   const [showDistribute, setShowDistribute] = useState(false);
+
+  // Agent detail dialog
+  const [detailAgent, setDetailAgent] = useState<EnrichedProfile | null>(null);
+
+  // Pagination
+  const [teamPage, setTeamPage] = useState(1);
+  const [teamPageSize, setTeamPageSize] = useState(10);
+
+  // Insights dialog
+  const [showInsights, setShowInsights] = useState(false);
 
   useEffect(() => {
     setYearFilter(initialYearFilter);
@@ -293,6 +313,8 @@ export default function SuperAgentTargetProfilesPage() {
       if (res.ok) {
         const data = await res.json();
         setTeamProfiles(data.profiles ?? []);
+        // Team endpoint also returns ownProfile — update it to avoid separate call
+        if (data.ownProfile) setOwnProfile(data.ownProfile);
       }
     } catch { toast.error("Failed to load team targets"); }
     finally { setTeamLoading(false); }
@@ -324,6 +346,15 @@ export default function SuperAgentTargetProfilesPage() {
       return agent.assigneeName.toLowerCase().includes(q) || agent.assigneeEmail.toLowerCase().includes(q) || getTerritory(agent).toLowerCase().includes(q);
     });
   }, [teamCompletionFilter, teamProfiles, teamRiskFilter, teamSearch, teamTerritoryFilter]);
+
+  // Reset page when filters change
+  useEffect(() => { setTeamPage(1); }, [teamSearch, teamRiskFilter, teamCompletionFilter, teamTerritoryFilter]);
+
+  const totalTeamPages = Math.max(1, Math.ceil(filteredTeamProfiles.length / teamPageSize));
+  const paginatedTeamProfiles = useMemo(() => {
+    const start = (teamPage - 1) * teamPageSize;
+    return filteredTeamProfiles.slice(start, start + teamPageSize);
+  }, [filteredTeamProfiles, teamPage, teamPageSize]);
 
   const territoryOptions = useMemo(() => {
     const territories = [...new Set(teamProfiles.map(getTerritory))].filter(Boolean).sort();
@@ -422,6 +453,7 @@ export default function SuperAgentTargetProfilesPage() {
 
   const handleResetDashboard = () => {
     setYearFilter(currentYear);
+    setYearInput(String(currentYear));
     setTeamSearch("");
     setTeamTerritoryFilter("all");
     setTeamCompletionFilter("all");
@@ -460,12 +492,35 @@ export default function SuperAgentTargetProfilesPage() {
         </div>
       </section>
 
-      <div className="sticky top-0 z-20 rounded-2xl border border-border/60 bg-card/95 p-3 shadow-sm backdrop-blur">
+      <div className="rounded-2xl border border-border/60 bg-card/95 p-3 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input type="number" value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-10 w-28 rounded-xl border-border bg-background pl-9 text-sm" />
+            <Input
+              type="number"
+              value={yearInput}
+              onChange={(e) => setYearInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const parsed = parseInt(yearInput);
+                  if (parsed >= 2020 && parsed <= 2099) setYearFilter(parsed);
+                }
+              }}
+              className="h-10 w-28 rounded-xl border-border bg-background pl-9 text-sm"
+            />
           </div>
+          <Button
+            variant="default"
+            size="sm"
+            className="h-10 rounded-xl px-3"
+            disabled={parseInt(yearInput) === yearFilter || !yearInput || parseInt(yearInput) < 2020}
+            onClick={() => {
+              const parsed = parseInt(yearInput);
+              if (parsed >= 2020 && parsed <= 2099) setYearFilter(parsed);
+            }}
+          >
+            <CalendarDays className="mr-1.5 h-3.5 w-3.5" /> Go
+          </Button>
           <Button variant="outline" size="sm" onClick={handleResetDashboard} className="h-10 rounded-xl" disabled={!hasActiveDashboardFilters}>
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
           </Button>
@@ -742,10 +797,10 @@ export default function SuperAgentTargetProfilesPage() {
 
       {/* ============ TEAM TAB ============ */}
       {tab === "team" && (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="space-y-3">
           {/* Agent table */}
-          <div className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm overflow-x-auto">
-            <Table className="min-w-[1280px]">
+          <div className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm">
+            <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Agent</TableHead>
@@ -814,7 +869,7 @@ export default function SuperAgentTargetProfilesPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTeamProfiles.map((agent) => (
+                  paginatedTeamProfiles.map((agent) => (
                     <TableRow key={agent._id}>
                       <TableCell>
                         <div>
@@ -869,12 +924,12 @@ export default function SuperAgentTargetProfilesPage() {
                                   size="icon"
                                   className="h-8 w-8 rounded-lg"
                                   aria-label={`Focus ${agent.assigneeName}`}
-                                  onClick={() => setTeamSearch(agent.assigneeName)}
+                                  onClick={() => setDetailAgent(agent)}
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Focus this agent</TooltipContent>
+                              <TooltipContent>View agent details</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                           <TooltipProvider>
@@ -902,86 +957,247 @@ export default function SuperAgentTargetProfilesPage() {
             </Table>
           </div>
 
-          <div className="space-y-3">
-            <SideListCard title="Attention required">
-              {attentionItems.map((item) => (
-                <div key={item.label} className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
-                  <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${item.tone}`} />
-                  <span>{item.label}</span>
-                </div>
-              ))}
-            </SideListCard>
-
-            <SideListCard title="Top performers">
-              {topPerformers.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No team target data yet.</p>
-              ) : topPerformers.map((agent, index) => (
-                <div key={agent._id} className="flex items-center gap-3">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-xs font-bold text-emerald-600">{index + 1}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold text-foreground">{agent.assigneeName}</p>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted/60">
-                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(agent.overallProgress, 100)}%` }} />
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold tabular-nums text-emerald-600">{agent.overallProgress}%</span>
-                </div>
-              ))}
-            </SideListCard>
-
-            <SideListCard title="Under performers">
-              {underPerformers.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No team target data yet.</p>
-              ) : underPerformers.map((agent) => (
-                <div key={agent._id} className="flex items-center gap-3">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold text-foreground">{agent.assigneeName}</p>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted/60">
-                      <div className="h-full rounded-full bg-red-500" style={{ width: `${Math.min(agent.overallProgress, 100)}%` }} />
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold tabular-nums text-red-500">{agent.overallProgress}%</span>
-                </div>
-              ))}
-            </SideListCard>
-
-            <SideListCard title="Pending approvals">
-              <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/30 px-3 py-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  <span>Target approval queue</span>
-                </div>
-                <span className="text-sm font-bold tabular-nums text-foreground">{pendingApprovalsCount}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/30 px-3 py-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <SplitSquareVertical className="h-4 w-4 text-blue-600" />
-                  <span>Open distributions</span>
-                </div>
-                <span className="text-sm font-bold tabular-nums text-foreground">{pendingActionsCount}</span>
-              </div>
-            </SideListCard>
-
-            <SideListCard title="Deadlines">
-              {deadlineAlerts.length === 0 ? (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                  <span>No monthly deadline alerts</span>
-                </div>
-              ) : deadlineAlerts.slice(0, 3).map((agent) => (
-                <div key={agent._id} className="flex items-center gap-3">
-                  <TimerReset className="h-4 w-4 shrink-0 text-amber-500" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold text-foreground">{agent.assigneeName}</p>
-                    <p className="text-[11px] text-muted-foreground">{getDeadlineAlert(agent)}</p>
-                  </div>
-                </div>
-              ))}
-            </SideListCard>
+          {/* Pagination & Insights */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/40 bg-card/80 px-4 py-2.5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Showing {((teamPage - 1) * teamPageSize) + 1}–{Math.min(teamPage * teamPageSize, filteredTeamProfiles.length)} of {filteredTeamProfiles.length}</span>
+              <select
+                value={teamPageSize}
+                onChange={(e) => { setTeamPageSize(Number(e.target.value)); setTeamPage(1); }}
+                className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+              >
+                <option value={5}>5 / page</option>
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="sm" className="h-8 gap-1 rounded-lg px-3 text-xs font-medium" onClick={() => setShowInsights(true)}>
+                <BarChart3 className="h-3.5 w-3.5" /> Insights
+              </Button>
+              <div className="mx-2 h-5 w-px bg-border" />
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={teamPage <= 1} onClick={() => setTeamPage((p) => p - 1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="min-w-[3rem] text-center text-xs font-medium">{teamPage} / {totalTeamPages}</span>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={teamPage >= totalTeamPages} onClick={() => setTeamPage((p) => p + 1)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Insights Dialog */}
+      <Dialog open={showInsights} onOpenChange={setShowInsights}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <BarChart3 className="h-5 w-5 text-primary" /> Team Insights
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[70vh] space-y-6 overflow-y-auto pr-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+            <style>{`.insights-scroll::-webkit-scrollbar { display: none; }`}</style>
+
+            {/* Target Progress Chart */}
+            <div>
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Target Progress Overview</h4>
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: "Employer", target: filteredTotals.employer.target, achieved: filteredTotals.employer.achieved },
+                    { name: "Employee", target: filteredTotals.employee.target, achieved: filteredTotals.employee.achieved },
+                    { name: "Revenue", target: filteredTotals.finance.target / 1000, achieved: filteredTotals.finance.achieved / 1000 },
+                  ]} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <ReTooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                    <Bar dataKey="target" fill="#94a3b8" name="Target" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="achieved" fill="#3b82f6" name="Achieved" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-1 text-center text-[10px] text-muted-foreground">Revenue values shown in thousands (K)</p>
+            </div>
+
+            {/* Risk Distribution */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Risk Distribution</h4>
+                <div className="h-32 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: "High", value: filteredTeamProfiles.filter((a) => a.riskScore === "high").length },
+                          { name: "Medium", value: filteredTeamProfiles.filter((a) => a.riskScore === "medium").length },
+                          { name: "Low", value: filteredTeamProfiles.filter((a) => a.riskScore === "low").length },
+                        ].filter((d) => d.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={30}
+                        outerRadius={50}
+                        paddingAngle={3}
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ${value}`}
+                      >
+                        <Cell fill="#ef4444" />
+                        <Cell fill="#f59e0b" />
+                        <Cell fill="#10b981" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              <div>
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team Summary</h4>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+                    <span className="text-xs text-muted-foreground">Total agents</span>
+                    <span className="text-sm font-bold">{filteredTeamProfiles.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+                    <span className="text-xs text-muted-foreground">Avg performance</span>
+                    <span className="text-sm font-bold">{filteredTotals.avgPerformance}%</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+                    <span className="text-xs text-muted-foreground">At risk</span>
+                    <span className="text-sm font-bold text-red-500">{filteredTotals.riskHigh}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Attention Required */}
+            <div>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attention Required</h4>
+              <div className="space-y-1.5">
+                {attentionItems.map((item) => (
+                  <div key={item.label} className="flex items-start gap-2 text-sm text-foreground">
+                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.tone}`} />
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Agent Performance Comparison */}
+            <div>
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Agent Performance Comparison</h4>
+              <div className="h-40 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={filteredTeamProfiles.map((a) => ({
+                    name: a.assigneeName.split(" ").slice(0, 2).join(" "),
+                    employer: a.employerProgress,
+                    employee: a.employeeProgress,
+                    finance: a.financeProgress,
+                  }))} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} unit="%" />
+                    <ReTooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                    <Bar dataKey="employer" fill="#6366f1" name="Employer %" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="employee" fill="#06b6d4" name="Employee %" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="finance" fill="#f59e0b" name="Revenue %" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Top & Under Performers */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top Performers</h4>
+                {topPerformers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No data yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {topPerformers.map((agent, index) => (
+                      <div key={agent._id} className="flex items-center gap-2.5">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600">{index + 1}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium">{agent.assigneeName}</p>
+                          <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-muted/60">
+                            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(agent.overallProgress, 100)}%` }} />
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold tabular-nums text-emerald-600">{agent.overallProgress}%</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Under Performers</h4>
+                {underPerformers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No data yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {underPerformers.map((agent) => (
+                      <div key={agent._id} className="flex items-center gap-2.5">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium">{agent.assigneeName}</p>
+                          <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-muted/60">
+                            <div className="h-full rounded-full bg-red-500" style={{ width: `${Math.min(agent.overallProgress, 100)}%` }} />
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold tabular-nums text-red-500">{agent.overallProgress}%</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Pending & Deadlines */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pending Approvals</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>Approval queue</span>
+                    </div>
+                    <span className="text-sm font-bold">{pendingApprovalsCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <SplitSquareVertical className="h-3.5 w-3.5 text-blue-600" />
+                      <span>Open distributions</span>
+                    </div>
+                    <span className="text-sm font-bold">{pendingActionsCount}</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Deadlines</h4>
+                {deadlineAlerts.length === 0 ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>No deadline alerts</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {deadlineAlerts.slice(0, 5).map((agent) => (
+                      <div key={agent._id} className="flex items-center gap-2.5">
+                        <TimerReset className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-medium">{agent.assigneeName}</p>
+                          <p className="text-[10px] text-muted-foreground">{getDeadlineAlert(agent)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <TeamAllocationDialog
         open={showDistribute}
@@ -990,6 +1206,13 @@ export default function SuperAgentTargetProfilesPage() {
         supervisorProfile={ownProfile}
         teamProfiles={teamProfiles}
         onSuccess={fetchTeam}
+      />
+
+      <AgentDetailDialog
+        open={!!detailAgent}
+        onOpenChange={(open) => { if (!open) setDetailAgent(null); }}
+        agent={detailAgent}
+        year={yearFilter}
       />
     </div>
   );
