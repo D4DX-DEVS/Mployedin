@@ -110,6 +110,7 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
                       value={values[field.name] ?? ""}
                       onValueChange={(v) => updateValue(field.name, v)}
                       placeholder={field.placeholder || "Select\u2026"}
+                      modal
                     />
                   ) : field.type === "textarea" ? (
                     <Textarea
