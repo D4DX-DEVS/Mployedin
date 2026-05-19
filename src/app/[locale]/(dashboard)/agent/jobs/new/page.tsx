@@ -2,8 +2,29 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, Briefcase, Building2, Sparkles } from "lucide-react";
+import { AlertCircle, ArrowRight, Briefcase, Building2, Loader2, MapPin, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { CurrencySelect } from "@/components/ui/currency-select";
+import { CountrySelect } from "@/components/ui/country-select";
+import { JOB_CATEGORIES } from "@/components/features/employer/job-form/jobFormSchema";
+
+const EMPLOYMENT_TYPES = [
+  { value: "full_time", label: "Full Time" },
+  { value: "part_time", label: "Part Time" },
+  { value: "contract", label: "Contract" },
+  { value: "internship", label: "Internship" },
+  { value: "freelance", label: "Freelance" },
+] as const;
 
 interface Employer {
   _id: string;
@@ -20,7 +41,8 @@ export default function AgentJobPosterPage() {
   const [form, setForm] = useState({
     title: "",
     category: "",
-    location: "",
+    city: "",
+    country: "",
     employmentType: "full_time",
     salaryMin: "",
     salaryMax: "",
@@ -54,7 +76,7 @@ export default function AgentJobPosterPage() {
         body: JSON.stringify({
           title: form.title,
           category: form.category,
-          ...(form.location ? { location: { city: form.location.split(",")[0]?.trim() || form.location, country: form.location.split(",")[1]?.trim() || "UAE" } } : {}),
+          location: { city: form.city, country: form.country },
           employmentType: form.employmentType,
           ...(form.salaryMin && form.salaryMax ? { salary: { min: parseInt(form.salaryMin), max: parseInt(form.salaryMax), currency: form.currency } } : {}),
           description: form.description,
@@ -63,9 +85,11 @@ export default function AgentJobPosterPage() {
         }),
       });
       if (res.ok) {
+        toast.success("Job posted successfully");
         router.push("../jobs");
       } else {
-        toast.error("Failed to post job");
+        const err = await res.json().catch(() => null);
+        toast.error(err?.message || "Failed to post job");
       }
     } finally {
       setSubmitting(false);
@@ -81,10 +105,10 @@ export default function AgentJobPosterPage() {
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2rem]">Post Job on Behalf of Employer</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">Create a role for one of your assigned employers without leaving the agent workspace.</p>
           </div>
-          <button onClick={() => router.back()} className="inline-flex items-center gap-2 rounded-xl border border-white/80 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:border-sky-200 hover:text-sky-700">
+          <Button variant="outline" onClick={() => router.back()} className="rounded-xl border-white/80 bg-white/80 hover:border-sky-200 hover:text-sky-700">
             <ArrowRight className="h-4 w-4" />
             Back
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -94,29 +118,32 @@ export default function AgentJobPosterPage() {
           <h3 className="text-sm font-semibold text-slate-950">Select Employer</h3>
         </div>
         {loadingEmployers ? (
-          <p className="text-sm text-slate-500">Loading employers…</p>
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading employers…
+          </div>
         ) : employers.length === 0 ? (
           <div className="flex items-center gap-2 rounded-2xl bg-amber-50 p-3 text-sm text-amber-600">
             <AlertCircle className="h-4 w-4" />
             No employers assigned to you. Contact your super-agent.
           </div>
         ) : (
-          <select
-            value={selectedEmployer}
-            onChange={(e) => setSelectedEmployer(e.target.value)}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-100"
-          >
-            <option value="">Choose an employer…</option>
-            {employers.map((em) => (
-              <option key={em._id} value={em._id}>
-                {em.companyName ?? em.name}
-              </option>
-            ))}
-          </select>
+          <Select value={selectedEmployer} onValueChange={setSelectedEmployer}>
+            <SelectTrigger className="h-11 rounded-xl">
+              <SelectValue placeholder="Choose an employer…" />
+            </SelectTrigger>
+            <SelectContent>
+              {employers.map((em) => (
+                <SelectItem key={em._id} value={em._id}>
+                  {em.companyName ?? em.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </section>
 
-      <form onSubmit={handleSubmit} className="rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.35)] backdrop-blur sm:p-6 space-y-5">
         <div className="flex items-center gap-2 mb-1">
           <Briefcase className="h-4 w-4 text-sky-600" />
           <h3 className="text-sm font-semibold text-slate-950">Job Details</h3>
@@ -124,120 +151,130 @@ export default function AgentJobPosterPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Job Title *</label>
-            <input
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Job Title *</label>
+            <Input
               required
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="e.g. Senior Accountant"
-              className="input-field w-full"
+              className="h-11 rounded-xl"
             />
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Category *</label>
-            <select
-              required
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className="select-field w-full"
-            >
-              <option value="">Select category</option>
-              {["Technology","Finance","Healthcare","Engineering","Sales & Marketing","Operations","Human Resources","Education","Hospitality","Construction","Legal","Other"].map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Category *</label>
+            <Select required value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+              <SelectTrigger className="h-11 rounded-xl">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {JOB_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Location *</label>
-            <input
-              required
-              value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-              placeholder="e.g. Dubai, UAE"
-              className="input-field w-full"
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Country *</label>
+            <CountrySelect
+              value={form.country}
+              onValueChange={(v) => setForm({ ...form, country: v })}
+              className="h-11"
             />
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Employment Type</label>
-            <select
-              value={form.employmentType}
-              onChange={(e) => setForm({ ...form, employmentType: e.target.value })}
-              className="select-field w-full"
-            >
-              <option value="full_time">Full Time</option>
-              <option value="part_time">Part Time</option>
-              <option value="contract">Contract</option>
-              <option value="internship">Internship</option>
-              <option value="freelance">Freelance</option>
-            </select>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">City *</label>
+            <Input
+              required
+              value={form.city}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
+              placeholder="e.g. Dubai"
+              className="h-11 rounded-xl"
+            />
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Currency</label>
-            <select
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Employment Type</label>
+            <Select value={form.employmentType} onValueChange={(v) => setForm({ ...form, employmentType: v })}>
+              <SelectTrigger className="h-11 rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EMPLOYMENT_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Currency</label>
+            <CurrencySelect
               value={form.currency}
-              onChange={(e) => setForm({ ...form, currency: e.target.value })}
-              className="select-field w-full"
-            >
-              {["AED","SAR","KWD","QAR","BHD","OMR","USD"].map((c) => <option key={c}>{c}</option>)}
-            </select>
+              onValueChange={(v) => setForm({ ...form, currency: v })}
+            />
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Salary Min</label>
-            <input
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Salary Min</label>
+            <Input
               type="number"
               value={form.salaryMin}
               onChange={(e) => setForm({ ...form, salaryMin: e.target.value })}
               placeholder="e.g. 8000"
-              className="input-field w-full"
+              className="h-11 rounded-xl"
             />
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Salary Max</label>
-            <input
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Salary Max</label>
+            <Input
               type="number"
               value={form.salaryMax}
               onChange={(e) => setForm({ ...form, salaryMax: e.target.value })}
               placeholder="e.g. 12000"
-              className="input-field w-full"
+              className="h-11 rounded-xl"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">Job Description *</label>
-          <textarea
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Job Description *</label>
+          <Textarea
             required
-            rows={4}
+            rows={5}
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="Describe the role, responsibilities…"
-            className="textarea-field w-full"
+            className="rounded-xl resize-none"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">Requirements (one per line)</label>
-          <textarea
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Requirements (one per line)</label>
+          <Textarea
             rows={4}
             value={form.requirements}
             onChange={(e) => setForm({ ...form, requirements: e.target.value })}
             placeholder={"5+ years experience\nBachelor's degree\nMS Excel proficiency"}
-            className="textarea-field w-full"
+            className="rounded-xl resize-none"
           />
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={() => router.back()}
-            className="inline-flex h-11 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition-colors hover:border-sky-200 hover:text-sky-700">
+        <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+          <Button type="button" variant="outline" onClick={() => router.back()} className="h-11 rounded-xl">
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={submitting || !selectedEmployer}
-            className="inline-flex h-11 items-center rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-sky-700 disabled:opacity-50"
+            className="h-11 rounded-xl bg-sky-600 hover:bg-sky-700"
           >
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {submitting ? "Posting…" : "Post Job"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
