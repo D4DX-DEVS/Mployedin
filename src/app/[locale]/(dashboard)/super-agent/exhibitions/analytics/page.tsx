@@ -187,19 +187,19 @@ export default function SuperAgentExhibitionAnalyticsPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <section className="overflow-hidden rounded-3xl border bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-sm">
-        <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1.4fr_0.9fr] lg:px-8">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-7 sm:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/10">Super Agent Analytics</Badge>
-              <Badge className="border-emerald-400/25 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/10">Year {data.year}</Badge>
+              <Badge className="border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">Super Agent Analytics</Badge>
+              <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10">Year {data.year}</Badge>
             </div>
             <div>
-              <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight">
-                <BarChart3 className="h-7 w-7 text-emerald-300" />
+              <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground">
+                <BarChart3 className="h-7 w-7 text-primary" />
                 Exhibition performance at a glance
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-slate-300">
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
                 Track request velocity, approvals, spend, and outcomes across your team without digging through outdated tables.
               </p>
             </div>
@@ -222,11 +222,11 @@ export default function SuperAgentExhibitionAnalyticsPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+          <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-300">Scope</p>
-                <p className="mt-1 text-lg font-semibold">Team summary</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Scope</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">Team summary</p>
               </div>
               <div className="min-w-[10rem]">
                 <SearchableSelect
@@ -238,10 +238,10 @@ export default function SuperAgentExhibitionAnalyticsPage() {
               </div>
             </div>
             <div className="mt-5 space-y-4">
-              <div className="rounded-2xl bg-black/20 p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-300">Approved budget</p>
-                <p className="mt-2 text-2xl font-semibold">{formatCurrency(kpis.totalApprovedBudget, currencyCode)}</p>
-                <p className="mt-1 text-xs text-slate-300">
+              <div className="rounded-2xl border border-border/60 bg-muted/40 p-4">
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Approved budget</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">{formatCurrency(kpis.totalApprovedBudget, currencyCode)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Actual spend {formatCurrency(kpis.totalActualSpend, currencyCode)}
                 </p>
               </div>
@@ -472,10 +472,10 @@ export default function SuperAgentExhibitionAnalyticsPage() {
 
 function HeroStat({ label, value, sub }: { label: string; value: string | number; sub: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-300">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-      <p className="mt-1 text-xs text-slate-300">{sub}</p>
+    <div className="workspace-glass-panel rounded-2xl p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
     </div>
   );
 }
@@ -507,9 +507,9 @@ function MetricCard({
 
 function MiniMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-      <p className="text-xs uppercase tracking-[0.18em] text-slate-300">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+    <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
     </div>
   );
 }

@@ -209,6 +209,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 description: "Enterprise target profiles & analytics",
                 descriptionAr: "ملفات الأهداف المتقدمة والتحليلات",
               },
+              {
+                title: "Target Report",
+                titleAr: "تقرير الأهداف",
+                href: p("/admin/target-report"),
+                icon: "FileText",
+                description: "Consolidated target performance report",
+                descriptionAr: "تقرير أداء الأهداف الموحد",
+              },
             ],
           },
           {
@@ -843,6 +851,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "ملفات الأهداف الموحدة وتتبع الفريق",
               },
               {
+                title: "Target Report",
+                titleAr: "تقرير الأهداف",
+                href: p("/super-agent/target-report"),
+                icon: "FileText",
+                description: "Team target performance report",
+                descriptionAr: "تقرير أداء أهداف الفريق",
+              },
+              {
                 title: "Territory",
                 titleAr: "المنطقة",
                 href: p("/super-agent/territory"),
@@ -1028,6 +1044,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "Target",
                 description: "Dashboard, goals & leaderboard",
                 descriptionAr: "لوحة المعلومات والأهداف ولوحة المتصدرين",
+              },
+              {
+                title: "Target Report",
+                titleAr: "تقرير الأهداف",
+                href: p("/agent/target-report"),
+                icon: "FileText",
+                description: "Personal target performance report",
+                descriptionAr: "تقرير أداء الأهداف الشخصي",
               },
               {
                 title: "Offers",
