@@ -177,12 +177,19 @@ export interface IExhibitionRequest extends Document {
   reviewedBy?: mongoose.Types.ObjectId;
   reviewedAt?: Date;
   reviewNote?: string;
+  budgetApprovedBy?: mongoose.Types.ObjectId;
+  budgetApprovedAt?: Date;
   statusHistory: {
     status: ExhibitionRequestStatus;
     changedAt: Date;
     changedBy?: mongoose.Types.ObjectId;
     note?: string;
+    approverRole?: string;
+    statusReason?: string;
   }[];
+  isDeleted?: boolean;
+  deletedAt?: Date;
+  deletedBy?: mongoose.Types.ObjectId;
 
   createdAt: Date;
   updatedAt: Date;
@@ -280,6 +287,8 @@ const ExhibitionRequestSchema = new Schema<IExhibitionRequest>(
     reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
     reviewedAt: { type: Date },
     reviewNote: { type: String, trim: true, maxlength: 2000 },
+    budgetApprovedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    budgetApprovedAt: { type: Date },
     statusHistory: [
       {
         _id: false,
@@ -287,8 +296,13 @@ const ExhibitionRequestSchema = new Schema<IExhibitionRequest>(
         changedAt: { type: Date, default: Date.now },
         changedBy: { type: Schema.Types.ObjectId, ref: "User" },
         note: { type: String, maxlength: 500 },
+        approverRole: { type: String, maxlength: 50 },
+        statusReason: { type: String, trim: true, maxlength: 1000 },
       },
     ],
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date },
+    deletedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true },
 );

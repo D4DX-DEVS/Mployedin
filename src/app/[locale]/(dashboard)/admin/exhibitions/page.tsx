@@ -21,6 +21,7 @@ import {
 import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
+import { ApprovalTimeline } from "@/components/features/exhibitions/ApprovalTimeline";
 
 interface ExhibitionRequest {
   _id: string;
@@ -53,7 +54,7 @@ interface ExhibitionRequest {
   reviewedBy?: { _id: string; name: string };
   reviewedAt?: string;
   reviewNote?: string;
-  statusHistory?: { status: string; changedAt: string; changedBy?: { _id: string; name: string }; note?: string }[];
+  statusHistory?: { status: string; changedAt: string; changedBy?: { _id: string; name: string }; note?: string; approverRole?: string; statusReason?: string }[];
   createdAt: string;
 }
 
@@ -72,8 +73,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft", submitted: "Submitted", under_review: "Under Review",
-  approved: "Approved", revision_requested: "Revision Requested",
-  budget_approved: "Budget Approved", resources_assigned: "Resources Assigned",
+  approved: "Operationally Approved", revision_requested: "Revision Requested",
+  budget_approved: "Financially Approved", resources_assigned: "Resources Assigned",
   active: "Active", completed: "Completed", rejected: "Rejected", archived: "Archived",
 };
 const PRIORITY_COLORS: Record<string, string> = {
@@ -121,8 +122,8 @@ const RESOURCE_TYPE_TO_CATEGORY: Record<string, string> = {
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
   { value: "submitted", label: "Submitted" }, { value: "under_review", label: "Under Review" },
-  { value: "approved", label: "Approved" }, { value: "revision_requested", label: "Revision Requested" },
-  { value: "budget_approved", label: "Budget Approved" }, { value: "resources_assigned", label: "Resources Assigned" },
+  { value: "approved", label: "Operationally Approved" }, { value: "revision_requested", label: "Revision Requested" },
+  { value: "budget_approved", label: "Financially Approved" }, { value: "resources_assigned", label: "Resources Assigned" },
   { value: "active", label: "Active" }, { value: "completed", label: "Completed" },
   { value: "rejected", label: "Rejected" }, { value: "archived", label: "Archived" },
 ];
@@ -236,7 +237,8 @@ export default function AdminExhibitionsPage() {
   const handleAction = async () => {
     if (!actionItem) return;
     try {
-      const payload: Record<string, unknown> = { status: actionStatus, reviewNote: reviewNote.trim() || undefined };
+      const trimmedNote = reviewNote.trim() || undefined;
+      const payload: Record<string, unknown> = { status: actionStatus, reviewNote: trimmedNote, statusReason: trimmedNote };
       if (["budget_approved", "approved"].includes(actionStatus) && approvedBudget) {
         payload.approvedBudget = Number(approvedBudget); payload.budgetNotes = budgetNotes;
       }
@@ -411,7 +413,10 @@ export default function AdminExhibitionsPage() {
                       <div className="font-medium">{item.budgetCurrency} {item.estimatedBudget?.toLocaleString()}</div>
                       {item.approvedBudget != null && <div className="text-[11px] font-medium text-emerald-600">✓ {item.approvedBudget.toLocaleString()}</div>}
                     </td>
-                    <td className="px-4 py-3.5"><Badge className={`${STATUS_COLORS[item.status]} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>{STATUS_LABELS[item.status] ?? item.status}</Badge></td>
+                    <td className="px-4 py-3.5">
+                      <Badge className={`${STATUS_COLORS[item.status]} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>{STATUS_LABELS[item.status] ?? item.status}</Badge>
+                      {item.reviewedBy && <p className="mt-0.5 text-[10px] text-muted-foreground">by {item.reviewedBy.name}</p>}
+                    </td>
                     <td className="hidden px-4 py-3.5 md:table-cell"><Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge></td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1 flex-wrap">
@@ -510,14 +515,7 @@ export default function AdminExhibitionsPage() {
               {detailItem.expectedOutcome && <SectionBlock icon={<TrendingUp className="h-4 w-4" />} title="Expected Outcome"><p>{detailItem.expectedOutcome}</p></SectionBlock>}
               {detailItem.statusHistory && detailItem.statusHistory.length > 0 && (
                 <SectionBlock icon={<Clock className="h-4 w-4" />} title="Approval History">
-                  <div className="space-y-2">{detailItem.statusHistory.map((h, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs border-l-2 border-muted pl-3 py-1">
-                      <Badge className={`${STATUS_COLORS[h.status]} text-xs`}>{STATUS_LABELS[h.status] ?? h.status}</Badge>
-                      <span className="text-muted-foreground">{new Date(h.changedAt).toLocaleString()}</span>
-                      {h.changedBy && <span>by {typeof h.changedBy === "object" ? h.changedBy.name : "User"}</span>}
-                      {h.note && <span className="italic">— {h.note}</span>}
-                    </div>
-                  ))}</div>
+                  <ApprovalTimeline entries={detailItem.statusHistory} />
                 </SectionBlock>
               )}
             </div>

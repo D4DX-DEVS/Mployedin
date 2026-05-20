@@ -43,6 +43,7 @@ import {
   type AgentExhibitionFormState,
 } from "@/lib/exhibitions/agent-request";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { ApprovalTimeline, type TimelineEntry } from "@/components/features/exhibitions/ApprovalTimeline";
 
 interface ExhibitionRequest {
   _id: string;
@@ -79,6 +80,7 @@ interface ExhibitionRequest {
   reviewNote?: string;
   reviewedBy?: { _id: string; name: string };
   reviewedAt?: string;
+  statusHistory?: TimelineEntry[];
   createdAt: string;
 }
 
@@ -100,9 +102,9 @@ const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
   submitted: "Submitted",
   under_review: "Under Review",
-  approved: "Approved",
+  approved: "Operationally Approved",
   revision_requested: "Revision Requested",
-  budget_approved: "Budget Approved",
+  budget_approved: "Financially Approved",
   resources_assigned: "Resources Assigned",
   active: "Active",
   completed: "Completed",
@@ -166,7 +168,7 @@ const STATUS_OPTIONS = [
   { value: "draft", label: "Draft" },
   { value: "submitted", label: "Submitted" },
   { value: "under_review", label: "Under Review" },
-  { value: "approved", label: "Approved" },
+  { value: "approved", label: "Operationally Approved" },
   { value: "revision_requested", label: "Revision Requested" },
   { value: "completed", label: "Completed" },
   { value: "rejected", label: "Rejected" },
@@ -728,6 +730,12 @@ export default function AgentExhibitionsPage() {
                   <div className="rounded-xl border bg-card p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Description</p>
                     <p className="mt-2 leading-6">{detailItem.description}</p>
+                  </div>
+                )}
+                {detailItem.statusHistory && detailItem.statusHistory.length > 0 && (
+                  <div className="rounded-xl border bg-card p-4">
+                    <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Approval History</p>
+                    <ApprovalTimeline entries={detailItem.statusHistory} />
                   </div>
                 )}
               </div>

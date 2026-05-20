@@ -19,6 +19,7 @@ import {
 import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
+import { ApprovalTimeline } from "@/components/features/exhibitions/ApprovalTimeline";
 import {
   SuperAgentDataTableShell,
   SuperAgentEmptyState,
@@ -58,7 +59,7 @@ interface ExhibitionRequest {
   reviewedBy?: { _id: string; name: string };
   reviewedAt?: string;
   reviewNote?: string;
-  statusHistory?: { status: string; changedAt: string; changedBy?: { _id: string; name: string }; note?: string }[];
+  statusHistory?: { status: string; changedAt: string; changedBy?: { _id: string; name: string }; note?: string; approverRole?: string; statusReason?: string }[];
   createdAt: string;
 }
 
@@ -82,8 +83,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft", submitted: "Submitted", under_review: "Under Review",
-  approved: "Approved", revision_requested: "Revision Requested",
-  budget_approved: "Budget Approved", resources_assigned: "Resources Assigned",
+  approved: "Operationally Approved", revision_requested: "Revision Requested",
+  budget_approved: "Financially Approved", resources_assigned: "Resources Assigned",
   active: "Active", completed: "Completed", rejected: "Rejected", archived: "Archived",
 };
 
@@ -122,8 +123,8 @@ const PARTICIPATION_LABELS: Record<string, string> = {
 const STATUS_OPTIONS = [
   { value: "all", label: "All Statuses" },
   { value: "submitted", label: "Submitted" }, { value: "under_review", label: "Under Review" },
-  { value: "approved", label: "Approved" }, { value: "revision_requested", label: "Revision Requested" },
-  { value: "budget_approved", label: "Budget Approved" },
+  { value: "approved", label: "Operationally Approved" }, { value: "revision_requested", label: "Revision Requested" },
+  { value: "budget_approved", label: "Financially Approved" },
   { value: "active", label: "Active" }, { value: "completed", label: "Completed" },
   { value: "rejected", label: "Rejected" },
 ];
@@ -181,7 +182,8 @@ export default function SuperAgentExhibitionsPage() {
   const handleReview = async () => {
     if (!reviewItem || !reviewAction) return;
     try {
-      const payload: Record<string, unknown> = { status: reviewAction, reviewNote: reviewNote.trim() || undefined };
+      const trimmedNote = reviewNote.trim() || undefined;
+      const payload: Record<string, unknown> = { status: reviewAction, reviewNote: trimmedNote, statusReason: trimmedNote };
       if (approvedBudget) payload.approvedBudget = Number(approvedBudget);
       const res = await csrfFetch(`/api/exhibitions/${reviewItem._id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
@@ -221,7 +223,7 @@ export default function SuperAgentExhibitionsPage() {
   const metrics = [
     { label: "Total Requests", value: items.length, helper: "All exhibition requests from your team.", icon: <CalendarDays className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
     { label: "Pending Review", value: pendingCount + reviewCount, helper: "Submitted or currently under review.", icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
-    { label: "Approved", value: approvedCount, helper: "Approved through active execution.", icon: <CheckCircle2 className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
+    { label: "Approved", value: approvedCount, helper: "Approved requests (including advanced stages).", icon: <CheckCircle2 className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
     { label: "Budget Requested", value: totalBudgetRequested.toLocaleString(), helper: "Combined estimated budget across requests.", icon: <DollarSign className="h-5 w-5" />, toneClassName: "workspace-tone-indigo" },
     { label: "Budget Approved", value: totalBudgetApproved.toLocaleString(), helper: "Total approved spend to date.", icon: <Target className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
   ];
@@ -342,7 +344,10 @@ export default function SuperAgentExhibitionsPage() {
                             {(item.objectives?.length ?? 0) > 1 && <Badge variant="outline" className="rounded-md text-[11px]">+{item.objectives.length - 1}</Badge>}
                           </div>
                         </td>
-                        <td className="px-4 py-3.5"><Badge className={`${STATUS_COLORS[item.status]} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>{STATUS_LABELS[item.status] ?? item.status}</Badge></td>
+                        <td className="px-4 py-3.5">
+                          <Badge className={`${STATUS_COLORS[item.status]} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>{STATUS_LABELS[item.status] ?? item.status}</Badge>
+                          {item.reviewedBy && <p className="mt-0.5 text-[10px] text-muted-foreground">by {item.reviewedBy.name}</p>}
+                        </td>
                         <td className="hidden px-4 py-3.5 md:table-cell"><Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge></td>
                         <td className="hidden px-4 py-3.5 xl:table-cell"><span className="text-xs text-muted-foreground">{item.requiredResources?.length ?? 0} items</span></td>
                         <td className="px-4 py-3.5 text-right">
@@ -354,7 +359,6 @@ export default function SuperAgentExhibitionsPage() {
                               <Button size="sm" variant="outline" onClick={() => openReview(item, "revision_requested")} className="h-8 rounded-lg border-orange-200 text-xs text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Revise</Button>
                               <Button size="sm" variant="destructive" className="h-8 rounded-lg text-xs" onClick={() => openReview(item, "rejected")}><ThumbsDown className="mr-1 h-3.5 w-3.5" /> Reject</Button>
                             </>)}
-                            {item.status === "approved" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "budget_approved")} className="h-8 rounded-lg border-teal-200 text-xs text-teal-700 hover:bg-teal-50 dark:border-teal-500/30 dark:text-teal-300"><DollarSign className="mr-1 h-3.5 w-3.5" /> Approve Budget</Button>)}
                           </div>
                         </td>
                       </tr>
@@ -398,16 +402,7 @@ export default function SuperAgentExhibitionsPage() {
               {detailItem.statusHistory && detailItem.statusHistory.length > 0 && (
                 <div>
                   <p className="text-muted-foreground mb-2 font-medium">Approval History:</p>
-                  <div className="space-y-2">
-                    {detailItem.statusHistory.map((h, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs border-l-2 border-muted pl-3 py-1">
-                        <Badge className={`${STATUS_COLORS[h.status]} text-xs`}>{STATUS_LABELS[h.status] ?? h.status}</Badge>
-                        <span className="text-muted-foreground">{new Date(h.changedAt).toLocaleString()}</span>
-                        {h.changedBy && <span>by {typeof h.changedBy === "object" ? h.changedBy.name : "User"}</span>}
-                        {h.note && <span className="italic">— {h.note}</span>}
-                      </div>
-                    ))}
-                  </div>
+                  <ApprovalTimeline entries={detailItem.statusHistory} />
                 </div>
               )}
             </div>
@@ -424,15 +419,22 @@ export default function SuperAgentExhibitionsPage() {
           {reviewItem && (<>
             <DialogHeader>
               <DialogTitle>
-                {reviewAction === "under_review" ? "Start Review" : reviewAction === "approved" ? "Approve Exhibition" : reviewAction === "revision_requested" ? "Request Revision" : reviewAction === "budget_approved" ? "Approve Budget" : "Reject Exhibition"}
+                {reviewAction === "under_review" ? "Start Review" : reviewAction === "approved" ? "Approve Exhibition" : reviewAction === "revision_requested" ? "Request Revision" : "Reject Exhibition"}
               </DialogTitle>
-              <DialogDescription>{reviewItem.eventName} — {reviewItem.agentId?.name}</DialogDescription>
+              <DialogDescription>
+                {reviewItem.eventName} — {reviewItem.agentId?.name}
+                {reviewAction === "approved" && (
+                  <span className="mt-1 block text-[11px] text-amber-600 dark:text-amber-400">
+                    Operational approval only — budget approval is handled by Admin.
+                  </span>
+                )}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              {["approved", "budget_approved"].includes(reviewAction) && (
+              {reviewAction === "approved" && (
                 <div>
-                  <Label>Approved Budget ({reviewItem.budgetCurrency})</Label>
-                  <Input type="number" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} placeholder="Approved budget amount" />
+                  <Label>Recommended Budget ({reviewItem.budgetCurrency})</Label>
+                  <Input type="number" value={approvedBudget} onChange={(e) => setApprovedBudget(e.target.value)} placeholder="Recommended budget amount" />
                   <p className="text-xs text-muted-foreground mt-1">Requested: {reviewItem.budgetCurrency} {reviewItem.estimatedBudget?.toLocaleString()}</p>
                 </div>
               )}

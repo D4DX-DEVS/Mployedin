@@ -18,7 +18,6 @@ const VALID_TRANSITIONS: Record<string, Record<string, ExhibitionRequestStatus[]
   super_agent: {
     submitted: ["under_review", "rejected"],
     under_review: ["approved", "rejected", "revision_requested"],
-    approved: ["budget_approved"],
     revision_requested: ["under_review"],
   },
   admin: {
@@ -34,11 +33,18 @@ const VALID_TRANSITIONS: Record<string, Record<string, ExhibitionRequestStatus[]
   },
 };
 
+/** Statuses that require a non-empty statusReason — enforced backend-side */
+const REASON_REQUIRED: ExhibitionRequestStatus[] = ["rejected", "revision_requested"];
+
 async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
   await connectDB();
-  const item = await ExhibitionRequest.findById(params?.id)
+  const item = await ExhibitionRequest.findOne({
+    _id: params?.id,
+    isDeleted: { $ne: true },
+  })
     .populate("agentId", "name email")
     .populate("reviewedBy", "name")
+    .populate("budgetApprovedBy", "name")
     .populate("statusHistory.changedBy", "name")
     .lean();
 
@@ -51,18 +57,26 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
 
 async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
   await connectDB();
-  const item = await ExhibitionRequest.findById(params?.id);
+  const item = await ExhibitionRequest.findOne({
+    _id: params?.id,
+    isDeleted: { $ne: true },
+  });
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
 
-  // Agent editing own draft/submitted/revision_requested request
+  /* ------------------------------------------------------------------ */
+  /*  Agent: edit own draft / submitted / revision_requested             */
+  /* ------------------------------------------------------------------ */
   if (ctx.role === "agent") {
     if (item.agentId.toString() !== ctx.userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (!["draft", "submitted", "revision_requested"].includes(item.status)) {
-      return NextResponse.json({ error: "Can only edit draft, submitted, or revision-requested requests" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Can only edit draft, submitted, or revision-requested requests" },
+        { status: 400 },
+      );
     }
 
     const {
@@ -99,7 +113,6 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     if (priority !== undefined && EXHIBITION_PRIORITIES.includes(priority)) item.priority = priority;
     if (venueNotes !== undefined) item.venueNotes = venueNotes?.trim();
 
-    // Agent can resubmit a revision_requested or draft
     if (newStatus === "submitted" && ["draft", "revision_requested"].includes(item.status)) {
       item.status = "submitted";
       item.statusHistory.push({
@@ -107,6 +120,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
         changedAt: new Date(),
         changedBy: ctx.userId as unknown as typeof item.reviewedBy,
         note: "Resubmitted",
+        approverRole: "agent",
       });
     }
 
@@ -114,9 +128,20 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     return NextResponse.json(item);
   }
 
-  // Super Agent or Admin: status transitions + budget management
+  /* ------------------------------------------------------------------ */
+  /*  Super Agent / Admin: status transitions + budget management        */
+  /* ------------------------------------------------------------------ */
   if (ctx.role === "super_agent" || ctx.role === "admin") {
-    const { status, reviewNote, approvedBudget, budgetNotes, assignedTeam, actualSpend, priority } = body;
+    const {
+      status,
+      reviewNote,
+      statusReason,
+      approvedBudget,
+      budgetNotes,
+      assignedTeam,
+      actualSpend,
+      priority,
+    } = body;
 
     if (status) {
       const allowed = VALID_TRANSITIONS[ctx.role]?.[item.status] ?? [];
@@ -126,19 +151,50 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
           { status: 400 },
         );
       }
+
+      // Backend enforcement: rejection and revision require a reason
+      if (REASON_REQUIRED.includes(status as ExhibitionRequestStatus)) {
+        const reason = (statusReason ?? reviewNote ?? "").trim();
+        if (!reason) {
+          return NextResponse.json(
+            { error: `A reason is required when setting status to '${status}'` },
+            { status: 422 },
+          );
+        }
+      }
+
+      const resolvedReason = (statusReason ?? "").trim() || undefined;
+      const resolvedNote = (reviewNote ?? "").trim() || undefined;
+
       item.status = status;
       item.reviewedBy = ctx.userId as unknown as typeof item.reviewedBy;
       item.reviewedAt = new Date();
-      if (reviewNote) item.reviewNote = reviewNote.trim();
+      if (resolvedNote) item.reviewNote = resolvedNote;
+
+      // Set budget approval metadata (immutable once set — only assign if not already set)
+      if (status === "budget_approved" && !item.budgetApprovedBy) {
+        item.budgetApprovedBy = ctx.userId as unknown as typeof item.budgetApprovedBy;
+        item.budgetApprovedAt = new Date();
+        // Lock in approvedBudget at financial approval time
+        if (approvedBudget !== undefined) {
+          item.approvedBudget = Number(approvedBudget);
+        }
+      }
+
       item.statusHistory.push({
-        status,
+        status: status as ExhibitionRequestStatus,
         changedAt: new Date(),
         changedBy: ctx.userId as unknown as typeof item.reviewedBy,
-        note: reviewNote?.trim(),
+        note: resolvedNote,
+        approverRole: ctx.role,
+        statusReason: resolvedReason,
       });
     }
 
-    if (approvedBudget !== undefined) item.approvedBudget = Number(approvedBudget);
+    // Budget fields — admin can set approvedBudget before budget_approved stage too
+    if (approvedBudget !== undefined && status !== "budget_approved") {
+      item.approvedBudget = Number(approvedBudget);
+    }
     if (actualSpend !== undefined) item.actualSpend = Number(actualSpend);
     if (budgetNotes !== undefined) item.budgetNotes = budgetNotes?.trim();
     if (assignedTeam !== undefined) item.assignedTeam = assignedTeam;
@@ -146,9 +202,13 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
 
     await item.save();
 
-    // Send email notification to agent on status change
     if (status) {
-      sendExhibitionStatusEmail(item.agentId.toString(), item.eventName, status, reviewNote).catch(() => {});
+      sendExhibitionStatusEmail(
+        item.agentId.toString(),
+        item.eventName,
+        status,
+        (statusReason ?? reviewNote ?? "").trim() || undefined,
+      ).catch(() => {});
     }
 
     return NextResponse.json(item);
@@ -159,7 +219,10 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
 
 async function deleteHandler(_req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
   await connectDB();
-  const item = await ExhibitionRequest.findById(params?.id);
+  const item = await ExhibitionRequest.findOne({
+    _id: params?.id,
+    isDeleted: { $ne: true },
+  });
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (ctx.role === "agent") {
@@ -167,13 +230,21 @@ async function deleteHandler(_req: NextRequest, ctx: AuthContext, params?: Recor
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (!["draft", "submitted"].includes(item.status)) {
-      return NextResponse.json({ error: "Can only delete draft or submitted requests" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Can only delete draft or submitted requests" },
+        { status: 400 },
+      );
     }
   } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await ExhibitionRequest.findByIdAndDelete(params?.id);
+  // Soft delete — preserve record for audit/compliance
+  item.isDeleted = true;
+  item.deletedAt = new Date();
+  item.deletedBy = ctx.userId as unknown as typeof item.deletedBy;
+  await item.save();
+
   return NextResponse.json({ success: true });
 }
 
@@ -185,10 +256,10 @@ export const DELETE = withAuth(deleteHandler, { resource: "exhibitions", action:
 
 const STATUS_EMAIL_CONFIG: Record<string, { emoji: string; color: string; label: string }> = {
   under_review: { emoji: "🔍", color: "#2563eb", label: "Under Review" },
-  approved: { emoji: "✅", color: "#059669", label: "Approved" },
+  approved: { emoji: "✅", color: "#059669", label: "Operationally Approved" },
   rejected: { emoji: "❌", color: "#dc2626", label: "Rejected" },
   revision_requested: { emoji: "✏️", color: "#d97706", label: "Revision Requested" },
-  budget_approved: { emoji: "💰", color: "#059669", label: "Budget Approved" },
+  budget_approved: { emoji: "💰", color: "#059669", label: "Financially Approved" },
   resources_assigned: { emoji: "📦", color: "#7c3aed", label: "Resources Assigned" },
   active: { emoji: "🚀", color: "#059669", label: "Active" },
   completed: { emoji: "🏆", color: "#0891b2", label: "Completed" },
@@ -198,10 +269,10 @@ async function sendExhibitionStatusEmail(
   agentUserId: string,
   eventName: string,
   newStatus: string,
-  reviewNote?: string,
+  reason?: string,
 ) {
   const config = STATUS_EMAIL_CONFIG[newStatus];
-  if (!config) return; // Don't email for trivial transitions
+  if (!config) return;
 
   const user = await User.findById(agentUserId).select("name email isActive").lean();
   if (!user?.email || !user.isActive) return;
@@ -224,10 +295,10 @@ async function sendExhibitionStatusEmail(
       <p style="font-size:14px;color:#374151;margin:8px 0 0;font-weight:600">${esc(eventName)}</p>
     </div>
 
-    ${reviewNote ? `
+    ${reason ? `
     <div style="background:#f9fafb;border-left:3px solid ${config.color};padding:12px 16px;margin-bottom:20px;border-radius:0 6px 6px 0">
       <p style="font-size:11px;font-weight:600;color:#6b7280;margin:0;text-transform:uppercase;letter-spacing:0.5px">Reviewer Note</p>
-      <p style="font-size:14px;color:#374151;margin:6px 0 0">${esc(reviewNote)}</p>
+      <p style="font-size:14px;color:#374151;margin:6px 0 0">${esc(reason)}</p>
     </div>` : ""}
 
     <div style="text-align:center;margin:24px 0">
