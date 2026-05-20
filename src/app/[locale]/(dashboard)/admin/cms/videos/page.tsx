@@ -2,6 +2,7 @@
 
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
+import { Video } from "lucide-react";
 
 const FIELDS: CrudField[] = [
   { name: "title", label: "Title (English)", type: "text", required: true, placeholder: "Video title" },
@@ -45,6 +46,20 @@ export default function VideosAdminPage() {
       description="Manage videos displayed on the landing page"
       columns={COLUMNS}
       fields={FIELDS}
+      icon={Video}
+      iconColor="text-red-600"
+      filterFields={[
+        { type: "search", placeholder: "Search video title or description…" },
+        {
+          type: "status",
+          label: "Visibility",
+          options: [
+            { value: "all", label: "All statuses" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
+          ],
+        },
+      ]}
     />
   );
 }

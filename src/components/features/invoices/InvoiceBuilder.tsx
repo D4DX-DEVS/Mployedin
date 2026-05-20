@@ -627,13 +627,30 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     }
   }, [billingCountry]);
 
-  // ── Calculations ──────────────────────────────────────────────────────────
+  // ── Calculations (mirrors backend: subtotal - discount + tax + serviceCharge) ──
   const subtotal = lineItems.reduce((s, li) => s + (li.quantity * li.unitPrice), 0);
-  const taxAmount = taxType !== "none" ? Math.round(subtotal * taxPercent / 100 * 100) / 100 : 0;
-  const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
-  // Commission: admin=toggle, super_agent=always profile rates, agent=none
-  const effectiveAgentRate = role === "super_agent" ? agentRate : (commissionEnabled ? customAgentRate : 0);
-  const effectiveSuperAgentRate = role === "super_agent" ? superAgentRate : (commissionEnabled ? customSuperAgentRate : 0);
+  const discountPercent = 0; // placeholder for future UI integration
+  const serviceCharge = 0;   // placeholder for future UI integration
+  const discountAmount = Math.round(subtotal * discountPercent / 100 * 100) / 100;
+  const afterDiscount = subtotal - discountAmount;
+  const taxAmount = taxType !== "none" ? Math.round(afterDiscount * taxPercent / 100 * 100) / 100 : 0;
+  const totalAmount = Math.round((afterDiscount + taxAmount + serviceCharge) * 100) / 100;
+  // Commission calculation:
+  // - super_agent: uses profile rates from job populate (always visible, editable)
+  // - admin: uses profile rates by default; can override via toggle
+  // - agent: no control — backend applies profile rates server-side
+  const effectiveAgentRate = role === "agent"
+    ? agentRate
+    : role === "super_agent"
+      ? agentRate
+      : commissionEnabled ? customAgentRate : agentRate;
+  const effectiveSuperAgentRate = role === "agent"
+    ? superAgentRate
+    : role === "super_agent"
+      ? superAgentRate
+      : commissionEnabled ? customSuperAgentRate : superAgentRate;
+  const combinedRate = effectiveAgentRate + effectiveSuperAgentRate;
+  const combinedRateExceeds = combinedRate > 100;
   const agentCommission = Math.round(totalAmount * effectiveAgentRate / 100 * 100) / 100;
   const superAgentCommission = Math.round(totalAmount * effectiveSuperAgentRate / 100 * 100) / 100;
   const companyNet = Math.round((totalAmount - agentCommission - superAgentCommission) * 100) / 100;
@@ -715,6 +732,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     if (!selectedJobId) { toast.error("Please select a job first"); setStep(1); return; }
     if (!selectedEmployerId) { toast.error("Please select an employer"); setStep(1); return; }
     if (lineItems.some(li => !li.description || li.unitPrice <= 0)) { toast.error("Please fill all line items with description and price"); setStep(1); return; }
+    if (combinedRateExceeds) { toast.error(`Combined commission rate (${combinedRate.toFixed(1)}%) exceeds 100%. Please adjust rates.`); return; }
+    if (totalAmount <= 0) { toast.error("Invoice total must be greater than zero"); setStep(1); return; }
 
     setSubmitting(true);
     try {
@@ -729,10 +748,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
           unitPrice: li.unitPrice,
           amount: li.quantity * li.unitPrice,
         })),
-        discountPercent: 0,
+        discountPercent,
         taxType,
         taxPercent,
-        serviceCharge: 0,
+        serviceCharge,
         paymentTerms,
         customPaymentDays: paymentTerms === "custom" ? customPaymentDays : undefined,
         dueDate: dueDate || undefined,
@@ -751,9 +770,9 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         ...(role === "super_agent" ? {
           overrideAgentRate: agentRate,
           overrideSuperAgentRate: superAgentRate,
-        } : commissionEnabled && role === "admin" ? {
-          overrideAgentRate: customAgentRate,
-          overrideSuperAgentRate: customSuperAgentRate,
+        } : role === "admin" ? {
+          overrideAgentRate: commissionEnabled ? customAgentRate : agentRate,
+          overrideSuperAgentRate: commissionEnabled ? customSuperAgentRate : superAgentRate,
         } : {}),
       };
 
@@ -781,7 +800,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
   const canProceed = () => {
     switch (step) {
-      case 1: return !!selectedJobId && !!selectedEmployerId && !duplicateWarning && lineItems.every(li => li.description && li.unitPrice > 0);
+      case 1: return !!selectedJobId && !!selectedEmployerId && !duplicateWarning && !combinedRateExceeds && lineItems.every(li => li.description && li.unitPrice > 0) && totalAmount > 0;
       default: return true;
     }
   };
@@ -918,8 +937,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Discount</span>
-              <span className="font-medium">{fmt(0)}</span>
+              <span className="text-muted-foreground">Discount{discountPercent > 0 ? ` (${discountPercent}%)` : ""}</span>
+              <span className="font-medium">-{fmt(discountAmount)}</span>
             </div>
             <div className="border-t border-border/70 pt-2" />
             <div className="flex justify-between">
@@ -939,38 +958,86 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
         </div>
 
         {/* Commission Preview (Internal) */}
-        <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">Commission Preview (Internal)</p>
+        <div className={`rounded-xl border p-4 ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/20" : "border-amber-200/80 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/20"}`}>
+          <div className="flex items-center justify-between">
+            <p className={`text-[10px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700 dark:text-rose-300" : "text-amber-700 dark:text-amber-300"}`}>Commission Split</p>
+            {role === "admin" && (selectedAgent || selectedSuperAgent) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCommissionEnabled(!commissionEnabled);
+                  if (!commissionEnabled) {
+                    setCustomAgentRate(agentRate);
+                    setCustomSuperAgentRate(superAgentRate);
+                  }
+                }}
+                className={`rounded-full px-2 py-0.5 text-[9px] font-medium transition-colors ${commissionEnabled ? "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+              >
+                {commissionEnabled ? "Custom ✓" : "Override"}
+              </button>
+            )}
+          </div>
           <div className="mt-2 space-y-1.5 text-xs">
-            {selectedAgent?.userId?.name ? (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Agent ({selectedAgent.userId.name})</span>
-                <span className="font-medium">{agentRate}% &nbsp; {fmt(agentCommission)}</span>
+            {(selectedAgent || agentRate > 0) ? (
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {selectedAgent?.userId?.name ? `Agent (${selectedAgent.userId.name})` : "Agent Commission"}
+                  </span>
+                  <span className="font-medium">{effectiveAgentRate}% &nbsp; {fmt(agentCommission)}</span>
+                </div>
+                {role === "admin" && commissionEnabled && (
+                  <input
+                    type="range" min={0} max={50} step={0.5}
+                    value={customAgentRate}
+                    onChange={(e) => setCustomAgentRate(parseFloat(e.target.value))}
+                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-sky-200 accent-sky-600 dark:bg-sky-800"
+                  />
+                )}
               </div>
             ) : (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Agent Commission</span>
-                <span className="font-medium">{agentRate}% &nbsp; {fmt(agentCommission)}</span>
+                <span className="text-muted-foreground/60 italic">No agent assigned</span>
+                <span className="text-muted-foreground/60">—</span>
               </div>
             )}
-            {selectedSuperAgent?.userId?.name ? (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">SA ({selectedSuperAgent.userId.name})</span>
-                <span className="font-medium">{superAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
+            {(selectedSuperAgent || superAgentRate > 0) ? (
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {selectedSuperAgent?.userId?.name ? `SA (${selectedSuperAgent.userId.name})` : "Super Agent Commission"}
+                  </span>
+                  <span className="font-medium">{effectiveSuperAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
+                </div>
+                {role === "admin" && commissionEnabled && (
+                  <input
+                    type="range" min={0} max={50} step={0.5}
+                    value={customSuperAgentRate}
+                    onChange={(e) => setCustomSuperAgentRate(parseFloat(e.target.value))}
+                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-indigo-200 accent-indigo-600 dark:bg-indigo-800"
+                  />
+                )}
               </div>
-            ) : (
+            ) : !selectedAgent ? null : (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Super Agent Commission</span>
-                <span className="font-medium">{superAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
+                <span className="text-muted-foreground/60 italic">No super agent</span>
+                <span className="text-muted-foreground/60">—</span>
+              </div>
+            )}
+            {combinedRateExceeds && (
+              <div className="mt-1 rounded-md bg-rose-100 px-2 py-1.5 dark:bg-rose-900/30">
+                <p className="text-[10px] font-semibold text-rose-700 dark:text-rose-300">
+                  ⚠ Combined rate ({combinedRate.toFixed(1)}%) exceeds 100% — invoice will be rejected
+                </p>
               </div>
             )}
             <div className="border-t border-amber-200/70 pt-1.5 dark:border-amber-800/40">
-              <div className="flex justify-between font-medium text-emerald-700 dark:text-emerald-400">
+              <div className={`flex justify-between font-medium ${companyNet < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"}`}>
                 <span>Platform Revenue</span>
                 <span>{fmt(companyNet)}</span>
               </div>
             </div>
-            <p className="mt-1 text-[9px] italic text-amber-600/80 dark:text-amber-400/60">Internal preview — not visible to employer.</p>
+            <p className="mt-1 text-[9px] italic text-amber-600/80 dark:text-amber-400/60">Internal — not visible to employer</p>
           </div>
         </div>
 
@@ -1780,6 +1847,43 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
     );
   }
 
+  // ── Commission summary for dialog mode (agent view) ──────────────────────
+  const dialogCommissionSummary = (selectedAgent || selectedSuperAgent || agentRate > 0 || superAgentRate > 0) && totalAmount > 0 && (
+    <div className={`mt-4 rounded-xl border p-4 ${combinedRateExceeds ? "border-rose-300 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/20" : "border-amber-200/80 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/20"}`}>
+      <p className={`text-[10px] font-semibold uppercase tracking-wider ${combinedRateExceeds ? "text-rose-700 dark:text-rose-300" : "text-amber-700 dark:text-amber-300"}`}>
+        {role === "agent" ? "Your Commission" : "Commission Split"}
+      </p>
+      <div className="mt-2 space-y-1.5 text-xs">
+        {effectiveAgentRate > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">
+              {selectedAgent?.userId?.name ? `Agent (${selectedAgent.userId.name})` : "Agent Commission"}
+            </span>
+            <span className="font-medium text-sky-700 dark:text-sky-300">{effectiveAgentRate}% &nbsp; {fmt(agentCommission)}</span>
+          </div>
+        )}
+        {effectiveSuperAgentRate > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">
+              {selectedSuperAgent?.userId?.name ? `SA (${selectedSuperAgent.userId.name})` : "Super Agent"}
+            </span>
+            <span className="font-medium text-indigo-700 dark:text-indigo-300">{effectiveSuperAgentRate}% &nbsp; {fmt(superAgentCommission)}</span>
+          </div>
+        )}
+        <div className="border-t border-amber-200/70 pt-1.5 dark:border-amber-800/40">
+          <div className={`flex justify-between font-medium ${companyNet < 0 ? "text-rose-600" : "text-emerald-700 dark:text-emerald-400"}`}>
+            <span>Platform Revenue</span>
+            <span>{fmt(companyNet)}</span>
+          </div>
+        </div>
+        {combinedRateExceeds && (
+          <p className="mt-1 text-[10px] font-semibold text-rose-600">Combined rate ({combinedRate.toFixed(1)}%) exceeds 100%</p>
+        )}
+        <p className="mt-1 text-[9px] italic text-amber-600/80 dark:text-amber-400/60">Internal — not visible to employer</p>
+      </div>
+    </div>
+  );
+
   // ── DIALOG MODE: Standard popup for agent/super_agent ──────────────────────
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -1810,6 +1914,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {stepContent}
+          {dialogCommissionSummary}
         </div>
 
         {/* Footer */}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -107,10 +106,10 @@ const SORT_OPTIONS = [
 ];
 const SCORE_RANGE_OPTIONS = [
   { value: "", label: "All Scores" },
-  { value: "80-100", label: "Excellent (80-100)" },
-  { value: "60-79", label: "Good (60-79)" },
-  { value: "40-59", label: "Average (40-59)" },
-  { value: "0-39", label: "Low (0-39)" },
+  { value: "80-100", label: "Excellent (80–100)" },
+  { value: "60-79", label: "Good (60–79)" },
+  { value: "40-59", label: "Average (40–59)" },
+  { value: "0-39", label: "Low (0–39)" },
 ];
 
 function statusLabel(s: string) {
@@ -124,15 +123,16 @@ function sourceLabel(s?: string) {
 function InsightIcon({ type }: { type: string }) {
   switch (type) {
     case "positive": return <CheckCircle className="h-4 w-4 text-emerald-500" />;
-    case "warning": return <AlertTriangle className="h-4 w-4 text-amber-500" />;
-    case "action": return <Target className="h-4 w-4 text-blue-500" />;
-    default: return <Info className="h-4 w-4 text-sky-500" />;
+    case "warning":  return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+    case "action":   return <Target className="h-4 w-4 text-blue-500" />;
+    default:         return <Info className="h-4 w-4 text-sky-500" />;
   }
 }
 
 function ScoreBadge({ score }: { score?: number }) {
   if (score == null) return <span className="text-xs text-muted-foreground">—</span>;
-  const color = score >= 80 ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400"
+  const color =
+    score >= 80 ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400"
     : score >= 60 ? "text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400"
     : score >= 40 ? "text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400"
     : "text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400";
@@ -167,6 +167,7 @@ export default function AdminApplicationsPage() {
   const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState("appliedAt");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [showFilters, setShowFilters] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // AI Insights
@@ -179,7 +180,6 @@ export default function AdminApplicationsPage() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
 
-  // Active filter count
   const activeFilters = [status, employerId, source, scoreRange, dateFrom, dateTo].filter(Boolean).length;
 
   const exportColumns: ExportColumn<Application>[] = [
@@ -215,7 +215,6 @@ export default function AdminApplicationsPage() {
       if (min) params.set("scoreMin", min);
       if (max) params.set("scoreMax", max);
     }
-    // Fetch employers & stats only on initial load
     if (employers.length === 0) params.set("fetchEmployers", "true");
     if (!stats) params.set("fetchStats", "true");
 
@@ -228,7 +227,7 @@ export default function AdminApplicationsPage() {
       if (data.stats) setStats(data.stats);
     }
     setLoading(false);
-  }, [search, status, employerId, source, scoreRange, dateFrom, dateTo, sortBy, sortOrder, page, limit]);
+  }, [search, status, employerId, source, scoreRange, dateFrom, dateTo, sortBy, sortOrder, page, limit, employers.length, stats, updateTotal]);
 
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
 
@@ -237,19 +236,14 @@ export default function AdminApplicationsPage() {
     setAiLoading(true);
     try {
       const res = await fetch("/api/applications/ai-insights");
-      if (res.ok) {
-        setAiInsights(await res.json());
-      }
+      if (res.ok) setAiInsights(await res.json());
     } catch { /* swallow */ }
     setAiLoading(false);
   }, []);
 
   /* ---- AI Search ---- */
   const scoreBandToRange: Record<string, string> = {
-    excellent: "80-100",
-    good: "60-79",
-    average: "40-59",
-    low: "0-39",
+    excellent: "80-100", good: "60-79", average: "40-59", low: "0-39",
   };
 
   async function handleApplyAiSearch() {
@@ -265,7 +259,6 @@ export default function AdminApplicationsPage() {
       if (!res.ok) throw new Error("AI search failed");
       const data = await res.json();
       const f = data.filters ?? {};
-
       setSearch(f.search ?? "");
       setStatus(f.status ?? "");
       setSource(f.source ?? "");
@@ -274,20 +267,13 @@ export default function AdminApplicationsPage() {
       setDateTo(f.dateTo ?? "");
       setSortBy("appliedAt");
       setSortOrder("desc");
-
-      // Match employer by name if returned
       if (f.employer && employers.length > 0) {
-        const match = employers.find((e) =>
-          e.companyName.toLowerCase().includes(f.employer!.toLowerCase())
-        );
+        const match = employers.find((e) => e.companyName.toLowerCase().includes(f.employer!.toLowerCase()));
         setEmployerId(match?._id ?? "");
       } else {
         setEmployerId("");
       }
-
-      // Open advanced if AI set advanced filters
       if (f.scoreBand || f.dateFrom || f.dateTo) setShowAdvancedFilters(true);
-
       setAiSummary(data.summary ?? null);
       resetPage();
     } catch {
@@ -307,12 +293,8 @@ export default function AdminApplicationsPage() {
   };
 
   const toggleSort = (field: string) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(field);
-      setSortOrder("desc");
-    }
+    if (sortBy === field) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    else { setSortBy(field); setSortOrder("desc"); }
   };
 
   const employerOptions = [
@@ -321,381 +303,325 @@ export default function AdminApplicationsPage() {
   ];
 
   return (
-    <div className="page-container space-y-5">
-      {/* Header + AI toggle */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <PageHeader title="Applications" description="View and manage all job applications across the platform" />
-        <Button
-          variant={showAiPanel ? "default" : "outline"}
-          size="sm"
-          onClick={() => {
-            setShowAiPanel(!showAiPanel);
-            if (!showAiPanel && !aiInsights) fetchAiInsights();
-          }}
-          className="gap-2"
-        >
-          <Sparkles className="h-4 w-4" />
-          AI Insights
-        </Button>
-      </div>
+    <div className="page-container employer-legacy-surface space-y-6">
 
-      {/* ΓöÇΓöÇΓöÇΓöÇΓöÇ Stats Cards ΓöÇΓöÇΓöÇΓöÇΓöÇ */}
-      {stats && (
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight">{stats.totalAll}</p>
-                <p className="mt-1 text-xs text-muted-foreground">All applications</p>
-              </div>
-              <div className="workspace-tone-blue rounded-2xl p-2.5"><FileText className="h-5 w-5" /></div>
+      {/* ─── Hero ─────────────────────────────────────────────────────── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              Recruitment Control
             </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Today</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">{stats.todayCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">New today</p>
-              </div>
-              <div className="workspace-tone-green rounded-2xl p-2.5"><TrendingUp className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">This Week</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight text-blue-600 dark:text-blue-400">{stats.weekCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Last 7 days</p>
-              </div>
-              <div className="workspace-tone-blue rounded-2xl p-2.5"><BarChart3 className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">AI Scored</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight text-violet-600 dark:text-violet-400">{stats.scoredCount}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Avg: {stats.avgAiScore}%</p>
-              </div>
-              <div className="workspace-tone-violet rounded-2xl p-2.5"><Brain className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight text-amber-600 dark:text-amber-400">
-                  {stats.byStatus?.["shortlisted"] ?? 0}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">In shortlist</p>
-              </div>
-              <div className="workspace-tone-amber rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ΓöÇΓöÇΓöÇΓöÇΓöÇ AI Insights Panel ΓöÇΓöÇΓöÇΓöÇΓöÇ */}
-      {showAiPanel && (
-        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-sky-500" />
-              <h3 className="text-lg font-semibold">AI Pipeline Insights</h3>
-            </div>
-            <Button variant="ghost" size="sm" onClick={fetchAiInsights} disabled={aiLoading} className="gap-1.5">
-              <RefreshCw className={`h-3.5 w-3.5 ${aiLoading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+              Applications
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              View and manage all job applications across the platform — track pipeline health, AI match scores, and candidate sources.
+            </p>
           </div>
 
-          {aiLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-16 rounded-xl bg-muted/40 animate-pulse" />
-              ))}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{stats?.totalAll ?? total} total</p>
+              <p className="text-xs text-muted-foreground">Avg score: {stats?.avgAiScore ?? 0}%</p>
             </div>
-          ) : aiInsights ? (
-            <div className="space-y-4">
-              {/* Health score + summary */}
-              <div className="flex flex-wrap items-start gap-4">
-                {aiInsights.healthScore != null && (
-                  <div className="flex flex-col items-center gap-1">
-                    <div className={`text-3xl font-bold ${
-                      aiInsights.healthScore >= 70 ? "text-emerald-600 dark:text-emerald-400"
-                      : aiInsights.healthScore >= 40 ? "text-amber-600 dark:text-amber-400"
-                      : "text-red-600 dark:text-red-400"
-                    }`}>
-                      {aiInsights.healthScore}
-                    </div>
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Health</span>
-                  </div>
-                )}
-                <p className="flex-1 text-sm text-muted-foreground leading-relaxed">{aiInsights.summary}</p>
-              </div>
-
-              {/* Insights */}
-              {aiInsights.insights.length > 0 && (
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {aiInsights.insights.map((insight, i) => (
-                    <div key={i} className="flex gap-2.5 rounded-xl border border-border/50 bg-background/50 p-3">
-                      <InsightIcon type={insight.type} />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium">{insight.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{insight.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Recommendations */}
-              {aiInsights.recommendations.length > 0 && (
-                <div className="rounded-xl border border-sky-200/50 dark:border-sky-800/30 bg-sky-50/50 dark:bg-sky-950/20 p-3 space-y-1.5">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400 flex items-center gap-1.5">
-                    <Zap className="h-3.5 w-3.5" /> Recommendations
-                  </p>
-                  {aiInsights.recommendations.map((rec, i) => (
-                    <p key={i} className="text-sm text-sky-900 dark:text-sky-200 pl-5">• {rec}</p>
-                  ))}
-                </div>
-              )}
-
-              {/* Top Jobs + Score Distribution */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                {aiInsights.data.topJobs.length > 0 && (
-                  <div className="rounded-xl border border-border/50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Top Jobs (30d)</p>
-                    <div className="space-y-2">
-                      {aiInsights.data.topJobs.map((j, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm">
-                          <div className="min-w-0">
-                            <span className="font-medium truncate block">{j.title}</span>
-                            <span className="text-xs text-muted-foreground">{j.company}</span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Badge variant="secondary" className="text-[10px]">{j.applications} apps</Badge>
-                            <ScoreBadge score={j.avgScore || undefined} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {aiInsights.data.avgDaysInPipeline > 0 && (
-                  <div className="rounded-xl border border-border/50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pipeline Metrics</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Avg. days in pipeline</span>
-                        <span className="font-semibold">{aiInsights.data.avgDaysInPipeline}d</span>
-                      </div>
-                      {aiInsights.data.scoreDistribution.map((sd, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Score {sd.range}</span>
-                          <span className="font-medium">{sd.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Click Refresh to load AI insights.</p>
-          )}
-        </section>
-      )}
-
-      {/* ───── Filters ───── */}
-      <TableToolbar
-        title="Applications"
-        description="View and manage all job applications across the platform."
-        search={search}
-        onSearchChange={(v) => { setSearch(v); resetPage(); }}
-        searchPlaceholder="Search applicant, job, company, skills…"
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        hasActiveFilters={activeFilters > 0}
-        actions={
-          <div className="flex items-center gap-2">
-            {activeFilters > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs text-muted-foreground gap-1.5">
-                Clear all
-              </Button>
-            )}
             <Button
               variant={showAiPanel ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowAiPanel(v => !v)}
-              className="gap-1.5 text-xs"
+              onClick={() => {
+                setShowAiPanel(!showAiPanel);
+                if (!showAiPanel && !aiInsights) fetchAiInsights();
+              }}
+              className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700 border-0"
             >
-              <Sparkles className="h-3.5 w-3.5" /> AI Insights
+              <Sparkles className="h-4 w-4" />
+              AI Insights
             </Button>
           </div>
-        }
-        filterContent={
-          <div className="space-y-3">
-            {/* Primary row */}
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div>
-                <label htmlFor="admin-apps-status" className="sr-only">Status</label>
-                <SearchableSelect
-                  id="admin-apps-status"
-                  className="h-11 w-full rounded-xl border-border bg-card"
-                  options={STATUS_OPTIONS}
-                  value={status}
-                  onValueChange={(v) => { setStatus(v); resetPage(); }}
-                  placeholder="All Statuses"
-                />
-              </div>
-              {employerOptions.length > 2 && (
+        </div>
+
+        {/* Stats Row */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {([
+            { label: "Total", value: stats?.totalAll ?? 0, note: "All applications", icon: FileText, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { label: "Today", value: stats?.todayCount ?? 0, note: "New today", icon: TrendingUp, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: "AI Scored", value: stats?.scoredCount ?? 0, note: `Avg: ${stats?.avgAiScore ?? 0}%`, icon: Brain, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
+            { label: "In Shortlist", value: stats?.byStatus?.["shortlisted"] ?? 0, note: "Pipeline", icon: Users, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
+            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <label htmlFor="admin-apps-employer" className="sr-only">Employer</label>
-                  <SearchableSelect
-                    id="admin-apps-employer"
-                    className="h-11 w-full rounded-xl border-border bg-card"
-                    options={employerOptions}
-                    value={employerId}
-                    onValueChange={(v) => { setEmployerId(v); resetPage(); }}
-                    placeholder="All Employers"
-                  />
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
                 </div>
-              )}
-              <div>
-                <label htmlFor="admin-apps-source" className="sr-only">Source</label>
-                <SearchableSelect
-                  id="admin-apps-source"
-                  className="h-11 w-full rounded-xl border-border bg-card"
-                  options={SOURCE_OPTIONS}
-                  value={source}
-                  onValueChange={(v) => { setSource(v); resetPage(); }}
-                  placeholder="All Sources"
-                />
+                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
+                  <Icon className={`h-5 w-5 ${tone}`} />
+                </span>
               </div>
+              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ─── AI Insights inline ─────────────────────────────────────── */}
+        {showAiPanel && (
+          <div className="mt-6 rounded-[20px] border border-border/30 bg-background/40 p-5 space-y-4 backdrop-blur-sm dark:bg-background/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-sky-500" />
+                <h3 className="text-lg font-semibold">AI Pipeline Insights</h3>
+              </div>
+              <Button variant="ghost" size="sm" onClick={fetchAiInsights} disabled={aiLoading} className="gap-1.5">
+                <RefreshCw className={`h-3.5 w-3.5 ${aiLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
             </div>
 
-            {/* Toggle advanced */}
+            {aiLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-16 animate-pulse rounded-xl bg-muted/40" />
+                ))}
+              </div>
+            ) : aiInsights ? (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-start gap-4">
+                  {aiInsights.healthScore != null && (
+                    <div className="flex flex-col items-center gap-1">
+                      <div className={`text-3xl font-bold ${
+                        aiInsights.healthScore >= 70 ? "text-emerald-600 dark:text-emerald-400"
+                        : aiInsights.healthScore >= 40 ? "text-amber-600 dark:text-amber-400"
+                        : "text-red-600 dark:text-red-400"
+                      }`}>
+                        {aiInsights.healthScore}
+                      </div>
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Health</span>
+                    </div>
+                  )}
+                  <p className="flex-1 text-sm leading-relaxed text-muted-foreground">{aiInsights.summary}</p>
+                </div>
+
+                {aiInsights.insights.length > 0 && (
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {aiInsights.insights.map((insight, i) => (
+                      <div key={i} className="flex gap-2.5 rounded-xl border border-border/50 bg-background/50 p-3">
+                        <InsightIcon type={insight.type} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{insight.title}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{insight.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {aiInsights.recommendations.length > 0 && (
+                  <div className="rounded-xl border border-sky-200/50 bg-sky-50/50 p-3 space-y-1.5 dark:border-sky-800/30 dark:bg-sky-950/20">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400">
+                      <Zap className="h-3.5 w-3.5" /> Recommendations
+                    </p>
+                    {aiInsights.recommendations.map((rec, i) => (
+                      <p key={i} className="pl-5 text-sm text-sky-900 dark:text-sky-200">• {rec}</p>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {aiInsights.data.topJobs.length > 0 && (
+                    <div className="rounded-xl border border-border/50 p-3">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Top Jobs (30d)</p>
+                      <div className="space-y-2">
+                        {aiInsights.data.topJobs.map((j, i) => (
+                          <div key={i} className="flex items-center justify-between text-sm">
+                            <div className="min-w-0">
+                              <span className="block truncate font-medium">{j.title}</span>
+                              <span className="text-xs text-muted-foreground">{j.company}</span>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <Badge variant="secondary" className="text-[10px]">{j.applications} apps</Badge>
+                              <ScoreBadge score={j.avgScore || undefined} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {aiInsights.data.avgDaysInPipeline > 0 && (
+                    <div className="rounded-xl border border-border/50 p-3">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pipeline Metrics</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Avg. days in pipeline</span>
+                          <span className="font-semibold">{aiInsights.data.avgDaysInPipeline}d</span>
+                        </div>
+                        {aiInsights.data.scoreDistribution.map((sd, i) => (
+                          <div key={i} className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Score {sd.range}</span>
+                            <span className="font-medium">{sd.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Click Refresh to load AI insights.</p>
+            )}
+          </div>
+        )}
+
+        {/* ─── Filter toggle bar ──────────────────────────────────────── */}
+        <div className="mt-6 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
+          >
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            {showFilters ? "Hide Filters" : "Show Filters"}
+            {activeFilters > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilters} active</Badge>}
+            {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          </button>
+          <div className="flex items-center gap-2">
+            {activeFilters > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
+                Clear filters
+              </Button>
+            )}
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
+          </div>
+        </div>
+
+        {/* ─── Expandable Filters ─────────────────────────────────────── */}
+        {showFilters && (
+          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search applicant, job, company, skills…"
+                value={search}
+                onChange={(v) => { setSearch(v.target.value); resetPage(); }}
+                className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <SearchableSelect
+                className="h-11 w-full rounded-xl border-border bg-card"
+                options={STATUS_OPTIONS}
+                value={status}
+                onValueChange={(v) => { setStatus(v); resetPage(); }}
+                placeholder="All Statuses"
+              />
+              {employerOptions.length > 2 && (
+                <SearchableSelect
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={employerOptions}
+                  value={employerId}
+                  onValueChange={(v) => { setEmployerId(v); resetPage(); }}
+                  placeholder="All Employers"
+                />
+              )}
+              <SearchableSelect
+                className="h-11 w-full rounded-xl border-border bg-card"
+                options={SOURCE_OPTIONS}
+                value={source}
+                onValueChange={(v) => { setSource(v); resetPage(); }}
+                placeholder="All Sources"
+              />
+            </div>
+
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 <Filter className="h-3.5 w-3.5" />
                 Advanced Filters
                 {showAdvancedFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </button>
               {activeFilters > 0 && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{activeFilters} active</Badge>
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilters} active</Badge>
               )}
             </div>
 
-            {/* Advanced filters row */}
             {showAdvancedFilters && (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 pt-1">
-                <div>
-                  <label htmlFor="admin-apps-score" className="sr-only">AI Score Range</label>
-                  <SearchableSelect
-                    id="admin-apps-score"
-                    className="h-11 w-full rounded-xl border-border bg-card"
-                    options={SCORE_RANGE_OPTIONS}
-                    value={scoreRange}
-                    onValueChange={(v) => { setScoreRange(v); resetPage(); }}
-                    placeholder="All AI Scores"
-                  />
-                </div>
-                <div className="relative min-w-0">
-                  <label htmlFor="admin-apps-date-from" className="sr-only">Date From</label>
+              <div className="grid gap-3 pt-1 sm:grid-cols-2 xl:grid-cols-4">
+                <SearchableSelect
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={SCORE_RANGE_OPTIONS}
+                  value={scoreRange}
+                  onValueChange={(v) => { setScoreRange(v); resetPage(); }}
+                  placeholder="All AI Scores"
+                />
+                <div className="relative">
                   <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    id="admin-apps-date-from"
                     type="date"
                     value={dateFrom}
                     onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
                     className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-                    placeholder="From date"
                   />
                 </div>
-                <div className="relative min-w-0">
-                  <label htmlFor="admin-apps-date-to" className="sr-only">Date To</label>
+                <div className="relative">
                   <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    id="admin-apps-date-to"
                     type="date"
                     value={dateTo}
                     onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
                     className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-                    placeholder="To date"
                   />
                 </div>
-                <div>
-                  <label htmlFor="admin-apps-sort" className="sr-only">Sort By</label>
-                  <SearchableSelect
-                    id="admin-apps-sort"
-                    className="h-11 w-full rounded-xl border-border bg-card"
-                    options={SORT_OPTIONS}
-                    value={sortBy}
-                    onValueChange={(v) => { setSortBy(v); resetPage(); }}
-                    placeholder="Sort by"
-                  />
-                </div>
+                <SearchableSelect
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={SORT_OPTIONS}
+                  value={sortBy}
+                  onValueChange={(v) => { setSortBy(v); resetPage(); }}
+                  placeholder="Sort by"
+                />
               </div>
             )}
 
-            {/* AI Search */}
-            <div className="mt-1 grid gap-3 xl:grid-cols-[1fr_auto]">
-              <div className="relative min-w-0">
+            <div className="grid gap-3 xl:grid-cols-[1fr_auto]">
+              <div className="relative">
                 <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
                 <Input
-                  placeholder='AI search: e.g. "rejected applications from d4dx" or "high score easy apply this week"'
+                  placeholder='AI search: e.g. "rejected applications from d4dx"'
                   value={aiQuery}
                   onChange={(e) => setAiQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void handleApplyAiSearch();
-                    }
-                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyAiSearch(); } }}
                   className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
                 />
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  onClick={() => { void handleApplyAiSearch(); }}
-                  disabled={!aiQuery.trim() || isApplyingAiSearch}
-                  className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                >
-                  <Wand2 className="h-4 w-4" />
-                  {isApplyingAiSearch ? "Applying…" : "AI Search"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={clearAllFilters}
-                  disabled={!activeFilters && !aiQuery && !aiSummary}
-                  className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                >
-                  Clear filters
-                </Button>
-              </div>
+              <Button
+                type="button"
+                onClick={() => { void handleApplyAiSearch(); }}
+                disabled={!aiQuery.trim() || isApplyingAiSearch}
+                className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                <Wand2 className="h-4 w-4" />
+                {isApplyingAiSearch ? "Applying…" : "AI Search"}
+              </Button>
             </div>
 
             {aiSummary && (
-              <p className="mt-2 rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
+              <p className="rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
                 <Sparkles className="mr-1.5 inline-block h-3.5 w-3.5" />
                 {aiSummary}
               </p>
             )}
           </div>
-        }
-      />
+        )}
+      </section>
 
-      {/* ΓöÇΓöÇΓöÇΓöÇΓöÇ Applications ΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+      {/* ─── Application List ─────────────────────────────────────────── */}
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -703,11 +629,13 @@ export default function AdminApplicationsPage() {
           ))}
         </div>
       ) : applications.length === 0 ? (
-        <div className="workspace-panel-surface rounded-[24px] px-6 py-16 text-center">
+        <div className="workspace-panel-surface rounded-[28px] px-6 py-16 text-center">
           <div className="workspace-muted-pill mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
             <Inbox className="h-7 w-7" />
           </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{activeFilters ? "No matching applications" : "No applications yet"}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {activeFilters ? "No matching applications" : "No applications yet"}
+          </p>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
             {activeFilters ? "No applications match the current filters." : "No applications found on the platform."}
           </h3>
@@ -723,8 +651,8 @@ export default function AdminApplicationsPage() {
           )}
         </div>
       ) : (
-        <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
-          {/* Column headers – desktop */}
+        <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+          {/* Column headers */}
           <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
             <span>Candidate</span>
             <span>Role, Match, Skills</span>
@@ -758,7 +686,7 @@ export default function AdminApplicationsPage() {
               return (
                 <article
                   key={app._id}
-                  className="grid gap-3 px-5 py-4 transition-all duration-200 bg-transparent hover:bg-background/70 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center"
+                  className="grid gap-3 bg-transparent px-5 py-4 transition-all duration-200 hover:bg-background/70 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center"
                 >
                   {/* Candidate */}
                   <div className="flex min-w-0 items-center gap-3.5">
@@ -790,7 +718,6 @@ export default function AdminApplicationsPage() {
                         </>
                       )}
                     </div>
-
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       {aiScoreLabel && (
                         <Badge className={`${aiScoreColor} rounded-full px-2.5 py-0.5 text-[11px] font-semibold`}>
@@ -806,7 +733,6 @@ export default function AdminApplicationsPage() {
                         <span className="text-xs text-muted-foreground">No skills listed</span>
                       )}
                     </div>
-
                     <div className="mt-1.5 flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
                       <span>Applied {appliedDate}</span>
                       <Badge variant={app.autoApplied ? "warning" : "secondary"} className="text-[11px]">
@@ -815,7 +741,7 @@ export default function AdminApplicationsPage() {
                     </div>
                   </div>
 
-                  {/* Sort indicator */}
+                  {/* Score */}
                   <div className="flex items-center gap-2 sm:justify-end">
                     <ScoreBadge score={app.aiMatchScore} />
                   </div>

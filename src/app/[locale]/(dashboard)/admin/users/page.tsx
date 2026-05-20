@@ -1,19 +1,17 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2 } from "lucide-react";
+import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { SearchableSelect } from "@/components/ui/searchable-select";
+import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -231,27 +229,29 @@ export default function AdminUsersPage() {
                 className="h-8 w-52 rounded-lg pl-8 text-sm"
               />
             </div>
-            <SearchableSelect
-              className="h-8 w-[130px]"
-              options={[
-                { value: "all", label: "All roles" },
-                ...ROLES.map((r) => ({ value: r, label: r.replace("_", " ") })),
-              ]}
-              value={roleFilter}
-              onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
-              placeholder="All roles"
-            />
-            <SearchableSelect
-              className="h-8 w-[120px]"
-              options={[
-                { value: "all", label: "All status" },
-                { value: "true", label: "Active" },
-                { value: "false", label: "Inactive" },
-              ]}
-              value={activeFilter}
-              onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
-              placeholder="All status"
-            />
+            <div className="w-[130px]">
+              <InlineSearchSelect
+                options={[
+                  { value: "all", label: "All roles" },
+                  ...ROLES.map((r) => ({ value: r, label: r.replace("_", " ") })),
+                ]}
+                value={roleFilter}
+                onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
+                placeholder="All roles"
+              />
+            </div>
+            <div className="w-[120px]">
+              <InlineSearchSelect
+                options={[
+                  { value: "all", label: "All status" },
+                  { value: "true", label: "Active" },
+                  { value: "false", label: "Inactive" },
+                ]}
+                value={activeFilter}
+                onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
+                placeholder="All status"
+              />
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
@@ -296,8 +296,10 @@ export default function AdminUsersPage() {
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>
-                <input type="checkbox" checked={selected.length === users.length && users.length > 0}
-                  onChange={toggleAll} className="accent-primary" />
+                <Checkbox
+                  checked={selected.length === users.length && users.length > 0}
+                  onCheckedChange={toggleAll}
+                />
               </TableHead>
               <TableHead>User</TableHead>
               <TableHead>Role</TableHead>
@@ -334,8 +336,10 @@ export default function AdminUsersPage() {
               return (
                 <TableRow key={user._id} className={selected.includes(user._id) ? "bg-primary/5" : ""}>
                   <TableCell>
-                    <input type="checkbox" checked={selected.includes(user._id)}
-                      onChange={() => toggleSelect(user._id)} className="accent-primary" />
+                    <Checkbox
+                      checked={selected.includes(user._id)}
+                      onCheckedChange={() => toggleSelect(user._id)}
+                    />
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -352,24 +356,32 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
-                      <Select
-                        value={user.role}
-                        onValueChange={(v) => updateUser(user._id, { role: v })}
-                      >
-                        <SelectTrigger className="h-7 w-36 text-xs">
-                          <Badge className={`${ROLE_COLORS[user.role] ?? ""} border text-xs`}>
-                            {user.role.replace("_", " ")}
-                          </Badge>
-                          <ChevronDown className="w-3 h-3 ms-auto" />
-                        </SelectTrigger>
-                        <SelectContent>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button type="button" className="flex items-center gap-1.5 rounded-md px-1 py-0.5 hover:bg-muted/40 transition-colors">
+                            <Badge className={`${ROLE_COLORS[user.role] ?? ""} border text-xs`}>
+                              {user.role.replace("_", " ")}
+                            </Badge>
+                            <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-40">
+                          <DropdownMenuLabel className="text-xs">Change role</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
                           {ROLES.map((r) => (
-                            <SelectItem key={r} value={r} className="capitalize text-xs">
-                              {r.replace("_", " ")}
-                            </SelectItem>
+                            <DropdownMenuItem
+                              key={r}
+                              onClick={() => updateUser(user._id, { role: r })}
+                              className="capitalize text-xs gap-2"
+                            >
+                              <Badge className={`${ROLE_COLORS[r] ?? ""} border text-[10px] px-1.5 py-0`}>
+                                {r.replace("_", " ")}
+                              </Badge>
+                              {r === user.role && <Check className="h-3 w-3 ml-auto text-primary" />}
+                            </DropdownMenuItem>
                           ))}
-                        </SelectContent>
-                      </Select>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       {user.permissionMode === "custom" && (
                         <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-600">Custom</Badge>
                       )}
@@ -419,7 +431,7 @@ export default function AdminUsersPage() {
 
       {/* ── Create User Modal ──────────────────────────────── */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
             <DialogDescription>Create a user with optional custom permissions</DialogDescription>
@@ -465,18 +477,12 @@ export default function AdminUsersPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="create-role">Role <span className="text-destructive">*</span></Label>
-                <Select value={createForm.role} onValueChange={(v) => setCreateForm((f) => ({ ...f, role: v }))}>
-                  <SelectTrigger id="create-role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map((r) => (
-                      <SelectItem key={r} value={r} className="capitalize">
-                        {r.replace("_", " ")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <InlineSearchSelect
+                  options={ROLES.map((r) => ({ value: r, label: r.replace("_", " ") }))}
+                  value={createForm.role}
+                  onValueChange={(v) => setCreateForm((f) => ({ ...f, role: v }))}
+                  placeholder="Select role"
+                />
               </div>
             </div>
 
@@ -506,7 +512,7 @@ export default function AdminUsersPage() {
 
       {/* ── Permissions Editor Modal ──────────────────────── */}
       <Dialog open={!!permUser} onOpenChange={(open) => { if (!open) setPermUser(null); }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
             <DialogTitle>Manage Permissions</DialogTitle>
             <DialogDescription>

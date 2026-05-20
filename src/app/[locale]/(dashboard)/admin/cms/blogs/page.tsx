@@ -3,6 +3,7 @@
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
 import { Badge } from "@/components/ui/badge";
+import { Newspaper } from "lucide-react";
 
 const FIELDS: CrudField[] = [
   { name: "title", label: "Title (English)", type: "text", required: true, placeholder: "Blog post title" },
@@ -64,12 +65,21 @@ export default function BlogsAdminPage() {
       description="Manage blog articles for the public website"
       columns={COLUMNS}
       fields={FIELDS}
-      statusFilterOptions={[
-        { value: "all", label: "All" },
-        { value: "published", label: "Published" },
-        { value: "draft", label: "Draft" },
-        { value: "active", label: "Active" },
-        { value: "inactive", label: "Inactive" },
+      icon={Newspaper}
+      iconColor="text-emerald-600"
+      filterFields={[
+        { type: "search", placeholder: "Search title, slug, author, or tags…" },
+        {
+          type: "status",
+          label: "Publish / visibility",
+          options: [
+            { value: "all", label: "All" },
+            { value: "published", label: "Published" },
+            { value: "draft", label: "Draft" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
+          ],
+        },
       ]}
     />
   );

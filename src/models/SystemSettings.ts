@@ -11,7 +11,12 @@ export interface ISmtpConfig {
 
 export interface ICommissionOverride {
   countryCode: string;
+  /** Fallback rate applied to both roles when agentRate/superAgentRate are not specified */
   rate: number;
+  /** Role-specific override for agents (takes priority over `rate`) */
+  agentRate?: number;
+  /** Role-specific override for super-agents (takes priority over `rate`) */
+  superAgentRate?: number;
   label?: string;
 }
 
@@ -42,6 +47,8 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
       {
         countryCode: { type: String, required: true, maxlength: 5 },
         rate: { type: Number, required: true, min: 0, max: 100 },
+        agentRate: { type: Number, min: 0, max: 100 },
+        superAgentRate: { type: Number, min: 0, max: 100 },
         label: { type: String, maxlength: 100 },
         _id: false,
       },

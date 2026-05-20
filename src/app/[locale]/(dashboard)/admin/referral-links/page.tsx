@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -21,15 +20,12 @@ import {
 } from "@/hooks/useReferralLinks";
 import {
   Building2,
-  Calendar,
   Check,
   ChevronDown,
   ChevronUp,
   Copy,
   Link2,
   Loader2,
-  Search,
-  Users,
 } from "lucide-react";
 
 function formatDate(d: string | undefined): string {
@@ -69,7 +65,7 @@ function creatorEmail(link: ReferralLinkItem): string {
 
 export default function AdminReferralLinksPage() {
   const { locale } = useParams<{ locale: string }>();
-  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+  const { page, limit, setPage, setLimit, resetPage } = usePagination();
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copyMap, setCopyMap] = useState<Record<string, boolean>>({});
@@ -98,9 +94,9 @@ export default function AdminReferralLinksPage() {
     await updateMutation.mutateAsync({ id: link._id, isActive: !link.isActive });
   };
 
-  // Stats
-  const activeLinks = links.filter((l) => linkStatus(l) === "active").length;
-  const totalRegistrations = links.reduce((s, l) => s + l.usedCount, 0);
+  // Use server-aggregated stats so values reflect all pages, not just the current one
+  const activeLinks = data?.stats?.activeLinks ?? 0;
+  const totalRegistrations = data?.stats?.totalRegistrations ?? 0;
 
   const exportColumns: ExportColumn<ReferralLinkItem>[] = [
     { header: "Code", key: "code" as keyof ReferralLinkItem },
@@ -120,7 +116,7 @@ export default function AdminReferralLinksPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHeader title="Referral Links" description="Overview of all referral links created by agents and super-agents across the platform." />
 
       {/* Stats */}
@@ -183,9 +179,8 @@ export default function AdminReferralLinksPage() {
                 const status = linkStatus(link);
                 const isExpanded = expandedId === link._id;
                 return (
-                  <>
+                  <React.Fragment key={link._id}>
                     <TableRow
-                      key={link._id}
                       className="cursor-pointer hover:bg-muted/40"
                       onClick={() => setExpandedId(isExpanded ? null : link._id)}
                     >
@@ -237,7 +232,7 @@ export default function AdminReferralLinksPage() {
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
-                      <TableRow key={`${link._id}-detail`}>
+                      <TableRow>
                         <TableCell colSpan={9} className="bg-muted/30 px-6 py-4">
                           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Registrations ({link.registrations.length})
@@ -266,7 +261,7 @@ export default function AdminReferralLinksPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </TableBody>

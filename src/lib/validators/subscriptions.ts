@@ -179,7 +179,14 @@ export const recruitmentInvoiceCreateSchema = z.object({
   // Commission overrides (admin/super-agent only, 0-100%)
   overrideAgentRate: z.number().min(0).max(100).optional(),
   overrideSuperAgentRate: z.number().min(0).max(100).optional(),
-});
+}).refine(
+  (data) => {
+    const agent = data.overrideAgentRate ?? 0;
+    const superAgent = data.overrideSuperAgentRate ?? 0;
+    return agent + superAgent <= 100;
+  },
+  { message: "Combined override commission rates cannot exceed 100%", path: ["overrideAgentRate"] },
+);
 
 // ── POST /api/invoices/[id]/payments ────────────────────────────────────────
 export const invoicePaymentSchema = z.object({

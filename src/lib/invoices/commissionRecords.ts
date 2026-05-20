@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Commission, { type ICommission } from "@/models/Commission";
 import Agent from "@/models/Agent";
 import type { IInvoiceCommission } from "@/models/Invoice";
@@ -8,6 +9,7 @@ interface CreateCommissionRecordsForInvoiceInput {
   invoiceId: unknown;
   commissions: IInvoiceCommission[];
   currency: string;
+  session?: mongoose.ClientSession;
 }
 
 interface ReverseCommissionsResult {
@@ -24,6 +26,7 @@ interface ApproveCommissionsResult {
 
 interface ApproveCommissionsOptions {
   sendNotifications?: boolean;
+  session?: mongoose.ClientSession;
 }
 
 export interface CommissionApprovalNotification {
@@ -41,14 +44,20 @@ export async function createCommissionRecordsForInvoice({
   invoiceId,
   commissions,
   currency,
+  session,
 }: CreateCommissionRecordsForInvoiceInput): Promise<ICommission[]> {
   const createdRecords: ICommission[] = [];
+  const opts = session ? { session } : {};
+
+  // Idempotency: check if commission records already exist for this invoice
+  const existingCount = await Commission.countDocuments({ invoiceId }).session(session ?? null);
+  if (existingCount > 0) return [];
 
   for (const commission of commissions) {
     if (commission.amount <= 0 || commission.rate <= 0) continue;
 
     if (commission.role === "agent" && commission.agentId) {
-      const created = await Commission.create({
+      const [created] = await Commission.create([{
         invoiceId,
         agentId: commission.agentId,
         superAgentId: commission.superAgentId,
@@ -58,12 +67,12 @@ export async function createCommissionRecordsForInvoice({
         rate: commission.rate,
         status: "pending",
         notes: invoiceCommissionNote(commission.notes),
-      });
+      }], opts);
       createdRecords.push(created);
     }
 
     if (commission.role === "super_agent" && commission.superAgentId) {
-      const created = await Commission.create({
+      const [created] = await Commission.create([{
         invoiceId,
         superAgentId: commission.superAgentId,
         type: "override",
@@ -72,7 +81,7 @@ export async function createCommissionRecordsForInvoice({
         rate: commission.rate,
         status: "pending",
         notes: invoiceCommissionNote(commission.notes),
-      });
+      }], opts);
       createdRecords.push(created);
     }
   }
@@ -119,9 +128,11 @@ export async function approvePendingCommissionsForPaidInvoice(
   approvedBy: unknown,
   options: ApproveCommissionsOptions = {},
 ): Promise<ApproveCommissionsResult> {
+  const { session } = options;
   const approvedAt = new Date();
   const pendingCommissions = await Commission.find({ invoiceId, status: "pending" })
     .select("_id agentId superAgentId amount currency")
+    .session(session ?? null)
     .lean();
 
   if (pendingCommissions.length === 0) {
@@ -138,6 +149,7 @@ export async function approvePendingCommissionsForPaidInvoice(
         approvedAt,
       },
     },
+    session ? { session } : {},
   );
 
   const agentIds = pendingCommissions

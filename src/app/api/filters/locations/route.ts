@@ -62,6 +62,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ results: enriched });
     }
 
+    if (level === "resolve") {
+      const cityIds = searchParams.get("cityIds")?.split(",").filter(Boolean) ?? [];
+      const stateIds = searchParams.get("stateIds")?.split(",").filter(Boolean) ?? [];
+      const [resolvedCities, resolvedStates] = await Promise.all([
+        cityIds.length > 0
+          ? City.find({ _id: { $in: cityIds } }).select("_id name").lean()
+          : [],
+        stateIds.length > 0
+          ? State.find({ _id: { $in: stateIds } }).select("_id name").lean()
+          : [],
+      ]);
+      return NextResponse.json({
+        cities: resolvedCities.map((c) => ({ _id: c._id, name: c.name })),
+        states: resolvedStates.map((s) => ({ _id: s._id, name: s.name })),
+      });
+    }
+
     switch (level) {
       case "countries": {
         const countries = await Country.find({ isActive: true })

@@ -17,9 +17,9 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import {
-  Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users, Plus,
+  Search, Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users, Plus,
   Eye, Building2, MapPin, DollarSign, Clock, Calendar, Globe, UserCheck,
-  Wand2, CheckCircle, ArrowRight, Trash2, XCircle, Edit2, ClipboardList,
+  Wand2, CheckCircle, ArrowRight, Trash2, XCircle, Edit2, ClipboardList, Filter, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -132,8 +132,9 @@ export default function AdminJobsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Entity filter dropdowns
   const [employers, setEmployers] = useState<FilterOption[]>([]);
   const [agents, setAgents] = useState<FilterOption[]>([]);
   const [selectedEmployer, setSelectedEmployer] = useState("all");
@@ -143,17 +144,14 @@ export default function AdminJobsPage() {
   const [locationFilter, setLocationFilter] = useState("");
   const [skillsFilter, setSkillsFilter] = useState("");
 
-  // AI search
   const [aiQuery, setAiQuery] = useState("");
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
 
-  // Detail dialog
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
-  // Fetch employer & agent lists for filters
   useEffect(() => {
     (async () => {
       try {
@@ -181,7 +179,6 @@ export default function AdminJobsPage() {
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
-
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search) params.set("search", search);
@@ -210,7 +207,6 @@ export default function AdminJobsPage() {
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
-  // ── Admin job actions ────────────────────────────────────────────────────
   const handleApproveJob = async (jobId: string) => {
     try {
       const res = await fetch(`/api/admin/jobs/${jobId}/approve`, {
@@ -287,7 +283,6 @@ export default function AdminJobsPage() {
   async function handleApplyAiSearch() {
     const query = aiQuery.trim();
     if (!query) return;
-
     setIsApplyingAiSearch(true);
     try {
       const res = await fetch("/api/ai/job-search-filters", {
@@ -295,13 +290,10 @@ export default function AdminJobsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
       });
-
       if (!res.ok) throw new Error("AI search failed");
-
       const data = await res.json();
       const filters = data.filters ?? {};
       const hasSkills = Array.isArray(filters.skills) && filters.skills.length > 0;
-
       setSearch(hasSkills ? "" : (filters.search ?? ""));
       setStatus(filters.status ?? "all");
       setWorkMode(filters.workMode ?? "all");
@@ -309,7 +301,6 @@ export default function AdminJobsPage() {
       setSkillsFilter(hasSkills ? filters.skills.join(", ") : "");
       setAiSummary(data.summary ?? null);
       resetPage();
-
       toast.success(data.degraded ? "AI search unavailable. Keyword search applied." : "AI search applied.");
     } catch {
       setSearch(query);
@@ -321,89 +312,154 @@ export default function AdminJobsPage() {
   }
 
   return (
-    <div className="page-container space-y-5">
-      <TableToolbar
-        title="Job Listings"
-        description="Manage and monitor all job postings across the platform."
-        search={search}
-        onSearchChange={(value) => { setSearch(value); resetPage(); }}
-        searchPlaceholder="Search by job title…"
-        left={(
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            Recruitment control
+    <div className="page-container employer-legacy-surface space-y-6">
+
+      {/* ─── Hero ─────────────────────────────────────────────────────── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              Recruitment Control
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+              Job Listings
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Manage and monitor all job postings across the platform — approve, reject, or edit roles from employers and agents.
+            </p>
           </div>
-        )}
-        right={(
-          <div className="flex items-center gap-2">
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Platform total</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{total.toLocaleString()} jobs</p>
+              <p className="text-xs text-muted-foreground">Across {totalPages} page{totalPages === 1 ? "" : "s"}</p>
+            </div>
             <Link href="./new">
-              <Button size="sm" className="gap-1.5">
-                <Plus className="h-3.5 w-3.5" />
+              <Button className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
+                <Plus className="h-4 w-4" />
                 Post Job
               </Button>
             </Link>
-            <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-              <ArrowRight className="h-3.5 w-3.5 text-primary" />
-              {total.toLocaleString()} jobs across {totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"}
-            </div>
           </div>
-        )}
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        filterContent={(
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div>
-                <label htmlFor="admin-jobs-status-filter" className="sr-only">Status</label>
-                <SearchableSelect
-                  id="admin-jobs-status-filter"
-                  className="h-11 w-full rounded-xl border-border bg-card"
-                  options={STATUS_OPTIONS}
-                  value={status}
-                  onValueChange={(value) => { setStatus(value); resetPage(); }}
-                  placeholder="All statuses"
-                />
-              </div>
-              {employers.length > 1 && (
+        </div>
+
+        {/* Stats Row */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {([
+            { label: "Total Jobs", value: total, note: "All postings", icon: Briefcase, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { label: "Active", value: activeJobs, note: "Currently live", icon: ShieldCheck, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: "Draft", value: draftJobs, note: "Unpublished", icon: FileText, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: "Applicants", value: totalApplicants, note: "Total applications", icon: Users, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
+          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
+            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <label htmlFor="admin-jobs-employer-filter" className="sr-only">Employer</label>
-                  <SearchableSelect
-                    id="admin-jobs-employer-filter"
-                    className="h-11 w-full rounded-xl border-border bg-card"
-                    options={employers}
-                    value={selectedEmployer}
-                    onValueChange={(value) => { setSelectedEmployer(value); resetPage(); }}
-                    placeholder="All employers"
-                  />
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
                 </div>
+                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
+                  <Icon className={`h-5 w-5 ${tone}`} />
+                </span>
+              </div>
+              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ─── Filter toggle bar ──────────────────────────────────────── */}
+        <div className="mt-6 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
+          >
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            {showFilters ? "Hide Filters" : "Show Filters"}
+            {hasActiveFilters && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">Active</Badge>}
+            {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          </button>
+          <div className="flex items-center gap-2">
+            {(hasActiveFilters || aiSummary || aiQuery) && (
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="gap-1.5 text-xs text-muted-foreground">
+                Clear filters
+              </Button>
+            )}
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
+          </div>
+        </div>
+
+        {/* ─── Expandable Filters ─────────────────────────────────────── */}
+        {showFilters && (
+          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by job title…"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+                className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <SearchableSelect
+                id="admin-jobs-status-filter"
+                className="h-11 w-full rounded-xl border-border bg-card"
+                options={STATUS_OPTIONS}
+                value={status}
+                onValueChange={(value) => { setStatus(value); resetPage(); }}
+                placeholder="All statuses"
+              />
+              {employers.length > 1 && (
+                <SearchableSelect
+                  id="admin-jobs-employer-filter"
+                  className="h-11 w-full rounded-xl border-border bg-card"
+                  options={employers}
+                  value={selectedEmployer}
+                  onValueChange={(value) => { setSelectedEmployer(value); resetPage(); }}
+                  placeholder="All employers"
+                />
               )}
               {agents.length > 1 && (
-                <div>
-                  <label htmlFor="admin-jobs-agent-filter" className="sr-only">Agent</label>
-                  <SearchableSelect
-                    id="admin-jobs-agent-filter"
-                    className="h-11 w-full rounded-xl border-border bg-card"
-                    options={agents}
-                    value={selectedAgent}
-                    onValueChange={(value) => { setSelectedAgent(value); resetPage(); }}
-                    placeholder="All agents"
-                  />
-                </div>
-              )}
-              <div>
-                <label htmlFor="admin-jobs-workmode-filter" className="sr-only">Work mode</label>
                 <SearchableSelect
-                  id="admin-jobs-workmode-filter"
+                  id="admin-jobs-agent-filter"
                   className="h-11 w-full rounded-xl border-border bg-card"
-                  options={WORK_MODE_OPTIONS}
-                  value={workMode}
-                  onValueChange={(value) => { setWorkMode(value); resetPage(); }}
-                  placeholder="All work modes"
+                  options={agents}
+                  value={selectedAgent}
+                  onValueChange={(value) => { setSelectedAgent(value); resetPage(); }}
+                  placeholder="All agents"
                 />
-              </div>
-              <div>
-                <label htmlFor="admin-jobs-type-filter" className="sr-only">Employment type</label>
+              )}
+              <SearchableSelect
+                id="admin-jobs-workmode-filter"
+                className="h-11 w-full rounded-xl border-border bg-card"
+                options={WORK_MODE_OPTIONS}
+                value={workMode}
+                onValueChange={(value) => { setWorkMode(value); resetPage(); }}
+                placeholder="All work modes"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Filter className="h-3.5 w-3.5" />
+                Advanced Filters
+                {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+            </div>
+
+            {showAdvanced && (
+              <div className="grid gap-3 pt-1 sm:grid-cols-2 xl:grid-cols-4">
                 <SearchableSelect
                   id="admin-jobs-type-filter"
                   className="h-11 w-full rounded-xl border-border bg-card"
@@ -412,66 +468,44 @@ export default function AdminJobsPage() {
                   onValueChange={(value) => { setEmploymentType(value); resetPage(); }}
                   placeholder="All types"
                 />
-              </div>
-              <div className="relative min-w-0">
-                <label htmlFor="admin-jobs-location-filter" className="sr-only">Location</label>
-                <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <div className="relative">
+                  <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Filter by location"
+                    value={locationFilter}
+                    onChange={(e) => { setLocationFilter(e.target.value); resetPage(); }}
+                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+                  />
+                </div>
                 <Input
-                  id="admin-jobs-location-filter"
-                  placeholder="Filter by location"
-                  value={locationFilter}
-                  onChange={(event) => { setLocationFilter(event.target.value); resetPage(); }}
-                  className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-                />
-              </div>
-              <div className="relative min-w-0">
-                <label htmlFor="admin-jobs-skills-filter" className="sr-only">Skills</label>
-                <Input
-                  id="admin-jobs-skills-filter"
                   placeholder="Skills, comma separated"
                   value={skillsFilter}
-                  onChange={(event) => { setSkillsFilter(event.target.value); resetPage(); }}
+                  onChange={(e) => { setSkillsFilter(e.target.value); resetPage(); }}
                   className="h-11 rounded-xl border-border bg-card text-sm shadow-none"
                 />
               </div>
-            </div>
+            )}
 
             <div className="grid gap-3 xl:grid-cols-[1fr_auto]">
-              <div className="relative min-w-0">
+              <div className="relative">
                 <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
                 <Input
-                  placeholder='AI search: e.g. "active remote React jobs in Kochi" or "draft jobs with no applicants"'
+                  placeholder='AI search: e.g. "active remote React jobs in Kochi"'
                   value={aiQuery}
-                  onChange={(event) => setAiQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void handleApplyAiSearch();
-                    }
-                  }}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyAiSearch(); } }}
                   className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
                 />
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  onClick={() => { void handleApplyAiSearch(); }}
-                  disabled={!aiQuery.trim() || isApplyingAiSearch}
-                  className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                >
-                  <Wand2 className="h-4 w-4" />
-                  {isApplyingAiSearch ? "Applying…" : "AI Search"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={resetFilters}
-                  disabled={!hasActiveFilters && !aiQuery && !aiSummary}
-                  className="h-11 rounded-xl border-border bg-card px-4 text-sm"
-                >
-                  Clear filters
-                </Button>
-              </div>
+              <Button
+                type="button"
+                onClick={() => { void handleApplyAiSearch(); }}
+                disabled={!aiQuery.trim() || isApplyingAiSearch}
+                className="h-11 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                <Wand2 className="h-4 w-4" />
+                {isApplyingAiSearch ? "Applying…" : "AI Search"}
+              </Button>
             </div>
 
             {aiSummary && (
@@ -482,49 +516,16 @@ export default function AdminJobsPage() {
             )}
           </div>
         )}
-        hasActiveFilters={Boolean(hasActiveFilters || aiSummary || aiQuery)}
-      />
-
-      <section className="grid gap-3 sm:grid-cols-3">
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-300">{activeJobs}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Currently live</p>
-              </div>
-              <div className="workspace-tone-emerald rounded-2xl p-2.5"><ShieldCheck className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Draft</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-amber-500 dark:text-amber-300">{draftJobs}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Unpublished</p>
-              </div>
-              <div className="workspace-tone-amber rounded-2xl p-2.5"><Briefcase className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel rounded-2xl p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Applicants</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-violet-600 dark:text-violet-300">{totalApplicants}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Total applications</p>
-              </div>
-              <div className="workspace-tone-violet rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
-            </div>
-          </div>
       </section>
 
+      {/* ─── Error ────────────────────────────────────────────────────── */}
       {errorMessage && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
           {errorMessage}
         </div>
       )}
 
-      {/* Job Cards */}
+      {/* ─── Job Cards ────────────────────────────────────────────────── */}
       {loading ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -536,7 +537,9 @@ export default function AdminJobsPage() {
           <div className="workspace-muted-pill mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px]">
             <Inbox className="h-7 w-7" />
           </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{hasActiveFilters ? "No matching jobs" : "No jobs yet"}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {hasActiveFilters ? "No matching jobs" : "No jobs yet"}
+          </p>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
             {hasActiveFilters ? "No jobs match the current search." : "No job postings found on the platform."}
           </h3>
@@ -546,11 +549,7 @@ export default function AdminJobsPage() {
               : "When employers or agents post jobs, they will appear here."}
           </p>
           {hasActiveFilters && (
-            <Button
-              onClick={resetFilters}
-              variant="outline"
-              className="mt-6 h-11 rounded-xl border-border bg-background/70 px-4 text-sm"
-            >
+            <Button onClick={resetFilters} variant="outline" className="mt-6 h-11 rounded-xl border-border bg-background/70 px-4 text-sm">
               Clear filters
             </Button>
           )}
@@ -624,7 +623,7 @@ export default function AdminJobsPage() {
                     </div>
                   </div>
 
-                  {/* Right: Action buttons panel */}
+                  {/* Right: Action panel */}
                   <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-2 rounded-[20px] border border-border p-2.5 xl:self-start">
                     <div className="workspace-muted-pill flex items-center justify-between gap-3 rounded-2xl border border-border px-3 py-2">
                       <div>
@@ -711,7 +710,6 @@ export default function AdminJobsPage() {
         <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
           {selectedJob && (
             <>
-              {/* Sticky header */}
               <div className="sticky top-0 z-10 border-b border-border/60 bg-background/95 px-6 pb-4 pt-6 backdrop-blur-sm">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight">
@@ -730,10 +728,8 @@ export default function AdminJobsPage() {
                 </div>
               </div>
 
-              {/* Scrollable body */}
               <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth px-6 py-5">
                 <div className="space-y-6">
-                  {/* Key facts grid */}
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                     <Fact icon={MapPin} label="Location" value={formatLocation(selectedJob.location)} />
                     <Fact icon={DollarSign} label="Salary" value={selectedJob.salary?.isNegotiable ? "Negotiable" : selectedJob.salary?.min ? `${selectedJob.salary.min.toLocaleString()} – ${selectedJob.salary.max?.toLocaleString()} ${selectedJob.salary.currency ?? ""}` : "—"} />
@@ -744,7 +740,6 @@ export default function AdminJobsPage() {
                     <Fact icon={UserCheck} label="Source" value={getSourceLabel(selectedJob)} />
                   </div>
 
-                  {/* Description */}
                   {selectedJob.description && (
                     <section>
                       <SectionHeading>Description</SectionHeading>
@@ -752,7 +747,6 @@ export default function AdminJobsPage() {
                     </section>
                   )}
 
-                  {/* Skills */}
                   {(selectedJob.requirements?.skills?.length ?? 0) > 0 && (
                     <section>
                       <SectionHeading>Required Skills</SectionHeading>
@@ -764,7 +758,6 @@ export default function AdminJobsPage() {
                     </section>
                   )}
 
-                  {/* Experience & Education */}
                   {(selectedJob.requirements?.experience || selectedJob.requirements?.education) && (
                     <div className="grid gap-2.5 sm:grid-cols-2">
                       {selectedJob.requirements?.experience && <Fact icon={Briefcase} label="Experience" value={selectedJob.requirements.experience} />}
@@ -772,7 +765,6 @@ export default function AdminJobsPage() {
                     </div>
                   )}
 
-                  {/* Responsibilities */}
                   {(selectedJob.responsibilities?.length ?? 0) > 0 && (
                     <section>
                       <SectionHeading>Responsibilities</SectionHeading>
@@ -787,7 +779,6 @@ export default function AdminJobsPage() {
                     </section>
                   )}
 
-                  {/* Benefits */}
                   {(selectedJob.benefits?.length ?? 0) > 0 && (
                     <section>
                       <SectionHeading>Benefits</SectionHeading>
@@ -812,7 +803,7 @@ export default function AdminJobsPage() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Tiny helper                                                        */
+/*  Tiny helpers                                                       */
 /* ------------------------------------------------------------------ */
 
 function Fact({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
@@ -829,7 +820,7 @@ function Fact({ icon: Icon, label, value }: { icon: React.ComponentType<{ classN
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h4 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-      <span className="h-px flex-1 max-w-3 bg-border" />
+      <span className="h-px max-w-3 flex-1 bg-border" />
       {children}
       <span className="h-px flex-1 bg-border/60" />
     </h4>

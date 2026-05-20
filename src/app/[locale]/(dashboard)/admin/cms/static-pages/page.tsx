@@ -2,6 +2,7 @@
 
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
+import { FileText } from "lucide-react";
 
 const FIELDS: CrudField[] = [
   { name: "slug", label: "Slug", type: "text", required: true, placeholder: "e.g. privacy-policy, terms-and-conditions, cookie-policy, gdpr" },
@@ -40,8 +41,22 @@ export default function StaticPagesAdminPage() {
       description="Manage Privacy Policy, Terms & Conditions, Cookie Policy, GDPR and other static pages"
       columns={COLUMNS}
       fields={FIELDS}
+      icon={FileText}
+      iconColor="text-cyan-600"
       editPageBasePath="/admin/cms/static-pages"
       createPagePath="/admin/cms/static-pages/new"
+      filterFields={[
+        { type: "search", placeholder: "Search slug, title…" },
+        {
+          type: "status",
+          label: "Visibility",
+          options: [
+            { value: "all", label: "All statuses" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
+          ],
+        },
+      ]}
     />
   );
 }

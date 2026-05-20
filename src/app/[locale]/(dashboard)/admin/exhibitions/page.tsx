@@ -12,12 +12,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  CalendarDays, Clock, CheckCircle2, XCircle, Search, Inbox,
+  CalendarDays, Clock, CheckCircle2, XCircle, Inbox,
   MapPin, ThumbsUp, ThumbsDown, Trash2, Eye, ArrowRight,
   DollarSign, Target, Users, FileText, RotateCcw, Flag,
-  BarChart2, TrendingUp, Activity, Archive, Building2,
-  Download, FolderOpen, ExternalLink, Plus,
+  BarChart2, TrendingUp, Activity, Building2,
+  Download, FolderOpen, ExternalLink, Plus, Sparkles,
 } from "lucide-react";
+import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
 
@@ -131,6 +132,11 @@ const PRIORITY_OPTIONS = [
   { value: "high", label: "High" }, { value: "critical", label: "Critical" },
 ];
 
+const CATEGORY_OPTIONS = [
+  { value: "all", label: "All Categories" },
+  ...Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label })),
+];
+
 const ADMIN_TRANSITIONS: Record<string, { label: string; value: string; variant: "default" | "destructive" | "outline" }[]> = {
   submitted: [
     { label: "Start Review", value: "under_review", variant: "default" },
@@ -173,6 +179,7 @@ export default function AdminExhibitionsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [actionItem, setActionItem] = useState<ExhibitionRequest | null>(null);
   const [actionStatus, setActionStatus] = useState("");
@@ -212,11 +219,12 @@ export default function AdminExhibitionsPage() {
       const params = new URLSearchParams({ limit: "100" });
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (priorityFilter !== "all") params.set("priority", priorityFilter);
+      if (categoryFilter !== "all") params.set("category", categoryFilter);
       if (search) params.set("search", search);
       const res = await fetch(`/api/exhibitions?${params}`);
       if (res.ok) { const data = await res.json(); setItems(data.items ?? []); }
     } catch { toast.error(t("fetchError")); } finally { setLoading(false); }
-  }, [statusFilter, priorityFilter, search, t]);
+  }, [statusFilter, priorityFilter, categoryFilter, search, t]);
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const openAction = (item: ExhibitionRequest, status: string) => {
@@ -266,50 +274,91 @@ export default function AdminExhibitionsPage() {
   const totalBudgetApp = items.reduce((s, i) => s + (i.approvedBudget ?? 0), 0);
   const totalActualSpend = items.reduce((s, i) => s + (i.actualSpend ?? 0), 0);
 
+  const pendingCount = items.filter((i) => ["submitted", "under_review"].includes(i.status)).length;
+
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><CalendarDays className="h-6 w-6 text-primary" /> Exhibition Operations Center</h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage all exhibition requests, approvals, budgets & resources</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <a href="exhibitions/analytics"><Button variant="outline"><BarChart2 className="h-4 w-4 mr-2" /> Analytics</Button></a>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        {[
-          { label: "Total", value: items.length, color: "text-slate-700 dark:text-slate-200", bg: "from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/30" },
-          { label: "Pending", value: items.filter((i) => ["submitted","under_review"].includes(i.status)).length, color: "text-amber-600 dark:text-amber-400", bg: "from-amber-50 to-white dark:from-amber-950/40 dark:to-amber-900/10" },
-          { label: "Approved", value: items.filter((i) => ["approved","budget_approved","resources_assigned"].includes(i.status)).length, color: "text-emerald-600 dark:text-emerald-400", bg: "from-emerald-50 to-white dark:from-emerald-950/40 dark:to-emerald-900/10" },
-          { label: "Active", value: items.filter((i) => i.status === "active").length, color: "text-purple-600 dark:text-purple-400", bg: "from-purple-50 to-white dark:from-purple-950/40 dark:to-purple-900/10" },
-          { label: "Completed", value: items.filter((i) => i.status === "completed").length, color: "text-green-600 dark:text-green-400", bg: "from-green-50 to-white dark:from-green-950/40 dark:to-green-900/10" },
-          { label: "Rejected", value: items.filter((i) => i.status === "rejected").length, color: "text-red-600 dark:text-red-400", bg: "from-red-50 to-white dark:from-red-950/40 dark:to-red-900/10" },
-          { label: "Budget Req.", value: `${Math.round(totalBudgetReq / 1000)}K`, color: "text-blue-600 dark:text-blue-400", bg: "from-blue-50 to-white dark:from-blue-950/40 dark:to-blue-900/10" },
-          { label: "Budget App.", value: `${Math.round(totalBudgetApp / 1000)}K`, color: "text-teal-600 dark:text-teal-400", bg: "from-teal-50 to-white dark:from-teal-950/40 dark:to-teal-900/10" },
-        ].map((s) => (
-          <div key={s.label} className={`rounded-xl border bg-gradient-to-br ${s.bg} p-3.5 text-center shadow-sm transition-shadow hover:shadow-md`}>
-            <p className={`text-xl font-bold tracking-tight ${s.color}`}>{s.value}</p>
-            <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">{s.label}</p>
+    <div className="page-container space-y-6">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Admin operations
+            </div>
+            <h1 className="mt-4 flex items-center gap-2 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+              <CalendarDays className="h-7 w-7 text-primary" />
+              Exhibition Operations Center
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Manage all exhibition requests, approvals, budgets, and resources from one modern control surface.
+            </p>
           </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search events, agents, locations..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <div className="flex shrink-0 flex-col gap-3 sm:flex-row xl:items-start">
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[200px]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Awaiting action</p>
+              <p className="mt-1 text-2xl font-semibold text-foreground">{pendingCount}</p>
+              <p className="text-xs text-muted-foreground">Pending or under review</p>
+            </div>
+            <a href="exhibitions/analytics" className="self-start">
+              <Button variant="outline" className="h-10 rounded-xl border-border/70 bg-background/90">
+                <BarChart2 className="mr-2 h-4 w-4" /> Analytics
+              </Button>
+            </a>
+          </div>
         </div>
-        <SearchableSelect options={STATUS_OPTIONS} value={statusFilter} onValueChange={setStatusFilter} placeholder="Status" />
-        <SearchableSelect options={PRIORITY_OPTIONS} value={priorityFilter} onValueChange={setPriorityFilter} placeholder="Priority" />
-      </div>
 
-      {/* Table */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+          {([
+            { label: "Total", value: items.length, note: "All requests", icon: CalendarDays, tone: "text-slate-600", chip: "bg-slate-50 dark:bg-slate-950/30" },
+            { label: "Pending", value: pendingCount, note: "Needs review", icon: Clock, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: "Approved", value: items.filter((i) => ["approved", "budget_approved", "resources_assigned"].includes(i.status)).length, note: "Cleared to proceed", icon: CheckCircle2, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: "Active", value: items.filter((i) => i.status === "active").length, note: "In progress", icon: Activity, tone: "text-purple-600", chip: "bg-purple-50 dark:bg-purple-950/30" },
+            { label: "Completed", value: items.filter((i) => i.status === "completed").length, note: "Finished events", icon: TrendingUp, tone: "text-green-600", chip: "bg-green-50 dark:bg-green-950/30" },
+            { label: "Rejected", value: items.filter((i) => i.status === "rejected").length, note: "Declined", icon: XCircle, tone: "text-red-600", chip: "bg-red-50 dark:bg-red-950/30" },
+            { label: "Budget Req.", value: `${Math.round(totalBudgetReq / 1000)}K`, note: "Estimated total", icon: DollarSign, tone: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
+            { label: "Budget App.", value: `${Math.round(totalBudgetApp / 1000)}K`, note: "Approved total", icon: Target, tone: "text-teal-600", chip: "bg-teal-50 dark:bg-teal-950/30" },
+          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
+            <div key={label} className="workspace-glass-panel rounded-2xl p-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+                  <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">{value}</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">{note}</p>
+                </div>
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${chip}`}>
+                  <Icon className={`h-4 w-4 ${tone}`} />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <ExhibitionHeroFilters
+          search={search}
+          onSearchChange={setSearch}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          statusOptions={STATUS_OPTIONS}
+          priorityFilter={priorityFilter}
+          onPriorityChange={setPriorityFilter}
+          priorityOptions={PRIORITY_OPTIONS}
+          categoryFilter={categoryFilter}
+          onCategoryChange={setCategoryFilter}
+          categoryOptions={CATEGORY_OPTIONS}
+          searchPlaceholder="Search events, agents, locations…"
+        />
+      </section>
+
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Request queue</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">All exhibition requests</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Advance requests through the full lifecycle from the table below.</p>
+        </div>
+
+        <div className="mt-5">
       {loading ? (
-        <div className="overflow-hidden rounded-xl border shadow-sm">
+        <div className="workspace-panel-surface overflow-hidden rounded-[24px]">
           <div className="bg-gradient-to-r from-muted/80 to-muted/40 px-4 py-3.5"><div className="h-4 w-48 rounded bg-muted animate-pulse" /></div>
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className={`flex items-center gap-4 px-4 py-4 border-b last:border-0 ${i % 2 === 0 ? "bg-background" : "bg-muted/20"}`}>
@@ -322,9 +371,13 @@ export default function AdminExhibitionsPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border py-16 text-muted-foreground"><Inbox className="h-12 w-12 mb-3 opacity-40" /><p className="text-sm">{t("noRequests")}</p></div>
+        <div className="workspace-empty-state flex flex-col items-center gap-3 px-6 py-14 text-center">
+          <div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-8 w-8 text-muted-foreground" /></div>
+          <p className="text-sm font-semibold text-foreground">{t("noRequests")}</p>
+        </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border shadow-sm">
+        <div className="workspace-panel-surface overflow-hidden rounded-[24px]">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b bg-gradient-to-r from-muted/80 to-muted/40">
               <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
@@ -377,8 +430,11 @@ export default function AdminExhibitionsPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
+        </div>
+      </section>
 
       {/* Detail Modal */}
       <Dialog open={!!detailItem} onOpenChange={() => setDetailItem(null)}>

@@ -2,6 +2,7 @@
 
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
+import { ImageIcon } from "lucide-react";
 
 const FIELDS: CrudField[] = [
   { name: "title", label: "Title (English)", type: "text", placeholder: "Banner headline" },
@@ -49,6 +50,20 @@ export default function BannersAdminPage() {
       description="Manage homepage banner slider images"
       columns={COLUMNS}
       fields={FIELDS}
+      icon={ImageIcon}
+      iconColor="text-orange-600"
+      filterFields={[
+        { type: "search", placeholder: "Search banner title…" },
+        {
+          type: "status",
+          label: "Visibility",
+          options: [
+            { value: "all", label: "All statuses" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
+          ],
+        },
+      ]}
     />
   );
 }

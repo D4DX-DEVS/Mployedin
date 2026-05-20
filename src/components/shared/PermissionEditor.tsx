@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -302,26 +303,19 @@ export function PermissionEditor({
                   </span>
                   {ALL_ACTIONS.map((action) => {
                     const checked = hasPermission(resource, action);
-                    const isRoleDefault = roleDefaults[resource]?.includes(action) ?? false;
                     const canToggle = isCustom && !readOnly;
 
                     return (
-                      <label
+                      <div
                         key={action}
                         className="flex items-center justify-center"
                       >
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={checked}
-                          onChange={() => togglePermission(resource, action)}
+                          onCheckedChange={() => togglePermission(resource, action)}
                           disabled={!canToggle}
-                          className={`
-                            h-4 w-4 rounded border accent-primary cursor-pointer
-                            disabled:cursor-default disabled:opacity-50
-                            ${!isCustom && isRoleDefault ? "accent-primary" : ""}
-                          `}
                         />
-                      </label>
+                      </div>
                     );
                   })}
                 </div>

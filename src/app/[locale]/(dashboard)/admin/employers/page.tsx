@@ -23,7 +23,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, UserX, Download, FileSpreadsheet, LogIn, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, Download, FileSpreadsheet, LogIn, Loader2 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 
 interface Employer {
@@ -295,12 +295,12 @@ export default function AdminEmployersPage() {
                       )}
                       {can("employers", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handleDelete(emp._id)} title="Deactivate">
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          <Ban className="h-3.5 w-3.5 text-amber-500" />
                         </Button>
                       )}
                       {can("employers", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(emp._id)} title="Delete permanently">
-                          <UserX className="h-3.5 w-3.5 text-destructive" />
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
                       <Button

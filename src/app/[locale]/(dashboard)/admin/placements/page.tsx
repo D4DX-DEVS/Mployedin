@@ -4,24 +4,23 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Search, Filter, CheckCircle2, Clock, AlertCircle, Pencil,
   Trash2, Inbox, CalendarDays, DollarSign, Sparkles, ChevronDown, ChevronUp, X, RotateCcw,
-  Download, FileSpreadsheet, FileText,
+  TrendingUp, Users,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 
 interface Placement {
@@ -79,10 +78,10 @@ export default function AdminPlacementsPage() {
   const [dateTo, setDateTo] = useState("");
   const [salaryMin, setSalaryMin] = useState("");
   const [salaryMax, setSalaryMax] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [editItem, setEditItem] = useState<Placement | null>(null);
 
-  // AI Insights state
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -112,7 +111,7 @@ export default function AdminPlacementsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, visaFilter, commissionFilter, currencyFilter, dateFrom, dateTo, salaryMin, salaryMax, limit]);
+  }, [page, search, visaFilter, commissionFilter, currencyFilter, dateFrom, dateTo, salaryMin, salaryMax, limit, updateTotal]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -129,7 +128,7 @@ export default function AdminPlacementsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `Analyze the current placement data and provide brief actionable insights. We have ${total} total placements. Salary breakdown: ${formatCurrencyBreakdown(salaryByCurrency)}. Pending visas: ${placements.filter(p => p.visaStatus === "pending").length}. Unpaid commissions: ${placements.filter(p => !p.commissionPaid).length}. Recent placements this page: ${placements.length}. Give 3-4 bullet points with trends, risks, and recommendations. Keep it concise.`,
+          message: `Analyze the current placement data and provide brief actionable insights. We have ${total} total placements. Salary breakdown: ${formatCurrencyBreakdown(salaryByCurrency)}. Pending visas: ${pendingVisa}. Unpaid commissions: ${unpaidCommissions}. Recent placements this page: ${placements.length}. Give 3-4 bullet points with trends, risks, and recommendations. Keep it concise.`,
         }),
       });
       if (res.ok) {
@@ -182,8 +181,8 @@ export default function AdminPlacementsPage() {
     { name: "notes", label: "Notes", type: "textarea" },
   ];
 
-  const pendingVisa = placements.filter(p => p.visaStatus === "pending").length;
-  const unpaidCommissions = placements.filter(p => !p.commissionPaid).length;
+  const pendingVisa = placements.filter((p) => p.visaStatus === "pending").length;
+  const unpaidCommissions = placements.filter((p) => !p.commissionPaid).length;
 
   const exportColumns: ExportColumn<Placement>[] = [
     { header: "Candidate", key: "candidateName", formatter: (v) => String(v ?? "—") },
@@ -203,220 +202,352 @@ export default function AdminPlacementsPage() {
   });
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container employer-legacy-surface space-y-6">
       {ConfirmDialogNode}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: "Total Placements", value: total, color: "text-foreground" },
-          { label: "Pending Visa", value: pendingVisa, color: "text-amber-600" },
-          { label: "Unpaid Commission", value: unpaidCommissions, color: "text-red-500" },
-          { label: "Total Salary Value", value: formatSalaryValue(totalValue), color: "text-primary" },
-        ].map((s, i) => (
-          <div key={i} className="card-base text-center">
-            <p className="text-xs text-muted-foreground">{s.label}</p>
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-            {i === 3 && Object.keys(salaryByCurrency).length > 1 && (
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {Object.entries(salaryByCurrency).map(([cur, val]) => `${formatSalaryValue(val)} ${cur}`).join(" · ")}
-              </p>
-            )}
+      {/* ─── Hero ─────────────────────────────────────────────────────── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              Recruitment Control
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+              Placement Tracking
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Monitor and manage all candidate placements across the platform — visa status, commissions, and salary data in one place.
+            </p>
           </div>
-        ))}
-      </div>
 
-      {/* AI Insights Panel */}
-      <div className="card-base">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-violet-500" />
-            <span className="text-sm font-medium">AI Placement Insights</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Portfolio</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{total} placements</p>
+              <p className="text-xs text-muted-foreground">{formatCurrencyBreakdown(salaryByCurrency)}</p>
+            </div>
+            <Button
+              onClick={fetchAiInsights}
+              disabled={aiLoading}
+              className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+            >
+              {aiLoading ? <RotateCcw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {aiLoading ? "Analyzing…" : "Generate Insights"}
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchAiInsights} disabled={aiLoading}>
-            {aiLoading ? <RotateCcw className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
-            {aiLoading ? "Analyzing…" : "Generate Insights"}
-          </Button>
         </div>
+
+        {/* Stats Row */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {([
+            { label: "Total Placements", value: total, note: "All time", icon: Users, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { label: "Pending Visa", value: pendingVisa, note: "Awaiting approval", icon: Clock, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: "Unpaid Commission", value: unpaidCommissions, note: "Needs collection", icon: DollarSign, tone: "text-red-500", chip: "bg-red-50 dark:bg-red-950/30" },
+            { label: "Total Salary Value", value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(" · ") : "No data", icon: TrendingUp, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
+            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
+                </div>
+                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
+                  <Icon className={`h-5 w-5 ${tone}`} />
+                </span>
+              </div>
+              <p className="mt-3 line-clamp-1 text-sm leading-5 text-muted-foreground">{note}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* AI Insights inline panel */}
         {aiInsights && (
-          <div className="mt-3 text-sm text-muted-foreground whitespace-pre-line border-t pt-3">
-            {aiInsights}
+          <div className="mt-4 rounded-[20px] border border-sky-200/50 bg-sky-50/50 p-4 dark:border-sky-800/30 dark:bg-sky-950/20">
+            <div className="mb-2 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+              <span className="text-sm font-semibold text-sky-800 dark:text-sky-300">AI Placement Insights</span>
+            </div>
+            <div className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{aiInsights}</div>
           </div>
         )}
-      </div>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
-        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Placement Tracking</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">{total} placements · {formatCurrencyBreakdown(salaryByCurrency)}</p>
+        {/* ─── Filter toggle bar ──────────────────────────────────────── */}
+        <div className="mt-6 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
+          >
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            {showFilters ? "Hide Filters" : "Show Filters"}
+            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilterCount} active</Badge>}
+            {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          </button>
+          <div className="flex items-center gap-2">
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-xs text-muted-foreground">
+                <X className="h-3.5 w-3.5" />
+                Clear {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""}
+              </Button>
+            )}
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+        </div>
+
+        {/* ─── Expandable Filters ─────────────────────────────────────── */}
+        {showFilters && (
+          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); resetPage(); }}
                 placeholder="Search candidate or company…"
-                className="h-8 w-52 rounded-lg pl-8 text-sm"
+                className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
               />
             </div>
-            <select value={visaFilter} onChange={e => { setVisaFilter(e.target.value); resetPage(); }} className="h-8 rounded-lg border border-border/80 bg-background px-2 text-xs">
-              <option value="">All Visa</option>
-              <option value="not_required">Not Required</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="stamped">Stamped</option>
-            </select>
-            <select value={commissionFilter} onChange={e => { setCommissionFilter(e.target.value); resetPage(); }} className="h-8 rounded-lg border border-border/80 bg-background px-2 text-xs">
-              <option value="">All Commission</option>
-              <option value="true">Paid</option>
-              <option value="false">Unpaid</option>
-            </select>
-            <select value={currencyFilter} onChange={e => { setCurrencyFilter(e.target.value); resetPage(); }} className="h-8 rounded-lg border border-border/80 bg-background px-2 text-xs">
-              <option value="">All Currencies</option>
-              <option value="AED">AED</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="SAR">SAR</option>
-            </select>
-            <Button variant="ghost" size="sm" onClick={() => setShowAdvanced(!showAdvanced)} className="h-8 rounded-lg text-xs text-muted-foreground">
-              <Filter className="h-3.5 w-3.5" />
-              {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              {activeFilterCount > 0 && `(${activeFilterCount})`}
-            </Button>
-            {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 rounded-lg text-xs text-red-500 hover:text-red-600">
-                <X className="h-3 w-3" /> Clear
-              </Button>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-lg border-border/80">
-                  <Download className="h-3.5 w-3.5" /> Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel>Export</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportCsv}><FileText className="h-4 w-4" />CSV</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportExcel}><FileSpreadsheet className="h-4 w-4" />Excel</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportPdf}><FileText className="h-4 w-4" />PDF</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
 
-        {/* Advanced Filters Row */}
-        {showAdvanced && (
-          <div className="flex flex-wrap gap-3 items-end border-b border-border/80 px-5 py-3">
-            <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-                <CalendarDays className="h-3 w-3" /> Date From
-              </label>
-              <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); resetPage(); }} className="h-8 w-40 text-xs" />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <SearchableSelect
+                className="h-11 w-full rounded-xl border-border bg-card"
+                options={[
+                  { value: "", label: "All Visa Statuses" },
+                  { value: "not_required", label: "Not Required" },
+                  { value: "pending", label: "Pending" },
+                  { value: "approved", label: "Approved" },
+                  { value: "rejected", label: "Rejected" },
+                  { value: "stamped", label: "Stamped" },
+                ]}
+                value={visaFilter}
+                onValueChange={(v) => { setVisaFilter(v); resetPage(); }}
+                placeholder="All Visa Statuses"
+              />
+              <SearchableSelect
+                className="h-11 w-full rounded-xl border-border bg-card"
+                options={[
+                  { value: "", label: "All Commission" },
+                  { value: "true", label: "Paid" },
+                  { value: "false", label: "Unpaid" },
+                ]}
+                value={commissionFilter}
+                onValueChange={(v) => { setCommissionFilter(v); resetPage(); }}
+                placeholder="All Commission"
+              />
+              <SearchableSelect
+                className="h-11 w-full rounded-xl border-border bg-card"
+                options={[
+                  { value: "", label: "All Currencies" },
+                  { value: "AED", label: "AED" },
+                  { value: "USD", label: "USD" },
+                  { value: "EUR", label: "EUR" },
+                  { value: "SAR", label: "SAR" },
+                ]}
+                value={currencyFilter}
+                onValueChange={(v) => { setCurrencyFilter(v); resetPage(); }}
+                placeholder="All Currencies"
+              />
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-                <CalendarDays className="h-3 w-3" /> Date To
-              </label>
-              <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); resetPage(); }} className="h-8 w-40 text-xs" />
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Filter className="h-3.5 w-3.5" />
+                Advanced Filters
+                {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-                <DollarSign className="h-3 w-3" /> Min Salary
-              </label>
-              <Input type="number" placeholder="0" value={salaryMin} onChange={e => { setSalaryMin(e.target.value); resetPage(); }} className="h-8 w-28 text-xs" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-                <DollarSign className="h-3 w-3" /> Max Salary
-              </label>
-              <Input type="number" placeholder="∞" value={salaryMax} onChange={e => { setSalaryMax(e.target.value); resetPage(); }} className="h-8 w-28 text-xs" />
-            </div>
+
+            {showAdvanced && (
+              <div className="grid gap-3 pt-1 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="relative">
+                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => { setDateFrom(e.target.value); resetPage(); }}
+                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+                  />
+                </div>
+                <div className="relative">
+                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => { setDateTo(e.target.value); resetPage(); }}
+                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+                  />
+                </div>
+                <div className="relative">
+                  <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    placeholder="Min salary"
+                    value={salaryMin}
+                    onChange={(e) => { setSalaryMin(e.target.value); resetPage(); }}
+                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+                  />
+                </div>
+                <div className="relative">
+                  <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    placeholder="Max salary"
+                    value={salaryMax}
+                    onChange={(e) => { setSalaryMax(e.target.value); resetPage(); }}
+                    className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
-
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
-              {["Candidate", "Role", "Company", "Agent", "Salary", "Visa", "Commission", "Date", ""].map((h, i) => (
-                <TableHead key={i}>{h}</TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 9 }).map((_, j) => (
-                    <TableCell key={j}>
-                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : placements.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={9} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">No placements found</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : placements.map((p) => (
-              <TableRow key={p._id}>
-                <TableCell>
-                  <p className="font-medium">{p.candidateName ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{p.jobTitle ?? "—"}</TableCell>
-                <TableCell>{p.companyName ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{p.agentName ?? "—"}</TableCell>
-                <TableCell className="font-medium">
-                  {p.salary?.toLocaleString()} <span className="text-xs text-muted-foreground">{p.currency}</span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1.5">
-                    {VISA_ICONS[p.visaStatus]}
-                    <span className="text-xs capitalize">{p.visaStatus?.replace("_", " ")}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={p.commissionPaid ? "paid" : "pending"} />
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {new Date(p.startDate).toLocaleDateString("en-AE")}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    {!p.commissionPaid && can("placements", "update") && (
-                      <Button variant="ghost" size="xs" onClick={() => markCommission(p._id, true)}
-                        className="text-emerald-700 hover:bg-emerald-50">
-                        Mark Paid
-                      </Button>
-                    )}
-                    {can("placements", "update") && (
-                      <Button variant="ghost" size="xs" onClick={() => setEditItem(p)} className="text-blue-600 hover:bg-blue-50" title="Edit">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    {can("placements", "delete") && (
-                      <Button variant="ghost" size="xs" onClick={() => handleDelete(p._id)} className="text-red-600 hover:bg-red-50" title="Delete">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
       </section>
 
-      <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+      {/* ─── Table ────────────────────────────────────────────────────── */}
+      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                {["Candidate", "Role", "Company", "Agent", "Salary", "Visa", "Commission", "Date", ""].map((h, i) => (
+                  <TableHead key={i} className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">{h}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    {Array.from({ length: 9 }).map((_, j) => (
+                      <TableCell key={j} className="px-4 py-3">
+                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : placements.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={9} className="h-44 text-center">
+                    <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50">
+                        <Inbox className="h-7 w-7 opacity-40" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">No placements found</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {activeFilterCount > 0
+                            ? "Try adjusting the filters above."
+                            : "Placements will appear here once candidates are hired."}
+                        </p>
+                      </div>
+                      {activeFilterCount > 0 && (
+                        <Button variant="outline" size="sm" onClick={clearFilters} className="mt-1 h-8 rounded-lg text-xs">
+                          Clear filters
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : placements.map((p) => (
+                <TableRow key={p._id} className="group transition-colors">
+                  <TableCell className="px-4 py-3">
+                    <p className="font-medium">{p.candidateName ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground">{p.candidateEmail}</p>
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">{p.jobTitle ?? "—"}</TableCell>
+                  <TableCell className="px-4 py-3">{p.companyName ?? "—"}</TableCell>
+                  <TableCell className="px-4 py-3 text-muted-foreground">{p.agentName ?? "—"}</TableCell>
+                  <TableCell className="px-4 py-3 font-medium">
+                    {p.salary?.toLocaleString()}{" "}
+                    <span className="text-xs text-muted-foreground">{p.currency}</span>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      {VISA_ICONS[p.visaStatus]}
+                      <span className="text-xs capitalize">{p.visaStatus?.replace("_", " ")}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    <StatusBadge status={p.commissionPaid ? "paid" : "pending"} />
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
+                    {new Date(p.startDate).toLocaleDateString("en-AE")}
+                  </TableCell>
+                  <TableCell className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      {!p.commissionPaid && can("placements", "update") && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => markCommission(p._id, true)}
+                          className="text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                        >
+                          Mark Paid
+                        </Button>
+                      )}
+                      {can("placements", "update") && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => setEditItem(p)}
+                          className="text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                          title="Edit"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {can("placements", "delete") && (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => handleDelete(p._id)}
+                          className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="border-t border-border/60 px-4 py-4">
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+          />
+        </div>
+      </section>
+
+      <CrudModal
+        open={!!editItem}
+        onClose={() => setEditItem(null)}
+        title="Edit Placement"
+        fields={EDIT_FIELDS}
+        initialValues={editItem ? {
+          salary: String(editItem.salary ?? ""),
+          currency: editItem.currency ?? "AED",
+          visaStatus: editItem.visaStatus ?? "",
+          notes: editItem.notes ?? "",
+        } : {}}
+        onSubmit={handleEdit}
+      />
     </div>
   );
 }

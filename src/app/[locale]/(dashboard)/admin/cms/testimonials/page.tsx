@@ -2,6 +2,7 @@
 
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
+import { Quote } from "lucide-react";
 
 const FIELDS: CrudField[] = [
   { name: "name", label: "Name (English)", type: "text", required: true, placeholder: "John Doe" },
@@ -57,6 +58,20 @@ export default function TestimonialsAdminPage() {
       description="Manage customer testimonials for the landing page"
       columns={COLUMNS}
       fields={FIELDS}
+      icon={Quote}
+      iconColor="text-purple-600"
+      filterFields={[
+        { type: "search", placeholder: "Search name, company, or quote…" },
+        {
+          type: "status",
+          label: "Visibility",
+          options: [
+            { value: "all", label: "All statuses" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
+          ],
+        },
+      ]}
     />
   );
 }

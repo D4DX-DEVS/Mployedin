@@ -5,8 +5,6 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table,
   TableBody,
@@ -22,7 +20,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Inbox, Eye, Trash2, Mail, MailOpen, SlidersHorizontal, RotateCcw } from "lucide-react";
+import { Inbox, Eye, Trash2, Mail, MailOpen, Sparkles, MessageSquare } from "lucide-react";
+import CmsHeroFilters, {
+  type CmsFilterField,
+  type CmsFilterValues,
+  buildCmsQueryParams,
+  cmsFiltersAreActive,
+  getDefaultCmsFilterValues,
+} from "@/components/features/admin/CmsHeroFilters";
 
 interface ContactItem {
   _id: string;
@@ -37,22 +42,43 @@ interface ContactItem {
   createdAt: string;
 }
 
+const CONTACT_FILTER_FIELDS: CmsFilterField[] = [
+  { type: "search", placeholder: "Search name, email, subject, or message…" },
+  {
+    type: "status",
+    label: "Read status",
+    options: [
+      { value: "all", label: "All messages" },
+      { value: "unread", label: "Unread" },
+      { value: "read", label: "Read" },
+    ],
+  },
+];
+
 export default function ContactSubmissionsPage() {
   const [items, setItems] = useState<ContactItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [filterValues, setFilterValues] = useState<CmsFilterValues>(getDefaultCmsFilterValues);
   const [showFilters, setShowFilters] = useState(false);
   const [viewItem, setViewItem] = useState<ContactItem | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
+  const hasActiveFilters = cmsFiltersAreActive(filterValues, CONTACT_FILTER_FIELDS);
+
+  const resetFilters = useCallback(() => {
+    setFilterValues(getDefaultCmsFilterValues());
+    resetPage();
+  }, [resetPage]);
+
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (search) params.set("search", search);
-      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+      const params = buildCmsQueryParams(
+        filterValues,
+        CONTACT_FILTER_FIELDS,
+        new URLSearchParams({ page: String(page), limit: String(limit) })
+      );
       const r = await fetch(`/api/admin/cms/contact-submissions?${params}`);
       const d = await r.json();
       setItems(d.items ?? []);
@@ -62,9 +88,14 @@ export default function ContactSubmissionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, statusFilter, updateTotal]);
+  }, [page, limit, filterValues, updateTotal]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  const handleFilterChange = (next: CmsFilterValues) => {
+    setFilterValues(next);
+    resetPage();
+  };
 
   const handleMarkRead = async (id: string) => {
     await fetch(`/api/admin/cms/contact-submissions/${id}`, { method: "PATCH" });
@@ -85,73 +116,88 @@ export default function ContactSubmissionsPage() {
     }
   };
 
-  const hasActiveFilters = Boolean(search.trim()) || statusFilter !== "all";
+  const unreadCount = items.filter((i) => !i.isRead).length;
 
   return (
-    <div className="page-container space-y-4">
+    <div className="page-container space-y-6">
       {ConfirmDialogNode}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
-        {/* Compact header row */}
-        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Contact Inbox</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">View messages from the public contact form.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search name, email, subject…"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                className="h-9 w-48 rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-56"
-              />
+      {/* Hero Section */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              CMS Workspace
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters((v) => !v)}
-              className={`h-9 gap-1.5 rounded-lg border-border px-3 text-sm font-medium ${showFilters ? "bg-primary/10 text-primary border-primary/30" : "bg-card text-foreground hover:bg-secondary"}`}
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              Filter
-              {hasActiveFilters && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">!</span>}
-            </Button>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+              Contact Inbox
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              View and manage messages from the public contact form. Keep track of inquiries and respond promptly.
+            </p>
+          </div>
+
+          <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total messages</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{total.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">Across {totalPages} page{totalPages === 1 ? "" : "s"}</p>
           </div>
         </div>
 
-        {/* Collapsible filter panel */}
-        {showFilters && (
-          <div className="flex flex-wrap items-center gap-3 border-b border-border/60 bg-secondary/30 px-5 py-3">
-            <label className="text-xs font-medium text-muted-foreground">Status</label>
-            <SearchableSelect
-              className="h-8 w-[140px] rounded-lg border-border bg-card text-sm"
-              options={[
-                { value: "all", label: "All" },
-                { value: "unread", label: "Unread" },
-                { value: "read", label: "Read" },
-              ]}
-              value={statusFilter}
-              onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-              placeholder="Status"
-            />
-            {hasActiveFilters && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => { setSearch(""); setStatusFilter("all"); resetPage(); }}
-                className="h-8 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <RotateCcw className="h-3 w-3" /> Clear
-              </Button>
-            )}
+        {/* Stats Row */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total</p>
+                <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{total}</p>
+              </div>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/30">
+                <Mail className="h-5 w-5 text-amber-600" />
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">All submissions</p>
           </div>
-        )}
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Unread</p>
+                <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{unreadCount}</p>
+              </div>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 dark:bg-sky-950/30">
+                <MessageSquare className="h-5 w-5 text-sky-600" />
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">Awaiting review</p>
+          </div>
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Read</p>
+                <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{items.length - unreadCount}</p>
+              </div>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/30">
+                <MailOpen className="h-5 w-5 text-emerald-600" />
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">Already reviewed</p>
+          </div>
+        </div>
 
-        {/* Table */}
+        <CmsHeroFilters
+          fields={CONTACT_FILTER_FIELDS}
+          values={filterValues}
+          onChange={handleFilterChange}
+          onReset={resetFilters}
+          hasActiveFilters={hasActiveFilters}
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters((v) => !v)}
+          searchPlaceholder="Search name, email, subject, or message…"
+        />
+      </section>
+
+      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -170,18 +216,38 @@ export default function ContactSubmissionsPage() {
                   <TableRow key={i} className="border-border/70 hover:bg-transparent">
                     {Array.from({ length: 6 }).map((_, j) => (
                       <TableCell key={j}>
-                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                        <div className="h-4 w-full animate-pulse rounded-md bg-muted" />
                       </TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : items.length === 0 ? (
                 <TableRow className="border-border/70 hover:bg-transparent">
-                  <TableCell colSpan={6} className="px-6 py-12 text-center">
+                  <TableCell colSpan={6} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-2">
-                      <Inbox className="h-6 w-6 text-muted-foreground/50" />
-                      <p className="text-sm font-medium text-foreground">No messages found</p>
-                      <p className="text-xs text-muted-foreground">Adjust the filters or check back later.</p>
+                      <div className="workspace-muted-pill mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-[24px]">
+                        <Inbox className="h-7 w-7 text-muted-foreground" />
+                      </div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        {hasActiveFilters ? "No matching messages" : "No messages yet"}
+                      </p>
+                      <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+                        {hasActiveFilters ? "No messages match the current search." : "No contact messages found."}
+                      </h3>
+                      <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+                        {hasActiveFilters
+                          ? "Adjust the filters or check back later."
+                          : "When visitors submit the contact form, messages will appear here."}
+                      </p>
+                      {hasActiveFilters && (
+                        <Button
+                          onClick={resetFilters}
+                          variant="outline"
+                          className="mt-4 h-9 rounded-xl border-border bg-background/70 px-4 text-sm"
+                        >
+                          Clear filters
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

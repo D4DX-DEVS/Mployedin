@@ -12,12 +12,19 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  CalendarDays, Clock, CheckCircle2, XCircle, Search, Inbox,
-  MapPin, Building2, ThumbsUp, ThumbsDown, Eye, AlertTriangle,
-  DollarSign, Target, FileText, RotateCcw, Flag,
+  CalendarDays, Clock, CheckCircle2, Inbox, Sparkles,
+  MapPin, ThumbsUp, ThumbsDown, Eye,
+  DollarSign, Target, RotateCcw,
 } from "lucide-react";
+import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
+import {
+  SuperAgentDataTableShell,
+  SuperAgentEmptyState,
+  SuperAgentMetricsGrid,
+  SuperAgentSection,
+} from "@/components/features/super-agent/WorkspacePage";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -127,6 +134,11 @@ const PRIORITY_OPTIONS = [
   { value: "high", label: "High" }, { value: "critical", label: "Critical" },
 ];
 
+const CATEGORY_OPTIONS = [
+  { value: "all", label: "All Categories" },
+  ...Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label })),
+];
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -139,6 +151,7 @@ export default function SuperAgentExhibitionsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [search, setSearch] = useState("");
 
   // Review dialog
@@ -156,11 +169,12 @@ export default function SuperAgentExhibitionsPage() {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (priorityFilter !== "all") params.set("priority", priorityFilter);
+      if (categoryFilter !== "all") params.set("category", categoryFilter);
       if (search) params.set("search", search);
       const res = await fetch(`/api/exhibitions?${params}`);
       if (res.ok) { const data = await res.json(); setItems(data.items ?? []); }
     } catch { toast.error(t("fetchError")); } finally { setLoading(false); }
-  }, [statusFilter, priorityFilter, search, t]);
+  }, [statusFilter, priorityFilter, categoryFilter, search, t]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -204,115 +218,154 @@ export default function SuperAgentExhibitionsPage() {
   const totalBudgetRequested = items.reduce((s, i) => s + (i.estimatedBudget ?? 0), 0);
   const totalBudgetApproved = items.reduce((s, i) => s + (i.approvedBudget ?? 0), 0);
 
+  const metrics = [
+    { label: "Total Requests", value: items.length, helper: "All exhibition requests from your team.", icon: <CalendarDays className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
+    { label: "Pending Review", value: pendingCount + reviewCount, helper: "Submitted or currently under review.", icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
+    { label: "Approved", value: approvedCount, helper: "Approved through active execution.", icon: <CheckCircle2 className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
+    { label: "Budget Requested", value: totalBudgetRequested.toLocaleString(), helper: "Combined estimated budget across requests.", icon: <DollarSign className="h-5 w-5" />, toneClassName: "workspace-tone-indigo" },
+    { label: "Budget Approved", value: totalBudgetApproved.toLocaleString(), helper: "Total approved spend to date.", icon: <Target className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
+  ];
+
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <CalendarDays className="h-6 w-6 text-primary" /> Exhibition Management
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">Review and approve exhibition requests from your team</p>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {[
-          { label: "Total Requests", value: items.length, color: "text-slate-700 dark:text-slate-200", bg: "from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/30" },
-          { label: "Pending Review", value: pendingCount + reviewCount, color: "text-amber-600 dark:text-amber-400", bg: "from-amber-50 to-white dark:from-amber-950/40 dark:to-amber-900/10" },
-          { label: "Approved", value: approvedCount, color: "text-emerald-600 dark:text-emerald-400", bg: "from-emerald-50 to-white dark:from-emerald-950/40 dark:to-emerald-900/10" },
-          { label: "Budget Requested", value: `${totalBudgetRequested.toLocaleString()}`, color: "text-blue-600 dark:text-blue-400", bg: "from-blue-50 to-white dark:from-blue-950/40 dark:to-blue-900/10" },
-          { label: "Budget Approved", value: `${totalBudgetApproved.toLocaleString()}`, color: "text-teal-600 dark:text-teal-400", bg: "from-teal-50 to-white dark:from-teal-950/40 dark:to-teal-900/10" },
-        ].map((s) => (
-          <div key={s.label} className={`rounded-xl border bg-gradient-to-br ${s.bg} p-4 shadow-sm transition-shadow hover:shadow-md`}>
-            <p className={`text-2xl font-bold tracking-tight ${s.color}`}>{s.value}</p>
-            <p className="mt-1 text-xs font-medium text-muted-foreground">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search events..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-        </div>
-        <SearchableSelect options={STATUS_OPTIONS} value={statusFilter} onValueChange={setStatusFilter} placeholder="Status" />
-        <SearchableSelect options={PRIORITY_OPTIONS} value={priorityFilter} onValueChange={setPriorityFilter} placeholder="Priority" />
-      </div>
-
-      {/* Table */}
-      {loading ? (
-        <div className="overflow-hidden rounded-xl border shadow-sm">
-          <div className="bg-gradient-to-r from-muted/80 to-muted/40 px-4 py-3.5"><div className="h-4 w-48 rounded bg-muted animate-pulse" /></div>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className={`flex items-center gap-4 px-4 py-4 border-b last:border-0 ${i % 2 === 0 ? "bg-background" : "bg-muted/20"}`}>
-              <div className="h-4 w-36 rounded bg-muted/60 animate-pulse" />
-              <div className="hidden md:block h-4 w-28 rounded bg-muted/40 animate-pulse" />
-              <div className="h-4 w-24 rounded bg-muted/50 animate-pulse" />
-              <div className="h-5 w-16 rounded-full bg-muted/40 animate-pulse" />
-              <div className="ml-auto h-7 w-20 rounded-lg bg-muted/30 animate-pulse" />
+    <div className="page-container space-y-6">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Super agent workspace
             </div>
-          ))}
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Exhibition Management</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Review and approve exhibition requests from your team. Use filters to narrow the queue, then act on submissions inline.
+            </p>
+          </div>
+          <div className="workspace-glass-panel shrink-0 rounded-2xl px-4 py-3 text-left sm:min-w-[220px]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Queue health</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {pendingCount + reviewCount} request{pendingCount + reviewCount === 1 ? "" : "s"} awaiting your review.
+            </p>
+          </div>
         </div>
-      ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border py-16 text-muted-foreground">
-          <Inbox className="h-12 w-12 mb-3 opacity-40" /><p className="text-sm">No exhibition requests found</p>
+
+        <div className="mt-6">
+          <SuperAgentMetricsGrid items={metrics} />
         </div>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b bg-muted/50">
-              <th className="text-left p-3 font-medium">Event</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Agent</th>
-              <th className="text-left p-3 font-medium hidden lg:table-cell">Location</th>
-              <th className="text-left p-3 font-medium">Dates</th>
-              <th className="text-left p-3 font-medium hidden sm:table-cell">Participation</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Budget Req.</th>
-              <th className="text-left p-3 font-medium hidden lg:table-cell">Budget Appr.</th>
-              <th className="text-left p-3 font-medium hidden xl:table-cell">Objective</th>
-              <th className="text-left p-3 font-medium">Status</th>
-              <th className="text-left p-3 font-medium hidden md:table-cell">Priority</th>
-              <th className="text-left p-3 font-medium hidden xl:table-cell">Resources</th>
-              <th className="text-right p-3 font-medium">Actions</th>
-            </tr></thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item._id} className="border-b hover:bg-muted/30 transition-colors">
-                  <td className="p-3">
-                    <button onClick={() => setDetailItem(item)} className="font-medium text-primary hover:underline text-left">{item.eventName}</button>
-                    <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[item.eventCategory] ?? item.eventCategory}</p>
-                  </td>
-                  <td className="p-3 hidden md:table-cell">
-                    <p className="font-medium text-sm">{item.agentId?.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.agentId?.email}</p>
-                  </td>
-                  <td className="p-3 hidden lg:table-cell"><span className="flex items-center gap-1 text-xs"><MapPin className="h-3 w-3" /> {item.eventLocation}</span></td>
-                  <td className="p-3 whitespace-nowrap text-xs">{fmtDate(item.eventStartDate)} â€“ {fmtDate(item.eventEndDate)}<br /><span className="text-muted-foreground">{dayCount(item.eventStartDate, item.eventEndDate)}d</span></td>
-                  <td className="p-3 hidden sm:table-cell"><div className="flex flex-wrap gap-1">{(item.participationTypes ?? []).slice(0, 2).map((pt) => (<Badge key={pt} variant="outline" className="text-xs">{PARTICIPATION_LABELS[pt] ?? pt}</Badge>))}{(item.participationTypes?.length ?? 0) > 2 && <Badge variant="outline" className="text-xs">+{item.participationTypes.length - 2}</Badge>}</div></td>
-                  <td className="p-3 hidden md:table-cell whitespace-nowrap">{item.budgetCurrency} {item.estimatedBudget?.toLocaleString()}</td>
-                  <td className="p-3 hidden lg:table-cell whitespace-nowrap">{item.approvedBudget ? `${item.budgetCurrency} ${item.approvedBudget.toLocaleString()}` : "â€”"}</td>
-                  <td className="p-3 hidden xl:table-cell"><div className="flex flex-wrap gap-1">{(item.objectives ?? []).slice(0, 1).map((o) => (<Badge key={o} variant="outline" className="text-xs">{OBJECTIVE_LABELS[o] ?? o}</Badge>))}{(item.objectives?.length ?? 0) > 1 && <Badge variant="outline" className="text-xs">+{item.objectives.length - 1}</Badge>}</div></td>
-                  <td className="p-3"><Badge className={STATUS_COLORS[item.status]}>{STATUS_LABELS[item.status] ?? item.status}</Badge></td>
-                  <td className="p-3 hidden md:table-cell"><Badge className={PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium}>{item.priority}</Badge></td>
-                  <td className="p-3 hidden xl:table-cell"><span className="text-xs text-muted-foreground">{item.requiredResources?.length ?? 0} items</span></td>
-                  <td className="p-3 text-right">
-                    <div className="flex items-center justify-end gap-1 flex-wrap">
-                      <Button variant="ghost" size="sm" onClick={() => setDetailItem(item)}><Eye className="h-3.5 w-3.5" /></Button>
-                      {item.status === "submitted" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "under_review")} className="text-amber-600 border-amber-200"><Clock className="h-3.5 w-3.5 mr-1" /> Review</Button>)}
-                      {item.status === "under_review" && (<>
-                        <Button size="sm" onClick={() => openReview(item, "approved")} className="bg-emerald-600 hover:bg-emerald-700 text-white"><ThumbsUp className="h-3.5 w-3.5 mr-1" /> Approve</Button>
-                        <Button size="sm" variant="outline" onClick={() => openReview(item, "revision_requested")} className="text-orange-600 border-orange-200"><RotateCcw className="h-3.5 w-3.5 mr-1" /> Revise</Button>
-                        <Button size="sm" variant="destructive" onClick={() => openReview(item, "rejected")}><ThumbsDown className="h-3.5 w-3.5 mr-1" /> Reject</Button>
-                      </>)}
-                      {item.status === "approved" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "budget_approved")} className="text-teal-600 border-teal-200"><DollarSign className="h-3.5 w-3.5 mr-1" /> Approve Budget</Button>)}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+
+        <ExhibitionHeroFilters
+          search={search}
+          onSearchChange={setSearch}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          statusOptions={STATUS_OPTIONS}
+          priorityFilter={priorityFilter}
+          onPriorityChange={setPriorityFilter}
+          priorityOptions={PRIORITY_OPTIONS}
+          categoryFilter={categoryFilter}
+          onCategoryChange={setCategoryFilter}
+          categoryOptions={CATEGORY_OPTIONS}
+          searchPlaceholder="Search events, agents, locations…"
+        />
+      </section>
+
+      <SuperAgentSection
+        eyebrow="Requests"
+        title="Team exhibition requests"
+        description="Open details or run approval actions from the table below."
+      >
+        {loading ? (
+          <SuperAgentDataTableShell>
+            <div className="border-b border-border/50 bg-muted/30 px-4 py-3.5"><div className="h-4 w-48 animate-pulse rounded bg-muted" /></div>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className={`flex items-center gap-4 border-b border-border/40 px-4 py-4 last:border-0 ${i % 2 === 0 ? "bg-background" : "bg-muted/15"}`}>
+                <div className="h-4 w-36 animate-pulse rounded bg-muted/60" />
+                <div className="hidden h-4 w-28 animate-pulse rounded bg-muted/40 md:block" />
+                <div className="h-4 w-24 animate-pulse rounded bg-muted/50" />
+                <div className="h-5 w-16 animate-pulse rounded-full bg-muted/40" />
+                <div className="ml-auto h-8 w-20 animate-pulse rounded-lg bg-muted/30" />
+              </div>
+            ))}
+          </SuperAgentDataTableShell>
+        ) : items.length === 0 ? (
+          <SuperAgentEmptyState icon={<Inbox className="h-8 w-8 text-muted-foreground" />} title="No exhibition requests found" description="Try adjusting filters or check back when agents submit new events." />
+        ) : (
+          <SuperAgentDataTableShell>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/60 bg-muted/25">
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Agent</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Location</th>
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dates</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">Participation</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Budget Req.</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">Budget Appr.</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:table-cell">Objective</th>
+                    <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">Priority</th>
+                    <th className="hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground xl:table-cell">Resources</th>
+                    <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {items.map((item, idx) => {
+                    const days = dayCount(item.eventStartDate, item.eventEndDate);
+                    return (
+                      <tr key={item._id} className={`transition-colors hover:bg-primary/[0.03] ${idx % 2 === 0 ? "bg-background" : "bg-muted/15"}`}>
+                        <td className="px-4 py-3.5">
+                          <button type="button" onClick={() => setDetailItem(item)} className="text-left font-semibold text-foreground hover:text-primary hover:underline">{item.eventName}</button>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{CATEGORY_LABELS[item.eventCategory] ?? item.eventCategory}</p>
+                        </td>
+                        <td className="hidden px-4 py-3.5 md:table-cell">
+                          <p className="text-sm font-medium">{item.agentId?.name}</p>
+                          <p className="text-xs text-muted-foreground">{item.agentId?.email}</p>
+                        </td>
+                        <td className="hidden px-4 py-3.5 lg:table-cell">
+                          <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5 text-primary/60" /> {item.eventLocation}</span>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3.5">
+                          <p className="text-xs font-medium">{fmtDate(item.eventStartDate)} – {fmtDate(item.eventEndDate)}</p>
+                          {days ? <p className="mt-0.5 text-[11px] text-muted-foreground">{days} days</p> : null}
+                        </td>
+                        <td className="hidden px-4 py-3.5 sm:table-cell">
+                          <div className="flex flex-wrap gap-1">
+                            {(item.participationTypes ?? []).slice(0, 2).map((pt) => (<Badge key={pt} variant="outline" className="rounded-md border-primary/20 bg-primary/5 text-[11px] font-medium">{PARTICIPATION_LABELS[pt] ?? pt}</Badge>))}
+                            {(item.participationTypes?.length ?? 0) > 2 && <Badge variant="outline" className="rounded-md text-[11px]">+{item.participationTypes.length - 2}</Badge>}
+                          </div>
+                        </td>
+                        <td className="hidden whitespace-nowrap px-4 py-3.5 font-medium md:table-cell">{item.budgetCurrency} {item.estimatedBudget?.toLocaleString()}</td>
+                        <td className="hidden whitespace-nowrap px-4 py-3.5 md:table-cell lg:table-cell">{item.approvedBudget ? <span className="font-medium text-emerald-600">{item.budgetCurrency} {item.approvedBudget.toLocaleString()}</span> : <span className="text-muted-foreground">—</span>}</td>
+                        <td className="hidden px-4 py-3.5 xl:table-cell">
+                          <div className="flex flex-wrap gap-1">
+                            {(item.objectives ?? []).slice(0, 1).map((o) => (<Badge key={o} variant="outline" className="rounded-md text-[11px]">{OBJECTIVE_LABELS[o] ?? o}</Badge>))}
+                            {(item.objectives?.length ?? 0) > 1 && <Badge variant="outline" className="rounded-md text-[11px]">+{item.objectives.length - 1}</Badge>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5"><Badge className={`${STATUS_COLORS[item.status]} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>{STATUS_LABELS[item.status] ?? item.status}</Badge></td>
+                        <td className="hidden px-4 py-3.5 md:table-cell"><Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge></td>
+                        <td className="hidden px-4 py-3.5 xl:table-cell"><span className="text-xs text-muted-foreground">{item.requiredResources?.length ?? 0} items</span></td>
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="flex flex-wrap items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-primary" onClick={() => setDetailItem(item)}><Eye className="h-4 w-4" /></Button>
+                            {item.status === "submitted" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "under_review")} className="h-8 rounded-lg border-amber-200 text-xs text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-500/10"><Clock className="mr-1 h-3.5 w-3.5" /> Review</Button>)}
+                            {item.status === "under_review" && (<>
+                              <Button size="sm" onClick={() => openReview(item, "approved")} className="h-8 rounded-lg bg-emerald-600 text-xs text-white hover:bg-emerald-700"><ThumbsUp className="mr-1 h-3.5 w-3.5" /> Approve</Button>
+                              <Button size="sm" variant="outline" onClick={() => openReview(item, "revision_requested")} className="h-8 rounded-lg border-orange-200 text-xs text-orange-700 hover:bg-orange-50 dark:border-orange-500/30 dark:text-orange-300"><RotateCcw className="mr-1 h-3.5 w-3.5" /> Revise</Button>
+                              <Button size="sm" variant="destructive" className="h-8 rounded-lg text-xs" onClick={() => openReview(item, "rejected")}><ThumbsDown className="mr-1 h-3.5 w-3.5" /> Reject</Button>
+                            </>)}
+                            {item.status === "approved" && (<Button size="sm" variant="outline" onClick={() => openReview(item, "budget_approved")} className="h-8 rounded-lg border-teal-200 text-xs text-teal-700 hover:bg-teal-50 dark:border-teal-500/30 dark:text-teal-300"><DollarSign className="mr-1 h-3.5 w-3.5" /> Approve Budget</Button>)}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </SuperAgentDataTableShell>
+        )}
+      </SuperAgentSection>
 
       {/* Detail Modal */}
       <Dialog open={!!detailItem} onOpenChange={() => setDetailItem(null)}>
@@ -320,17 +373,17 @@ export default function SuperAgentExhibitionsPage() {
           {detailItem && (<>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">{detailItem.eventName}<Badge className={STATUS_COLORS[detailItem.status]}>{STATUS_LABELS[detailItem.status]}</Badge><Badge className={PRIORITY_COLORS[detailItem.priority]}>{detailItem.priority}</Badge></DialogTitle>
-              <DialogDescription>{CATEGORY_LABELS[detailItem.eventCategory]} Â· {detailItem.eventLocation} {detailItem.country ? `Â· ${detailItem.country}` : ""}</DialogDescription>
+              <DialogDescription>{CATEGORY_LABELS[detailItem.eventCategory]} · {detailItem.eventLocation} {detailItem.country ? `· ${detailItem.country}` : ""}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div><span className="text-muted-foreground">Agent:</span> <strong>{detailItem.agentId?.name}</strong></div>
-                <div><span className="text-muted-foreground">Venue:</span> {detailItem.venue ?? "â€”"}</div>
+                <div><span className="text-muted-foreground">Venue:</span> {detailItem.venue ?? "—"}</div>
               <div><span className="text-muted-foreground">Dates:</span> {fmtDate(detailItem.eventStartDate)}{detailItem.eventEndDate ? ` – ${fmtDate(detailItem.eventEndDate)}` : ""}{dayCount(detailItem.eventStartDate, detailItem.eventEndDate) ? ` (${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)}d)` : ""}</div>
-                <div><span className="text-muted-foreground">Organizer:</span> {detailItem.organizerName ?? "â€”"}</div>
+                <div><span className="text-muted-foreground">Organizer:</span> {detailItem.organizerName ?? "—"}</div>
                 <div><span className="text-muted-foreground">Budget Requested:</span> {detailItem.budgetCurrency} {detailItem.estimatedBudget?.toLocaleString()}</div>
-                <div><span className="text-muted-foreground">Budget Approved:</span> {detailItem.approvedBudget ? `${detailItem.budgetCurrency} ${detailItem.approvedBudget.toLocaleString()}` : "â€”"}</div>
-                <div><span className="text-muted-foreground">Expected Leads:</span> {detailItem.expectedLeads ?? "â€”"}</div>
+                <div><span className="text-muted-foreground">Budget Approved:</span> {detailItem.approvedBudget ? `${detailItem.budgetCurrency} ${detailItem.approvedBudget.toLocaleString()}` : "—"}</div>
+                <div><span className="text-muted-foreground">Expected Leads:</span> {detailItem.expectedLeads ?? "—"}</div>
               </div>
 
               {detailItem.participationTypes?.length > 0 && (<div><p className="text-muted-foreground mb-1">Participation:</p><div className="flex flex-wrap gap-1">{detailItem.participationTypes.map((pt) => (<Badge key={pt} variant="outline">{PARTICIPATION_LABELS[pt] ?? pt}</Badge>))}</div></div>)}
@@ -351,7 +404,7 @@ export default function SuperAgentExhibitionsPage() {
                         <Badge className={`${STATUS_COLORS[h.status]} text-xs`}>{STATUS_LABELS[h.status] ?? h.status}</Badge>
                         <span className="text-muted-foreground">{new Date(h.changedAt).toLocaleString()}</span>
                         {h.changedBy && <span>by {typeof h.changedBy === "object" ? h.changedBy.name : "User"}</span>}
-                        {h.note && <span className="italic">â€” {h.note}</span>}
+                        {h.note && <span className="italic">— {h.note}</span>}
                       </div>
                     ))}
                   </div>
@@ -373,7 +426,7 @@ export default function SuperAgentExhibitionsPage() {
               <DialogTitle>
                 {reviewAction === "under_review" ? "Start Review" : reviewAction === "approved" ? "Approve Exhibition" : reviewAction === "revision_requested" ? "Request Revision" : reviewAction === "budget_approved" ? "Approve Budget" : "Reject Exhibition"}
               </DialogTitle>
-              <DialogDescription>{reviewItem.eventName} â€” {reviewItem.agentId?.name}</DialogDescription>
+              <DialogDescription>{reviewItem.eventName} — {reviewItem.agentId?.name}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {["approved", "budget_approved"].includes(reviewAction) && (

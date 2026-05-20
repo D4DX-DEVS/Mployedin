@@ -11,6 +11,7 @@ import connectDB from "@/lib/db/mongoose";
 import Placement from "@/models/Placement";
 import Invoice from "@/models/Invoice";
 import { INVOICE_TERMINAL_STATUSES } from "@/lib/invoices/status";
+import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -91,13 +92,25 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const total = uninvoiced.length;
   const paginated = uninvoiced.slice(skip, skip + limit);
 
-  // Format for frontend
-  const items = paginated.map((p) => {
+  // Format for frontend — resolve effective commission rates including country overrides
+  const items = await Promise.all(paginated.map(async (p) => {
     const job = p.jobId as { _id?: unknown; title?: string; salary?: number; currency?: string } | null;
     const emp = p.employerId as { _id?: unknown; companyName?: string; companyEmail?: string; phone?: string; address?: string; country?: string; taxId?: string } | null;
     const seeker = p.jobSeekerId as { userId?: { name?: string; email?: string } } | null;
     const agent = p.agentId as { _id?: unknown; userId?: { name?: string; email?: string }; commissionRate?: number } | null;
     const superAgent = p.superAgentId as { _id?: unknown; userId?: { name?: string }; overrideRate?: number } | null;
+
+    const employerCountry = emp?.country ?? null;
+    const rawAgentRate = agent?.commissionRate ?? 0;
+    const rawSARate = superAgent?.overrideRate ?? 0;
+
+    // Resolve rates with country overrides (same logic as invoice creation)
+    const resolvedAgentRate = rawAgentRate > 0
+      ? (await resolveCommissionRate(rawAgentRate, employerCountry)).rate
+      : 0;
+    const resolvedSARate = rawSARate > 0
+      ? (await resolveOverrideRate(rawSARate, employerCountry)).rate
+      : 0;
 
     return {
       _id: String(p._id),
@@ -118,13 +131,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       candidateEmail: seeker?.userId?.email,
       agentId: agent?._id ? String(agent._id) : null,
       agentName: agent?.userId?.name ?? "—",
-      agentRate: agent?.commissionRate ?? 0,
+      agentRate: resolvedAgentRate,
       superAgentId: superAgent?._id ? String(superAgent._id) : null,
       superAgentName: superAgent?.userId?.name ?? null,
-      superAgentRate: superAgent?.overrideRate ?? 0,
+      superAgentRate: resolvedSARate,
       visaStatus: p.visaStatus ?? "pending",
     };
-  });
+  }));
 
   return NextResponse.json({
     placements: items,

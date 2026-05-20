@@ -2,6 +2,7 @@
 
 import CmsPage from "@/components/features/admin/CmsPage";
 import type { CrudField } from "@/components/shared/CrudModal";
+import { HelpCircle } from "lucide-react";
 
 const FIELDS: CrudField[] = [
   { name: "question", label: "Question (English)", type: "textarea", required: true, placeholder: "e.g. How do I register?" },
@@ -36,6 +37,27 @@ export default function FaqsAdminPage() {
       description="Manage frequently asked questions for the landing page"
       columns={COLUMNS}
       fields={FIELDS}
+      icon={HelpCircle}
+      iconColor="text-blue-600"
+      filterFields={[
+        { type: "search", placeholder: "Search question, answer, or category…" },
+        {
+          type: "status",
+          label: "Visibility",
+          options: [
+            { value: "all", label: "All statuses" },
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
+          ],
+        },
+        {
+          type: "text",
+          key: "category",
+          label: "Category",
+          placeholder: "e.g. general, billing, jobs",
+          param: "category",
+        },
+      ]}
     />
   );
 }

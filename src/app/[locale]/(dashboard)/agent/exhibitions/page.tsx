@@ -28,10 +28,11 @@ import {
   MapPin,
   Plus,
   Save,
-  Search,
   Send,
+  Sparkles,
   Trash2,
 } from "lucide-react";
+import { ExhibitionHeroFilters } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { useTranslations } from "next-intl";
 import { useConfirm } from "@/hooks/useConfirm";
 import { SUPPORTED_CURRENCIES, formatCurrency } from "@/lib/currency";
@@ -171,6 +172,11 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: "Rejected" },
 ];
 
+const CATEGORY_FILTER_OPTIONS = [
+  { value: "all", label: "All Categories" },
+  ...EVENT_CATEGORIES.map((category) => ({ value: category.value, label: category.label })),
+];
+
 const CURRENCY_OPTIONS = SUPPORTED_CURRENCIES.map((currency) => ({
   value: currency.code,
   label: `${currency.code} - ${currency.label}`,
@@ -186,6 +192,7 @@ export default function AgentExhibitionsPage() {
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [showWizard, setShowWizard] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -223,6 +230,9 @@ export default function AgentExhibitionsPage() {
       if (statusFilter !== "all") {
         params.set("status", statusFilter);
       }
+      if (categoryFilter !== "all") {
+        params.set("category", categoryFilter);
+      }
       if (search) {
         params.set("search", search);
       }
@@ -236,7 +246,7 @@ export default function AgentExhibitionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, t]);
+  }, [search, statusFilter, categoryFilter, t]);
 
   useEffect(() => {
     fetchItems();
@@ -442,72 +452,93 @@ export default function AgentExhibitionsPage() {
     setDialogContainer(node);
   }, []);
 
+  const submittedCount = items.filter((item) => item.status === "submitted").length;
+  const approvedCount = items.filter((item) => ["approved", "budget_approved", "resources_assigned"].includes(item.status)).length;
+
   return (
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <CalendarDays className="h-6 w-6 text-primary" /> {t("title")}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <Button onClick={openNewRequest} size="lg">
-          <Plus className="mr-2 h-4 w-4" /> {t("newRequest")}
-        </Button>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            placeholder={t("searchPlaceholder")}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </div>
-        <SearchableSelect
-          options={STATUS_OPTIONS}
-          value={statusFilter}
-          onValueChange={setStatusFilter}
-          placeholder={t("filterStatus")}
-        />
-      </div>
-
-      {!loading && items.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {[
-            { label: "Total", value: items.length, color: "text-slate-700 dark:text-slate-200", bg: "from-slate-50 to-white dark:from-slate-900/50 dark:to-slate-800/30" },
-            { label: "Submitted", value: items.filter((item) => item.status === "submitted").length, color: "text-blue-600 dark:text-blue-400", bg: "from-blue-50 to-white dark:from-blue-950/40 dark:to-blue-900/10" },
-            { label: "Approved", value: items.filter((item) => ["approved", "budget_approved", "resources_assigned"].includes(item.status)).length, color: "text-emerald-600 dark:text-emerald-400", bg: "from-emerald-50 to-white dark:from-emerald-950/40 dark:to-emerald-900/10" },
-            { label: "Active", value: items.filter((item) => item.status === "active").length, color: "text-purple-600 dark:text-purple-400", bg: "from-purple-50 to-white dark:from-purple-950/40 dark:to-purple-900/10" },
-            { label: "Completed", value: items.filter((item) => item.status === "completed").length, color: "text-green-600 dark:text-green-400", bg: "from-green-50 to-white dark:from-green-950/40 dark:to-green-900/10" },
-            { label: "Revision", value: items.filter((item) => item.status === "revision_requested").length, color: "text-orange-600 dark:text-orange-400", bg: "from-orange-50 to-white dark:from-orange-950/40 dark:to-orange-900/10" },
-          ].map((stat) => (
-            <div key={stat.label} className={`rounded-xl border bg-gradient-to-br ${stat.bg} p-4 text-center shadow-sm transition-shadow hover:shadow-md`}>
-              <p className={`text-3xl font-bold tracking-tight ${stat.color}`}>{stat.value}</p>
-              <p className="mt-1 text-xs font-medium text-muted-foreground">{stat.label}</p>
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Exhibition requests
             </div>
-          ))}
+            <h1 className="mt-3 flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              <CalendarDays className="h-7 w-7 text-primary" />
+              {t("title")}
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
+          </div>
+          <Button onClick={openNewRequest} size="lg" className="h-11 shrink-0 rounded-xl px-5 shadow-sm">
+            <Plus className="mr-2 h-4 w-4" /> {t("newRequest")}
+          </Button>
         </div>
-      )}
 
+        {!loading && items.length > 0 && (
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            {([
+              { label: "Total", value: items.length, note: "All requests", icon: CalendarDays, tone: "text-slate-600", chip: "bg-slate-50 dark:bg-slate-950/30" },
+              { label: "Submitted", value: submittedCount, note: "Awaiting review", icon: Send, tone: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
+              { label: "Approved", value: approvedCount, note: "Cleared to proceed", icon: Save, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+              { label: "Active", value: items.filter((item) => item.status === "active").length, note: "In progress", icon: Clock, tone: "text-purple-600", chip: "bg-purple-50 dark:bg-purple-950/30" },
+              { label: "Completed", value: items.filter((item) => item.status === "completed").length, note: "Finished", icon: Eye, tone: "text-green-600", chip: "bg-green-50 dark:bg-green-950/30" },
+              { label: "Revision", value: items.filter((item) => item.status === "revision_requested").length, note: "Needs updates", icon: AlertTriangle, tone: "text-orange-600", chip: "bg-orange-50 dark:bg-orange-950/30" },
+            ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
+              <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                    <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{value}</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{note}</p>
+                  </div>
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${chip}`}>
+                    <Icon className={`h-5 w-5 ${tone}`} />
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <ExhibitionHeroFilters
+          search={search}
+          onSearchChange={setSearch}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          statusOptions={STATUS_OPTIONS}
+          categoryFilter={categoryFilter}
+          onCategoryChange={setCategoryFilter}
+          categoryOptions={CATEGORY_FILTER_OPTIONS}
+          searchPlaceholder={t("searchPlaceholder")}
+        />
+      </section>
+
+      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your requests</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Request history</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Open details or continue editing drafts from the table below.</p>
+        </div>
+
+        <div className="mt-5">
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
+        <div className="flex items-center justify-center py-14 text-muted-foreground">
           <Clock className="mr-2 h-5 w-5 animate-spin" /> {tc("loading")}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <Inbox className="mb-3 h-12 w-12 opacity-40" />
-          <p>{t("noRequests")}</p>
-          <Button variant="outline" className="mt-4" onClick={openNewRequest}>
+        <div className="workspace-empty-state flex flex-col items-center gap-3 px-6 py-14 text-center">
+          <div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-8 w-8 text-muted-foreground" /></div>
+          <p className="text-sm font-semibold text-foreground">{t("noRequests")}</p>
+          <Button variant="outline" className="mt-2 rounded-xl" onClick={openNewRequest}>
             <Plus className="mr-2 h-4 w-4" /> Create your first request
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border shadow-sm">
+        <div className="workspace-panel-surface overflow-hidden rounded-[24px]">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/80 to-muted/40">
@@ -579,8 +610,11 @@ export default function AgentExhibitionsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
+        </div>
+      </section>
 
       <Dialog open={Boolean(detailItem)} onOpenChange={() => setDetailItem(null)}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-0">

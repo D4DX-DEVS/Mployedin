@@ -61,7 +61,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     agentProfiles.map((p) => [p.userId.toString(), p])
   );
 
-  // Enrich super agent names
+  // Enrich super agent names + regions
+  const superAgentDocIds = agentProfiles
+    .filter((p) => p.superAgentId)
+    .map((p) => {
+      const sa = p.superAgentId as unknown as { _id: unknown; userId: unknown };
+      return sa?._id;
+    })
+    .filter(Boolean);
+
   const superAgentUserIds = agentProfiles
     .filter((p) => p.superAgentId)
     .map((p) => {
@@ -70,25 +78,77 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     })
     .filter(Boolean);
 
-  const saUsers = superAgentUserIds.length > 0
-    ? await User.find({ _id: { $in: superAgentUserIds } }).select("name").lean()
-    : [];
+  const [saUsers, saProfiles] = await Promise.all([
+    superAgentUserIds.length > 0
+      ? User.find({ _id: { $in: superAgentUserIds } }).select("name").lean()
+      : [],
+    superAgentDocIds.length > 0
+      ? SuperAgent.find({ _id: { $in: superAgentDocIds } })
+          .populate("assignedCityIds", "name nameAr")
+          .populate("assignedStateIds", "name nameAr")
+          .lean()
+      : [],
+  ]);
   const saNameMap = new Map(saUsers.map((u) => [u._id.toString(), u.name]));
+  const saRegionMap = new Map(saProfiles.map((p) => [p._id.toString(), p]));
+
+  // Backfill: agents with a super agent but no region get the SA's region written to DB
+  const backfillOps = agentProfiles
+    .filter((p) => {
+      if (!p.superAgentId) return false;
+      const hasCities = (p.assignedCityIds as unknown[])?.length > 0;
+      const hasStates = (p.assignedStateIds as unknown[])?.length > 0;
+      return !hasCities && !hasStates;
+    })
+    .map((p) => {
+      const saDocId = (p.superAgentId as unknown as { _id: unknown })?._id?.toString();
+      const saProfile = saDocId ? saRegionMap.get(saDocId) : null;
+      if (!saProfile) return null;
+      const extractIds = (arr: unknown[]) =>
+        arr.map((item) => (typeof item === "object" && item && "_id" in item ? (item as { _id: unknown })._id : item));
+      return {
+        agentId: p._id,
+        cityIds: extractIds(saProfile.assignedCityIds as unknown[] ?? []),
+        stateIds: extractIds(saProfile.assignedStateIds as unknown[] ?? []),
+      };
+    })
+    .filter(Boolean);
+
+  if (backfillOps.length > 0) {
+    await Promise.all(
+      backfillOps.map((op) =>
+        Agent.findByIdAndUpdate(op!.agentId, {
+          $set: { assignedCityIds: op!.cityIds, assignedStateIds: op!.stateIds },
+        })
+      )
+    );
+  }
 
   const enriched = users.map((user) => {
     const profile = profileMap.get(user._id.toString());
     const saProfile = profile?.superAgentId as unknown as { _id: unknown; userId: unknown } | undefined;
     const saUserId = saProfile?.userId?.toString();
+    const saDocId = saProfile?._id?.toString();
+    const saRegion = saDocId ? saRegionMap.get(saDocId) : null;
+
+    // Use agent's own region, or fall back to SA's region for display
+    const agentCities = (profile?.assignedCityIds as unknown[])?.length > 0
+      ? profile!.assignedCityIds
+      : saRegion?.assignedCityIds ?? [];
+    const agentStates = (profile?.assignedStateIds as unknown[])?.length > 0
+      ? profile!.assignedStateIds
+      : saRegion?.assignedStateIds ?? [];
+
     return {
       ...user,
       agentProfile: profile
         ? {
             _id: profile._id,
-            superAgentId: profile.superAgentId,
+            superAgentId: saDocId ?? null,
             superAgentName: saUserId ? saNameMap.get(saUserId) : undefined,
             commissionRate: profile.commissionRate,
-            assignedCityIds: profile.assignedCityIds,
-            assignedStateIds: profile.assignedStateIds,
+            assignedCityIds: agentCities,
+            assignedStateIds: agentStates,
           }
         : null,
     };
@@ -156,12 +216,23 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   });
 
   try {
-    // If commissionRate not explicitly set and agent belongs to a SA, use SA's default
+    // If agent belongs to a SA, inherit commission and region defaults
     let resolvedCommission = commissionRate ?? 0;
-    if (resolvedCommission === 0 && superAgentId) {
-      const saDoc = await SuperAgent.findById(superAgentId).select("defaultAgentCommissionRate").lean();
-      if (saDoc?.defaultAgentCommissionRate) {
-        resolvedCommission = saDoc.defaultAgentCommissionRate;
+    let resolvedCityIds = assignedCityIds ?? [];
+    let resolvedStateIds = assignedStateIds ?? [];
+
+    if (superAgentId) {
+      const saDoc = await SuperAgent.findById(superAgentId)
+        .select("defaultAgentCommissionRate assignedCityIds assignedStateIds")
+        .lean();
+      if (saDoc) {
+        if (resolvedCommission === 0 && saDoc.defaultAgentCommissionRate) {
+          resolvedCommission = saDoc.defaultAgentCommissionRate;
+        }
+        if (resolvedCityIds.length === 0 && resolvedStateIds.length === 0) {
+          resolvedCityIds = (saDoc.assignedCityIds ?? []).map((id: unknown) => String(id));
+          resolvedStateIds = (saDoc.assignedStateIds ?? []).map((id: unknown) => String(id));
+        }
       }
     }
 
@@ -169,8 +240,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       userId: user._id,
       superAgentId: superAgentId || undefined,
       commissionRate: resolvedCommission,
-      assignedCityIds: assignedCityIds ?? [],
-      assignedStateIds: assignedStateIds ?? [],
+      assignedCityIds: resolvedCityIds,
+      assignedStateIds: resolvedStateIds,
     });
 
     // Link to super agent
@@ -260,6 +331,21 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   if (commissionRate !== undefined) profileUpdate.commissionRate = commissionRate;
   if (assignedCityIds !== undefined) profileUpdate.assignedCityIds = assignedCityIds;
   if (assignedStateIds !== undefined) profileUpdate.assignedStateIds = assignedStateIds;
+
+  // If assigning to a super agent and no region provided, inherit SA's region
+  if (superAgentId && assignedCityIds === undefined && assignedStateIds === undefined) {
+    const saDoc = await SuperAgent.findById(superAgentId)
+      .select("assignedCityIds assignedStateIds")
+      .lean();
+    if (saDoc) {
+      const existingAgent = await Agent.findOne({ userId }).select("assignedCityIds assignedStateIds").lean();
+      const hasRegion = (existingAgent?.assignedCityIds?.length ?? 0) > 0 || (existingAgent?.assignedStateIds?.length ?? 0) > 0;
+      if (!hasRegion) {
+        profileUpdate.assignedCityIds = saDoc.assignedCityIds ?? [];
+        profileUpdate.assignedStateIds = saDoc.assignedStateIds ?? [];
+      }
+    }
+  }
 
   if (Object.keys(profileUpdate).length > 0) {
     await Agent.findOneAndUpdate(

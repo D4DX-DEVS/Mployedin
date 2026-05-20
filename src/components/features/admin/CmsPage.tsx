@@ -9,8 +9,6 @@ import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import { TableToolbar } from "@/components/shared/TableToolbar";
 import {
   Table,
   TableBody,
@@ -19,14 +17,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, Inbox, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, Inbox, Sparkles } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import type { LucideIcon } from "lucide-react";
+import CmsHeroFilters, {
+  type CmsFilterField,
+  type CmsFilterValues,
+  buildCmsQueryParams,
+  cmsFiltersAreActive,
+  getDefaultCmsFilterValues,
+} from "@/components/features/admin/CmsHeroFilters";
 
 export interface CmsColumn {
   key: string;
   label: string;
   render?: (value: unknown, item: Record<string, unknown>) => React.ReactNode;
 }
+
+const DEFAULT_STATUS_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+];
 
 interface CmsPageProps {
   apiUrl: string;
@@ -37,10 +49,13 @@ interface CmsPageProps {
   fields: CrudField[];
   resource?: string;
   allowCreate?: boolean;
-  hasStatusFilter?: boolean;
-  statusFilterOptions?: { value: string; label: string }[];
   editPageBasePath?: string;
   createPagePath?: string;
+  icon?: LucideIcon;
+  iconColor?: string;
+  /** Page-specific filter fields rendered inside the hero (expand on click). */
+  filterFields?: CmsFilterField[];
+  searchPlaceholder?: string;
 }
 
 export default function CmsPage({
@@ -51,10 +66,12 @@ export default function CmsPage({
   fields,
   resource = "cms",
   allowCreate = true,
-  hasStatusFilter = true,
-  statusFilterOptions,
   editPageBasePath,
   createPagePath,
+  icon: Icon,
+  iconColor = "text-sky-600",
+  filterFields: filterFieldsProp,
+  searchPlaceholder,
 }: CmsPageProps) {
   const { can } = usePermissions();
   const { locale } = useParams<{ locale: string }>();
@@ -62,18 +79,32 @@ export default function CmsPage({
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [filterValues, setFilterValues] = useState<CmsFilterValues>(getDefaultCmsFilterValues);
+  const [showFilters, setShowFilters] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Record<string, unknown> | null>(null);
 
+  const filterFields: CmsFilterField[] = filterFieldsProp ?? [
+    { type: "search", placeholder: `Search ${title.toLowerCase()}…` },
+    { type: "status", options: DEFAULT_STATUS_OPTIONS },
+  ];
+
+  const hasActiveFilters = cmsFiltersAreActive(filterValues, filterFields);
+
+  const resetFilters = useCallback(() => {
+    setFilterValues(getDefaultCmsFilterValues());
+    resetPage();
+  }, [resetPage]);
+
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (search) params.set("search", search);
-      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+      const params = buildCmsQueryParams(
+        filterValues,
+        filterFields,
+        new URLSearchParams({ page: String(page), limit: String(limit) })
+      );
       const r = await fetch(`${apiUrl}?${params}`);
       const d = await r.json();
       setItems(d.items ?? []);
@@ -83,9 +114,16 @@ export default function CmsPage({
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, page, limit, search, statusFilter, updateTotal]);
+  }, [apiUrl, page, limit, filterValues, filterFields, updateTotal]);
 
-  useEffect(() => { fetchItems(); }, [fetchItems]);
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  const handleFilterChange = (next: CmsFilterValues) => {
+    setFilterValues(next);
+    resetPage();
+  };
 
   const handleCreate = async (values: Record<string, string>) => {
     const payload: Record<string, unknown> = { ...values };
@@ -143,60 +181,119 @@ export default function CmsPage({
     return record;
   };
 
-  const defaultStatusOptions = statusFilterOptions || [
-    { value: "all", label: "All" },
-    { value: "active", label: "Active" },
-    { value: "inactive", label: "Inactive" },
-  ];
-
-  const hasActiveFilters = Boolean(search.trim()) || statusFilter !== "all";
+  const activeOnPage = items.filter(
+    (i) => i.isActive === true || i.status === "published"
+  ).length;
 
   return (
-    <div className="page-container admin-cms-page-container space-y-4" data-admin-workspace="cms-page">
+    <div className="page-container admin-cms-page-container space-y-6" data-admin-workspace="cms-page">
       {ConfirmDialogNode}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
-        <TableToolbar
-          title={title}
-          description={description}
-          search={search}
-          onSearchChange={(value) => { setSearch(value); resetPage(); }}
-          actions={allowCreate && can(resource as "cms", "create") ? (
-            <Button
-              onClick={() => createPagePath ? router.push(`/${locale}${createPagePath}`) : setShowAdd(true)}
-              size="sm"
-              className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
-            >
-              <Plus className="h-3.5 w-3.5" /> Add New
-            </Button>
-          ) : undefined}
-          filterContent={hasStatusFilter ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <SearchableSelect
-                className="h-8 w-[140px] rounded-lg border-border bg-card text-sm"
-                options={defaultStatusOptions}
-                value={statusFilter}
-                onValueChange={(value) => { setStatusFilter(value); resetPage(); }}
-              />
-              {hasActiveFilters && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setSearch(""); setStatusFilter("all"); resetPage(); }}
-                  className="h-8 gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <RotateCcw className="h-3 w-3" /> Clear
-                </Button>
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              CMS Workspace
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+              {title}
+            </h1>
+            {description && (
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {description}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Total records
+              </p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{total.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">
+                Across {totalPages} page{totalPages === 1 ? "" : "s"}
+              </p>
+            </div>
+            {allowCreate && can(resource as "cms", "create") && (
+              <Button
+                onClick={() =>
+                  createPagePath ? router.push(`/${locale}${createPagePath}`) : setShowAdd(true)
+                }
+                className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+              >
+                <Plus className="h-4 w-4" />
+                Add New
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Total Items
+                </p>
+                <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{total}</p>
+              </div>
+              {Icon && (
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 dark:bg-sky-950/30">
+                  <Icon className={`h-5 w-5 ${iconColor}`} />
+                </span>
               )}
             </div>
-          ) : undefined}
-          hasActiveFilters={hasActiveFilters}
-          className="rounded-none border-0 bg-transparent shadow-none"
-        />
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">All records in this module</p>
+          </div>
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Active (this page)
+                </p>
+                <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{activeOnPage}</p>
+              </div>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/30">
+                <span className="h-3 w-3 rounded-full bg-emerald-500" />
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">Visible on the site</p>
+          </div>
+          <div className="workspace-glass-panel rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Per Page
+                </p>
+                <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{limit}</p>
+              </div>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 dark:bg-violet-950/30">
+                <span className="h-3 w-3 rounded-full bg-violet-500" />
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-5 text-muted-foreground">Items shown per page</p>
+          </div>
+        </div>
 
-        {/* Table */}
+        <CmsHeroFilters
+          fields={filterFields}
+          values={filterValues}
+          onChange={handleFilterChange}
+          onReset={resetFilters}
+          hasActiveFilters={hasActiveFilters}
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters((v) => !v)}
+          searchPlaceholder={
+            searchPlaceholder ??
+            filterFields.find((f) => f.type === "search")?.placeholder ??
+            `Search ${title.toLowerCase()}…`
+          }
+        />
+      </section>
+
+      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -223,11 +320,33 @@ export default function CmsPage({
                 ))
               ) : items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length + 1} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      <Inbox className="h-6 w-6 opacity-50" />
-                      <p className="text-sm font-medium text-foreground">No items found</p>
-                      <p className="text-xs">Adjust the filters or add a new entry.</p>
+                  <TableCell colSpan={columns.length + 1} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="workspace-muted-pill mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-[24px]">
+                        <Inbox className="h-7 w-7 text-muted-foreground" />
+                      </div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        {hasActiveFilters ? "No matching items" : "No items yet"}
+                      </p>
+                      <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+                        {hasActiveFilters
+                          ? "No items match the current filters."
+                          : `No ${title.toLowerCase()} found.`}
+                      </h3>
+                      <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+                        {hasActiveFilters
+                          ? "Adjust the filters in the hero section or clear them to see more results."
+                          : 'Click "Add New" to create your first entry.'}
+                      </p>
+                      {hasActiveFilters && (
+                        <Button
+                          onClick={resetFilters}
+                          variant="outline"
+                          className="mt-4 h-9 rounded-xl border-border bg-background/70 px-4 text-sm"
+                        >
+                          Clear filters
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -239,9 +358,16 @@ export default function CmsPage({
                         {col.render
                           ? col.render(item[col.key], item)
                           : col.key === "isActive"
-                            ? <Badge variant={item[col.key] ? "default" : "secondary"}>{item[col.key] ? "Active" : "Inactive"}</Badge>
-                            : <span className="line-clamp-1 max-w-xs">{String(item[col.key] ?? "")}</span>
-                        }
+                            ? (
+                                <Badge variant={item[col.key] ? "default" : "secondary"}>
+                                  {item[col.key] ? "Active" : "Inactive"}
+                                </Badge>
+                              )
+                            : (
+                                <span className="line-clamp-1 max-w-xs">
+                                  {String(item[col.key] ?? "")}
+                                </span>
+                              )}
                       </TableCell>
                     ))}
                     <TableCell>
@@ -261,7 +387,13 @@ export default function CmsPage({
                           </Button>
                         )}
                         {can(resource as "cms", "delete") && (
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(String(item._id))} title="Delete" className="text-destructive hover:text-destructive">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(String(item._id))}
+                            title="Delete"
+                            className="text-destructive hover:text-destructive"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
@@ -281,7 +413,10 @@ export default function CmsPage({
             limit={limit}
             total={total}
             onPageChange={setPage}
-            onLimitChange={(v) => { setLimit(v); resetPage(); }}
+            onLimitChange={(v) => {
+              setLimit(v);
+              resetPage();
+            }}
           />
         </div>
       </section>

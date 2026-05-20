@@ -1,18 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   MapPin,
   X,
@@ -21,7 +14,10 @@ import {
   Search,
   Globe,
   CheckSquare,
+  Square,
   Loader2,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 
 interface LocationItem {
@@ -34,18 +30,123 @@ interface LocationItem {
   stateId?: string;
 }
 
+/* ── Inline searchable select (no portal — works inside Dialog) ── */
+function InlineSearchSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled = false,
+  loading = false,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  options: LocationItem[];
+  placeholder: string;
+  disabled?: boolean;
+  loading?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = query
+    ? options.filter((o) =>
+        o.name.toLowerCase().includes(query.toLowerCase()) ||
+        (o.code ?? "").toLowerCase().includes(query.toLowerCase())
+      )
+    : options;
+
+  const selectedLabel = options.find((o) => o._id === value)?.name;
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && inputRef.current) inputRef.current.focus();
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => { if (!disabled) { setOpen(!open); setQuery(""); } }}
+        className="flex h-8 w-full items-center justify-between gap-1 rounded-lg border border-border/60 bg-background px-3 text-sm shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <span className={selectedLabel ? "truncate" : "truncate text-muted-foreground"}>
+          {loading ? (
+            <span className="flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" /> Loading...
+            </span>
+          ) : (
+            selectedLabel ?? placeholder
+          )}
+        </span>
+        <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-40" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+4px)] z-50 w-full min-w-[200px] rounded-xl border border-border/50 bg-popover shadow-lg shadow-black/[0.08] animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-150">
+          <div className="flex items-center gap-2 border-b border-border/30 px-3 py-2">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search..."
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+            />
+          </div>
+          <div className="max-h-52 overflow-y-auto p-1 scrollbar-none">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-xs text-muted-foreground">No results found</div>
+            ) : (
+              filtered.map((opt) => {
+                const isActive = opt._id === value;
+                return (
+                  <button
+                    key={opt._id}
+                    type="button"
+                    onClick={() => { onChange(opt._id); setOpen(false); setQuery(""); }}
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors duration-100 ${
+                      isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-accent/40 text-foreground"
+                    }`}
+                  >
+                    <Check className={`h-3.5 w-3.5 shrink-0 ${isActive ? "opacity-100 text-primary" : "opacity-0"}`} />
+                    <span className="truncate">{opt.name}</span>
+                    {opt.code && (
+                      <span className="ml-auto text-[10px] text-muted-foreground/60 font-mono">{opt.code}</span>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Main location picker ── */
+
 interface CascadingLocationPickerProps {
-  /** Selected city IDs */
   selectedCityIds: string[];
-  /** Selected state IDs (all cities in these states are included) */
   selectedStateIds: string[];
-  /** Called when selections change */
   onChange: (cityIds: string[], stateIds: string[]) => void;
-  /** Label text */
   label?: string;
-  /** Read-only mode */
   readOnly?: boolean;
-  /** Error message */
   error?: string;
 }
 
@@ -58,29 +159,22 @@ export function CascadingLocationPicker({
   error,
 }: CascadingLocationPickerProps) {
   const tc = useTranslations("common");
-  // Data state
+
   const [countries, setCountries] = useState<LocationItem[]>([]);
   const [states, setStates] = useState<LocationItem[]>([]);
   const [cities, setCities] = useState<LocationItem[]>([]);
 
-  // UI state
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedState, setSelectedState] = useState<string>("");
   const [loadingStates, setLoadingStates] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
   const [expandedPanel, setExpandedPanel] = useState(false);
-  const [search, setSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<
-    (LocationItem & { stateName: string; countryName: string; countryCode: string })[]
-  >([]);
-  const [searching, setSearching] = useState(false);
+  const [citySearch, setCitySearch] = useState("");
 
-  // Track names for display badges
   const [nameCache, setNameCache] = useState<Map<string, { name: string; type: "city" | "state" }>>(
     new Map()
   );
 
-  // Load countries on mount
   useEffect(() => {
     fetch("/api/filters/locations?level=countries")
       .then((r) => r.json())
@@ -88,12 +182,30 @@ export function CascadingLocationPicker({
       .catch(console.error);
   }, []);
 
-  // Load states when country changes
   useEffect(() => {
-    if (!selectedCountry) {
-      setStates([]);
-      return;
-    }
+    const unresolvedCities = selectedCityIds.filter((id) => !nameCache.has(id));
+    const unresolvedStates = selectedStateIds.filter((id) => !nameCache.has(id));
+    if (unresolvedCities.length === 0 && unresolvedStates.length === 0) return;
+
+    const params = new URLSearchParams({ level: "resolve" });
+    if (unresolvedCities.length > 0) params.set("cityIds", unresolvedCities.join(","));
+    if (unresolvedStates.length > 0) params.set("stateIds", unresolvedStates.join(","));
+
+    fetch(`/api/filters/locations?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setNameCache((prev) => {
+          const next = new Map(prev);
+          for (const c of data.cities ?? []) next.set(c._id, { name: c.name, type: "city" });
+          for (const s of data.states ?? []) next.set(s._id, { name: s.name, type: "state" });
+          return next;
+        });
+      })
+      .catch(console.error);
+  }, [selectedCityIds, selectedStateIds]);
+
+  useEffect(() => {
+    if (!selectedCountry) { setStates([]); return; }
     setLoadingStates(true);
     fetch(`/api/filters/locations?level=states&countryId=${selectedCountry}`)
       .then((r) => r.json())
@@ -102,13 +214,10 @@ export function CascadingLocationPicker({
       .finally(() => setLoadingStates(false));
   }, [selectedCountry]);
 
-  // Load cities when state changes
   useEffect(() => {
-    if (!selectedState) {
-      setCities([]);
-      return;
-    }
+    if (!selectedState) { setCities([]); setCitySearch(""); return; }
     setLoadingCities(true);
+    setCitySearch("");
     fetch(`/api/filters/locations?level=cities&stateId=${selectedState}`)
       .then((r) => r.json())
       .then((data) => setCities(data.cities ?? []))
@@ -116,28 +225,19 @@ export function CascadingLocationPicker({
       .finally(() => setLoadingCities(false));
   }, [selectedState]);
 
-  // Search cities
-  useEffect(() => {
-    if (!search || search.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(`/api/filters/locations?search=${encodeURIComponent(search)}`);
-        const data = await res.json();
-        setSearchResults(data.results ?? []);
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const filteredCities = useMemo(() => {
+    if (!citySearch) return cities;
+    const q = citySearch.toLowerCase();
+    return cities.filter((c) => c.name.toLowerCase().includes(q));
+  }, [cities, citySearch]);
 
-  // Toggle a city
+  const selectedCitiesInState = useMemo(() => {
+    return cities.filter((c) => selectedCityIds.includes(c._id));
+  }, [cities, selectedCityIds]);
+
+  const isEntireStateSelected = selectedStateIds.includes(selectedState);
+  const allCitiesInStateSelected = !isEntireStateSelected && cities.length > 0 && cities.every((c) => selectedCityIds.includes(c._id));
+
   const toggleCity = useCallback(
     (cityId: string, cityName: string) => {
       if (readOnly) return;
@@ -146,14 +246,11 @@ export function CascadingLocationPicker({
         ? selectedCityIds.filter((id) => id !== cityId)
         : [...selectedCityIds, cityId];
       onChange(newCities, selectedStateIds);
-      if (!has) {
-        setNameCache((prev) => new Map(prev).set(cityId, { name: cityName, type: "city" }));
-      }
+      if (!has) setNameCache((prev) => new Map(prev).set(cityId, { name: cityName, type: "city" }));
     },
     [readOnly, selectedCityIds, selectedStateIds, onChange]
   );
 
-  // Toggle entire state
   const toggleState = useCallback(
     (stateId: string, stateName: string) => {
       if (readOnly) return;
@@ -161,12 +258,9 @@ export function CascadingLocationPicker({
       const newStates = has
         ? selectedStateIds.filter((id) => id !== stateId)
         : [...selectedStateIds, stateId];
-      // When adding a state, remove any individually selected cities from that state
       let newCities = selectedCityIds;
       if (!has) {
-        const citiesInState = cities
-          .filter((c) => c.stateId === stateId)
-          .map((c) => c._id);
+        const citiesInState = cities.filter((c) => c.stateId === stateId).map((c) => c._id);
         newCities = selectedCityIds.filter((id) => !citiesInState.includes(id));
         setNameCache((prev) => new Map(prev).set(stateId, { name: stateName, type: "state" }));
       }
@@ -175,32 +269,32 @@ export function CascadingLocationPicker({
     [readOnly, selectedCityIds, selectedStateIds, cities, onChange]
   );
 
-  // Remove a selection chip
+  const selectAllFilteredCities = useCallback(() => {
+    if (readOnly) return;
+    const newIds = new Set(selectedCityIds);
+    for (const c of filteredCities) {
+      newIds.add(c._id);
+      setNameCache((prev) => new Map(prev).set(c._id, { name: c.name, type: "city" }));
+    }
+    onChange(Array.from(newIds), selectedStateIds);
+  }, [readOnly, selectedCityIds, selectedStateIds, filteredCities, onChange]);
+
+  const deselectAllFilteredCities = useCallback(() => {
+    if (readOnly) return;
+    const removeSet = new Set(filteredCities.map((c) => c._id));
+    onChange(selectedCityIds.filter((id) => !removeSet.has(id)), selectedStateIds);
+  }, [readOnly, selectedCityIds, selectedStateIds, filteredCities, onChange]);
+
   const removeItem = useCallback(
     (id: string, type: "city" | "state") => {
       if (readOnly) return;
       if (type === "state") {
-        onChange(
-          selectedCityIds,
-          selectedStateIds.filter((s) => s !== id)
-        );
+        onChange(selectedCityIds, selectedStateIds.filter((s) => s !== id));
       } else {
-        onChange(
-          selectedCityIds.filter((c) => c !== id),
-          selectedStateIds
-        );
+        onChange(selectedCityIds.filter((c) => c !== id), selectedStateIds);
       }
     },
     [readOnly, selectedCityIds, selectedStateIds, onChange]
-  );
-
-  // Whether a city's parent state is fully selected
-  const isCityInSelectedState = useCallback(
-    (cityStateId?: string) => {
-      if (!cityStateId) return false;
-      return selectedStateIds.includes(cityStateId);
-    },
-    [selectedStateIds]
   );
 
   const totalSelections = selectedCityIds.length + selectedStateIds.length;
@@ -211,50 +305,31 @@ export function CascadingLocationPicker({
         <Label className="text-sm font-medium">
           {label}
           {totalSelections > 0 && (
-            <Badge variant="secondary" className="ml-2 text-xs">
-              {totalSelections}
-            </Badge>
+            <Badge variant="secondary" className="ml-2 text-xs">{totalSelections}</Badge>
           )}
         </Label>
       )}
 
-      {/* Selected items display */}
+      {/* Selected items chips */}
       {totalSelections > 0 && (
         <div className="flex flex-wrap gap-1.5 p-2 rounded-md border border-border/50 bg-muted/10 min-h-[36px]">
           {selectedStateIds.map((id) => (
-            <Badge
-              key={`state-${id}`}
-              variant="default"
-              className="text-xs gap-1 bg-primary/10 text-primary border-primary/20"
-            >
+            <Badge key={`state-${id}`} variant="default" className="text-xs gap-1 bg-primary/10 text-primary border-primary/20">
               <Globe className="h-3 w-3" />
-              {nameCache.get(id)?.name ?? `State ${id.slice(-4)}`}
-              {" (all cities)"}
+              {nameCache.get(id)?.name ?? `State ${id.slice(-4)}`} (all cities)
               {!readOnly && (
-                <button
-                  type="button"
-                  onClick={() => removeItem(id, "state")}
-                  className="ml-0.5 hover:text-destructive"
-                >
+                <button type="button" onClick={() => removeItem(id, "state")} className="ml-0.5 hover:text-destructive">
                   <X className="h-3 w-3" />
                 </button>
               )}
             </Badge>
           ))}
           {selectedCityIds.map((id) => (
-            <Badge
-              key={`city-${id}`}
-              variant="secondary"
-              className="text-xs gap-1"
-            >
+            <Badge key={`city-${id}`} variant="secondary" className="text-xs gap-1">
               <MapPin className="h-3 w-3" />
               {nameCache.get(id)?.name ?? `City ${id.slice(-4)}`}
               {!readOnly && (
-                <button
-                  type="button"
-                  onClick={() => removeItem(id, "city")}
-                  className="ml-0.5 hover:text-destructive"
-                >
+                <button type="button" onClick={() => removeItem(id, "city")} className="ml-0.5 hover:text-destructive">
                   <X className="h-3 w-3" />
                 </button>
               )}
@@ -263,11 +338,9 @@ export function CascadingLocationPicker({
         </div>
       )}
 
-      {error && (
-        <p className="text-xs text-destructive">{error}</p>
-      )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
 
-      {/* Picker panel toggle */}
+      {/* Toggle panel */}
       {!readOnly && (
         <Button
           type="button"
@@ -280,160 +353,184 @@ export function CascadingLocationPicker({
             <MapPin className="h-4 w-4" />
             {expandedPanel ? "Close location picker" : "Select locations"}
           </span>
-          {expandedPanel ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
+          {expandedPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </Button>
       )}
 
       {/* Picker panel */}
       {expandedPanel && !readOnly && (
         <div className="rounded-lg border border-border/50 bg-card p-3 space-y-3">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-            <Input
-              placeholder="Search cities..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-8 text-sm"
-            />
-            {searching && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-            )}
+
+          {/* Country & State row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1">Country</Label>
+              <InlineSearchSelect
+                value={selectedCountry}
+                onChange={(v) => { setSelectedCountry(v); setSelectedState(""); }}
+                options={countries}
+                placeholder={tc("selectCountry")}
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1">{tc("stateRegion")}</Label>
+              <InlineSearchSelect
+                value={selectedState}
+                onChange={setSelectedState}
+                options={states}
+                placeholder={tc("selectState")}
+                disabled={!selectedCountry}
+                loading={loadingStates}
+              />
+            </div>
           </div>
 
-          {/* Search results */}
-          {searchResults.length > 0 && (
-            <div className="max-h-40 overflow-y-auto rounded border border-border/30 divide-y divide-border/20">
-              {searchResults.map((result) => {
-                const isSelected = selectedCityIds.includes(result._id) || isCityInSelectedState(result.stateId);
-                return (
-                  <button
-                    key={result._id}
-                    type="button"
-                    onClick={() => toggleCity(result._id, result.name)}
-                    disabled={isCityInSelectedState(result.stateId)}
-                    className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
-                      isSelected ? "bg-primary/5 text-primary" : "hover:bg-muted/50"
-                    } disabled:opacity-50`}
-                  >
-                    <span className="font-medium">{result.name}</span>
-                    <span className="text-xs text-muted-foreground ml-2">
-                      {result.stateName}, {result.countryName}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {/* Cities / Region panel */}
+          {selectedState && (
+            <div className="rounded-lg border border-border/40 bg-background overflow-hidden">
+              {/* Header bar */}
+              <div className="flex items-center justify-between gap-2 border-b border-border/30 bg-muted/20 px-3 py-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                  {tc("cities")}
+                  {!loadingCities && cities.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                      {selectedCitiesInState.length}/{cities.length}
+                    </Badge>
+                  )}
+                  {loadingCities && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                </div>
 
-          {/* Cascading selects */}
-          {!search && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {/* Country select */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1">Country</Label>
-                <Select value={selectedCountry} onValueChange={(v) => { setSelectedCountry(v); setSelectedState(""); }}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder={tc("selectCountry")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {countries.map((c) => (
-                      <SelectItem key={c._id} value={c._id} className="text-sm">
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* State select */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1">{tc("stateRegion")}</Label>
-                <Select
-                  value={selectedState}
-                  onValueChange={setSelectedState}
-                  disabled={!selectedCountry || loadingStates}
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder={loadingStates ? tc("loading") : tc("selectState")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {states.map((s) => (
-                      <SelectItem key={s._id} value={s._id} className="text-sm">
-                        {s.name}
-                        {selectedStateIds.includes(s._id) && " ✓"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* State-level "Select all" button */}
-              <div className="flex items-end">
-                {selectedState && (
+                <div className="flex items-center gap-1">
+                  {/* Select entire state */}
                   <Button
                     type="button"
-                    variant={selectedStateIds.includes(selectedState) ? "default" : "outline"}
+                    variant={isEntireStateSelected ? "default" : "ghost"}
                     size="sm"
-                    className="h-8 text-xs"
+                    className="h-6 px-2 text-[10px] rounded-md"
                     onClick={() => {
                       const st = states.find((s) => s._id === selectedState);
                       if (st) toggleState(st._id, st.name);
                     }}
                   >
-                    <CheckSquare className="h-3.5 w-3.5" />
-                    {selectedStateIds.includes(selectedState) ? tc("stateSelected") : tc("selectEntireState")}
+                    {isEntireStateSelected ? (
+                      <><CheckSquare className="h-3 w-3" /> Entire state</>
+                    ) : (
+                      <><Globe className="h-3 w-3" /> All state</>
+                    )}
                   </Button>
-                )}
-              </div>
-            </div>
-          )}
 
-          {/* City list for selected state */}
-          {selectedState && !search && (
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1">
-                {tc("cities")}
-                {loadingCities && <Loader2 className="inline h-3 w-3 ml-1 animate-spin" />}
-              </Label>
-              <div className="max-h-48 overflow-y-auto rounded border border-border/30 divide-y divide-border/10">
-                {selectedStateIds.includes(selectedState) ? (
-                  <div className="px-3 py-4 text-sm text-center text-muted-foreground">
-                    <CheckSquare className="h-5 w-5 mx-auto mb-1 text-primary" />
-                    {tc("allCitiesSelected")}
-                  </div>
-                ) : cities.length === 0 && !loadingCities ? (
-                  <div className="px-3 py-4 text-sm text-center text-muted-foreground">
-                    {tc("noCitiesFound")}
-                  </div>
-                ) : (
-                  cities.map((city) => {
-                    const isSelected = selectedCityIds.includes(city._id);
-                    return (
-                      <label
-                        key={city._id}
-                        className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer transition-colors ${
-                          isSelected ? "bg-primary/5" : "hover:bg-muted/30"
-                        }`}
+                  {!isEntireStateSelected && cities.length > 0 && (
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] rounded-md"
+                        onClick={selectAllFilteredCities}
                       >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleCity(city._id, city.name)}
-                          className="accent-primary h-3.5 w-3.5"
-                        />
-                        <span className={isSelected ? "text-primary font-medium" : ""}>
-                          {city.name}
-                        </span>
-                      </label>
-                    );
-                  })
-                )}
+                        <CheckSquare className="h-3 w-3" /> All
+                      </Button>
+                      {selectedCitiesInState.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[10px] rounded-md text-destructive hover:text-destructive"
+                          onClick={deselectAllFilteredCities}
+                        >
+                          <Square className="h-3 w-3" /> Clear
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
+
+              {isEntireStateSelected ? (
+                <div className="px-4 py-6 text-center">
+                  <CheckSquare className="h-6 w-6 mx-auto mb-2 text-primary" />
+                  <p className="text-sm font-medium text-primary">{tc("allCitiesSelected")}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    All {cities.length} cities in this state are included
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* City search */}
+                  {cities.length > 6 && (
+                    <div className="relative border-b border-border/20 px-3 py-2">
+                      <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                      <input
+                        value={citySearch}
+                        onChange={(e) => setCitySearch(e.target.value)}
+                        placeholder="Search cities..."
+                        className="w-full bg-transparent pl-6 text-sm outline-none placeholder:text-muted-foreground/40"
+                      />
+                      {citySearch && (
+                        <button
+                          type="button"
+                          onClick={() => setCitySearch("")}
+                          className="absolute right-5 top-1/2 -translate-y-1/2"
+                        >
+                          <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* City grid */}
+                  <div className="max-h-52 overflow-y-auto scrollbar-none p-2">
+                    {loadingCities ? (
+                      <div className="flex items-center justify-center py-6 gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Loading cities...
+                      </div>
+                    ) : filteredCities.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-muted-foreground">
+                        {citySearch ? "No cities match your search" : tc("noCitiesFound")}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-0.5">
+                        {filteredCities.map((city) => {
+                          const isSelected = selectedCityIds.includes(city._id);
+                          return (
+                            <label
+                              key={city._id}
+                              className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm cursor-pointer transition-all duration-100 ${
+                                isSelected
+                                  ? "bg-primary/8 text-primary ring-1 ring-primary/20"
+                                  : "hover:bg-muted/50"
+                              }`}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleCity(city._id, city.name)}
+                                className="h-3.5 w-3.5"
+                              />
+                              <span className={`truncate text-xs ${isSelected ? "font-medium" : ""}`}>
+                                {city.name}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer summary */}
+                  {selectedCitiesInState.length > 0 && !allCitiesInStateSelected && (
+                    <div className="border-t border-border/20 bg-muted/10 px-3 py-1.5 text-[10px] text-muted-foreground">
+                      {selectedCitiesInState.length} of {cities.length} cities selected
+                    </div>
+                  )}
+                  {allCitiesInStateSelected && (
+                    <div className="border-t border-border/20 bg-primary/5 px-3 py-1.5 text-[10px] text-primary font-medium">
+                      All {cities.length} cities selected
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>

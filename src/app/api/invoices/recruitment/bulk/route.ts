@@ -210,6 +210,17 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         });
       }
 
+      // Validate combined rate doesn't exceed 100%
+      const combinedRate = commissions.reduce((sum, c) => sum + c.rate, 0);
+      if (combinedRate > 100) {
+        results.push({
+          placementId: String(placement._id),
+          status: "skipped",
+          reason: `Combined commission rate (${combinedRate.toFixed(1)}%) exceeds 100%`,
+        });
+        continue;
+      }
+
       const invoiceNumber = await generateInvoiceNumber();
 
       const invoice = await Invoice.create({

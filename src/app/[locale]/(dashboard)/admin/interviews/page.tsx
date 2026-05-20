@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Eye, Inbox, Calendar, Video, MapPin, Blend, Sparkles, Loader2, TrendingUp, AlertTriangle, Clock, BarChart3, RotateCcw } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import {
+  Search, Inbox, Calendar, Video, MapPin, Blend, Sparkles,
+  TrendingUp, AlertTriangle, Clock, BarChart3, RotateCcw, CheckCircle2,
+  Filter, ChevronDown, ChevronUp,
+} from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -49,7 +53,6 @@ function computeAiInsights(interviews: Interview[]): AiInsight[] {
   const noShow = interviews.filter((i) => i.status === "no_show").length;
   const scheduled = interviews.filter((i) => i.status === "scheduled").length;
 
-  // Completion rate insight
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
   insights.push({
     icon: "chart",
@@ -58,7 +61,6 @@ function computeAiInsights(interviews: Interview[]): AiInsight[] {
     color: completionRate >= 70 ? "text-emerald-600" : "text-amber-600",
   });
 
-  // No-show alert
   if (noShow > 0) {
     const noShowRate = Math.round((noShow / total) * 100);
     insights.push({
@@ -69,7 +71,6 @@ function computeAiInsights(interviews: Interview[]): AiInsight[] {
     });
   }
 
-  // Upcoming scheduled
   if (scheduled > 0) {
     const upcoming = interviews.filter((i) => i.status === "scheduled" && new Date(i.scheduledAt) > new Date());
     insights.push({
@@ -80,7 +81,6 @@ function computeAiInsights(interviews: Interview[]): AiInsight[] {
     });
   }
 
-  // Cancellation trend
   if (cancelled > 0) {
     const cancelRate = Math.round((cancelled / total) * 100);
     insights.push({
@@ -114,7 +114,6 @@ export default function AdminInterviewOversightPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateRange, setDateRange] = useState("all");
 
-  // Entity filter dropdowns
   const [employers, setEmployers] = useState<FilterOption[]>([]);
   const [agents, setAgents] = useState<FilterOption[]>([]);
   const [superAgents, setSuperAgents] = useState<FilterOption[]>([]);
@@ -122,11 +121,10 @@ export default function AdminInterviewOversightPage() {
   const [selectedAgent, setSelectedAgent] = useState("all");
   const [selectedSuperAgent, setSelectedSuperAgent] = useState("all");
 
-  // AI insights
+  const [showFilters, setShowFilters] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
   const aiInsights = useMemo(() => computeAiInsights(interviews), [interviews]);
 
-  // Fetch employer, agent, super-agent lists for filters
   useEffect(() => {
     (async () => {
       try {
@@ -204,7 +202,7 @@ export default function AdminInterviewOversightPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, typeFilter, dateRange, selectedEmployer, selectedAgent, selectedSuperAgent, limit]);
+  }, [page, search, statusFilter, typeFilter, dateRange, selectedEmployer, selectedAgent, selectedSuperAgent, limit, updateTotal]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -224,45 +222,149 @@ export default function AdminInterviewOversightPage() {
     title: "Interviews",
   });
 
-  return (
-    <div className="page-container space-y-6">
-      <PageHeader
-        title="Interview Oversight"
-        description={`${total} interviews across the platform`}
-      />
+  // Compute hero stats from loaded data
+  const scheduledCount = interviews.filter((i) => i.status === "scheduled").length;
+  const completedCount = interviews.filter((i) => i.status === "completed").length;
+  const cancelledCount = interviews.filter((i) => i.status === "cancelled").length;
+  const noShowCount = interviews.filter((i) => i.status === "no_show").length;
 
-      {/* Filters */}
-      <TableToolbar
-        title="Interview Oversight"
-        description="Filter by employer, agent, super agent, status, type, date range, or search by candidate."
-        search={search}
-        onSearchChange={(v) => { setSearch(v); resetPage(); }}
-        searchPlaceholder="Search candidate or company…"
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        hasActiveFilters={activeFilterCount > 0}
-        actions={
-          <div className="flex items-center gap-2">
-            {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs text-muted-foreground gap-1.5">
-                <RotateCcw className="h-3 w-3" /> Clear {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""}
-              </Button>
-            )}
+  return (
+    <div className="page-container employer-legacy-surface space-y-6">
+
+      {/* ─── Hero ─────────────────────────────────────────────────────── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              Recruitment Control
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
+              Interview Oversight
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Monitor all interviews across the platform — track completion rates, no-shows, and scheduling trends.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Platform total</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{total} interviews</p>
+              <p className="text-xs text-muted-foreground">Across all employers</p>
+            </div>
             <Button
               variant={showInsights ? "default" : "outline"}
-              size="sm"
               onClick={() => setShowInsights(!showInsights)}
-              className="gap-1.5 text-xs"
+              className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700 border-0"
             >
-              <Sparkles className="h-3.5 w-3.5" /> AI Insights
+              <Sparkles className="h-4 w-4" />
+              AI Insights
             </Button>
           </div>
-        }
-        filterContent={
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <label htmlFor="admin-interviews-status" className="sr-only">Status</label>
+        </div>
+
+        {/* Stats Row */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {([
+            { label: "Scheduled", value: scheduledCount, note: "Upcoming", icon: Calendar, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+            { label: "Completed", value: completedCount, note: "Finished", icon: CheckCircle2, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: "Cancelled", value: cancelledCount, note: "Called off", icon: RotateCcw, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: "No Shows", value: noShowCount, note: "Missed", icon: AlertTriangle, tone: "text-red-500", chip: "bg-red-50 dark:bg-red-950/30" },
+          ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
+            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="mt-3 text-4xl font-semibold tracking-tight text-foreground">{value}</p>
+                </div>
+                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${chip}`}>
+                  <Icon className={`h-5 w-5 ${tone}`} />
+                </span>
+              </div>
+              <p className="mt-3 text-sm leading-5 text-muted-foreground">{note}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ─── AI Insights inline ─────────────────────────────────────── */}
+        {showInsights && (
+          <div className="mt-6 rounded-[20px] border border-border/30 bg-background/40 p-5 backdrop-blur-sm dark:bg-background/20">
+            <div className="mb-4 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-sky-500" />
+              <h3 className="text-lg font-semibold">AI Interview Insights</h3>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="workspace-glass-panel space-y-2 rounded-2xl p-4">
+                    <div className="h-4 w-24 animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                    <div className="h-3 w-full animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                  </div>
+                ))
+              ) : aiInsights.length > 0 ? (
+                aiInsights.map((insight, i) => {
+                  const Icon = INSIGHT_ICONS[insight.icon];
+                  return (
+                    <div key={i} className="workspace-glass-panel space-y-1.5 rounded-2xl p-4">
+                      <div className="flex items-center gap-2">
+                        <Icon className={`h-4 w-4 ${insight.color}`} />
+                        <span className="text-sm font-semibold text-foreground">{insight.title}</span>
+                      </div>
+                      <p className="text-xs leading-relaxed text-muted-foreground">{insight.body}</p>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="workspace-glass-panel col-span-full rounded-2xl p-4 text-center">
+                  <p className="text-sm text-muted-foreground">No interview data to analyze yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Filter toggle bar ──────────────────────────────────────── */}
+        <div className="mt-6 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10 dark:hover:bg-white/5"
+          >
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            {showFilters ? "Hide Filters" : "Show Filters"}
+            {activeFilterCount > 0 && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{activeFilterCount} active</Badge>}
+            {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          </button>
+          <div className="flex items-center gap-2">
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
+                <RotateCcw className="h-3 w-3" />
+                Clear {activeFilterCount} filter{activeFilterCount > 1 ? "s" : ""}
+              </Button>
+            )}
+            <TableToolbar
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
+          </div>
+        </div>
+
+        {/* ─── Expandable Filters ─────────────────────────────────────── */}
+        {showFilters && (
+          <div className="mt-4 space-y-3 rounded-[20px] border border-border/30 bg-background/40 p-4 backdrop-blur-sm dark:bg-background/20">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+                placeholder="Search candidate or company…"
+                className="h-11 w-full rounded-xl border border-border bg-card pl-9 pr-4 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <SearchableSelect
                 id="admin-interviews-status"
                 className="h-11 w-full rounded-xl border-border bg-card"
@@ -277,9 +379,6 @@ export default function AdminInterviewOversightPage() {
                 onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
                 placeholder="All statuses"
               />
-            </div>
-            <div>
-              <label htmlFor="admin-interviews-type" className="sr-only">Interview Type</label>
               <SearchableSelect
                 id="admin-interviews-type"
                 className="h-11 w-full rounded-xl border-border bg-card"
@@ -293,9 +392,6 @@ export default function AdminInterviewOversightPage() {
                 onValueChange={(v) => { setTypeFilter(v); resetPage(); }}
                 placeholder="All types"
               />
-            </div>
-            <div>
-              <label htmlFor="admin-interviews-daterange" className="sr-only">Date Range</label>
               <SearchableSelect
                 id="admin-interviews-daterange"
                 className="h-11 w-full rounded-xl border-border bg-card"
@@ -312,10 +408,7 @@ export default function AdminInterviewOversightPage() {
                 onValueChange={(v) => { setDateRange(v); resetPage(); }}
                 placeholder="All dates"
               />
-            </div>
-            {employers.length > 1 && (
-              <div>
-                <label htmlFor="admin-interviews-employer" className="sr-only">Employer</label>
+              {employers.length > 1 && (
                 <SearchableSelect
                   id="admin-interviews-employer"
                   className="h-11 w-full rounded-xl border-border bg-card"
@@ -324,11 +417,8 @@ export default function AdminInterviewOversightPage() {
                   onValueChange={(v) => { setSelectedEmployer(v); resetPage(); }}
                   placeholder="All employers"
                 />
-              </div>
-            )}
-            {agents.length > 1 && (
-              <div>
-                <label htmlFor="admin-interviews-agent" className="sr-only">Agent</label>
+              )}
+              {agents.length > 1 && (
                 <SearchableSelect
                   id="admin-interviews-agent"
                   className="h-11 w-full rounded-xl border-border bg-card"
@@ -337,11 +427,8 @@ export default function AdminInterviewOversightPage() {
                   onValueChange={(v) => { setSelectedAgent(v); resetPage(); }}
                   placeholder="All agents"
                 />
-              </div>
-            )}
-            {superAgents.length > 1 && (
-              <div>
-                <label htmlFor="admin-interviews-sa" className="sr-only">Super Agent</label>
+              )}
+              {superAgents.length > 1 && (
                 <SearchableSelect
                   id="admin-interviews-sa"
                   className="h-11 w-full rounded-xl border-border bg-card"
@@ -350,117 +437,101 @@ export default function AdminInterviewOversightPage() {
                   onValueChange={(v) => { setSelectedSuperAgent(v); resetPage(); }}
                   placeholder="All super agents"
                 />
-              </div>
-            )}
-          </div>
-        }
-      />
-
-      {/* AI Insights Panel */}
-      {showInsights && (
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="card-base p-4 space-y-2">
-                <div className="h-4 w-24 animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                <div className="h-3 w-full animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-              </div>
-            ))
-          ) : aiInsights.length > 0 ? (
-            aiInsights.map((insight, i) => {
-              const Icon = INSIGHT_ICONS[insight.icon];
-              return (
-                <div key={i} className="card-base p-4 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <Icon className={`h-4 w-4 ${insight.color}`} />
-                    <span className="text-sm font-semibold text-foreground">{insight.title}</span>
-                  </div>
-                  <p className="text-xs leading-relaxed text-muted-foreground">{insight.body}</p>
-                </div>
-              );
-            })
-          ) : (
-            <div className="card-base p-4 col-span-full text-center">
-              <p className="text-sm text-muted-foreground">No interview data to analyze yet.</p>
+              )}
             </div>
-          )}
-        </section>
-      )}
+          </div>
+        )}
+      </section>
 
-      {/* Table */}
-      <div className="rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm shadow-black/[0.03]">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead className="min-w-[160px] px-4 py-3">Candidate</TableHead>
-              <TableHead className="min-w-[180px] px-4 py-3">Role</TableHead>
-              <TableHead className="min-w-[120px] px-4 py-3">Company</TableHead>
-              <TableHead className="min-w-[80px] px-4 py-3">Type</TableHead>
-              <TableHead className="min-w-[100px] px-4 py-3">Agent</TableHead>
-              <TableHead className="min-w-[110px] px-4 py-3">Date</TableHead>
-              <TableHead className="min-w-[100px] px-4 py-3">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="hover:bg-transparent">
-                  {Array.from({ length: 7 }).map((_, j) => (
-                    <TableCell key={j} className="px-4 py-3">
-                      <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : interviews.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={7} className="h-32 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-8 w-8 opacity-40" />
-                    <span className="text-sm">No interviews found</span>
-                  </div>
-                </TableCell>
+      {/* ─── Table ────────────────────────────────────────────────────── */}
+      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="min-w-[160px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Candidate</TableHead>
+                <TableHead className="min-w-[180px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Role</TableHead>
+                <TableHead className="min-w-[140px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Company</TableHead>
+                <TableHead className="min-w-[80px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Type</TableHead>
+                <TableHead className="min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Agent</TableHead>
+                <TableHead className="min-w-[110px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Date</TableHead>
+                <TableHead className="min-w-[100px] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em]">Status</TableHead>
               </TableRow>
-            ) : interviews.map((iv) => {
-              const TypeIcon = TYPE_ICON[iv.type as keyof typeof TYPE_ICON] ?? Calendar;
-              return (
-                <TableRow key={iv._id} className="group">
-                  <TableCell className="px-4 py-3">
-                    <p className="font-medium truncate">{iv.jobSeeker?.name ?? "—"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{iv.jobSeeker?.email}</p>
-                  </TableCell>
-                  <TableCell className="px-4 py-3">
-                    <span className="text-sm text-foreground">{iv.job?.title ?? "—"}</span>
-                  </TableCell>
-                  <TableCell className="px-4 py-3">
-                    <span className="text-sm text-foreground">{iv.employer?.companyName ?? "—"}</span>
-                  </TableCell>
-                  <TableCell className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <TypeIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm capitalize text-muted-foreground">{iv.type || "—"}</span>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="hover:bg-transparent">
+                    {Array.from({ length: 7 }).map((_, j) => (
+                      <TableCell key={j} className="px-4 py-3">
+                        <div className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : interviews.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="h-44 text-center">
+                    <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50">
+                        <Inbox className="h-7 w-7 opacity-40" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">No interviews found</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {activeFilterCount > 0 ? "Try adjusting the filters above." : "Interviews will appear here once they are scheduled."}
+                        </p>
+                      </div>
+                      {activeFilterCount > 0 && (
+                        <Button variant="outline" size="sm" onClick={clearAllFilters} className="mt-1 h-8 rounded-lg text-xs">
+                          Clear filters
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
-                  <TableCell className="px-4 py-3">
-                    <span className="text-sm text-muted-foreground">{iv.agent?.name ?? "—"}</span>
-                  </TableCell>
-                  <TableCell className="px-4 py-3 whitespace-nowrap">
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(iv.scheduledAt).toLocaleDateString("en-AE", { day: "2-digit", month: "short", year: "numeric" })}
-                    </span>
-                  </TableCell>
-                  <TableCell className="px-4 py-3">
-                    <StatusBadge status={iv.status} />
-                  </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              ) : interviews.map((iv) => {
+                const TypeIcon = TYPE_ICON[iv.type as keyof typeof TYPE_ICON] ?? Calendar;
+                return (
+                  <TableRow key={iv._id} className="group transition-colors">
+                    <TableCell className="px-4 py-3">
+                      <p className="font-medium">{iv.jobSeeker?.name ?? "—"}</p>
+                      <p className="text-xs text-muted-foreground">{iv.jobSeeker?.email}</p>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <span className="text-sm text-foreground">{iv.job?.title ?? "—"}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <span className="text-sm text-foreground">{iv.employer?.companyName ?? "—"}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <TypeIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm capitalize text-muted-foreground">{iv.type || "—"}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <span className="text-sm text-muted-foreground">{iv.agent?.name ?? "—"}</span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 py-3">
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(iv.scheduledAt).toLocaleDateString("en-AE", { day: "2-digit", month: "short", year: "numeric" })}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <StatusBadge status={iv.status} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
 
-        {/* Pagination */}
-        <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} className="px-4 pb-4 pt-4 border-t mt-4" />
-      </div>
+        <div className="border-t border-border/60 px-4 py-4">
+          <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+        </div>
+      </section>
     </div>
   );
 }

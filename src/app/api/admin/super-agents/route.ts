@@ -398,6 +398,18 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
         { $unset: { superAgentId: "" } }
       );
     }
+
+    // Propagate region to agents under this super agent when SA region changes
+    if (assignedCityIds !== undefined || assignedStateIds !== undefined) {
+      const regionUpdate: Record<string, unknown> = {};
+      if (assignedCityIds !== undefined) regionUpdate.assignedCityIds = assignedCityIds;
+      if (assignedStateIds !== undefined) regionUpdate.assignedStateIds = assignedStateIds;
+
+      await Agent.updateMany(
+        { superAgentId: saDoc._id },
+        { $set: regionUpdate }
+      );
+    }
   }
 
   await logActivity({

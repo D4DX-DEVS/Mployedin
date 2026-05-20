@@ -16,6 +16,7 @@ import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/re
 import { createCommissionRecordsForInvoice } from "@/lib/invoices/commissionRecords";
 import { INVOICE_TERMINAL_STATUSES } from "@/lib/invoices/status";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
+import logger from "@/lib/logger";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
 import Job from "@/models/Job";
@@ -70,22 +71,28 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }, { status: 409 });
   }
 
-  // Determine agent
+  // Determine agent — gracefully handle missing profiles (soft-deleted or reassigned)
   const agentId = job.agentId ?? undefined;
   let agentDoc = null;
   let superAgentDoc = null;
 
   if (agentId) {
     agentDoc = await Agent.findById(agentId).lean();
+    if (!agentDoc) {
+      logger.warn({ agentId: String(agentId), jobId }, "Agent referenced by job no longer exists");
+    }
     if (agentDoc?.superAgentId) {
       superAgentDoc = await SuperAgent.findById(agentDoc.superAgentId).lean();
+      if (!superAgentDoc) {
+        logger.warn({ superAgentId: String(agentDoc.superAgentId), agentId: String(agentId) }, "Super agent referenced by agent no longer exists");
+      }
     }
   }
 
-  // Role-based access: agent can only create invoice for their own jobs
+  // Role-based access: agent can only create invoice for their own assigned jobs
   if (ctx.role === "agent") {
     const myAgent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!myAgent || (agentId && agentId.toString() !== myAgent._id.toString())) {
+    if (!myAgent || !agentId || agentId.toString() !== myAgent._id.toString()) {
       return NextResponse.json({ error: "You can only create invoices for your assigned jobs" }, { status: 403 });
     }
   }
@@ -145,6 +152,21 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       sourceNote = resolved.source === "country_override"
         ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
     } else {
+      // Validate override against system-resolved rate (super_agent cannot exceed system cap)
+      const systemResolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
+      const systemCap = systemResolved.rate;
+      if (ctx.role === "super_agent" && overrideAgentRate > systemCap) {
+        logger.warn({
+          agentId: String(agentDoc._id),
+          userId: ctx.userId,
+          overrideAgentRate,
+          systemCap,
+          country: employerCountry,
+        }, "Super-agent attempted to override agent rate above system cap");
+        return NextResponse.json({
+          error: `Agent commission override (${overrideAgentRate}%) exceeds allowed rate (${systemCap}%) for this country`,
+        }, { status: 400 });
+      }
       sourceNote = " [Manual override]";
     }
     const agentAmount = Math.round((billedTotal * finalRate) / 100 * 100) / 100;
@@ -176,6 +198,21 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       sourceNote = resolved.source === "country_override"
         ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
     } else {
+      // Validate override against system-resolved rate (super_agent cannot exceed system cap)
+      const systemResolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
+      const systemCap = systemResolved.rate;
+      if (ctx.role === "super_agent" && overrideSuperAgentRate > systemCap) {
+        logger.warn({
+          superAgentId: String(superAgentDoc._id),
+          userId: ctx.userId,
+          overrideSuperAgentRate,
+          systemCap,
+          country: employerCountry,
+        }, "Super-agent attempted to override super-agent rate above system cap");
+        return NextResponse.json({
+          error: `Super-agent commission override (${overrideSuperAgentRate}%) exceeds allowed rate (${systemCap}%) for this country`,
+        }, { status: 400 });
+      }
       sourceNote = " [Manual override]";
     }
     const overrideAmount = Math.round((billedTotal * finalRate) / 100 * 100) / 100;
@@ -189,6 +226,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       notes: `Super-agent override commission${sourceNote}`,
     });
 
+  }
+
+  // Validate combined commission rate does not exceed 100%
+  const combinedRate = commissions.reduce((sum, c) => sum + c.rate, 0);
+  if (combinedRate > 100) {
+    return NextResponse.json({
+      error: `Combined commission rate (${combinedRate.toFixed(1)}%) exceeds 100%. Agent: ${commissions.find(c => c.role === "agent")?.rate ?? 0}%, Super-Agent: ${commissions.find(c => c.role === "super_agent")?.rate ?? 0}%`,
+    }, { status: 400 });
   }
 
   // Generate invoice

@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { validateBody } from "@/lib/validators";
 import { invoiceUpdateSchema } from "@/lib/validators/subscriptions";
@@ -12,15 +13,18 @@ import { canAccessInvoice } from "@/lib/invoices/access";
 import {
   approvePendingCommissionsForPaidInvoice,
   createCommissionRecordsForInvoice,
-  revertApprovedCommissions,
   reverseCommissionsForInvoice,
   sendCommissionApprovalNotifications,
 } from "@/lib/invoices/commissionRecords";
 import { PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
 import Invoice from "@/models/Invoice";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
+import Employer from "@/models/Employer";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -112,7 +116,6 @@ async function patchHandler(
   let commissionsApproved = 0;
   let commissionNotificationFailures = 0;
   let commissionApprovalFailed = false;
-  let embeddedCommissionSyncFailed = false;
 
   if (body.status === "paid") {
     if (!(PAYABLE_INVOICE_STATUSES as readonly string[]).includes(invoice.status)) {
@@ -152,6 +155,52 @@ async function patchHandler(
     if (wasPendingApproval) {
       invoice.approvedBy = ctx.userId as unknown as typeof invoice.markedPaidBy;
       invoice.approvedAt = new Date();
+
+      // Re-resolve commission rates at approval time to prevent rate drift
+      if (invoice.agentId) {
+        const agentDoc = await Agent.findById(invoice.agentId).lean();
+        const superAgentDoc = agentDoc?.superAgentId
+          ? await SuperAgent.findById(agentDoc.superAgentId).lean()
+          : null;
+        const employer = invoice.employerId
+          ? await Employer.findById(invoice.employerId).select("country").lean()
+          : null;
+        const employerCountry = employer?.country ?? null;
+        const billedTotal = invoice.totalAmount || invoice.amount;
+
+        for (const commission of invoice.commissions ?? []) {
+          if (commission.role === "agent" && agentDoc) {
+            const resolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
+            commission.rate = resolved.rate;
+            commission.amount = Math.round((billedTotal * resolved.rate) / 100 * 100) / 100;
+            if (resolved.source === "country_override") {
+              commission.notes = `Agent placement commission [Country override: ${resolved.countryCode} → ${resolved.rate}%]`;
+            }
+          } else if (commission.role === "super_agent" && superAgentDoc) {
+            const resolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
+            commission.rate = resolved.rate;
+            commission.amount = Math.round((billedTotal * resolved.rate) / 100 * 100) / 100;
+            if (resolved.source === "country_override") {
+              commission.notes = `Super-agent override commission [Country override: ${resolved.countryCode} → ${resolved.rate}%]`;
+            }
+          }
+        }
+
+        // Validate combined rate after re-resolution doesn't exceed 100%
+        const combinedRate = (invoice.commissions ?? []).reduce((sum: number, c: { rate: number }) => sum + c.rate, 0);
+        if (combinedRate > 100) {
+          logger.warn({
+            invoiceId: String(invoice._id),
+            combinedRate,
+            agentRate: agentDoc?.commissionRate,
+            superAgentRate: superAgentDoc?.overrideRate,
+            country: employerCountry,
+          }, "Commission rates exceed 100% after re-resolution at approval");
+          return NextResponse.json({
+            error: `Cannot approve: re-resolved commission rates total ${combinedRate.toFixed(1)}% which exceeds 100%. Please adjust agent/super-agent rates first.`,
+          }, { status: 400 });
+        }
+      }
     }
     const createdCommissions = await createCommissionRecordsForInvoice({
       invoiceId: invoice._id,
@@ -209,48 +258,30 @@ async function patchHandler(
     invoice.internalNotes = body.internalNotes;
   }
 
-  await invoice.save();
-
   if (body.status === "paid") {
+    const session = await mongoose.startSession();
     try {
-      const approvedCommissionsResult = await approvePendingCommissionsForPaidInvoice(
-        invoice._id,
-        ctx.userId,
-        { sendNotifications: false },
-      );
-      commissionsApproved = approvedCommissionsResult.approved;
+      await session.withTransaction(async () => {
+        await invoice.save({ session });
 
-      if (commissionsApproved > 0) {
-        for (const commission of invoice.commissions ?? []) {
-          if (commission.status === "pending") {
-            commission.status = "approved";
+        const approvedCommissionsResult = await approvePendingCommissionsForPaidInvoice(
+          invoice._id,
+          ctx.userId,
+          { sendNotifications: false, session },
+        );
+        commissionsApproved = approvedCommissionsResult.approved;
+
+        if (commissionsApproved > 0) {
+          for (const commission of invoice.commissions ?? []) {
+            if (commission.status === "pending") {
+              commission.status = "approved";
+            }
           }
-        }
-        try {
-          await invoice.save();
-        } catch (err) {
-          embeddedCommissionSyncFailed = true;
-          logger.error({
-            err,
-            invoiceId: String(invoice._id),
-            approvedCommissionIds: approvedCommissionsResult.approvedCommissionIds.map(String),
-          }, "Embedded commission sync failed; rolling back external approvals");
-
-          try {
-            await revertApprovedCommissions(approvedCommissionsResult.approvedCommissionIds);
-          } catch (rollbackErr) {
-            logger.error({
-              err: rollbackErr,
-              invoiceId: String(invoice._id),
-              approvedCommissionIds: approvedCommissionsResult.approvedCommissionIds.map(String),
-            }, "Commission approval rollback failed");
-            throw rollbackErr;
-          }
-
-          commissionsApproved = 0;
+          await invoice.save({ session });
         }
 
-        if (!embeddedCommissionSyncFailed) {
+        // Send notifications outside transaction (non-critical, fire-and-forget)
+        if (commissionsApproved > 0) {
           try {
             commissionNotificationFailures = await sendCommissionApprovalNotifications(
               approvedCommissionsResult.notifications,
@@ -260,11 +291,15 @@ async function patchHandler(
             commissionNotificationFailures = approvedCommissionsResult.notifications.length;
           }
         }
-      }
+      });
     } catch (err) {
-      logger.error({ err, invoiceId: String(invoice._id) }, "Commission approval failed after invoice payment");
+      logger.error({ err, invoiceId: String(invoice._id) }, "Commission approval transaction failed after invoice payment");
       commissionApprovalFailed = true;
+    } finally {
+      session.endSession();
     }
+  } else {
+    await invoice.save();
   }
 
   // Dispatch webhook for paid status
@@ -285,11 +320,11 @@ async function patchHandler(
     resource: "subscriptions",
     resourceId: invoice._id.toString(),
     changes: { before, after: { status: invoice.status, notes: invoice.notes, internalNotes: invoice.internalNotes } },
-    meta: { commissionsCreated, commissionsReversed, commissionsAlreadyPaid, commissionsApproved, commissionNotificationFailures, commissionApprovalFailed, embeddedCommissionSyncFailed },
+    meta: { commissionsCreated, commissionsReversed, commissionsAlreadyPaid, commissionsApproved, commissionNotificationFailures, commissionApprovalFailed },
     req,
   });
 
-  return NextResponse.json({ invoice, commissionsCreated, commissionsReversed, commissionsAlreadyPaid, commissionsApproved, commissionNotificationFailures, commissionApprovalFailed, embeddedCommissionSyncFailed });
+  return NextResponse.json({ invoice, commissionsCreated, commissionsReversed, commissionsAlreadyPaid, commissionsApproved, commissionNotificationFailures, commissionApprovalFailed });
 }
 
 export const GET = withAuth(getHandler, { resource: "subscriptions", action: "read" });

@@ -68,6 +68,19 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, commissionUpdateSchema);
+
+  // Guard: block financial field edits on finalized (approved/paid) commissions
+  const LOCKED_STATUSES = ["approved", "paid"] as const;
+  if (
+    LOCKED_STATUSES.includes(commission.status as (typeof LOCKED_STATUSES)[number]) &&
+    (body.amount !== undefined || body.rate !== undefined)
+  ) {
+    return NextResponse.json(
+      { error: "Cannot edit amount or rate on an approved or paid commission. Dispute or clawback first." },
+      { status: 422 },
+    );
+  }
+
   const update: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
 

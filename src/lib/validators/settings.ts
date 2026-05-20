@@ -84,6 +84,8 @@ export const systemSettingsUpdateSchema = z.object({
       z.object({
         countryCode: z.string().min(1).max(5).trim(),
         rate: z.number().min(0).max(100),
+        agentRate: z.number().min(0).max(100).optional(),
+        superAgentRate: z.number().min(0).max(100).optional(),
         label: z.string().max(100).trim().optional(),
       })
     )

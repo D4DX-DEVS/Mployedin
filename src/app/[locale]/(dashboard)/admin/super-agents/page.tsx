@@ -6,7 +6,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
-import { Plus, Pencil, Trash2, MapPin, Globe, Users, UserX } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Globe, Users, Ban } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -398,12 +398,12 @@ export default function AdminSuperAgentsPage() {
                       )}
                       {can("super_agents", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handleDelete(sa._id)} title="Deactivate">
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          <Ban className="h-3.5 w-3.5 text-amber-500" />
                         </Button>
                       )}
                       {can("super_agents", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(sa._id)} title="Delete permanently">
-                          <UserX className="h-3.5 w-3.5 text-destructive" />
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
                     </div>
@@ -419,7 +419,7 @@ export default function AdminSuperAgentsPage() {
 
       {/* ── Add Super Agent Modal ──────────────────────────────── */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
             <DialogTitle>Add Super Agent</DialogTitle>
             <DialogDescription>Create a new super agent with region and agent assignment</DialogDescription>
@@ -485,7 +485,7 @@ export default function AdminSuperAgentsPage() {
 
       {/* ── Edit Super Agent Modal ──────────────────────────────── */}
       <Dialog open={!!editSA} onOpenChange={(open) => { if (!open) setEditSA(null); }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
             <DialogTitle>Edit Super Agent</DialogTitle>
             <DialogDescription>{editSA?.name} — {editSA?.email}</DialogDescription>

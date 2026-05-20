@@ -217,6 +217,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 description: "Consolidated target performance report",
                 descriptionAr: "تقرير أداء الأهداف الموحد",
               },
+              {
+                title: "Commission Report",
+                titleAr: "تقرير العمولات",
+                href: p("/admin/commissions-report"),
+                icon: "BarChart2",
+                description: "Aggregated commission analytics across all agents",
+                descriptionAr: "تحليلات العمولات الموحدة لجميع الوكلاء",
+              },
             ],
           },
           {
@@ -859,6 +867,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تقرير أداء أهداف الفريق",
               },
               {
+                title: "Commission Report",
+                titleAr: "تقرير العمولات",
+                href: p("/super-agent/commissions-report"),
+                icon: "BarChart2",
+                description: "Override commissions & team earnings report",
+                descriptionAr: "تقرير عمولات التجاوز وأرباح الفريق",
+              },
+              {
                 title: "Territory",
                 titleAr: "المنطقة",
                 href: p("/super-agent/territory"),
@@ -1052,6 +1068,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "FileText",
                 description: "Personal target performance report",
                 descriptionAr: "تقرير أداء الأهداف الشخصي",
+              },
+              {
+                title: "Commission Report",
+                titleAr: "تقرير العمولات",
+                href: p("/agent/commissions-report"),
+                icon: "BarChart2",
+                description: "Personal earnings breakdown & analytics",
+                descriptionAr: "تفاصيل أرباحي الشخصية والتحليلات",
               },
               {
                 title: "Offers",

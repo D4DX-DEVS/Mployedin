@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { clearCommissionOverrideCache } from "@/lib/commissions/resolveRate";
 import SystemSettings from "@/models/SystemSettings";
 import type { ISystemSettings } from "@/models/SystemSettings";
 import { validateBody } from "@/lib/validators";
@@ -59,6 +60,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     { $set: update },
     { upsert: true, new: true }
   ).lean();
+
+  // Invalidate commission rate cache when overrides change
+  if (update.commissionOverrides !== undefined) {
+    clearCommissionOverrideCache();
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

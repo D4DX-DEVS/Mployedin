@@ -6,13 +6,13 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
-import { Plus, Pencil, Trash2, MapPin, Globe, UserX } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Globe, Ban } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { SearchableSelect } from "@/components/ui/searchable-select";
+import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -45,10 +45,17 @@ interface Agent {
   agentProfile: AgentProfile | null;
 }
 
+interface SARegion {
+  cityIds: { _id: string; name: string }[];
+  stateIds: { _id: string; name: string }[];
+}
+
 interface SuperAgentOption {
   _id: string;
+  saProfileId: string;
   userId: string;
   name: string;
+  region: SARegion;
 }
 
 export default function AdminAgentsPage() {
@@ -93,17 +100,29 @@ export default function AdminAgentsPage() {
     title: "Agents",
   });
 
-  // Fetch super agents for dropdown
+  // Fetch super agents with region data for dropdown + auto-fill
   useEffect(() => {
-    fetch("/api/admin/users?role=super_agent&limit=100")
+    fetch("/api/admin/super-agents?limit=200")
       .then((r) => r.json())
       .then((data) => {
-        const users = data.users ?? [];
-        setSuperAgents(users.map((u: { _id: string; name: string }) => ({
-          _id: u._id,
-          userId: u._id,
-          name: u.name,
-        })));
+        const items = (data.superAgents ?? []).map((sa: {
+          _id: string; name: string;
+          superAgentProfile?: {
+            _id?: string;
+            assignedCityIds?: { _id: string; name: string }[];
+            assignedStateIds?: { _id: string; name: string }[];
+          } | null;
+        }) => ({
+          _id: sa._id,
+          saProfileId: sa.superAgentProfile?._id ?? "",
+          userId: sa._id,
+          name: sa.name,
+          region: {
+            cityIds: sa.superAgentProfile?.assignedCityIds ?? [],
+            stateIds: sa.superAgentProfile?.assignedStateIds ?? [],
+          },
+        }));
+        setSuperAgents(items);
       })
       .catch(console.error);
   }, []);
@@ -123,6 +142,18 @@ export default function AdminAgentsPage() {
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
 
+  const applySARegion = (
+    saId: string,
+    setCities: (ids: string[]) => void,
+    setStates: (ids: string[]) => void,
+  ) => {
+    if (!saId) return;
+    const sa = superAgents.find((s) => s.saProfileId === saId || s._id === saId);
+    if (!sa) return;
+    setCities(sa.region.cityIds.map((c) => c._id));
+    setStates(sa.region.stateIds.map((s) => s._id));
+  };
+
   const handleCreate = async () => {
     setAddError("");
     if (!addForm.name || !addForm.email || !addForm.password) {
@@ -131,6 +162,7 @@ export default function AdminAgentsPage() {
     }
     setAddLoading(true);
     try {
+      const saProfile = superAgents.find((s) => s._id === addForm.superAgentId);
       const res = await fetch("/api/admin/agents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -138,7 +170,7 @@ export default function AdminAgentsPage() {
           name: addForm.name,
           email: addForm.email,
           password: addForm.password,
-          superAgentId: addForm.superAgentId || undefined,
+          superAgentId: saProfile?.saProfileId || undefined,
           commissionRate: parseFloat(addForm.commissionRate) || 0,
           assignedCityIds: addCityIds,
           assignedStateIds: addStateIds,
@@ -163,15 +195,26 @@ export default function AdminAgentsPage() {
 
   const openEdit = (agent: Agent) => {
     setEditAgent(agent);
+    const saProfileId = agent.agentProfile?.superAgentId?.toString() ?? "";
+    const matchedSA = superAgents.find((sa) => sa.saProfileId === saProfileId);
     setEditForm({
       name: agent.name,
       email: agent.email,
       isActive: String(agent.isActive !== false),
-      superAgentId: agent.agentProfile?.superAgentId?.toString() ?? "",
+      superAgentId: matchedSA?._id ?? "",
       commissionRate: String(agent.agentProfile?.commissionRate ?? 0),
     });
-    setEditCityIds(agent.agentProfile?.assignedCityIds?.map((c) => c._id) ?? []);
-    setEditStateIds(agent.agentProfile?.assignedStateIds?.map((s) => s._id) ?? []);
+
+    const ownCities = agent.agentProfile?.assignedCityIds?.map((c) => c._id) ?? [];
+    const ownStates = agent.agentProfile?.assignedStateIds?.map((s) => s._id) ?? [];
+
+    if (ownCities.length === 0 && ownStates.length === 0 && matchedSA) {
+      setEditCityIds(matchedSA.region.cityIds.map((c) => c._id));
+      setEditStateIds(matchedSA.region.stateIds.map((s) => s._id));
+    } else {
+      setEditCityIds(ownCities);
+      setEditStateIds(ownStates);
+    }
     setEditError("");
   };
 
@@ -180,6 +223,7 @@ export default function AdminAgentsPage() {
     setEditError("");
     setEditLoading(true);
     try {
+      const saProfile = superAgents.find((s) => s._id === editForm.superAgentId);
       const res = await fetch("/api/admin/agents", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -188,7 +232,7 @@ export default function AdminAgentsPage() {
           name: editForm.name,
           email: editForm.email,
           isActive: editForm.isActive === "true",
-          superAgentId: editForm.superAgentId || null,
+          superAgentId: saProfile?.saProfileId || null,
           commissionRate: parseFloat(editForm.commissionRate) || 0,
           assignedCityIds: editCityIds,
           assignedStateIds: editStateIds,
@@ -361,12 +405,12 @@ export default function AdminAgentsPage() {
                       )}
                       {can("agents", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handleDelete(agent._id)} title="Deactivate">
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          <Ban className="h-3.5 w-3.5 text-amber-500" />
                         </Button>
                       )}
                       {can("agents", "delete") && (
                         <Button variant="ghost" size="xs" onClick={() => handlePermanentDelete(agent._id)} title="Delete permanently">
-                          <UserX className="h-3.5 w-3.5 text-destructive" />
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
                     </div>
@@ -382,7 +426,7 @@ export default function AdminAgentsPage() {
 
       {/* ── Add Agent Modal ──────────────────────────────── */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
             <DialogTitle>Add Agent</DialogTitle>
             <DialogDescription>Create a new recruitment agent with region assignment</DialogDescription>
@@ -417,15 +461,30 @@ export default function AdminAgentsPage() {
 
             <div className="space-y-2">
               <Label>Assigned Super Agent</Label>
-              <SearchableSelect
+              <InlineSearchSelect
                 options={[
                   { value: "none", label: "None" },
                   ...superAgents.map((sa) => ({ value: sa._id, label: sa.name })),
                 ]}
                 value={addForm.superAgentId || "none"}
-                onValueChange={(v) => setAddForm((f) => ({ ...f, superAgentId: v === "none" ? "" : v }))}
+                onValueChange={(v) => {
+                  const id = v === "none" ? "" : v;
+                  setAddForm((f) => ({ ...f, superAgentId: id }));
+                  if (id) applySARegion(id, setAddCityIds, setAddStateIds);
+                  else { setAddCityIds([]); setAddStateIds([]); }
+                }}
                 placeholder="Select super agent (optional)"
               />
+              {addForm.superAgentId && (() => {
+                const sa = superAgents.find((s) => s._id === addForm.superAgentId);
+                const regionCount = (sa?.region.stateIds.length ?? 0) + (sa?.region.cityIds.length ?? 0);
+                return regionCount > 0 ? (
+                  <p className="text-xs text-primary flex items-center gap-1">
+                    <Globe className="h-3 w-3" />
+                    Region auto-filled from {sa?.name}&apos;s territory ({regionCount} location{regionCount > 1 ? "s" : ""})
+                  </p>
+                ) : null;
+              })()}
             </div>
 
             <CascadingLocationPicker
@@ -448,7 +507,7 @@ export default function AdminAgentsPage() {
 
       {/* ── Edit Agent Modal ──────────────────────────────── */}
       <Dialog open={!!editAgent} onOpenChange={(open) => { if (!open) setEditAgent(null); }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
           <DialogHeader>
             <DialogTitle>Edit Agent</DialogTitle>
             <DialogDescription>{editAgent?.name} — {editAgent?.email}</DialogDescription>
@@ -472,7 +531,7 @@ export default function AdminAgentsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <SearchableSelect
+                <InlineSearchSelect
                   options={[
                     { value: "true", label: "Active" },
                     { value: "false", label: "Inactive" },
@@ -490,15 +549,29 @@ export default function AdminAgentsPage() {
 
             <div className="space-y-2">
               <Label>Assigned Super Agent</Label>
-              <SearchableSelect
+              <InlineSearchSelect
                 options={[
                   { value: "none", label: "None" },
                   ...superAgents.map((sa) => ({ value: sa._id, label: sa.name })),
                 ]}
                 value={editForm.superAgentId || "none"}
-                onValueChange={(v) => setEditForm((f) => ({ ...f, superAgentId: v === "none" ? "" : v }))}
+                onValueChange={(v) => {
+                  const id = v === "none" ? "" : v;
+                  setEditForm((f) => ({ ...f, superAgentId: id }));
+                  if (id) applySARegion(id, setEditCityIds, setEditStateIds);
+                }}
                 placeholder="Select super agent"
               />
+              {editForm.superAgentId && (() => {
+                const sa = superAgents.find((s) => s._id === editForm.superAgentId);
+                const regionCount = (sa?.region.stateIds.length ?? 0) + (sa?.region.cityIds.length ?? 0);
+                return regionCount > 0 ? (
+                  <p className="text-xs text-primary flex items-center gap-1">
+                    <Globe className="h-3 w-3" />
+                    Region from {sa?.name}&apos;s territory ({regionCount} location{regionCount > 1 ? "s" : ""})
+                  </p>
+                ) : null;
+              })()}
             </div>
 
             <CascadingLocationPicker
