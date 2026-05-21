@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Inbox, Plus, X, Edit2, Trash2, UserCheck, MapPin } from "lucide-react";
+import { Search, Inbox, Plus, X, Edit2, Trash2, UserCheck, MapPin, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 interface SuperAgentOption { _id: string; name: string; email: string; }
@@ -138,12 +138,18 @@ export default function AdminTerritoryPage() {
 
   return (
     <div className="page-container space-y-4">
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
-        {/* Compact header row */}
-        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> Territory Management</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">Manage geographic territories, assign super-agents, and control lead routing.</p>
+      {/* ── Hero Section ── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Admin workspace
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Territory Management</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Manage geographic territories, assign super-agents, and control lead routing.
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -152,19 +158,21 @@ export default function AdminTerritoryPage() {
                 placeholder="Search territories…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 w-48 rounded-lg border-border bg-secondary/65 pl-8 text-sm shadow-none sm:w-56"
+                className="h-10 w-48 rounded-xl border-border/70 bg-background/90 pl-8 text-sm sm:w-56"
               />
             </div>
             <Button
               size="sm"
               onClick={() => setShowForm((v) => !v)}
-              className="h-9 gap-1.5 rounded-lg bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
+              className="h-10 gap-1.5 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
             >
               {showForm ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> New Territory</>}
             </Button>
           </div>
         </div>
+      </section>
 
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
         {/* Inline create form */}
         {showForm && (
           <div className="border-b border-border/60 bg-secondary/30 px-5 py-4">

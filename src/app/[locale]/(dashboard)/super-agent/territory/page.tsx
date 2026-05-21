@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   SuperAgentPageIntro, SuperAgentMetricsGrid, SuperAgentSection, SuperAgentEmptyState,
 } from "@/components/features/super-agent/WorkspacePage";
-import { MapPin, Users, Globe, Building2, Briefcase } from "lucide-react";
+import { MapPin, Users, Globe, Building2, Briefcase, TrendingUp, UserCheck } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -64,10 +64,10 @@ export default function SuperAgentTerritoryPage() {
 
   /* Color scale based on agent density */
   const getHeatColor = (count: number) => {
-    if (count >= 5) return "bg-emerald-500/20 border-emerald-500/40 dark:bg-emerald-500/10";
-    if (count >= 3) return "bg-sky-500/20 border-sky-500/40 dark:bg-sky-500/10";
-    if (count >= 1) return "bg-amber-500/20 border-amber-500/40 dark:bg-amber-500/10";
-    return "bg-red-500/10 border-red-500/30 dark:bg-red-500/5";
+    if (count >= 5) return "border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:border-emerald-800/50 dark:from-emerald-950/40 dark:to-emerald-900/20";
+    if (count >= 3) return "border-sky-200 bg-gradient-to-br from-sky-50 to-sky-100/50 dark:border-sky-800/50 dark:from-sky-950/40 dark:to-sky-900/20";
+    if (count >= 1) return "border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:border-amber-800/50 dark:from-amber-950/40 dark:to-amber-900/20";
+    return "border-red-200 bg-gradient-to-br from-red-50 to-red-100/30 dark:border-red-800/50 dark:from-red-950/40 dark:to-red-900/20";
   };
 
   const getHeatLabel = (count: number) => {
@@ -77,37 +77,77 @@ export default function SuperAgentTerritoryPage() {
     return "No Coverage";
   };
 
+  const getHeatBadge = (count: number) => {
+    if (count >= 5) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300";
+    if (count >= 3) return "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300";
+    if (count >= 1) return "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300";
+    return "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300";
+  };
+
+  /* Compute coverage summary */
+  const coverageSummary = {
+    high: regions.filter((r) => r.agentCount >= 5).length,
+    good: regions.filter((r) => r.agentCount >= 3 && r.agentCount < 5).length,
+    low: regions.filter((r) => r.agentCount >= 1 && r.agentCount < 3).length,
+    none: regions.filter((r) => r.agentCount === 0).length,
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <SuperAgentPageIntro
         title="Territory Map"
         description="Visualize your assigned territories with agent coverage, employer density, and job distribution across regions."
+        summaryTitle="Coverage health"
+        summaryDescription={`${coverageSummary.high + coverageSummary.good} of ${regions.length} regions with good+ coverage`}
       />
 
       <SuperAgentMetricsGrid items={metricsItems} />
 
-      {/* Coverage Legend */}
-      <SuperAgentSection title="Coverage Legend">
-        <div className="flex flex-wrap gap-3">
-          {[
-            { color: "bg-emerald-500", label: "High (5+ agents)" },
-            { color: "bg-sky-500", label: "Good (3-4 agents)" },
-            { color: "bg-amber-500", label: "Low (1-2 agents)" },
-            { color: "bg-red-500", label: "No Coverage (0)" },
-          ].map((l) => (
-            <div key={l.label} className="flex items-center gap-2">
-              <div className={`h-3 w-3 rounded-full ${l.color}`} />
-              <span className="text-xs text-muted-foreground">{l.label}</span>
-            </div>
-          ))}
+      {/* Coverage Legend — inline bar style */}
+      <div className="workspace-glass-panel rounded-2xl px-5 py-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Coverage distribution</p>
+          <div className="flex flex-wrap items-center gap-4">
+            {[
+              { color: "bg-emerald-500", label: "High (5+)", count: coverageSummary.high },
+              { color: "bg-sky-500", label: "Good (3-4)", count: coverageSummary.good },
+              { color: "bg-amber-500", label: "Low (1-2)", count: coverageSummary.low },
+              { color: "bg-red-400", label: "None (0)", count: coverageSummary.none },
+            ].map((l) => (
+              <div key={l.label} className="flex items-center gap-2">
+                <div className={`h-2.5 w-2.5 rounded-full ${l.color}`} />
+                <span className="text-xs text-muted-foreground">{l.label}</span>
+                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{l.count}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </SuperAgentSection>
+        {/* Visual bar */}
+        {regions.length > 0 && (
+          <div className="mt-3 flex h-2 w-full overflow-hidden rounded-full">
+            {coverageSummary.high > 0 && <div className="bg-emerald-500 transition-all" style={{ width: `${(coverageSummary.high / regions.length) * 100}%` }} />}
+            {coverageSummary.good > 0 && <div className="bg-sky-500 transition-all" style={{ width: `${(coverageSummary.good / regions.length) * 100}%` }} />}
+            {coverageSummary.low > 0 && <div className="bg-amber-500 transition-all" style={{ width: `${(coverageSummary.low / regions.length) * 100}%` }} />}
+            {coverageSummary.none > 0 && <div className="bg-red-400 transition-all" style={{ width: `${(coverageSummary.none / regions.length) * 100}%` }} />}
+          </div>
+        )}
+      </div>
 
       {/* Territory Grid */}
-      <SuperAgentSection title="Territory Overview" description={`${regions.length} regions assigned`}>
+      <SuperAgentSection title="Territory Overview" description={`${regions.length} region${regions.length !== 1 ? "s" : ""} assigned`}>
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-2xl border border-border bg-muted/30 p-6">
+                <div className="h-5 w-24 rounded bg-muted" />
+                <div className="mt-3 h-3 w-16 rounded bg-muted" />
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  {Array.from({ length: 4 }).map((_, j) => (
+                    <div key={j} className="h-10 rounded bg-muted/60" />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : regions.length === 0 ? (
           <SuperAgentEmptyState icon={<MapPin className="h-10 w-10" />} title="No territories assigned" description="Contact admin to assign territories to your account" />
@@ -116,48 +156,55 @@ export default function SuperAgentTerritoryPage() {
             {regions.map((region) => (
               <div
                 key={region._id}
-                className={`rounded-2xl border-2 p-5 transition-all hover:shadow-md ${getHeatColor(region.agentCount)}`}
+                className={`group relative rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${getHeatColor(region.agentCount)}`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-primary" />
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <MapPin className="h-4.5 w-4.5" />
+                    </div>
                     <div>
-                      <p className="font-medium text-foreground">{region.name}</p>
+                      <p className="font-semibold text-foreground">{region.name}</p>
                       <p className="text-xs capitalize text-muted-foreground">{region.type}</p>
                     </div>
                   </div>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${getHeatBadge(region.agentCount)}`}>
                     {getHeatLabel(region.agentCount)}
                   </span>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                {/* Divider */}
+                <div className="my-4 h-px bg-border/60" />
+
+                {/* Stats grid */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     <div>
-                      <p className="text-lg font-semibold text-foreground">{region.agentCount}</p>
-                      <p className="text-[10px] text-muted-foreground">Agents</p>
+                      <p className="text-lg font-bold tabular-nums text-foreground">{region.agentCount}</p>
+                      <p className="text-[10px] font-medium text-muted-foreground">Agents</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  <div className="flex items-center gap-2.5">
+                    <Building2 className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                     <div>
-                      <p className="text-lg font-semibold text-foreground">{region.employerCount}</p>
-                      <p className="text-[10px] text-muted-foreground">Employers</p>
+                      <p className="text-lg font-bold tabular-nums text-foreground">{region.employerCount}</p>
+                      <p className="text-[10px] font-medium text-muted-foreground">Employers</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
+                  <div className="flex items-center gap-2.5">
+                    <Briefcase className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                     <div>
-                      <p className="text-lg font-semibold text-foreground">{region.jobCount}</p>
-                      <p className="text-[10px] text-muted-foreground">Jobs</p>
+                      <p className="text-lg font-bold tabular-nums text-foreground">{region.jobCount}</p>
+                      <p className="text-[10px] font-medium text-muted-foreground">Jobs</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                  <div className="flex items-center gap-2.5">
+                    <TrendingUp className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     <div>
-                      <p className="text-lg font-semibold text-foreground">{region.seekerCount}</p>
-                      <p className="text-[10px] text-muted-foreground">Candidates</p>
+                      <p className="text-lg font-bold tabular-nums text-foreground">{region.seekerCount}</p>
+                      <p className="text-[10px] font-medium text-muted-foreground">Candidates</p>
                     </div>
                   </div>
                 </div>

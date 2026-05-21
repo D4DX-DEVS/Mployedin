@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import {
   CircleDollarSign, Clock, CheckCircle2, Wallet,
-  CalendarDays, RotateCcw, Users, TrendingUp,
+  CalendarDays, RotateCcw, Users, TrendingUp, Sparkles,
   ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -197,56 +197,68 @@ export default function AdminCommissionsReportPage() {
   const s = data?.summary;
 
   return (
-    <div className="space-y-6 p-6">
-      {/* ── Header ── */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Commission Report</h1>
-          <p className="text-sm text-muted-foreground">Aggregated commission analytics across all agents and super-agents</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
-            <SelectTrigger className="w-28">
-              <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {yearOptions.map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading}>
-            <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
-      </div>
-
-      {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {[
-          { label: "Total Commissions", value: s ? fmt(s.totalCommissions, s.currency) : "—", icon: CircleDollarSign, color: "text-indigo-600 bg-indigo-50" },
-          { label: "Pending", value: s ? fmt(s.totalPending, s.currency) : "—", icon: Clock, color: "text-amber-600 bg-amber-50" },
-          { label: "Approved", value: s ? fmt(s.totalApproved, s.currency) : "—", icon: CheckCircle2, color: "text-blue-600 bg-blue-50" },
-          { label: "Paid Out", value: s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600 bg-emerald-50" },
-          { label: "Avg Rate", value: s ? `${s.avgRate}%` : "—", icon: TrendingUp, color: "text-violet-600 bg-violet-50" },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="rounded-lg border bg-card p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground">{label}</p>
-              <span className={`rounded-full p-1.5 ${color}`}>
-                <Icon className="h-3.5 w-3.5" />
-              </span>
+    <div className="page-container space-y-6">
+      {/* ── Hero Section ── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Admin workspace
             </div>
-            <p className="mt-2 text-xl font-bold">{loading ? <span className="h-5 w-24 animate-pulse rounded bg-muted inline-block" /> : value}</p>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Commission Report</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Aggregated commission analytics across all agents and super-agents — {yearFilter}. Track payouts, pending approvals, and commission types.
+            </p>
           </div>
-        ))}
-      </div>
+          <div className="flex items-center gap-2">
+            <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
+              <SelectTrigger className="h-10 w-28 rounded-xl border-border/70 bg-background/90">
+                <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((y) => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="h-10 w-10 rounded-xl border-border/70 bg-background/90">
+              <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+        </div>
+
+        {/* KPI Cards inside hero */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            { label: "Total Commissions", value: s ? fmt(s.totalCommissions, s.currency) : "—", icon: CircleDollarSign, tone: "text-indigo-600", chip: "bg-indigo-50 dark:bg-indigo-950/30" },
+            { label: "Pending", value: s ? fmt(s.totalPending, s.currency) : "—", icon: Clock, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: "Approved", value: s ? fmt(s.totalApproved, s.currency) : "—", icon: CheckCircle2, tone: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
+            { label: "Paid Out", value: s ? fmt(s.totalPaid, s.currency) : "—", icon: Wallet, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: "Avg Rate", value: s ? `${s.avgRate}%` : "—", icon: TrendingUp, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
+          ].map(({ label, value, icon: Icon, tone, chip }) => (
+            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+                    {loading ? <span className="h-6 w-20 animate-pulse rounded bg-muted inline-block" /> : value}
+                  </p>
+                </div>
+                <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${chip}`}>
+                  <Icon className={`h-5 w-5 ${tone}`} />
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* ── Monthly Trend Chart + Type Breakdown ── */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-lg border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold">Monthly Trend ({yearFilter})</h2>
+        <section className="lg:col-span-2 workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Monthly Trend ({yearFilter})</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -259,10 +271,10 @@ export default function AdminCommissionsReportPage() {
               <Bar dataKey="Paid" fill="#10b981" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </section>
 
-        <div className="rounded-lg border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold">By Type</h2>
+        <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">By Type</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -289,14 +301,14 @@ export default function AdminCommissionsReportPage() {
               </div>
             ))}
           </div>
-        </div>
+        </section>
       </div>
 
       {/* ── Quarterly Breakdown ── */}
       {data && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {data.quarterlyBreakdown.map((q) => (
-            <div key={q.label} className="rounded-lg border bg-card p-3">
+            <div key={q.label} className="workspace-glass-panel rounded-2xl p-4">
               <p className="text-xs font-semibold text-muted-foreground">{q.label}</p>
               <p className="mt-1 text-lg font-bold">{fmt(q.total, data.summary.currency)}</p>
               <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
@@ -312,7 +324,7 @@ export default function AdminCommissionsReportPage() {
       )}
 
       {/* ── Agent Breakdown Table ── */}
-      <div className="rounded-lg border bg-card">
+      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
         <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -378,7 +390,7 @@ export default function AdminCommissionsReportPage() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

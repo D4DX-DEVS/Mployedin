@@ -25,6 +25,9 @@ import type { ExportColumn } from "@/lib/export";
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
 import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
+import {
+  SuperAgentPageIntro,
+} from "@/components/features/super-agent/WorkspacePage";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -154,34 +157,32 @@ export default function SuperAgentInvoicesPage() {
 
   return (
     <div className="page-container space-y-6">
-      <TableToolbar
+      {/* ── Hero Section ── */}
+      <SuperAgentPageIntro
         title="Team Finance Overview"
         description="Monitor team invoices, track payment status, review commissions, and oversee billing activity across your agents."
+        eyebrow="Super agent workspace"
+        summaryTitle="Invoice pipeline"
+        summaryDescription={`${total.toLocaleString()} invoices tracked across your team with ${fmt(summary.totalPaid)} collected.`}
+      >
+        <div className="flex items-center gap-2">
+          <Button onClick={() => router.push(`/${locale}/super-agent/invoices/new`)} className="h-10 gap-1.5 rounded-xl text-xs font-semibold">
+            <FileText className="h-3.5 w-3.5" /> Create Invoice
+          </Button>
+          <div className="inline-flex rounded-lg border border-border/70 bg-card">
+            <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <FileText className="mr-1 inline-block h-3.5 w-3.5" /> Invoices
+            </button>
+            <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> Analytics
+            </button>
+          </div>
+        </div>
+      </SuperAgentPageIntro>
+
+      {/* ── Filters ── */}
+      <TableToolbar
         search="" onSearchChange={() => {}} searchPlaceholder="Search invoices…"
-        left={
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" /> Super Agent workspace
-          </div>
-        }
-        right={
-          <div className="flex items-center gap-2">
-            <Button onClick={() => router.push(`/${locale}/super-agent/invoices/new`)} className="h-9 gap-1.5 rounded-xl text-xs font-semibold">
-              <FileText className="h-3.5 w-3.5" /> Create Invoice
-            </Button>
-            <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {total.toLocaleString()} invoices
-            </div>
-            <div className="inline-flex rounded-lg border border-border/70 bg-card">
-              <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <FileText className="mr-1 inline-block h-3.5 w-3.5" /> Invoices
-              </button>
-              <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> Analytics
-              </button>
-            </div>
-          </div>
-        }
-        onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}
         filterContent={
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

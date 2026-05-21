@@ -21,6 +21,9 @@ import {
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import {
+  SuperAgentPageIntro, SuperAgentMetricsGrid,
+} from "@/components/features/super-agent/WorkspacePage";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -136,16 +139,18 @@ export default function SuperAgentCommissionsReportPage() {
   const s = data?.overviewSummary;
 
   return (
-    <div className="space-y-6 p-6">
-      {/* ── Header ── */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Commission Report</h1>
-          <p className="text-sm text-muted-foreground">Your override commissions and your team&apos;s earnings</p>
-        </div>
+    <div className="page-container space-y-6">
+      {/* ── Hero Section ── */}
+      <SuperAgentPageIntro
+        title="Commission Report"
+        description={`Your override commissions and your team's earnings — ${yearFilter}. Track pending approvals, payouts, and team performance.`}
+        eyebrow="Super agent workspace"
+        summaryTitle="Overview"
+        summaryDescription={s ? `${fmt(s.grandTotal, s.currency)} total commissions across your team with ${fmt(s.overrideTotal, s.currency)} in override earnings.` : "Loading commission data…"}
+      >
         <div className="flex items-center gap-2">
           <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
-            <SelectTrigger className="w-28">
+            <SelectTrigger className="h-10 w-28 rounded-xl border-border/70 bg-background/90">
               <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
               <SelectValue />
             </SelectTrigger>
@@ -155,38 +160,26 @@ export default function SuperAgentCommissionsReportPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading}>
+          <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="h-10 w-10 rounded-xl border-border/70 bg-background/90">
             <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
-      </div>
+      </SuperAgentPageIntro>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {[
-          { label: "Grand Total", value: s ? fmt(s.grandTotal, s.currency) : "—", icon: CircleDollarSign, color: "text-indigo-600 bg-indigo-50" },
-          { label: "My Override", value: s ? fmt(s.overrideTotal, s.currency) : "—", icon: Layers, color: "text-violet-600 bg-violet-50" },
-          { label: "Team Earned", value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600 bg-sky-50" },
-          { label: "Pending", value: s ? fmt(s.overridePending, s.currency) : "—", icon: Clock, color: "text-amber-600 bg-amber-50" },
-          { label: "Override Paid", value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600 bg-emerald-50" },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="rounded-lg border bg-card p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground">{label}</p>
-              <span className={`rounded-full p-1.5 ${color}`}>
-                <Icon className="h-3.5 w-3.5" />
-              </span>
-            </div>
-            <p className="mt-2 text-xl font-bold">
-              {loading ? <span className="h-5 w-24 animate-pulse rounded bg-muted inline-block" /> : value}
-            </p>
-          </div>
-        ))}
-      </div>
+      <SuperAgentMetricsGrid
+        items={[
+          { label: "Grand Total", value: loading ? "—" : s ? fmt(s.grandTotal, s.currency) : "—", helper: "All commissions combined", icon: <CircleDollarSign className="h-5 w-5" />, toneClassName: "workspace-tone-indigo" },
+          { label: "My Override", value: loading ? "—" : s ? fmt(s.overrideTotal, s.currency) : "—", helper: "Your personal override earnings", icon: <Layers className="h-5 w-5" />, toneClassName: "workspace-tone-violet" },
+          { label: "Team Earned", value: loading ? "—" : s ? fmt(s.teamTotal, s.currency) : "—", helper: "Total team commission earnings", icon: <Users className="h-5 w-5" />, toneClassName: "workspace-tone-sky" },
+          { label: "Pending", value: loading ? "—" : s ? fmt(s.overridePending, s.currency) : "—", helper: "Awaiting approval or payment", icon: <Clock className="h-5 w-5" />, toneClassName: "workspace-tone-amber" },
+          { label: "Override Paid", value: loading ? "—" : s ? fmt(s.overridePaid, s.currency) : "—", helper: "Paid out to date", icon: <Wallet className="h-5 w-5" />, toneClassName: "workspace-tone-emerald" },
+        ]}
+      />
 
       {/* ── Monthly Trend ── */}
-      <div className="rounded-lg border bg-card p-4">
-        <h2 className="mb-3 text-sm font-semibold">Monthly Trend — Override vs Team ({yearFilter})</h2>
+      <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Monthly Trend — Override vs Team ({yearFilter})</h2>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -198,31 +191,33 @@ export default function SuperAgentCommissionsReportPage() {
             <Bar dataKey="Team Total" fill="#0ea5e9" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
-      </div>
+      </section>
 
       {/* ── Approved Breakdown ── */}
       {data && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
-            { label: "Override — Pending", value: s ? fmt(s.overridePending, s.currency) : "—", icon: Clock, color: "text-amber-600" },
-            { label: "Override — Approved", value: s ? fmt(s.overrideApproved, s.currency) : "—", icon: CheckCircle2, color: "text-blue-600" },
-            { label: "Override — Paid", value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600" },
-            { label: "Team — Total Earned", value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600" },
-          ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="rounded-lg border bg-card p-3">
-              <div className={`flex items-center gap-1.5 text-xs font-medium ${color}`}>
-                <Icon className="h-3.5 w-3.5" />
-                {label}
+            { label: "Override — Pending", value: s ? fmt(s.overridePending, s.currency) : "—", icon: Clock, color: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: "Override — Approved", value: s ? fmt(s.overrideApproved, s.currency) : "—", icon: CheckCircle2, color: "text-blue-600", chip: "bg-blue-50 dark:bg-blue-950/30" },
+            { label: "Override — Paid", value: s ? fmt(s.overridePaid, s.currency) : "—", icon: Wallet, color: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
+            { label: "Team — Total Earned", value: s ? fmt(s.teamTotal, s.currency) : "—", icon: Users, color: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
+          ].map(({ label, value, icon: Icon, color, chip }) => (
+            <div key={label} className="workspace-glass-panel rounded-2xl p-4">
+              <div className="flex items-center gap-2">
+                <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${chip}`}>
+                  <Icon className={`h-4 w-4 ${color}`} />
+                </span>
+                <p className="text-xs font-semibold text-muted-foreground">{label}</p>
               </div>
-              <p className="mt-1.5 text-lg font-bold">{value}</p>
+              <p className="mt-2 text-xl font-semibold tracking-tight text-foreground">{value}</p>
             </div>
           ))}
         </div>
       )}
 
       {/* ── Agent Breakdown Table ── */}
-      <div className="rounded-lg border bg-card">
-        <div className="border-b px-4 py-3 flex items-center justify-between gap-3">
+      <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
+        <div className="border-b border-border/60 px-5 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold">Team Breakdown</h2>
@@ -281,7 +276,7 @@ export default function SuperAgentCommissionsReportPage() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

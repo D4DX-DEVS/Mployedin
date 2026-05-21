@@ -10,7 +10,6 @@ import {
   Crown, Sparkles, Briefcase, Users, Eye, BarChart3,
   Clock, CheckCircle, AlertTriangle, FileText, MessageSquare,
 } from "lucide-react";
-import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +19,7 @@ import { useInvoices, type InvoiceItem } from "@/hooks/useInvoices";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { CurrencySelector } from "@/components/shared/CurrencySelector";
-import { convertAndFormat, currencyCodeForCountry } from "@/lib/currency";
+import { convertAndFormat } from "@/lib/currency";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,44 +48,8 @@ export default function EmployerSubscriptionPage() {
   const { data: subscription, isLoading } = useMySubscription();
   const { data: gateMap } = useFeatureGateMap();
   const { data: invoices } = useInvoices({});
-  const {
-    displayCurrency,
-    setDisplayCurrency,
-    initializeDisplayCurrency,
-    isCurrencyPreferenceReady,
-  } = useCurrencyPreference();
+  const { displayCurrency, setDisplayCurrency } = useCurrencyPreference();
   const { rates, source: rateSource } = useExchangeRates();
-
-  useEffect(() => {
-    if (!isCurrencyPreferenceReady) {
-      return;
-    }
-
-    let active = true;
-
-    const syncCurrencyFromCountry = async () => {
-      try {
-        const res = await fetch("/api/employers/me", { credentials: "include" });
-        if (!res.ok) return;
-
-        const data = await res.json() as { employer?: { country?: string | null } };
-        const country = data.employer?.country ?? "";
-        const countryCurrency = currencyCodeForCountry(country);
-
-        if (active) {
-          initializeDisplayCurrency(countryCurrency);
-        }
-      } catch {
-        // Keep existing currency if profile lookup fails.
-      }
-    };
-
-    void syncCurrencyFromCountry();
-
-    return () => {
-      active = false;
-    };
-  }, [initializeDisplayCurrency, isCurrencyPreferenceReady]);
 
   if (isLoading) {
     return (

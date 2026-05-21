@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus, Trash2, Edit2, X, Loader2, Crown, ChevronDown, ChevronUp,
   Check, Copy, Users, Briefcase, Sparkles, BarChart3, FileText,
@@ -22,6 +22,7 @@ import {
   type IAIFeatureLimit,
 } from "@/hooks/useSubscriptionPlans";
 import { AI_FEATURE_KEYS, type AIFeatureKey } from "@/types/subscription-plan";
+import { convertAndFormat } from "@/lib/currency";
 
 // ── Constants ──────────────────────────────────────────────────────
 const AI_FEATURE_LABELS: Record<AIFeatureKey, string> = {
@@ -141,10 +142,23 @@ export default function AdminSubscriptionPlansPage() {
   const [form, setForm] = useState<PlanFormState>(emptyForm());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<"basic" | "limits" | "ai">("basic");
+  const [systemCurrency, setSystemCurrency] = useState<string>("AED");
+
+  // Fetch system default currency from admin settings
+  useEffect(() => {
+    fetch("/api/settings/public")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.settings?.defaultCurrency) {
+          setSystemCurrency(data.settings.defaultCurrency);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const openCreate = () => {
     setEditId(null);
-    setForm(emptyForm(activeTab));
+    setForm({ ...emptyForm(activeTab), currency: systemCurrency });
     setShowForm(true);
     setActiveSection("basic");
   };
@@ -646,7 +660,12 @@ export default function AdminSubscriptionPlansPage() {
                       )}
                     </div>
                     <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{p.price} {p.currency} / {p.billingCycle}</span>
+                      <span>
+                        {p.currency === systemCurrency
+                          ? `${p.price} ${p.currency}`
+                          : convertAndFormat(p.price, p.currency, systemCurrency)}
+                        {" / "}{p.billingCycle}
+                      </span>
                       <span>·</span>
                       <span className="flex items-center gap-1">
                         <Sparkles className="h-3.5 w-3.5" /> {enabledAI} AI features

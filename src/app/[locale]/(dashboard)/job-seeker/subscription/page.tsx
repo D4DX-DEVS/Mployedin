@@ -10,7 +10,6 @@ import {
   Crown, Sparkles, FileText, Clock, CheckCircle, AlertTriangle,
   BarChart3, MessageSquare,
 } from "lucide-react";
-import { useEffect } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { useMySubscription, type MySubscription } from "@/hooks/useSubscription";
@@ -19,7 +18,7 @@ import { useInvoices, type InvoiceItem } from "@/hooks/useInvoices";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { CurrencySelector } from "@/components/shared/CurrencySelector";
-import { convertAndFormat, currencyCodeForCountry } from "@/lib/currency";
+import { convertAndFormat } from "@/lib/currency";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,48 +53,8 @@ export default function JobSeekerSubscriptionPage() {
   const { data: subscription, isLoading } = useMySubscription();
   const { data: gateMap } = useFeatureGateMap();
   const { data: invoices } = useInvoices({});
-  const {
-    displayCurrency,
-    setDisplayCurrency,
-    initializeDisplayCurrency,
-    isCurrencyPreferenceReady,
-  } = useCurrencyPreference();
+  const { displayCurrency, setDisplayCurrency } = useCurrencyPreference();
   const { rates, source: rateSource } = useExchangeRates();
-
-  useEffect(() => {
-    if (!isCurrencyPreferenceReady) {
-      return;
-    }
-
-    let active = true;
-
-    const syncCurrencyFromCountry = async () => {
-      try {
-        const res = await fetch("/api/job-seeker/profile", { credentials: "include" });
-        if (!res.ok) return;
-
-        const profile = await res.json() as {
-          preferredCountries?: string[];
-          nationality?: string;
-        };
-
-        const primaryCountry = profile.preferredCountries?.[0] ?? profile.nationality ?? "";
-        const countryCurrency = currencyCodeForCountry(primaryCountry);
-
-        if (active) {
-          initializeDisplayCurrency(countryCurrency);
-        }
-      } catch {
-        // Keep existing currency if profile lookup fails.
-      }
-    };
-
-    void syncCurrencyFromCountry();
-
-    return () => {
-      active = false;
-    };
-  }, [initializeDisplayCurrency, isCurrencyPreferenceReady]);
 
   if (isLoading) {
     return (
