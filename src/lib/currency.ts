@@ -82,9 +82,56 @@ export const SUPPORTED_CURRENCIES: CurrencyInfo[] = Object.values(
   }, {})
 );
 
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  UAE: "AE",
+  "UNITED ARAB EMIRATES": "AE",
+  INDIA: "IN",
+  "SAUDI ARABIA": "SA",
+  KSA: "SA",
+  QATAR: "QA",
+  KUWAIT: "KW",
+  BAHRAIN: "BH",
+  OMAN: "OM",
+  UK: "GB",
+  "UNITED KINGDOM": "GB",
+  USA: "US",
+  "UNITED STATES": "US",
+  PAKISTAN: "PK",
+  BANGLADESH: "BD",
+  EGYPT: "EG",
+  CANADA: "CA",
+  AUSTRALIA: "AU",
+  SINGAPORE: "SG",
+};
+
+/** Resolve raw country text/code to a known ISO-like code (e.g. "India" -> "IN"). */
+export function resolveCountryCode(country: string | null | undefined): string {
+  if (!country) {
+    return "";
+  }
+
+  const normalized = country.trim().toUpperCase();
+
+  if (COUNTRY_CURRENCIES[normalized]) {
+    return normalized;
+  }
+
+  return COUNTRY_NAME_TO_CODE[normalized] ?? "";
+}
+
 /** Look up the default currency for a country code (e.g. "IN" → INR) */
 export function currencyForCountry(countryCode: string): CurrencyInfo {
   return COUNTRY_CURRENCIES[countryCode] ?? COUNTRY_CURRENCIES.AE;
+}
+
+/** Resolve any country text/code into a currency code with fallback (default AED). */
+export function currencyCodeForCountry(country: string | null | undefined, fallback = "AED"): string {
+  const code = resolveCountryCode(country);
+  if (!code) {
+    return fallback;
+  }
+
+  return currencyForCountry(code).code;
 }
 
 /**

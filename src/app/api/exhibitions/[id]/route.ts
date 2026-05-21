@@ -249,7 +249,7 @@ async function deleteHandler(_req: NextRequest, ctx: AuthContext, params?: Recor
 }
 
 export const GET = withAuth(getHandler, { resource: "exhibitions", action: "read" });
-export const PATCH = withAuth(patchHandler, { resource: "exhibitions", action: "read" });
+export const PATCH = withAuth(patchHandler, { resource: "exhibitions", action: "update" });
 export const DELETE = withAuth(deleteHandler, { resource: "exhibitions", action: "delete" });
 
 // ── Exhibition status email ──────────────────────────────────────────

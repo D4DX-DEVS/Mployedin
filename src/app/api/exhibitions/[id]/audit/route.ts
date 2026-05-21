@@ -28,6 +28,19 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const deriveActionType = (entry: { status?: string; note?: string; statusReason?: string }, prevStatus?: string): string => {
+    if (entry.status === "budget_approved") return "BUDGET_APPROVED";
+    if (entry.status === "resources_assigned") return "RESOURCES_ASSIGNED";
+    if (entry.status === "archived") return "ARCHIVED";
+    // If status didn't change from previous entry, treat as a comment/note
+    if (prevStatus && entry.status === prevStatus && (entry.note || entry.statusReason)) {
+      return "COMMENT_ADDED";
+    }
+    return "STATUS_CHANGED";
+  };
+
+  const history: Array<{ status?: string; changedAt?: unknown; changedBy?: unknown; approverRole?: string; note?: string; statusReason?: string }> = item.statusHistory ?? [];
+
   return NextResponse.json({
     exhibitionId: item._id,
     eventName: item.eventName,
@@ -35,7 +48,8 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
     isDeleted: item.isDeleted ?? false,
     deletedAt: item.deletedAt ?? null,
     agent: item.agentId,
-    auditTrail: (item.statusHistory ?? []).map((entry) => ({
+    auditTrail: history.map((entry, idx) => ({
+      actionType: deriveActionType(entry, idx > 0 ? history[idx - 1].status : undefined),
       status: entry.status,
       changedAt: entry.changedAt,
       changedBy: entry.changedBy,
@@ -43,7 +57,7 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
       note: entry.note ?? null,
       statusReason: entry.statusReason ?? null,
     })),
-    totalEntries: item.statusHistory?.length ?? 0,
+    totalEntries: history.length,
   });
 }
 

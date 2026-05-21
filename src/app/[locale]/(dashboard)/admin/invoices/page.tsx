@@ -12,7 +12,7 @@ import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Plus, Sparkles, RotateCcw, CalendarDays, ArrowRight, Inbox,
-  Eye, BarChart3, FileText, ReceiptText, RefreshCw, ClipboardList,
+  Eye, BarChart3, FileText, ReceiptText, RefreshCw, ClipboardList, Download,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
@@ -405,7 +405,22 @@ export default function AdminInvoicesPage() {
                         <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedInvoiceId(inv._id)} className="h-7 w-7 p-0"><Eye className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedInvoiceId(inv._id)} className="h-7 w-7 p-0" title="View details"><Eye className="h-3.5 w-3.5" /></Button>
+                            {["issued", "sent", "paid", "partially_paid", "overdue"].includes(inv.status) && (
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Download PDF" onClick={async () => {
+                                try {
+                                  const res = await fetch(`/api/invoices/${inv._id}/pdf`);
+                                  if (!res.ok) throw new Error("Failed to download");
+                                  const blob = await res.blob();
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement("a");
+                                  a.href = url;
+                                  a.download = `${inv.invoiceNumber}.pdf`;
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                } catch { toast.error("Failed to download PDF"); }
+                              }}><Download className="h-3.5 w-3.5" /></Button>
+                            )}
                             {can("subscriptions", "update") && inv.status === "draft" && (
                               <Button variant="ghost" size="sm" onClick={() => updateStatus(inv._id, "issued")} className="h-7 px-2 text-[10px] text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/30">Issue</Button>
                             )}
