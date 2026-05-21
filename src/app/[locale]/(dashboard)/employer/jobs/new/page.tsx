@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bot, FilePenLine, Mic, ArrowRight, Sparkles } from "lucide-react";
+import { Bot, FilePenLine, Mic, ArrowRight, Sparkles, Upload } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { JobFormWizard } from "@/components/features/employer/job-form/JobFormWizard";
@@ -63,6 +63,13 @@ export default async function NewJobPage({ params, searchParams }: PageProps) {
             >
               {t("startAiPosting")}
               <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href={`/${locale}/employer/jobs/ai-extract`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+            >
+              <Upload className="h-4 w-4" />
+              Upload Job Poster
             </Link>
             <Link
               href={`/${locale}/employer/jobs/new?mode=manual`}

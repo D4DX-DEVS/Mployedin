@@ -22,6 +22,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const hasCV = searchParams.get("hasCV");                              // "1" to filter only profiles with CV
   const jobType = searchParams.get("jobType")?.trim();                  // remote | hybrid | onsite | any
   const sort = searchParams.get("sort") ?? "newest";                    // newest | oldest | profile_high | profile_low
+  const education = searchParams.get("education")?.trim();              // degree/field keyword filter
+  const nationality = searchParams.get("nationality")?.trim();          // nationality filter
+  const experienceYears = parseInt(searchParams.get("experienceYears") ?? "0"); // minimum experience years
 
   // ── Agent scoping — agents with explicit assignments see only their job seekers ───
   let agentScopeFilter: Record<string, unknown> = {};
@@ -53,6 +56,88 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
   if (hasCV === "1") filterConditions.push({ "cv.originalUrl": { $exists: true, $ne: "" } });
   if (jobType) filterConditions.push({ preferredJobType: jobType });
+  if (education) {
+    // Education synonym expansion — ONLY spelling variants of the same degree, not related degrees
+    const EDU_SYNONYMS: Record<string, string[]> = {
+      btech: ["b[.\\-\\s]?tech", "btech"],
+      mtech: ["m[.\\-\\s]?tech", "mtech"],
+      bachelor: ["bachelor", "bachelors"],
+      master: ["master", "masters"],
+      mba: ["mba", "m\\.?b\\.?a"],
+      phd: ["ph[.\\-\\s]?d", "phd", "doctorate", "doctoral"],
+      diploma: ["diploma", "dip"],
+      bsc: ["b[.\\-\\s]?sc", "bsc"],
+      msc: ["m[.\\-\\s]?sc", "msc"],
+      be: ["b[.\\-\\s]?e", "be"],
+      me: ["m[.\\-\\s]?e", "me"],
+      bcom: ["b[.\\-\\s]?com", "bcom"],
+      mcom: ["m[.\\-\\s]?com", "mcom"],
+      bca: ["b[.\\-\\s]?c[.\\-\\s]?a", "bca"],
+      mca: ["m[.\\-\\s]?c[.\\-\\s]?a", "mca"],
+      bba: ["b[.\\-\\s]?b[.\\-\\s]?a", "bba"],
+      engineering: ["engineering", "engg"],
+    };
+
+    const eduTerms = education.split(/\s+/).filter(Boolean);
+    const fieldTerms: string[] = []; // e.g. "computer science"
+    const degreeRegexParts: string[] = [];
+
+    for (const term of eduTerms) {
+      // Normalize: remove dots, hyphens, spaces for synonym lookup (e.g. "b.tech" → "btech", "b-tech" → "btech")
+      const lower = term.toLowerCase().replace(/[.\-\s]/g, "");
+      const synonyms = EDU_SYNONYMS[lower];
+      if (synonyms) {
+        // This is a degree term — expand with synonyms
+        degreeRegexParts.push(`(${synonyms.join("|")})`);
+      } else {
+        // This is a field/subject term
+        fieldTerms.push(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      }
+    }
+
+    // If we have degree synonyms, match any of them in degree field
+    if (degreeRegexParts.length > 0) {
+      const degreeRegex = degreeRegexParts.join("|");
+      filterConditions.push({
+        $or: [
+          { "education.degree": { $regex: degreeRegex, $options: "i" } },
+          { "education.field": { $regex: degreeRegex, $options: "i" } },
+        ],
+      });
+    }
+
+    // If we have field terms (e.g. "computer", "science"), match them in degree/field/institution
+    if (fieldTerms.length > 0) {
+      for (const ft of fieldTerms) {
+        filterConditions.push({
+          $or: [
+            { "education.degree": { $regex: ft, $options: "i" } },
+            { "education.field": { $regex: ft, $options: "i" } },
+            { "education.institution": { $regex: ft, $options: "i" } },
+          ],
+        });
+      }
+    }
+
+    // Fallback: if no synonym match and no field terms, just regex the whole string
+    if (degreeRegexParts.length === 0 && fieldTerms.length === 0) {
+      const escapedEdu = education.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filterConditions.push({
+        $or: [
+          { "education.degree": { $regex: escapedEdu, $options: "i" } },
+          { "education.field": { $regex: escapedEdu, $options: "i" } },
+          { "education.institution": { $regex: escapedEdu, $options: "i" } },
+        ],
+      });
+    }
+  }
+  if (nationality) {
+    const escapedNat = nationality.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    filterConditions.push({ nationality: { $regex: escapedNat, $options: "i" } });
+  }
+  if (experienceYears > 0) {
+    filterConditions.push({ totalExperienceYears: { $gte: experienceYears } });
+  }
 
   // ── Sort option ───────────────────────────────────────────
   const sortMap: Record<string, Record<string, 1 | -1>> = {
@@ -78,6 +163,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           { skills: { $regex: escapedSearch, $options: "i" } },
           { currentLocation: { $regex: escapedSearch, $options: "i" } },
           { "experience.jobTitle": { $regex: escapedSearch, $options: "i" } },
+          { headline: { $regex: escapedSearch, $options: "i" } },
+          { "education.degree": { $regex: escapedSearch, $options: "i" } },
+          { "education.field": { $regex: escapedSearch, $options: "i" } },
+          { nationality: { $regex: escapedSearch, $options: "i" } },
         ],
       });
     }
@@ -102,8 +191,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       {
         $project: {
           "userId._id": 1, "userId.name": 1, "userId.email": 1,
-          fullName: 1,
-          skills: 1, currentLocation: 1, experience: 1,
+          fullName: 1, email: 1, phone: 1, headline: 1, summary: 1,
+          nationality: 1, status: 1,
+          skills: 1, currentLocation: 1, experience: 1, education: 1,
+          languages: 1, certifications: 1,
           profileCompleteness: 1, availabilityStatus: 1, badges: 1,
           totalExperienceYears: 1, preferredJobType: 1,
           preferredLocations: 1,

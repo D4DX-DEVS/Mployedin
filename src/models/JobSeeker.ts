@@ -173,6 +173,8 @@ export interface IJobSeeker extends Document {
     startTime: string; // HH:mm (24h)
     endTime: string;   // HH:mm (24h)
   }[];
+  // Vector search embedding
+  searchEmbedding?: number[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -367,6 +369,8 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
         _id: false,
       },
     ],
+    // Vector search embedding (auto-generated from profile text)
+    searchEmbedding: { type: [Number], select: false },
   },
   { timestamps: true }
 );
