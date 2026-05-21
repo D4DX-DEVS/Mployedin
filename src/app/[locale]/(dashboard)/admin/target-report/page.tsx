@@ -20,8 +20,8 @@ import {
   CalendarDays, RotateCcw, FileText, X,
   CircleDollarSign, Activity, Sparkles,
   ArrowUpRight, ArrowDownRight, Minus,
-  AlertTriangle, TrendingUp, Award, Clock,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -118,6 +118,7 @@ function GrowthIndicator({ value }: { value: number }) {
 /* ------------------------------------------------------------------ */
 
 export default function AdminTargetReportPage() {
+  const t = useTranslations("targets");
   const currentYear = new Date().getFullYear();
 
   // Filters
@@ -130,18 +131,6 @@ export default function AdminTargetReportPage() {
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ReportData | null>(null);
-  const [currencyCode, setCurrencyCode] = useState("AED");
-
-  useEffect(() => {
-    fetch("/api/agent/profile")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((payload) => {
-        if (payload?.profile?.currencyCode) {
-          setCurrencyCode(payload.profile.currencyCode);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -212,51 +201,24 @@ export default function AdminTargetReportPage() {
     return { supervisors, agents };
   }, [data, riskFilter, searchQuery]);
 
-  // Chart data — 3 separate series (never mixed on same axis)
-  const employerChartData = useMemo(() => filteredTrend.map((m) => ({
-    name: MONTHS_SHORT[m.month - 1],
-    "Target": m.employerTarget,
-    "Achieved": m.employerAchieved,
-  })), [filteredTrend]);
-
-  const employeeChartData = useMemo(() => filteredTrend.map((m) => ({
-    name: MONTHS_SHORT[m.month - 1],
-    "Target": m.employeeTarget,
-    "Achieved": m.employeeAchieved,
-  })), [filteredTrend]);
-
-  const financeChartData = useMemo(() => filteredTrend.map((m) => ({
-    name: MONTHS_SHORT[m.month - 1],
-    "Target (K)": Math.round(m.financeTarget / 1000),
-    "Achieved (K)": Math.round(m.financeAchieved / 1000),
-  })), [filteredTrend]);
+  // Chart data (respects category + quarter filters)
+  const trendChartData = useMemo(() => {
+    return filteredTrend.map((m) => ({
+      name: MONTHS_SHORT[m.month - 1],
+      ...(categoryFilter === "all" || categoryFilter === "employer" ? { "Employer Target": m.employerTarget, "Employer Achieved": m.employerAchieved } : {}),
+      ...(categoryFilter === "all" || categoryFilter === "employee" ? { "Employee Target": m.employeeTarget, "Employee Achieved": m.employeeAchieved } : {}),
+      ...(categoryFilter === "all" || categoryFilter === "finance" ? { "Finance Target (K)": Math.round(m.financeTarget / 1000), "Finance Achieved (K)": Math.round(m.financeAchieved / 1000) } : {}),
+    }));
+  }, [filteredTrend, categoryFilter]);
 
   const businessVolumeChartData = useMemo(() => {
     return filteredBusinessVolume.map((bv) => ({
       name: MONTHS_SHORT[bv.month - 1],
-      "Collected (K)": Math.round(bv.approved / 1000),
-      "Pending (K)": Math.round(bv.pending / 1000),
-      "Total (K)": Math.round(bv.total / 1000),
+      Approved: Math.round(bv.approved / 1000),
+      Pending: Math.round(bv.pending / 1000),
+      Total: Math.round(bv.total / 1000),
     }));
   }, [filteredBusinessVolume]);
-
-  // Risk analytics
-  const allProfilesList = useMemo(() => {
-    if (!data) return [] as ProfileRow[];
-    return [...data.supervisorProfiles, ...data.agentProfiles];
-  }, [data]);
-
-  const riskAnalytics = useMemo(() => {
-    const team = allProfilesList;
-    return {
-      high: team.filter((r) => r.riskScore === "high").length,
-      medium: team.filter((r) => r.riskScore === "medium").length,
-      low: team.filter((r) => r.riskScore === "low").length,
-      behind: team.filter((r) => r.overallProgress < 40).length,
-      overperformers: team.filter((r) => r.overallProgress >= 80).length,
-      topAgent: team.reduce<ProfileRow | null>((top, r) => (!top || r.financeAchieved > top.financeAchieved ? r : top), null),
-    };
-  }, [allProfilesList]);
 
   // Export via useTableExport (proper CSV / Excel / PDF)
   const allProfiles = useMemo(() => {
@@ -327,62 +289,48 @@ export default function AdminTargetReportPage() {
       </section>
 
       {/* ═══════ KPI Summary ═══════ */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30"><Building2 className="h-4 w-4" /></div>
-            <GrowthIndicator value={data.yearOverYear.growth.employerAchieved} />
-          </div>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employer Target</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-blue-600">{data.summary.employerAchieved} <span className="text-base font-normal text-muted-foreground">/ {data.summary.employerTarget}</span></p>
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>{data.summary.employerTarget > 0 ? Math.round((data.summary.employerAchieved / data.summary.employerTarget) * 100) : 0}% complete</span>
-            <span>{Math.max(0, data.summary.employerTarget - data.summary.employerAchieved)} pending</span>
-          </div>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-900/20">
-            <div className="h-full rounded-full bg-blue-500" style={{ width: `${data.summary.employerTarget > 0 ? Math.min(100, Math.round((data.summary.employerAchieved / data.summary.employerTarget) * 100)) : 0}%` }} />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employer Target</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">{data.summary.employerAchieved} <span className="text-base text-muted-foreground">/ {data.summary.employerTarget}</span></p>
+              <GrowthIndicator value={data.yearOverYear.growth.employerAchieved} />
+            </div>
+            <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
           </div>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-900/30"><Users className="h-4 w-4" /></div>
-            <GrowthIndicator value={data.yearOverYear.growth.employeeAchieved} />
-          </div>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employee Target</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-purple-600">{data.summary.employeeAchieved} <span className="text-base font-normal text-muted-foreground">/ {data.summary.employeeTarget}</span></p>
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>{data.summary.employeeTarget > 0 ? Math.round((data.summary.employeeAchieved / data.summary.employeeTarget) * 100) : 0}% complete</span>
-            <span>{Math.max(0, data.summary.employeeTarget - data.summary.employeeAchieved)} pending</span>
-          </div>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-purple-100 dark:bg-purple-900/20">
-            <div className="h-full rounded-full bg-purple-500" style={{ width: `${data.summary.employeeTarget > 0 ? Math.min(100, Math.round((data.summary.employeeAchieved / data.summary.employeeTarget) * 100)) : 0}%` }} />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employee Target</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">{data.summary.employeeAchieved} <span className="text-base text-muted-foreground">/ {data.summary.employeeTarget}</span></p>
+              <GrowthIndicator value={data.yearOverYear.growth.employeeAchieved} />
+            </div>
+            <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
           </div>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30"><CircleDollarSign className="h-4 w-4" /></div>
-            <GrowthIndicator value={data.yearOverYear.growth.financeAchieved} />
-          </div>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Business Volume</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-600">{formatCurrency(data.totalApprovedVolume, currencyCode)}</p>
-          <p className="mt-2 text-xs text-muted-foreground">of {formatCurrency(data.totalBusinessVolume, currencyCode)} total</p>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-900/20">
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${data.totalBusinessVolume > 0 ? Math.min(100, Math.round((data.totalApprovedVolume / data.totalBusinessVolume) * 100)) : 0}%` }} />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Business Volume</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">{formatCurrency(data.totalApprovedVolume)}</p>
+              <p className="text-xs text-muted-foreground">of {formatCurrency(data.totalBusinessVolume)} total</p>
+            </div>
+            <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
           </div>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-900/30"><Activity className="h-4 w-4" /></div>
-            <GrowthIndicator value={data.yearOverYear.growth.avgProgress} />
-          </div>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Avg Performance</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-violet-600">{data.summary.avgProgress}%</p>
-          <p className="mt-2 text-xs text-muted-foreground">{data.summary.profileCount} profiles tracked</p>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-violet-100 dark:bg-violet-900/20">
-            <div className="h-full rounded-full bg-violet-500" style={{ width: `${Math.min(100, data.summary.avgProgress)}%` }} />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Avg Performance</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">{data.summary.avgProgress}%</p>
+              <GrowthIndicator value={data.yearOverYear.growth.avgProgress} />
+            </div>
+            <div className="workspace-tone-violet rounded-2xl p-2.5"><Activity className="h-5 w-5" /></div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ═══════ TOOLBAR ═══════ */}
       <TableToolbar
@@ -454,141 +402,88 @@ export default function AdminTargetReportPage() {
         }
       />
 
-      {/* ═══════ Section header ═══════ */}
-      <div className="flex items-center gap-3">
-        <h2 className="text-base font-semibold tracking-tight">Performance Analytics</h2>
-        <Badge variant="outline" className="text-xs">{quarterFilter !== "all" ? `Q${quarterFilter}` : `${yearFilter} — 12 months`}</Badge>
-      </div>
-
-      {/* ═══════ Chart A + B (2-up) ═══════ */}
-      {(categoryFilter === "all" || categoryFilter === "employer" || categoryFilter === "employee") && (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {(categoryFilter === "all" || categoryFilter === "employer") && (
-            <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30"><Building2 className="h-4 w-4" /></div>
-                <div>
-                  <h3 className="text-sm font-semibold">Employer Target vs Achieved</h3>
-                  <p className="text-xs text-muted-foreground">Count — employer accounts</p>
-                </div>
-              </div>
-              <div className="h-52 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={employerChartData} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                    <ReTooltip contentStyle={{ borderRadius: "12px", borderColor: "rgba(148,163,184,0.18)", fontSize: 12 }} />
-                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Line type="monotone" dataKey="Target" stroke="#93c5fd" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Achieved" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: "#3b82f6" }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-          )}
-          {(categoryFilter === "all" || categoryFilter === "employee") && (
-            <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-900/30"><Users className="h-4 w-4" /></div>
-                <div>
-                  <h3 className="text-sm font-semibold">Employee Target vs Achieved</h3>
-                  <p className="text-xs text-muted-foreground">Count — placements / employees</p>
-                </div>
-              </div>
-              <div className="h-52 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={employeeChartData} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                    <ReTooltip contentStyle={{ borderRadius: "12px", borderColor: "rgba(148,163,184,0.18)", fontSize: 12 }} />
-                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Line type="monotone" dataKey="Target" stroke="#c4b5fd" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Achieved" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-          )}
+      {/* ═══════ Monthly Trend ═══════ */}
+      <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Monthly Performance Timeline</h2>
+            <p className="text-sm text-muted-foreground">
+              Target vs achieved{quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}{categoryFilter !== "all" ? ` — ${categoryFilter} only` : ""}
+            </p>
+          </div>
+          <Badge variant="outline" className="shrink-0">{quarterFilter !== "all" ? `Q${quarterFilter}` : "12 months"}</Badge>
         </div>
-      )}
+        <div className="h-[22rem] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trendChartData} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} className="text-xs" />
+              <YAxis axisLine={false} tickLine={false} className="text-xs" />
+              <ReTooltip
+                cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
+                contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)", fontSize: 12 }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
+              {(categoryFilter === "all" || categoryFilter === "employer") && (
+                <>
+                  <Line type="monotone" dataKey="Employer Target" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Employer Achieved" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: "#3b82f6" }} activeDot={{ r: 5 }} />
+                </>
+              )}
+              {(categoryFilter === "all" || categoryFilter === "employee") && (
+                <>
+                  <Line type="monotone" dataKey="Employee Target" stroke="#c4b5fd" strokeDasharray="5 5" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Employee Achieved" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} />
+                </>
+              )}
+              {(categoryFilter === "all" || categoryFilter === "finance") && (
+                <>
+                  <Line type="monotone" dataKey="Finance Target (K)" stroke="#fde68a" strokeDasharray="5 5" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Finance Achieved (K)" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
+                </>
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
 
-      {/* ═══════ Chart C — Finance (full-width, AED only) ═══════ */}
-      {(categoryFilter === "all" || categoryFilter === "finance") && (
-        <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30"><CircleDollarSign className="h-4 w-4" /></div>
-              <div>
-                <h3 className="text-sm font-semibold">Finance Revenue — {yearFilter}</h3>
-                <p className="text-xs text-muted-foreground">AED values (thousands) — isolated from count metrics</p>
-              </div>
-            </div>
-            <Badge variant="secondary" className="text-xs text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20">AED only</Badge>
+      {/* ═══════ Business Volume ═══════ */}
+      <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Business Volume — {yearFilter}</h2>
+            <p className="text-sm text-muted-foreground">Monthly revenue (thousands){quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}</p>
           </div>
-          <div className="h-60 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={financeChartData} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="adminGradFinTarget" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6ee7b7" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#6ee7b7" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id="adminGradFinAchieved" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} unit="K" />
-                <ReTooltip contentStyle={{ borderRadius: "12px", borderColor: "rgba(148,163,184,0.18)", fontSize: 12 }} formatter={(value: unknown) => [`${value ?? 0}K`, ""]} />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                <Area type="monotone" dataKey="Target (K)" stroke="#6ee7b7" strokeDasharray="5 5" strokeWidth={2} fill="url(#adminGradFinTarget)" />
-                <Area type="monotone" dataKey="Achieved (K)" stroke="#10b981" strokeWidth={2.5} fill="url(#adminGradFinAchieved)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      )}
-
-      {/* ═══════ Revenue Intelligence ═══════ */}
-      {(categoryFilter === "all" || categoryFilter === "finance") && (
-        <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold">Revenue Intelligence — {yearFilter}</h3>
-              <p className="text-xs text-muted-foreground">Monthly collected vs pending breakdown (AED thousands)</p>
-            </div>
-            <CircleDollarSign className="h-4 w-4 text-emerald-500" />
-          </div>
-          <div className="h-56 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={businessVolumeChartData} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="adminGradCollected" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id="adminGradPending" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} unit="K" />
-                <ReTooltip contentStyle={{ borderRadius: "12px", borderColor: "rgba(148,163,184,0.18)", fontSize: 12 }} formatter={(value: unknown) => [`AED ${value ?? 0}K`, ""]} />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                <Area type="monotone" dataKey="Total (K)" stroke="#94a3b8" strokeDasharray="4 4" strokeWidth={1.5} fill="none" />
-                <Area type="monotone" dataKey="Pending (K)" stroke="#f59e0b" strokeWidth={2} fill="url(#adminGradPending)" />
-                <Area type="monotone" dataKey="Collected (K)" stroke="#10b981" strokeWidth={2.5} fill="url(#adminGradCollected)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      )}
+          <CircleDollarSign className="h-5 w-5 text-primary" />
+        </div>
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={businessVolumeChartData} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
+              <defs>
+                <linearGradient id="adminGradApproved" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="adminGradPending" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} className="text-xs" />
+              <YAxis axisLine={false} tickLine={false} className="text-xs" unit="K" />
+              <ReTooltip
+                cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
+                contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)", fontSize: 12 }}
+                formatter={(value) => [`${value}K`, ""]}
+              />
+              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
+              <Area type="monotone" dataKey="Approved" stackId="1" stroke="#10b981" strokeWidth={2.5} fill="url(#adminGradApproved)" />
+              <Area type="monotone" dataKey="Pending" stackId="1" stroke="#f59e0b" strokeWidth={2} fill="url(#adminGradPending)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
 
       {/* ═══════ Year-over-Year ═══════ */}
       <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
@@ -609,8 +504,8 @@ export default function AdminTargetReportPage() {
           ] as const).map((item) => (
             <div key={item.label} className="rounded-xl border border-border/50 p-3 text-center">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
-              <p className="mt-1 text-lg font-bold tabular-nums">{"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr, currencyCode) : item.curr.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">was {"isCurrency" in item && item.isCurrency ? formatCurrency(item.prev, currencyCode) : item.prev.toLocaleString()}</p>
+              <p className="mt-1 text-lg font-bold tabular-nums">{"isCurrency" in item && item.isCurrency ? formatCurrency(item.curr) : item.curr.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">was {"isCurrency" in item && item.isCurrency ? formatCurrency(item.prev) : item.prev.toLocaleString()}</p>
               <GrowthIndicator value={item.growth} />
             </div>
           ))}
@@ -646,48 +541,6 @@ export default function AdminTargetReportPage() {
         </div>
       </section>
 
-      {/* ═══════ Risk & Performance Alerts ═══════ */}
-      <section>
-        <div className="mb-3 flex items-center gap-3">
-          <h2 className="text-base font-semibold tracking-tight">Risk & Performance Alerts</h2>
-          <Badge variant="outline" className="text-xs">{allProfilesList.length} profiles analysed</Badge>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border bg-red-50 p-4 dark:bg-red-900/10">
-            <div className="flex items-center justify-between">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-900/30"><AlertTriangle className="h-4 w-4" /></div>
-              <span className="text-3xl font-bold tabular-nums text-red-600">{riskAnalytics.high}</span>
-            </div>
-            <p className="mt-3 text-sm font-semibold text-red-700 dark:text-red-400">High Risk</p>
-            <p className="text-xs text-muted-foreground">{riskAnalytics.medium} medium · {riskAnalytics.low} low risk</p>
-          </div>
-          <div className="rounded-2xl border bg-amber-50 p-4 dark:bg-amber-900/10">
-            <div className="flex items-center justify-between">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30"><Clock className="h-4 w-4" /></div>
-              <span className="text-3xl font-bold tabular-nums text-amber-600">{riskAnalytics.behind}</span>
-            </div>
-            <p className="mt-3 text-sm font-semibold text-amber-700 dark:text-amber-400">Behind Target</p>
-            <p className="text-xs text-muted-foreground">Profiles below 40% progress</p>
-          </div>
-          <div className="rounded-2xl border bg-emerald-50 p-4 dark:bg-emerald-900/10">
-            <div className="flex items-center justify-between">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30"><TrendingUp className="h-4 w-4" /></div>
-              <span className="text-3xl font-bold tabular-nums text-emerald-600">{riskAnalytics.overperformers}</span>
-            </div>
-            <p className="mt-3 text-sm font-semibold text-emerald-700 dark:text-emerald-400">Overperformers</p>
-            <p className="text-xs text-muted-foreground">Profiles at 80%+ progress</p>
-          </div>
-          <div className="rounded-2xl border bg-violet-50 p-4 dark:bg-violet-900/10">
-            <div className="flex items-center justify-between">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-900/30"><Award className="h-4 w-4" /></div>
-              <span className="text-xs font-bold text-violet-600 tabular-nums truncate max-w-[120px]">{riskAnalytics.topAgent?.assigneeName ?? "—"}</span>
-            </div>
-            <p className="mt-3 text-sm font-semibold text-violet-700 dark:text-violet-400">Revenue Leader</p>
-            <p className="text-xs text-muted-foreground">{riskAnalytics.topAgent ? formatCurrency(riskAnalytics.topAgent.financeAchieved, currencyCode) : "No data"}</p>
-          </div>
-        </div>
-      </section>
-
       {/* ═══════ Supervisor Table ═══════ */}
       {(roleFilter === "all" || roleFilter === "supervisors") && filteredProfiles.supervisors.length > 0 && (
         <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
@@ -705,9 +558,9 @@ export default function AdminTargetReportPage() {
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">#</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">Supervisor</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">Region</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-blue-600">Employer</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-purple-600">Employee</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-600">Finance</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">Employer</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">Employee</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">Finance</TableHead>
                   <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">Overall</TableHead>
                   <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">Risk</TableHead>
                 </TableRow>
@@ -719,17 +572,13 @@ export default function AdminTargetReportPage() {
                     <TableCell>
                       <p className="font-medium">{row.assigneeName}</p>
                       <p className="text-xs text-muted-foreground">{row.assigneeEmail}</p>
-                      {row.incentiveTier && <p className="text-[10px] text-violet-500 font-medium">{row.incentiveTier}</p>}
                     </TableCell>
                     <TableCell className="text-sm">{row.region || "—"}</TableCell>
-                    <TableCell className="text-center tabular-nums text-blue-600 font-medium">{row.employerAchieved}<span className="text-muted-foreground font-normal">/{row.employerTarget}</span></TableCell>
-                    <TableCell className="text-center tabular-nums text-purple-600 font-medium">{row.employeeAchieved}<span className="text-muted-foreground font-normal">/{row.employeeTarget}</span></TableCell>
-                    <TableCell className="text-center tabular-nums text-emerald-600 font-medium">{formatCurrency(row.financeAchieved, currencyCode)}</TableCell>
-                    <TableCell className="text-center min-w-[80px]">
+                    <TableCell className="text-center tabular-nums">{row.employerAchieved}/{row.employerTarget}</TableCell>
+                    <TableCell className="text-center tabular-nums">{row.employeeAchieved}/{row.employeeTarget}</TableCell>
+                    <TableCell className="text-center tabular-nums">{formatCurrency(row.financeAchieved)}</TableCell>
+                    <TableCell className="text-center">
                       <span className={`text-sm font-bold tabular-nums ${row.overallProgress >= 75 ? "text-emerald-600" : row.overallProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>{row.overallProgress}%</span>
-                      <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
-                        <div className={`h-full rounded-full ${row.overallProgress >= 75 ? "bg-emerald-500" : row.overallProgress >= 40 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.min(100, row.overallProgress)}%` }} />
-                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[10px]">{row.riskScore}</Badge>
@@ -758,9 +607,9 @@ export default function AdminTargetReportPage() {
                 <TableRow>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">#</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em]">Agent</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-blue-600">Employer</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-purple-600">Employee</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-600">Finance</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">Employer</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">Employee</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">Finance</TableHead>
                   <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">Overall</TableHead>
                   <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em]">Risk</TableHead>
                 </TableRow>
@@ -772,16 +621,12 @@ export default function AdminTargetReportPage() {
                     <TableCell>
                       <p className="font-medium">{row.assigneeName}</p>
                       <p className="text-xs text-muted-foreground">{row.assigneeEmail}</p>
-                      {row.incentiveTier && <p className="text-[10px] text-violet-500 font-medium">{row.incentiveTier}</p>}
                     </TableCell>
-                    <TableCell className="text-center tabular-nums text-blue-600 font-medium">{row.employerAchieved}<span className="text-muted-foreground font-normal">/{row.employerTarget}</span></TableCell>
-                    <TableCell className="text-center tabular-nums text-purple-600 font-medium">{row.employeeAchieved}<span className="text-muted-foreground font-normal">/{row.employeeTarget}</span></TableCell>
-                    <TableCell className="text-center tabular-nums text-emerald-600 font-medium">{formatCurrency(row.financeAchieved, currencyCode)}</TableCell>
-                    <TableCell className="text-center min-w-[80px]">
+                    <TableCell className="text-center tabular-nums">{row.employerAchieved}/{row.employerTarget}</TableCell>
+                    <TableCell className="text-center tabular-nums">{row.employeeAchieved}/{row.employeeTarget}</TableCell>
+                    <TableCell className="text-center tabular-nums">{formatCurrency(row.financeAchieved)}</TableCell>
+                    <TableCell className="text-center">
                       <span className={`text-sm font-bold tabular-nums ${row.overallProgress >= 75 ? "text-emerald-600" : row.overallProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>{row.overallProgress}%</span>
-                      <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
-                        <div className={`h-full rounded-full ${row.overallProgress >= 75 ? "bg-emerald-500" : row.overallProgress >= 40 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.min(100, row.overallProgress)}%` }} />
-                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant={row.riskScore === "high" ? "destructive" : row.riskScore === "medium" ? "secondary" : "outline"} className="text-[10px]">{row.riskScore}</Badge>

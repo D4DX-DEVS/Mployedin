@@ -112,18 +112,6 @@ export default function AgentTargetReportPage() {
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ReportData | null>(null);
-  const [currencyCode, setCurrencyCode] = useState("AED");
-
-  useEffect(() => {
-    fetch("/api/agent/profile")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((payload) => {
-        if (payload?.profile?.currencyCode) {
-          setCurrencyCode(payload.profile.currencyCode);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -173,30 +161,23 @@ export default function AgentTargetReportPage() {
     return months;
   }, [data, quarterFilter]);
 
-  // Chart data — 3 separate series (never mixed on same axis)
-  const employerChartData = useMemo(() => filteredTrend.map((m) => ({
-    name: MONTHS_SHORT[m.month - 1],
-    "Target": m.employerTarget,
-    "Achieved": m.employerAchieved,
-  })), [filteredTrend]);
-
-  const employeeChartData = useMemo(() => filteredTrend.map((m) => ({
-    name: MONTHS_SHORT[m.month - 1],
-    "Target": m.employeeTarget,
-    "Achieved": m.employeeAchieved,
-  })), [filteredTrend]);
-
-  const financeChartData = useMemo(() => filteredTrend.map((m) => ({
-    name: MONTHS_SHORT[m.month - 1],
-    "Target (K)": Math.round(m.financeTarget / 1000),
-    "Achieved (K)": Math.round(m.financeAchieved / 1000),
-  })), [filteredTrend]);
+  // Chart data
+  const trendChartData = useMemo(() => {
+    return filteredTrend.map((m) => ({
+      name: MONTHS_SHORT[m.month - 1],
+      ...(categoryFilter === "all" || categoryFilter === "employer" ? { "Employer Target": m.employerTarget, "Employer Achieved": m.employerAchieved } : {}),
+      ...(categoryFilter === "all" || categoryFilter === "employee" ? { "Employee Target": m.employeeTarget, "Employee Achieved": m.employeeAchieved } : {}),
+      ...(categoryFilter === "all" || categoryFilter === "finance" ? { "Finance Target (K)": Math.round(m.financeTarget / 1000), "Finance Achieved (K)": Math.round(m.financeAchieved / 1000) } : {}),
+      "Overall %": m.overallProgress,
+    }));
+  }, [filteredTrend, categoryFilter]);
 
   const businessVolumeChartData = useMemo(() => {
     return filteredBusinessVolume.map((bv) => ({
       name: MONTHS_SHORT[bv.month - 1],
-      "Collected (K)": Math.round(bv.approved / 1000),
-      "Total (K)": Math.round(bv.total / 1000),
+      Approved: Math.round(bv.approved / 1000),
+      Total: Math.round(bv.total / 1000),
+      Deals: bv.count,
     }));
   }, [filteredBusinessVolume]);
 
@@ -264,7 +245,7 @@ export default function AgentTargetReportPage() {
   }
 
   const profile = data.ownProfile;
-  const currency = currencyCode;
+  const currency = profile.currency ?? "AED";
 
   return (
     <div className="page-container agent-legacy-surface space-y-6 print:space-y-4">
@@ -293,56 +274,42 @@ export default function AgentTargetReportPage() {
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30"><Building2 className="h-4 w-4" /></div>
-            {data.yearOverYear && <GrowthIndicator value={data.yearOverYear.growth.employerAchieved} />}
-          </div>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employer</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-blue-600">{profile.employerAchieved} <span className="text-base font-normal text-muted-foreground">/ {profile.employerTarget}</span></p>
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>{profile.employerTarget > 0 ? Math.round((profile.employerAchieved / profile.employerTarget) * 100) : 0}% complete</span>
-            <span>{Math.max(0, profile.employerTarget - profile.employerAchieved)} pending</span>
-          </div>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-900/20">
-            <div className="h-full rounded-full bg-blue-500" style={{ width: `${profile.employerTarget > 0 ? Math.min(100, Math.round((profile.employerAchieved / profile.employerTarget) * 100)) : 0}%` }} />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employer</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">{profile.employerAchieved} <span className="text-base text-muted-foreground">/ {profile.employerTarget}</span></p>
+              {data.yearOverYear && <GrowthIndicator value={data.yearOverYear.growth.employerAchieved} />}
+            </div>
+            <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
           </div>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-900/30"><Users className="h-4 w-4" /></div>
-            {data.yearOverYear && <GrowthIndicator value={data.yearOverYear.growth.employeeAchieved} />}
-          </div>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Employee</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-purple-600">{profile.employeeAchieved} <span className="text-base font-normal text-muted-foreground">/ {profile.employeeTarget}</span></p>
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>{profile.employeeTarget > 0 ? Math.round((profile.employeeAchieved / profile.employeeTarget) * 100) : 0}% complete</span>
-            <span>{Math.max(0, profile.employeeTarget - profile.employeeAchieved)} pending</span>
-          </div>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-purple-100 dark:bg-purple-900/20">
-            <div className="h-full rounded-full bg-purple-500" style={{ width: `${profile.employeeTarget > 0 ? Math.min(100, Math.round((profile.employeeAchieved / profile.employeeTarget) * 100)) : 0}%` }} />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Employee</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">{profile.employeeAchieved} <span className="text-base text-muted-foreground">/ {profile.employeeTarget}</span></p>
+              {data.yearOverYear && <GrowthIndicator value={data.yearOverYear.growth.employeeAchieved} />}
+            </div>
+            <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
           </div>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30"><CircleDollarSign className="h-4 w-4" /></div>
-            {data.yearOverYear && <GrowthIndicator value={data.yearOverYear.growth.financeAchieved} />}
-          </div>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Business Volume</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-600">{formatCurrency(data.totalBusinessVolume, currency)}</p>
-          <p className="mt-2 text-xs text-muted-foreground">Total collected revenue</p>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-900/20">
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${profile.financeTarget > 0 ? Math.min(100, Math.round((profile.financeAchieved / profile.financeTarget) * 100)) : 0}%` }} />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Business Volume</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">{formatCurrency(data.totalBusinessVolume, currency)}</p>
+              <p className="text-xs text-muted-foreground">Total revenue</p>
+            </div>
+            <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
           </div>
         </div>
         <div className="workspace-glass-panel rounded-2xl p-4">
           <div className="flex items-start justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-900/30"><Activity className="h-4 w-4" /></div>
-            {data.yearOverYear && <GrowthIndicator value={data.yearOverYear.growth.overallProgress} />}
-          </div>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Overall</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-violet-600">{profile.overallProgress}%</p>
-          <p className="mt-2 text-xs text-muted-foreground">Tier: {profile.incentiveTier} · Risk: {profile.riskScore}</p>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-violet-100 dark:bg-violet-900/20">
-            <div className="h-full rounded-full bg-violet-500" style={{ width: `${Math.min(100, profile.overallProgress)}%` }} />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overall</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">{profile.overallProgress}%</p>
+              {data.yearOverYear && <GrowthIndicator value={data.yearOverYear.growth.overallProgress} />}
+            </div>
+            <div className="workspace-tone-violet rounded-2xl p-2.5"><Activity className="h-5 w-5" /></div>
           </div>
         </div>
       </section>
@@ -464,137 +431,87 @@ export default function AgentTargetReportPage() {
         </section>
       )}
 
-      {/* ═══════ Section header ═══════ */}
+      {/* ═══════ Monthly Trend ═══════ */}
       {data.monthlyTrend.length > 0 && (
-        <div className="flex items-center gap-3">
-          <h2 className="text-base font-semibold tracking-tight">Performance Analytics</h2>
-          <Badge variant="outline" className="text-xs">{quarterFilter !== "all" ? `Q${quarterFilter}` : `${yearFilter} — 12 months`}</Badge>
-        </div>
-      )}
-
-      {/* ═══════ Chart A + B (2-up) ═══════ */}
-      {data.monthlyTrend.length > 0 && (categoryFilter === "all" || categoryFilter === "employer" || categoryFilter === "employee") && (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {(categoryFilter === "all" || categoryFilter === "employer") && (
-            <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30"><Building2 className="h-4 w-4" /></div>
-                <div>
-                  <h3 className="text-sm font-semibold">Employer Target vs Achieved</h3>
-                  <p className="text-xs text-muted-foreground">Count — employer accounts</p>
-                </div>
-              </div>
-              <div className="h-52 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={employerChartData} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                    <ReTooltip contentStyle={{ borderRadius: "12px", borderColor: "rgba(148,163,184,0.18)", fontSize: 12 }} />
-                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Line type="monotone" dataKey="Target" stroke="#93c5fd" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Achieved" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: "#3b82f6" }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-          )}
-          {(categoryFilter === "all" || categoryFilter === "employee") && (
-            <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 text-purple-600 dark:bg-purple-900/30"><Users className="h-4 w-4" /></div>
-                <div>
-                  <h3 className="text-sm font-semibold">Employee Target vs Achieved</h3>
-                  <p className="text-xs text-muted-foreground">Count — placements / employees</p>
-                </div>
-              </div>
-              <div className="h-52 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={employeeChartData} margin={{ top: 4, right: 12, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                    <ReTooltip contentStyle={{ borderRadius: "12px", borderColor: "rgba(148,163,184,0.18)", fontSize: 12 }} />
-                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                    <Line type="monotone" dataKey="Target" stroke="#c4b5fd" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Achieved" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-          )}
-        </div>
-      )}
-
-      {/* ═══════ Chart C — Finance (full-width, AED only) ═══════ */}
-      {data.monthlyTrend.length > 0 && (categoryFilter === "all" || categoryFilter === "finance") && (
         <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30"><CircleDollarSign className="h-4 w-4" /></div>
-              <div>
-                <h3 className="text-sm font-semibold">Finance Revenue — {yearFilter}</h3>
-                <p className="text-xs text-muted-foreground">AED values (thousands) — isolated from count metrics</p>
-              </div>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Monthly Performance Timeline</h2>
+              <p className="text-sm text-muted-foreground">
+                Target vs achieved{quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}{categoryFilter !== "all" ? ` — ${categoryFilter} only` : ""}
+              </p>
             </div>
-            <Badge variant="secondary" className="text-xs text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20">AED only</Badge>
+            <Badge variant="outline" className="shrink-0">{quarterFilter !== "all" ? `Q${quarterFilter}` : "12 months"}</Badge>
           </div>
-          <div className="h-60 w-full">
+          <div className="h-[22rem] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={financeChartData} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="agentGradFinTarget" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6ee7b7" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#6ee7b7" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id="agentGradFinAchieved" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
+              <LineChart data={trendChartData} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} unit="K" />
-                <ReTooltip contentStyle={{ borderRadius: "12px", borderColor: "rgba(148,163,184,0.18)", fontSize: 12 }} formatter={(value: unknown) => [`${value ?? 0}K`, ""]} />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                <Area type="monotone" dataKey="Target (K)" stroke="#6ee7b7" strokeDasharray="5 5" strokeWidth={2} fill="url(#agentGradFinTarget)" />
-                <Area type="monotone" dataKey="Achieved (K)" stroke="#10b981" strokeWidth={2.5} fill="url(#agentGradFinAchieved)" />
-              </AreaChart>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} className="text-xs" />
+                <YAxis axisLine={false} tickLine={false} className="text-xs" />
+                <ReTooltip
+                  cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
+                  contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)", fontSize: 12 }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
+                {(categoryFilter === "all" || categoryFilter === "employer") && (
+                  <>
+                    <Line type="monotone" dataKey="Employer Target" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="Employer Achieved" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: "#3b82f6" }} activeDot={{ r: 5 }} />
+                  </>
+                )}
+                {(categoryFilter === "all" || categoryFilter === "employee") && (
+                  <>
+                    <Line type="monotone" dataKey="Employee Target" stroke="#c4b5fd" strokeDasharray="5 5" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="Employee Achieved" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} />
+                  </>
+                )}
+                {(categoryFilter === "all" || categoryFilter === "finance") && (
+                  <>
+                    <Line type="monotone" dataKey="Finance Target (K)" stroke="#fde68a" strokeDasharray="5 5" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="Finance Achieved (K)" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
+                  </>
+                )}
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </section>
       )}
 
-      {/* ═══════ Revenue Intelligence ═══════ */}
-      {data.businessVolume.length > 0 && data.totalBusinessVolume > 0 && (categoryFilter === "all" || categoryFilter === "finance") && (
+      {/* ═══════ Business Volume ═══════ */}
+      {data.businessVolume.length > 0 && data.totalBusinessVolume > 0 && (
         <section className="rounded-3xl border bg-card p-5 shadow-sm print:break-inside-avoid">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-semibold">Revenue Intelligence — {yearFilter}</h3>
-              <p className="text-xs text-muted-foreground">Monthly collected vs total breakdown (AED thousands)</p>
+              <h2 className="text-lg font-semibold tracking-tight">Business Volume — {yearFilter}</h2>
+              <p className="text-sm text-muted-foreground">Monthly revenue & deals (thousands){quarterFilter !== "all" ? ` — Q${quarterFilter}` : ""}</p>
             </div>
-            <CircleDollarSign className="h-4 w-4 text-emerald-500" />
+            <CircleDollarSign className="h-5 w-5 text-primary" />
           </div>
-          <div className="h-56 w-full">
+          <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={businessVolumeChartData} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
+              <AreaChart data={businessVolumeChartData} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="agentGradCollected" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="agentGradApproved" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="agentGradTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#94a3b8" stopOpacity={0.02} />
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} unit="K" />
-                <ReTooltip contentStyle={{ borderRadius: "12px", borderColor: "rgba(148,163,184,0.18)", fontSize: 12 }} formatter={(value: unknown) => [`AED ${value ?? 0}K`, ""]} />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                <Area type="monotone" dataKey="Total (K)" stroke="#94a3b8" strokeDasharray="4 4" strokeWidth={1.5} fill="url(#agentGradTotal)" />
-                <Area type="monotone" dataKey="Collected (K)" stroke="#10b981" strokeWidth={2.5} fill="url(#agentGradCollected)" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} className="text-xs" />
+                <YAxis axisLine={false} tickLine={false} className="text-xs" unit="K" />
+                <ReTooltip
+                  cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
+                  contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)", fontSize: 12 }}
+                  formatter={(value) => [`${value}K`, ""]}
+                />
+                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
+                <Area type="monotone" dataKey="Approved" stroke="#10b981" strokeWidth={2.5} fill="url(#agentGradApproved)" />
+                <Area type="monotone" dataKey="Total" stroke="#3b82f6" strokeWidth={2} fill="url(#agentGradTotal)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
