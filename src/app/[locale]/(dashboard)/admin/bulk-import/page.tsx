@@ -177,7 +177,7 @@ export default function AdminBulkImportPage() {
   const errorCount = parsedRows.filter((r) => r.status === "error").length;
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex items-center gap-3">

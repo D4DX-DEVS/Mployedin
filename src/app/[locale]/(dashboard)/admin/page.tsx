@@ -650,15 +650,7 @@ export default async function AdminDashboardPage({ params }: { params: Promise<{
       iconClassName: "bg-violet-50 text-violet-600",
       badgeClassName: "bg-violet-100 text-violet-900 ring-1 ring-violet-200 dark:bg-violet-500/15 dark:text-violet-200 dark:ring-violet-500/20",
     },
-    {
-      label: "Task Board",
-      href: `/${locale}/admin/tasks`,
-      desc: "Keep launches, fixes, and admin follow-through visible to the team.",
-      badge: "Execution lane",
-      icon: CheckCircle2,
-      iconClassName: "bg-emerald-50 text-emerald-600",
-      badgeClassName: "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-500/20",
-    },
+
   ];
 
   const recentActivity: RecentActivityItem[] = [

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Bell, Mail, Clock, Users, Send, BarChart3, Shield, Loader2,
   CheckCircle2, AlertTriangle, Save, PowerOff, UserX, Pause, Zap,
-  Activity, TrendingUp, ChevronLeft, ChevronRight, RefreshCw,
+  Activity, TrendingUp, ChevronLeft, ChevronRight, RefreshCw, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -139,43 +139,54 @@ export default function AdminNotificationsPage() {
   ];
 
   return (
-    <div className="page-container max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-            <Bell className="w-5 h-5 text-primary" />
-            Notification Control Center
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">Full control over the platform email automation system</p>
+    <div className="page-container space-y-4">
+      {/* ── Hero Section ── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Admin workspace
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Notification Control Center</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Full control over the platform email automation system — cron jobs, delivery logs, and user overrides.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {config?.globalDefaults.maintenanceMode && (
+              <Badge variant="destructive" className="gap-1"><PowerOff className="w-3 h-3" /> Maintenance</Badge>
+            )}
+            {saved && (
+              <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Saved
+              </Badge>
+            )}
+            <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading} className="gap-1.5 rounded-xl">
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {config?.globalDefaults.maintenanceMode && (
-            <Badge variant="destructive" className="gap-1"><PowerOff className="w-3 h-3" /> Maintenance</Badge>
-          )}
-          {saved && (
-            <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Saved
-            </Badge>
-          )}
-          <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading} className="gap-1.5">
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
-          </Button>
-        </div>
-      </div>
+      </section>
 
-      <div className="flex gap-1 border-b border-border/50 overflow-x-auto">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-              tab === t.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <t.icon className="w-3.5 h-3.5" /> {t.label}
-          </button>
-        ))}
-      </div>
+      {/* ── Tab Navigation ── */}
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <div className="flex gap-1 overflow-x-auto px-4 py-2">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                tab === t.key
+                  ? "bg-sky-600 text-white shadow-sm"
+                  : "text-muted-foreground hover:bg-card hover:text-foreground"
+              }`}
+            >
+              <t.icon className="w-3.5 h-3.5" /> {t.label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       {tab === "overview" && <OverviewTab stats={stats} loading={loading} />}
       {tab === "cron-jobs" && <CronJobsTab config={config} saving={saving} onToggleCron={toggleCron} onToggleMaintenance={toggleMaintenance} />}

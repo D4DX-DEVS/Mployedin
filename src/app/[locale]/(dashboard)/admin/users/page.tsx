@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2, Check } from "lucide-react";
+import { Search, UserCheck, UserX, Shield, ChevronDown, Inbox, Plus, Settings2, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -213,13 +213,24 @@ export default function AdminUsersPage() {
 
   return (
     <div className="page-container space-y-4">
-      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
-        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">User Management</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">{total.toLocaleString()} total users</p>
+      {/* ── Hero Section ── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Admin workspace
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">User Management</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Manage platform users, roles, permissions, and account status. {total.toLocaleString()} total users.
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+        </div>
+      </section>
+
+      <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/80 px-5 py-4">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -269,7 +280,6 @@ export default function AdminUsersPage() {
             <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 rounded-lg">
               <Plus className="h-3.5 w-3.5" /> Create User
             </Button>
-          </div>
         </div>
 
         {/* Bulk Actions Bar */}

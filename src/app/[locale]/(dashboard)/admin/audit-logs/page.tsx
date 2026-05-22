@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, Shield, Clock } from "lucide-react";
+import { Search, Shield, Clock, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
@@ -83,10 +83,20 @@ export default function AuditLogsPage() {
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
   return (
-    <div className="page-container">
+    <div className="page-container space-y-4">
+      {/* ── Hero Section ── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+          <Sparkles className="h-3.5 w-3.5" />
+          Admin workspace
+        </div>
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Audit Logs</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+          {total.toLocaleString()} log entries · read-only. Track all platform activity and changes.
+        </p>
+      </section>
+
       <TableToolbar
-        title="Audit Logs"
-        description={`${total.toLocaleString()} log entries · read-only`}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}

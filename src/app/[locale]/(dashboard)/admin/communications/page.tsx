@@ -12,6 +12,7 @@ import {
   Plus,
   Radio,
   Send,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -279,34 +280,45 @@ export default function AdminCommunicationsPage() {
 
   return (
     <div className="page-container space-y-4">
+      {/* ── Hero Section ── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Admin workspace
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Communications Center</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Broadcast announcements, manage templates, and review delivery history.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Tab Navigation ── */}
       <section className="workspace-panel-surface overflow-hidden rounded-[20px]">
-        <div className="flex flex-col gap-3 border-b border-border/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Communications Center</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">Broadcast announcements, manage templates, and review delivery history.</p>
-          </div>
-          <div className="inline-flex flex-wrap gap-1.5 rounded-xl border border-border/60 bg-secondary/50 p-1">
-            {TABS.map((tabOption) => {
-              const active = tab === tabOption.key;
-              return (
-                <button
-                  key={tabOption.key}
-                  type="button"
-                  onClick={() => setTab(tabOption.key)}
-                  aria-label={`Switch to ${tabOption.label} tab`}
-                  aria-pressed={active}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                    active
-                      ? "bg-sky-600 text-white shadow-sm"
-                      : "text-muted-foreground hover:bg-card hover:text-foreground"
-                  }`}
-                >
-                  <tabOption.icon className="h-3.5 w-3.5" />
-                  {tabOption.label}
-                </button>
-              );
-            })}
-          </div>
+        <div className="flex gap-1 overflow-x-auto px-4 py-2">
+          {TABS.map((tabOption) => {
+            const active = tab === tabOption.key;
+            return (
+              <button
+                key={tabOption.key}
+                type="button"
+                onClick={() => setTab(tabOption.key)}
+                aria-label={`Switch to ${tabOption.label} tab`}
+                aria-pressed={active}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition ${
+                  active
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-card hover:text-foreground"
+                }`}
+              >
+                <tabOption.icon className="h-3.5 w-3.5" />
+                {tabOption.label}
+              </button>
+            );
+          })}
         </div>
       </section>
 

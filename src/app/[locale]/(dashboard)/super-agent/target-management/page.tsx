@@ -462,7 +462,7 @@ export default function SuperAgentTargetProfilesPage() {
 
   return (
     <div className="page-container space-y-4">
-      <section className="workspace-panel-surface rounded-2xl px-4 py-3 sm:px-5">
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
@@ -470,7 +470,7 @@ export default function SuperAgentTargetProfilesPage() {
               {t("eyebrow")}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{t("title")}</h1>
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("title")}</h1>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -484,7 +484,7 @@ export default function SuperAgentTargetProfilesPage() {
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{t("superAgentDescription")}</p>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("superAgentDescription")}</p>
           </div>
           <Badge variant="outline" className="rounded-full px-3 py-1.5">
             <CircleDollarSign className="mr-1.5 h-3.5 w-3.5" /> {currencyLabel}

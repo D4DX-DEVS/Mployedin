@@ -621,16 +621,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 group: "Configuration",
                 groupAr: "التكوين",
               },
-              {
-                title: "Task Board",
-                titleAr: "لوحة المهام",
-                href: p("/admin/tasks"),
-                icon: "ClipboardList",
-                description: "Internal task management",
-                descriptionAr: "إدارة المهام الداخلية",
-                group: "Automation",
-                groupAr: "الأتمتة",
-              },
+
               {
                 title: "Workflow Templates",
                 titleAr: "قوالب سير العمل",

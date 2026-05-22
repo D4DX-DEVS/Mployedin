@@ -152,7 +152,16 @@ export default function AdminWorkflowTemplatesPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-4">
-        <PageHeader title="Workflow Templates" description="Manage system-wide hiring workflow presets" />
+        <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            <Sparkles className="h-3.5 w-3.5" />
+            Admin workspace
+          </div>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Workflow Templates</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Manage system-wide hiring workflow presets.
+          </p>
+        </section>
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-background/70" />
         ))}
@@ -162,15 +171,24 @@ export default function AdminWorkflowTemplatesPage() {
 
   return (
     <div className="page-container space-y-6">
-      <PageHeader
-        title="Workflow Templates"
-        description="Create and manage system-wide hiring workflow presets that all employers can use"
-        actions={
+      {/* ── Hero Section ── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Admin workspace
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Workflow Templates</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Create and manage system-wide hiring workflow presets that all employers can use.
+            </p>
+          </div>
           <Button onClick={openCreate} className="gap-2 rounded-xl bg-sky-600 text-white hover:bg-sky-700" size="sm">
             <Plus className="h-4 w-4" /> New Template
           </Button>
-        }
-      />
+        </div>
+      </section>
 
       {/* ─── Create / Edit Form ─── */}
       {showForm && (

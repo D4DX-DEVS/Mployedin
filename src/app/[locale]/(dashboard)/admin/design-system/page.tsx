@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/shared/PageHeader";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -11,11 +12,18 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function DesignSystemPage() {
   return (
-    <div className="page-container">
-      <PageHeader
-        title="Design System"
-        description="MPLOYEDIN component library and design tokens showcase"
-      />
+    <div className="page-container space-y-4">
+      {/* ── Hero Section ── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+          <Sparkles className="h-3.5 w-3.5" />
+          Admin workspace
+        </div>
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Design System</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+          MPLOYEDIN component library and design tokens showcase.
+        </p>
+      </section>
 
       {/* Colors */}
       <section className="card-base p-6 space-y-4">

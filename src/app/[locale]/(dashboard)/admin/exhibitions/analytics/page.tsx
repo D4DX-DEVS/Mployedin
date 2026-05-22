@@ -462,23 +462,23 @@ export default function AdminExhibitionAnalyticsPage() {
             </TableHeader>
             <TableBody>
               {topAgents.map((agent) => (
-                <TableRow key={agent.agentId}>
+                <TableRow key={agent.agentId} className="h-16">
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
                         {agent.name.slice(0, 1).toUpperCase()}
                       </div>
-                      <div>
-                        <p className="font-medium">{agent.name}</p>
-                        <p className="text-xs text-muted-foreground">{agent.approved} approved</p>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{agent.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{agent.approved} approved</p>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-center font-medium">{agent.total}</TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="whitespace-nowrap text-center font-medium">{agent.total}</TableCell>
+                  <TableCell className="whitespace-nowrap text-center">
                     <Badge variant="outline">{agent.approvalRate}%</Badge>
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="whitespace-nowrap text-right font-medium">
                     {formatCurrency(agent.totalBudget, currencyCode)}
                   </TableCell>
                 </TableRow>

@@ -282,26 +282,35 @@ export default function AdminCommissionsPage() {
   });
 
   return (
-    <div className="page-container space-y-6">
+    <div className="page-container space-y-4">
       {ConfirmDialogNode}
+
+      {/* ── Hero Section ── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Finance workspace
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Commissions</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Track agent commission records, clear pending approvals, and keep payout operations inside the same admin workspace.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
+              <ArrowRight className="h-3.5 w-3.5 text-primary" />
+              {total.toLocaleString()} commission records across {totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <TableToolbar
-        title="Commissions"
-        description="Track agent commission records, clear pending approvals, and keep payout operations inside the same admin workspace."
         search={searchTerm}
         onSearchChange={(value) => { setSearchTerm(value); resetPage(); }}
         searchPlaceholder="Search agent…"
-        left={(
-          <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            Finance workspace
-          </div>
-        )}
-        right={(
-          <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-            <ArrowRight className="h-3.5 w-3.5 text-primary" />
-            {total.toLocaleString()} commission records across {totalPages.toLocaleString()} page{totalPages === 1 ? "" : "s"}
-          </div>
-        )}
         actions={can("commissions", "create") ? (
           <Button
             onClick={() => setShowAdd(true)}

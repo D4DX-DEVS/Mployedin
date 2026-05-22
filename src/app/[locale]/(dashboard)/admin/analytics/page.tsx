@@ -233,6 +233,18 @@ export default function AdminAnalyticsPage() {
 
   return (
     <div className="page-container space-y-4">
+      {/* ── Hero Section ── */}
+      <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
+        <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+          <Sparkles className="h-3.5 w-3.5" />
+          Admin workspace
+        </div>
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">Analytics</h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+          AI-powered analytics — launch one-click reports or compose custom queries for deep platform insights.
+        </p>
+      </section>
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6" aria-label="Analytics templates">
           <div>
