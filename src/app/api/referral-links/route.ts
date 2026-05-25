@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { validateBody } from "@/lib/validators";
 import { referralLinkCreateSchema } from "@/lib/validators/referral-links";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 interface AuthCtx {
   userId: string;
@@ -73,9 +74,10 @@ async function handleGet(req: NextRequest, ctx: AuthCtx) {
 
   // Text search
   if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { code: { $regex: search, $options: "i" } },
-      { label: { $regex: search, $options: "i" } },
+      { code: { $regex: safe, $options: "i" } },
+      { label: { $regex: safe, $options: "i" } },
     ];
   }
 

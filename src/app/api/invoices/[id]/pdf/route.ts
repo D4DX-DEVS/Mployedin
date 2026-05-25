@@ -12,9 +12,12 @@ import { generateInvoicePdf } from "@/lib/invoices/generatePdf";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
+import User from "@/models/User";
+import SuperAgent from "@/models/SuperAgent";
+import Agent from "@/models/Agent";
 import "@/models/Job";
 import "@/models/Employer";
-import "@/models/Agent";
+import "@/models/City";
 
 async function handler(
   req: NextRequest,
@@ -43,7 +46,39 @@ async function handler(
     { $set: { downloadedAt: new Date() } },
   ).catch(() => {});
 
-  const pdfBuffer = generateInvoicePdf(invoice as Parameters<typeof generateInvoicePdf>[0]);
+  // Resolve "Issued By" label for the PDF
+  let issuedByLabel: string | undefined;
+  if (invoice.createdBy) {
+    const creator = await User.findById(invoice.createdBy).select("name role").lean();
+    if (creator?.name && creator?.role) {
+      if (creator.role === "admin") {
+        issuedByLabel = `${creator.name} — Mployedin Admin`;
+      } else if (creator.role === "super_agent") {
+        const saProfile = await SuperAgent.findOne({ userId: creator._id })
+          .select("assignedCityIds")
+          .populate("assignedCityIds", "name")
+          .lean();
+        const cityNames = ((saProfile?.assignedCityIds ?? []) as unknown as Array<{ name?: string }>)
+          .map(c => c.name).filter(Boolean).slice(0, 3);
+        issuedByLabel = cityNames.length > 0
+          ? `${creator.name} — Super Agent, ${cityNames.join(", ")} region`
+          : `${creator.name} — Super Agent`;
+      } else if (creator.role === "agent") {
+        const agentProfile = await Agent.findOne({ userId: creator._id })
+          .select("assignedCityIds")
+          .populate("assignedCityIds", "name")
+          .lean();
+        const cityNames = ((agentProfile?.assignedCityIds ?? []) as unknown as Array<{ name?: string }>)
+          .map(c => c.name).filter(Boolean).slice(0, 3);
+        issuedByLabel = cityNames.length > 0
+          ? `${creator.name} — Agent, ${cityNames.join(", ")} region`
+          : `${creator.name} — Agent`;
+      }
+    }
+  }
+
+  const pdfInvoice = { ...invoice, issuedByLabel } as Parameters<typeof generateInvoicePdf>[0];
+  const pdfBuffer = generateInvoicePdf(pdfInvoice);
 
   await logActivity({
     ...actorFromCtx(ctx),

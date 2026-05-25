@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Briefcase,
   Building2,
@@ -90,7 +91,7 @@ export default function LandingPage() {
   const router = useRouter();
   const locale = pathname.split("/")[1] || "en";
   const isAr = locale === "ar";
-  const t = (en: string, ar: string) => (isAr ? ar : en);
+  const t = useTranslations("landing");
 
   const [data, setData] = useState<LandingData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -133,33 +134,33 @@ export default function LandingPage() {
   const activeBanner = banners[bannerIndex] ?? null;
 
   const quickSearches = [
-    t("Engineering jobs", "وظائف الهندسة"),
-    t("Hospitality roles", "وظائف الضيافة"),
-    t("Sales jobs", "وظائف المبيعات"),
-    t("Remote jobs", "وظائف عن بعد"),
-    t("Supply chain", "سلسلة الإمداد"),
+    t("quickSearchEngineering"),
+    t("quickSearchHospitality"),
+    t("quickSearchSales"),
+    t("quickSearchRemote"),
+    t("quickSearchSupplyChain"),
   ];
 
   const functionalAreas = [
-    t("Hardware", "الأجهزة والمعدات"),
-    t("Sales & Business Development", "المبيعات وتطوير الأعمال"),
-    t("Architects & Construction", "العمارة والإنشاء"),
-    t("Maintenance/Repair", "الصيانة والإصلاح"),
-    t("Restaurant Management", "إدارة المطاعم"),
-    t("Supply Chain", "سلسلة الإمداد"),
-    t("Accounts & Finance", "الحسابات والمالية"),
-    t("Research & Development", "البحث والتطوير"),
+    t("areaHardware"),
+    t("areaSalesBD"),
+    t("areaArchitects"),
+    t("areaMaintenance"),
+    t("areaRestaurant"),
+    t("areaSupplyChain"),
+    t("areaAccounts"),
+    t("areaResearch"),
   ];
 
   const industries = [
-    t("Recruitment/Employment Firms", "شركات التوظيف"),
-    t("Engineering", "الهندسة"),
-    t("Textiles/Garments", "المنسوجات والملابس"),
-    t("Event Management", "إدارة الفعاليات"),
-    t("Advertising/PR", "الإعلان والعلاقات العامة"),
-    t("FMCG", "السلع الاستهلاكية"),
-    t("Hospitality", "الضيافة"),
-    t("Retail", "التجزئة"),
+    t("industryRecruitment"),
+    t("industryEngineering"),
+    t("industryTextiles"),
+    t("industryEvents"),
+    t("industryAdvertising"),
+    t("industryFMCG"),
+    t("industryHospitality"),
+    t("industryRetail"),
   ];
 
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
@@ -198,17 +199,11 @@ export default function LandingPage() {
         <div className="container relative mx-auto px-4 py-10 sm:px-6 lg:py-14">
           <div className="mx-auto max-w-3xl text-center">
               <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-[3.5rem] lg:leading-[1.08]">
-                {t(
-                  "Find your next role in the Gulf.",
-                  "اعثر على وظيفتك القادمة في الخليج."
-                )}
+                {t("heroTitle")}
               </h1>
 
               <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-                {t(
-                  "Search thousands of live jobs, get AI-matched recommendations, and apply directly to top employers across the region.",
-                  "ابحث في آلاف الوظائف الحية، واحصل على توصيات مطابقة بالذكاء الاصطناعي، وقدّم مباشرة لأفضل أصحاب العمل في المنطقة."
-                )}
+                {t("heroDescription")}
               </p>
 
               <form onSubmit={handleSearch} className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border/70 bg-card p-3 shadow-[0_20px_60px_rgba(15,23,42,0.08)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
@@ -218,7 +213,7 @@ export default function LandingPage() {
                     <input
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
-                      placeholder={t("Job title, skill, or company", "المسمى الوظيفي أو المهارة أو الشركة")}
+                      placeholder={t("searchPlaceholder")}
                       className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                     />
                   </label>
@@ -228,19 +223,19 @@ export default function LandingPage() {
                     <input
                       value={locationTerm}
                       onChange={(event) => setLocationTerm(event.target.value)}
-                      placeholder={t("Country or city", "الدولة أو المدينة")}
+                      placeholder={t("locationPlaceholder")}
                       className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                     />
                   </label>
 
                   <Button type="submit" className="h-12 rounded-xl px-6 text-sm font-semibold">
-                    {t("Find jobs", "ابحث عن وظائف")}
+                    {t("findJobs2")}
                   </Button>
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                   <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                    {t("Popular searches", "عمليات البحث الشائعة")}
+                    {t("popularSearches")}
                   </span>
                   {quickSearches.map((item) => (
                     <button
@@ -259,17 +254,17 @@ export default function LandingPage() {
                 <div className="flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-primary" />
                   <span className="text-sm font-semibold text-foreground">5,000+</span>
-                  <span className="text-xs text-muted-foreground">{t("Active jobs", "وظيفة نشطة")}</span>
+                  <span className="text-xs text-muted-foreground">{t("activeJobs")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-primary" />
                   <span className="text-sm font-semibold text-foreground">800+</span>
-                  <span className="text-xs text-muted-foreground">{t("Companies hiring", "شركة توظف")}</span>
+                  <span className="text-xs text-muted-foreground">{t("companiesHiring")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
                   <span className="text-sm font-semibold text-foreground">50,000+</span>
-                  <span className="text-xs text-muted-foreground">{t("Registered candidates", "مرشح مسجل")}</span>
+                  <span className="text-xs text-muted-foreground">{t("registeredCandidates")}</span>
                 </div>
               </div>
 
@@ -316,7 +311,7 @@ export default function LandingPage() {
                   href={activeBanner?.linkUrl || `/${locale}/jobs`}
                   className="inline-flex h-9 items-center rounded-full bg-white px-4 text-xs font-semibold text-[hsl(var(--brand-blue-dark))]"
                 >
-                  {activeBanner?.linkText || t("View", "عرض")}
+                  {activeBanner?.linkText || t("view")}
                 </Link>
               </div>
             </div>
@@ -328,7 +323,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 sm:px-6">
           <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_320px] xl:items-start">
             <div>
-              <h2 className="text-xl font-semibold text-foreground">{t("Jobs by functional area", "الوظائف حسب المجال")}</h2>
+              <h2 className="text-xl font-semibold text-foreground">{t("jobsByFunctionalArea")}</h2>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {functionalAreas.map((item) => (
                   <Link
@@ -343,7 +338,7 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold text-foreground">{t("Jobs by industry", "الوظائف حسب القطاع")}</h2>
+              <h2 className="text-xl font-semibold text-foreground">{t("jobsByIndustry")}</h2>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {industries.map((item) => (
                   <Link
@@ -358,18 +353,15 @@ export default function LandingPage() {
             </div>
 
             <div className="rounded-2xl border border-primary/15 bg-[linear-gradient(160deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] p-6 text-white shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
-              <h3 className="text-xl font-semibold">{t("Hire faster across the Gulf.", "وظّف أسرع في الخليج.")}</h3>
+              <h3 className="text-xl font-semibold">{t("hireFaster")}</h3>
               <p className="mt-4 text-sm leading-6 text-white/80">
-                {t(
-                  "Post jobs, review matched candidates, and manage your hiring pipeline from one dashboard. Reach job seekers across the GCC.",
-                  "أعلن عن الوظائف وراجع المرشحين المطابقين وأدر عملية التوظيف من لوحة واحدة. وصِل إلى الباحثين عن عمل في دول الخليج."
-                )}
+                {t("hireFasterDesc")}
               </p>
               <Link
                 href={`/${locale}/employer-register`}
                 className="mt-6 inline-flex h-11 items-center rounded-full bg-white px-5 text-sm font-semibold text-[hsl(var(--brand-blue-dark))]"
               >
-                {t("Start hiring", "ابدأ التوظيف")}
+                {t("startHiring")}
               </Link>
             </div>
           </div>
@@ -381,13 +373,10 @@ export default function LandingPage() {
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("Learn the workflow in minutes.", "تعرّف على سير العمل في دقائق.")}</h2>
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("learnWorkflow")}</h2>
               </div>
               <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                {t(
-                  "Short explainer videos give job seekers and employers a quicker sense of how to get value from the platform.",
-                  "تمنح مقاطع الفيديو القصيرة الباحثين عن عمل وأصحاب العمل فهماً أسرع لكيفية الاستفادة من المنصة."
-                )}
+                {t("learnWorkflowDesc")}
               </p>
             </div>
 
@@ -406,7 +395,7 @@ export default function LandingPage() {
                   <div className="p-5">
                     <div className="inline-flex items-center gap-2 rounded-full bg-primary/[0.08] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                       <Play className="h-3.5 w-3.5" />
-                      {t("Watch", "شاهد")}
+                      {t("watch")}
                     </div>
                     <h3 className="mt-4 text-lg font-semibold text-foreground">{isAr ? video.titleAr || video.title : video.title}</h3>
                     {(video.description || video.descriptionAr) && (
@@ -426,7 +415,7 @@ export default function LandingPage() {
         <section className="py-10 lg:py-12">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("What users say after switching to MPLOYEDIN.", "ماذا يقول المستخدمون بعد الانتقال إلى مبلويدين.")}</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("testimonialHeading")}</h2>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
@@ -470,10 +459,10 @@ export default function LandingPage() {
           <div className="container mx-auto px-4 sm:px-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("Advice, updates, and market context.", "نصائح وتحديثات وسياق السوق.")}</h2>
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("blogHeading2")}</h2>
               </div>
               <Link href={`/${locale}/blog`}>
-                <Button variant="outline">{t("Visit blog", "زر المدونة")}</Button>
+                <Button variant="outline">{t("visitBlog")}</Button>
               </Link>
             </div>
 
@@ -504,7 +493,7 @@ export default function LandingPage() {
         <section className="py-10 lg:py-12">
           <div className="container mx-auto max-w-4xl px-4 sm:px-6">
             <div className="mb-8 text-center">
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("Frequently asked questions.", "الأسئلة الشائعة.")}</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t("faqHeading2")}</h2>
             </div>
 
             <div className="space-y-3">
@@ -536,7 +525,7 @@ export default function LandingPage() {
             {data.faqs.length > 6 && (
               <div className="mt-6 text-center">
                 <Link href={`/${locale}/faq`}>
-                  <Button variant="outline">{t("View all FAQs", "عرض جميع الأسئلة")}</Button>
+                  <Button variant="outline">{t("viewAllFaqs2")}</Button>
                 </Link>
               </div>
             )}
@@ -547,21 +536,18 @@ export default function LandingPage() {
       <section className="bg-[linear-gradient(135deg,hsl(var(--brand-blue-dark))_0%,hsl(var(--brand-blue))_100%)] py-12 lg:py-14">
         <div className="container mx-auto px-4 text-center sm:px-6">
           <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            {t("Ready to take the next step?", "مستعد للخطوة التالية؟")}
+            {t("ctaHeading")}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-white/80">
-            {t(
-              "Join thousands of professionals who have found their ideal role through MPLOYEDIN. Create your profile today and let employers find you.",
-              "انضم لآلاف المهنيين الذين وجدوا وظيفتهم المثالية عبر مبلويدين. أنشئ ملفك اليوم ودع أصحاب العمل يجدونك."
-            )}
+            {t("ctaDescription")}
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link href={`/${locale}/jobs`}>
-              <Button size="lg" variant="secondary">{t("Browse jobs", "تصفح الوظائف")}</Button>
+              <Button size="lg" variant="secondary">{t("browseJobs")}</Button>
             </Link>
             <Link href={`/${locale}/register`}>
               <Button size="lg" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
-                {t("Create profile", "أنشئ ملفك")}
+                {t("createProfile")}
               </Button>
             </Link>
           </div>

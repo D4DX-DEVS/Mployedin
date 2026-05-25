@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
+import { escapeRegex } from "@/lib/security/sanitize";
+import { validateBody } from "@/lib/validators";
+import { agentTaskCreateSchema } from "@/lib/validators/agent-tasks";
 import mongoose from "mongoose";
 
 /* Simple in-DB task storage using a generic collection */
@@ -27,7 +30,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
 
   const filter: Record<string, unknown> = { userId: ctx.userId };
   if (status && status !== "all") filter.status = status;
-  if (search) filter.title = { $regex: search, $options: "i" };
+  if (search) filter.title = { $regex: escapeRegex(search), $options: "i" };
 
   const items = await AgentTask.find(filter).sort({ createdAt: -1 }).limit(100).lean();
 
@@ -50,20 +53,15 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
 async function postHandler(req: NextRequest, ctx: AuthContext) {
   await connectDB();
 
-  const body = await req.json();
-  const { title, description, priority, category, dueDate } = body;
-
-  if (!title || typeof title !== "string") {
-    return NextResponse.json({ error: "Title is required" }, { status: 400 });
-  }
+  const body = await validateBody(req, agentTaskCreateSchema);
 
   const task = await AgentTask.create({
     userId: ctx.userId,
-    title: title.trim(),
-    description: description?.trim(),
-    priority: priority || "medium",
-    category: category || "follow_up",
-    dueDate: dueDate ? new Date(dueDate) : undefined,
+    title: body.title,
+    description: body.description,
+    priority: body.priority,
+    category: body.category,
+    dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
   });
 
   return NextResponse.json({ success: true, task });

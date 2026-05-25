@@ -49,7 +49,7 @@ export default function PrivacyPolicyPage() {
           <h1 className="text-4xl font-bold tracking-tight">{t("privacyHeading")}</h1>
           <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span>{isAr ? "آخر تحديث: ٨ يونيو ٢٠٢٣" : "Last Updated: 8th June 2023"}</span>
+            <span>{t("privacyLastUpdated")}</span>
           </div>
         </div>
 
@@ -58,9 +58,7 @@ export default function PrivacyPolicyPage() {
             {/* Intro banner */}
             <div className="border-b border-border/60 bg-muted/40 px-6 py-5 rounded-t-2xl sm:px-8">
               <p className="text-sm leading-relaxed text-muted-foreground text-justify">
-                {isAr
-                  ? "توضح سياسة الخصوصية هذه كيفية قيام شركة MPLOYEDIN UK LTD بجمع واستخدام والكشف عن وحماية البيانات الشخصية عند استخدام موقعنا mployedin.com وفقًا للائحة العامة لحماية البيانات (GDPR) وقانون حماية البيانات 2018."
-                  : "This Privacy Policy outlines how MPLOYEDIN UK LTD collects, uses, discloses, and protects personal data when you use our website at mployedin.com, in accordance with the GDPR and the Data Protection Act 2018."}
+                {t("privacyIntro")}
               </p>
             </div>
 
@@ -73,7 +71,7 @@ export default function PrivacyPolicyPage() {
             {/* Contact footer card */}
             <div className="border-t border-border/60 bg-muted/40 px-6 py-6 rounded-b-2xl sm:px-8">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                {isAr ? "اتصل بنا" : "Contact Us"}
+                {t("contactUs")}
               </h3>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background p-4">
@@ -100,9 +98,7 @@ export default function PrivacyPolicyPage() {
         )}
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          {isAr
-            ? "باستخدامك للموقع، فإنك تقر وتوافق على الممارسات الموضحة في سياسة الخصوصية هذه."
-            : "By using our website, you acknowledge and agree to the practices described in this Privacy Policy."}
+          {t("privacyAgreement")}
         </p>
       </div>
     </div>

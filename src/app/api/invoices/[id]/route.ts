@@ -68,13 +68,43 @@ async function getHandler(
     .populate("jobId", "title")
     .populate("employerId", "companyName companyEmail phone address country taxId")
     .populate("agentId", "userId commissionRate")
+    .populate("createdBy", "name role")
     .populate("payments.recordedBy", "name email")
     .lean();
   if (!invoice) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ invoice });
+  // Resolve sender context (role label + region for super_agent/agent)
+  let senderContext: { name: string; role: string; label: string } | null = null;
+  const createdByUser = invoice.createdBy as unknown as { _id: unknown; name?: string; role?: string } | null;
+  if (createdByUser?.name && createdByUser?.role) {
+    let label = "Mployedin Admin";
+    if (createdByUser.role === "super_agent") {
+      const saProfile = await SuperAgent.findOne({ userId: createdByUser._id })
+        .select("assignedCityIds")
+        .populate("assignedCityIds", "name")
+        .lean();
+      const cityNames = ((saProfile?.assignedCityIds ?? []) as unknown as Array<{ name?: string }>)
+        .map(c => c.name).filter(Boolean).slice(0, 3);
+      label = cityNames.length > 0
+        ? `Super Agent — ${cityNames.join(", ")} region`
+        : "Super Agent";
+    } else if (createdByUser.role === "agent") {
+      const agentProfile = await Agent.findOne({ userId: createdByUser._id })
+        .select("assignedCityIds superAgentId")
+        .populate("assignedCityIds", "name")
+        .lean();
+      const cityNames = ((agentProfile?.assignedCityIds ?? []) as unknown as Array<{ name?: string }>)
+        .map(c => c.name).filter(Boolean).slice(0, 3);
+      label = cityNames.length > 0
+        ? `Agent — ${cityNames.join(", ")} region`
+        : "Agent";
+    }
+    senderContext = { name: createdByUser.name, role: createdByUser.role, label };
+  }
+
+  return NextResponse.json({ invoice, senderContext });
 }
 
 // ── PATCH ────────────────────────────────────────────────────────────────────

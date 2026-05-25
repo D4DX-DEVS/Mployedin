@@ -12,6 +12,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useTraining, useCreateTraining, useUpdateTrainingStatus, type TrainingItem } from "@/hooks/useTraining";
 
@@ -24,6 +25,7 @@ const SUGGESTED_TRAININGS = [
 ];
 
 export default function EmployerTrainingTrackerPage() {
+  const t = useTranslations("employerTraining");
   const { data: items = [], isLoading: loading } = useTraining();
   const createTraining = useCreateTraining();
   const updateStatus = useUpdateTrainingStatus();
@@ -70,13 +72,13 @@ export default function EmployerTrainingTrackerPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
-              Employer learning
+              {t("badge")}
             </div>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Training Tracker
+              {t("title")}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Keep recruiter upskilling visible, move active learning forward, and turn recommended training into action without leaving the employer workspace.
+              {t("description")}
             </p>
           </div>
 
@@ -86,25 +88,25 @@ export default function EmployerTrainingTrackerPage() {
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700"
           >
             <Plus className="h-4 w-4" />
-            {showForm ? "Hide Form" : "Add Training"}
+            {showForm ? t("hideForm") : t("addTraining")}
           </button>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Completed</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("completed")}</p>
             <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{completed}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Training items already finished by the team.</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("completedDesc")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">In progress</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("inProgress")}</p>
             <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{inProgress}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Courses currently being worked through.</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("inProgressDesc")}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Not started</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("notStarted")}</p>
             <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{notStarted}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Planned learning items waiting for kickoff.</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("notStartedDesc")}</p>
           </div>
         </div>
       </section>
@@ -113,8 +115,8 @@ export default function EmployerTrainingTrackerPage() {
         <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">New training</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Add Training Item</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("newTraining")}</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("addTrainingItem")}</h2>
             </div>
             <button
               onClick={() => setShowForm(false)}
@@ -126,7 +128,7 @@ export default function EmployerTrainingTrackerPage() {
 
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Course Title *</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("courseTitle")} *</label>
               <input
                 value={form.title}
                 onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
@@ -134,7 +136,7 @@ export default function EmployerTrainingTrackerPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Provider *</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("provider")} *</label>
               <input
                 value={form.provider}
                 onChange={(event) => setForm((current) => ({ ...current, provider: event.target.value }))}
@@ -145,25 +147,25 @@ export default function EmployerTrainingTrackerPage() {
 
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">URL</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("url")}</label>
               <input
                 value={form.url}
                 onChange={(event) => setForm((current) => ({ ...current, url: event.target.value }))}
-                placeholder="https://..."
+                placeholder={t("urlPlaceholder")}
                 className="input-field mt-1 w-full"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Target Role</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("targetRole")}</label>
               <input
                 value={form.targetRole}
                 onChange={(event) => setForm((current) => ({ ...current, targetRole: event.target.value }))}
-                placeholder="e.g. HR Manager"
+                placeholder={t("rolePlaceholder")}
                 className="input-field mt-1 w-full"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Due Date</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("dueDate")}</label>
               <input
                 type="date"
                 value={form.dueDate}
@@ -178,7 +180,7 @@ export default function EmployerTrainingTrackerPage() {
               onClick={() => setShowForm(false)}
               className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background/80 px-4 text-sm font-semibold text-foreground transition hover:bg-background"
             >
-              Cancel
+              {t("cancel")}
             </button>
             <button
               onClick={handleSave}
@@ -186,7 +188,7 @@ export default function EmployerTrainingTrackerPage() {
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60"
             >
               {createTraining.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Add
+              {t("add")}
             </button>
           </div>
         </section>
@@ -195,10 +197,10 @@ export default function EmployerTrainingTrackerPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)] xl:grid-cols-[minmax(0,1.55fr)_360px]">
         <section className="workspace-panel-surface overflow-hidden rounded-[28px]">
           <div className="border-b border-border/60 px-5 py-5 sm:px-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Learning queue</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Track progress across every employer training item.</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("queueTitle")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{t("queueDesc")}</h2>
             <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-              Use this list to keep training momentum visible and move each item from planned to completed.
+              {t("queueHint")}
             </p>
           </div>
 
@@ -206,15 +208,15 @@ export default function EmployerTrainingTrackerPage() {
             {loading ? (
               <div className="flex items-center gap-2 py-8 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Loading...</span>
+                <span className="text-sm">{t("loading")}</span>
               </div>
             ) : null}
 
             {!loading && items.length === 0 ? (
               <div className="rounded-[24px] border border-border bg-background/80 px-5 py-10 text-center text-muted-foreground">
                 <GraduationCap className="mx-auto mb-3 h-10 w-10 opacity-50" />
-                <p className="text-sm font-medium text-foreground/85">No training items yet.</p>
-                <p className="mt-1 text-sm">Add one manually or start from the recommended list.</p>
+                <p className="text-sm font-medium text-foreground/85">{t("emptyState")}</p>
+                <p className="mt-1 text-sm">{t("emptyStateHint")}</p>
               </div>
             ) : null}
 
@@ -263,7 +265,7 @@ export default function EmployerTrainingTrackerPage() {
                           disabled={!item._id}
                           className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100"
                         >
-                          Start
+                          {t("start")}
                         </button>
                       ) : null}
 
@@ -273,7 +275,7 @@ export default function EmployerTrainingTrackerPage() {
                           disabled={!item._id}
                           className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
                         >
-                          Complete
+                          {t("complete")}
                         </button>
                       ) : null}
                     </div>
@@ -287,11 +289,11 @@ export default function EmployerTrainingTrackerPage() {
         <aside className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             <GraduationCap className="h-3.5 w-3.5 text-sky-600" />
-            Recommended training
+            {t("recommended")}
           </div>
-          <h3 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Start from practical recruiter upskilling suggestions.</h3>
+          <h3 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("recommendedDesc")}</h3>
           <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-            Pick a recommended course to prefill the training form and add it to the employer learning queue.
+            {t("recommendedHint")}
           </p>
 
           <div className="mt-4 space-y-2.5">
@@ -323,7 +325,7 @@ export default function EmployerTrainingTrackerPage() {
                   }}
                   className="mt-3 inline-flex h-9 items-center justify-center rounded-xl bg-sky-50 px-3 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
                 >
-                  Add to tracker
+                  {t("addTraining")}
                 </button>
               </div>
             ))}

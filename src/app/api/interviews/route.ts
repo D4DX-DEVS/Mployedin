@@ -12,6 +12,7 @@ import { interviewCreateSchema } from "@/lib/validators/interviews";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notifyInterviewScheduled } from "@/lib/notifications/trigger";
 import { addMinutes } from "date-fns";
+import { escapeRegex } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -124,7 +125,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   if (search) {
     const User = (await import("@/models/User")).default;
     const matchingUsers = await User.find({
-      name: { $regex: search, $options: "i" },
+      name: { $regex: escapeRegex(search), $options: "i" },
     }).select("_id").lean();
     const userIds = matchingUsers.map((u) => u._id);
     if (userIds.length > 0) {
@@ -133,7 +134,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     }
     // Also search job titles
     const matchingJobs = await Job.find({
-      title: { $regex: search, $options: "i" },
+      title: { $regex: escapeRegex(search), $options: "i" },
     }).select("_id").lean();
     const jobIds = matchingJobs.map((j) => j._id);
 

@@ -2,11 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import Job from "@/models/Job";
+import { escapeRegex } from "@/lib/security/sanitize";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 /**
  * GET /api/companies — Public company directory for job seekers
  */
 export async function GET(req: NextRequest) {
+  // Rate limit: 30 requests per minute per IP
+  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+  const { allowed } = checkRateLimit(`companies:${ip}`, { limit: 30, windowSec: 60, prefix: "companies" });
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   await connectDB();
 
   const url = new URL(req.url);
@@ -16,10 +25,11 @@ export async function GET(req: NextRequest) {
 
   const filter: Record<string, unknown> = { isActive: true };
   if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { companyName: { $regex: search, $options: "i" } },
-      { industry: { $regex: search, $options: "i" } },
-      { "address.city": { $regex: search, $options: "i" } },
+      { companyName: { $regex: safe, $options: "i" } },
+      { industry: { $regex: safe, $options: "i" } },
+      { "address.city": { $regex: safe, $options: "i" } },
     ];
   }
 

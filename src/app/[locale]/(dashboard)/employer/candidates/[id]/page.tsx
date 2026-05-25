@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useCandidateDetail } from "@/hooks/useCandidates";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
+import { useTranslations } from "next-intl";
 
 /* ── Types ── */
 interface CandidateJob {
@@ -129,6 +130,7 @@ const availabilityLabel: Record<string, string> = {
 export default function UnifiedCandidatePage() {
   const { locale, id } = useParams<{ locale: string; id: string }>();
   const router = useRouter();
+  const t = useTranslations("employerCandidateProfile");
   const { data, isLoading: loading } = useCandidateDetail(id);
   const [activeTab, setActiveTab] = useState<"profile" | "applications" | "interviews" | "timeline" | "notes">("profile");
   const [expandedApp, setExpandedApp] = useState<string | null>(null);
@@ -148,9 +150,9 @@ export default function UnifiedCandidatePage() {
     return (
       <div className="page-container flex flex-col items-center justify-center py-20">
         <User className="h-12 w-12 text-muted-foreground/40 mb-4" />
-        <h3 className="font-semibold text-lg">Candidate not found</h3>
+        <h3 className="font-semibold text-lg">{t("notFound")}</h3>
         <Button variant="outline" className="mt-4" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
+          <ArrowLeft className="h-4 w-4 mr-2" /> {t("goBack")}
         </Button>
       </div>
     );
@@ -161,11 +163,11 @@ export default function UnifiedCandidatePage() {
   const currentRole = candidate.experience?.find((e: { isCurrent?: boolean }) => e.isCurrent);
 
   const tabs = [
-    { key: "profile" as const, label: "Profile", count: null },
-    { key: "applications" as const, label: "Applications", count: applications.length },
-    { key: "interviews" as const, label: "Interviews", count: interviews.length },
-    { key: "timeline" as const, label: "Activity", count: timeline.length },
-    { key: "notes" as const, label: "Notes", count: notes.length },
+    { key: "profile" as const, label: t("tabProfile"), count: null },
+    { key: "applications" as const, label: t("tabApplications"), count: applications.length },
+    { key: "interviews" as const, label: t("tabInterviews"), count: interviews.length },
+    { key: "timeline" as const, label: t("tabActivity"), count: timeline.length },
+    { key: "notes" as const, label: t("tabNotes"), count: notes.length },
   ];
 
   return (
@@ -175,7 +177,7 @@ export default function UnifiedCandidatePage() {
         <Button variant="ghost" size="sm" onClick={() => router.push(`/${locale}/employer/candidates`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <PageHeader title={name} description="Unified Candidate Profile" />
+        <PageHeader title={name} description={t("unifiedProfile")} />
       </div>
 
       {/* Profile Card */}
@@ -185,9 +187,9 @@ export default function UnifiedCandidatePage() {
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-bold">{name}</h2>
-              {summary.hired && <Badge className="bg-green-100 text-green-800">Hired ✅</Badge>}
+              {summary.hired && <Badge className="bg-green-100 text-green-800">{t("hired")}</Badge>}
               {candidate.availabilityStatus && (
-                <Badge variant="secondary">{availabilityLabel[candidate.availabilityStatus] ?? candidate.availabilityStatus}</Badge>
+                <Badge variant="secondary">{{immediately: t("availableImmediately"), within_month: t("within1Month"), within_3_months: t("within3Months"), not_available: t("notAvailable")}[candidate.availabilityStatus as string] ?? candidate.availabilityStatus}</Badge>
               )}
             </div>
 
@@ -208,7 +210,7 @@ export default function UnifiedCandidatePage() {
               )}
               {candidate.profileCompleteness != null && (
                 <span className="flex items-center gap-1">
-                  <FileText className="h-3.5 w-3.5" /> {candidate.profileCompleteness}% profile
+                  <FileText className="h-3.5 w-3.5" /> {t("profilePercent", { percent: candidate.profileCompleteness })}
                 </span>
               )}
             </div>
@@ -229,11 +231,11 @@ export default function UnifiedCandidatePage() {
             {candidate.cv?.originalUrl && (
               <div className="flex gap-2 pt-2">
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setViewingCv(true)}>
-                  <Eye className="w-3 h-3 me-1.5" /> View CV
+                  <Eye className="w-3 h-3 me-1.5" /> {t("viewCV")}
                 </Button>
                 <a href={candidate.cv.originalUrl} target="_blank" rel="noopener noreferrer">
                   <Button size="sm" variant="ghost" className="h-8 text-xs">
-                    <Download className="w-3 h-3 me-1.5" /> Download
+                    <Download className="w-3 h-3 me-1.5" /> {t("download")}
                   </Button>
                 </a>
               </div>
@@ -244,15 +246,15 @@ export default function UnifiedCandidatePage() {
           <div className="grid grid-cols-2 gap-3 min-w-0 md:min-w-[200px]">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
               <p className="text-2xl font-bold text-blue-700">{summary.totalApplications}</p>
-              <p className="text-xs text-blue-600">Applications</p>
+              <p className="text-xs text-blue-600">{t("applications")}</p>
             </div>
             <div className="text-center p-3 bg-purple-50 rounded-lg">
               <p className="text-2xl font-bold text-purple-700">{summary.totalInterviews}</p>
-              <p className="text-xs text-purple-600">Interviews</p>
+              <p className="text-xs text-purple-600">{t("interviews")}</p>
             </div>
             <div className="text-center p-3 bg-emerald-50 rounded-lg">
               <p className="text-2xl font-bold text-emerald-700">{summary.activeApplications}</p>
-              <p className="text-xs text-emerald-600">Active</p>
+              <p className="text-xs text-emerald-600">{t("active")}</p>
             </div>
             <div className="text-center p-3 bg-amber-50 rounded-lg">
               <p className="text-2xl font-bold text-amber-700">
@@ -260,7 +262,7 @@ export default function UnifiedCandidatePage() {
                   ? Math.round(applications.reduce((s: number, a: UnifiedApplication) => s + (a.aiMatchScore ?? 0), 0) / applications.filter((a: UnifiedApplication) => a.aiMatchScore != null).length)
                   : "—"}
               </p>
-              <p className="text-xs text-amber-600">Avg Match</p>
+              <p className="text-xs text-amber-600">{t("avgMatch")}</p>
             </div>
           </div>
         </div>
@@ -268,17 +270,17 @@ export default function UnifiedCandidatePage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b">
-        {tabs.map((t) => (
+        {tabs.map((tab) => (
           <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === t.key
+              activeTab === tab.key
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t.label} {t.count != null && <span className="ml-1 text-xs opacity-60">({t.count})</span>}
+            {tab.label} {tab.count != null && <span className="ml-1 text-xs opacity-60">({tab.count})</span>}
           </button>
         ))}
       </div>
@@ -291,7 +293,7 @@ export default function UnifiedCandidatePage() {
             {/* Summary */}
             <div className="card-base p-5 space-y-3">
               <h3 className="font-semibold text-sm flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" /> Summary
+                <User className="h-4 w-4 text-primary" /> {t("summary")}
               </h3>
               {candidate.headline && (
                 <p className="text-sm text-muted-foreground">{candidate.headline}</p>
@@ -299,31 +301,31 @@ export default function UnifiedCandidatePage() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {candidate.workStatus && (
                   <div>
-                    <span className="text-xs text-muted-foreground">Work Status</span>
+                    <span className="text-xs text-muted-foreground">{t("workStatus")}</span>
                     <p className="font-medium capitalize">{candidate.workStatus}</p>
                   </div>
                 )}
                 {candidate.totalExperienceYears != null && (
                   <div>
-                    <span className="text-xs text-muted-foreground">Total Experience</span>
+                    <span className="text-xs text-muted-foreground">{t("totalExperience")}</span>
                     <p className="font-medium">{candidate.totalExperienceYears} years</p>
                   </div>
                 )}
                 {candidate.noticePeriod != null && (
                   <div>
-                    <span className="text-xs text-muted-foreground">Notice Period</span>
+                    <span className="text-xs text-muted-foreground">{t("noticePeriod")}</span>
                     <p className="font-medium">{candidate.noticePeriod} days</p>
                   </div>
                 )}
                 {candidate.preferredJobType && (
                   <div>
-                    <span className="text-xs text-muted-foreground">Preferred Type</span>
+                    <span className="text-xs text-muted-foreground">{t("preferredType")}</span>
                     <p className="font-medium capitalize">{candidate.preferredJobType}</p>
                   </div>
                 )}
                 {candidate.preferredSalary && (
                   <div className="col-span-2">
-                    <span className="text-xs text-muted-foreground">Expected Salary</span>
+                    <span className="text-xs text-muted-foreground">{t("expectedSalary")}</span>
                     <p className="font-medium">
                       {candidate.preferredSalary.currency} {candidate.preferredSalary.min?.toLocaleString()} – {candidate.preferredSalary.max?.toLocaleString()}
                     </p>
@@ -332,7 +334,7 @@ export default function UnifiedCandidatePage() {
               </div>
               {candidate.preferredRoles && candidate.preferredRoles.length > 0 && (
                 <div>
-                  <span className="text-xs text-muted-foreground">Preferred Roles</span>
+                  <span className="text-xs text-muted-foreground">{t("preferredRoles")}</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {candidate.preferredRoles.map((r: string) => (
                       <Badge key={r} variant="outline" className="text-xs">{r}</Badge>
@@ -342,7 +344,7 @@ export default function UnifiedCandidatePage() {
               )}
               {candidate.preferredLocations && candidate.preferredLocations.length > 0 && (
                 <div>
-                  <span className="text-xs text-muted-foreground">Preferred Locations</span>
+                  <span className="text-xs text-muted-foreground">{t("preferredLocations")}</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {candidate.preferredLocations.map((l: string) => (
                       <Badge key={l} variant="outline" className="text-xs">{l}</Badge>
@@ -356,7 +358,7 @@ export default function UnifiedCandidatePage() {
             {candidate.experience && candidate.experience.length > 0 && (
               <div className="card-base p-5 space-y-3">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-primary" /> Work History
+                  <Briefcase className="h-4 w-4 text-primary" /> {t("workHistory")}
                 </h3>
                 <div className="space-y-4">
                   {candidate.experience.map((exp: { jobTitle: string; company: string; isCurrent: boolean; startDate?: string; endDate?: string; description?: string; country?: string }, i: number) => (
@@ -382,7 +384,7 @@ export default function UnifiedCandidatePage() {
             {candidate.education && candidate.education.length > 0 && (
               <div className="card-base p-5 space-y-3">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4 text-primary" /> Education
+                  <GraduationCap className="h-4 w-4 text-primary" /> {t("education")}
                 </h3>
                 <div className="space-y-3">
                   {candidate.education.map((edu: { degree?: string; institution?: string; field?: string; graduationDate?: string; grade?: string }, i: number) => (
@@ -403,7 +405,7 @@ export default function UnifiedCandidatePage() {
             {candidate.languages && candidate.languages.length > 0 && (
               <div className="card-base p-5 space-y-3">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <Languages className="h-4 w-4 text-primary" /> Languages
+                  <Languages className="h-4 w-4 text-primary" /> {t("languages")}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {candidate.languages.map((lang: { language: string; proficiency: string }, i: number) => (
@@ -420,7 +422,7 @@ export default function UnifiedCandidatePage() {
             {candidate.certifications && candidate.certifications.length > 0 && (
               <div className="card-base p-5 space-y-3">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <Award className="h-4 w-4 text-primary" /> Certifications
+                  <Award className="h-4 w-4 text-primary" /> {t("certifications")}
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
                   {candidate.certifications.map((cert: string, i: number) => (
@@ -434,7 +436,7 @@ export default function UnifiedCandidatePage() {
             {candidate.skills && candidate.skills.length > 0 && (
               <div className="card-base p-5 space-y-3">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-primary" /> All Skills
+                  <CheckCircle className="h-4 w-4 text-primary" /> {t("allSkills")}
                 </h3>
                 <div className="flex flex-wrap gap-1.5">
                   {candidate.skills.map((s: string) => (
@@ -458,14 +460,14 @@ export default function UnifiedCandidatePage() {
               return (
                 <div className="card-base p-5 space-y-4">
                   <h3 className="font-semibold text-sm flex items-center gap-2">
-                    <Star className="h-4 w-4 text-amber-500" /> AI Match Insights
+                    <Star className="h-4 w-4 text-amber-500" /> {t("aiMatchInsights")}
                     <span className="text-xs text-muted-foreground ms-auto">for {scoredApp.job?.title}</span>
                   </h3>
                   <div className="flex items-center gap-3">
                     <div className={`text-3xl font-bold ${scoreColor(scoredApp.aiMatchScore!)}`}>
                       {scoredApp.aiMatchScore}%
                     </div>
-                    <span className="text-sm text-muted-foreground">Overall Match</span>
+                    <span className="text-sm text-muted-foreground">{t("overallMatch")}</span>
                   </div>
                   <div className="space-y-2">
                     {Object.entries(breakdown).map(([k, v]) => {
@@ -487,7 +489,7 @@ export default function UnifiedCandidatePage() {
                   {/* Strengths */}
                   {candidateSkills.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-emerald-700 mb-1">Strengths</p>
+                      <p className="text-xs font-medium text-emerald-700 mb-1">{t("strengths")}</p>
                       <div className="flex flex-wrap gap-1">
                         {candidateSkills.slice(0, 8).map((s: string) => (
                           <Badge key={s} className="text-[10px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{s}</Badge>
@@ -502,7 +504,7 @@ export default function UnifiedCandidatePage() {
                   {missingSkills.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-amber-700 mb-1 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" /> Skill Gaps
+                        <AlertCircle className="h-3 w-3" /> {t("skillGaps")}
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {missingSkills.map((s: string) => (
@@ -520,15 +522,15 @@ export default function UnifiedCandidatePage() {
               <div className="card-base overflow-hidden">
                 <div className="px-5 py-3 border-b flex items-center justify-between">
                   <h3 className="font-semibold text-sm flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" /> Resume / CV
+                    <FileText className="h-4 w-4 text-primary" /> {t("resumeCV")}
                   </h3>
                   <div className="flex gap-1">
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setViewingCv(true)}>
-                      <Eye className="w-3 h-3 me-1" /> Expand
+                      <Eye className="w-3 h-3 me-1" /> {t("expand")}
                     </Button>
                     <a href={candidate.cv.originalUrl} target="_blank" rel="noopener noreferrer">
                       <Button size="sm" variant="ghost" className="h-7 text-xs">
-                        <Download className="w-3 h-3 me-1" /> Download
+                        <Download className="w-3 h-3 me-1" /> {t("download")}
                       </Button>
                     </a>
                   </div>
@@ -551,7 +553,7 @@ export default function UnifiedCandidatePage() {
       {activeTab === "applications" && (
         <div className="space-y-3">
           {applications.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No applications found</p>
+            <p className="text-sm text-muted-foreground text-center py-8">{t("noApplications")}</p>
           ) : (
             applications.map((app: UnifiedApplication) => (
               <div key={app._id} className="card-base overflow-hidden">
@@ -564,8 +566,8 @@ export default function UnifiedCandidatePage() {
                     <div className="text-left">
                       <p className="font-medium text-sm">{app.job?.title ?? "Unknown Job"}</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-2">
-                        <Calendar className="h-3 w-3" /> Applied {formatDate(app.appliedAt)}
-                        {app.source && <span>· via {app.source.replace("_", " ")}</span>}
+                        <Calendar className="h-3 w-3" /> {t("applied", { date: formatDate(app.appliedAt) })}
+                        {app.source && <span>· {t("viaSource", { source: app.source.replace("_", " ") })}</span>}
                       </p>
                     </div>
                   </div>
@@ -585,7 +587,7 @@ export default function UnifiedCandidatePage() {
                     {/* Match Breakdown */}
                     {app.matchBreakdown && (
                       <div className="space-y-1.5 pt-2">
-                        <p className="text-xs font-medium text-muted-foreground">Match Breakdown</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t("matchBreakdown")}</p>
                         {Object.entries(app.matchBreakdown).map(([k, v]) => (
                           <div key={k} className="flex items-center gap-2 text-xs">
                             <span className="capitalize text-muted-foreground w-16 sm:w-20">{k}</span>
@@ -638,7 +640,7 @@ export default function UnifiedCandidatePage() {
       {activeTab === "interviews" && (
         <div className="space-y-3">
           {interviews.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No interviews scheduled</p>
+            <p className="text-sm text-muted-foreground text-center py-8">{t("noInterviews")}</p>
           ) : (
             interviews.map((iv: UnifiedInterview) => (
               <div key={iv._id} className="card-base p-4 flex items-center justify-between">
@@ -673,7 +675,7 @@ export default function UnifiedCandidatePage() {
       {activeTab === "timeline" && (
         <div className="card-base p-4">
           {timeline.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No activity yet</p>
+            <p className="text-sm text-muted-foreground text-center py-8">{t("noActivity")}</p>
           ) : (
             <div className="relative pl-6 space-y-4">
               <div className="absolute left-2 top-2 bottom-2 w-px bg-border" />
@@ -700,7 +702,7 @@ export default function UnifiedCandidatePage() {
       {activeTab === "notes" && (
         <div className="space-y-3">
           {notes.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No notes yet</p>
+            <p className="text-sm text-muted-foreground text-center py-8">{t("noNotes")}</p>
           ) : (
             notes.map((note: NoteEntry) => (
               <div key={note._id} className="card-base p-4">

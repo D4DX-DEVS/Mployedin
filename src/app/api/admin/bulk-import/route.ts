@@ -5,6 +5,8 @@ import User from "@/models/User";
 import Job from "@/models/Job";
 import Employer from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { validateBody } from "@/lib/validators";
+import { bulkImportSchema } from "@/lib/validators/bulk-import";
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/admin/bulk-import — Bulk import records                  */
@@ -17,16 +19,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   await connectDB();
 
-  const body = await req.json();
-  const { type, rows } = body as { type: string; rows: Record<string, string>[] };
-
-  if (!type || !rows || !Array.isArray(rows) || rows.length === 0) {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-  }
-
-  if (rows.length > 500) {
-    return NextResponse.json({ error: "Maximum 500 rows per import" }, { status: 400 });
-  }
+  const { type, rows } = await validateBody(req, bulkImportSchema);
 
   let success = 0;
   let failed = 0;

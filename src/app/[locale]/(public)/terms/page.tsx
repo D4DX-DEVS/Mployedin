@@ -49,7 +49,7 @@ export default function TermsPage() {
           <h1 className="text-4xl font-bold tracking-tight">{t("termsHeading")}</h1>
           <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span>{isAr ? "آخر تحديث: ٩ يونيو ٢٠٢٣" : "Last Updated: 9th June 2023"}</span>
+            <span>{t("lastUpdated")}</span>
           </div>
         </div>
 
@@ -58,9 +58,7 @@ export default function TermsPage() {
             {/* Intro banner */}
             <div className="border-b border-border/60 bg-muted/40 px-6 py-5 rounded-t-2xl sm:px-8">
               <p className="text-sm leading-relaxed text-muted-foreground text-justify">
-                {isAr
-                  ? "يرجى قراءة هذه الشروط والأحكام بعناية قبل استخدام موقع mployedin.com. باستخدامك للموقع، فإنك توافق على الالتزام بهذه الشروط والأحكام."
-                  : "Please read these Terms and Conditions carefully before using the website mployedin.com operated by MPLOYEDIN UK LTD. By accessing or using the website, you agree to be bound by these Terms and Conditions."}
+                {t("termsIntro")}
               </p>
             </div>
 
@@ -73,7 +71,7 @@ export default function TermsPage() {
             {/* Contact footer card */}
             <div className="border-t border-border/60 bg-muted/40 px-6 py-6 rounded-b-2xl sm:px-8">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                {isAr ? "اتصل بنا" : "Contact Us"}
+                {t("contactUs")}
               </h3>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background p-4">
@@ -101,9 +99,7 @@ export default function TermsPage() {
 
         {/* Agreement notice */}
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          {isAr
-            ? "باستخدامك للموقع، فإنك تقر بموافقتك على هذه الشروط والأحكام."
-            : "By using the website, you signify your agreement to these Terms and Conditions."}
+          {t("termsAgreement")}
         </p>
       </div>
     </div>

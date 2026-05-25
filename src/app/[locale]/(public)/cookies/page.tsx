@@ -49,7 +49,7 @@ export default function CookiePolicyPage() {
           <h1 className="text-4xl font-bold tracking-tight">{t("cookiesHeading")}</h1>
           <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span>{isAr ? "آخر تحديث: ٧ يونيو ٢٠٢٣" : "Last Updated: 7th June 2023"}</span>
+            <span>{t("cookiesLastUpdated")}</span>
           </div>
         </div>
 
@@ -58,9 +58,7 @@ export default function CookiePolicyPage() {
             {/* Intro banner */}
             <div className="border-b border-border/60 bg-muted/40 px-6 py-5 rounded-t-2xl sm:px-8">
               <p className="text-sm leading-relaxed text-muted-foreground text-justify">
-                {isAr
-                  ? "توضح سياسة ملفات تعريف الارتباط هذه كيفية استخدام شركة MPLOYEDIN UK LTD لملفات تعريف الارتباط والتقنيات المشابهة على موقعنا mployedin.com."
-                  : "This Cookie Policy explains how MPLOYEDIN UK LTD uses cookies and similar technologies on our website at mployedin.com. This policy should be read in conjunction with our Privacy Policy."}
+                {t("cookiesIntro")}
               </p>
             </div>
 
@@ -73,7 +71,7 @@ export default function CookiePolicyPage() {
             {/* Contact footer card */}
             <div className="border-t border-border/60 bg-muted/40 px-6 py-6 rounded-b-2xl sm:px-8">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                {isAr ? "اتصل بنا" : "Contact Us"}
+                {t("contactUs")}
               </h3>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background p-4">
@@ -100,9 +98,7 @@ export default function CookiePolicyPage() {
         )}
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          {isAr
-            ? "بالاستمرار في استخدام موقعنا، فإنك توافق على استخدام ملفات تعريف الارتباط كما هو موضح في هذه السياسة."
-            : "By continuing to use our website, you signify your acceptance of the use of cookies as described in this policy."}
+          {t("cookiesAgreement")}
         </p>
       </div>
     </div>

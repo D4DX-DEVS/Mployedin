@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Bell,
   Mail,
@@ -68,85 +69,69 @@ const DEFAULT_PREFS: Preferences = {
 
 type CategoryKey = keyof Preferences["categories"];
 
-const FREQUENCY_OPTIONS: { value: EmailFrequency; label: string; labelAr: string; desc: string; descAr: string }[] = [
-  { value: "instant", label: "Instant", labelAr: "فوري", desc: "Send emails as events happen", descAr: "إرسال فوري عند حدوث أي حدث" },
-  { value: "daily", label: "Daily Digest", labelAr: "ملخص يومي", desc: "One combined email per day at 9 AM", descAr: "بريد واحد مجمع يومياً الساعة 9 صباحاً" },
-  { value: "weekly", label: "Weekly Summary", labelAr: "ملخص أسبوعي", desc: "One email per week on Sunday", descAr: "بريد واحد أسبوعياً يوم الأحد" },
-  { value: "none", label: "Off", labelAr: "إيقاف", desc: "No emails (in-app only)", descAr: "بدون بريد (إشعارات داخلية فقط)" },
+const FREQUENCY_OPTIONS: { value: EmailFrequency; labelKey: string; descKey: string }[] = [
+  { value: "instant", labelKey: "frequencyInstant", descKey: "frequencyInstantDesc" },
+  { value: "daily", labelKey: "frequencyDaily", descKey: "frequencyDailyDesc" },
+  { value: "weekly", labelKey: "frequencyWeekly", descKey: "frequencyWeeklyDesc" },
+  { value: "none", labelKey: "frequencyOff", descKey: "frequencyOffDesc" },
 ];
 
 interface CategoryConfig {
   key: CategoryKey;
   icon: typeof Bell;
-  label: string;
-  labelAr: string;
-  description: string;
-  descriptionAr: string;
+  labelKey: string;
+  descKey: string;
 }
 
 const CATEGORIES: CategoryConfig[] = [
   {
     key: "jobs",
     icon: Briefcase,
-    label: "Job Recommendations",
-    labelAr: "توصيات الوظائف",
-    description: "Daily job matches based on your skills and preferences",
-    descriptionAr: "وظائف يومية مطابقة لمهاراتك وتفضيلاتك",
+    labelKey: "catJobs",
+    descKey: "catJobsDesc",
   },
   {
     key: "applications",
     icon: FileText,
-    label: "Application Updates",
-    labelAr: "تحديثات الطلبات",
-    description: "Status changes, shortlisting, and rejection updates",
-    descriptionAr: "تغييرات الحالة والقائمة المختصرة وتحديثات الرفض",
+    labelKey: "catApplications",
+    descKey: "catApplicationsDesc",
   },
   {
     key: "interviews",
     icon: Calendar,
-    label: "Interview Alerts",
-    labelAr: "تنبيهات المقابلات",
-    description: "Scheduling, reminders, and interview updates",
-    descriptionAr: "الجدولة والتذكيرات وتحديثات المقابلات",
+    labelKey: "catInterviews",
+    descKey: "catInterviewsDesc",
   },
   {
     key: "offers",
     icon: FileText,
-    label: "Offer Notifications",
-    labelAr: "إشعارات العروض",
-    description: "New offers, expiry reminders, and updates",
-    descriptionAr: "العروض الجديدة وتذكيرات انتهاء الصلاحية",
+    labelKey: "catOffers",
+    descKey: "catOffersDesc",
   },
   {
     key: "profile_views",
     icon: Eye,
-    label: "Profile Views",
-    labelAr: "مشاهدات الملف الشخصي",
-    description: "When recruiters view your profile (aggregated daily)",
-    descriptionAr: "عندما يشاهد مسؤولو التوظيف ملفك (مجمع يومياً)",
+    labelKey: "catProfileViews",
+    descKey: "catProfileViewsDesc",
   },
   {
     key: "marketing",
     icon: Megaphone,
-    label: "Tips & Updates",
-    labelAr: "نصائح وتحديثات",
-    description: "Career tips, platform updates, and new features",
-    descriptionAr: "نصائح مهنية وتحديثات المنصة والميزات الجديدة",
+    labelKey: "catMarketing",
+    descKey: "catMarketingDesc",
   },
   {
     key: "system",
     icon: Shield,
-    label: "Security & System",
-    labelAr: "الأمان والنظام",
-    description: "Password changes, login alerts, and system notices",
-    descriptionAr: "تغييرات كلمة المرور وتنبيهات تسجيل الدخول",
+    labelKey: "catSystem",
+    descKey: "catSystemDesc",
   },
 ];
 
-const CHANNEL_LABELS: Record<Channel, { label: string; labelAr: string; icon: typeof Mail }> = {
-  in_app: { label: "In-App", labelAr: "داخل التطبيق", icon: Bell },
-  email: { label: "Email", labelAr: "بريد", icon: Mail },
-  whatsapp: { label: "WhatsApp", labelAr: "واتساب", icon: Smartphone },
+const CHANNEL_LABELS: Record<Channel, { labelKey: string; icon: typeof Mail }> = {
+  in_app: { labelKey: "channelInApp", icon: Bell },
+  email: { labelKey: "channelEmail", icon: Mail },
+  whatsapp: { labelKey: "channelWhatsApp", icon: Smartphone },
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -154,6 +139,7 @@ const CHANNEL_LABELS: Record<Channel, { label: string; labelAr: string; icon: ty
 export default function NotificationSettingsPage() {
   const { locale } = useParams<{ locale: string }>();
   const isAr = locale === "ar";
+  const t = useTranslations("notifications");
 
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
@@ -272,12 +258,10 @@ export default function NotificationSettingsPage() {
         </Link>
         <div>
           <h1 className="text-xl font-bold tracking-tight">
-            {isAr ? "إعدادات الإشعارات" : "Notification Settings"}
+            {t("title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {isAr
-              ? "تحكم في ما تتلقاه وكيف تتلقاه"
-              : "Control what you receive and how you receive it"}
+            {t("subtitle")}
           </p>
         </div>
       </div>
@@ -310,7 +294,7 @@ export default function NotificationSettingsPage() {
             </div>
             <div>
               <h3 className="text-sm font-semibold tracking-tight">
-                {isAr ? "تردد البريد الإلكتروني" : "Email Frequency"}
+                {t("globalFrequency")}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {isAr ? "كم مرة تريد تلقي رسائل البريد الإلكتروني" : "How often you want to receive emails"}
@@ -329,9 +313,9 @@ export default function NotificationSettingsPage() {
                   : "border-border/50 hover:border-border"
               }`}
             >
-              <div className="text-sm font-medium">{isAr ? opt.labelAr : opt.label}</div>
+              <div className="text-sm font-medium">{t(opt.labelKey)}</div>
               <div className="text-[11px] text-muted-foreground mt-1 leading-tight">
-                {isAr ? opt.descAr : opt.desc}
+                {t(opt.descKey)}
               </div>
             </button>
           ))}
@@ -347,7 +331,7 @@ export default function NotificationSettingsPage() {
             </div>
             <div>
               <h3 className="text-sm font-semibold tracking-tight">
-                {isAr ? "فئات الإشعارات" : "Notification Categories"}
+                {t("categories")}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {isAr ? "اختر ما تريد تلقيه ومن أين" : "Choose what to receive and through which channels"}
@@ -367,9 +351,9 @@ export default function NotificationSettingsPage() {
                       <Icon className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{isAr ? cat.labelAr : cat.label}</p>
+                      <p className="text-sm font-medium">{t(cat.labelKey)}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {isAr ? cat.descriptionAr : cat.description}
+                        {t(cat.descKey)}
                       </p>
                     </div>
                   </div>
@@ -397,7 +381,7 @@ export default function NotificationSettingsPage() {
                           }`}
                         >
                           <ChIcon className="w-3 h-3" />
-                          {isAr ? chConf.labelAr : chConf.label}
+                          {t(chConf.labelKey)}
                         </button>
                       );
                     })}
@@ -447,13 +431,13 @@ export default function NotificationSettingsPage() {
             <Save className="w-4 h-4" />
           )}
           {saving
-            ? isAr ? "جاري الحفظ..." : "Saving..."
-            : isAr ? "حفظ التفضيلات" : "Save Preferences"}
+            ? t("saving")
+            : t("saveChanges")}
         </Button>
         {saved && (
           <Badge variant="outline" className="gap-1 text-green-600 border-green-200 bg-green-50">
             <CheckCircle2 className="w-3 h-3" />
-            {isAr ? "تم الحفظ" : "Saved"}
+            {t("saved")}
           </Badge>
         )}
         {hasChanges && !saved && (

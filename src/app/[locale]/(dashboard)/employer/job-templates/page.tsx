@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ interface JobTemplate {
 /* ------------------------------------------------------------------ */
 
 export default function EmployerJobTemplatesPage() {
+  const t = useTranslations("employerJobTemplates");
   const [templates, setTemplates] = useState<JobTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -54,7 +56,7 @@ export default function EmployerJobTemplatesPage() {
         setTemplates(data.items ?? []);
       }
     } catch {
-      toast.error("Failed to load templates");
+      toast.error(t("toastLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ export default function EmployerJobTemplatesPage() {
 
   const createTemplate = async () => {
     if (!form.name.trim() || !form.title.trim()) {
-      toast.error("Template name and job title are required");
+      toast.error(t("toastRequired"));
       return;
     }
     try {
@@ -77,13 +79,13 @@ export default function EmployerJobTemplatesPage() {
         }),
       });
       if (res.ok) {
-        toast.success("Template created");
+        toast.success(t("toastCreated"));
         setForm({ name: "", title: "", description: "", requirements: "", jobType: "full_time", experienceLevel: "mid", skills: "" });
         setShowForm(false);
         fetchTemplates();
       }
     } catch {
-      toast.error("Failed to create template");
+      toast.error(t("toastCreateFailed"));
     }
   };
 
@@ -91,11 +93,11 @@ export default function EmployerJobTemplatesPage() {
     try {
       const res = await csrfFetch(`/api/employer/job-templates/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Template deleted");
+        toast.success(t("toastDeleted"));
         fetchTemplates();
       }
     } catch {
-      toast.error("Failed to delete template");
+      toast.error(t("toastDeleteFailed"));
     }
   };
 
@@ -111,23 +113,23 @@ export default function EmployerJobTemplatesPage() {
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Job Templates</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Save reusable job posting templates to speed up hiring
+              {t("description")}
             </p>
           </div>
           <Button onClick={() => setShowForm(!showForm)}>
-            <Plus className="mr-1 h-4 w-4" /> New Template
+            <Plus className="mr-1 h-4 w-4" /> {t("newTemplate")}
           </Button>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Templates</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("totalTemplates")}</p>
             <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{templates.length}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Times Used</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("timesUsed")}</p>
             <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
               {templates.reduce((sum, t) => sum + (t.usageCount || 0), 0)}
             </p>
@@ -138,27 +140,27 @@ export default function EmployerJobTemplatesPage() {
       {/* Create Form */}
       {showForm && (
         <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Create Template</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("createTitle")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input placeholder="Template name *" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
-            <Input placeholder="Job title *" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
+            <Input placeholder={t("templateName")} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+            <Input placeholder={t("jobTitle")} value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
             <textarea
-              placeholder="Job description..."
+              placeholder={t("jobDescription")}
               value={form.description}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
               className="sm:col-span-2 min-h-[80px] rounded-md border bg-background px-3 py-2 text-sm"
             />
             <textarea
-              placeholder="Requirements..."
+              placeholder={t("requirements")}
               value={form.requirements}
               onChange={(e) => setForm((p) => ({ ...p, requirements: e.target.value }))}
               className="sm:col-span-2 min-h-[60px] rounded-md border bg-background px-3 py-2 text-sm"
             />
-            <Input placeholder="Skills (comma-separated)" value={form.skills} onChange={(e) => setForm((p) => ({ ...p, skills: e.target.value }))} className="sm:col-span-2" />
+            <Input placeholder={t("skills")} value={form.skills} onChange={(e) => setForm((p) => ({ ...p, skills: e.target.value }))} className="sm:col-span-2" />
           </div>
           <div className="flex gap-2">
-            <Button onClick={createTemplate}><Plus className="mr-1 h-4 w-4" /> Create</Button>
-            <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button onClick={createTemplate}><Plus className="mr-1 h-4 w-4" /> {t("create")}</Button>
+            <Button variant="ghost" onClick={() => setShowForm(false)}>{t("cancel")}</Button>
           </div>
         </section>
       )}
@@ -168,10 +170,10 @@ export default function EmployerJobTemplatesPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search templates..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder={t("search")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Button variant="ghost" size="sm" onClick={() => setSearch("")}>
-            <RotateCcw className="mr-1 h-4 w-4" /> Reset
+            <RotateCcw className="mr-1 h-4 w-4" /> {t("reset")}
           </Button>
         </div>
       </section>
@@ -185,8 +187,8 @@ export default function EmployerJobTemplatesPage() {
         ) : templates.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Inbox className="h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">No templates yet</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">Create your first template to speed up job posting</p>
+            <p className="mt-4 text-sm font-medium text-muted-foreground">{t("noTemplates")}</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">{t("noTemplatesDesc")}</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -216,10 +218,10 @@ export default function EmployerJobTemplatesPage() {
                 )}
 
                 <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                  <span className="text-[10px] text-muted-foreground">Used {tmpl.usageCount || 0} times</span>
+                  <span className="text-[10px] text-muted-foreground">{t("usedTimes", { count: tmpl.usageCount || 0 })}</span>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="sm" onClick={() => useTemplate(tmpl)}>
-                      <Copy className="h-3.5 w-3.5 mr-1" /> Use
+                      <Copy className="h-3.5 w-3.5 mr-1" /> {t("use")}
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => deleteTemplate(tmpl._id)}>
                       <Trash2 className="h-3.5 w-3.5 text-red-400" />

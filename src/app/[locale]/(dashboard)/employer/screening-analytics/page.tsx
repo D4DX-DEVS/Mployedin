@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { BarChart3, FileQuestion, Hash, MessageSquare, PieChart } from "lucide-react";
 
 interface QuestionAnalytic {
@@ -21,6 +22,7 @@ interface AnalyticsData {
 }
 
 export default function ScreeningAnalyticsPage() {
+  const t = useTranslations("employerScreening");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState<{ _id: string; title: string }[]>([]);
@@ -62,20 +64,20 @@ export default function ScreeningAnalyticsPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <FileQuestion className="w-6 h-6 text-primary" />
-          Screening Questions Analytics
+          {t("title")}
         </h1>
-        <p className="text-muted-foreground mt-1">See how candidates are answering your screening questions</p>
+        <p className="text-muted-foreground mt-1">{t("description")}</p>
       </div>
 
       {/* Job Selector */}
       <div className="bg-card border border-border rounded-xl p-4">
-        <label className="text-sm font-medium text-foreground mb-2 block">Select a job with screening questions</label>
+        <label className="text-sm font-medium text-foreground mb-2 block">{t("selectJob")}</label>
         <select
           value={selectedJobId}
           onChange={(e) => setSelectedJobId(e.target.value)}
           className="w-full max-w-md px-3 py-2 border border-border rounded-lg bg-background text-sm"
         >
-          <option value="">Choose a job...</option>
+          <option value="">{t("chooseJob")}</option>
           {jobs.map((j) => (
             <option key={j._id} value={j._id}>{j.title}</option>
           ))}
@@ -97,7 +99,7 @@ export default function ScreeningAnalyticsPage() {
             </div>
             <div>
               <p className="font-medium text-foreground">{data.jobTitle}</p>
-              <p className="text-sm text-muted-foreground">{data.totalApplications} applications with screening answers</p>
+              <p className="text-sm text-muted-foreground">{t("applicationsWithAnswers", { count: data.totalApplications })}</p>
             </div>
           </div>
 
@@ -108,7 +110,7 @@ export default function ScreeningAnalyticsPage() {
                 <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">Q{idx + 1}</span>
                 <div>
                   <p className="font-medium text-foreground">{q.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{q.type.replace("_", " ")} • {q.totalResponses} responses</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{q.type.replace("_", " ")} • {t("responses", { count: q.totalResponses })}</p>
                 </div>
               </div>
 
@@ -142,15 +144,15 @@ export default function ScreeningAnalyticsPage() {
                 <div className="flex gap-4">
                   <div className="px-4 py-2 bg-muted rounded-lg text-center">
                     <p className="text-lg font-bold text-foreground">{q.numericStats.avg}</p>
-                    <p className="text-xs text-muted-foreground">Average</p>
+                    <p className="text-xs text-muted-foreground">{t("average")}</p>
                   </div>
                   <div className="px-4 py-2 bg-muted rounded-lg text-center">
                     <p className="text-lg font-bold text-foreground">{q.numericStats.min}</p>
-                    <p className="text-xs text-muted-foreground">Min</p>
+                    <p className="text-xs text-muted-foreground">{t("min")}</p>
                   </div>
                   <div className="px-4 py-2 bg-muted rounded-lg text-center">
                     <p className="text-lg font-bold text-foreground">{q.numericStats.max}</p>
-                    <p className="text-xs text-muted-foreground">Max</p>
+                    <p className="text-xs text-muted-foreground">{t("max")}</p>
                   </div>
                 </div>
               )}
@@ -159,7 +161,7 @@ export default function ScreeningAnalyticsPage() {
               {q.sampleAnswers && q.sampleAnswers.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <MessageSquare className="w-3.5 h-3.5" /> Sample Responses
+                    <MessageSquare className="w-3.5 h-3.5" /> {t("sampleResponses")}
                   </p>
                   {q.sampleAnswers.slice(0, 5).map((ans, i) => (
                     <div key={i} className="p-2 bg-muted/50 rounded-lg text-sm text-foreground">
@@ -174,7 +176,7 @@ export default function ScreeningAnalyticsPage() {
       )}
 
       {!data && !loading && selectedJobId && (
-        <div className="text-center py-12 text-muted-foreground">No analytics available for this job</div>
+        <div className="text-center py-12 text-muted-foreground">{t("noAnalytics")}</div>
       )}
     </div>
   );

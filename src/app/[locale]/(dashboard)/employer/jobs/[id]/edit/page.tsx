@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { useJobDetail, useUpdateJob } from "@/hooks/useJobs";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
 import type { CountryOption } from "@/hooks/useCountrySearch";
+import { useTranslations } from "next-intl";
 
 // ─── Constants ───────────────────────────────────────────────────
 const JOB_CATEGORIES = [
@@ -259,6 +260,7 @@ function EditListSection({
 
 // ─── Main page ────────────────────────────────────────────────────
 export default function EditJobPage() {
+  const t = useTranslations("employerJobEdit");
   const router = useRouter();
   const { locale, id } = useParams<{ locale: string; id: string }>();
 
@@ -370,7 +372,7 @@ export default function EditJobPage() {
 
   // Show error if job not found
   useEffect(() => {
-    if (jobError) setGlobalError("Job not found");
+    if (jobError) setGlobalError(t("jobNotFound"));
   }, [jobError]);
 
   // Close country dropdown on outside click
@@ -410,14 +412,14 @@ export default function EditJobPage() {
   }
 
   function addTag() {
-    const t = tagInput.trim();
-    if (!t || form.tags.includes(t)) { setTagInput(""); return; }
-    setField("tags", [...form.tags, t]);
+    const val = tagInput.trim();
+    if (!val || form.tags.includes(val)) { setTagInput(""); return; }
+    setField("tags", [...form.tags, val]);
     setTagInput("");
   }
 
   function removeTag(tag: string) {
-    setField("tags", form.tags.filter((t) => t !== tag));
+    setField("tags", form.tags.filter((tg) => tg !== tag));
   }
 
   function addPreferredSkill() {
@@ -444,12 +446,12 @@ export default function EditJobPage() {
 
   function validate(forPublish = false): boolean {
     const errors: FieldErrors = {};
-    if (!form.title.trim()) errors.title = "Job title is required";
-    else if (form.title.trim().length < 5) errors.title = "Must be at least 5 characters";
-    if (!form.description.trim()) errors.description = "Job description is required";
-    else if (form.description.trim().length < 20) errors.description = "Must be at least 20 characters";
-    if (forPublish && !form.location.country) errors.country = "Country is required to publish";
-    if (form.salary.max > 0 && form.salary.max < form.salary.min) errors.salary = "Max salary must be ≥ min salary";
+    if (!form.title.trim()) errors.title = t("errorTitleRequired");
+    else if (form.title.trim().length < 5) errors.title = t("errorTitleLength");
+    if (!form.description.trim()) errors.description = t("errorDescRequired");
+    else if (form.description.trim().length < 20) errors.description = t("errorDescLength");
+    if (forPublish && !form.location.country) errors.country = t("errorCountry");
+    if (form.salary.max > 0 && form.salary.max < form.salary.min) errors.salary = t("errorSalary");
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -511,7 +513,7 @@ export default function EditJobPage() {
 
   async function generateDescription() {
     if (!form.title.trim()) {
-      setFieldErrors((p) => ({ ...p, title: "Enter a title first to generate a description" }));
+      setFieldErrors((p) => ({ ...p, title: t("errorAiTitle") }));
       return;
     }
     setAiState("generating");
@@ -568,25 +570,25 @@ export default function EditJobPage() {
         className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-5 group"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-        Back to Job
+        {t("backToJob")}
       </button>
 
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold">Edit Job Posting</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Changes save as draft unless you publish.</p>
+          <h1 className="text-xl font-bold">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("description")}</p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
           <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[110px]">
-            {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />Saving…</>
-              : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />Saved!</>
-              : submitState === "error" ? <><AlertCircle className="w-3.5 h-3.5 me-1.5 text-destructive" />Error</>
-              : "Save Draft"}
+            {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
+              : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
+              : submitState === "error" ? <><AlertCircle className="w-3.5 h-3.5 me-1.5 text-destructive" />{t("error")}</>
+              : t("saveDraft")}
           </Button>
           <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
             className="min-w-[130px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-sm">
-            {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />Publishing…</>
-              : <><Rocket className="w-3.5 h-3.5 me-1.5" />Publish Job</>}
+            {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
+              : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
           </Button>
         </div>
       </div>
@@ -596,40 +598,46 @@ export default function EditJobPage() {
         <div className="space-y-5">
 
           {/* ① Job Basics */}
-          <Section icon={Briefcase} title="Job Basics" subtitle="Core details candidates see first">
-            <Field label="Job Title" required error={fieldErrors.title} hint="Be specific — e.g. 'Senior React Developer' not 'Developer'">
+          <Section icon={Briefcase} title={t("basics")} subtitle={t("basicsDesc")}>
+            <Field label={t("jobTitle")} required error={fieldErrors.title} hint={t("hintTitle")}>
               <Input
-                placeholder="e.g. Senior Full Stack Developer"
+                placeholder={t("placeholderTitle")}
                 value={form.title}
                 onChange={(e) => setField("title", e.target.value)}
                 className={cn(fieldErrors.title && "border-destructive focus-visible:ring-destructive")}
               />
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Category">
+              <Field label={t("category")}>
                 <SearchableSelect
                   options={JOB_CATEGORIES.map((c) => ({ value: c, label: c }))}
                   value={form.category}
                   onValueChange={(v) => setField("category", v)}
-                  placeholder="Select category"
+                  placeholder={t("placeholderCategory")}
                 />
               </Field>
-              <Field label="Vacancies" hint="Number of open positions">
+              <Field label={t("vacanciesLabel")} hint={t("hintVacancies")}>
                 <Input type="number" min={1} max={100} value={form.vacancies}
                   onChange={(e) => setField("vacancies", Math.max(1, Number(e.target.value)))} />
               </Field>
             </div>
-            <Field label="Employment Type" hint="Full-time, part-time, contract, etc.">
+            <Field label={t("employmentType")} hint={t("hintType")}>
               <SearchableSelect
-                options={EMPLOYMENT_TYPE_OPTIONS.map((t) => ({ value: t.value, label: t.label }))}
+                options={[
+                  { value: "full_time", label: t("fullTime") },
+                  { value: "part_time", label: t("partTime") },
+                  { value: "contract", label: t("contract") },
+                  { value: "internship", label: t("internship") },
+                  { value: "freelance", label: t("freelance") },
+                ]}
                 value={form.employmentType}
                 onValueChange={(v) => setField("employmentType", v)}
-                placeholder="Select employment type (optional)"
+                placeholder={t("placeholderType")}
               />
             </Field>
-            <Field label="Duration" hint="For internships or contracts (e.g. 3-6 Months)">
+            <Field label={t("duration")} hint={t("hintDuration")}>
               <Input
-                placeholder="e.g. 3-6 Months, 1 Year"
+                placeholder={t("placeholderDuration")}
                 value={form.duration}
                 onChange={(e) => setField("duration", e.target.value)}
                 maxLength={100}
@@ -638,15 +646,15 @@ export default function EditJobPage() {
           </Section>
 
           {/* ② Location */}
-          <Section icon={MapPin} title="Location" subtitle="Where is this role based?">
+          <Section icon={MapPin} title={t("locationSection")} subtitle={t("locationDesc")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Country" error={fieldErrors.country} hint="Type to search — auto-sets currency">
+              <Field label={t("country")} error={fieldErrors.country} hint={t("hintCountry")}>
                 <div ref={countryRef} className="relative">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                     <Input
                       className="pl-8"
-                      placeholder="Search country…"
+                      placeholder={t("placeholderCountry")}
                       value={countryQuery}
                       onChange={(e) => {
                         setCountryQuery(e.target.value);
@@ -675,8 +683,8 @@ export default function EditJobPage() {
                   )}
                 </div>
               </Field>
-              <Field label="City / Region">
-                <Input placeholder="e.g. Dubai, Bangalore, Remote"
+              <Field label={t("city")}>
+                <Input placeholder={t("placeholderCity")}
                   value={form.location.city}
                   onChange={(e) => setField("location", { ...form.location, city: e.target.value })} />
               </Field>
@@ -698,7 +706,7 @@ export default function EditJobPage() {
                         : "border border-border text-muted-foreground hover:bg-muted"
                     )}
                   >
-                    {mode.label}
+                    {mode.value === "onsite" ? t("onSite") : mode.value === "hybrid" ? t("hybridMode") : t("remote")}
                   </button>
                 ))}
               </div>
@@ -706,10 +714,10 @@ export default function EditJobPage() {
           </Section>
 
           {/* ③ Job Description */}
-          <Section icon={Globe} title="Job Description" subtitle="Tell candidates what makes this role compelling">
-            <Field label="Description" required error={fieldErrors.description}>
+          <Section icon={Globe} title={t("descriptionSection")} subtitle={t("descriptionDesc")}>
+            <Field label={t("descriptionField")} required error={fieldErrors.description}>
               <Textarea
-                placeholder="Describe responsibilities, day-to-day tasks, team culture, and what success looks like in this role…"
+                placeholder={t("placeholderDesc")}
                 value={form.description}
                 onChange={(e) => setField("description", e.target.value)}
                 rows={10}
@@ -717,29 +725,29 @@ export default function EditJobPage() {
               />
               <div className="flex items-center justify-between mt-1.5">
                 <span className={cn("text-xs", form.description.length < 20 ? "text-destructive" : "text-muted-foreground")}>
-                  {form.description.length} / 5000 characters
+                  {t("charCount", { count: form.description.length })}
                 </span>
                 <Button type="button" size="sm" variant="outline" onClick={generateDescription}
                   disabled={aiState === "generating"} className="h-7 text-xs gap-1.5">
                   <Sparkles className="w-3 h-3 text-primary" />
-                  {aiState === "generating" ? "Generating…" : "Generate with AI"}
+                  {aiState === "generating" ? t("generating") : t("generateAi")}
                 </Button>
               </div>
             </Field>
             {(aiState === "generating" || aiState === "done") && aiSuggestion && (
               <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
                 <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> AI Suggestion
+                  <Sparkles className="w-3.5 h-3.5" /> {t("aiSuggestion")}
                   {aiState === "generating" && <Loader2 className="w-3 h-3 animate-spin ms-1" />}
                 </p>
                 <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{aiSuggestion}</p>
                 {aiState === "done" && (
                   <div className="flex gap-2">
                     <Button type="button" size="sm" className="h-7 text-xs" onClick={() => { setField("description", aiSuggestion); setAiState("idle"); setAiSuggestion(""); }}>
-                      <CheckCircle2 className="w-3 h-3 me-1.5" /> Use this description
+                      <CheckCircle2 className="w-3 h-3 me-1.5" /> {t("useDescription")}
                     </Button>
                     <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAiState("idle"); setAiSuggestion(""); }}>
-                      Dismiss
+                      {t("dismiss")}
                     </Button>
                   </div>
                 )}
@@ -748,10 +756,10 @@ export default function EditJobPage() {
           </Section>
 
           {/* ④ Requirements */}
-          <Section icon={Users} title="Requirements" subtitle="Skills and experience needed">
-            <Field label="Required Skills" hint="Press Enter or click + to add each skill">
+          <Section icon={Users} title={t("requirementsSection")} subtitle={t("requirementsDesc")}>
+            <Field label={t("requiredSkills")} hint={t("hintSkills")}>
               <div className="flex gap-2">
-                <Input placeholder="e.g. React, Python, SQL…" value={skillInput}
+                <Input placeholder={t("placeholderRequired")} value={skillInput}
                   onChange={(e) => setSkillInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
                   className="flex-1" />
@@ -770,9 +778,9 @@ export default function EditJobPage() {
                 </div>
               )}
             </Field>
-            <Field label="Preferred Skills" hint="Nice-to-have skills (optional)">
+            <Field label={t("preferredSkills")} hint={t("hintPreferred")}>
               <div className="flex gap-2">
-                <Input placeholder="e.g. Kotlin, CI/CD, App Store publishing" value={preferredSkillInput}
+                <Input placeholder={t("placeholderPreferred")} value={preferredSkillInput}
                   onChange={(e) => setPreferredSkillInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addPreferredSkill(); } }}
                   className="flex-1" />
@@ -792,11 +800,11 @@ export default function EditJobPage() {
               )}
             </Field>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Min Experience (years)">
+              <Field label={t("minExp")}>
                 <Input type="number" min={0} max={50} value={form.requirements.experienceMin}
                   onChange={(e) => setField("requirements", { ...form.requirements, experienceMin: Number(e.target.value) })} />
               </Field>
-              <Field label="Max Experience (years)">
+              <Field label={t("maxExp")}>
                 <Input type="number" min={0} max={50} value={form.requirements.experienceMax}
                   onChange={(e) => setField("requirements", { ...form.requirements, experienceMax: Number(e.target.value) })} />
               </Field>
@@ -805,70 +813,70 @@ export default function EditJobPage() {
 
           {/* ④b Key Responsibilities (optional) */}
           <EditListSection
-            title="Key Responsibilities"
-            subtitle="What this person will do day-to-day (optional)"
+            title={t("responsibilities")}
+            subtitle={t("responsibilitiesHint")}
             items={form.responsibilities}
             inputValue={responsibilityInput}
             onInputChange={setResponsibilityInput}
             onAdd={() => addListItem("responsibilities", responsibilityInput, setResponsibilityInput)}
             onRemove={(i) => removeListItem("responsibilities", i)}
-            placeholder="e.g. Develop and maintain cross-platform mobile apps"
+            placeholder={t("responsibilityPlaceholder")}
           />
 
           {/* ④c Qualifications (optional) */}
           <EditListSection
-            title="Qualifications"
-            subtitle="Academic or professional qualifications (optional)"
+            title={t("qualifications")}
+            subtitle={t("qualificationsHint")}
             items={form.qualifications}
             inputValue={qualificationInput}
             onInputChange={setQualificationInput}
             onAdd={() => addListItem("qualifications", qualificationInput, setQualificationInput)}
             onRemove={(i) => removeListItem("qualifications", i)}
-            placeholder="e.g. Bachelor's degree in Computer Science"
+            placeholder={t("qualificationPlaceholder")}
           />
 
           {/* ④d Benefits (optional) */}
           <EditListSection
-            title="Benefits"
-            subtitle="Perks that make this role attractive (optional)"
+            title={t("benefits")}
+            subtitle={t("benefitsHint")}
             items={form.benefits}
             inputValue={benefitInput}
             onInputChange={setBenefitInput}
             onAdd={() => addListItem("benefits", benefitInput, setBenefitInput)}
             onRemove={(i) => removeListItem("benefits", i)}
-            placeholder="e.g. Flexible working hours"
+            placeholder={t("benefitPlaceholder")}
           />
 
           {/* ④e What You Will Learn (optional) */}
           <EditListSection
-            title="What You Will Learn"
-            subtitle="Skills or experience candidates will gain (optional)"
+            title={t("whatYouLearn")}
+            subtitle={t("whatYouLearnHint")}
             items={form.learningOutcomes}
             inputValue={learningOutcomeInput}
             onInputChange={setLearningOutcomeInput}
             onAdd={() => addListItem("learningOutcomes", learningOutcomeInput, setLearningOutcomeInput)}
             onRemove={(i) => removeListItem("learningOutcomes", i)}
-            placeholder="e.g. Real-world software testing workflows"
+            placeholder={t("learnPlaceholder")}
           />
 
           {/* ⑤ Compensation */}
-          <Section icon={DollarSign} title="Compensation" subtitle="Salary transparency attracts 2× more applicants">
+          <Section icon={DollarSign} title={t("compensationSection")} subtitle={t("compensationDesc")}>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Field label="Min Salary" error={fieldErrors.salary}>
+              <Field label={t("minSalary")} error={fieldErrors.salary}>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{sym}</span>
                   <Input type="number" min={0} placeholder="0" value={form.salary.min || ""}
                     onChange={(e) => setField("salary", { ...form.salary, min: Number(e.target.value) })} className="pl-7" />
                 </div>
               </Field>
-              <Field label="Max Salary">
+              <Field label={t("maxSalary")}>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{sym}</span>
                   <Input type="number" min={0} placeholder="0" value={form.salary.max || ""}
                     onChange={(e) => setField("salary", { ...form.salary, max: Number(e.target.value) })} className="pl-7" />
                 </div>
               </Field>
-              <Field label="Currency">
+              <Field label={t("currency")}>
                 <SearchableSelect
                   options={Object.entries(CURRENCY_SYMBOLS).map(([code, sym]) => ({ value: code, label: `${sym} ${code}` }))}
                   value={form.salary.currency}
@@ -877,42 +885,46 @@ export default function EditJobPage() {
               </Field>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Pay Period">
+              <Field label={t("payPeriod")}>
                 <SearchableSelect
-                  options={SALARY_PERIODS.map((p) => ({ value: p.value, label: p.label }))}
+                  options={[
+                    { value: "monthly", label: t("perMonth") },
+                    { value: "yearly", label: t("perYear") },
+                    { value: "lpa", label: t("lpa") },
+                  ]}
                   value={form.salary.period}
                   onValueChange={(v) => setField("salary", { ...form.salary, period: v })}
                 />
               </Field>
-              <Field label="Negotiable?">
+              <Field label={t("negotiableQ")}>
                 <label className="flex items-center gap-3 cursor-pointer h-10">
                   <div onClick={() => setField("salary", { ...form.salary, isNegotiable: !form.salary.isNegotiable })}
                     className={cn("w-9 h-5 rounded-full transition-colors relative", form.salary.isNegotiable ? "bg-primary" : "bg-muted-foreground/30")}>
                     <span className={cn("absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform", form.salary.isNegotiable ? "translate-x-4" : "translate-x-0.5")} />
                   </div>
-                  <span className="text-sm">{form.salary.isNegotiable ? "Yes, negotiable" : "Fixed salary"}</span>
+                  <span className="text-sm">{form.salary.isNegotiable ? t("negotiableYes") : t("fixedSalary")}</span>
                 </label>
               </Field>
             </div>
             {(form.salary.min > 0 || form.salary.max > 0) && (
               <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-sm">
-                <span className="text-muted-foreground text-xs">Candidates will see: </span>
+                <span className="text-muted-foreground text-xs">{t("salaryPreview")} </span>
                 <span className="font-semibold text-emerald-700 dark:text-emerald-400">
                   {form.salary.min > 0 ? formatSalary(form.salary.min, form.salary.currency, form.salary.period) : "—"}
                   {" – "}
                   {form.salary.max > 0 ? formatSalary(form.salary.max, form.salary.currency, form.salary.period) : "—"}
-                  <span className="font-normal text-xs ms-1">/ {form.salary.period === "lpa" ? "LPA" : form.salary.period}</span>
+                  <span className="font-normal text-xs ms-1">{t("perPeriod", { period: form.salary.period === "lpa" ? "LPA" : form.salary.period })}</span>
                 </span>
-                {form.salary.isNegotiable && <span className="text-xs text-muted-foreground ms-2">(negotiable)</span>}
+                {form.salary.isNegotiable && <span className="text-xs text-muted-foreground ms-2">({t("negotiableYes")})</span>}
               </div>
             )}
           </Section>
 
           {/* ⑥ Tags */}
-          <Section icon={Tags} title="Tags" subtitle="Keywords that improve discoverability">
-            <Field label="Tags" hint="Add relevant keywords — e.g. 'remote', 'urgent', 'growth role'">
+          <Section icon={Tags} title={t("tagsSection")} subtitle={t("tagsDesc")}>
+            <Field label={t("tagsField")} hint={t("hintTags")}>
               <div className="flex gap-2">
-                <Input placeholder="Add tag and press Enter" value={tagInput}
+                <Input placeholder={t("placeholderTag")} value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
                   className="flex-1" />
@@ -922,10 +934,10 @@ export default function EditJobPage() {
               </div>
               {form.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {form.tags.map((t) => (
-                    <Badge key={t} variant="outline" className="gap-1 text-xs">
-                      {t}
-                      <button type="button" onClick={() => removeTag(t)} className="hover:text-destructive ml-0.5"><X className="w-3 h-3" /></button>
+                  {form.tags.map((tag) => (
+                    <Badge key={tag} variant="outline" className="gap-1 text-xs">
+                      {tag}
+                      <button type="button" onClick={() => removeTag(tag)} className="hover:text-destructive ml-0.5"><X className="w-3 h-3" /></button>
                     </Badge>
                   ))}
                 </div>
@@ -934,7 +946,7 @@ export default function EditJobPage() {
           </Section>
 
           {/* ⑥b Screening Questions */}
-          <Section icon={ClipboardList} title="Screening Questions" subtitle="Ask candidates questions when they apply (max 20)">
+          <Section icon={ClipboardList} title={t("screeningSection")} subtitle={t("screeningDesc")}>
             {form.screeningQuestions.map((q, qIdx) => (
               <div key={q.id} className="rounded-xl border border-border/60 bg-muted/10 p-4 space-y-3">
                 <div className="flex items-start gap-2">
@@ -942,7 +954,7 @@ export default function EditJobPage() {
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-2">
                       <Input
-                        placeholder="Enter your question…"
+                        placeholder={t("placeholderQuestion")}
                         value={q.label}
                         onChange={(e) => {
                           const updated = [...form.screeningQuestions];
@@ -970,8 +982,16 @@ export default function EditJobPage() {
                         }}
                         className="text-xs border border-border rounded-md px-2 py-1.5 bg-background"
                       >
-                        {QUESTION_TYPES.map((t) => (
-                          <option key={t.value} value={t.value}>{t.label}</option>
+                        {[
+                          { value: "text", label: t("shortText") },
+                          { value: "textarea", label: t("longText") },
+                          { value: "select", label: t("dropdown") },
+                          { value: "checkbox", label: t("checkbox") },
+                          { value: "radio", label: t("multipleChoice") },
+                          { value: "number", label: t("number") },
+                          { value: "date", label: t("dateType") },
+                        ].map((qt) => (
+                          <option key={qt.value} value={qt.value}>{qt.label}</option>
                         ))}
                       </select>
                       <label className="flex items-center gap-1.5 text-xs cursor-pointer">
@@ -985,7 +1005,7 @@ export default function EditJobPage() {
                           }}
                           className="rounded border-border"
                         />
-                        Required
+                        {t("required")}
                       </label>
                       {qIdx > 0 && (
                         <button type="button" onClick={() => {
@@ -1008,7 +1028,7 @@ export default function EditJobPage() {
                     </div>
                     {NEEDS_OPTIONS.has(q.type) && (
                       <div className="space-y-1.5 pl-1">
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Options</p>
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{t("options")}</p>
                         {q.options.map((opt, optIdx) => (
                           <div key={optIdx} className="flex items-center gap-1.5">
                             <Input
@@ -1047,7 +1067,7 @@ export default function EditJobPage() {
                             }}
                             className="h-7 text-xs gap-1 text-primary"
                           >
-                            <Plus className="w-3 h-3" /> Add option
+                            <Plus className="w-3 h-3" /> {t("addOption")}
                           </Button>
                         )}
                       </div>
@@ -1065,11 +1085,11 @@ export default function EditJobPage() {
                 ])}
                 className="gap-1.5"
               >
-                <Plus className="w-3.5 h-3.5" /> Add Question
+                <Plus className="w-3.5 h-3.5" /> {t("addQuestion")}
               </Button>
             )}
             {form.screeningQuestions.length === 0 && (
-              <p className="text-xs text-muted-foreground">No screening questions yet. Add questions that candidates must answer when applying.</p>
+              <p className="text-xs text-muted-foreground">{t("noQuestions")}</p>
             )}
           </Section>
 
@@ -1082,8 +1102,8 @@ export default function EditJobPage() {
                   <Settings2 className="w-3.5 h-3.5 text-primary" />
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-semibold">Advanced Settings</p>
-                  <p className="text-xs text-muted-foreground font-normal">Expiry date, application mode</p>
+                  <p className="text-sm font-semibold">{t("advancedSection")}</p>
+                  <p className="text-xs text-muted-foreground font-normal">{t("advancedDesc")}</p>
                 </div>
               </div>
               {showAdvanced ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -1091,16 +1111,16 @@ export default function EditJobPage() {
             {showAdvanced && (
               <div className="p-5 pt-0 space-y-4 border-t border-border/40">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                  <Field label="Expiry Date" hint="Leave blank for no expiry">
+                  <Field label={t("expiryDate")} hint={t("hintExpiry")}>
                     <Input type="date" value={form.expiresAt}
                       onChange={(e) => setField("expiresAt", e.target.value)}
                       min={new Date().toISOString().split("T")[0]} />
                   </Field>
-                  <Field label="Application Mode" hint="How will you review applicants?">
+                  <Field label={t("applicationMode")} hint={t("hintAppMode")}>
                     <SearchableSelect
                       options={[
-                        { value: "manual", label: "Manual Review" },
-                        { value: "auto", label: "Auto Match (AI)" },
+                        { value: "manual", label: t("manualReview") },
+                        { value: "auto", label: t("autoMatch") },
                       ]}
                       value={form.applicationMode}
                       onValueChange={(v) => setField("applicationMode", v as "auto" | "manual")}
@@ -1120,17 +1140,17 @@ export default function EditJobPage() {
           {/* Bottom CTAs */}
           <div className="flex gap-3 pb-8">
             <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[120px]">
-              {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />Saving…</>
-                : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />Saved!</>
-                : "Save Draft"}
+              {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
+                : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
+                : t("saveDraft")}
             </Button>
             <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
               className="min-w-[140px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white">
-              {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />Publishing…</>
-                : <><Rocket className="w-3.5 h-3.5 me-1.5" />Publish Job</>}
+              {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
+                : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
             </Button>
             <Button type="button" variant="ghost" onClick={() => router.push(`/${locale}/employer/jobs/${id}`)}>
-              Cancel
+              {t("cancel")}
             </Button>
           </div>
         </div>
@@ -1141,21 +1161,21 @@ export default function EditJobPage() {
             <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
               <div className="bg-muted/30 border-b border-border/40 px-4 py-3 flex items-center gap-2">
                 <Eye className="w-3.5 h-3.5 text-primary" />
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live Preview</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("livePreview")}</p>
               </div>
               <div className="p-4 space-y-3">
                 <div>
                   <h3 className="font-bold text-base leading-snug">
-                    {form.title || <span className="text-muted-foreground/50 font-normal text-sm">Job title…</span>}
+                    {form.title || <span className="text-muted-foreground/50 font-normal text-sm">{t("previewTitle")}</span>}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
                     <MapPin className="w-3 h-3 flex-shrink-0" />
-                    {[form.location.city, form.location.country].filter(Boolean).join(", ") || "Location not set"}
+                    {[form.location.city, form.location.country].filter(Boolean).join(", ") || t("locationNotSet")}
                     {form.workMode && <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium",
                       form.workMode === "remote" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                         : form.workMode === "hybrid" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                         : "bg-muted text-muted-foreground"
-                    )}>{WORK_MODE_LABELS[form.workMode] ?? form.workMode}</span>}
+                    )}>{form.workMode === "onsite" ? t("onSite") : form.workMode === "hybrid" ? t("hybridMode") : t("remote")}</span>}
                   </p>
                 </div>
                 {(form.salary.min > 0 || form.salary.max > 0) && (
@@ -1166,19 +1186,19 @@ export default function EditJobPage() {
                       {" – "}
                       {form.salary.max > 0 ? formatSalary(form.salary.max, form.salary.currency, form.salary.period) : "—"}
                     </span>
-                    <span className="text-xs text-muted-foreground">/ {form.salary.period === "lpa" ? "LPA" : form.salary.period}</span>
+                    <span className="text-xs text-muted-foreground">{t("perPeriod", { period: form.salary.period === "lpa" ? "LPA" : form.salary.period })}</span>
                   </div>
                 )}
                 <div className="flex flex-wrap gap-1.5">
                   {form.category && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{form.category}</span>}
-                  {form.employmentType && <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">{EMPLOYMENT_TYPE_LABELS[form.employmentType] ?? form.employmentType}</span>}
+                  {form.employmentType && <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium">{form.employmentType === "full_time" ? t("fullTime") : form.employmentType === "part_time" ? t("partTime") : form.employmentType === "contract" ? t("contract") : form.employmentType === "internship" ? t("internship") : t("freelance")}</span>}
                   {form.duration && <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-0.5 rounded-full font-medium">{form.duration}</span>}
                   <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{form.vacancies} {form.vacancies === 1 ? "vacancy" : "vacancies"}</span>
-                  {form.applicationMode === "auto" && <span className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 px-2 py-0.5 rounded-full font-medium">AI Matching</span>}
+                  {form.applicationMode === "auto" && <span className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 px-2 py-0.5 rounded-full font-medium">{t("aiMatching")}</span>}
                 </div>
                 {form.requirements.skills.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Skills</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{t("skillsPreview")}</p>
                     <div className="flex flex-wrap gap-1">
                       {form.requirements.skills.slice(0, 8).map((s) => (
                         <span key={s} className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">{s}</span>
@@ -1189,7 +1209,7 @@ export default function EditJobPage() {
                 )}
                 {form.requirements.preferredSkills.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Nice to Have</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{t("niceToHave")}</p>
                     <div className="flex flex-wrap gap-1">
                       {form.requirements.preferredSkills.slice(0, 6).map((s) => (
                         <span key={s} className="text-xs bg-secondary/50 text-secondary-foreground/70 px-2 py-0.5 rounded-full border border-dashed border-border">{s}</span>

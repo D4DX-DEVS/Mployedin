@@ -10,6 +10,7 @@ type PopulatedInvoice = {
   dueDate?: Date | string | null;
   status?: string;
   category?: string;
+  issuedByLabel?: string;
   billingDetails?: {
     companyName?: string;
     contactPerson?: string;
@@ -152,6 +153,9 @@ export function generateInvoicePdf(invoice: PopulatedInvoice): Buffer {
   addField("Status:", (invoice.status ?? "—").toUpperCase());
   if (invoice.category) {
     addField("Category:", invoice.category.replace(/_/g, " ").toUpperCase());
+  }
+  if (invoice.issuedByLabel) {
+    addField("Issued By:", invoice.issuedByLabel);
   }
 
   const leftEndY = y;

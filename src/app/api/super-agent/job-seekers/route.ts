@@ -5,6 +5,7 @@ import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Agent from "@/models/Agent";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/super-agent/job-seekers — Regional job seeker directory   */
@@ -39,10 +40,11 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   }
 
   if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { "userId.fullName": { $regex: search, $options: "i" } },
-      { "userId.email": { $regex: search, $options: "i" } },
-      { skills: { $regex: search, $options: "i" } },
+      { "userId.fullName": { $regex: safe, $options: "i" } },
+      { "userId.email": { $regex: safe, $options: "i" } },
+      { skills: { $regex: safe, $options: "i" } },
     ];
   }
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Calendar, Search, Users, Clock, Send, CheckCircle, Loader2, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useShortlistedCandidates, useBulkScheduleInterviews } from "@/hooks/useInterviews";
@@ -25,6 +26,7 @@ interface InterviewSlot {
 }
 
 export default function EmployerBulkInterviewPage() {
+  const t = useTranslations("employerInterviewsBulk");
   const [search, setSearch] = useState("");
   const [slot, setSlot] = useState<InterviewSlot>({
     date: "", time: "10:00", duration: 45, type: "video", meetLink: "", location: "",
@@ -94,8 +96,8 @@ export default function EmployerBulkInterviewPage() {
   return (
     <div className="page-container">
       <PageHeader
-        title="Bulk Interview Scheduling"
-        description="Select multiple candidates and schedule interviews simultaneously"
+        title={t("title")}
+        description={t("description")}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -105,21 +107,21 @@ export default function EmployerBulkInterviewPage() {
             <div className="flex items-center gap-2 flex-1">
               <Search className="h-4 w-4 text-muted-foreground shrink-0" />
               <input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search candidates…" className="input-field flex-1" />
+                placeholder={t("searchCandidates")} className="input-field flex-1" />
             </div>
             <span className="text-sm text-muted-foreground whitespace-nowrap">
-              {selectedCount} selected
+              {t("selected", { count: selectedCount })}
             </span>
           </div>
 
           {loading ? (
             <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Loading candidates…</span>
+              <span className="text-sm">{t("loading")}</span>
             </div>
           ) : filteredCandidates.length === 0 ? (
             <p className="text-center py-8 text-sm text-muted-foreground">
-              No shortlisted candidates found. Shortlist candidates from your applications first.
+              {t("noCandidates")}
             </p>
           ) : (
             <>
@@ -127,7 +129,7 @@ export default function EmployerBulkInterviewPage() {
                 <input type="checkbox"
                   checked={filteredCandidates.length > 0 && filteredCandidates.every(c => c.selected)}
                   onChange={toggleAll} className="accent-primary" />
-                <span className="text-xs text-muted-foreground">Select all ({filteredCandidates.length})</span>
+                <span className="text-xs text-muted-foreground">{t("selectAll", { count: filteredCandidates.length })}</span>
               </div>
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                 {filteredCandidates.map(c => (
@@ -155,72 +157,71 @@ export default function EmployerBulkInterviewPage() {
         {/* Slot Configuration */}
         <div className="card-base p-5 space-y-4">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-primary" /> Interview Details
+            <Calendar className="h-4 w-4 text-primary" /> {t("interviewDetails")}
           </h3>
 
           <div className="space-y-3">
             <DateTimePicker
-              label="Date"
+              label={t("date")}
               required
               mode="date"
               value={slot.date}
               onChange={(v) => setSlot(s => ({ ...s, date: v }))}
               minDate={new Date()}
-              placeholder="Pick a date"
+              placeholder={t("pickDate")}
             />
             <div className="grid grid-cols-2 gap-2">
               <DateTimePicker
-                label="Time"
+                label={t("time")}
                 required
                 mode="time"
                 value={slot.time}
                 onChange={(v) => setSlot(s => ({ ...s, time: v }))}
-                placeholder="Pick a time"
+                placeholder={t("pickTime")}
               />
               <div>
-                <label className="text-xs text-muted-foreground">Duration (min)</label>
+                <label className="text-xs text-muted-foreground">{t("duration")}</label>
                 <select value={slot.duration} onChange={e => setSlot(s => ({ ...s, duration: parseInt(e.target.value) }))}
                   className="select-field w-full mt-1">
-                  <option value={30}>30 min</option>
-                  <option value={45}>45 min</option>
-                  <option value={60}>1 hour</option>
-                  <option value={90}>1.5 hours</option>
+                  <option value={30}>{t("min30")}</option>
+                  <option value={45}>{t("min45")}</option>
+                  <option value={60}>{t("hour1")}</option>
+                  <option value={90}>{t("hour1_5")}</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Type</label>
+              <label className="text-xs text-muted-foreground">{t("type")}</label>
               <select value={slot.type} onChange={e => setSlot(s => ({ ...s, type: e.target.value as InterviewSlot["type"] }))}
                 className="select-field w-full mt-1">
-                <option value="video">Video Call</option>
-                <option value="offline">In Person</option>
-                <option value="hybrid">Hybrid</option>
+                <option value="video">{t("videoCall")}</option>
+                <option value="offline">{t("inPerson")}</option>
+                <option value="hybrid">{t("hybrid")}</option>
               </select>
             </div>
             {slot.type !== "offline" && (
               <div>
-                <label className="text-xs text-muted-foreground">Meeting Link</label>
+                <label className="text-xs text-muted-foreground">{t("meetingLink")}</label>
                 <input value={slot.meetLink} onChange={e => setSlot(s => ({ ...s, meetLink: e.target.value }))}
-                  placeholder="https://meet.google.com/…" className="input-field w-full mt-1" />
+                  placeholder={t("meetingPlaceholder")} className="input-field w-full mt-1" />
               </div>
             )}
             {slot.type !== "video" && (
               <div>
-                <label className="text-xs text-muted-foreground">Location</label>
+                <label className="text-xs text-muted-foreground">{t("location")}</label>
                 <input value={slot.location} onChange={e => setSlot(s => ({ ...s, location: e.target.value }))}
-                  placeholder="Office address…" className="input-field w-full mt-1" />
+                  placeholder={t("locationPlaceholder")} className="input-field w-full mt-1" />
               </div>
             )}
             {slot.type === "hybrid" && (
-              <p className="text-[11px] text-muted-foreground">Add both a meeting link and a location for hybrid interviews.</p>
+              <p className="text-[11px] text-muted-foreground">{t("hybridHint")}</p>
             )}
           </div>
 
           {result && (
             <div className="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs">
               <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              Scheduled for {result.sent} candidate{result.sent !== 1 ? "s" : ""}.
-              {result.failed > 0 && ` ${result.failed} failed.`}
+              {t("scheduledSuccess", { success: result.sent, failed: result.failed })}
             </div>
           )}
 
@@ -228,12 +229,12 @@ export default function EmployerBulkInterviewPage() {
             disabled={bulkSchedule.isPending || selectedCount === 0 || !slot.date || !slot.time}
             className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60">
             {bulkSchedule.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {bulkSchedule.isPending ? "Scheduling…" : `Schedule for ${selectedCount} Candidate${selectedCount !== 1 ? "s" : ""}`}
+            {bulkSchedule.isPending ? t("scheduling") : t("scheduleFor", { count: selectedCount })}
           </button>
 
           <div className="flex items-center gap-2 pt-2 border-t text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
-            Candidates will receive automatic notifications with all details.
+            {t("notification")}
           </div>
         </div>
       </div>

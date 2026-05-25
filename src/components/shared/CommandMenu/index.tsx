@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
 import {
   CommandDialog,
@@ -43,6 +44,7 @@ export function CommandMenu({ navGroups, locale }: CommandMenuProps) {
   }
 
   const isAr = locale === "ar";
+  const t = useTranslations("commandMenu");
 
   // Flatten: top-level items without children → standalone group,
   // items with children → one group per parent
@@ -55,13 +57,13 @@ export function CommandMenu({ navGroups, locale }: CommandMenuProps) {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder={isAr ? "ابحث عن الصفحات والأوامر..." : "Search pages and commands..."} />
+      <CommandInput placeholder={t("placeholder")} />
       <CommandList>
-        <CommandEmpty>{isAr ? "لم يتم العثور على نتائج." : "No results found."}</CommandEmpty>
+        <CommandEmpty>{t("noResults")}</CommandEmpty>
 
         {/* Standalone items (Dashboard, Notifications, Settings, etc.) */}
         {standaloneItems.length > 0 && (
-          <CommandGroup heading={isAr ? "عام" : "General"}>
+          <CommandGroup heading={t("general")}>
             {standaloneItems.map((item) => {
               const Icon = getIcon(item.icon);
               return (
@@ -120,6 +122,7 @@ export function CommandMenu({ navGroups, locale }: CommandMenuProps) {
 
 /** Trigger button shown in header */
 export function CommandMenuTrigger({ locale }: { locale?: string }) {
+  const t = useTranslations("commandMenu");
   return (
     <button
       onClick={() => {
@@ -134,7 +137,7 @@ export function CommandMenuTrigger({ locale }: { locale?: string }) {
     >
       <Search className="h-4 w-4 shrink-0" />
       <span className="flex-1 text-left truncate">
-        {locale === "ar" ? "بحث..." : "Search..."}
+        {t("searchShort")}
       </span>
       <kbd className="hidden sm:inline-flex pointer-events-none h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium shrink-0">
         <span className="text-xs">⌘</span>K

@@ -209,7 +209,35 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   }
   // Agents / super_agents / admins can view any
 
-  return NextResponse.json({ application });
+  // Include related interviews + offers if requested
+  const { searchParams } = new URL(_req.url);
+  const include = searchParams.get("include") ?? "";
+  const includes = include.split(",").map((s) => s.trim());
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result: Record<string, any> = { ...application };
+
+  if (includes.includes("interviews")) {
+    const Interview = (await import("@/models/Interview")).default;
+    result.interviews = await Interview.find({ applicationId: params?.id })
+      .sort({ scheduledAt: -1 })
+      .select("type scheduledAt duration location meetLink instructions status interviewRound candidateResponse candidateResponseAt outcome rescheduleCount candidateRescheduleNote")
+      .lean();
+  }
+
+  if (includes.includes("offers")) {
+    const Offer = (await import("@/models/Offer")).default;
+    result.offers = await Offer.find({ applicationId: params?.id })
+      .sort({ createdAt: -1 })
+      .select("salary startDate benefits status expiresAt respondedAt")
+      .lean();
+  }
+
+  if (includes.includes("documents")) {
+    // documents are already on the application object
+  }
+
+  return NextResponse.json({ application: result });
 }
 
 export const GET = withAuth(getHandler, { resource: "applications", action: "read" });

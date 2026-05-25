@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
+import { escapeRegex } from "@/lib/security/sanitize";
+import { validateBody } from "@/lib/validators";
 import mongoose from "mongoose";
+import { z } from "zod";
+
+const jobTemplateInlineSchema = z.object({
+  name: z.string().min(1, "Name is required").max(200).trim(),
+  title: z.string().min(1, "Title is required").max(200).trim(),
+  description: z.string().max(5000).trim().optional(),
+  requirements: z.string().max(5000).trim().optional(),
+  jobType: z.enum(["full_time", "part_time", "contract", "internship", "freelance"]).default("full_time"),
+  experienceLevel: z.enum(["entry", "junior", "mid", "senior", "lead", "executive"]).default("mid"),
+  skills: z.array(z.string().max(100).trim()).max(30).default([]),
+});
 
 const JobTemplateSchema = new mongoose.Schema({
   employerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -23,7 +36,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const search = url.searchParams.get("search") ?? "";
 
   const filter: Record<string, unknown> = { employerId: ctx.userId };
-  if (search) filter.name = { $regex: search, $options: "i" };
+  if (search) filter.name = { $regex: escapeRegex(search), $options: "i" };
 
   const items = await JobTemplate.find(filter).sort({ updatedAt: -1 }).limit(100).lean();
 
@@ -46,22 +59,17 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
 
 async function postHandler(req: NextRequest, ctx: AuthContext) {
   await connectDB();
-  const body = await req.json();
-  const { name, title, description, requirements, jobType, experienceLevel, skills } = body;
-
-  if (!name || !title) {
-    return NextResponse.json({ error: "Name and title required" }, { status: 400 });
-  }
+  const body = await validateBody(req, jobTemplateInlineSchema);
 
   const tmpl = await JobTemplate.create({
     employerId: ctx.userId,
-    name: String(name).trim(),
-    title: String(title).trim(),
-    description: description?.trim(),
-    requirements: requirements?.trim(),
-    jobType,
-    experienceLevel,
-    skills: Array.isArray(skills) ? skills.map((s: string) => String(s).trim()) : [],
+    name: body.name,
+    title: body.title,
+    description: body.description,
+    requirements: body.requirements,
+    jobType: body.jobType,
+    experienceLevel: body.experienceLevel,
+    skills: body.skills,
   });
 
   return NextResponse.json({ success: true, template: tmpl });

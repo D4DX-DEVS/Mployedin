@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -84,18 +85,20 @@ const ACTION_COLORS: Record<string, string> = {
   "scorecard.create": "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
 };
 
-const RESOURCE_OPTIONS = [
-  { value: "all", label: "All Resources" },
-  { value: "auth", label: "Authentication" },
-  { value: "jobs", label: "Jobs" },
-  { value: "applications", label: "Applications" },
-  { value: "interviews", label: "Interviews" },
-  { value: "offers", label: "Offers" },
-  { value: "placements", label: "Placements" },
-  { value: "scorecards", label: "Scorecards" },
-  { value: "employers", label: "Company Settings" },
-  { value: "messages", label: "Messages" },
-];
+function getResourceOptions(t: ReturnType<typeof useTranslations>) {
+  return [
+    { value: "all", label: t("allResources") },
+    { value: "auth", label: t("authentication") },
+    { value: "jobs", label: t("jobsResource") },
+    { value: "applications", label: t("applicationsResource") },
+    { value: "interviews", label: t("interviewsResource") },
+    { value: "offers", label: t("offersResource") },
+    { value: "placements", label: t("placementsResource") },
+    { value: "scorecards", label: t("scorecardsResource") },
+    { value: "employers", label: t("companySettings") },
+    { value: "messages", label: t("messagesResource") },
+  ];
+}
 
 function getActionIcon(action: string): React.ReactNode {
   const prefix = action.split(".")[0];
@@ -120,6 +123,7 @@ function formatAction(action: string): string {
 
 /* ─── Component ─── */
 export default function TeamActivityLogsPage() {
+  const t = useTranslations("employerActivityLogs");
   const { locale } = useParams<{ locale: string }>();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -136,23 +140,23 @@ export default function TeamActivityLogsPage() {
     usePagination(25);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Timestamp", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "\u2014" },
-    { header: "Actor", key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.name ?? "System" },
-    { header: "Email", key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.email ?? "\u2014" },
-    { header: "Action", key: "action", formatter: (v) => String(v ?? "\u2014") },
-    { header: "Resource", key: "resource", formatter: (v) => String(v ?? "\u2014") },
-    { header: "IP Address", key: "ipAddress", formatter: (v) => String(v ?? "\u2014") },
+    { header: t("timestamp"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleString() : "\u2014" },
+    { header: t("actor"), key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.name ?? "System" },
+    { header: t("email"), key: "actorId", formatter: (_v, r) => (r as Record<string, any>).actorId?.email ?? "\u2014" },
+    { header: t("action"), key: "action", formatter: (v) => String(v ?? "\u2014") },
+    { header: t("resource"), key: "resource", formatter: (v) => String(v ?? "\u2014") },
+    { header: t("ipAddress"), key: "ipAddress", formatter: (v) => String(v ?? "\u2014") },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: logs as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "activity-logs",
-    title: "Team Activity Logs",
+    title: t("exportTitle"),
   });
 
   useEffect(() => {
-    document.title = "Team Activity Logs · MPLOYEDIN";
-  }, []);
+    document.title = t("docTitle");
+  }, [t]);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -183,8 +187,10 @@ export default function TeamActivityLogsPage() {
     fetchLogs();
   }, [fetchLogs]);
 
+  const resourceOptions = getResourceOptions(t);
+
   const memberOptions = [
-    { value: "all", label: "All Members" },
+    { value: "all", label: t("allMembers") },
     ...members.map((m) => ({
       value: m._id,
       label: `${m.name} (${m.companyRole.replace("_", " ")})`,
@@ -195,13 +201,13 @@ export default function TeamActivityLogsPage() {
     <div className="page-container employer-legacy-surface">
       {/* Header */}
       <PageHeader
-        title="Team Activity Logs"
-        description={`${total.toLocaleString()} activities tracked across ${members.length} team member${members.length !== 1 ? "s" : ""}`}
+        title={t("title")}
+        description={t("description", { activities: total.toLocaleString(), members: members.length })}
         actions={
           <Link href={`/${locale}/employer/team`}>
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Team
+              {t("backToTeam")}
             </Button>
           </Link>
         }
@@ -212,21 +218,21 @@ export default function TeamActivityLogsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             {
-              label: "Team Members",
+              label: t("teamMembers"),
               value: members.length,
               icon: Users,
               color: "text-primary",
               bg: "bg-white border-border dark:bg-card dark:border-border",
             },
             {
-              label: "Total Activities",
+              label: t("totalActivities"),
               value: total,
               icon: Activity,
               color: "text-emerald-600",
               bg: "bg-white border-border dark:bg-card dark:border-border",
             },
             {
-              label: "Today",
+              label: t("today"),
               value: logs.filter(
                 (l) =>
                   new Date(l.createdAt).toDateString() === new Date().toDateString()
@@ -236,7 +242,7 @@ export default function TeamActivityLogsPage() {
               bg: "bg-white border-border dark:bg-card dark:border-border",
             },
             {
-              label: "Login Events",
+              label: t("loginEvents"),
               value: logs.filter((l) => l.action.startsWith("login")).length,
               icon: LogIn,
               color: "text-amber-600",
@@ -278,7 +284,7 @@ export default function TeamActivityLogsPage() {
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-end">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Team Member</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("teamMember")}</label>
           <SearchableSelect
             className="w-52"
             options={memberOptions}
@@ -287,26 +293,26 @@ export default function TeamActivityLogsPage() {
               setSelectedMember(v);
               resetPage();
             }}
-            placeholder="All Members"
+            placeholder={t("allMembers")}
           />
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Resource</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("resource")}</label>
           <SearchableSelect
             className="w-44"
-            options={RESOURCE_OPTIONS}
+            options={resourceOptions}
             value={resource}
             onValueChange={(v) => {
               setResource(v);
               resetPage();
             }}
-            placeholder="All Resources"
+            placeholder={t("allResources")}
           />
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Action</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("action")}</label>
           <div className="relative">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -322,7 +328,7 @@ export default function TeamActivityLogsPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">From</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("from")}</label>
           <Input
             type="date"
             value={fromDate}
@@ -335,7 +341,7 @@ export default function TeamActivityLogsPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">To</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("to")}</label>
           <Input
             type="date"
             value={toDate}
@@ -389,12 +395,12 @@ export default function TeamActivityLogsPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
                 <tr>
-                  <th className="text-start px-4 py-3">Timestamp</th>
-                  <th className="text-start px-4 py-3">Team Member</th>
-                  <th className="text-start px-4 py-3">Action</th>
-                  <th className="text-start px-4 py-3">Resource</th>
+                  <th className="text-start px-4 py-3">{t("timestamp")}</th>
+                  <th className="text-start px-4 py-3">{t("teamMember")}</th>
+                  <th className="text-start px-4 py-3">{t("action")}</th>
+                  <th className="text-start px-4 py-3">{t("resource")}</th>
                   <th className="text-start px-4 py-3">Details</th>
-                  <th className="text-start px-4 py-3">IP</th>
+                  <th className="text-start px-4 py-3">{t("ipAddress")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
+import { validateBody } from "@/lib/validators";
+import { agentTaskUpdateSchema } from "@/lib/validators/agent-tasks";
 import mongoose from "mongoose";
 
 const AgentTask = mongoose.models.AgentTask;
@@ -9,11 +11,23 @@ const AgentTask = mongoose.models.AgentTask;
 async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
   await connectDB();
   const id = params?.id;
+  if (!id || !mongoose.isValidObjectId(id)) {
+    return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
+  }
 
-  const body = await req.json();
+  const body = await validateBody(req, agentTaskUpdateSchema);
+
+  const update: Record<string, unknown> = {};
+  if (body.title !== undefined) update.title = body.title;
+  if (body.description !== undefined) update.description = body.description;
+  if (body.priority !== undefined) update.priority = body.priority;
+  if (body.status !== undefined) update.status = body.status;
+  if (body.category !== undefined) update.category = body.category;
+  if (body.dueDate !== undefined) update.dueDate = body.dueDate ? new Date(body.dueDate) : null;
+
   const task = await AgentTask.findOneAndUpdate(
     { _id: id, userId: ctx.userId },
-    { $set: body },
+    { $set: update },
     { new: true },
   );
 

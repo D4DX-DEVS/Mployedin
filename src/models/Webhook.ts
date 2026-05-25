@@ -8,7 +8,16 @@ export type WebhookEvent =
   | "commission.approved"
   | "commission.paid"
   | "commission.disputed"
-  | "commission.clawed_back";
+  | "commission.clawed_back"
+  | "application.created"
+  | "application.status_changed"
+  | "job.created"
+  | "job.updated"
+  | "job.closed"
+  | "interview.scheduled"
+  | "offer.sent"
+  | "offer.accepted"
+  | "candidate.hired";
 
 export const WEBHOOK_EVENTS: WebhookEvent[] = [
   "invoice.created",
@@ -19,6 +28,15 @@ export const WEBHOOK_EVENTS: WebhookEvent[] = [
   "commission.paid",
   "commission.disputed",
   "commission.clawed_back",
+  "application.created",
+  "application.status_changed",
+  "job.created",
+  "job.updated",
+  "job.closed",
+  "interview.scheduled",
+  "offer.sent",
+  "offer.accepted",
+  "candidate.hired",
 ];
 
 export interface IWebhookDelivery {

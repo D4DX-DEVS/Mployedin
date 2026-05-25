@@ -5,6 +5,7 @@ import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Application from "@/models/Application";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 async function handler(req: NextRequest, ctx: AuthContext) {
   if (ctx.role !== "super_agent" && ctx.role !== "admin") {
@@ -40,10 +41,11 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   if (status && status !== "all") filter.status = status;
   if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { candidateName: { $regex: search, $options: "i" } },
-      { jobTitle: { $regex: search, $options: "i" } },
-      { companyName: { $regex: search, $options: "i" } },
+      { candidateName: { $regex: safe, $options: "i" } },
+      { jobTitle: { $regex: safe, $options: "i" } },
+      { companyName: { $regex: safe, $options: "i" } },
     ];
   }
 

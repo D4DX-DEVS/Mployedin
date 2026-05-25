@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   ClipboardCheck, Plus, Trash2, Edit, Users, BarChart3,
@@ -24,6 +25,7 @@ interface Assessment {
 }
 
 export default function EmployerAssessmentsPage() {
+  const t = useTranslations("employerAssessments");
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -50,25 +52,25 @@ export default function EmployerAssessmentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <ClipboardCheck className="w-6 h-6 text-primary" />
-            Skill Assessments
+            {t("title")}
           </h1>
-          <p className="text-muted-foreground mt-1">Create tests to evaluate candidate skills</p>
+          <p className="text-muted-foreground mt-1">{t("description")}</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
           className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Create Assessment
+          {t("createAssessment")}
         </button>
       </div>
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <StatCard icon={<ClipboardCheck className="w-5 h-5 text-primary" />} label="Total Tests" value={assessments.length} />
-        <StatCard icon={<CheckCircle2 className="w-5 h-5 text-green-600" />} label="Active" value={assessments.filter(a => a.isActive).length} />
-        <StatCard icon={<Users className="w-5 h-5 text-blue-600" />} label="Total Attempts" value={assessments.reduce((s, a) => s + a.totalAttempts, 0)} />
-        <StatCard icon={<BarChart3 className="w-5 h-5 text-purple-600" />} label="Avg Score" value={`${assessments.length > 0 ? Math.round(assessments.reduce((s, a) => s + a.avgScore, 0) / assessments.length) : 0}%`} />
+        <StatCard icon={<ClipboardCheck className="w-5 h-5 text-primary" />} label={t("totalTests")} value={assessments.length} />
+        <StatCard icon={<CheckCircle2 className="w-5 h-5 text-green-600" />} label={t("active")} value={assessments.filter(a => a.isActive).length} />
+        <StatCard icon={<Users className="w-5 h-5 text-blue-600" />} label={t("totalAttempts")} value={assessments.reduce((s, a) => s + a.totalAttempts, 0)} />
+        <StatCard icon={<BarChart3 className="w-5 h-5 text-purple-600" />} label={t("avgScore")} value={`${assessments.length > 0 ? Math.round(assessments.reduce((s, a) => s + a.avgScore, 0) / assessments.length) : 0}%`} />
       </div>
 
       {/* Assessment List */}
@@ -79,13 +81,13 @@ export default function EmployerAssessmentsPage() {
       ) : assessments.length === 0 ? (
         <div className="text-center py-16 bg-card border border-border rounded-xl">
           <ClipboardCheck className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h3 className="font-semibold text-foreground mb-1">No assessments yet</h3>
-          <p className="text-sm text-muted-foreground mb-4">Create your first skill test to evaluate candidates</p>
+          <h3 className="font-semibold text-foreground mb-1">{t("noAssessments")}</h3>
+          <p className="text-sm text-muted-foreground mb-4">{t("noAssessmentsDesc")}</p>
           <button
             onClick={() => setShowCreate(true)}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90"
           >
-            Create Assessment
+            {t("createAssessment")}
           </button>
         </div>
       ) : (
@@ -103,13 +105,13 @@ export default function EmployerAssessmentsPage() {
                   <div>
                     <h3 className="font-medium text-foreground">{assessment.title}</h3>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>{assessment.questions.length} questions</span>
+                      <span>{assessment.questions.length} {t("questions")}</span>
                       <span>•</span>
-                      <span>{assessment.timeLimit} min</span>
+                      <span>{assessment.timeLimit} {t("min")}</span>
                       <span>•</span>
-                      <span>{assessment.totalAttempts} attempts</span>
+                      <span>{assessment.totalAttempts} {t("attempts")}</span>
                       <span>•</span>
-                      <span>Pass: {assessment.passingScore}%</span>
+                      <span>{t("pass", { score: assessment.passingScore })}</span>
                     </div>
                   </div>
                 </div>
@@ -143,9 +145,9 @@ export default function EmployerAssessmentsPage() {
                     ))}
                   </div>
                   <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5" /> Avg score: {assessment.avgScore}%</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {assessment.timeLimit} minutes</span>
-                    <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {assessment.attemptsAllowed} attempts allowed</span>
+                    <span className="flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5" /> {t("avgScoreLabel", { score: assessment.avgScore })}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {t("minutes", { count: assessment.timeLimit })}</span>
+                    <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {t("attemptsAllowed", { count: assessment.attemptsAllowed })}</span>
                   </div>
                 </div>
               )}
@@ -178,6 +180,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
 }
 
 function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const t = useTranslations("employerAssessments");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [skills, setSkills] = useState("");
@@ -211,7 +214,7 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || questions.length === 0) {
-      toast.error("Title and at least one question required");
+      toast.error(t("toastTitleRequired"));
       return;
     }
     setSubmitting(true);
@@ -232,13 +235,13 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
         }),
       });
       if (res.ok) {
-        toast.success("Assessment created!");
+        toast.success(t("toastCreated"));
         onCreated();
       } else {
         const err = await res.json();
-        toast.error(err.error ?? "Failed to create");
+        toast.error(err.error ?? t("toastFailed"));
       }
-    } catch { toast.error("Network error"); } finally {
+    } catch { toast.error(t("toastNetwork")); } finally {
       setSubmitting(false);
     }
   };
@@ -246,28 +249,28 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-background border border-border rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
-        <h2 className="text-xl font-bold text-foreground mb-4">Create Skill Assessment</h2>
+        <h2 className="text-xl font-bold text-foreground mb-4">{t("createTitle")}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground">Title *</label>
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" placeholder="e.g. React Developer Assessment" required />
+            <label className="text-sm font-medium text-foreground">{t("titleLabel")}</label>
+            <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" placeholder={t("titlePlaceholder")} required />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Description</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" rows={2} placeholder="Brief description of the assessment" />
+            <label className="text-sm font-medium text-foreground">{t("descriptionLabel")}</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" rows={2} placeholder={t("descPlaceholder")} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-foreground">Skills (comma-separated)</label>
-              <input type="text" value={skills} onChange={e => setSkills(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" placeholder="React, TypeScript, Node.js" />
+              <label className="text-sm font-medium text-foreground">{t("skillsLabel")}</label>
+              <input type="text" value={skills} onChange={e => setSkills(e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" placeholder={t("skillsPlaceholder")} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-sm font-medium text-foreground">Time (min)</label>
+                <label className="text-sm font-medium text-foreground">{t("timeLabel")}</label>
                 <input type="number" value={timeLimit} onChange={e => setTimeLimit(+e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" min={5} max={180} />
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">Pass %</label>
+                <label className="text-sm font-medium text-foreground">{t("passLabel")}</label>
                 <input type="number" value={passingScore} onChange={e => setPassingScore(+e.target.value)} className="w-full mt-1 px-3 py-2 border border-border rounded-lg bg-background" min={1} max={100} />
               </div>
             </div>
@@ -276,9 +279,9 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
           {/* Questions */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-foreground">Questions ({questions.length})</label>
+              <label className="text-sm font-medium text-foreground">{t("questionsCount", { count: questions.length })}</label>
               <button type="button" onClick={addQuestion} className="text-xs px-3 py-1 bg-primary/10 text-primary rounded-lg hover:bg-primary/20">
-                + Add Question
+                {t("addQuestion")}
               </button>
             </div>
             <div className="space-y-3 max-h-[300px] overflow-y-auto">
@@ -287,15 +290,15 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs font-medium text-muted-foreground">Q{idx + 1}</span>
                     <select value={q.type} onChange={e => updateQuestion(idx, { type: e.target.value })} className="text-xs px-2 py-1 border border-border rounded bg-background">
-                      <option value="multiple_choice">Multiple Choice</option>
-                      <option value="true_false">True/False</option>
-                      <option value="short_answer">Short Answer</option>
+                      <option value="multiple_choice">{t("multipleChoice")}</option>
+                      <option value="true_false">{t("trueFalse")}</option>
+                      <option value="short_answer">{t("shortAnswer")}</option>
                     </select>
                     <input type="number" value={q.points} onChange={e => updateQuestion(idx, { points: +e.target.value })} className="w-16 text-xs px-2 py-1 border border-border rounded bg-background" min={1} />
-                    <span className="text-xs text-muted-foreground">pts</span>
+                    <span className="text-xs text-muted-foreground">{t("pts")}</span>
                     <button type="button" onClick={() => removeQuestion(idx)} className="ml-auto text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
-                  <input type="text" value={q.question} onChange={e => updateQuestion(idx, { question: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-border rounded bg-background mb-2" placeholder="Enter your question" />
+                  <input type="text" value={q.question} onChange={e => updateQuestion(idx, { question: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-border rounded bg-background mb-2" placeholder={t("questionPlaceholder")} />
                   {q.type === "multiple_choice" && (
                     <div className="grid grid-cols-2 gap-1">
                       {q.options.map((opt, oi) => (
@@ -305,16 +308,16 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
                       ))}
                     </div>
                   )}
-                  <input type="text" value={q.correctAnswer} onChange={e => updateQuestion(idx, { correctAnswer: e.target.value })} className="w-full mt-1 px-2 py-1 text-xs border border-border rounded bg-background" placeholder="Correct answer" />
+                  <input type="text" value={q.correctAnswer} onChange={e => updateQuestion(idx, { correctAnswer: e.target.value })} className="w-full mt-1 px-2 py-1 text-xs border border-border rounded bg-background" placeholder={t("correctAnswer")} />
                 </div>
               ))}
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <button type="button" onClick={onClose} className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-accent">Cancel</button>
+            <button type="button" onClick={onClose} className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-accent">{t("cancel")}</button>
             <button type="submit" disabled={submitting} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
-              {submitting ? "Creating..." : "Create Assessment"}
+              {submitting ? t("creating") : t("create")}
             </button>
           </div>
         </form>

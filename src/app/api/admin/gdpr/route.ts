@@ -3,6 +3,7 @@ import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import AuditLog from "@/models/AuditLog";
 import User from "@/models/User";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/admin/gdpr — GDPR data requests + stats                   */
@@ -36,9 +37,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   }
 
   if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { "details.userName": { $regex: search, $options: "i" } },
-      { "details.userEmail": { $regex: search, $options: "i" } },
+      { "details.userName": { $regex: safe, $options: "i" } },
+      { "details.userEmail": { $regex: safe, $options: "i" } },
     ];
   }
 

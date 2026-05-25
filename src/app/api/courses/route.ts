@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
+import { escapeRegex } from "@/lib/security/sanitize";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 import mongoose from "mongoose";
 
 const CourseSchema = new mongoose.Schema({
@@ -22,6 +24,13 @@ const Course = mongoose.models.Course || mongoose.model("Course", CourseSchema);
  * GET /api/courses — Public courses listing for job seekers
  */
 export async function GET(req: NextRequest) {
+  // Rate limit: 30 requests per minute per IP
+  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+  const { allowed } = checkRateLimit(`courses:${ip}`, { limit: 30, windowSec: 60, prefix: "courses" });
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   await connectDB();
 
   const url = new URL(req.url);
@@ -33,10 +42,11 @@ export async function GET(req: NextRequest) {
 
   const filter: Record<string, unknown> = { isActive: true };
   if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { title: { $regex: search, $options: "i" } },
-      { provider: { $regex: search, $options: "i" } },
-      { skills: { $regex: search, $options: "i" } },
+      { title: { $regex: safe, $options: "i" } },
+      { provider: { $regex: safe, $options: "i" } },
+      { skills: { $regex: safe, $options: "i" } },
     ];
   }
   if (category) filter.category = category;

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Building2, FileText, CreditCard, Coins, History, AlertTriangle,
-  CheckCircle2, XCircle, Send, Loader2, Download, Eye, BellRing,
+  CheckCircle2, XCircle, Send, Loader2, Download, Eye, BellRing, UserCircle2,
 } from "lucide-react";
 
 interface InvoiceCommission {
@@ -132,6 +132,7 @@ function fmtDateTime(value?: string) {
 
 export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }: InvoiceDetailViewProps) {
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
+  const [senderContext, setSenderContext] = useState<{ name: string; role: string; label: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"details" | "payments" | "commissions" | "history">("details");
 
@@ -157,6 +158,7 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
       if (!res.ok) throw new Error("Failed to load invoice");
       const data = await res.json();
       setInvoice(data.invoice);
+      setSenderContext(data.senderContext ?? null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to load invoice");
     } finally {
@@ -316,6 +318,17 @@ export function InvoiceDetailView({ invoiceId, open, onClose, onRefresh, role }:
                       <p className="mt-1 text-lg font-bold">{fmt(invoice.platformRevenue)}</p>
                     </div>
                   </div>
+
+                  {/* Issued By */}
+                  {senderContext && (
+                    <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 p-3">
+                      <UserCircle2 className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">Issued By</p>
+                        <p className="text-sm font-medium">{senderContext.name} <span className="text-muted-foreground">— {senderContext.label}</span></p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Billing Info */}
                   <div className="grid gap-4 sm:grid-cols-2">

@@ -29,6 +29,7 @@ import type { ExportColumn } from "@/lib/export";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { useTranslations } from "next-intl";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -69,17 +70,11 @@ interface Invoice {
   createdAt: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All Statuses" },
-  { value: "issued", label: "Issued" },
-  { value: "sent", label: "Sent" },
-  { value: "paid", label: "Paid" },
-  { value: "partially_paid", label: "Partially Paid" },
-  { value: "overdue", label: "Overdue" },
-];
+
 
 // ── Employer Invoice Detail ─────────────────────────────────────────────────
 function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice: Invoice | null; open: boolean; onClose: () => void; onRefresh: () => void }) {
+  const t = useTranslations("employerInvoices");
   const [downloading, setDownloading] = useState(false);
   const [notifyLoading, setNotifyLoading] = useState(false);
   const [paymentRef, setPaymentRef] = useState("");
@@ -95,8 +90,19 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
   const [disputeCategory, setDisputeCategory] = useState("other");
   const [disputeDesc, setDisputeDesc] = useState("");
   const [disputeLoading, setDisputeLoading] = useState(false);
+  // Sender context
+  const [senderContext, setSenderContext] = useState<{ name: string; role: string; label: string } | null>(null);
 
   const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Fetch sender context when dialog opens
+  useEffect(() => {
+    if (!open || !invoice) { setSenderContext(null); return; }
+    fetch(`/api/invoices/${invoice._id}`)
+      .then(r => r.json())
+      .then(d => setSenderContext(d.senderContext ?? null))
+      .catch(() => setSenderContext(null));
+  }, [open, invoice]);
 
   // Check gateway availability when dialog opens
   useEffect(() => {
@@ -128,9 +134,9 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
       a.download = `${invoice.invoiceNumber}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Invoice PDF downloaded");
+      toast.success(t("toastPdfDownloaded"));
     } catch {
-      toast.error("Failed to download PDF");
+      toast.error(t("toastPdfFailed"));
     } finally {
       setDownloading(false);
     }
@@ -145,7 +151,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
       });
       const data = await res.json();
       if (res.status === 501) {
-        toast.info("Online payment coming soon. Please use bank transfer for now.");
+        toast.info(t("toastOnlineComingSoon"));
         setActiveTab("pay");
         return;
       }
@@ -176,12 +182,12 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to send notification");
       }
-      toast.success("Payment notification sent to admin");
+      toast.success(t("toastNotificationSent"));
       setPaymentRef("");
       setPaymentNotes("");
       onRefresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send notification");
+      toast.error(err instanceof Error ? err.message : t("toastNotificationFailed"));
     } finally {
       setNotifyLoading(false);
     }
@@ -204,13 +210,13 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to submit query");
       }
-      toast.success("Billing query submitted. Our team will review it.");
+      toast.success(t("toastQuerySubmitted"));
       setDisputeOpen(false);
       setDisputeReason("");
       setDisputeDesc("");
       setDisputeCategory("other");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to submit");
+      toast.error(err instanceof Error ? err.message : t("toastQueryFailed"));
     } finally {
       setDisputeLoading(false);
     }
@@ -224,7 +230,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             <div>
               <DialogTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Invoice {invoice.invoiceNumber}
+                {t("invoiceNumber", { number: invoice.invoiceNumber })}
               </DialogTitle>
               <div className="mt-1.5 flex items-center gap-2">
                 <StatusBadge status={invoice.status} />
@@ -235,7 +241,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 )}
                 {isOverdue && (
                   <Badge variant="outline" className="gap-1 border-rose-300 bg-rose-50 text-rose-700 text-[10px] dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-400">
-                    <AlertTriangle className="h-2.5 w-2.5" /> Overdue
+                    <AlertTriangle className="h-2.5 w-2.5" /> {t("overdueStatus")}
                   </Badge>
                 )}
               </div>
@@ -252,7 +258,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             onClick={handleDownloadPdf}
           >
             <Download className="h-3.5 w-3.5" />
-            {downloading ? "Downloading…" : "Download PDF"}
+            {downloading ? t("downloading") : t("downloadPdf")}
           </Button>
 
           {canPay && balanceDue > 0 && (
@@ -263,7 +269,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
               onClick={handlePayNow}
             >
               <Zap className="h-3.5 w-3.5" />
-              {gatewayLoading ? "Processing…" : "Pay Now"}
+              {gatewayLoading ? t("processing") : t("payNow")}
             </Button>
           )}
 
@@ -274,7 +280,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
               onClick={() => setActiveTab("pay")}
             >
               <Send className="h-3.5 w-3.5" />
-              Notify Payment
+              {t("notifyPayment")}
             </Button>
           )}
 
@@ -284,12 +290,12 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             onClick={() => { setDisputeOpen(true); setActiveTab("support"); }}
           >
             <HelpCircle className="h-3.5 w-3.5" />
-            Billing Query
+            {t("billingQuery")}
           </Button>
 
           {isPaid && (
             <Badge variant="outline" className="ml-auto gap-1 border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400">
-              <CheckCircle2 className="h-3 w-3" /> Fully Paid
+              <CheckCircle2 className="h-3 w-3" /> {t("fullyPaid")}
             </Badge>
           )}
         </div>
@@ -314,11 +320,11 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                   : "text-blue-700 dark:text-blue-300"
             }>
               {daysUntilDue < 0
-                ? `Overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? "s" : ""}`
+                ? t("overdueBy", { days: Math.abs(daysUntilDue) })
                 : daysUntilDue === 0
-                  ? "Due today"
-                  : `Due in ${daysUntilDue} day${daysUntilDue !== 1 ? "s" : ""}`
-              } — {fmt(balanceDue)} outstanding
+                  ? t("dueToday")
+                  : t("dueIn", { days: daysUntilDue })
+              } — {t("outstanding", { amount: fmt(balanceDue) })}
             </span>
           </div>
         )}
@@ -326,19 +332,19 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
         {/* Amount Summary Cards */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded-xl border border-border/70 p-3 text-center">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Total</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryTotal")}</p>
             <p className="mt-0.5 text-base font-bold">{fmt(invoice.totalAmount)}</p>
           </div>
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-3 text-center dark:border-emerald-900/50 dark:bg-emerald-950/10">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Paid</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-400">{t("summaryPaid")}</p>
             <p className="mt-0.5 text-base font-bold text-emerald-700 dark:text-emerald-300">{fmt(invoice.paidAmount ?? 0)}</p>
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-3 text-center dark:border-amber-900/50 dark:bg-amber-950/10">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">Balance</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">{t("summaryBalance")}</p>
             <p className="mt-0.5 text-base font-bold text-amber-700 dark:text-amber-300">{fmt(balanceDue)}</p>
           </div>
           <div className="rounded-xl border border-border/70 p-3 text-center">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Due</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("summaryDue")}</p>
             <p className="mt-0.5 text-sm font-semibold">{invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : "—"}</p>
           </div>
         </div>
@@ -347,16 +353,16 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
           <TabsList className="w-full justify-start rounded-xl bg-secondary/40">
             <TabsTrigger value="details" className="gap-1.5 rounded-lg text-xs">
-              <Receipt className="h-3 w-3" /> Details
+              <Receipt className="h-3 w-3" /> {t("tabDetails")}
             </TabsTrigger>
             <TabsTrigger value="pay" className="gap-1.5 rounded-lg text-xs">
-              <CreditCard className="h-3 w-3" /> Payment
+              <CreditCard className="h-3 w-3" /> {t("tabPayment")}
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-1.5 rounded-lg text-xs">
-              <Clock className="h-3 w-3" /> History
+              <Clock className="h-3 w-3" /> {t("tabHistory")}
             </TabsTrigger>
             <TabsTrigger value="support" className="gap-1.5 rounded-lg text-xs">
-              <MessageSquareWarning className="h-3 w-3" /> Support
+              <MessageSquareWarning className="h-3 w-3" /> {t("tabSupport")}
             </TabsTrigger>
           </TabsList>
 
@@ -365,7 +371,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             {/* Billing Details */}
             {invoice.billingDetails && (
               <div className="rounded-xl border border-border/70 p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Billed To</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("billedTo")}</p>
                 <div className="grid gap-1 text-sm">
                   {invoice.billingDetails.companyName && <p className="font-medium">{invoice.billingDetails.companyName}</p>}
                   {invoice.billingDetails.contactPerson && <p className="text-muted-foreground">{invoice.billingDetails.contactPerson}</p>}
@@ -386,6 +392,17 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
               </div>
             )}
 
+            {/* Issued By */}
+            {senderContext && (
+              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 p-3">
+                <ReceiptText className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("issuedBy")}</p>
+                  <p className="text-sm font-medium">{senderContext.name} <span className="text-muted-foreground">— {senderContext.label}</span></p>
+                </div>
+              </div>
+            )}
+
             {/* Line Items */}
             {invoice.lineItems && invoice.lineItems.length > 0 && (
               <div className="rounded-xl border border-border/70 p-4">
@@ -393,10 +410,10 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-xs text-muted-foreground">
-                      <th className="pb-2 text-left">Description</th>
-                      <th className="pb-2 text-right">Qty</th>
-                      <th className="pb-2 text-right">Price</th>
-                      <th className="pb-2 text-right">Amount</th>
+                      <th className="pb-2 text-left">{t("descriptionCol")}</th>
+                      <th className="pb-2 text-right">{t("qty")}</th>
+                      <th className="pb-2 text-right">{t("price")}</th>
+                      <th className="pb-2 text-right">{t("amount")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -416,14 +433,14 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             {/* Totals */}
             <div className="rounded-xl border border-border/70 bg-secondary/10 p-4">
               <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{fmt(invoice.subtotal)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{t("subtotal")}</span><span>{fmt(invoice.subtotal)}</span></div>
                 {invoice.discountAmount && invoice.discountAmount > 0 && (
-                  <div className="flex justify-between"><span className="text-muted-foreground">Discount ({invoice.discountPercent}%)</span><span className="text-rose-600">-{fmt(invoice.discountAmount)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t("discount", { percent: invoice.discountPercent ?? 0 })}</span><span className="text-rose-600">-{fmt(invoice.discountAmount)}</span></div>
                 )}
                 {invoice.taxAmount > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
-                      Tax {invoice.taxType ? `(${invoice.taxType.toUpperCase()}` : ""}
+                      {t("tax")} {invoice.taxType ? `(${invoice.taxType.toUpperCase()}` : ""}
                       {invoice.taxPercent ? ` ${invoice.taxPercent}%` : ""}
                       {invoice.taxType ? ")" : ""}
                     </span>
@@ -437,16 +454,16 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             {/* Notes & Terms */}
             <div className="grid gap-3 sm:grid-cols-2 text-sm">
               {invoice.paymentTerms && (
-                <div><p className="text-xs text-muted-foreground">Payment Terms</p><p className="capitalize">{invoice.paymentTerms.replace(/_/g, " ")}</p></div>
+                <div><p className="text-xs text-muted-foreground">{t("paymentTerms")}</p><p className="capitalize">{invoice.paymentTerms.replace(/_/g, " ")}</p></div>
               )}
               {invoice.jobId?.title && (
                 <div><p className="text-xs text-muted-foreground">Job</p><p>{invoice.jobId.title}</p></div>
               )}
-              <div><p className="text-xs text-muted-foreground">Currency</p><p>{invoice.currency}</p></div>
+              <div><p className="text-xs text-muted-foreground">{t("currencyLabel")}</p><p>{invoice.currency}</p></div>
               <div><p className="text-xs text-muted-foreground">Category</p><p className="capitalize">{invoice.category?.replace(/_/g, " ")}</p></div>
             </div>
             {invoice.notes && (
-              <div className="rounded-lg bg-muted/30 p-3 text-sm"><p className="mb-1 text-xs text-muted-foreground">Notes</p><p>{invoice.notes}</p></div>
+              <div className="rounded-lg bg-muted/30 p-3 text-sm"><p className="mb-1 text-xs text-muted-foreground">{t("notes")}</p><p>{invoice.notes}</p></div>
             )}
           </TabsContent>
 
@@ -456,19 +473,19 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
               <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-6 text-center dark:border-emerald-900/50 dark:bg-emerald-950/20">
                 <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
                 <div>
-                  <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">Invoice Fully Paid</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Thank you for your payment.</p>
+                  <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">{t("invoiceFullyPaid")}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("thankYou")}</p>
                 </div>
                 <Button variant="outline" size="sm" className="mt-2 gap-1.5" onClick={handleDownloadPdf}>
-                  <ReceiptText className="h-3.5 w-3.5" /> Download Receipt
+                  <ReceiptText className="h-3.5 w-3.5" /> {t("downloadReceipt")}
                 </Button>
               </div>
             ) : !canPay ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-border/70 bg-secondary/20 p-6 text-center">
                 <Clock className="h-10 w-10 text-muted-foreground" />
                 <div>
-                  <p className="text-base font-semibold">Invoice Processing</p>
-                  <p className="mt-1 text-sm text-muted-foreground">This invoice is being processed. Payment will be available once it&apos;s issued.</p>
+                  <p className="text-base font-semibold">{t("invoiceProcessing")}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("processingDesc")}</p>
                 </div>
               </div>
             ) : (
@@ -478,11 +495,11 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Zap className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-semibold">Pay Online</p>
+                      <p className="text-sm font-semibold">{t("payOnline")}</p>
                     </div>
                     {!gatewayEnabled && (
                       <Badge variant="outline" className="text-[10px] border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-                        Coming Soon
+                        {t("comingSoon")}
                       </Badge>
                     )}
                   </div>
@@ -497,8 +514,8 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                         <CreditCard className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                       </div>
                       <div>
-                        <p className="font-medium">Credit / Debit Card</p>
-                        <p className="text-[11px] text-muted-foreground">Visa, Mastercard, Amex</p>
+                        <p className="font-medium">{t("creditDebitCard")}</p>
+                        <p className="text-[11px] text-muted-foreground">{t("visaMastercard")}</p>
                       </div>
                     </button>
                     <button
@@ -511,8 +528,8 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                         <Smartphone className="h-4 w-4 text-green-600 dark:text-green-400" />
                       </div>
                       <div>
-                        <p className="font-medium">UPI / Mobile Pay</p>
-                        <p className="text-[11px] text-muted-foreground">Google Pay, PhonePe, Paytm</p>
+                        <p className="font-medium">{t("upiMobile")}</p>
+                        <p className="text-[11px] text-muted-foreground">{t("upiProviders")}</p>
                       </div>
                     </button>
                     <button
@@ -525,8 +542,8 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                         <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
-                        <p className="font-medium">Net Banking</p>
-                        <p className="text-[11px] text-muted-foreground">All major banks</p>
+                        <p className="font-medium">{t("netBanking")}</p>
+                        <p className="text-[11px] text-muted-foreground">{t("allBanks")}</p>
                       </div>
                     </button>
                     <button
@@ -539,8 +556,8 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                         <Banknote className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                       </div>
                       <div>
-                        <p className="font-medium">Wallet</p>
-                        <p className="text-[11px] text-muted-foreground">Razorpay, Stripe, PayPal</p>
+                        <p className="font-medium">{t("wallet")}</p>
+                        <p className="text-[11px] text-muted-foreground">{t("walletProviders")}</p>
                       </div>
                     </button>
                   </div>
@@ -550,48 +567,48 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/20 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/10">
                   <div className="mb-3 flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    <p className="text-sm font-semibold">Bank Transfer / Manual Payment</p>
+                    <p className="text-sm font-semibold">{t("bankTransfer")}</p>
                   </div>
                   <p className="mb-4 text-xs text-muted-foreground">
-                    Already paid via bank transfer? Submit your payment details and our team will verify within 24 hours.
+                    {t("bankTransferDesc")}
                   </p>
                   <div className="space-y-3">
                     <div>
-                      <Label htmlFor="emp-pay-method" className="text-xs">Payment Method</Label>
+                      <Label htmlFor="emp-pay-method" className="text-xs">{t("paymentMethod")}</Label>
                       <SearchableSelect
                         id="emp-pay-method"
                         className="mt-1 h-10 w-full rounded-xl"
                         options={[
-                          { value: "bank_transfer", label: "Bank Transfer / NEFT / RTGS" },
-                          { value: "credit_card", label: "Credit / Debit Card" },
-                          { value: "upi", label: "UPI" },
-                          { value: "cheque", label: "Cheque" },
-                          { value: "cash", label: "Cash" },
-                          { value: "wire", label: "International Wire" },
-                          { value: "other", label: "Other" },
+                          { value: "bank_transfer", label: t("bankNeft") },
+                          { value: "credit_card", label: t("creditDebit") },
+                          { value: "upi", label: t("upi") },
+                          { value: "cheque", label: t("cheque") },
+                          { value: "cash", label: t("cash") },
+                          { value: "wire", label: t("internationalWire") },
+                          { value: "other", label: t("other") },
                         ]}
                         value={paymentMethod}
                         onValueChange={setPaymentMethod}
-                        placeholder="Select payment method"
+                        placeholder={t("selectPaymentMethod")}
                         modal
                       />
                     </div>
                     <div>
-                      <Label htmlFor="emp-pay-ref" className="text-xs">Reference / Transaction ID *</Label>
+                      <Label htmlFor="emp-pay-ref" className="text-xs">{t("referenceId")}</Label>
                       <Input
                         id="emp-pay-ref"
                         className="mt-1 h-10 rounded-xl"
-                        placeholder="e.g. TXN-2026051500123 or UTR number"
+                        placeholder={t("referencePlaceholder")}
                         value={paymentRef}
                         onChange={e => setPaymentRef(e.target.value)}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="emp-pay-notes" className="text-xs">Notes (optional)</Label>
+                      <Label htmlFor="emp-pay-notes" className="text-xs">{t("notesOptional")}</Label>
                       <Textarea
                         id="emp-pay-notes"
                         className="mt-1 min-h-[60px] resize-none rounded-xl"
-                        placeholder="Any additional details about the payment..."
+                        placeholder={t("notesPlaceholder")}
                         value={paymentNotes}
                         onChange={e => setPaymentNotes(e.target.value)}
                       />
@@ -602,14 +619,14 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                       onClick={handleNotifyPayment}
                     >
                       <Send className="h-4 w-4" />
-                      {notifyLoading ? "Sending…" : "Send Payment Notification"}
+                      {notifyLoading ? t("sending") : t("sendNotification")}
                     </Button>
                   </div>
                 </div>
 
                 {/* Balance reminder */}
                 <div className="flex items-center justify-between rounded-xl border border-border/70 bg-secondary/10 p-3 text-sm">
-                  <span className="text-muted-foreground">Amount to pay</span>
+                  <span className="text-muted-foreground">{t("amountToPay")}</span>
                   <span className="text-lg font-bold text-primary">{fmt(balanceDue)}</span>
                 </div>
               </>
@@ -620,7 +637,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
           <TabsContent value="history" className="space-y-4">
             {invoice.payments && invoice.payments.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Records</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("paymentRecords")}</p>
                 {invoice.payments.map((p, i) => (
                   <div key={i} className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900/50 dark:bg-emerald-950/20">
                     <div>
@@ -640,9 +657,9 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
               <div className="flex flex-col items-center gap-3 rounded-xl border border-border/70 bg-secondary/10 p-8 text-center">
                 <Clock className="h-8 w-8 text-muted-foreground/50" />
                 <div>
-                  <p className="text-sm font-medium">No payments recorded yet</p>
+                  <p className="text-sm font-medium">{t("noPayments")}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {canPay ? "Once you make a payment, our team will record it here." : "Payment records will appear here."}
+                    {canPay ? t("noPaymentsDesc") : t("paymentWillAppear")}
                   </p>
                 </div>
               </div>
@@ -650,12 +667,12 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
 
             {/* Invoice timeline */}
             <div className="rounded-xl border border-border/70 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Timeline</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("timeline")}</p>
               <div className="relative space-y-4 pl-4 before:absolute before:left-[5px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-border">
                 <div className="flex items-start gap-3 text-sm">
                   <div className="relative -ml-4 mt-0.5 h-3 w-3 rounded-full border-2 border-primary bg-background" />
                   <div>
-                    <p className="font-medium">Invoice Created</p>
+                    <p className="font-medium">{t("invoiceCreated")}</p>
                     <p className="text-xs text-muted-foreground">{new Date(invoice.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
@@ -663,7 +680,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                   <div className="flex items-start gap-3 text-sm">
                     <div className="relative -ml-4 mt-0.5 h-3 w-3 rounded-full border-2 border-blue-500 bg-background" />
                     <div>
-                      <p className="font-medium">Issued</p>
+                      <p className="font-medium">{t("issuedEvent")}</p>
                       <p className="text-xs text-muted-foreground">{new Date(invoice.issuedAt).toLocaleDateString()}</p>
                     </div>
                   </div>
@@ -672,7 +689,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                   <div key={i} className="flex items-start gap-3 text-sm">
                     <div className="relative -ml-4 mt-0.5 h-3 w-3 rounded-full border-2 border-emerald-500 bg-background" />
                     <div>
-                      <p className="font-medium text-emerald-700 dark:text-emerald-300">Payment of {fmt(p.amount)}</p>
+                      <p className="font-medium text-emerald-700 dark:text-emerald-300">{t("paymentOf", { amount: fmt(p.amount) })}</p>
                       <p className="text-xs text-muted-foreground">{new Date(p.date).toLocaleDateString()} · {p.method?.replace(/_/g, " ")}</p>
                     </div>
                   </div>
@@ -680,13 +697,13 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 {isPaid && (
                   <div className="flex items-start gap-3 text-sm">
                     <div className="relative -ml-4 mt-0.5 h-3 w-3 rounded-full border-2 border-emerald-600 bg-emerald-600" />
-                    <p className="font-semibold text-emerald-700 dark:text-emerald-300">Fully Paid</p>
+                    <p className="font-semibold text-emerald-700 dark:text-emerald-300">{t("fullyPaidEvent")}</p>
                   </div>
                 )}
                 {isOverdue && (
                   <div className="flex items-start gap-3 text-sm">
                     <div className="relative -ml-4 mt-0.5 h-3 w-3 rounded-full border-2 border-rose-500 bg-rose-500" />
-                    <p className="font-semibold text-rose-700 dark:text-rose-300">Overdue</p>
+                    <p className="font-semibold text-rose-700 dark:text-rose-300">{t("overdueEvent")}</p>
                   </div>
                 )}
               </div>
@@ -699,47 +716,47 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             <div className="rounded-xl border border-border/70 p-4">
               <div className="mb-3 flex items-center gap-2">
                 <MessageSquareWarning className="h-4 w-4 text-primary" />
-                <p className="text-sm font-semibold">Raise a Billing Query</p>
+                <p className="text-sm font-semibold">{t("raiseBillingQuery")}</p>
               </div>
               <p className="mb-4 text-xs text-muted-foreground">
-                If there&apos;s an issue with this invoice — wrong amount, tax discrepancy, duplicate charge, or refund request — submit a query and our finance team will review it.
+                {t("billingQueryDesc")}
               </p>
               <div className="space-y-3">
                 <div>
-                  <Label htmlFor="dispute-category" className="text-xs">Issue Category</Label>
+                  <Label htmlFor="dispute-category" className="text-xs">{t("issueCategory")}</Label>
                   <SearchableSelect
                     id="dispute-category"
                     className="mt-1 h-10 w-full rounded-xl"
                     options={[
-                      { value: "wrong_amount", label: "Wrong Amount" },
-                      { value: "tax_issue", label: "Tax / GST Issue" },
-                      { value: "duplicate", label: "Duplicate Invoice" },
-                      { value: "refund_request", label: "Refund Request" },
-                      { value: "other", label: "Other" },
+                      { value: "wrong_amount", label: t("wrongAmount") },
+                      { value: "tax_issue", label: t("taxGst") },
+                      { value: "duplicate", label: t("duplicateInvoice") },
+                      { value: "refund_request", label: t("refundRequest") },
+                      { value: "other", label: t("otherIssue") },
                     ]}
                     value={disputeCategory}
                     onValueChange={setDisputeCategory}
-                    placeholder="Select issue category"
+                    placeholder={t("selectIssueCategory")}
                     modal
                   />
                 </div>
                 <div>
-                  <Label htmlFor="dispute-reason" className="text-xs">Subject *</Label>
+                  <Label htmlFor="dispute-reason" className="text-xs">{t("subject")}</Label>
                   <Input
                     id="dispute-reason"
                     className="mt-1 h-10 rounded-xl"
-                    placeholder="Brief description of the issue"
+                    placeholder={t("subjectPlaceholder")}
                     value={disputeReason}
                     onChange={e => setDisputeReason(e.target.value)}
                     maxLength={200}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="dispute-desc" className="text-xs">Details (optional)</Label>
+                  <Label htmlFor="dispute-desc" className="text-xs">{t("detailsOptional")}</Label>
                   <Textarea
                     id="dispute-desc"
                     className="mt-1 min-h-[80px] resize-none rounded-xl"
-                    placeholder="Provide more details about the issue..."
+                    placeholder={t("detailsPlaceholder")}
                     value={disputeDesc}
                     onChange={e => setDisputeDesc(e.target.value)}
                     maxLength={1000}
@@ -752,21 +769,21 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                   onClick={handleRaiseDispute}
                 >
                   <MessageSquareWarning className="h-4 w-4" />
-                  {disputeLoading ? "Submitting…" : "Submit Billing Query"}
+                  {disputeLoading ? t("submitting") : t("submitBillingQuery")}
                 </Button>
               </div>
             </div>
 
             {/* Contact Finance */}
             <div className="rounded-xl border border-border/70 bg-secondary/10 p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Need Help?</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("needHelp")}</p>
               <div className="space-y-2 text-sm">
                 <p className="text-muted-foreground">
-                  For urgent billing queries, contact our finance team:
+                  {t("helpDesc")}
                 </p>
                 <div className="flex flex-col gap-1 text-sm">
-                  <span className="font-medium">finance@mployedin.com</span>
-                  <span className="text-xs text-muted-foreground">Response time: Within 24 business hours</span>
+                  <span className="font-medium">{t("helpEmail")}</span>
+                  <span className="text-xs text-muted-foreground">{t("responseTime")}</span>
                 </div>
               </div>
             </div>
@@ -779,6 +796,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function EmployerInvoicesPage() {
+  const t = useTranslations("employerInvoices");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -810,7 +828,7 @@ export default function EmployerInvoicesPage() {
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(prev => ({ ...prev, ...data.summary }));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to load invoices";
+      const msg = err instanceof Error ? err.message : t("toastLoadFailed");
       setErrorMessage(msg);
       toast.error(msg);
     } finally {
@@ -819,43 +837,43 @@ export default function EmployerInvoicesPage() {
   }, [statusFilter, dateFrom, dateTo, page, limit, updateTotal]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
-  useEffect(() => { document.title = "Invoices & Billing · MPLOYEDIN"; }, []);
+  useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
   const hasActiveFilters = Boolean(statusFilter || dateFrom || dateTo);
   const fmt = (v: number) => `${displayCurrency} ${v.toLocaleString()}`;
 
   const exportColumns: ExportColumn<Invoice>[] = [
-    { header: "Invoice #", key: "invoiceNumber" },
-    { header: "Job", key: "jobId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).jobId?.title ?? "—" },
-    { header: "Category", key: "category" },
-    { header: "Total", key: "totalAmount", formatter: v => String(v ?? 0) },
-    { header: "Paid", key: "paidAmount", formatter: v => String(v ?? 0) },
-    { header: "Balance", key: "balanceDue", formatter: v => String(v ?? 0) },
-    { header: "Status", key: "status" },
-    { header: "Due", key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("invoiceHash"), key: "invoiceNumber" },
+    { header: t("job"), key: "jobId" as keyof Invoice, formatter: (_v, r) => (r as unknown as Invoice).jobId?.title ?? "—" },
+    { header: t("categoryCol"), key: "category" },
+    { header: t("total"), key: "totalAmount", formatter: v => String(v ?? 0) },
+    { header: t("paid"), key: "paidAmount", formatter: v => String(v ?? 0) },
+    { header: t("balance"), key: "balanceDue", formatter: v => String(v ?? 0) },
+    { header: t("status"), key: "status" },
+    { header: t("dueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "my-invoices",
-    title: "My Invoices",
+    title: t("exportTitle"),
   });
 
   return (
     <div className="page-container space-y-6">
       <TableToolbar
-        title="Invoices & Billing"
-        description="View your invoices, track payments, and download billing documents."
-        search="" onSearchChange={() => {}} searchPlaceholder="Search invoices…"
+        title={t("title")}
+        description={t("description")}
+        search="" onSearchChange={() => {}} searchPlaceholder={t("searchPlaceholder")}
         left={
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-            <Building2 className="h-3.5 w-3.5" /> Employer Billing
+            <Building2 className="h-3.5 w-3.5" /> {t("employerBilling")}
           </div>
         }
         right={
           <div className="flex items-center gap-2">
             <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
-              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {total.toLocaleString()} invoices
+              <ArrowRight className="h-3.5 w-3.5 text-primary" /> {t("invoiceCount", { count: total })}
             </div>
           </div>
         }
@@ -863,7 +881,7 @@ export default function EmployerInvoicesPage() {
         filterContent={
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <SearchableSelect id="emp-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={STATUS_OPTIONS} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder="All Statuses" />
+              <SearchableSelect id="emp-inv-status" className="h-11 w-full rounded-xl border-border bg-card" options={[{ value: "all", label: t("allStatuses") }, { value: "issued", label: t("issued") }, { value: "sent", label: t("sent") }, { value: "paid", label: t("paidStatus") }, { value: "partially_paid", label: t("partiallyPaid") }, { value: "overdue", label: t("overdueStatus") }]} value={statusFilter || "all"} onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }} placeholder={t("allStatuses")} />
               <div className="flex items-center gap-2 xl:col-span-2">
                 <div className="relative flex-1"><CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input type="date" className="h-11 rounded-xl border-border bg-card pl-9 text-sm" value={dateFrom} onChange={e => { setDateFrom(e.target.value); resetPage(); }} /></div>
                 <span className="text-xs text-muted-foreground">to</span>
@@ -872,7 +890,7 @@ export default function EmployerInvoicesPage() {
             </div>
             <div className="flex justify-end">
               <Button type="button" variant="outline" onClick={() => { setStatusFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }} disabled={!hasActiveFilters} className="h-11 rounded-xl">
-                <RotateCcw className="mr-2 h-4 w-4" /> Clear
+                <RotateCcw className="mr-2 h-4 w-4" /> {t("clear")}
               </Button>
             </div>
           </div>
@@ -883,19 +901,19 @@ export default function EmployerInvoicesPage() {
       {/* Summary Cards */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-border/70 bg-card p-4">
-          <p className="text-xs text-muted-foreground">Total Billed</p>
+          <p className="text-xs text-muted-foreground">{t("totalBilled")}</p>
           <p className="mt-1 text-xl font-bold">{fmt(summary.totalAmount)}</p>
         </div>
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-          <p className="text-xs text-emerald-600 dark:text-emerald-400">Total Paid</p>
+          <p className="text-xs text-emerald-600 dark:text-emerald-400">{t("totalPaid")}</p>
           <p className="mt-1 text-xl font-bold text-emerald-700 dark:text-emerald-300">{fmt(summary.totalPaid)}</p>
         </div>
         <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
-          <p className="text-xs text-amber-600 dark:text-amber-400">Outstanding Balance</p>
+          <p className="text-xs text-amber-600 dark:text-amber-400">{t("outstandingBalance")}</p>
           <p className="mt-1 text-xl font-bold text-amber-700 dark:text-amber-300">{fmt(summary.totalBalance)}</p>
         </div>
         <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-4 dark:border-rose-900/50 dark:bg-rose-950/20">
-          <p className="text-xs text-rose-600 dark:text-rose-400">Overdue</p>
+          <p className="text-xs text-rose-600 dark:text-rose-400">{t("overdue")}</p>
           <p className="mt-1 text-xl font-bold text-rose-700 dark:text-rose-300">{summary.overdue}</p>
         </div>
       </div>
@@ -905,22 +923,22 @@ export default function EmployerInvoicesPage() {
 
       <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
         <div className="flex flex-col gap-2 border-b border-border/80 px-4 py-4 sm:px-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Billing History</p>
-          <h3 className="text-lg font-semibold text-foreground">Your Invoices</h3>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("billingHistory")}</p>
+          <h3 className="text-lg font-semibold text-foreground">{t("yourInvoices")}</h3>
         </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
-                <TableHead>Invoice #</TableHead>
-                <TableHead>Job</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Paid</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("invoiceHash")}</TableHead>
+                <TableHead>{t("job")}</TableHead>
+                <TableHead>{t("categoryCol")}</TableHead>
+                <TableHead className="text-right">{t("total")}</TableHead>
+                <TableHead className="text-right">{t("paid")}</TableHead>
+                <TableHead className="text-right">{t("balance")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead>{t("dueDate")}</TableHead>
+                <TableHead className="text-right">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -933,7 +951,7 @@ export default function EmployerInvoicesPage() {
                   <TableCell colSpan={9} className="px-6 py-14 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="workspace-muted-pill rounded-[20px] p-3"><Inbox className="h-6 w-6" /></div>
-                      <div><p className="text-sm font-semibold">No invoices yet</p><p className="mt-1 text-sm text-muted-foreground">Your invoices will appear here once issued.</p></div>
+                      <div><p className="text-sm font-semibold">{t("noInvoices")}</p><p className="mt-1 text-sm text-muted-foreground">{t("noInvoicesDesc")}</p></div>
                     </div>
                   </TableCell>
                 </TableRow>

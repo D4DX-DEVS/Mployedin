@@ -7,6 +7,7 @@ import { validateBody } from "@/lib/validators";
 import { commissionCreateSchema } from "@/lib/validators/commissions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -59,7 +60,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   if (search && search.trim()) {
     const Agent = (await import("@/models/Agent")).default;
     const matchingAgents = await Agent.find(
-      { fullName: { $regex: search.trim(), $options: "i" } },
+      { fullName: { $regex: escapeRegex(search.trim()), $options: "i" } },
       { _id: 1 }
     ).lean();
     agentIdFilter = matchingAgents.map((a: { _id: unknown }) => a._id);

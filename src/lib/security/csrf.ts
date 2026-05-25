@@ -92,12 +92,49 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/contact",
   "/api/cron/",
   "/api/filters",
-  "/api/ai/", // AI routes use session auth + rate limiting; CSRF adds friction on streaming/audio
+  "/api/inngest", // Inngest has its own signature verification
 ];
+
+/**
+ * AI routes that are exempt from CSRF due to streaming/audio constraints.
+ * Only truly stateless inference endpoints — not those that persist data.
+ */
+const CSRF_EXEMPT_AI_ROUTES = new Set([
+  "/api/ai/chat",
+  "/api/ai/speech-to-text",
+  "/api/ai/generate-summary",
+  "/api/ai/enhance-text",
+  "/api/ai/skills-suggest",
+  "/api/ai/skills-gap",
+  "/api/ai/interview-questions",
+  "/api/ai/interview-prep-brief",
+  "/api/ai/interview-filter",
+  "/api/ai/salary-benchmark",
+  "/api/ai/email-draft",
+  "/api/ai/report",
+  "/api/ai/match",
+  "/api/ai/screen-candidates",
+  "/api/ai/candidate-search-filters",
+  "/api/ai/application-search-filters",
+  "/api/ai/job-search-filters",
+  "/api/ai/lead-search-filters",
+  "/api/ai/referral-search-filters",
+  "/api/ai/admin-jobseeker-search",
+  "/api/ai/poster-layout",
+  "/api/ai/poster-content",
+  "/api/ai/profile-fill",
+  "/api/ai/lead-score",
+  "/api/ai/daily-insights",
+  "/api/ai/cv-extract",
+  "/api/ai/job-extract",
+  "/api/ai/job-description",
+]);
 
 /**
  * Check if a path is exempt from CSRF protection.
  */
 export function isCsrfExempt(pathname: string): boolean {
-  return CSRF_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  if (CSRF_EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return true;
+  if (CSRF_EXEMPT_AI_ROUTES.has(pathname)) return true;
+  return false;
 }

@@ -5,6 +5,7 @@ import Scorecard from "@/models/Scorecard";
 import Interview from "@/models/Interview";
 import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
+import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { scorecardCreateSchema } from "@/lib/validators/scorecards";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -100,11 +101,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     );
   }
 
-  // Check if scorecard already exists
-  const existing = await Scorecard.findOne({ interviewId }).lean();
+  // Check if this evaluator already submitted a scorecard for this interview
+  const existing = await Scorecard.findOne({ interviewId, evaluatedBy: ctx.userId }).lean();
   if (existing) {
     return NextResponse.json(
-      { error: "Scorecard already exists for this interview" },
+      { error: "You have already submitted a scorecard for this interview" },
       { status: 409 }
     );
   }
@@ -119,12 +120,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     5;
 
   // Create scorecard
+  const evaluator = await User.findById(ctx.userId).select("name").lean();
   const scorecard = new Scorecard({
     interviewId,
     applicationId: interview.applicationId,
     jobSeekerId: interview.jobSeekerId,
     employerId: emp._id,
     evaluatedBy: ctx.userId,
+    evaluatorName: evaluator?.name ?? "Unknown",
     scores,
     overallScore,
     recommendation,

@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+export type ScorecardRecommendation = "strong_yes" | "yes" | "neutral" | "no" | "strong_no";
+
 export interface IScorecard extends Document {
   _id: mongoose.Types.ObjectId;
   interviewId: mongoose.Types.ObjectId;      // ref Interview
@@ -7,6 +9,8 @@ export interface IScorecard extends Document {
   jobSeekerId: mongoose.Types.ObjectId;      // ref JobSeeker
   employerId: mongoose.Types.ObjectId;       // ref Employer
   evaluatedBy: mongoose.Types.ObjectId;      // ref User (who filled in)
+  evaluatorName?: string;                    // cached name of evaluator for display
+  evaluatorRole?: string;                    // role in hiring panel (e.g. "Technical Lead")
   scores: {
     technicalSkills: number;   // 1-5
     communication: number;     // 1-5
@@ -15,7 +19,7 @@ export interface IScorecard extends Document {
     motivation: number;        // 1-5
   };
   overallScore: number;        // computed avg of scores, stored for querying
-  recommendation: "strong_yes" | "yes" | "neutral" | "no" | "strong_no";
+  recommendation: ScorecardRecommendation;
   notes?: string;              // max 3000 chars
   strengths?: string;          // max 1000
   concerns?: string;           // max 1000
@@ -30,7 +34,6 @@ const ScorecardSchema = new Schema<IScorecard>(
       ref: "Interview",
       required: true,
       index: true,
-      unique: true,
     },
     applicationId: {
       type: Schema.Types.ObjectId,
@@ -54,6 +57,8 @@ const ScorecardSchema = new Schema<IScorecard>(
       ref: "User",
       required: true,
     },
+    evaluatorName: { type: String, maxlength: 100 },
+    evaluatorRole: { type: String, maxlength: 100 },
     scores: {
       technicalSkills: { type: Number, min: 1, max: 5, required: true },
       communication: { type: Number, min: 1, max: 5, required: true },
@@ -76,6 +81,8 @@ const ScorecardSchema = new Schema<IScorecard>(
 
 ScorecardSchema.index({ applicationId: 1 });
 ScorecardSchema.index({ employerId: 1 });
+// One scorecard per evaluator per interview (allows multiple evaluators)
+ScorecardSchema.index({ interviewId: 1, evaluatedBy: 1 }, { unique: true });
 
 export const Scorecard =
   mongoose.models.Scorecard ||

@@ -18,6 +18,7 @@ import { useJobDetail, useUpdateJobStatus, useCloneJob, useDeleteJob } from "@/h
 import { useConfirm } from "@/hooks/useConfirm";
 import { JobPosterDialog } from "@/components/features/employer/jobs/JobPosterDialog";
 import SocialShare from "@/components/features/public/SocialShare";
+import { useTranslations } from "next-intl";
 
 interface Job {
   _id: string;
@@ -56,6 +57,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function JobDetailPage() {
+  const t = useTranslations("employerJobDetail");
   const router = useRouter();
   const { locale, id } = useParams<{ locale: string; id: string }>();
   const searchParams = useSearchParams();
@@ -82,7 +84,7 @@ export default function JobDetailPage() {
   }
 
   async function handleDelete() {
-    const ok = await confirmDialog("Delete this job? It will be removed from your job list.");
+    const ok = await confirmDialog(t("deleteConfirm"));
     if (!ok) return;
     setDeleting(true);
     try {
@@ -118,10 +120,10 @@ export default function JobDetailPage() {
     return (
       <div className="page-container">
         <div className="card-base p-8 text-center py-20">
-          <h2 className="text-lg font-semibold mb-2">Job not found</h2>
-          <p className="text-sm text-muted-foreground mb-5">This job may have been removed.</p>
+          <h2 className="text-lg font-semibold mb-2">{t("notFound")}</h2>
+          <p className="text-sm text-muted-foreground mb-5">{t("notFoundDesc")}</p>
           <Button variant="outline" onClick={() => router.push(`/${locale}/employer/jobs`)}>
-            <ArrowLeft className="w-4 h-4 me-2" /> Back to Jobs
+            <ArrowLeft className="w-4 h-4 me-2" /> {t("backToJobs")}
           </Button>
         </div>
       </div>
@@ -155,14 +157,14 @@ export default function JobDetailPage() {
       {/* Back + Actions */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <Button variant="ghost" size="sm" className="gap-2 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => router.push(`/${locale}/employer/jobs`)}>
-          <ArrowLeft className="w-4 h-4" /> Back to Jobs
+          <ArrowLeft className="w-4 h-4" /> {t("backToJobs")}
         </Button>
         <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={() => setPosterOpen(true)}>
-            <ImageIcon className="w-3.5 h-3.5" /> Create Poster
+            <ImageIcon className="w-3.5 h-3.5" /> {t("createPoster")}
           </Button>
           <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={cloneJob} disabled={cloning}>
-            <Copy className="w-3.5 h-3.5" /> {cloning ? "Cloning…" : "Clone"}
+            <Copy className="w-3.5 h-3.5" /> {cloning ? t("cloning") : t("clone")}
           </Button>
           <SocialShare
             url={typeof window !== "undefined" ? `${window.location.origin}/${locale}/jobs/${id}` : ""}
@@ -171,38 +173,38 @@ export default function JobDetailPage() {
           />
           {can("jobs", "update") && (
             <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={() => router.push(`/${locale}/employer/jobs/${id}/edit`)}>
-              <Edit2 className="w-3.5 h-3.5" /> Edit
+              <Edit2 className="w-3.5 h-3.5" /> {t("edit")}
             </Button>
           )}
           {can("jobs", "update") && job.status === "draft" && (
             <Button size="sm" className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateStatus("active")}>
-              <CheckCircle className="w-3.5 h-3.5" /> Activate
+              <CheckCircle className="w-3.5 h-3.5" /> {t("activate")}
             </Button>
           )}
           {can("jobs", "delete") && job.status === "draft" && (
             <Button size="sm" variant="outline" className="gap-1.5 h-9 border-destructive/20 text-destructive hover:bg-destructive/5"
               onClick={() => { void handleDelete(); }} disabled={deleting}>
-              <Trash2 className="w-3.5 h-3.5" /> {deleting ? "Deleting…" : "Delete Draft"}
+              <Trash2 className="w-3.5 h-3.5" /> {deleting ? t("deleting") : t("deleteDraft")}
             </Button>
           )}
           {can("jobs", "update") && job.status === "active" && (
             <Button size="sm" variant="outline" className="gap-1.5 h-9 border-sky-200 text-sky-700 hover:bg-sky-50" onClick={() => updateStatus("paused")}>
-              <PauseCircle className="w-3.5 h-3.5" /> Pause
+              <PauseCircle className="w-3.5 h-3.5" /> {t("pause")}
             </Button>
           )}
           {can("jobs", "update") && job.status === "active" && (
             <Button size="sm" variant="destructive" className="gap-1.5 h-9" onClick={() => updateStatus("closed")}>
-              <XCircle className="w-3.5 h-3.5" /> Close Job
+              <XCircle className="w-3.5 h-3.5" /> {t("closeJob")}
             </Button>
           )}
           {can("jobs", "update") && job.status === "paused" && (
             <Button size="sm" className="gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateStatus("active")}>
-              <PlayCircle className="w-3.5 h-3.5" /> Resume
+              <PlayCircle className="w-3.5 h-3.5" /> {t("resume")}
             </Button>
           )}
           {can("jobs", "update") && job.status === "paused" && (
             <Button size="sm" variant="destructive" className="gap-1.5 h-9" onClick={() => updateStatus("closed")}>
-              <XCircle className="w-3.5 h-3.5" /> Close Job
+              <XCircle className="w-3.5 h-3.5" /> {t("closeJob")}
             </Button>
           )}
         </div>
@@ -230,7 +232,7 @@ export default function JobDetailPage() {
               <>
                 <span className="text-border">·</span>
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 shrink-0" /> Posted {posted}
+                  <Calendar className="w-3.5 h-3.5 shrink-0" /> {t("posted", { date: posted })}
                 </span>
               </>
             </div>
@@ -245,13 +247,13 @@ export default function JobDetailPage() {
           <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
             <div className="text-xl font-bold text-foreground">{job.vacancies ?? 1}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Users className="w-3 h-3" /> Vacancies
+              <Users className="w-3 h-3" /> {t("vacancies")}
             </div>
           </div>
           <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
             <div className="text-xl font-bold text-foreground">{job.views ?? 0}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Eye className="w-3 h-3" /> Views
+              <Eye className="w-3 h-3" /> {t("views")}
             </div>
           </div>
           <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
@@ -262,13 +264,13 @@ export default function JobDetailPage() {
             </div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <DollarSign className="w-3 h-3" /> {job.salary?.currency ?? "USD"}
-              {job.salary?.isNegotiable && " (Negotiable)"}
+              {job.salary?.isNegotiable && ` (${t("negotiable")})`}
             </div>
           </div>
           <div className="flex flex-col items-center justify-center p-2 sm:p-4 gap-1">
-            <div className="text-base font-bold text-foreground leading-tight text-center">{expires ?? "No expiry"}</div>
+            <div className="text-base font-bold text-foreground leading-tight text-center">{expires ?? t("noExpiry")}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" /> Expires
+              <Clock className="w-3 h-3" /> {t("expires")}
             </div>
           </div>
         </div>
@@ -278,20 +280,20 @@ export default function JobDetailPage() {
       <Tabs defaultValue={initialTab} className="space-y-5">
         <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="overview" className="gap-1.5">
-            <Briefcase className="w-3.5 h-3.5" /> Overview
+            <Briefcase className="w-3.5 h-3.5" /> {t("tabOverview")}
           </TabsTrigger>
           <TabsTrigger value="workflow" className="gap-1.5">
-            <GitBranch className="w-3.5 h-3.5" /> Workflow
+            <GitBranch className="w-3.5 h-3.5" /> {t("tabWorkflow")}
           </TabsTrigger>
           <TabsTrigger value="matching-weights" className="gap-1.5">
-            <SlidersHorizontal className="w-3.5 h-3.5" /> Matching Weights
+            <SlidersHorizontal className="w-3.5 h-3.5" /> {t("tabMatchingWeights")}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-5">
       {/* Description */}
       <div className="card-base p-5 sm:p-6">
-        <h2 className="text-base font-semibold text-foreground mb-3">Job Description</h2>
+        <h2 className="text-base font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
         <div className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
           {job.description}
         </div>
@@ -300,7 +302,7 @@ export default function JobDetailPage() {
       {/* Responsibilities */}
       {job.responsibilities && job.responsibilities.length > 0 && (
         <div className="card-base p-5 sm:p-6">
-          <h2 className="text-base font-semibold text-foreground mb-3">Responsibilities</h2>
+          <h2 className="text-base font-semibold text-foreground mb-3">{t("responsibilities")}</h2>
           <ul className="list-disc list-inside space-y-1.5 text-sm text-foreground/80">
             {job.responsibilities.map((r: string, i: number) => (
               <li key={i}>{r}</li>
@@ -312,7 +314,7 @@ export default function JobDetailPage() {
       {/* Qualifications */}
       {job.qualifications && job.qualifications.length > 0 && (
         <div className="card-base p-5 sm:p-6">
-          <h2 className="text-base font-semibold text-foreground mb-3">Qualifications</h2>
+          <h2 className="text-base font-semibold text-foreground mb-3">{t("qualifications")}</h2>
           <ul className="list-disc list-inside space-y-1.5 text-sm text-foreground/80">
             {job.qualifications.map((q: string, i: number) => (
               <li key={i}>{q}</li>
@@ -324,11 +326,11 @@ export default function JobDetailPage() {
       {/* Requirements */}
       {job.requirements && (
         <div className="card-base p-5 sm:p-6">
-          <h2 className="text-base font-semibold text-foreground mb-4">Requirements</h2>
+          <h2 className="text-base font-semibold text-foreground mb-4">{t("requirements")}</h2>
 
           {job.requirements.skills && job.requirements.skills.length > 0 && (
             <div className="mb-5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2.5">Skills</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2.5">{t("skills")}</p>
               <div className="flex flex-wrap gap-2">
                 {job.requirements.skills.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs font-medium bg-primary/8 text-primary border-0 px-2.5 py-1">{s}</Badge>
@@ -340,21 +342,21 @@ export default function JobDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
             {(job.requirements.experienceMin !== undefined || job.requirements.experienceMax !== undefined) && (
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Experience</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("experience")}</p>
                 <p className="text-sm font-semibold text-foreground">
-                  {job.requirements.experienceMin ?? 0}–{job.requirements.experienceMax ?? 30} years
+                  {t("yearsRange", { min: job.requirements.experienceMin ?? 0, max: job.requirements.experienceMax ?? 30 })}
                 </p>
               </div>
             )}
             {job.requirements.education && (
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Education</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("educationLabel")}</p>
                 <p className="text-sm font-semibold text-foreground">{job.requirements.education}</p>
               </div>
             )}
             {job.requirements.languages && job.requirements.languages.length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Languages</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("languagesLabel")}</p>
                 <p className="text-sm font-semibold text-foreground">{job.requirements.languages.join(", ")}</p>
               </div>
             )}
@@ -366,11 +368,11 @@ export default function JobDetailPage() {
       {job.tags && job.tags.length > 0 && (
         <div className="card-base p-5 sm:p-6">
           <h2 className="text-base font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Tag className="w-4 h-4 text-muted-foreground" /> Tags
+            <Tag className="w-4 h-4 text-muted-foreground" /> {t("tags")}
           </h2>
           <div className="flex flex-wrap gap-2">
-            {job.tags.map((t) => (
-              <Badge key={t} variant="outline" className="text-xs font-medium">{t}</Badge>
+            {job.tags.map((tag) => (
+              <Badge key={tag} variant="outline" className="text-xs font-medium">{tag}</Badge>
             ))}
           </div>
         </div>

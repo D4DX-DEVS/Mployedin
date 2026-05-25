@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Upload, FileImage, Loader2, Sparkles, Check, X,
@@ -69,6 +70,7 @@ function buildPrefill(job: ExtractedJob): Partial<JobFormValues> {
 }
 
 export default function AIJobExtractPage() {
+  const t = useTranslations("employerAiExtract");
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,11 +94,11 @@ export default function AIJobExtractPage() {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
     if (!allowedTypes.includes(f.type)) {
-      toast.error("Invalid file type. Please upload a PDF, image, or DOCX file.");
+      toast.error(t("toastInvalidType"));
       return;
     }
     if (f.size > 10 * 1024 * 1024) {
-      toast.error("File too large. Maximum 10MB.");
+      toast.error(t("toastTooLarge"));
       return;
     }
     setFile(f);
@@ -136,7 +138,7 @@ export default function AIJobExtractPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        toast.error(err.error ?? "Failed to extract job details");
+        toast.error(err.error ?? t("toastExtractFailed"));
         return;
       }
 
@@ -145,9 +147,9 @@ export default function AIJobExtractPage() {
       setCompanyName(data.companyName ?? "");
       // Select all jobs by default
       setSelectedJobs(new Set(data.jobs.map((_: ExtractedJob, i: number) => i)));
-      toast.success(`Extracted ${data.totalJobs} job${data.totalJobs > 1 ? "s" : ""} from the document!`);
+      toast.success(t("toastExtracted", { count: data.totalJobs }));
     } catch {
-      toast.error("Failed to process the file. Please try again.");
+      toast.error(t("toastProcessFailed"));
     } finally {
       setExtracting(false);
     }
@@ -167,7 +169,7 @@ export default function AIJobExtractPage() {
       sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify(buildPrefill(job)));
       router.push(`/${locale}/employer/jobs/new?mode=manual&prefill=ai`);
     } catch {
-      toast.error("Failed to open job form");
+      toast.error(t("toastFormFailed"));
     }
   };
 
@@ -202,7 +204,7 @@ export default function AIJobExtractPage() {
   const handleBulkPost = async () => {
     const selectedIndices = Array.from(selectedJobs);
     if (selectedIndices.length === 0) {
-      toast.error("Please select at least one job to post");
+      toast.error(t("toastSelectOne"));
       return;
     }
 
@@ -244,10 +246,10 @@ export default function AIJobExtractPage() {
     setBulkPosting(false);
 
     if (successCount > 0) {
-      toast.success(`Successfully posted ${successCount} job${successCount > 1 ? "s" : ""}!`);
+      toast.success(t("toastPosted", { count: successCount }));
     }
     if (failCount > 0) {
-      toast.error(`${failCount} job${failCount > 1 ? "s" : ""} failed to post.`);
+      toast.error(t("toastPostFailed", { count: failCount }));
     }
   };
 
@@ -269,18 +271,18 @@ export default function AIJobExtractPage() {
   return (
     <div className="page-container space-y-6">
       <PageHeader
-        title="AI Job Extractor"
-        description="Upload a job poster, flyer, or PDF — AI will extract all job details and let you post them instantly"
+        title={t("title")}
+        description={t("description")}
       />
 
       {/* Upload Section */}
       <section className="overflow-hidden rounded-[28px] border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 p-6 shadow-sm">
         <div className="flex items-center gap-2 text-sm font-medium text-primary">
           <Sparkles className="h-4 w-4" />
-          Upload &amp; Extract
+          {t("uploadTitle")}
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Upload an image or PDF of a job poster. AI will read it and extract all job positions — even if there are multiple vacancies on one poster.
+          {t("uploadDesc")}
         </p>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-2">
@@ -327,7 +329,7 @@ export default function AIJobExtractPage() {
                 <div>
                   <p className="text-sm font-medium text-foreground">{file.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {(file.size / 1024 / 1024).toFixed(1)} MB • Click to change
+                    {t("fileSize", { size: (file.size / 1024 / 1024).toFixed(1) })}
                   </p>
                 </div>
               </div>
@@ -338,10 +340,10 @@ export default function AIJobExtractPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Drop your job poster here
+                    {t("dropZone")}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    PDF, JPEG, PNG, WebP, or DOCX • Max 10MB
+                    {t("dropHint")}
                   </p>
                 </div>
               </div>
@@ -352,23 +354,23 @@ export default function AIJobExtractPage() {
           <div className="flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <div className="rounded-2xl border border-border/70 bg-background/85 p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">What it supports:</h3>
+                <h3 className="text-sm font-semibold text-foreground">{t("supports")}</h3>
                 <ul className="space-y-2 text-xs text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <FileImage className="mt-0.5 h-3.5 w-3.5 text-primary flex-shrink-0" />
-                    Job poster images (photos of printed flyers, social media posts)
+                    {t("support1")}
                   </li>
                   <li className="flex items-start gap-2">
                     <FileText className="mt-0.5 h-3.5 w-3.5 text-primary flex-shrink-0" />
-                    PDF documents with job listings or vacancy announcements
+                    {t("support2")}
                   </li>
                   <li className="flex items-start gap-2">
                     <Users className="mt-0.5 h-3.5 w-3.5 text-primary flex-shrink-0" />
-                    Multi-position posters — extracts all jobs at once
+                    {t("support3")}
                   </li>
                   <li className="flex items-start gap-2">
                     <Sparkles className="mt-0.5 h-3.5 w-3.5 text-primary flex-shrink-0" />
-                    Any language — AI detects and translates automatically
+                    {t("support4")}
                   </li>
                 </ul>
               </div>
@@ -383,12 +385,12 @@ export default function AIJobExtractPage() {
               {extracting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Extracting jobs...
+                  {t("extracting")}
                 </>
               ) : (
                 <>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Extract Job Details
+                  {t("extract")}
                 </>
               )}
             </Button>
@@ -403,12 +405,12 @@ export default function AIJobExtractPage() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h2 className="text-lg font-semibold text-foreground">
-                Extracted Jobs ({extractedJobs.length})
+                {t("extractedJobs", { count: extractedJobs.length })}
               </h2>
               <p className="text-sm text-muted-foreground">
                 {companyName && <span className="font-medium">{companyName}</span>}
                 {companyName && " • "}
-                Review and post the extracted positions
+                {t("reviewAndPost")}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -423,7 +425,7 @@ export default function AIJobExtractPage() {
                   }
                 }}
               >
-                {selectedJobs.size === extractedJobs.length ? "Deselect All" : "Select All"}
+                {selectedJobs.size === extractedJobs.length ? t("deselectAll") : t("selectAll")}
               </Button>
               <Button
                 onClick={handleBulkPost}
@@ -433,17 +435,17 @@ export default function AIJobExtractPage() {
                 {bulkPosting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Posting...
+                    {t("posting")}
                   </>
                 ) : allPosted ? (
                   <>
                     <Check className="h-4 w-4" />
-                    All Posted
+                    {t("allPosted")}
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
-                    Post Selected ({selectedJobs.size})
+                    {t("postSelected", { count: selectedJobs.size })}
                   </>
                 )}
               </Button>
@@ -490,7 +492,7 @@ export default function AIJobExtractPage() {
                   {status === "posted" && (
                     <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
                       <Check className="h-3 w-3" />
-                      Posted
+                      {t("posted")}
                     </div>
                   )}
                   {status === "posting" && (

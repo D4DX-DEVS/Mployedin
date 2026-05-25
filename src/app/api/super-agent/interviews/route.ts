@@ -3,6 +3,7 @@ import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Interview from "@/models/Interview";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 async function handler(req: NextRequest, ctx: AuthContext) {
   if (ctx.role !== "super_agent" && ctx.role !== "admin") {
@@ -29,10 +30,11 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   if (status && status !== "all") filter.status = status;
   if (type && type !== "all") filter.type = type;
   if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { candidateName: { $regex: search, $options: "i" } },
-      { jobTitle: { $regex: search, $options: "i" } },
-      { companyName: { $regex: search, $options: "i" } },
+      { candidateName: { $regex: safe, $options: "i" } },
+      { jobTitle: { $regex: safe, $options: "i" } },
+      { companyName: { $regex: safe, $options: "i" } },
     ];
   }
 

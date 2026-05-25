@@ -96,16 +96,16 @@ function formatSalary(job: FeedJob) {
   return `${salary.min.toLocaleString("en-US")}-${salary.max.toLocaleString("en-US")} ${salary.currency}`;
 }
 
-function timeAgo(iso: string, locale: string): string {
-  const isAr = locale === "ar";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function timeAgo(iso: string, locale: string, translate: any): string {
   const diff = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(diff / 3_600_000);
-  if (hours < 1) return isAr ? "الآن" : "Just now";
-  if (hours < 24) return isAr ? `منذ ${hours} س` : `${hours}h ago`;
+  if (hours < 1) return translate("time.justNow");
+  if (hours < 24) return translate("time.hoursAgo", { value: hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return isAr ? `منذ ${days} ي` : `${days}d ago`;
+  if (days < 7) return translate("time.daysAgo", { value: days });
   const weeks = Math.floor(days / 7);
-  return isAr ? `منذ ${weeks} أ` : `${weeks}w ago`;
+  return translate("time.weeksAgo", { value: weeks });
 }
 
 
@@ -657,7 +657,7 @@ export function JobSeekerHomePage({
                                     {t("recommendedJobs.remote")}
                                   </span>
                                 )}
-                                <span>{t("recommendedJobs.posted", { time: timeAgo(job.createdAt, locale) })}</span>
+                                <span>{t("recommendedJobs.posted", { time: timeAgo(job.createdAt, locale, t) })}</span>
                               </div>
 
                               <div className="mt-3">

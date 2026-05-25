@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import AuditLog from "@/models/AuditLog";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/admin/activity-timeline — User activity timeline          */
@@ -28,9 +29,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   }
 
   if (search) {
+    const safe = escapeRegex(search);
     filter.$or = [
-      { "userSnapshot.fullName": { $regex: search, $options: "i" } },
-      { "userSnapshot.email": { $regex: search, $options: "i" } },
+      { "userSnapshot.fullName": { $regex: safe, $options: "i" } },
+      { "userSnapshot.email": { $regex: safe, $options: "i" } },
     ];
   }
 

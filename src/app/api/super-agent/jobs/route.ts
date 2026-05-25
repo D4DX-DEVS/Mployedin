@@ -6,6 +6,7 @@ import Job from "@/models/Job";
 import Agent from "@/models/Agent";
 import { routeGenerate } from "@/lib/ai/router";
 import logger from "@/lib/logger";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 interface AuthCtx {
   userId: string;
@@ -136,9 +137,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       ...(query.$and ?? []),
       {
         $or: [
-          { title: { $regex: search, $options: "i" } },
-          { description: { $regex: search, $options: "i" } },
-          { tags: { $regex: search, $options: "i" } },
+          { title: { $regex: escapeRegex(search), $options: "i" } },
+          { description: { $regex: escapeRegex(search), $options: "i" } },
+          { tags: { $regex: escapeRegex(search), $options: "i" } },
         ],
       },
     ];

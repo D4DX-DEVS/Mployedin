@@ -11,6 +11,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { getSuperAgentOwnRegion, getSuperAgentScope, isRegionSubset } from "@/lib/auth/agentRestrictions";
 import { commonSchemas } from "@/lib/validators";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
@@ -52,8 +53,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const filter: any = { role: "agent", _id: { $in: agentUserIds } };
   if (search) {
     filter.$or = [
-      { name: { $regex: search, $options: "i" } },
-      { email: { $regex: search, $options: "i" } },
+      { name: { $regex: escapeRegex(search), $options: "i" } },
+      { email: { $regex: escapeRegex(search), $options: "i" } },
     ];
   }
 

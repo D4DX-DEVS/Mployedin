@@ -52,7 +52,7 @@ export default function GdprPage() {
           </p>
           <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span>{isAr ? "آخر تحديث: ٩ يونيو ٢٠٢٣" : "Last Updated: 9th June 2023"}</span>
+            <span>{t("gdprLastUpdated")}</span>
           </div>
         </div>
 
@@ -61,9 +61,7 @@ export default function GdprPage() {
             {/* Intro banner */}
             <div className="border-b border-border/60 bg-muted/40 px-6 py-5 rounded-t-2xl sm:px-8">
               <p className="text-sm leading-relaxed text-muted-foreground text-justify">
-                {isAr
-                  ? "يوضح هذا المستند سياسات حماية البيانات وإجراءات الامتثال للائحة العامة لحماية البيانات (GDPR) وقانون حماية البيانات 2018 في المملكة المتحدة التي تطبقها شركة MPLOYEDIN UK LTD."
-                  : "This document outlines the data protection policies and GDPR compliance procedures implemented by MPLOYEDIN UK LTD in accordance with applicable laws in the United Kingdom, including the General Data Protection Regulation (GDPR) and the Data Protection Act 2018."}
+                {t("gdprIntro")}
               </p>
             </div>
 
@@ -76,7 +74,7 @@ export default function GdprPage() {
             {/* Contact footer card */}
             <div className="border-t border-border/60 bg-muted/40 px-6 py-6 rounded-b-2xl sm:px-8">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                {isAr ? "اتصل بنا" : "Contact Us"}
+                {t("contactUs")}
               </h3>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-background p-4">
@@ -103,9 +101,7 @@ export default function GdprPage() {
         )}
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          {isAr
-            ? "باستخدامك لموقعنا، فإنك تقر وتوافق على شروط سياسة حماية البيانات هذه."
-            : "By using our website, you acknowledge and agree to the terms of this Data Protection Policy."}
+          {t("gdprAgreement")}
         </p>
       </div>
     </div>

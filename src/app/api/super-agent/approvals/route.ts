@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Job from "@/models/Job";
 import Agent from "@/models/Agent";
+import { escapeRegex } from "@/lib/security/sanitize";
 
 interface AuthCtx {
   userId: string;
@@ -41,7 +42,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Text search on title
   if (search) {
-    query.title = { $regex: search, $options: "i" };
+    query.title = { $regex: escapeRegex(search), $options: "i" };
   }
 
   // Date range filter
