@@ -17,6 +17,7 @@ const config: Config = {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^next-intl$": "<rootDir>/src/__mocks__/next-intl.ts",
     "^use-intl/react$": "<rootDir>/src/__mocks__/use-intl/react.ts",
+    "^isomorphic-dompurify$": "<rootDir>/src/__mocks__/isomorphic-dompurify.ts",
   },
   setupFilesAfterEnv: ["<rootDir>/src/test-utils/setup.ts"],
   testMatch: [

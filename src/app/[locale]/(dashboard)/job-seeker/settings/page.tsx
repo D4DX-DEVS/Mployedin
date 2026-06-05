@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -331,6 +332,7 @@ function getCsrfToken(): string {
 export default function JobSeekerSettingsPage() {
   const { data: session, update: updateSession } = useSession();
   const router = useRouter();
+  const t = useTranslations("jobSeekerExtra.settings");
   const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, type: "success", message: "" });
@@ -453,9 +455,9 @@ export default function JobSeekerSettingsPage() {
       });
       if (!res.ok) throw new Error("Failed to save");
       reset(data);
-      showToast("success", "Settings saved successfully");
+      showToast("success", t("savedToast"));
     } catch {
-      showToast("error", "Failed to save settings. Please try again.");
+      showToast("error", t("failedToast"));
     } finally {
       setSaving(false);
     }
@@ -525,7 +527,7 @@ export default function JobSeekerSettingsPage() {
           className="-ml-2 gap-1.5 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
+          {t("back")}
         </Button>
 
         {/* ── Profile Header Card ────────────────────────────────────────── */}
@@ -547,7 +549,7 @@ export default function JobSeekerSettingsPage() {
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={avatarUploading}
                 className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
-                aria-label="Change photo"
+                aria-label={t("changePhoto")}
               >
                 <Camera className="h-4 w-4 text-white" />
               </button>
@@ -563,7 +565,7 @@ export default function JobSeekerSettingsPage() {
             {/* Name + email */}
             <div className="flex-1 min-w-0">
               <p className="font-bold text-base text-foreground truncate leading-tight">
-                {userName || "Your Name"}
+                {userName || t("yourName")}
               </p>
               <p className="text-sm text-muted-foreground mt-0.5 truncate">
                 {session?.user?.email ?? ""}
@@ -578,9 +580,9 @@ export default function JobSeekerSettingsPage() {
                   disabled={avatarUploading}
                 >
                   {avatarUploading ? (
-                    <><Loader2 className="h-3.5 w-3.5 animate-spin" />Uploading…</>
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" />{t("uploading")}</>
                   ) : (
-                    <><Camera className="h-3.5 w-3.5" />{avatarUrl ? "Change Photo" : "Upload Photo"}</>
+                    <><Camera className="h-3.5 w-3.5" />{avatarUrl ? t("changePhotoButton") : t("uploadPhoto")}</>
                   )}
                 </Button>
                 {avatarUrl && (
@@ -592,7 +594,7 @@ export default function JobSeekerSettingsPage() {
                     onClick={handleAvatarRemove}
                     disabled={avatarUploading}
                   >
-                    <Trash2 className="h-3 w-3" />Remove
+                    <Trash2 className="h-3 w-3" />{t("remove")}
                   </Button>
                 )}
               </div>
@@ -613,7 +615,7 @@ export default function JobSeekerSettingsPage() {
                     disabled={saving}
                     className="h-9 rounded-xl"
                   >
-                    Discard
+                    {t("discard")}
                   </Button>
                   <Button
                     type="submit"
@@ -622,14 +624,14 @@ export default function JobSeekerSettingsPage() {
                     className="h-9 min-w-[110px] rounded-xl gap-2"
                   >
                     {saving ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" />Saving…</>
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" />{t("saving")}</>
                     ) : (
-                      <><Save className="h-3.5 w-3.5" />Save Settings</>
+                      <><Save className="h-3.5 w-3.5" />{t("saveSettings")}</>
                     )}
                   </Button>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">JPEG, PNG or WebP · max 2 MB</p>
+                <p className="text-xs text-muted-foreground">{t("fileHint")}</p>
               )}
             </div>
           </div>
@@ -645,13 +647,13 @@ export default function JobSeekerSettingsPage() {
         {/* ── Mobile save bar ─────────────────────────────────────────────── */}
         {isDirty && (
           <div className="sm:hidden rounded-2xl border bg-card px-5 py-4 shadow-sm flex items-center justify-between gap-4">
-            <p className="text-xs text-muted-foreground font-medium">Unsaved changes</p>
+            <p className="text-xs text-muted-foreground font-medium">{t("unsavedChanges")}</p>
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => reset()} disabled={saving} className="h-8 rounded-xl">
-                Discard
+                {t("discard")}
               </Button>
               <Button type="submit" size="sm" disabled={saving} className="h-8 min-w-[100px] rounded-xl gap-1.5">
-                {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Saving…</> : <><Save className="h-3.5 w-3.5" />Save</>}
+                {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />{t("saving")}</> : <><Save className="h-3.5 w-3.5" />{t("save")}</>}
               </Button>
             </div>
           </div>
@@ -669,23 +671,23 @@ export default function JobSeekerSettingsPage() {
             */}
             <TabsTrigger value="interviews" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Interviews</span>
-              <span className="sm:hidden">Schedule</span>
+              <span className="hidden sm:inline">{t("tabs.interviews")}</span>
+              <span className="sm:hidden">{t("tabs.schedule")}</span>
             </TabsTrigger>
             <TabsTrigger value="profile" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Profile Visibility</span>
-              <span className="sm:hidden">Visibility</span>
+              <span className="hidden sm:inline">{t("tabs.profileVisibility")}</span>
+              <span className="sm:hidden">{t("tabs.visibility")}</span>
             </TabsTrigger>
             <TabsTrigger value="resume-ai" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <BrainCircuit className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Resume & AI</span>
-              <span className="sm:hidden">AI</span>
+              <span className="hidden sm:inline">{t("tabs.resumeAi")}</span>
+              <span className="sm:hidden">{t("tabs.ai")}</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex-1 gap-2 rounded-xl text-xs sm:text-sm py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Bell className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Notifications</span>
-              <span className="sm:hidden">Alerts</span>
+              <span className="hidden sm:inline">{t("tabs.notifications")}</span>
+              <span className="sm:hidden">{t("tabs.alerts")}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -696,12 +698,12 @@ export default function JobSeekerSettingsPage() {
           <TabsContent value="interviews" className="mt-5 space-y-5 focus-visible:outline-none">
             <SettingCard
               icon={<CalendarDays className="h-4 w-4" />}
-              title="Interview Scheduling"
-              description="Control how and when employers can book interviews with you."
+              title={t("interviews.title")}
+              description={t("interviews.description")}
             >
               <SettingRow
-                label="Instant Interview Booking"
-                description="Allow employers to book directly into your available time slots."
+                label={t("interviews.instantBooking")}
+                description={t("interviews.instantBookingDescription")}
               >
                 <Controller
                   control={control}
@@ -716,8 +718,8 @@ export default function JobSeekerSettingsPage() {
             {values.instantBooking && (
               <SettingCard
                 icon={<Settings2 className="h-4 w-4" />}
-                title="Availability Settings"
-                description="Set your available days and working hours. Employers can only book interviews during these windows."
+                title={t("interviews.availabilityTitle")}
+                description={t("interviews.availabilityDescription")}
               >
                 {/* Built-in Availability Calendar */}
                 <div className="py-3">
@@ -751,9 +753,9 @@ export default function JobSeekerSettingsPage() {
 
                 {/* Buffer */}
                 <SettingRow
-                  label="Buffer Between Interviews"
-                  description="Minimum break time between consecutive interviews."
-                  tooltip="Prevents employers from scheduling back-to-back interviews."
+                  label={t("interviews.buffer")}
+                  description={t("interviews.bufferDescription")}
+                  tooltip={t("interviews.bufferTooltip")}
                 >
                   <Controller
                     control={control}
@@ -761,7 +763,7 @@ export default function JobSeekerSettingsPage() {
                     render={({ field }) => (
                       <SearchableSelect
                         className="h-8 w-32 text-sm rounded-lg"
-                        options={[0, 15, 30, 60].map((m) => ({ value: String(m), label: m === 0 ? "No buffer" : `${m} min` }))}
+                        options={[0, 15, 30, 60].map((m) => ({ value: String(m), label: m === 0 ? t("interviews.noBuffer") : t("interviews.minutes", { count: m }) }))}
                         value={String(field.value)}
                         onValueChange={(v) => field.onChange(Number(v))}
                       />

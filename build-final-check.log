@@ -1,0 +1,39 @@
+
+> mployedin@0.1.0 build
+> next build
+
+[@serwist/next] WARNING: You are using '@serwist/next' with `next dev --turbopack`, but it doesn't support Turbopack. Do one of the following:
+
+- Set `disable` to `process.env.NODE_ENV !== "production"`.
+
+- Use webpack by running `next dev --webpack` instead of `next dev --turbopack`.
+
+- Migrate to '@serwist/turbopack' which has experimental support for Turbopack. See https://serwist.pages.dev/docs/next/turbo for more information.
+
+- Migrate to configurator mode which has support for Turbopack. See https://serwist.pages.dev/docs/next/config for more information. 
+
+Follow https://github.com/serwist/serwist/issues/54 for progress on Serwist + Turbopack. You can also suppress this warning by setting SERWIST_SUPPRESS_TURBOPACK_WARNING=1.
+
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/(.*)
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+▲ Next.js 16.2.6 (Turbopack)
+- Environments: .env
+- Experiments (use with caution):
+  · optimizePackageImports
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 22.4s
+  Running TypeScript ...
+  Finished TypeScript in 39.6s ...
+  Collecting page data using 31 workers ...
+
+> Build error occurred
+Error: ENOENT: no such file or directory, open 'D:\Mployedin\mployedin\.next\server\pages-manifest.json'
+    at ignore-listed frames {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'D:\\Mployedin\\mployedin\\.next\\server\\pages-manifest.json'
+}

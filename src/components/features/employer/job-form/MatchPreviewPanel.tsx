@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Loader2, MapPin, BriefcaseBusiness } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
+import { getLocalizedCountryName } from "@/lib/i18n/locations";
 
 interface MatchPreviewPanelProps {
   skills: string[];
@@ -23,9 +25,18 @@ export function MatchPreviewPanel({
   experienceMin,
   experienceMax,
 }: MatchPreviewPanelProps) {
+  const t = useTranslations("employerJobForm.matchPreview");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [data, setData] = useState<MatchData | null>(null);
   const [loading, setLoading] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const getCountryLabel = (countryName: string) => {
+    return getLocalizedCountryName(countryName, locale, {
+      remoteGlobalLabel: t("remoteGlobal"),
+    });
+  };
 
   useEffect(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -65,9 +76,16 @@ export function MatchPreviewPanel({
   if (!data && !loading) return null;
 
   const activeFilters = [
-    country ? `Location: ${country}` : null,
-    skills.length > 0 ? `${Math.min(skills.length, 15)} skills` : null,
-    experienceMax > 0 ? `${experienceMin}-${experienceMax} yrs` : null,
+    country ? t("locationFilter", { country: getCountryLabel(country) }) : null,
+    skills.length > 0
+      ? t("skillsFilter", { count: Math.min(skills.length, 15).toLocaleString(numberLocale) })
+      : null,
+    experienceMax > 0
+      ? t("experienceFilter", {
+        min: experienceMin.toLocaleString(numberLocale),
+        max: experienceMax.toLocaleString(numberLocale),
+      })
+      : null,
   ].filter(Boolean) as string[];
 
   return (
@@ -76,10 +94,10 @@ export function MatchPreviewPanel({
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-sm font-semibold">
             <Users className="w-4 h-4 text-primary" />
-            Candidate Preview
+            {t("title")}
           </div>
           <p className="text-xs text-muted-foreground">
-            Live talent-pool snapshot for the criteria you have entered.
+            {t("description")}
           </p>
         </div>
         <AnimatePresence>
@@ -117,14 +135,14 @@ export function MatchPreviewPanel({
             <div className="rounded-2xl border border-border/70 bg-background/80 p-3.5">
               <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 <BriefcaseBusiness className="h-3.5 w-3.5" />
-                Talent pool size
+                {t("talentPoolSize")}
               </div>
               <div className="mt-2">
                 <span className="text-2xl font-bold text-foreground tabular-nums">
-                  ~{data.count.toLocaleString()}
+                  ~{data.count.toLocaleString(numberLocale)}
                 </span>
-                <span className="ml-2 text-sm text-muted-foreground">
-                  matching candidates
+                <span className="ms-2 text-sm text-muted-foreground">
+                  {t("matchingCandidates")}
                 </span>
               </div>
             </div>
@@ -133,7 +151,7 @@ export function MatchPreviewPanel({
               <div className="space-y-1.5 rounded-2xl border border-border/70 bg-background/80 p-3.5">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5" />
-                  Most common skills in this pool
+                  {t("commonSkills")}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {data.topSkills.slice(0, 4).map((skill) => (
@@ -146,7 +164,7 @@ export function MatchPreviewPanel({
             )}
 
             <p className="text-xs text-muted-foreground">
-              Live estimate based on current candidate profiles.
+              {t("estimate")}
             </p>
           </motion.div>
         )}

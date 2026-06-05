@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import GoogleCalendar, {
   type CalendarEvent,
@@ -8,6 +9,7 @@ import GoogleCalendar, {
 import { Building2 } from "lucide-react";
 
 export default function JobSeekerCalendarPage() {
+  const t = useTranslations("jobSeekerCalendar");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +25,7 @@ export default function JobSeekerCalendarPage() {
         setEvents(
           items.map((i: Record<string, unknown>) => ({
             _id: String(i._id),
-            title: String(i.jobTitle ?? "Interview"),
+            title: String(i.jobTitle ?? t("interviewFallback")),
             subtitle: String(i.companyName ?? ""),
             type: (i.type as CalendarEvent["type"]) ?? "video",
             status: String(i.status ?? "scheduled"),
@@ -35,11 +37,11 @@ export default function JobSeekerCalendarPage() {
         );
       }
     } catch {
-      toast.error("Failed to load calendar events");
+      toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const now = new Date();
@@ -48,13 +50,12 @@ export default function JobSeekerCalendarPage() {
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          My Calendar
+          {t("title")}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          View all your upcoming interviews in one place
+          {t("description")}
         </p>
       </section>
 

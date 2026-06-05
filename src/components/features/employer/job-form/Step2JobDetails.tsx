@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { motion } from "framer-motion";
 import { Sparkles, Loader2, AlertCircle, Plus, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,14 @@ import type { JobFormValues } from "./jobFormSchema";
 
 const MIN_CHARS = 20;
 const MAX_CHARS = 5000;
+const DESCRIPTION_SECTION_KEYS = [
+  "roleSummary",
+  "keyResponsibilities",
+  "mustHave",
+  "benefits",
+] as const;
+
+type DescriptionSectionKey = (typeof DESCRIPTION_SECTION_KEYS)[number];
 
 interface GeneratedDescription {
   full: string;
@@ -22,28 +31,12 @@ interface GeneratedDescription {
   niceToHave: string;
 }
 
-const DESCRIPTION_SECTIONS = [
-  {
-    label: "Role summary",
-    anchor: "## Role Summary",
-    content: "## Role Summary\n- Explain what this role owns and why it matters."
-  },
-  {
-    label: "Key responsibilities",
-    anchor: "## Key Responsibilities",
-    content: "## Key Responsibilities\n- Lead or support the main workstreams for this role."
-  },
-  {
-    label: "Must-have requirements",
-    anchor: "## Must-Have Requirements",
-    content: "## Must-Have Requirements\n- List the skills, tools, and experience candidates must already have."
-  },
-  {
-    label: "Benefits",
-    anchor: "## Benefits",
-    content: "## Benefits\n- Mention standout perks, flexibility, or growth opportunities."
-  },
-] as const;
+interface DescriptionSection {
+  key: DescriptionSectionKey;
+  label: string;
+  anchor: string;
+  content: string;
+}
 
 /** Reusable list-input for structured optional fields (responsibilities, qualifications, benefits) */
 function ListField({
@@ -52,12 +45,14 @@ function ListField({
   fieldName,
   placeholder,
   maxItems,
+  optionalLabel,
 }: {
   label: string;
   hint: string;
   fieldName: "responsibilities" | "qualifications" | "benefits" | "learningOutcomes";
   placeholder: string;
   maxItems: number;
+  optionalLabel: string;
 }) {
   const { watch, setValue } = useFormContext<JobFormValues>();
   const [inputValue, setInputValue] = useState("");
@@ -83,7 +78,7 @@ function ListField({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-foreground">
-            {label} <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+            {label} <span className="text-xs text-muted-foreground font-normal">({optionalLabel})</span>
           </p>
           <p className="text-xs text-muted-foreground">{hint}</p>
         </div>
@@ -136,6 +131,9 @@ function ListField({
 }
 
 export function Step2JobDetails() {
+  const t = useTranslations("employerJobForm.step2");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const {
     register,
     watch,
@@ -150,14 +148,24 @@ export function Step2JobDetails() {
   const description = watch("description");
 
   const charCount = description?.length ?? 0;
-  const descriptionStrength =
-    charCount >= 600 ? "Strong" : charCount >= 250 ? "Good start" : "Needs detail";
+  const descriptionStrength = charCount >= 600
+    ? t("strength.strong")
+    : charCount >= 250
+      ? t("strength.good")
+      : t("strength.needsDetail");
 
   const [generating, setGenerating] = useState(false);
   const [aiError, setAiError] = useState("");
   const [generated, setGenerated] = useState<GeneratedDescription | null>(null);
 
-  function insertSectionTemplate(section: (typeof DESCRIPTION_SECTIONS)[number]) {
+  const descriptionSections: DescriptionSection[] = DESCRIPTION_SECTION_KEYS.map((key) => ({
+    key,
+    label: t(`sections.${key}.label`),
+    anchor: t(`sections.${key}.anchor`),
+    content: t(`sections.${key}.content`),
+  }));
+
+  function insertSectionTemplate(section: DescriptionSection) {
     const currentValue = description?.trim() ?? "";
     if (currentValue.toLowerCase().includes(section.anchor.toLowerCase())) return;
 
@@ -170,7 +178,7 @@ export function Step2JobDetails() {
 
   async function generateDescription() {
     if (!title) {
-      setAiError("Please enter a job title in step 1 first.");
+      setAiError(t("enterTitleFirst"));
       return;
     }
     setGenerating(true);
@@ -190,7 +198,7 @@ export function Step2JobDetails() {
 
       if (!res.ok) {
         const err = (await res.json()) as { error?: string };
-        setAiError(err.error ?? "Generation failed. Please try again.");
+        setAiError(locale === "ar" ? t("generationFailed") : err.error ?? t("generationFailed"));
         return;
       }
 
@@ -198,7 +206,7 @@ export function Step2JobDetails() {
       setGenerated(data.description);
       setValue("description", data.description.full, { shouldValidate: true });
     } catch {
-      setAiError("Network error. Please try again.");
+      setAiError(t("networkError"));
     } finally {
       setGenerating(false);
     }
@@ -214,9 +222,9 @@ export function Step2JobDetails() {
     >
       <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">Job Details</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
-            Write a clear, skimmable description so candidates can qualify themselves quickly.
+            {t("description")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -224,10 +232,10 @@ export function Step2JobDetails() {
             {descriptionStrength}
           </Badge>
           <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {charCount.toLocaleString()} characters
+            {t("characters", { count: charCount.toLocaleString(numberLocale) })}
           </Badge>
           <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            AI assist ready
+            {t("aiReady")}
           </Badge>
         </div>
       </div>
@@ -237,10 +245,10 @@ export function Step2JobDetails() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <Label htmlFor="description" className="text-sm font-medium">
-                Job Description <span className="text-destructive">*</span>
+                {t("jobDescription")} <span className="text-destructive">*</span>
               </Label>
               <p className="text-xs text-muted-foreground">
-                Keep it structured. Candidates scan responsibilities, requirements, and benefits first.
+                {t("descriptionHint")}
               </p>
             </div>
             <Button
@@ -254,19 +262,19 @@ export function Step2JobDetails() {
               {generating ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Generating…
+                  {t("generating")}
                 </>
               ) : (
                 <>
                   <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  Generate with AI
+                  {t("generateWithAi")}
                 </>
               )}
             </Button>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {DESCRIPTION_SECTIONS.map((section) => (
+            {descriptionSections.map((section) => (
               <button
                 key={section.label}
                 type="button"
@@ -299,7 +307,7 @@ export function Step2JobDetails() {
               id="description"
               {...register("description")}
               maxLength={MAX_CHARS}
-              placeholder="Describe the role, responsibilities, and what you're looking for…&#10;&#10;## Role Summary&#10;- Briefly explain what the person will own.&#10;&#10;## Key Responsibilities&#10;- List the main day-to-day work.&#10;&#10;## Must-Have Requirements&#10;- Highlight essential experience and skills."
+              placeholder={t("placeholder")}
               rows={10}
               className={cn(
                 "min-h-[260px] resize-y text-sm leading-6",
@@ -317,8 +325,8 @@ export function Step2JobDetails() {
             ) : (
               <span className="text-xs text-muted-foreground">
                 {charCount < MIN_CHARS
-                  ? `${MIN_CHARS - charCount} more characters needed`
-                  : "Looks valid. Add specifics to improve candidate quality."}
+                  ? t("moreCharactersNeeded", { count: (MIN_CHARS - charCount).toLocaleString(numberLocale) })
+                  : t("validHint")}
               </span>
             )}
             <span
@@ -327,23 +335,23 @@ export function Step2JobDetails() {
                 charCount > MAX_CHARS * 0.9 ? "text-destructive" : "text-muted-foreground"
               )}
             >
-              {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+              {charCount.toLocaleString(numberLocale)} / {MAX_CHARS.toLocaleString(numberLocale)}
             </span>
           </div>
         </div>
 
         <div className="space-y-3">
           <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
-            <p className="text-sm font-semibold text-foreground">What strong listings include</p>
+            <p className="text-sm font-semibold text-foreground">{t("strongListingsTitle")}</p>
             <div className="mt-3 space-y-3 text-xs text-muted-foreground">
               <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
-                Start with one short summary sentence that explains the role and team.
+                {t("strongListings.summary")}
               </div>
               <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
-                Use bullets for responsibilities and must-have skills so candidates can scan quickly.
+                {t("strongListings.bullets")}
               </div>
               <div className="rounded-xl border border-border/70 bg-muted/30 p-3">
-                Mention impact, tools, and growth opportunities to make the role feel concrete.
+                {t("strongListings.impact")}
               </div>
             </div>
           </div>
@@ -356,13 +364,13 @@ export function Step2JobDetails() {
             >
               <div className="flex items-center gap-2 text-sm font-medium text-primary">
                 <Sparkles className="w-4 h-4" />
-                AI draft sections
+                {t("aiDraftSections")}
               </div>
               <div className="space-y-2 text-xs">
                 {[
-                  { label: "Responsibilities", content: generated.responsibilities },
-                  { label: "Requirements", content: generated.requirements },
-                  { label: "Nice to Have", content: generated.niceToHave },
+                  { label: t("generatedLabels.responsibilities"), content: generated.responsibilities },
+                  { label: t("generatedLabels.requirements"), content: generated.requirements },
+                  { label: t("generatedLabels.niceToHave"), content: generated.niceToHave },
                 ].map(({ label, content }) => (
                   <div key={label} className="rounded-xl border border-border/70 bg-background p-3">
                     <p className="font-semibold text-foreground">{label}</p>
@@ -371,7 +379,7 @@ export function Step2JobDetails() {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                Full text has already been applied to the editor. Review before posting.
+                {t("aiDraftApplied")}
               </p>
             </motion.div>
           )}
@@ -391,32 +399,36 @@ export function Step2JobDetails() {
 
       {/* Structured optional fields */}
       <ListField
-        label="Key Responsibilities"
-        hint="List what this person will do day-to-day."
+        label={t("listFields.responsibilities.label")}
+        hint={t("listFields.responsibilities.hint")}
         fieldName="responsibilities"
-        placeholder="e.g. Develop and maintain cross-platform mobile apps"
+        placeholder={t("listFields.responsibilities.placeholder")}
         maxItems={20}
+        optionalLabel={t("listFields.optional")}
       />
       <ListField
-        label="Qualifications"
-        hint="Academic or professional qualifications for this role."
+        label={t("listFields.qualifications.label")}
+        hint={t("listFields.qualifications.hint")}
         fieldName="qualifications"
-        placeholder="e.g. Bachelor's degree in Computer Science"
+        placeholder={t("listFields.qualifications.placeholder")}
         maxItems={20}
+        optionalLabel={t("listFields.optional")}
       />
       <ListField
-        label="Benefits"
-        hint="Perks and benefits that make this role attractive."
+        label={t("listFields.benefits.label")}
+        hint={t("listFields.benefits.hint")}
         fieldName="benefits"
-        placeholder="e.g. Flexible working hours"
+        placeholder={t("listFields.benefits.placeholder")}
         maxItems={20}
+        optionalLabel={t("listFields.optional")}
       />
       <ListField
-        label="What You Will Learn"
-        hint="Skills or experience candidates will gain in this role."
+        label={t("listFields.learningOutcomes.label")}
+        hint={t("listFields.learningOutcomes.hint")}
         fieldName="learningOutcomes"
-        placeholder="e.g. Real-world software testing workflows"
+        placeholder={t("listFields.learningOutcomes.placeholder")}
         maxItems={20}
+        optionalLabel={t("listFields.optional")}
       />
     </motion.div>
   );

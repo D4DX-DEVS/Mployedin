@@ -125,11 +125,11 @@ function getCurrentRole(app: Applicant): string {
   return app.jobSeekerId?.experience?.find((entry) => entry.isCurrent)?.jobTitle ?? "";
 }
 
-function getLocationExperienceSummary(app: Applicant): string {
+function getLocationExperienceSummary(app: Applicant, formatYears: (years: number) => string): string {
   const summary = [app.jobSeekerId?.currentLocation];
 
   if (app.jobSeekerId?.totalExperienceYears != null) {
-    summary.push(`${app.jobSeekerId.totalExperienceYears}+ yrs`);
+    summary.push(formatYears(app.jobSeekerId.totalExperienceYears));
   }
 
   return summary.filter(Boolean).join(" • ") || "";
@@ -1318,6 +1318,16 @@ function TableView({
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("employerApplications");
   const tc = useTranslations("employerCommon");
+  const statusLabelMap: Record<string, string> = {
+    applied: t("applied"),
+    shortlisted: t("shortlisted"),
+    interview_scheduled: t("interview"),
+    offer: t("offer"),
+    selected: t("selected"),
+    hired: t("hired"),
+    rejected: t("rejected"),
+    withdrawn: t("withdrawn"),
+  };
 
   if (!applications.length) {
     return (
@@ -1350,17 +1360,18 @@ function TableView({
           const isSelected = selected.includes(app._id);
           const candidateName = getCandidateName(app);
           const currentRole = getCurrentRole(app);
-          const locationExperience = getLocationExperienceSummary(app);
+          const locationExperience = getLocationExperienceSummary(app, (years) => t("yearsExp", { count: years }));
           const topSkills = getApplicantTags(app);
-          const appliedDate = new Date(app.appliedAt).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+          const appliedDate = new Date(app.appliedAt).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { day: "2-digit", month: "short" });
           const scorecard = scorecardMap?.[app._id];
-          const aiScoreLabel = app.aiMatchScore != null ? `${app.aiMatchScore}% ${t("match")}` : "AI pending";
+          const aiScoreLabel = app.aiMatchScore != null ? `${app.aiMatchScore}% ${t("match")}` : t("aiPending");
+          const statusLabel = statusLabelMap[app.status] ?? app.status.replace(/_/g, " ");
 
           return (
             <article
               key={app._id}
               data-testid={`applicant-row-${app._id}`}
-              aria-label={`Applicant row for ${candidateName}`}
+              aria-label={t("applicantRowFor", { name: candidateName })}
               onClick={() => onOpenDetails?.(app)}
               className={`grid gap-2 px-4 py-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-300/60 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center ${
                 isSelected ? "bg-sky-500/10" : "bg-transparent hover:bg-background/70"
@@ -1370,7 +1381,7 @@ function TableView({
                 {onToggle ? (
                   <button
                     type="button"
-                    aria-label={`Select ${candidateName}`}
+                    aria-label={t("selectCandidate", { name: candidateName })}
                     onClick={(event) => {
                       event.stopPropagation();
                       onToggle(app._id);
@@ -1394,7 +1405,7 @@ function TableView({
                     >
                       {candidateName}
                     </a>
-                    <StatusBadge status={app.status} />
+                    <StatusBadge status={app.status} label={statusLabel} />
                     {scorecard ? (
                       <Badge className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
                         {scorecard.overallScore.toFixed(1)}/5
@@ -1426,7 +1437,7 @@ function TableView({
                 </div>
 
                 <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span>{t("appliedDate")} {appliedDate}</span>
+                  <span>{t("appliedDate", { date: appliedDate })}</span>
                   {(app.otherApplicationsCount ?? 0) > 0 ? (
                     <span className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-300">
                       <Users className="h-3 w-3" />
@@ -1459,7 +1470,7 @@ function TableView({
                       event.stopPropagation();
                       onViewCv(app);
                     }}
-                    aria-label={`View CV for ${candidateName}`}
+                    aria-label={t("viewCvFor", { name: candidateName })}
                   >
                     <FileText className="h-3.5 w-3.5" />
                   </Button>
@@ -1476,7 +1487,7 @@ function TableView({
                     }}
                   >
                     <Sparkles className={`mr-1 h-3 w-3 ${aiMatchPendingId === app._id ? "animate-pulse text-sky-600" : ""}`} />
-                    Score
+                    {t("score")}
                   </Button>
                 ) : null}
               </div>
@@ -1525,13 +1536,27 @@ function ApplicationDetailsPanel({
   const t = useTranslations("employerApplications");
   const tc = useTranslations("employerCommon");
   const pipelineStages = usePipelineStages();
+  const statusLabelMap: Record<string, string> = {
+    applied: t("applied"),
+    shortlisted: t("shortlisted"),
+    interview_scheduled: t("interview"),
+    offer: t("offer"),
+    selected: t("selected"),
+    hired: t("hired"),
+    rejected: t("rejected"),
+    withdrawn: t("withdrawn"),
+  };
   const currentRole = getCurrentRole(app);
   const candidateName = getCandidateName(app);
+  const candidateExperienceYears = app.jobSeekerId?.totalExperienceYears;
+  const displayDateLocale = locale === "ar" ? "ar-SA" : "en-US";
+  const appliedDate = new Date(app.appliedAt).toLocaleDateString(displayDateLocale);
+  const currentStageLabel = statusLabelMap[app.status] ?? app.status.replace(/_/g, " ");
   const matchItems = app.matchBreakdown
     ? [
-        { label: "Skills", value: app.matchBreakdown.skills },
-        { label: "Experience", value: app.matchBreakdown.experience },
-        { label: "Overall", value: app.matchBreakdown.overall },
+        { label: t("skills"), value: app.matchBreakdown.skills },
+        { label: t("experience"), value: app.matchBreakdown.experience },
+        { label: t("overall"), value: app.matchBreakdown.overall },
       ]
     : [];
   const stageOptions = pipelineStages
@@ -1614,7 +1639,7 @@ function ApplicationDetailsPanel({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Candidate details for ${candidateName}`}
+        aria-label={t("candidateDetailsFor", { name: candidateName })}
         className="absolute inset-y-0 right-0 flex h-screen min-h-0 w-[96vw] max-w-[760px] flex-col overflow-hidden border-l border-border bg-background shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in slide-in-from-right duration-300"
         onClick={(event) => event.stopPropagation()}
       >
@@ -1634,38 +1659,38 @@ function ApplicationDetailsPanel({
                     >
                       {candidateName}
                     </a>
-                    <StatusBadge status={app.status} />
+                    <StatusBadge status={app.status} label={currentStageLabel} />
                     <Badge className={`${getAiMatchBadgeClass(app.aiMatchScore)} rounded-full px-2.5 py-1 text-xs font-semibold`}>
-                      {app.aiMatchScore != null ? `${app.aiMatchScore}% ${t("match")}` : "AI score pending"}
+                      {app.aiMatchScore != null ? `${app.aiMatchScore}% ${t("match")}` : t("aiScorePending")}
                     </Badge>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {currentRole || t("roleNotSpecified")}
                     {app.jobSeekerId?.currentLocation ? ` • ${app.jobSeekerId.currentLocation}` : ""}
-                    {app.jobSeekerId?.totalExperienceYears != null ? ` • ${app.jobSeekerId.totalExperienceYears}+ ${t("yearsExp")}` : ""}
+                    {candidateExperienceYears != null ? ` • ${t("yearsExp", { count: candidateExperienceYears })}` : ""}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                  <span className="font-semibold text-foreground">{t("appliedDate")}</span>
-                  <span className="ml-1.5">{new Date(app.appliedAt).toLocaleDateString()}</span>
+                  <span className="font-semibold text-foreground">{t("appliedDateLabel")}</span>
+                  <span className="ms-1.5">{appliedDate}</span>
                 </div>
                 <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                  <span className="font-semibold text-foreground">Role</span>
-                  <span className="ml-1.5">{app.jobId?.title ?? "Unassigned"}</span>
+                  <span className="font-semibold text-foreground">{t("role")}</span>
+                  <span className="ms-1.5">{app.jobId?.title ?? t("unassigned")}</span>
                 </div>
                 {(app.otherApplicationsCount ?? 0) > 0 ? (
                   <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
                     <span className="font-semibold text-foreground">{t("otherRole")}</span>
-                    <span className="ml-1.5">{app.otherApplicationsCount}</span>
+                    <span className="ms-1.5">{app.otherApplicationsCount}</span>
                   </div>
                 ) : null}
               </div>
             </div>
 
-            <Button ref={closeButtonRef} variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 dark:hover:text-rose-300" onClick={onClose} aria-label="Close candidate details">
+            <Button ref={closeButtonRef} variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 dark:hover:text-rose-300" onClick={onClose} aria-label={t("closeCandidateDetails")}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -1674,21 +1699,21 @@ function ApplicationDetailsPanel({
         <div className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_28%),linear-gradient(to_bottom,rgba(148,163,184,0.08),transparent_28%)] px-4 py-4 sm:px-6 sm:py-5">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current Role</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentRole")}</p>
               <p className="mt-2 text-sm font-semibold text-foreground">{currentRole || t("roleNotSpecified")}</p>
             </div>
             <div className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Location</p>
-              <p className="mt-2 text-sm font-semibold text-foreground">{app.jobSeekerId?.currentLocation ?? "Not specified"}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("location")}</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{app.jobSeekerId?.currentLocation ?? t("notSpecified")}</p>
             </div>
             <div className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Experience</p>
-              <p className="mt-2 text-sm font-semibold text-foreground">{app.jobSeekerId?.totalExperienceYears != null ? `${app.jobSeekerId.totalExperienceYears}+ ${t("yearsExp")}` : t("locationExpPending")}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("experience")}</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{candidateExperienceYears != null ? t("yearsExp", { count: candidateExperienceYears }) : t("locationExpPending")}</p>
             </div>
             <div className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scorecard</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("scorecard")}</p>
               <p className={`mt-2 text-sm font-semibold ${scorecard ? scorecard.overallScore >= 4 ? "text-emerald-600 dark:text-emerald-300" : scorecard.overallScore >= 3 ? "text-amber-600 dark:text-amber-300" : "text-rose-500 dark:text-rose-300" : "text-muted-foreground"}`}>
-                {scorecard ? `${scorecard.overallScore.toFixed(1)}/5 overall` : "Not added yet"}
+                {scorecard ? t("overallScore", { score: scorecard.overallScore.toFixed(1) }) : t("notAddedYet")}
               </p>
             </div>
           </div>
@@ -1696,15 +1721,15 @@ function ApplicationDetailsPanel({
           <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(280px,0.92fr)]">
             <div className="space-y-4">
               <div className="workspace-glass-panel rounded-[24px] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Application Overview</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("applicationOverview")}</p>
                 <div className="mt-3 space-y-3 text-sm text-muted-foreground">
                   <div>
-                    <p className="font-semibold text-foreground">{app.jobId?.title ?? "Untitled role"}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Applied on {new Date(app.appliedAt).toLocaleDateString()} and currently in the {app.status.replace(/_/g, " ")} stage.</p>
+                    <p className="font-semibold text-foreground">{app.jobId?.title ?? t("untitledRole")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("applicationOverviewText", { date: appliedDate, stage: currentStageLabel })}</p>
                   </div>
                   {(app.otherApplicationsCount ?? 0) > 0 ? (
                     <p className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-xs text-muted-foreground">
-                      This candidate also applied to {app.otherApplicationsCount} other role{app.otherApplicationsCount! > 1 ? "s" : ""}.
+                      {t("otherApplicationsSummary", { count: app.otherApplicationsCount ?? 0 })}
                     </p>
                   ) : null}
                 </div>
@@ -1712,7 +1737,7 @@ function ApplicationDetailsPanel({
 
               <div className="workspace-glass-panel rounded-[24px] p-5">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Review Signals</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("reviewSignals")}</p>
                   {app.aiMatchScore == null && onGenerateAiMatch ? (
                     <Button
                       size="sm"
@@ -1722,7 +1747,7 @@ function ApplicationDetailsPanel({
                       onClick={() => onGenerateAiMatch(app)}
                     >
                       <Sparkles className={`mr-1 h-3.5 w-3.5 ${aiMatchPendingId === app._id ? "animate-pulse text-sky-600" : ""}`} />
-                      Generate Score
+                      {t("generateScore")}
                     </Button>
                   ) : null}
                 </div>
@@ -1730,7 +1755,7 @@ function ApplicationDetailsPanel({
                 {app.aiMatchScore != null ? (
                   <div className="mt-3 space-y-3">
                     <div className="rounded-2xl bg-background/70 px-3.5 py-3">
-                      <p className="text-[11px] font-medium text-muted-foreground">AI match</p>
+                      <p className="text-[11px] font-medium text-muted-foreground">{t("aiMatch")}</p>
                       <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{app.aiMatchScore}%</p>
                     </div>
 
@@ -1750,11 +1775,11 @@ function ApplicationDetailsPanel({
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Detailed AI category scores are not available for this application yet.</p>
+                      <p className="text-sm text-muted-foreground">{t("aiCategoryScoresUnavailable")}</p>
                     )}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">Generate an AI match score to inspect how this candidate aligns with the role requirements.</p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{t("generateAiMatchPrompt")}</p>
                 )}
               </div>
 
@@ -1767,7 +1792,7 @@ function ApplicationDetailsPanel({
 
               {app.screeningAnswers && app.screeningAnswers.length > 0 ? (
                 <div className="workspace-glass-panel rounded-[24px] p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Screening Answers</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("screeningAnswers")}</p>
                   <div className="mt-3 space-y-3">
                     {app.screeningAnswers.map((sa) => (
                       <div key={sa.questionId} className="space-y-1">
@@ -1776,7 +1801,7 @@ function ApplicationDetailsPanel({
                           {Array.isArray(sa.answer)
                             ? sa.answer.join(", ")
                             : typeof sa.answer === "boolean"
-                              ? sa.answer ? "Yes" : "No"
+                              ? sa.answer ? t("yes") : t("no")
                               : String(sa.answer)}
                         </p>
                       </div>
@@ -1787,7 +1812,7 @@ function ApplicationDetailsPanel({
 
               {app.matchStrengths?.length ? (
                 <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/10 p-5">
-                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Strengths</p>
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{t("strengths")}</p>
                   <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                     {app.matchStrengths.map((strength) => (
                       <li key={strength} className="flex gap-2">
@@ -1801,7 +1826,7 @@ function ApplicationDetailsPanel({
 
               {app.matchGaps?.length ? (
                 <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/10 p-5">
-                  <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Watchouts</p>
+                  <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">{t("watchouts")}</p>
                   <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                     {app.matchGaps.map((gap) => (
                       <li key={gap} className="flex gap-2">
@@ -1816,7 +1841,7 @@ function ApplicationDetailsPanel({
 
             <div className="space-y-4">
               <div className="workspace-glass-panel rounded-[24px] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Key Skills</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("keySkills")}</p>
                 {app.jobSeekerId?.skills?.length ? (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {app.jobSeekerId.skills.map((skill) => (
@@ -1826,13 +1851,13 @@ function ApplicationDetailsPanel({
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">No skills are attached to this profile yet.</p>
+                  <p className="mt-3 text-sm text-muted-foreground">{t("noSkills")}</p>
                 )}
               </div>
 
               {/* Education */}
               <div className="workspace-glass-panel rounded-[24px] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Education</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("education")}</p>
                 {app.jobSeekerId?.education?.length ? (
                   <div className="mt-3 space-y-3">
                     {app.jobSeekerId.education.map((edu, i) => (
@@ -1843,29 +1868,29 @@ function ApplicationDetailsPanel({
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">No education details available.</p>
+                  <p className="mt-3 text-sm text-muted-foreground">{t("noEducation")}</p>
                 )}
               </div>
 
               {/* Experience */}
               <div className="workspace-glass-panel rounded-[24px] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Experience</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("experience")}</p>
                 {app.jobSeekerId?.experience?.length ? (
                   <div className="mt-3 space-y-3">
                     {app.jobSeekerId.experience.map((exp, i) => (
                       <div key={i} className="space-y-0.5">
-                        <p className="text-sm font-semibold text-foreground">{exp.jobTitle}{exp.isCurrent ? " (Current)" : ""}</p>
+                        <p className="text-sm font-semibold text-foreground">{exp.jobTitle}{exp.isCurrent ? ` (${t("current")})` : ""}</p>
                         <p className="text-xs text-muted-foreground">{exp.company}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">No experience details available.</p>
+                  <p className="mt-3 text-sm text-muted-foreground">{t("noExperience")}</p>
                 )}
               </div>
 
               <div className="workspace-glass-panel rounded-[24px] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Quick Actions</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("quickActions")}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {app.jobSeekerId?.cv?.originalUrl && onViewCv ? (
                     <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onViewCv(app)}>
@@ -1879,7 +1904,7 @@ function ApplicationDetailsPanel({
                   ) : null}
                   {onOpenScorecard && ["interview_scheduled", "selected"].includes(app.status) ? (
                     <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenScorecard({ applicationId: app._id })}>
-                      <Award className="mr-2 h-3.5 w-3.5" /> {scorecard ? "View Scorecard" : "Add Scorecard"}
+                      <Award className="mr-2 h-3.5 w-3.5" /> {scorecard ? t("viewScorecard") : t("addScorecard")}
                     </Button>
                   ) : null}
                   {app.status === "shortlisted" && onScheduleInterview ? (
@@ -1899,7 +1924,7 @@ function ApplicationDetailsPanel({
                   ) : null}
                   {app.status === "interview_scheduled" && onChangeStatus ? (
                     <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-emerald-500/10 px-4 text-sm text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300" disabled={statusPending} onClick={() => handleQuickStageChange("selected")}>
-                      Mark Selected
+                      {t("markSelected")}
                     </Button>
                   ) : null}
                   {!(["rejected", "offer"]).includes(app.status) && onChangeStatus ? (
@@ -1927,20 +1952,20 @@ function ApplicationDetailsPanel({
                     <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                       <SearchableSelect
                         className="h-10 w-full rounded-xl border-border bg-background/80"
-                        options={[{ value: "", label: "Move to stage" }, ...stageOptions]}
+                        options={[{ value: "", label: t("moveToStage") }, ...stageOptions]}
                         value={nextStage}
                         onValueChange={setNextStage}
-                        placeholder="Move to stage"
+                        placeholder={t("moveToStage")}
                       />
                       <Button size="sm" className="h-10 rounded-xl px-4 text-sm" disabled={!nextStage || statusPending || (nextStage === "rejected" && !rejectReason.trim())} onClick={handleApplyStageChange}>
-                        {statusPending ? "Updating..." : "Apply Stage"}
+                        {statusPending ? t("updating") : t("applyStage")}
                       </Button>
                     </div>
                     {nextStage === "rejected" ? (
                       <textarea
                         value={rejectReason}
                         onChange={(event) => setRejectReason(event.target.value)}
-                        placeholder="Rejection reason is required"
+                        placeholder={t("rejectionReasonRequired")}
                         maxLength={500}
                         className="mt-3 h-20 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-rose-300"
                       />

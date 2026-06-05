@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Loader2, BookmarkPlus, Send, ChevronLeft, ChevronRight } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -32,12 +33,17 @@ export function StickyActionBar({
   isLastStep,
   canSubmit,
 }: StickyActionBarProps) {
+  const t = useTranslations("employerJobForm.actions");
+  const locale = useLocale();
+  const BackIcon = locale === "ar" ? ChevronRight : ChevronLeft;
+  const NextIcon = locale === "ar" ? ChevronLeft : ChevronRight;
+
   return (
-    <div className="z-40 shrink-0 border-t border-border/80 bg-background/95 backdrop-blur-md" role="toolbar" aria-label="Form navigation">
+    <div className="z-40 shrink-0 border-t border-border/80 bg-background/95 backdrop-blur-md" role="toolbar" aria-label={t("toolbarLabel")}>
       <div className="mx-auto max-w-5xl px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-3.5">
         <div className="mb-2.5 flex items-center justify-between gap-3 sm:hidden">
           <div className="inline-flex items-center rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
-            Step {currentStep} of {totalSteps}
+            {t("stepOf", { current: currentStep, total: totalSteps })}
           </div>
 
           <AnimatePresence>
@@ -50,7 +56,7 @@ export function StickyActionBar({
                 className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600"
               >
                 <Check className="w-3.5 h-3.5" />
-                Saved
+                {t("saved")}
               </motion.div>
             )}
           </AnimatePresence>
@@ -66,8 +72,8 @@ export function StickyActionBar({
               disabled={currentStep === 1}
               className="gap-1.5"
             >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Back</span>
+              <BackIcon className="w-4 h-4" />
+              <span>{t("back")}</span>
             </Button>
 
             <Button
@@ -83,7 +89,7 @@ export function StickyActionBar({
               ) : (
                 <BookmarkPlus className="w-3.5 h-3.5" />
               )}
-              <span>{savingDraft ? "Saving…" : "Save Draft"}</span>
+              <span>{savingDraft ? t("savingDraft") : t("saveDraft")}</span>
             </Button>
 
             <AnimatePresence>
@@ -96,7 +102,7 @@ export function StickyActionBar({
                   className="flex items-center gap-1 text-xs text-green-600 font-medium"
                 >
                   <Check className="w-3.5 h-3.5" />
-                  Saved
+                  {t("saved")}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -104,7 +110,7 @@ export function StickyActionBar({
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              Step {currentStep} of {totalSteps}
+              {t("stepOf", { current: currentStep, total: totalSteps })}
             </span>
 
             {!isLastStep ? (
@@ -114,8 +120,8 @@ export function StickyActionBar({
                 size="sm"
                 className="gap-1.5"
               >
-                Next
-                <ChevronRight className="w-4 h-4" />
+                {t("next")}
+                <NextIcon className="w-4 h-4" />
               </Button>
             ) : (
               <Button
@@ -133,7 +139,7 @@ export function StickyActionBar({
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                {submitting ? "Posting…" : "Post Job"}
+                {submitting ? t("posting") : t("postJob")}
               </Button>
             )}
           </div>
@@ -147,9 +153,9 @@ export function StickyActionBar({
             onClick={onPrev}
             disabled={currentStep === 1}
             className="h-10 w-10 px-0"
-            aria-label="Go to previous step"
+            aria-label={t("previousStep")}
           >
-            <ChevronLeft className="w-4 h-4" />
+            <BackIcon className="w-4 h-4" />
           </Button>
 
           <Button
@@ -159,7 +165,7 @@ export function StickyActionBar({
             onClick={onSaveDraft}
             disabled={savingDraft}
             className="h-10 w-10 px-0"
-            aria-label={savingDraft ? "Saving draft" : "Save draft"}
+            aria-label={savingDraft ? t("savingDraft") : t("saveDraft")}
           >
             {savingDraft ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -175,8 +181,8 @@ export function StickyActionBar({
               size="sm"
               className="h-10 w-full gap-1.5"
             >
-              Next
-              <ChevronRight className="w-4 h-4" />
+              {t("next")}
+              <NextIcon className="w-4 h-4" />
             </Button>
           ) : (
             <Button
@@ -194,7 +200,7 @@ export function StickyActionBar({
               ) : (
                 <Send className="w-4 h-4" />
               )}
-              {submitting ? "Posting…" : "Post Job"}
+              {submitting ? t("posting") : t("postJob")}
             </Button>
           )}
         </div>

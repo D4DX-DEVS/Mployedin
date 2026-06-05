@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Flame,
 } from "lucide-react";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 /* ── Interfaces ── */
 
@@ -357,7 +358,7 @@ export default function JobSeekerSkillsPage() {
       setGapError("");
       setAnimateScore(false);
       try {
-        const res = await fetch("/api/ai/skills-gap", {
+        const res = await csrfFetch("/api/ai/skills-gap", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ targetRole, currentSkills: skillsToSend }),

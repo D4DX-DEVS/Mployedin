@@ -30,7 +30,7 @@ describe("AdminCmsOverviewPage", () => {
   it("renders the modern CMS workspace shell and loads section totals", async () => {
     render(<AdminCmsOverviewPage />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "CMS / Landing Page" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "CMS Overview" })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(7);
@@ -39,7 +39,7 @@ describe("AdminCmsOverviewPage", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/admin/cms/faqs?limit=1");
     expect(fetchMock).toHaveBeenCalledWith("/api/admin/cms/contact-submissions?limit=1");
 
-    expect(await screen.findByText((content) => content.includes("35"))).toBeInTheDocument();
+    expect((await screen.findAllByText((content) => content.includes("35"))).length).toBeGreaterThan(0);
     expect(screen.getByText("FAQs")).toBeInTheDocument();
     expect(screen.getByText("Contact Inbox")).toBeInTheDocument();
   });

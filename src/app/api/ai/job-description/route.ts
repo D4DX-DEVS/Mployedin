@@ -86,4 +86,4 @@ Tone: Professional, engaging, inclusive. Avoid jargon overload. Focus on impact 
   const response: GeneratedDescription = { full, ...sections };
 
   return NextResponse.json({ description: response });
-});
+}, { aiQuota: true });

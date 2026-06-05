@@ -125,4 +125,4 @@ User query: "${safeQuery}"`;
       degraded: true,
     });
   }
-}, { resource: "job_seekers", action: "read" });
+}, { resource: "job_seekers", action: "read", aiQuota: true });

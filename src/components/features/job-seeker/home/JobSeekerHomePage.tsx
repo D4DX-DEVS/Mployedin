@@ -25,7 +25,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { formatLocalizedLocation, getLocalizedCountryName } from "@/lib/i18n/locations";
 import { cn } from "@/lib/utils";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 type FeedJob = {
   _id: string;
@@ -90,22 +92,24 @@ export type InitialHomeData = {
   appliedJobs?: AppliedJobSnippet[];
 };
 
-function formatSalary(job: FeedJob) {
+function formatSalary(job: FeedJob, numberLocale: string) {
   const salary = job.salary;
   if (!salary?.min || !salary?.max || !salary.currency) return null;
-  return `${salary.min.toLocaleString("en-US")}-${salary.max.toLocaleString("en-US")} ${salary.currency}`;
+  return `${salary.min.toLocaleString(numberLocale)}-${salary.max.toLocaleString(numberLocale)} ${salary.currency}`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function timeAgo(iso: string, locale: string, translate: any): string {
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
+  const formatRelativeValue = (value: number) => value.toLocaleString(numberLocale);
   const diff = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(diff / 3_600_000);
   if (hours < 1) return translate("time.justNow");
-  if (hours < 24) return translate("time.hoursAgo", { value: hours });
+  if (hours < 24) return translate("time.hoursAgo", { value: formatRelativeValue(hours) });
   const days = Math.floor(hours / 24);
-  if (days < 7) return translate("time.daysAgo", { value: days });
+  if (days < 7) return translate("time.daysAgo", { value: formatRelativeValue(days) });
   const weeks = Math.floor(days / 7);
-  return translate("time.weeksAgo", { value: weeks });
+  return translate("time.weeksAgo", { value: formatRelativeValue(weeks) });
 }
 
 
@@ -137,6 +141,8 @@ export function JobSeekerHomePage({
 
   const t = useTranslations("jobSeekerHome");
   const isAr = locale === "ar";
+  const numberLocale = isAr ? "ar-SA" : "en-US";
+  const formatNumber = (value: number) => value.toLocaleString(numberLocale);
 
   // Compute completeness live from actual profile fields (same formula as profile page)
   const completion = profile ? Math.min(100, [
@@ -175,7 +181,7 @@ export function JobSeekerHomePage({
     setAiFillLoading(true);
     setAiFillResult(null);
     try {
-      const res = await fetch("/api/ai/profile-fill", {
+      const res = await csrfFetch("/api/ai/profile-fill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ section: item.section, input: aiFillInput.trim() }),
@@ -273,7 +279,7 @@ export function JobSeekerHomePage({
 
   // Fetch real AI insights (cached per day + completeness level in sessionStorage)
   useEffect(() => {
-    const cacheKey = `ai_insights_job_seeker_${new Date().toDateString()}_c${completion}`;
+    const cacheKey = `ai_insights_job_seeker_${locale}_${new Date().toDateString()}_c${completion}`;
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached && aiInsightsKey === 0) {
@@ -289,7 +295,7 @@ export function JobSeekerHomePage({
       setAiInsightsLoading(true);
       try {
         setAiInsightsError(null);
-        const res = await fetch("/api/ai/daily-insights");
+        const res = await fetch(`/api/ai/daily-insights?locale=${locale}`);
         if (!res.ok) {
           throw new Error("Failed to load AI insights");
         }
@@ -308,7 +314,7 @@ export function JobSeekerHomePage({
     };
     void load();
     return () => { active = false; };
-  }, [aiInsightsKey, completion]);
+  }, [aiInsightsKey, completion, locale]);
 
   useEffect(() => {
     if (!guideOpen) {
@@ -399,10 +405,13 @@ export function JobSeekerHomePage({
     return { primaryRole: primary, otherRolesLabel: label };
   }, [profile?.preferredRoles, jobs, t]);
 
-  const preferredLocation = profile?.preferredCountries?.slice(0, 2).join(", ") || t("hero.addPreferredLocations");
+  const preferredLocation = profile?.preferredCountries
+    ?.slice(0, 2)
+    .map((country) => getLocalizedCountryName(country, locale))
+    .join(", ") || t("hero.addPreferredLocations");
   const preferredSalary =
     profile?.preferredSalary?.min && profile?.preferredSalary?.max && profile?.preferredSalary?.currency
-      ? `${profile.preferredSalary.min.toLocaleString("en-US")}-${profile.preferredSalary.max.toLocaleString("en-US")} ${profile.preferredSalary.currency}`
+      ? `${profile.preferredSalary.min.toLocaleString(numberLocale)}-${profile.preferredSalary.max.toLocaleString(numberLocale)} ${profile.preferredSalary.currency}`
       : t("hero.setSalaryRange");
 
   const suggestions = useMemo(() => {
@@ -499,13 +508,13 @@ export function JobSeekerHomePage({
       label: t("quickAccess.applications"),
       href: `/${locale}/job-seeker/applications`,
       icon: FileText,
-      value: String(stats?.applicationsSent?.count ?? 0),
+      value: formatNumber(stats?.applicationsSent?.count ?? 0),
     },
     {
       label: t("quickAccess.interviews"),
       href: `/${locale}/job-seeker/interviews`,
       icon: CalendarDays,
-      value: String(stats?.upcomingInterviews?.count ?? 0),
+      value: formatNumber(stats?.upcomingInterviews?.count ?? 0),
     },
     {
       label: t("quickAccess.preferences"),
@@ -518,8 +527,14 @@ export function JobSeekerHomePage({
     .map((skill) => (typeof skill === "string" ? skill.trim() : skill.name?.trim()))
     .filter((skill): skill is string => Boolean(skill))
     .slice(0, 6);
-  const activeMatchesCountLabel = t("summary.activeMatches", { count: jobs.length });
-  const nextStepsLabel = t("summary.nextStepsQueued", { count: suggestions.length });
+  const activeMatchesCountLabel = t("summary.activeMatches", {
+    count: jobs.length,
+    countLabel: formatNumber(jobs.length),
+  });
+  const nextStepsLabel = t("summary.nextStepsQueued", {
+    count: suggestions.length,
+    countLabel: formatNumber(suggestions.length),
+  });
 
   return (
     <>
@@ -542,13 +557,13 @@ export function JobSeekerHomePage({
               <div className="flex flex-wrap items-center gap-2">
                 <Button asChild className="h-11 rounded-full px-5">
                   <Link href={`/${locale}/job-seeker/jobs`}>
-                    <Search className={`${isAr ? "ml-2" : "mr-2"} h-4 w-4`} />
+                    <Search className="me-2 h-4 w-4" />
                     {t("hero.browseMatchingJobs")}
                   </Link>
                 </Button>
                 <Button asChild variant="outline" className="h-11 rounded-full px-5">
                   <Link href={`/${locale}/job-seeker/preferences`}>
-                    <SlidersHorizontal className={`${isAr ? "ml-2" : "mr-2"} h-4 w-4`} />
+                    <SlidersHorizontal className="me-2 h-4 w-4" />
                     {t("hero.refine")}
                   </Link>
                 </Button>
@@ -566,16 +581,16 @@ export function JobSeekerHomePage({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border/60 pt-3 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{activeMatchesCountLabel}</span>
               <span>
-                <span className="font-semibold text-foreground">{applicationCount}</span> {t("summary.applications")}
+                <span className="font-semibold text-foreground">{formatNumber(applicationCount)}</span> {t("summary.applications")}
               </span>
               <span>
-                <span className="font-semibold text-foreground">{savedJobsCount}</span> {t("summary.savedJobs")}
+                <span className="font-semibold text-foreground">{formatNumber(savedJobsCount)}</span> {t("summary.savedJobs")}
               </span>
               <span>
-                <span className="font-semibold text-foreground">{interviewCount}</span> {t("summary.interviews")}
+                <span className="font-semibold text-foreground">{formatNumber(interviewCount)}</span> {t("summary.interviews")}
               </span>
               <span>
-                <span className="font-semibold text-foreground">{profileViewCount}</span> {t("summary.profileViews")}
+                <span className="font-semibold text-foreground">{formatNumber(profileViewCount)}</span> {t("summary.profileViews")}
               </span>
               {suggestions.length > 0 && (
                 <button type="button" onClick={openGuide} className="inline-flex items-center gap-1 font-medium text-primary transition-colors hover:text-primary/80">
@@ -625,9 +640,10 @@ export function JobSeekerHomePage({
                       .join("")
                       .slice(0, 2)
                       .toUpperCase();
-                    const remoteLabel = job.location?.isRemote
-                      ? t("recommendedJobs.remote")
-                      : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || t("recommendedJobs.locationFlexible");
+                    const locationLabel = formatLocalizedLocation(job.location, locale, {
+                      remoteLabel: t("recommendedJobs.remote"),
+                      fallback: t("recommendedJobs.locationFlexible"),
+                    });
                     const fresh = Date.now() - new Date(job.createdAt).getTime() < 3 * 24 * 60 * 60 * 1000;
 
                     return (
@@ -670,12 +686,12 @@ export function JobSeekerHomePage({
                               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
                                 <span className="inline-flex items-center gap-1.5">
                                   <MapPin className="h-3.5 w-3.5" />
-                                  {remoteLabel}
+                                  {locationLabel}
                                 </span>
-                                {formatSalary(job) && (
+                                {formatSalary(job, numberLocale) && (
                                   <span className="inline-flex items-center gap-1.5">
                                     <FileText className="h-3.5 w-3.5" />
-                                    {formatSalary(job)}
+                                    {formatSalary(job, numberLocale)}
                                   </span>
                                 )}
                                 <span className="inline-flex items-center gap-1.5 font-medium text-primary">
@@ -686,10 +702,10 @@ export function JobSeekerHomePage({
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between gap-4 border-t border-border/50 pt-4 lg:min-w-[156px] lg:flex-col lg:items-stretch lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-                            <div className="rounded-[18px] border border-border/60 bg-muted/20 px-4 py-3 text-left" aria-label={t("recommendedJobs.matchScoreAria", { score: job.matchScore })}>
+                          <div className="flex items-center justify-between gap-4 border-t border-border/50 pt-4 lg:min-w-[156px] lg:flex-col lg:items-stretch lg:border-s lg:border-t-0 lg:ps-5 lg:pt-0">
+                            <div className="rounded-[18px] border border-border/60 bg-muted/20 px-4 py-3 text-start" aria-label={t("recommendedJobs.matchScoreAria", { score: formatNumber(job.matchScore) })}>
                               <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{t("recommendedJobs.matchScore")}</div>
-                              <div className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{job.matchScore}%</div>
+                              <div className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{formatNumber(job.matchScore)}%</div>
                             </div>
                             <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-all group-hover:gap-2 lg:justify-end">
                               {t("recommendedJobs.viewDetails")}
@@ -791,7 +807,7 @@ export function JobSeekerHomePage({
                   </p>
                 </div>
                 <Button type="button" variant="outline" className="h-11 rounded-full px-5" onClick={openGuide}>
-                  <Sparkles className={`${isAr ? "ml-2" : "mr-2"} h-4 w-4`} />
+                  <Sparkles className="me-2 h-4 w-4" />
                   {t("priorityActions.openAiSuggestions")}
                 </Button>
               </div>
@@ -806,7 +822,7 @@ export function JobSeekerHomePage({
                     >
                       <div className="flex items-start gap-4">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[16px] bg-primary/[0.08] text-sm font-semibold text-primary">
-                          {index + 1}
+                          {formatNumber(index + 1)}
                         </div>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -865,9 +881,9 @@ export function JobSeekerHomePage({
               <div className="mt-5">
                 <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                   <span>{t("profileCard.profileCompleteness")}</span>
-                  <span className="font-semibold text-foreground">{completion}%</span>
+                  <span className="font-semibold text-foreground">{formatNumber(completion)}%</span>
                 </div>
-                <Progress value={completion} aria-label={t("profileCard.profileCompletenessAria", { completion })} />
+                <Progress value={completion} aria-label={t("profileCard.profileCompletenessAria", { completion: formatNumber(completion) })} />
               </div>
 
               {topSkills.length > 0 && (
@@ -1011,7 +1027,7 @@ export function JobSeekerHomePage({
             aria-labelledby="ai-guide-title"
             className={cn(
               "h-full w-full max-w-xl overflow-y-auto bg-background shadow-2xl",
-              isAr ? "border-r border-border" : "border-l border-border"
+              "border-s border-border"
             )}
           >
             <div className="flex items-center justify-between border-b border-border/60 px-6 py-5">
@@ -1071,9 +1087,9 @@ export function JobSeekerHomePage({
                             className="h-9 rounded-full px-4"
                           >
                             {aiFillLoading ? (
-                              <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> {t("drawer.aiWorking")}</>
+                              <><Loader2 className="me-2 h-3.5 w-3.5 animate-spin" /> {t("drawer.aiWorking")}</>
                             ) : (
-                              <><Wand2 className="mr-2 h-3.5 w-3.5" /> {t("drawer.fillWithAi")}</>
+                              <><Wand2 className="me-2 h-3.5 w-3.5" /> {t("drawer.fillWithAi")}</>
                             )}
                           </Button>
                           <Button

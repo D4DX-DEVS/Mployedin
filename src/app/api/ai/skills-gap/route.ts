@@ -326,4 +326,4 @@ Analyse the skill gap. Return ONLY a JSON object (no markdown):
     },
     generatedAt: new Date().toISOString(),
   });
-});
+}, { aiQuota: true });

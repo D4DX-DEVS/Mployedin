@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import {
   Building2,
   ChevronRight,
 } from "lucide-react";
+import { formatLocalizedLocation } from "@/lib/i18n/locations";
 
 const CURRENCIES = ["USD", "INR", "AED", "SAR", "EGP", "KWD", "QAR", "BHD", "OMR"];
 
@@ -144,40 +146,41 @@ interface MatchTip {
   points: number;
 }
 
-function computeMatchScore(prefs: PreferencesData): {
+function computeMatchScore(prefs: PreferencesData, translate?: (key: string, values?: Record<string, string | number>) => string): {
   score: number;
   tips: MatchTip[];
 } {
+  const tip = (key: string, values?: Record<string, string | number>) => translate?.(`tips.${key}`, values) ?? key;
   const tips: MatchTip[] = [];
   let score = 0;
 
   if (prefs.preferredRoles.length >= 1) {
     score += 25;
     if (prefs.preferredRoles.length >= 3) score += 10;
-    else tips.push({ text: `Add ${3 - prefs.preferredRoles.length} more role(s)`, points: 10 });
+    else tips.push({ text: tip("addMoreRoles", { count: 3 - prefs.preferredRoles.length }), points: 10 });
   } else {
-    tips.push({ text: "Add at least one preferred role", points: 35 });
+    tips.push({ text: tip("addPreferredRole"), points: 35 });
   }
 
   if (prefs.preferredCountries.length >= 1) {
     score += 20;
   } else {
-    tips.push({ text: "Add preferred locations", points: 20 });
+    tips.push({ text: tip("addLocations"), points: 20 });
   }
 
   if (prefs.preferredSalary.min > 0 && prefs.preferredSalary.max > 0) {
     score += 20;
   } else if (prefs.preferredSalary.min > 0 || prefs.preferredSalary.max > 0) {
     score += 10;
-    tips.push({ text: "Set both min & max salary", points: 10 });
+    tips.push({ text: tip("setBothSalary"), points: 10 });
   } else {
-    tips.push({ text: "Set your salary expectations", points: 20 });
+    tips.push({ text: tip("setSalary"), points: 20 });
   }
 
   if (prefs.preferredJobType !== "any") {
     score += 15;
   } else {
-    tips.push({ text: "Specify a job type preference", points: 15 });
+    tips.push({ text: tip("specifyJobType"), points: 15 });
   }
 
   if (prefs.availabilityStatus && prefs.availabilityStatus !== "not_available") {
@@ -239,6 +242,7 @@ function SmartTagInput({
   placeholder: string;
   suggestions: string[];
 }) {
+  const t = useTranslations("jobSeekerExtra.preferences");
   const [input, setInput] = useState("");
   const availableSuggestions = suggestions.filter((s) => !tags.includes(s));
 
@@ -264,7 +268,7 @@ function SmartTagInput({
               <button
                 onClick={() => onRemove(tag)}
                 className="hover:text-destructive transition-colors"
-                aria-label={`Remove ${tag}`}
+                aria-label={t("removeTag", { tag })}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -302,7 +306,7 @@ function SmartTagInput({
       {/* Suggestions */}
       {availableSuggestions.length > 0 && (
         <div>
-          <p className="text-xs text-muted-foreground mb-1.5">Popular:</p>
+          <p className="text-xs text-muted-foreground mb-1.5">{t("popular")}</p>
           <div className="flex flex-wrap gap-1.5">
             {availableSuggestions.slice(0, 6).map((s) => (
               <button
@@ -330,7 +334,9 @@ function MatchScoreCard({
   prefs: PreferencesData;
   prevScore: number | null;
 }) {
-  const { score, tips } = useMemo(() => computeMatchScore(prefs), [prefs]);
+  const t = useTranslations("jobSeekerExtra.preferences");
+  const numberLocale = useLocale() === "ar" ? "ar-SA" : "en-US";
+  const { score, tips } = useMemo(() => computeMatchScore(prefs, t), [prefs, t]);
   const scoreColor =
     score >= 70 ? "text-green-600" : score >= 40 ? "text-amber-600" : "text-rose-500";
   const barColor =
@@ -345,21 +351,21 @@ function MatchScoreCard({
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold">AI Match Setup Score</p>
+            <p className="text-sm font-semibold">{t("matchTitle")}</p>
             <p className="text-xs text-muted-foreground">
-              Complete your preferences for better job matches
+              {t("matchDescription")}
             </p>
           </div>
         </div>
         <div className="flex items-baseline gap-1.5 shrink-0">
           <span className={`text-3xl font-bold tabular-nums ${scoreColor}`}>
-            {score}%
+            {score.toLocaleString(numberLocale)}%
           </span>
           {delta !== null && delta !== 0 && (
             <span
               className={`text-xs font-medium ${delta > 0 ? "text-green-600" : "text-rose-500"}`}
             >
-              {delta > 0 ? `+${delta}` : delta}
+              {delta > 0 ? `+${delta.toLocaleString(numberLocale)}` : delta.toLocaleString(numberLocale)}
             </span>
           )}
         </div>
@@ -391,7 +397,7 @@ function MatchScoreCard({
       {score === 100 && (
         <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs font-medium text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-          Profile fully optimized — you&apos;re getting the best matches!
+          {t("optimized")}
         </div>
       )}
     </div>
@@ -401,9 +407,11 @@ function MatchScoreCard({
 // ─── Recommended Job Card ─────────────────────────────────────────────────────
 
 function RecommendedJobCard({ job }: { job: RecommendedJob }) {
+  const t = useTranslations("jobSeekerExtra.preferences");
+  const locale = useLocale();
   const location = job.location?.isRemote
-    ? "Remote"
-    : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || "—";
+    ? t("remote")
+    : formatLocalizedLocation(job.location, locale, { remoteLabel: t("remote"), fallback: "—" });
   const salary =
     job.salary?.min && job.salary?.max
       ? `${job.salary.currency ?? "USD"} ${(job.salary.min / 1000).toFixed(0)}k–${(job.salary.max / 1000).toFixed(0)}k`
@@ -426,7 +434,7 @@ function RecommendedJobCard({ job }: { job: RecommendedJob }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{job.title}</p>
         <p className="text-xs text-muted-foreground truncate">
-          {job.employerId?.companyName ?? "Company"} · {location}
+          {job.employerId?.companyName ?? t("companyFallback")} · {location}
           {salary && ` · ${salary}`}
         </p>
       </div>
@@ -438,6 +446,7 @@ function RecommendedJobCard({ job }: { job: RecommendedJob }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function JobPreferencesPage() {
+  const t = useTranslations("jobSeekerExtra.preferences");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
@@ -587,8 +596,8 @@ export default function JobPreferencesPage() {
   return (
     <div className="page-container">
       <PageHeader
-        title="Job Preferences"
-        description="Set your preferences to get better job matches and recommendations"
+        title={t("title")}
+        description={t("description")}
       />
 
       <div className="grid gap-6 max-w-3xl mx-auto w-full">
@@ -598,8 +607,8 @@ export default function JobPreferencesPage() {
         {/* ── Preferred Roles ───────────────────────────────────────────── */}
         <Section
           icon={<Target className="h-4 w-4" />}
-          title="Preferred Roles"
-          description="What job titles are you looking for?"
+          title={t("preferredRoles")}
+          description={t("preferredRolesDescription")}
         >
           <SmartTagInput
             tags={prefs.preferredRoles}
@@ -612,7 +621,7 @@ export default function JobPreferencesPage() {
                 preferredRoles: p.preferredRoles.filter((r) => r !== tag),
               }))
             }
-            placeholder="e.g. Frontend Developer, Product Manager…"
+            placeholder={t("rolesPlaceholder")}
             suggestions={POPULAR_ROLES}
           />
         </Section>
@@ -620,8 +629,8 @@ export default function JobPreferencesPage() {
         {/* ── Preferred Locations ───────────────────────────────────────── */}
         <Section
           icon={<MapPin className="h-4 w-4" />}
-          title="Preferred Locations"
-          description="Where do you want to work?"
+          title={t("preferredLocations")}
+          description={t("preferredLocationsDescription")}
         >
           <SmartTagInput
             tags={prefs.preferredCountries}
@@ -637,7 +646,7 @@ export default function JobPreferencesPage() {
                 preferredCountries: p.preferredCountries.filter((c) => c !== tag),
               }))
             }
-            placeholder="e.g. UAE, Saudi Arabia, Qatar…"
+            placeholder={t("locationsPlaceholder")}
             suggestions={POPULAR_LOCATIONS}
           />
         </Section>
@@ -645,12 +654,12 @@ export default function JobPreferencesPage() {
         {/* ── Salary Expectations ───────────────────────────────────────── */}
         <Section
           icon={<DollarSign className="h-4 w-4" />}
-          title="Salary Expectations"
-          description="What is your expected monthly salary range?"
+          title={t("salary")}
+          description={t("salaryDescription")}
         >
           {/* Quick presets */}
           <div>
-            <p className="text-xs text-muted-foreground mb-2">Quick select:</p>
+            <p className="text-xs text-muted-foreground mb-2">{t("quickSelect")}</p>
             <div className="flex flex-wrap gap-2">
               {getSalaryPresets(prefs.preferredSalary.currency).map((preset) => {
                 const active =
@@ -687,7 +696,7 @@ export default function JobPreferencesPage() {
           <div className="grid grid-cols-3 gap-3 pt-1">
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                Minimum
+                {t("minimum")}
               </label>
               <Input
                 type="number"
@@ -708,7 +717,7 @@ export default function JobPreferencesPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                Maximum
+                {t("maximum")}
               </label>
               <Input
                 type="number"
@@ -729,7 +738,7 @@ export default function JobPreferencesPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                Currency
+                {t("currency")}
               </label>
               <SearchableSelect
                 className="h-9 text-sm"
@@ -749,8 +758,8 @@ export default function JobPreferencesPage() {
         {/* ── Job Type ──────────────────────────────────────────────────── */}
         <Section
           icon={<Briefcase className="h-4 w-4" />}
-          title="Job Type"
-          description="What type of work arrangement do you prefer?"
+          title={t("jobType")}
+          description={t("jobTypeDescription")}
         >
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {JOB_TYPES.map((type) => (
@@ -767,7 +776,7 @@ export default function JobPreferencesPage() {
                 }`}
               >
                 <span className="text-base">{type.emoji}</span>
-                <span className="text-xs">{type.label}</span>
+                <span className="text-xs">{t(`jobTypes.${type.value}`)}</span>
               </button>
             ))}
           </div>
@@ -776,15 +785,15 @@ export default function JobPreferencesPage() {
         {/* ── Availability ──────────────────────────────────────────────── */}
         <Section
           icon={<Clock className="h-4 w-4" />}
-          title="Availability"
-          description="When can you start a new role?"
+          title={t("availability")}
+          description={t("availabilityDescription")}
         >
           {/* Actively looking toggle */}
           <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3 border border-border/60">
             <div className="space-y-0.5">
-              <p className="text-sm font-medium leading-none">Actively Looking</p>
+              <p className="text-sm font-medium leading-none">{t("activelyLooking")}</p>
               <p className="text-xs text-muted-foreground">
-                Signal to employers you&apos;re open to opportunities
+                {t("activelyLookingDescription")}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -810,11 +819,11 @@ export default function JobPreferencesPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-1">
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Availability
+                  {t("availability")}
                 </label>
                 <SearchableSelect
                   className="h-9 text-sm"
-                  options={AVAILABILITY_OPTIONS.filter((o) => o.value !== "not_available").map((opt) => ({ value: opt.value, label: opt.label }))}
+                  options={AVAILABILITY_OPTIONS.filter((o) => o.value !== "not_available").map((opt) => ({ value: opt.value, label: t(`availabilityOptions.${opt.value}`) }))}
                   value={prefs.availabilityStatus}
                   onValueChange={(v) =>
                     setPrefs((p) => ({ ...p, availabilityStatus: v }))
@@ -823,7 +832,7 @@ export default function JobPreferencesPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Notice Period (days)
+                  {t("noticePeriod")}
                 </label>
                 <Input
                   type="number"
@@ -849,20 +858,20 @@ export default function JobPreferencesPage() {
           {saving && (
             <span className="text-sm text-muted-foreground flex items-center gap-1.5">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Saving…
+              {t("saving")}
             </span>
           )}
           {saveState === "saved" && !saving && (
             <span className="text-sm font-medium text-green-600 flex items-center gap-1.5">
               <CheckCircle2 className="h-3.5 w-3.5" />
-              Saved
+              {t("saved")}
             </span>
           )}
           {saveState === "error" && !saving && (
             <span className="text-sm text-destructive flex items-center gap-1.5">
-              Failed to save.
+              {t("failed")}
               <button onClick={handleSave} className="underline hover:no-underline">
-                Retry
+                {t("retry")}
               </button>
             </span>
           )}
@@ -876,8 +885,8 @@ export default function JobPreferencesPage() {
                 <Zap className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold">Jobs matching your preferences</p>
-                <p className="text-xs text-muted-foreground">Based on your current setup</p>
+                <p className="text-sm font-semibold">{t("jobsTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("jobsDescription")}</p>
               </div>
             </div>
           </div>
@@ -898,7 +907,7 @@ export default function JobPreferencesPage() {
             <div className="flex flex-col items-center gap-2 py-6 text-center">
               <Building2 className="h-8 w-8 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
-                No matches yet — complete your preferences to unlock recommendations.
+                {t("noMatches")}
               </p>
             </div>
           )}

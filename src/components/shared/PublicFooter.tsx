@@ -106,7 +106,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/55">
                 {t("digitalPlatform")}
               </p>
-              <Image src="/logo.png" alt="Mployedin" width={156} height={42} className="mt-3 h-10 w-auto object-contain brightness-0 invert" style={{ width: "auto" }} />
+              <Image src="/logo.png" alt="Mployedin" width={100} height={34} className="mt-3 h-auto w-[118px] object-contain brightness-0 invert" style={{ height: "auto" }} />
               <p className="mt-4 max-w-xl text-sm leading-6 text-white/72 sm:text-[15px]">
                 {t("description")}
               </p>

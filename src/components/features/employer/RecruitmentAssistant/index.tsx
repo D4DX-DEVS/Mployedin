@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput, type VoiceInputState } from "@/hooks/useVoiceInput";
+import { csrfFetch } from "@/lib/security/csrf-client";
 import {
   JobCreatorWelcome,
   InterviewWelcome,
@@ -322,7 +323,7 @@ export function RecruitmentAssistant() {
 
   const deleteThread = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await fetch(`/api/ai/chat-history?threadId=${id}`, { method: "DELETE" });
+    await csrfFetch(`/api/ai/chat-history?threadId=${id}`, { method: "DELETE" });
     setThreads((prev) => prev.filter((th) => th._id !== id));
     if (threadId === id) newConversation();
   };
@@ -437,7 +438,7 @@ export function RecruitmentAssistant() {
         }
 
         // Persist to history
-        const histRes = await fetch("/api/ai/chat-history", {
+        const histRes = await csrfFetch("/api/ai/chat-history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -559,7 +560,7 @@ export function RecruitmentAssistant() {
   const panelClass = cn(
     "fixed z-[100] flex flex-col bg-background border border-border/70 shadow-2xl overflow-hidden transition-all duration-300 ease-in-out",
     minimized
-      ? cn("bottom-6 h-12 w-48 rounded-full bg-gradient-to-r from-indigo-700 to-primary border-0", isRtl ? "left-6" : "right-6")
+      ? cn("bottom-24 h-12 w-48 rounded-full bg-gradient-to-r from-indigo-700 to-primary border-0", isRtl ? "left-6" : "right-6")
       : expanded
         ? cn("top-0 bottom-0 w-full md:w-[480px] lg:w-[520px] rounded-none",
             isRtl ? "left-0 md:rounded-r-2xl md:border-r md:border-y border-l-0" : "right-0 md:rounded-l-2xl md:border-l md:border-y border-r-0")
@@ -575,7 +576,7 @@ export function RecruitmentAssistant() {
         <button
           onClick={() => { setOpen(true); setMinimized(false); }}
           className={cn(
-            "fixed bottom-6 z-[99] h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1 group",
+            "fixed bottom-24 z-[99] h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 text-white shadow-xl hover:shadow-primary/30 hover:scale-105 transition-all duration-200 flex items-center justify-center gap-1 group",
             isRtl ? "left-6" : "right-6"
           )}
           aria-label={t("openButton")}

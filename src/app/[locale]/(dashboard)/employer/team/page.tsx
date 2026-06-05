@@ -30,15 +30,6 @@ import type { ExportColumn } from "@/lib/export";
 import { useJobs } from "@/hooks/useJobs";
 import { FormMultiSelect } from "@/components/shared/AppForm";
 
-const ROLE_LABELS: Record<CompanyRole, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  hiring_manager: "Hiring Manager",
-  accounting: "Accounting",
-  finance_viewer: "Finance Viewer",
-  viewer: "Viewer",
-};
-
 const ROLE_COLORS: Record<CompanyRole, string> = {
   owner: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30",
   admin: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30",
@@ -97,21 +88,21 @@ export default function TeamManagementPage() {
   const showJobAccessForRoles = (roles: CompanyRole[]) => roles.some(showJobAccess);
 
   const roleOptions = [
-    { value: "admin", label: "Admin — Full access, can manage team" },
-    { value: "hiring_manager", label: "Hiring Manager — Manage assigned jobs" },
-    { value: "accounting", label: "Accounting — Billing, invoices & commissions" },
-    { value: "finance_viewer", label: "Finance Viewer — View-only financial access" },
-    { value: "viewer", label: "Viewer — Read-only access" },
+    { value: "admin", label: t("roleOptions.admin") },
+    { value: "hiring_manager", label: t("roleOptions.hiringManager") },
+    { value: "accounting", label: t("roleOptions.accounting") },
+    { value: "finance_viewer", label: t("roleOptions.financeViewer") },
+    { value: "viewer", label: t("roleOptions.viewer") },
   ];
 
   useEffect(() => {
     document.title = t("pageTitle");
-  }, []);
+  }, [t]);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
     if (inviteData.companyRoles.length === 0) {
-      setError("Please select at least one role");
+      setError(t("selectAtLeastOneRole"));
       return;
     }
     setSaving(true);
@@ -159,8 +150,17 @@ export default function TeamManagementPage() {
 
   function getJobAccessLabel(member: TeamMember): string {
     if (member.companyRole === "owner" || member.companyRole === "admin" || member.companyRole === "accounting") return t("allJobs");
-    if (!member.jobAccess || member.jobAccess.length === 0) return "All Jobs";
-    return `${member.jobAccess.length} Job${member.jobAccess.length !== 1 ? "s" : ""}`;
+    if (!member.jobAccess || member.jobAccess.length === 0) return t("allJobs");
+    return t("jobCount", { count: member.jobAccess.length });
+  }
+
+  function statusLabel(status: MemberStatus): string {
+    const map: Record<MemberStatus, string> = {
+      active: t("active"),
+      pending: t("pending"),
+      deactivated: t("deactivated"),
+    };
+    return map[status] ?? status;
   }
 
   const activeCount = members.filter((m) => m.status === "active").length;
@@ -187,8 +187,8 @@ export default function TeamManagementPage() {
     { header: t("name"), key: "user", formatter: (_v, r) => (r as Record<string, any>).user?.name ?? t("pendingInvite") },
     { header: t("email"), key: "email", formatter: (v) => String(v ?? "—") },
     { header: t("role"), key: "companyRole", formatter: (v) => roleLabel(String(v) as CompanyRole) },
-    { header: t("status"), key: "status", formatter: (v) => String(v ?? "—") },
-    { header: t("joined"), key: "acceptedAt", formatter: (v, r) => v ? new Date(String(v)).toLocaleDateString() : (r as Record<string, any>).invitedAt ? t("invited", { date: new Date(String((r as Record<string, any>).invitedAt)).toLocaleDateString() }) : "—" },
+    { header: t("status"), key: "status", formatter: (v) => v ? statusLabel(String(v) as MemberStatus) : "—" },
+    { header: t("joined"), key: "acceptedAt", formatter: (v, r) => v ? new Date(String(v)).toLocaleDateString(locale) : (r as Record<string, any>).invitedAt ? t("invited", { date: new Date(String((r as Record<string, any>).invitedAt)).toLocaleDateString(locale) }) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: filteredMembers as unknown as Record<string, unknown>[],
@@ -258,14 +258,14 @@ export default function TeamManagementPage() {
             <Users className="h-8 w-8 text-primary/60" />
           </div>
           <div className="space-y-1 max-w-xs">
-            <p className="font-semibold text-foreground">No team members yet</p>
+            <p className="font-semibold text-foreground">{t("empty.title")}</p>
             <p className="text-sm text-muted-foreground">
-              Invite hiring managers, admins, and viewers to collaborate on your open roles.
+              {t("empty.description")}
             </p>
           </div>
           <Button onClick={() => setShowInviteModal(true)} className="mt-1">
             <Plus className="h-4 w-4 mr-2" />
-            Invite Your First Member
+            {t("empty.cta")}
           </Button>
         </div>
       ) : (
@@ -274,7 +274,7 @@ export default function TeamManagementPage() {
           <TableToolbar
             search={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search by name, email, or role…"
+            searchPlaceholder={t("searchPlaceholder")}
             onExportCsv={handleExportCsv}
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
@@ -340,7 +340,7 @@ export default function TeamManagementPage() {
                             size="sm"
                             onClick={() => openJobAccessEditor(member)}
                             className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
-                            title="Edit job access"
+                            title={t("editJobAccess")}
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
@@ -350,14 +350,14 @@ export default function TeamManagementPage() {
                     <td className="px-4 py-3.5">
                       <Badge variant="outline" className={`gap-1 ${STATUS_COLORS[member.status]}`}>
                         {member.status === "pending" && <Mail className="h-3 w-3" />}
-                        {member.status.charAt(0).toUpperCase() + member.status.slice(1)}
+                        {statusLabel(member.status)}
                       </Badge>
                     </td>
                     <td className="px-4 py-3.5 text-sm text-muted-foreground whitespace-nowrap">
                       {member.acceptedAt
-                        ? new Date(member.acceptedAt).toLocaleDateString()
+                        ? new Date(member.acceptedAt).toLocaleDateString(locale)
                         : member.invitedAt
-                          ? t("invited", { date: new Date(member.invitedAt).toLocaleDateString() })
+                          ? t("invited", { date: new Date(member.invitedAt).toLocaleDateString(locale) })
                           : "—"}
                     </td>
                     <td className="px-4 py-3.5 text-right">
@@ -367,7 +367,7 @@ export default function TeamManagementPage() {
                           size="sm"
                           onClick={() => handleDeactivate(member._id)}
                           className="text-red-500 hover:text-red-700 hover:bg-red-500/10 h-8 w-8 p-0 dark:hover:text-red-300"
-                          title="Deactivate member"
+                          title={t("deactivateMember")}
                         >
                           <UserX className="h-4 w-4" />
                         </Button>
@@ -404,7 +404,7 @@ export default function TeamManagementPage() {
                       size="sm"
                       onClick={() => handleDeactivate(member._id)}
                       className="text-red-500 hover:text-red-700 hover:bg-red-500/10 h-8 w-8 p-0 shrink-0 dark:hover:text-red-300"
-                      title="Deactivate member"
+                      title={t("deactivateMember")}
                     >
                       <UserX className="h-4 w-4" />
                     </Button>
@@ -415,7 +415,7 @@ export default function TeamManagementPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className={`gap-1 ${STATUS_COLORS[member.status]}`}>
                     {member.status === "pending" && <Mail className="h-3 w-3" />}
-                    {member.status.charAt(0).toUpperCase() + member.status.slice(1)}
+                    {statusLabel(member.status)}
                   </Badge>
                   {member.companyRole === "owner" ? (
                     <Badge variant="outline" className={`gap-1 ${ROLE_COLORS[member.companyRole]}`}>
@@ -440,7 +440,7 @@ export default function TeamManagementPage() {
                         size="sm"
                         onClick={() => openJobAccessEditor(member)}
                         className="h-5 w-5 p-0 text-muted-foreground hover:text-primary"
-                        title="Edit job access"
+                        title={t("editJobAccess")}
                       >
                         <Pencil className="h-3 w-3" />
                       </Button>
@@ -448,9 +448,9 @@ export default function TeamManagementPage() {
                   </div>
                   <span className="text-xs text-muted-foreground ml-auto">
                     {member.acceptedAt
-                      ? new Date(member.acceptedAt).toLocaleDateString()
+                      ? new Date(member.acceptedAt).toLocaleDateString(locale)
                       : member.invitedAt
-                        ? t("invited", { date: new Date(member.invitedAt).toLocaleDateString() })
+                        ? t("invited", { date: new Date(member.invitedAt).toLocaleDateString(locale) })
                         : "—"}
                   </span>
                 </div>
@@ -481,17 +481,17 @@ export default function TeamManagementPage() {
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Users className="h-4 w-4 text-primary" />
               </div>
-              Invite Team Member
+              {t("inviteModal.title")}
             </DialogTitle>
-            <DialogDescription className="sr-only">Enter an email address and role to invite a new member to your team.</DialogDescription>
+            <DialogDescription className="sr-only">{t("inviteModal.description")}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleInvite} className="space-y-4 pt-1">
             <div className="space-y-2">
-              <Label htmlFor="invite-email">Email Address</Label>
+              <Label htmlFor="invite-email">{t("inviteModal.emailLabel")}</Label>
               <Input
                 id="invite-email"
                 type="email"
-                placeholder="colleague@company.com"
+                placeholder={t("inviteModal.emailPlaceholder")}
                 value={inviteData.email}
                 onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
                 required
@@ -499,12 +499,12 @@ export default function TeamManagementPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Roles</Label>
+              <Label>{t("inviteModal.rolesLabel")}</Label>
               <p className="text-xs text-muted-foreground">
-                Select one or more roles for this member.
+                {t("inviteModal.rolesDescription")}
               </p>
               <FormMultiSelect
-                placeholder="Select roles…"
+                placeholder={t("inviteModal.rolesPlaceholder")}
                 options={roleOptions}
                 value={inviteData.companyRoles}
                 onChange={(val) => setInviteData({ ...inviteData, companyRoles: val as CompanyRole[], jobAccess: [] })}
@@ -514,12 +514,12 @@ export default function TeamManagementPage() {
 
             {showJobAccessForRoles(inviteData.companyRoles) && (
               <div className="space-y-2">
-                <Label>Job Access</Label>
+                <Label>{t("jobAccessModal.assignedJobs")}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Select specific jobs this member can access. Leave empty for access to all jobs.
+                  {t("inviteModal.jobAccessDescription")}
                 </p>
                 <FormMultiSelect
-                  placeholder="All Jobs (no restriction)"
+                  placeholder={t("jobAccessModal.allJobsPlaceholder")}
                   options={jobOptions}
                   value={inviteData.jobAccess}
                   onChange={(val) => setInviteData({ ...inviteData, jobAccess: val })}
@@ -537,18 +537,18 @@ export default function TeamManagementPage() {
 
             <DialogFooter className="gap-2 pt-1">
               <Button type="button" variant="outline" onClick={() => setShowInviteModal(false)} className="flex-1 sm:flex-none">
-                Cancel
+                {t("cancel")}
               </Button>
               <Button type="submit" disabled={saving} className="flex-1 sm:flex-none">
                 {saving ? (
                   <span className="flex items-center gap-2">
                     <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    Sending…
+                    {t("sending")}
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
-                    Send Invite
+                    {t("sendInvite")}
                   </span>
                 )}
               </Button>
@@ -565,7 +565,7 @@ export default function TeamManagementPage() {
               <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Briefcase className="h-4 w-4 text-primary" />
               </div>
-              Edit Job Access
+              {t("jobAccessModal.title")}
             </DialogTitle>
             <DialogDescription>
               {editingMember?.user?.name ?? editingMember?.email} — {editingMember ? roleLabel(editingMember.companyRole) : ""}
@@ -573,12 +573,12 @@ export default function TeamManagementPage() {
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div className="space-y-2">
-              <Label>Assigned Jobs</Label>
+              <Label>{t("jobAccessModal.assignedJobs")}</Label>
               <p className="text-xs text-muted-foreground">
-                Select the jobs this member can access. Leave empty to grant access to all jobs.
+                {t("jobAccessModal.description")}
               </p>
               <FormMultiSelect
-                placeholder="All Jobs (no restriction)"
+                placeholder={t("jobAccessModal.allJobsPlaceholder")}
                 options={jobOptions}
                 value={editJobAccess}
                 onChange={setEditJobAccess}
@@ -588,15 +588,15 @@ export default function TeamManagementPage() {
             </div>
             <DialogFooter className="gap-2 pt-1">
               <Button type="button" variant="outline" onClick={() => { setEditingMember(null); setEditJobAccess([]); }} className="flex-1 sm:flex-none">
-                Cancel
+                {t("cancel")}
               </Button>
               <Button onClick={handleSaveJobAccess} disabled={updateMutation.isPending} className="flex-1 sm:flex-none">
                 {updateMutation.isPending ? (
                   <span className="flex items-center gap-2">
                     <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    Saving…
+                    {t("saving")}
                   </span>
-                ) : "Save Changes"}
+                ) : t("saveChanges")}
               </Button>
             </DialogFooter>
           </div>

@@ -5,14 +5,73 @@ import Interview from "@/models/Interview";
 import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
 import Job from "@/models/Job";
+import { Employer } from "@/models/Employer";
+import Agent from "@/models/Agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { interviewUpdateSchema } from "@/lib/validators/interviews";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
+
+/**
+ * Object-ownership guard for /api/interviews/[id]. Resolves the interview to its
+ * owning job/employer and verifies the caller is one of: the candidate, the
+ * owning employer, the assigned agent, a scoped super_agent, or an admin.
+ * Mirrors offers/[id] + applications list scoping. Returns 403 when not allowed.
+ */
+async function verifyInterviewAccess(
+  interview: { jobId?: unknown; jobSeekerId?: unknown },
+  ctx: AuthCtx
+): Promise<NextResponse | null> {
+  if (ctx.role === "admin") return null;
+
+  if (ctx.role === "job_seeker") {
+    const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!seeker || String(interview.jobSeekerId) !== String(seeker._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return null;
+  }
+
+  // Remaining roles are scoped through the interview's owning job/employer.
+  const job = await Job.findById(interview.jobId).select("employerId agentId").lean();
+  if (!job) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  if (ctx.role === "employer") {
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!emp || String(job.employerId) !== String(emp._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return null;
+  }
+
+  if (ctx.role === "agent") {
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const ok = Boolean(
+      agent && (
+        String(job.agentId) === String(agent._id) ||
+        ((agent.assignedEmployerIds as unknown[]) ?? []).some((e) => String(e) === String(job.employerId))
+      )
+    );
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return null;
+  }
+
+  if (ctx.role === "super_agent") {
+    const scope = await getSuperAgentScope(ctx.userId);
+    const ok = Boolean(
+      job.agentId && scope?.effectiveAgentIds.some((id) => String(id) === String(job.agentId))
+    );
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return null;
+  }
+
+  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+}
 
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
@@ -21,6 +80,10 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
     .populate({ path: "applicationId", populate: { path: "jobId", select: "title employerId" } })
     .lean();
   if (!interview) return NextResponse.json({ error: "Interview not found" }, { status: 404 });
+
+  const accessError = await verifyInterviewAccess(interview, _ctx);
+  if (accessError) return accessError;
+
   return NextResponse.json({ interview });
 }
 
@@ -29,6 +92,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   await connectDB();
   const interview = await Interview.findById(params?.id);
   if (!interview) return NextResponse.json({ error: "Interview not found" }, { status: 404 });
+
+  const accessError = await verifyInterviewAccess(interview, ctx);
+  if (accessError) return accessError;
 
   const body = await validateBody(req, interviewUpdateSchema);
   const update: Record<string, unknown> = {};
@@ -164,6 +230,9 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   await connectDB();
   const interview = await Interview.findById(params?.id);
   if (!interview) return NextResponse.json({ error: "Interview not found" }, { status: 404 });
+
+  const accessError = await verifyInterviewAccess(interview, ctx);
+  if (accessError) return accessError;
 
   interview.status = "cancelled";
   await interview.save();

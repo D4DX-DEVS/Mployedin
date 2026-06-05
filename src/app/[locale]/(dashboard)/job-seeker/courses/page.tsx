@@ -1,85 +1,89 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import { ArrowUpRight, BarChart3, Clock } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 
 const FEATURED_COURSES = [
   {
     id: "1",
-    title: "English for Business Communication",
+    titleKey: "businessEnglish",
     provider: "Coursera",
-    duration: "4 weeks",
-    level: "Beginner",
-    category: "Language",
+    durationKey: "fourWeeks",
+    levelKey: "beginner",
+    categoryKey: "language",
     url: "https://www.coursera.org/learn/business-english",
     free: true,
   },
   {
     id: "2",
-    title: "Project Management Fundamentals",
+    titleKey: "projectManagement",
     provider: "Alison",
-    duration: "6 hours",
-    level: "Beginner",
-    category: "Management",
+    durationKey: "sixHours",
+    levelKey: "beginner",
+    categoryKey: "management",
     url: "https://alison.com/course/introduction-to-project-management",
     free: true,
   },
   {
     id: "3",
-    title: "Data Analysis with Excel",
+    titleKey: "excelAnalysis",
     provider: "Microsoft Learn",
-    duration: "8 hours",
-    level: "Intermediate",
-    category: "Technology",
+    durationKey: "eightHours",
+    levelKey: "intermediate",
+    categoryKey: "technology",
     url: "https://learn.microsoft.com/en-us/training/paths/excel-data-analysis/",
     free: true,
   },
   {
     id: "4",
-    title: "Customer Service Excellence",
+    titleKey: "customerService",
     provider: "Alison",
-    duration: "3 hours",
-    level: "Beginner",
-    category: "Customer Service",
+    durationKey: "threeHours",
+    levelKey: "beginner",
+    categoryKey: "customerService",
     url: "https://alison.com/course/customer-service-skills",
     free: true,
   },
   {
     id: "5",
-    title: "Digital Marketing Fundamentals",
+    titleKey: "digitalMarketing",
     provider: "Google",
-    duration: "40 hours",
-    level: "Beginner",
-    category: "Marketing",
+    durationKey: "fortyHours",
+    levelKey: "beginner",
+    categoryKey: "marketing",
     url: "https://skillshop.google.com/",
     free: true,
   },
   {
     id: "6",
-    title: "Construction Safety (OSHA 10)",
+    titleKey: "constructionSafety",
     provider: "OSHA Education Center",
-    duration: "10 hours",
-    level: "Beginner",
-    category: "Safety",
+    durationKey: "tenHours",
+    levelKey: "beginner",
+    categoryKey: "safety",
     url: "https://www.oshaedcenter.com/",
     free: false,
   },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Language: "bg-blue-100 text-blue-700",
-  Management: "bg-purple-100 text-purple-700",
-  Technology: "bg-cyan-100 text-cyan-700",
-  "Customer Service": "bg-green-100 text-green-700",
-  Marketing: "bg-amber-100 text-amber-700",
-  Safety: "bg-red-100 text-red-700",
+  language: "bg-blue-100 text-blue-700",
+  management: "bg-purple-100 text-purple-700",
+  technology: "bg-cyan-100 text-cyan-700",
+  customerService: "bg-green-100 text-green-700",
+  marketing: "bg-amber-100 text-amber-700",
+  safety: "bg-red-100 text-red-700",
 };
 
 export default function JobSeekerCoursesPage() {
+  const t = useTranslations("jobSeekerCourses");
+
   return (
     <div className="page-container">
       <PageHeader
-        title="Courses & Training"
-        description="Boost your skills with curated courses to improve your employability"
+        title={t("title")}
+        description={t("description")}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -91,44 +95,44 @@ export default function JobSeekerCoursesPage() {
             <div className="flex items-start justify-between gap-2">
               <span
                 className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  CATEGORY_COLORS[course.category] ?? "bg-muted/50 text-muted-foreground"
+                  CATEGORY_COLORS[course.categoryKey] ?? "bg-muted/50 text-muted-foreground"
                 }`}
               >
-                {course.category}
+                {t(`category.${course.categoryKey}`)}
               </span>
               {course.free && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
-                  Free
+                  {t("free")}
                 </span>
               )}
             </div>
 
             <div>
-              <h3 className="font-semibold text-foreground leading-snug">{course.title}</h3>
+              <h3 className="font-semibold text-foreground leading-snug">{t(`courses.${course.titleKey}`)}</h3>
               <p className="text-sm text-muted-foreground mt-1">{course.provider}</p>
             </div>
 
             <div className="flex gap-4 text-xs text-muted-foreground/60">
-              <span>⏱ {course.duration}</span>
-              <span>📊 {course.level}</span>
+              <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {t(`duration.${course.durationKey}`)}</span>
+              <span className="inline-flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" /> {t(`level.${course.levelKey}`)}</span>
             </div>
 
             <a
               href={course.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-auto inline-block text-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+              className="mt-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
             >
-              Start Course →
+              {t("startCourse")} <ArrowUpRight className="h-4 w-4" />
             </a>
           </div>
         ))}
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
-        <h3 className="font-semibold text-blue-800">Want personalised recommendations?</h3>
+        <h3 className="font-semibold text-blue-800">{t("recommendationsTitle")}</h3>
         <p className="text-sm text-blue-600 mt-1">
-          Complete your profile and skills section, and our AI will suggest courses tailored to your career goals.
+          {t("recommendationsDescription")}
         </p>
       </div>
     </div>

@@ -34,9 +34,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
   const body = await validateBody(req, jobSeekerProfileUpdateSchema);
 
-  // Strip protected fields
-  const { userId: _u, _id: _i, createdAt: _c, updatedAt: _up, name, fullName, phone, ...safeUpdate } = body;
-  void _u; void _i; void _c; void _up;
+  const { name, fullName, phone, ...profileUpdate } = body;
+  const safeUpdate: Record<string, unknown> = { ...profileUpdate };
 
   const normalizedName = typeof fullName === "string"
     ? fullName.trim()

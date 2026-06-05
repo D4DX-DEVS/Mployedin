@@ -168,4 +168,4 @@ Return a JSON object ONLY (no markdown) with this exact structure:
   });
 
   return NextResponse.json({ jobId, ...matchData });
-});
+}, { aiQuota: true });

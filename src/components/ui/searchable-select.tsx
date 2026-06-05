@@ -108,7 +108,7 @@ export function SearchableSelect({
         >
           <span
             className={cn(
-              "min-w-0 flex-1 truncate text-left",
+              "min-w-0 flex-1 truncate text-start",
               !selectedLabel && "text-muted-foreground"
             )}
           >
@@ -153,7 +153,7 @@ export function SearchableSelect({
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4 shrink-0",
+                      "me-2 h-4 w-4 shrink-0",
                       value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />

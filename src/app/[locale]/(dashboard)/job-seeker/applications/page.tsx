@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, Search, SlidersHorizontal, Building2, Video, DollarSign, Briefcase, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { formatLocalizedLocation } from "@/lib/i18n/locations";
 import type { ExportColumn } from "@/lib/export";
 
 interface ApplicationJob {
@@ -70,30 +72,21 @@ interface Application {
 }
 
 const STATUS_TABS = [
-  { value: "all", label: "All" },
-  { value: "applied", label: "Applied" },
-  { value: "shortlisted", label: "Shortlisted" },
-  { value: "interview_scheduled", label: "Interview" },
-  { value: "selected", label: "Selected" },
-  { value: "offer", label: "Offer" },
-  { value: "hired", label: "Hired" },
-  { value: "rejected", label: "Rejected" },
-];
+  "all",
+  "applied",
+  "shortlisted",
+  "interview_scheduled",
+  "selected",
+  "offer",
+  "hired",
+  "rejected",
+] as const;
 
-function formatApplicationLocation(location: ApplicationJob["location"] | undefined) {
-  if (!location) return null;
-  if (typeof location === "string") return location;
-  if (location.isRemote) return "Remote";
-
-  return [location.city, location.country].filter(Boolean).join(", ") || "Location flexible";
-}
-
-function formatApplicationSalary(salary: ApplicationJob["salary"] | undefined) {
+function formatApplicationSalary(salary: ApplicationJob["salary"] | undefined, numberLocale: string) {
   if (!salary?.min || !salary?.max || !salary.currency) return null;
 
   try {
-    const locale = salary.currency === "INR" ? "en-IN" : "en-US";
-    const formatter = new Intl.NumberFormat(locale, {
+    const formatter = new Intl.NumberFormat(numberLocale, {
       style: "currency",
       currency: salary.currency,
       notation: "compact",
@@ -102,12 +95,13 @@ function formatApplicationSalary(salary: ApplicationJob["salary"] | undefined) {
 
     return `${formatter.format(salary.min)} - ${formatter.format(salary.max)}`;
   } catch {
-    return `${salary.min.toLocaleString("en-US")} - ${salary.max.toLocaleString("en-US")} ${salary.currency}`;
+    return `${salary.min.toLocaleString(numberLocale)} - ${salary.max.toLocaleString(numberLocale)} ${salary.currency}`;
   }
 }
 
 export default function ApplicationsPage() {
   const { locale } = useParams<{ locale: string }>();
+  const t = useTranslations("jobSeekerApplications");
   const router = useRouter();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,10 +114,12 @@ export default function ApplicationsPage() {
   const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
   const { paginationParams, updateTotal, resetPage } = pagination;
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
+  const formatNumber = (value: number) => value.toLocaleString(numberLocale);
 
   useEffect(() => {
-    document.title = "My Applications · MPLOYEDIN";
-  }, []);
+    document.title = t("documentTitle");
+  }, [t]);
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
@@ -171,26 +167,29 @@ export default function ApplicationsPage() {
     company: typeof app.jobId?.employerId === "object" ? (app.jobId.employerId as { companyName?: string })?.companyName ?? "" : "",
     status: app.status,
     aiMatchScore: app.aiMatchScore ?? 0,
-    appliedAt: new Date(app.appliedAt).toLocaleDateString(),
+    appliedAt: new Date(app.appliedAt).toLocaleDateString(numberLocale),
   }));
 
   const exportColumns = [
-    { header: "Job Title", key: "jobTitle" },
-    { header: "Company", key: "company" },
-    { header: "Status", key: "status" },
-    { header: "Match Score", key: "aiMatchScore" },
-    { header: "Applied Date", key: "appliedAt" },
+    { header: t("export.jobTitle"), key: "jobTitle" },
+    { header: t("export.company"), key: "company" },
+    { header: t("export.status"), key: "status" },
+    { header: t("export.matchScore"), key: "aiMatchScore" },
+    { header: t("export.appliedDate"), key: "appliedAt" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: exportData as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "my-applications",
-    title: "My Applications",
+    title: t("export.title"),
   });
 
-  const activeStatus = STATUS_TABS.find((tab) => tab.value === activeTab) ?? STATUS_TABS[0];
-  const pageSummary = pagination.totalPages > 0 ? `${pagination.page}/${pagination.totalPages}` : `${pagination.page}`;
+  const activeStatus = STATUS_TABS.includes(activeTab as (typeof STATUS_TABS)[number]) ? activeTab : STATUS_TABS[0];
+  const activeStatusLabel = t(`status.${activeStatus}`);
+  const pageSummary = pagination.totalPages > 0
+    ? `${formatNumber(pagination.page)}/${formatNumber(pagination.totalPages)}`
+    : formatNumber(pagination.page);
   const activeApplicationsCount = applications.filter((application) => !TERMINAL_STATUSES.includes(application.status)).length;
 
   return (
@@ -200,37 +199,37 @@ export default function ApplicationsPage() {
           <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
-                <h1 className="text-[28px] font-semibold tracking-tight text-foreground">My Applications</h1>
+                <h1 className="text-[28px] font-semibold tracking-tight text-foreground">{t("title")}</h1>
               </div>
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground sm:text-sm">
-                <span><span className="text-foreground">Total:</span> {overallTotal}</span>
+                <span><span className="text-foreground">{t("summary.total")}</span> {formatNumber(overallTotal)}</span>
                 <span aria-hidden="true" className="hidden text-muted-foreground/60 sm:inline">|</span>
-                <span><span className="text-foreground">Active:</span> {activeApplicationsCount}</span>
+                <span><span className="text-foreground">{t("summary.active")}</span> {formatNumber(activeApplicationsCount)}</span>
                 <span aria-hidden="true" className="hidden text-muted-foreground/60 sm:inline">|</span>
-                <span><span className="text-foreground">Progress:</span> {pageSummary}</span>
+                <span><span className="text-foreground">{t("summary.progress")}</span> {pageSummary}</span>
                 <span aria-hidden="true" className="hidden text-muted-foreground/60 sm:inline">|</span>
-                <span><span className="text-foreground">View:</span> {activeStatus.label}</span>
+                <span><span className="text-foreground">{t("summary.view")}</span> {activeStatusLabel}</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-2.5">
               <div className="relative min-w-0 flex-1 lg:max-w-[420px] xl:max-w-[520px]">
-                <label htmlFor="applications-search" className="sr-only">Search applications</label>
-                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <label htmlFor="applications-search" className="sr-only">{t("searchLabel")}</label>
+                <Search className="absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="applications-search"
                   type="text"
-                  placeholder="Search by job title or company..."
+                  placeholder={t("searchPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); resetPage(); }}
-                  className="h-9 rounded-full border-border/70 bg-background/95 pl-8 pr-8 text-sm shadow-sm"
+                  className="h-9 rounded-full border-border/70 bg-background/95 ps-8 pe-8 text-sm shadow-sm"
                 />
                 {searchTerm && (
                   <button
                     type="button"
                     onClick={() => { setSearchTerm(""); resetPage(); }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -247,10 +246,10 @@ export default function ApplicationsPage() {
                 onClick={() => setShowFilters(!showFilters)}
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
-                Filters
+                {t("filters")}
                 {hasActiveFilters && (
-                  <span aria-hidden="true" className="ml-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                    {[searchTerm, dateFrom, dateTo].filter(Boolean).length}
+                  <span aria-hidden="true" className="ms-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                    {formatNumber([searchTerm, dateFrom, dateTo].filter(Boolean).length)}
                   </span>
                 )}
               </Button>
@@ -258,21 +257,21 @@ export default function ApplicationsPage() {
               <div className="overflow-x-auto lg:flex-1">
                 <div
                   role="tablist"
-                  aria-label="Application status filters"
+                  aria-label={t("statusFiltersLabel")}
                   className="inline-flex min-w-full items-center gap-1 rounded-full border border-border/70 bg-muted/20 p-1 lg:min-w-0"
                 >
                   {STATUS_TABS.map((tab) => {
-                    const isActive = tab.value === activeTab;
+                    const isActive = tab === activeTab;
 
                     return (
                       <button
-                        key={tab.value}
-                        id={`applications-tab-${tab.value}`}
+                        key={tab}
+                        id={`applications-tab-${tab}`}
                         type="button"
                         role="tab"
                         aria-selected={isActive}
-                        aria-controls={`applications-panel-${tab.value}`}
-                        onClick={() => handleTabChange(tab.value)}
+                        aria-controls={`applications-panel-${tab}`}
+                        onClick={() => handleTabChange(tab)}
                         className={cn(
                           "relative shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200 sm:px-3.5 sm:text-sm",
                           isActive
@@ -287,7 +286,7 @@ export default function ApplicationsPage() {
                             transition={{ type: "spring", stiffness: 420, damping: 34 }}
                           />
                         )}
-                        <span className="relative z-10">{tab.label}</span>
+                        <span className="relative z-10">{t(`status.${tab}`)}</span>
                       </button>
                     );
                   })}
@@ -300,7 +299,7 @@ export default function ApplicationsPage() {
           {showFilters && (
             <div className="mt-2.5 flex flex-col gap-2 rounded-2xl border border-border/60 bg-background p-3 shadow-sm sm:flex-row sm:items-end">
               <div className="flex-1 space-y-1.5">
-                <label htmlFor="applications-date-from" className="text-xs font-medium text-muted-foreground">Applied from</label>
+                <label htmlFor="applications-date-from" className="text-xs font-medium text-muted-foreground">{t("appliedFrom")}</label>
                 <Input
                   id="applications-date-from"
                   type="date"
@@ -310,7 +309,7 @@ export default function ApplicationsPage() {
                 />
               </div>
               <div className="flex-1 space-y-1.5">
-                <label htmlFor="applications-date-to" className="text-xs font-medium text-muted-foreground">Applied to</label>
+                <label htmlFor="applications-date-to" className="text-xs font-medium text-muted-foreground">{t("appliedTo")}</label>
                 <Input
                   id="applications-date-to"
                   type="date"
@@ -326,7 +325,7 @@ export default function ApplicationsPage() {
                   className="h-[34px] shrink-0 gap-1 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground"
                   onClick={clearFilters}
                 >
-                  <X className="h-3.5 w-3.5" /> Clear all
+                  <X className="h-3.5 w-3.5" /> {t("clearAll")}
                 </Button>
               )}
             </div>
@@ -363,14 +362,14 @@ export default function ApplicationsPage() {
               ) : applications.length === 0 ? (
                 <div className="rounded-[28px] border border-dashed border-border/70 bg-muted/10 px-6 py-16 text-center">
                   <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold text-foreground">No applications in this view</h3>
+                  <h3 className="text-lg font-semibold text-foreground">{t("emptyTitle")}</h3>
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
                     {activeTab === "all"
-                      ? "You have not applied to any roles yet. Start browsing and build momentum from your dashboard."
-                      : `Nothing is currently marked as ${activeStatus.label.toLowerCase()}. Switch views or explore new opportunities.`}
+                      ? t("emptyAll")
+                      : t("emptyStatus", { status: activeStatusLabel.toLowerCase() })}
                   </p>
                   <Button size="sm" className="mt-5" onClick={() => router.push(`/${locale}/job-seeker/jobs`)}>
-                    Browse Jobs
+                    {t("browseJobs")}
                   </Button>
                 </div>
               ) : (
@@ -420,18 +419,41 @@ function ApplicationCard({
   locale: string;
   onWithdrawn: () => void;
 }) {
+  const t = useTranslations("jobSeekerApplications");
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const job = app.jobId;
   const employer = typeof job?.employerId === "object" ? job.employerId : null;
   const companyName = employer?.companyName;
   const companyLogo = employer?.logo;
-  const appliedDate = new Date(app.appliedAt).toLocaleDateString("en-US", {
+  const appliedDate = new Date(app.appliedAt).toLocaleDateString(numberLocale, {
     month: "short", day: "numeric",
   });
-  const locationLabel = formatApplicationLocation(job?.location);
-  const salaryLabel = formatApplicationSalary(job?.salary);
+  const locationLabel = formatLocalizedLocation(job?.location, locale, {
+    remoteLabel: t("remote"),
+    fallback: t("locationFlexible"),
+  });
+  const salaryLabel = formatApplicationSalary(job?.salary, numberLocale);
   const latestStatusEntry = app.statusHistory?.[app.statusHistory.length - 1];
   const recentStatuses = app.statusHistory?.slice(-3) ?? [];
   const hasExpandableDetails = recentStatuses.length > 0 || !!latestStatusEntry?.note || !!app.coverLetter || !!app.latestInterview || !!app.latestOffer || !!app.placement;
+  const withdrawalReasonOptions = WITHDRAWAL_REASONS.map((reason) => ({
+    value: reason.value,
+    label: t(`withdrawal.reasons.${reason.value}`),
+  }));
+  const formatDetailDate = (value: string) => new Date(value).toLocaleDateString(numberLocale, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const formatDetailTime = (value: string) => new Date(value).toLocaleTimeString(numberLocale, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const formatCurrency = (amount: number, currency: string) => new Intl.NumberFormat(numberLocale, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
 
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState("");
@@ -456,19 +478,22 @@ function ApplicationCard({
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? "Failed to withdraw");
+        throw new Error(err.error ?? t("withdraw"));
       }
       setShowWithdraw(false);
       onWithdrawn();
     } catch (e) {
-      setWithdrawError(e instanceof Error ? e.message : "Something went wrong");
+      setWithdrawError(e instanceof Error ? e.message : t("withdraw"));
     } finally {
       setWithdrawing(false);
     }
   }
 
   const isActive = !TERMINAL_STATUSES.includes(app.status);
-  const cardLabel = `${showDetails ? "Hide" : "View"} details for ${job?.title ?? "job"}`;
+  const jobTitle = job?.title ?? t("jobFallback");
+  const cardLabel = showDetails
+    ? t("hideDetails", { job: jobTitle })
+    : t("viewDetails", { job: jobTitle });
 
   return (
     <>
@@ -483,7 +508,7 @@ function ApplicationCard({
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/90 shadow-sm sm:h-10 sm:w-10">
             {companyLogo ? (
-              <img src={companyLogo} alt={companyName ?? "Company"} className="h-7 w-7 rounded-lg object-contain sm:h-8 sm:w-8" />
+              <img src={companyLogo} alt={companyName ?? t("companyFallback")} className="h-7 w-7 rounded-lg object-contain sm:h-8 sm:w-8" />
             ) : (
               <Building2 className="h-4 w-4 text-muted-foreground sm:h-[18px] sm:w-[18px]" />
             )}
@@ -493,12 +518,12 @@ function ApplicationCard({
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-start gap-2">
                 <h3 className="truncate text-[15px] font-semibold leading-5 text-foreground transition-colors group-hover:text-primary sm:text-base">
-                  {job?.title ?? "Job"}
+                  {jobTitle}
                 </h3>
               </div>
 
               <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] leading-4 text-muted-foreground sm:flex-nowrap sm:gap-x-2">
-                <span className="truncate font-medium text-muted-foreground">{companyName ?? "Company"}</span>
+                <span className="truncate font-medium text-muted-foreground">{companyName ?? t("companyFallback")}</span>
 
                 {locationLabel && (
                   <>
@@ -521,7 +546,7 @@ function ApplicationCard({
                   <span aria-hidden="true" className="text-muted-foreground/60">•</span>
                   <span className="inline-flex items-center gap-1 whitespace-nowrap">
                     <Calendar className="h-3 w-3 shrink-0" />
-                    Applied {appliedDate}
+                    {t("appliedDate", { date: appliedDate })}
                   </span>
                 </>
 
@@ -541,7 +566,7 @@ function ApplicationCard({
                         : "border-border/70 bg-muted/20 text-muted-foreground"
                   )}
                 >
-                  {app.aiMatchScore}% match
+                  {t("match", { score: app.aiMatchScore.toLocaleString(numberLocale) })}
                 </span>
               )}
               <ChevronDown
@@ -559,7 +584,7 @@ function ApplicationCard({
             {TERMINAL_STATUSES.includes(app.status) && (
               <Button variant="ghost" size="sm" className="h-6 gap-1 px-0 text-[12px] text-amber-600 hover:text-amber-700" asChild>
                 <Link href={`/${locale}/job-seeker/applications/${app._id}/feedback`}>
-                  <Star className="h-3.5 w-3.5" /> Rate experience
+                  <Star className="h-3.5 w-3.5" /> {t("rateExperience")}
                 </Link>
               </Button>
             )}
@@ -571,7 +596,7 @@ function ApplicationCard({
                 className="h-6 gap-1 px-0 text-[12px] text-destructive hover:text-destructive"
                 onClick={() => setShowWithdraw(true)}
               >
-                <LogOut className="h-3.5 w-3.5" /> Withdraw
+                <LogOut className="h-3.5 w-3.5" /> {t("withdraw")}
               </Button>
             )}
           </div>
@@ -605,16 +630,16 @@ function ApplicationCard({
               <div className="rounded-[14px] border border-primary/20 bg-primary/5 px-3 py-2.5 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
                   <Video className="h-3.5 w-3.5" />
-                  Interview Details
+                  {t("details.interview")}
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3 shrink-0" />
-                    {new Date(app.latestInterview.scheduledAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    {new Date(app.latestInterview.scheduledAt).toLocaleDateString(numberLocale, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3 shrink-0" />
-                    {new Date(app.latestInterview.scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · {app.latestInterview.duration} min
+                    {formatDetailTime(app.latestInterview.scheduledAt)} · {t("details.minutesShort", { count: app.latestInterview.duration.toLocaleString(numberLocale) })}
                   </span>
                   <span className="inline-flex items-center gap-1 capitalize rounded-full border border-border/60 px-2 py-0.5 text-[11px] font-medium">
                     {app.latestInterview.type === "video" ? <Video className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}
@@ -626,7 +651,7 @@ function ApplicationCard({
                     <MapPin className="h-3 w-3 shrink-0" />
                     {app.latestInterview.type !== "offline" && app.latestInterview.meetLink ? (
                       <a href={app.latestInterview.meetLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
-                        Join Meeting <ExternalLink className="h-3 w-3" />
+                        {t("details.joinMeeting")} <ExternalLink className="h-3 w-3" />
                       </a>
                     ) : (
                       <span>{app.latestInterview.location}</span>
@@ -649,12 +674,12 @@ function ApplicationCard({
                     app.latestInterview.candidateResponse === "declined" && "text-red-600",
                     app.latestInterview.candidateResponse === "reschedule_requested" && "text-amber-600"
                   )}>
-                    Your response: {app.latestInterview.candidateResponse === "confirmed" ? "Confirmed" : app.latestInterview.candidateResponse === "declined" ? "Declined" : "Reschedule Requested"}
+                    {t("details.yourResponse", { response: t(`response.${app.latestInterview.candidateResponse}`) })}
                   </div>
                 )}
                 {app.latestInterview.outcome && (
                   <div className="text-xs text-muted-foreground">
-                    Outcome: <span className="capitalize font-medium">{app.latestInterview.outcome}</span>
+                    {t("details.outcome")} <span className="capitalize font-medium">{app.latestInterview.outcome}</span>
                   </div>
                 )}
               </div>
@@ -665,18 +690,18 @@ function ApplicationCard({
               <div className="rounded-[14px] border border-emerald-200 bg-emerald-50/50 px-3 py-2.5 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
                   <DollarSign className="h-3.5 w-3.5" />
-                  Offer Details
+                  {t("details.offer")}
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   {app.latestOffer.salary && (
                     <span className="font-medium text-foreground">
-                      {new Intl.NumberFormat("en-US", { style: "currency", currency: app.latestOffer.salary.currency, maximumFractionDigits: 0 }).format(app.latestOffer.salary.amount)} / {app.latestOffer.salary.period}
+                      {formatCurrency(app.latestOffer.salary.amount, app.latestOffer.salary.currency)} / {app.latestOffer.salary.period}
                     </span>
                   )}
                   {app.latestOffer.startDate && (
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3 shrink-0" />
-                      Start: {new Date(app.latestOffer.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {t("details.start", { date: formatDetailDate(app.latestOffer.startDate) })}
                     </span>
                   )}
                   <span className={cn(
@@ -694,7 +719,7 @@ function ApplicationCard({
                 )}
                 {app.latestOffer.expiresAt && app.latestOffer.status === "pending" && (
                   <p className="text-[11px] text-amber-600">
-                    Expires: {new Date(app.latestOffer.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    {t("details.expires", { date: formatDetailDate(app.latestOffer.expiresAt) })}
                   </p>
                 )}
               </div>
@@ -705,18 +730,18 @@ function ApplicationCard({
               <div className="rounded-[14px] border border-blue-200 bg-blue-50/50 px-3 py-2.5 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700">
                   <Briefcase className="h-3.5 w-3.5" />
-                  Placement Confirmed
+                  {t("details.placement")}
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   {app.placement.startDate && (
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3 shrink-0" />
-                      Start: {new Date(app.placement.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {t("details.start", { date: formatDetailDate(app.placement.startDate) })}
                     </span>
                   )}
                   {app.placement.salary && (
                     <span className="font-medium text-foreground">
-                      {new Intl.NumberFormat("en-US", { style: "currency", currency: app.placement.currency ?? "AED", maximumFractionDigits: 0 }).format(app.placement.salary)} / month
+                      {t("details.perMonth", { amount: formatCurrency(app.placement.salary, app.placement.currency ?? "AED") })}
                     </span>
                   )}
                 </div>
@@ -740,7 +765,7 @@ function ApplicationCard({
         >
           <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Withdraw Application</h2>
+              <h2 className="font-semibold">{t("withdrawal.title")}</h2>
               <button
                 type="button"
                 onClick={() => setShowWithdraw(false)}
@@ -750,25 +775,25 @@ function ApplicationCard({
               </button>
             </div>
             <p className="text-sm text-muted-foreground">
-              You&apos;re about to withdraw your application for <strong>{job?.title}</strong>. This action cannot be undone.
+              {t("withdrawal.description", { job: jobTitle })}
             </p>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Reason <span className="text-destructive">*</span></label>
+              <label className="text-sm font-medium">{t("withdrawal.reason")} <span className="text-destructive">{t("withdrawal.required")}</span></label>
               <SearchableSelect
-                options={WITHDRAWAL_REASONS}
+                options={withdrawalReasonOptions}
                 value={withdrawReason}
                 onValueChange={setWithdrawReason}
-                placeholder="Select a reason\u2026"
+                placeholder={t("withdrawal.selectReason")}
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium">
-                Additional comments <span className="text-muted-foreground font-normal">(optional)</span>
+                {t("withdrawal.comments")} <span className="text-muted-foreground font-normal">({t("withdrawal.optional")})</span>
               </label>
               <Textarea
-                placeholder="Anything else you'd like to share…"
+                placeholder={t("withdrawal.commentsPlaceholder")}
                 value={withdrawNote}
                 onChange={(e) => setWithdrawNote(e.target.value)}
                 maxLength={500}
@@ -792,10 +817,10 @@ function ApplicationCard({
                 disabled={!withdrawReason || withdrawing}
               >
                 {withdrawing && <Loader2 className="w-4 h-4 animate-spin" />}
-                Confirm Withdrawal
+                {t("withdrawal.confirm")}
               </Button>
               <Button variant="outline" onClick={() => setShowWithdraw(false)} disabled={withdrawing}>
-                Cancel
+                {t("withdrawal.cancel")}
               </Button>
             </div>
           </div>

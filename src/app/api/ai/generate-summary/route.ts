@@ -97,4 +97,4 @@ Return ONLY the summary text. No quotes, no labels, no extra formatting.`;
   });
 
   return NextResponse.json({ summary });
-});
+}, { aiQuota: true });

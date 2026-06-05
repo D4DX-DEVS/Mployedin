@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { interviewKeys } from "@/hooks/useInterviews";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 // ── Types ──────────────────────────────────────────────────────────
 export interface ApplicationsFilters {
@@ -231,7 +232,7 @@ export function useComputeAiMatch() {
       jobId: string;
       jobSeekerId: string;
     }) => {
-      const res = await fetch("/api/ai/match", {
+      const res = await csrfFetch("/api/ai/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ applicationId, jobId, jobSeekerId }),
@@ -266,7 +267,7 @@ export function useBulkAiMatch() {
       const results: { applicationId: string; score?: number; error?: string }[] = [];
       for (const app of applications) {
         try {
-          const res = await fetch("/api/ai/match", {
+          const res = await csrfFetch("/api/ai/match", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(app),

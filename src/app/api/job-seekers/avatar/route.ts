@@ -36,6 +36,9 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     result = await uploadFile(file, { folder: "avatars" });
   } catch (err: unknown) {
     const code = (err as { Code?: string }).Code ?? (err as { name?: string }).name;
+    if (code === "MalwareDetectedError") {
+      return NextResponse.json({ error: "File rejected: failed malware scan." }, { status: 422 });
+    }
     if (code === "NoSuchBucket") {
       return NextResponse.json(
         { error: "File storage is not configured. Please contact support." },

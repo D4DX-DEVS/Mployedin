@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { useFormContext } from "react-hook-form";
+import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { DollarSign, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,6 @@ import {
   CURRENCIES,
   SALARY_PERIODS,
   SALARY_PRESETS,
-  formatSalary,
   type JobFormValues,
   type CurrencyCode,
 } from "./jobFormSchema";
@@ -22,6 +22,9 @@ import { requiresSalaryDisclosure } from "@/lib/job-attributes/salary-jurisdicti
 import { SalaryBenchmarkWidget } from "./SalaryBenchmarkWidget";
 
 export function Step4SalarySettings() {
+  const t = useTranslations("employerJobForm.step4");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const {
     register,
     watch,
@@ -45,6 +48,20 @@ export function Step4SalarySettings() {
   const lastVisibleSalaryRef = useRef({ min: 0, max: 0, isNegotiable: false });
 
   const presets = SALARY_PRESETS[currency] ?? [];
+  const currencyNames = new Intl.DisplayNames([locale], { type: "currency" });
+
+  function formatAmount(amount: number, salaryCurrency = currency) {
+    return new Intl.NumberFormat(numberLocale, {
+      style: "currency",
+      currency: salaryCurrency || "USD",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
+
+  function formatRange(min: number, max: number, rangePeriod = period) {
+    const periodLabel = t(`salaryPeriods.${rangePeriod as "monthly" | "yearly" | "lpa"}`);
+    return `${formatAmount(min)} - ${formatAmount(max)} (${periodLabel})`;
+  }
 
   function applyPreset(preset: { min: number; max: number; period?: string }) {
     setValue("salary.min", preset.min, { shouldValidate: true });
@@ -58,7 +75,7 @@ export function Step4SalarySettings() {
 
   const formattedRange =
     salaryMin > 0 && salaryMax > 0
-      ? `${formatSalary(salaryMin, currency, period)} – ${formatSalary(salaryMax, currency, period)}`
+      ? formatRange(salaryMin, salaryMax)
       : null;
 
   return (
@@ -71,20 +88,20 @@ export function Step4SalarySettings() {
     >
       <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">Salary &amp; Settings</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
-            Keep compensation and hiring details clear. Transparent listings usually convert better.
+            {t("description")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {showSalary ? "Salary visible" : "Salary hidden"}
+            {showSalary ? t("salaryVisible") : t("salaryHidden")}
           </Badge>
           <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {formattedRange ?? "Add salary range"}
+            {formattedRange ?? t("addSalaryRange")}
           </Badge>
           <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {hasVacancyCount ? `${vacancies} openings` : "Openings hidden"}
+            {hasVacancyCount ? t("openings", { count: vacancies ?? 0 }) : t("openingsHidden")}
           </Badge>
         </div>
       </div>
@@ -93,14 +110,14 @@ export function Step4SalarySettings() {
         <div className="space-y-4 rounded-2xl border border-border bg-background p-4 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <DollarSign className="w-4 h-4 text-muted-foreground" />
-            Salary Package
+            {t("salaryPackage")}
           </div>
 
           <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
             <div className="flex-1">
-              <p className="text-sm font-medium">Share salary publicly</p>
+              <p className="text-sm font-medium">{t("shareSalary")}</p>
               <p className="text-xs text-muted-foreground">
-                Visible salary ranges usually improve trust and application quality.
+                {t("shareSalaryHint")}
               </p>
             </div>
             <Switch
@@ -132,11 +149,14 @@ export function Step4SalarySettings() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="currency" className="text-xs text-muted-foreground">
-                    Currency
+                    {t("currency")}
                   </Label>
                   <SearchableSelect
                     id="currency"
-                    options={CURRENCIES.map((c) => ({ value: c.code, label: c.label }))}
+                    options={CURRENCIES.map((c) => ({
+                      value: c.code,
+                      label: `${c.code} - ${currencyNames.of(c.code) ?? c.label}`,
+                    }))}
                     value={currency}
                     onValueChange={(v) =>
                       setValue("salary.currency", v, { shouldValidate: true })
@@ -146,13 +166,13 @@ export function Step4SalarySettings() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="period" className="text-xs text-muted-foreground">
-                    Pay Period
+                    {t("payPeriod")}
                   </Label>
                   <SearchableSelect
                     id="period"
                     options={SALARY_PERIODS.filter(
                       (p) => p.value !== "lpa" || currency === "INR"
-                    ).map((p) => ({ value: p.value, label: p.label }))}
+                    ).map((p) => ({ value: p.value, label: t(`salaryPeriods.${p.value}`) }))}
                     value={period}
                     onValueChange={(v) =>
                       setValue("salary.period", v as "monthly" | "yearly" | "lpa", {
@@ -166,7 +186,7 @@ export function Step4SalarySettings() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="salary-min" className="text-xs text-muted-foreground">
-                    Minimum
+                    {t("minimum")}
                   </Label>
                   <Input
                     id="salary-min"
@@ -180,7 +200,7 @@ export function Step4SalarySettings() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="salary-max" className="text-xs text-muted-foreground">
-                    Maximum
+                    {t("maximum")}
                   </Label>
                   <Input
                     id="salary-max"
@@ -201,17 +221,17 @@ export function Step4SalarySettings() {
                   className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm"
                 >
                   <span className="font-semibold text-primary">{formattedRange}</span>
-                  <span className="ml-2 text-muted-foreground">will be shown to candidates</span>
+                  <span className="ms-2 text-muted-foreground">{t("shownToCandidates")}</span>
                 </motion.div>
               )}
 
               {errors.salary && (
-                <p className="text-xs text-destructive">{String(errors.salary.message)}</p>
+                <p className="text-xs text-destructive">{t("salaryError")}</p>
               )}
 
               {presets.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-xs font-medium text-muted-foreground">Quick presets</span>
+                  <span className="text-xs font-medium text-muted-foreground">{t("quickPresets")}</span>
                   <div className="flex flex-wrap gap-2">
                     {presets.map((preset) => (
                       <button
@@ -220,7 +240,11 @@ export function Step4SalarySettings() {
                         onClick={() => applyPreset(preset)}
                         className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/[0.04] hover:text-foreground"
                       >
-                        {preset.label}
+                        {formatRange(
+                          preset.min,
+                          preset.max,
+                          (preset.period as "monthly" | "yearly" | "lpa" | undefined) ?? period
+                        )}
                       </button>
                     ))}
                   </div>
@@ -229,9 +253,9 @@ export function Step4SalarySettings() {
 
               <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Negotiable</p>
+                  <p className="text-sm font-medium">{t("negotiable")}</p>
                   <p className="text-xs text-muted-foreground">
-                    Show a salary negotiable label on the listing.
+                    {t("negotiableHint")}
                   </p>
                 </div>
                 <Switch
@@ -258,14 +282,12 @@ export function Step4SalarySettings() {
           ) : (
             <div className="space-y-3">
               <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-                Candidates will see this role as compensation not disclosed.
+                {t("undisclosedHint")}
               </div>
               {salaryRequired && (
                 <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
                   <span className="mt-0.5">⚠️</span>
-                  <span>
-                    Salary disclosure is <strong>required by law</strong> for job postings in {locationStr}. Hiding salary may violate local pay transparency regulations.
-                  </span>
+                  <span>{t("salaryDisclosureWarning", { location: locationStr })}</span>
                 </div>
               )}
             </div>
@@ -275,16 +297,16 @@ export function Step4SalarySettings() {
         <div className="space-y-4 rounded-2xl border border-border bg-background p-4 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Users className="w-4 h-4 text-muted-foreground" />
-            Hiring Plan
+            {t("hiringPlan")}
           </div>
 
           <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
             <div className="flex-1">
               <Label htmlFor="vacancies" className="text-sm font-medium">
-                Track number of openings
+                {t("trackOpenings")}
               </Label>
               <p className="mt-1 text-xs text-muted-foreground">
-                Turn this on if you want applicants to see how many people you plan to hire.
+                {t("trackOpeningsHint")}
               </p>
             </div>
             <Switch
@@ -310,17 +332,17 @@ export function Step4SalarySettings() {
                 className="w-32"
               />
               <p className="text-xs text-muted-foreground">
-                Show how many people you plan to hire for this role.
+                {t("showOpeningsHint")}
               </p>
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-              No opening count will be shown on the job posting.
+              {t("noOpeningsHint")}
             </div>
           )}
 
           <div className="rounded-xl border border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
-            Keep hiring details simple here. Screening thresholds, visibility rules, and limits stay in Advanced Settings below.
+            {t("advancedHint")}
           </div>
         </div>
       </div>

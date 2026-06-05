@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bot, FilePenLine, Mic, ArrowRight, Sparkles, Upload } from "lucide-react";
+import { Bot, FilePenLine, Mic, ArrowLeft, ArrowRight, Sparkles, Upload } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { JobFormWizard } from "@/components/features/employer/job-form/JobFormWizard";
@@ -13,6 +13,7 @@ export default async function NewJobPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
   const { mode, prefill } = await searchParams;
   const t = await getTranslations("employerJobNew");
+  const ForwardIcon = locale === "ar" ? ArrowLeft : ArrowRight;
 
   if (mode === "manual") {
     return <JobFormWizard locale={locale} useAiPrefill={prefill === "ai"} />;
@@ -62,14 +63,14 @@ export default async function NewJobPage({ params, searchParams }: PageProps) {
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700"
             >
               {t("startAiPosting")}
-              <ArrowRight className="h-4 w-4" />
+              <ForwardIcon className="h-4 w-4" />
             </Link>
             <Link
               href={`/${locale}/employer/jobs/ai-extract`}
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
             >
               <Upload className="h-4 w-4" />
-              Upload Job Poster
+              {t("uploadJobPoster")}
             </Link>
             <Link
               href={`/${locale}/employer/jobs/new?mode=manual`}
@@ -97,13 +98,13 @@ export default async function NewJobPage({ params, searchParams }: PageProps) {
 
             <Link
               href={`/${locale}/employer/jobs/new?mode=manual`}
-              className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4 text-left transition hover:border-slate-300 hover:bg-slate-50"
+              className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-4 text-start transition hover:border-slate-300 hover:bg-slate-50"
             >
               <div>
                 <p className="text-sm font-semibold text-slate-900">{t("continueManual")}</p>
                 <p className="mt-1 text-xs text-slate-500">{t("continueManualDesc")}</p>
               </div>
-              <ArrowRight className="h-4 w-4 text-slate-500" />
+              <ForwardIcon className="h-4 w-4 text-slate-500" />
             </Link>
           </div>
         </section>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Send, Loader2, MessageSquare, AlertTriangle, MoreVertical, Trash2, Eraser } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -50,8 +51,15 @@ interface Props {
 }
 
 const POLL_INTERVAL = 5000; // 5 seconds
+const ROLE_LABEL_KEYS = ["admin", "super_agent", "agent", "employer", "job_seeker"] as const;
+
+function hasRoleKey(value: string): value is typeof ROLE_LABEL_KEYS[number] {
+  return ROLE_LABEL_KEYS.includes(value as typeof ROLE_LABEL_KEYS[number]);
+}
 
 export function DirectMessageChat({ conversation, currentUserId, onDeleteConversation, onConversationCreated }: Props) {
+  const t = useTranslations("messagesPage");
+  const locale = useLocale();
   const queryClient = useQueryClient();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [messages, setMessages] = useState<DMMessage[]>([]);
@@ -111,12 +119,12 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
           .then(() => queryClient.invalidateQueries({ queryKey: conversationKeys.lists() }))
           .catch(() => {});
       } else if (isInitial) {
-        setError("Failed to load messages.");
+        setError(t("chat.errors.load"));
       }
     } finally {
       if (isInitial) setLoading(false);
     }
-  }, [conversation._id, queryClient]);
+  }, [conversation._id, queryClient, t]);
 
   // Initial load
   useEffect(() => {
@@ -208,16 +216,16 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
         );
       } else {
         setMessages((prev) => prev.filter((m) => m._id !== optimistic._id));
-        setError("Failed to send message.");
+        setError(t("chat.errors.send"));
       }
     } catch {
       setMessages((prev) => prev.filter((m) => m._id !== optimistic._id));
-      setError("Failed to send message.");
+      setError(t("chat.errors.send"));
     } finally {
       setSending(false);
       textareaRef.current?.focus();
     }
-  }, [input, sending, convId, currentUserId, conversation.participants, onConversationCreated]);
+  }, [input, sending, convId, currentUserId, conversation.participants, onConversationCreated, t]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -229,9 +237,9 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
   const clearChat = useCallback(async () => {
     if (!convId) return; // No conversation to clear
     const ok = await confirm({
-      title: "Clear Chat",
-      message: "This will permanently delete all messages in this conversation. The conversation will remain.",
-      confirmLabel: "Clear Messages",
+      title: t("chat.clearTitle"),
+      message: t("chat.clearMessage"),
+      confirmLabel: t("chat.clearConfirm"),
       variant: "destructive",
     });
     if (!ok) return;
@@ -246,12 +254,12 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
         setMessages([]);
         queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
       } else {
-        setError("Failed to clear chat.");
+        setError(t("chat.errors.clear"));
       }
     } catch {
-      setError("Failed to clear chat.");
+      setError(t("chat.errors.clear"));
     }
-  }, [convId, confirm, queryClient]);
+  }, [convId, confirm, queryClient, t]);
 
   const deleteChat = useCallback(async () => {
     if (!convId) {
@@ -260,9 +268,9 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
       return;
     }
     const ok = await confirm({
-      title: "Delete Conversation",
-      message: "This will permanently delete this conversation and all messages. This action cannot be undone.",
-      confirmLabel: "Delete",
+      title: t("chat.deleteTitle"),
+      message: t("chat.deleteMessage"),
+      confirmLabel: t("chat.deleteConfirm"),
       variant: "destructive",
     });
     if (!ok) return;
@@ -275,12 +283,12 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
         queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
         onDeleteConversation?.();
       } else {
-        setError("Failed to delete conversation.");
+        setError(t("chat.errors.delete"));
       }
     } catch {
-      setError("Failed to delete conversation.");
+      setError(t("chat.errors.delete"));
     }
-  }, [convId, confirm, queryClient, onDeleteConversation]);
+  }, [convId, confirm, queryClient, onDeleteConversation, t]);
 
   return (
     <div className="flex flex-col h-full">
@@ -301,8 +309,12 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm truncate">{otherParticipant?.name ?? "Unknown"}</p>
-          <p className="text-xs text-muted-foreground capitalize">{otherParticipant?.role?.replace("_", " ") ?? ""}</p>
+          <p className="font-semibold text-sm truncate">{otherParticipant?.name ?? t("chat.unknown")}</p>
+          <p className="text-xs text-muted-foreground capitalize">
+            {otherParticipant?.role
+              ? hasRoleKey(otherParticipant.role) ? t(`roles.${otherParticipant.role}`) : otherParticipant.role.replace("_", " ")
+              : ""}
+          </p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -313,11 +325,11 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
           <DropdownMenuContent align="end" className="w-44">
             <DropdownMenuItem onClick={clearChat} className="gap-2 text-muted-foreground">
               <Eraser className="h-3.5 w-3.5" />
-              Clear Chat
+              {t("chat.clearChat")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={deleteChat} className="gap-2 text-destructive focus:text-destructive">
               <Trash2 className="h-3.5 w-3.5" />
-              Delete Chat
+              {t("chat.deleteChat")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -332,7 +344,7 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-12 text-center">
             <MessageSquare className="h-8 w-8 text-muted-foreground/30" />
-            <p className="text-sm text-muted-foreground">No messages yet. Say hello!</p>
+            <p className="text-sm text-muted-foreground">{t("chat.noMessages")}</p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -349,7 +361,7 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
                 >
                   <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                   <p className={cn("text-[10px] mt-1 opacity-60", isMine ? "text-right" : "")}>
-                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(msg.createdAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                     {isMine && msg.readAt && " ✓✓"}
                   </p>
                 </div>
@@ -375,7 +387,7 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
+            placeholder={t("chat.inputPlaceholder")}
             className="min-h-[40px] max-h-[120px] resize-none text-sm flex-1 bg-muted/30 rounded-xl"
             rows={1}
             disabled={sending}

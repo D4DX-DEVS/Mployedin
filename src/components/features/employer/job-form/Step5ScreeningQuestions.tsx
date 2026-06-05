@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useFormContext, useFieldArray } from "react-hook-form";
+import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import {
   ClipboardList,
@@ -20,13 +21,13 @@ import { cn } from "@/lib/utils";
 import type { JobFormValues } from "./jobFormSchema";
 
 const QUESTION_TYPES = [
-  { value: "text", label: "Short Text" },
-  { value: "textarea", label: "Long Text" },
-  { value: "select", label: "Dropdown" },
-  { value: "checkbox", label: "Checkbox" },
-  { value: "radio", label: "Multiple Choice" },
-  { value: "number", label: "Number" },
-  { value: "date", label: "Date" },
+  "text",
+  "textarea",
+  "select",
+  "checkbox",
+  "radio",
+  "number",
+  "date",
 ] as const;
 
 const NEEDS_OPTIONS = new Set(["select", "checkbox", "radio"]);
@@ -36,6 +37,10 @@ function generateId() {
 }
 
 export function Step5ScreeningQuestions() {
+  const t = useTranslations("employerJobForm.step5");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
+  const maxQuestionsLabel = (20).toLocaleString(numberLocale);
   const {
     register,
     watch,
@@ -117,11 +122,10 @@ export function Step5ScreeningQuestions() {
       <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold text-foreground">
-            Screening Questions
+            {t("title")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Add custom questions that applicants must answer when applying.
-            This helps you filter candidates early.
+            {t("description")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -129,8 +133,11 @@ export function Step5ScreeningQuestions() {
             variant="secondary"
             className="rounded-full px-3 py-1 text-xs"
           >
-            <ClipboardList className="mr-1 h-3 w-3" />
-            {questions.length}/20 questions
+            <ClipboardList className="me-1 h-3 w-3" />
+            {t("questionCount", {
+              count: questions.length.toLocaleString(numberLocale),
+              max: maxQuestionsLabel,
+            })}
           </Badge>
         </div>
       </div>
@@ -157,7 +164,7 @@ export function Step5ScreeningQuestions() {
                 <div className="flex items-center gap-2">
                   <GripVertical className="h-4 w-4 text-muted-foreground/50" />
                   <span className="text-xs font-medium text-muted-foreground">
-                    Q{index + 1}
+                    {t("questionLabel", { number: (index + 1).toLocaleString(numberLocale) })}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -168,7 +175,7 @@ export function Step5ScreeningQuestions() {
                     className="h-7 w-7 p-0"
                     onClick={() => moveUp(index)}
                     disabled={index === 0}
-                    aria-label="Move up"
+                    aria-label={t("moveUp")}
                   >
                     <ChevronUp className="h-3.5 w-3.5" />
                   </Button>
@@ -179,7 +186,7 @@ export function Step5ScreeningQuestions() {
                     className="h-7 w-7 p-0"
                     onClick={() => moveDown(index)}
                     disabled={index === fields.length - 1}
-                    aria-label="Move down"
+                    aria-label={t("moveDown")}
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
@@ -189,7 +196,7 @@ export function Step5ScreeningQuestions() {
                     size="sm"
                     className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                     onClick={() => remove(index)}
-                    aria-label="Remove question"
+                    aria-label={t("removeQuestion")}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -199,16 +206,16 @@ export function Step5ScreeningQuestions() {
               {/* Question Label */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
-                  Question Text
+                  {t("questionText")}
                 </Label>
                 <Input
                   {...register(`screeningQuestions.${index}.label`)}
-                  placeholder="e.g. Do you have a valid driving license?"
+                  placeholder={t("questionPlaceholder")}
                   className="rounded-xl"
                 />
                 {fieldError?.label?.message && (
                   <p className="text-xs text-destructive">
-                    {fieldError.label.message}
+                    {t("questionRequired")}
                   </p>
                 )}
               </div>
@@ -216,7 +223,7 @@ export function Step5ScreeningQuestions() {
               {/* Type + Required row */}
               <div className="mt-3 flex flex-wrap items-end gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Answer Type</Label>
+                  <Label className="text-sm font-medium">{t("answerType")}</Label>
                   <select
                     {...register(`screeningQuestions.${index}.type`)}
                     className="h-9 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
@@ -237,19 +244,19 @@ export function Step5ScreeningQuestions() {
                       }
                     }}
                   >
-                    {QUESTION_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
+                    {QUESTION_TYPES.map((questionType) => (
+                      <option key={questionType} value={questionType}>
+                        {t(`types.${questionType}`)}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Placeholder</Label>
+                  <Label className="text-sm font-medium">{t("placeholder")}</Label>
                   <Input
                     {...register(`screeningQuestions.${index}.placeholder`)}
-                    placeholder="Optional placeholder text"
+                    placeholder={t("placeholderText")}
                     className="w-48 rounded-xl"
                   />
                 </div>
@@ -266,7 +273,7 @@ export function Step5ScreeningQuestions() {
                     }
                   />
                   <Label className="text-sm text-muted-foreground">
-                    Required
+                    {t("required")}
                   </Label>
                 </div>
               </div>
@@ -275,7 +282,7 @@ export function Step5ScreeningQuestions() {
               {needsOptions && (
                 <div className="mt-4 space-y-2 rounded-xl border border-dashed border-border/70 bg-muted/10 p-3">
                   <Label className="text-xs font-medium text-muted-foreground">
-                    Options
+                    {t("options")}
                   </Label>
                   {(questions[index]?.options ?? []).map(
                     (_, optIdx) => (
@@ -287,7 +294,7 @@ export function Step5ScreeningQuestions() {
                           {...register(
                             `screeningQuestions.${index}.options.${optIdx}`
                           )}
-                          placeholder={`Option ${optIdx + 1}`}
+                          placeholder={t("optionPlaceholder", { number: optIdx + 1 })}
                           className="rounded-xl"
                         />
                         <Button
@@ -296,7 +303,7 @@ export function Step5ScreeningQuestions() {
                           size="sm"
                           className="h-7 w-7 shrink-0 p-0 text-destructive hover:text-destructive"
                           onClick={() => removeOption(index, optIdx)}
-                          aria-label="Remove option"
+                          aria-label={t("removeOption")}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -313,7 +320,7 @@ export function Step5ScreeningQuestions() {
                       (questions[index]?.options?.length ?? 0) >= 20
                     }
                   >
-                    <Plus className="h-3 w-3" /> Add Option
+                    <Plus className="h-3 w-3" /> {t("addOption")}
                   </Button>
                 </div>
               )}
@@ -331,7 +338,7 @@ export function Step5ScreeningQuestions() {
           onClick={addQuestion}
         >
           <Plus className="h-4 w-4" />
-          Add Screening Question
+          {t("addQuestion")}
         </Button>
       )}
 
@@ -341,11 +348,10 @@ export function Step5ScreeningQuestions() {
             <ClipboardList className="h-5 w-5" />
           </div>
           <p className="text-sm font-medium text-foreground">
-            No screening questions yet
+            {t("emptyTitle")}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add questions to help filter applicants. This step is optional — you
-            can skip it if not needed.
+            {t("emptyDescription")}
           </p>
         </div>
       )}

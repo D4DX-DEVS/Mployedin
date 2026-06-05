@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { routeGenerate } from "@/lib/ai/router";
 import { connectDB } from "@/lib/db/mongoose";
@@ -50,6 +51,9 @@ export async function POST(req: NextRequest) {
         }
       );
     }
+
+    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole);
+    if (__aiQuota) return __aiQuota;
 
     const body = await req.json();
     const { applicationId, context, customInstructions } = body as {

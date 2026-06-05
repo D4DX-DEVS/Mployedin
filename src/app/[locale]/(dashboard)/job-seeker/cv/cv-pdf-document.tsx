@@ -3,6 +3,28 @@ import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { CVForm, FormattingOptions } from "./types";
 import { getTheme, getFontScale, getSectionGap, FONT_OPTIONS } from "./types";
 
+export type CVPDFLabels = {
+  yourName: string;
+  present: string;
+  experience: string;
+  education: string;
+  grade: string;
+  skills: string;
+  projects: string;
+  languages: string;
+  certifications: string;
+  atCompany: string;
+  proficiency: Record<string, string>;
+};
+
+function companyPhrase(labels: CVPDFLabels, company: string): string {
+  return labels.atCompany.replace("{company}", company);
+}
+
+function languageLevel(labels: CVPDFLabels, proficiency: string): string {
+  return labels.proficiency[proficiency] ?? proficiency;
+}
+
 /* ── Helper to resolve PDF font ── */
 function getPDFFont(formatting: FormattingOptions): string {
   // react-pdf only has built-in: Helvetica, Times-Roman, Courier
@@ -80,11 +102,11 @@ function makeStyles(primary: string, scale: number, gap: string, font: string, b
    CLASSIC PDF
    ═══════════════════════════════════════ */
 
-function ClassicPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<typeof makeStyles> }) {
+function ClassicPDF({ data, styles: s, labels }: { data: CVForm; styles: ReturnType<typeof makeStyles>; labels: CVPDFLabels }) {
   return (
     <Page size="A4" style={s.page}>
       <View style={s.header}>
-        <Text style={s.name}>{data.fullName || "Your Name"}</Text>
+        <Text style={s.name}>{data.fullName || labels.yourName}</Text>
         {data.headline ? <Text style={s.headline}>{data.headline}</Text> : null}
         <View style={s.contactRow}>
           {data.email ? <Text>{data.email}</Text> : null}
@@ -103,7 +125,7 @@ function ClassicPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<type
 
       {data.experience.length > 0 && (
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Experience</Text>
+          <Text style={s.sectionTitle}>{labels.experience}</Text>
           {data.experience.map((exp, i) => (
             <View key={i} style={s.expItem}>
               <View style={s.expHeader}>
@@ -111,7 +133,7 @@ function ClassicPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<type
                   <Text style={s.expTitle}>{exp.jobTitle}</Text>
                   <Text style={s.expCompany}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</Text>
                 </View>
-                <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? "Present" : exp.endDate}</Text>
+                <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? labels.present : exp.endDate}</Text>
               </View>
               {exp.description ? <Text style={s.expDesc}>{exp.description}</Text> : null}
             </View>
@@ -121,13 +143,13 @@ function ClassicPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<type
 
       {data.education.length > 0 && (
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Education</Text>
+          <Text style={s.sectionTitle}>{labels.education}</Text>
           {data.education.map((edu, i) => (
             <View key={i} style={s.eduItem}>
               <View>
-                <Text style={s.eduDegree}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</Text>
+                <Text style={s.eduDegree}>{edu.degree}{edu.field ? `, ${edu.field}` : ""}</Text>
                 <Text style={s.eduInst}>{edu.institution}</Text>
-                {edu.grade ? <Text style={s.eduGrade}>Grade: {edu.grade}</Text> : null}
+                {edu.grade ? <Text style={s.eduGrade}>{labels.grade}: {edu.grade}</Text> : null}
               </View>
               {edu.graduationDate ? <Text style={s.expDate}>{edu.graduationDate}</Text> : null}
             </View>
@@ -137,7 +159,7 @@ function ClassicPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<type
 
       {data.skills.length > 0 && (
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Skills</Text>
+          <Text style={s.sectionTitle}>{labels.skills}</Text>
           <View style={s.skillsRow}>
             {data.skills.map((sk, i) => <Text key={i} style={s.skillBadge}>{sk}</Text>)}
           </View>
@@ -146,7 +168,7 @@ function ClassicPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<type
 
       {data.projects?.length > 0 && (
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Projects</Text>
+          <Text style={s.sectionTitle}>{labels.projects}</Text>
           {data.projects.map((proj, i) => (
             <View key={i} style={s.projItem}>
               <Text style={s.projTitle}>{proj.title}</Text>
@@ -163,10 +185,10 @@ function ClassicPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<type
 
       {data.languages.length > 0 && (
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Languages</Text>
+          <Text style={s.sectionTitle}>{labels.languages}</Text>
           <View style={s.langRow}>
             {data.languages.map((l, i) => (
-              <Text key={i} style={s.langItem}>{l.language} <Text style={s.langLevel}>({l.proficiency})</Text></Text>
+              <Text key={i} style={s.langItem}>{l.language} <Text style={s.langLevel}>({languageLevel(labels, l.proficiency)})</Text></Text>
             ))}
           </View>
         </View>
@@ -174,7 +196,7 @@ function ClassicPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<type
 
       {data.certifications.length > 0 && (
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Certifications</Text>
+          <Text style={s.sectionTitle}>{labels.certifications}</Text>
           {data.certifications.map((c, i) => <Text key={i} style={s.certItem}>• {c}</Text>)}
         </View>
       )}
@@ -186,12 +208,12 @@ function ClassicPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<type
    MODERN PDF (sidebar)
    ═══════════════════════════════════════ */
 
-function ModernPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<typeof makeStyles> }) {
+function ModernPDF({ data, styles: s, labels }: { data: CVForm; styles: ReturnType<typeof makeStyles>; labels: CVPDFLabels }) {
   return (
     <Page size="A4" style={{ flexDirection: "row", fontFamily: s.page.fontFamily, fontSize: s.page.fontSize, color: "#1a1a1a" }}>
       {/* Sidebar */}
       <View style={s.sidebar}>
-        <Text style={s.sidebarName}>{data.fullName || "Your Name"}</Text>
+        <Text style={s.sidebarName}>{data.fullName || labels.yourName}</Text>
         {data.headline ? <Text style={{ ...s.sidebarText, marginBottom: 8, opacity: 0.8 }}>{data.headline}</Text> : null}
         {data.email ? <Text style={s.sidebarText}>✉ {data.email}</Text> : null}
         {data.phone ? <Text style={s.sidebarText}>☎ {data.phone}</Text> : null}
@@ -199,7 +221,7 @@ function ModernPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<typeo
 
         {data.skills.length > 0 && (
           <View style={s.sidebarSection}>
-            <Text style={s.sidebarSectionTitle}>Skills</Text>
+            <Text style={s.sidebarSectionTitle}>{labels.skills}</Text>
             <View style={{ ...s.skillsRow, gap: 4 }}>
               {data.skills.map((sk, i) => <Text key={i} style={{ ...s.sidebarText, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 2, paddingHorizontal: 4, paddingVertical: 1 }}>{sk}</Text>)}
             </View>
@@ -208,14 +230,14 @@ function ModernPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<typeo
 
         {data.languages.length > 0 && (
           <View style={s.sidebarSection}>
-            <Text style={s.sidebarSectionTitle}>Languages</Text>
-            {data.languages.map((l, i) => <Text key={i} style={s.sidebarText}>{l.language} – {l.proficiency}</Text>)}
+            <Text style={s.sidebarSectionTitle}>{labels.languages}</Text>
+            {data.languages.map((l, i) => <Text key={i} style={s.sidebarText}>{l.language} – {languageLevel(labels, l.proficiency)}</Text>)}
           </View>
         )}
 
         {data.certifications.length > 0 && (
           <View style={s.sidebarSection}>
-            <Text style={s.sidebarSectionTitle}>Certifications</Text>
+            <Text style={s.sidebarSectionTitle}>{labels.certifications}</Text>
             {data.certifications.map((c, i) => <Text key={i} style={s.sidebarText}>• {c}</Text>)}
           </View>
         )}
@@ -225,7 +247,7 @@ function ModernPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<typeo
       <View style={s.mainContent}>
         {data.experience.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Experience</Text>
+            <Text style={s.sectionTitle}>{labels.experience}</Text>
             {data.experience.map((exp, i) => (
               <View key={i} style={s.expItem}>
                 <View style={s.expHeader}>
@@ -233,7 +255,7 @@ function ModernPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<typeo
                     <Text style={s.expTitle}>{exp.jobTitle}</Text>
                     <Text style={s.expCompany}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</Text>
                   </View>
-                  <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? "Present" : exp.endDate}</Text>
+                  <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? labels.present : exp.endDate}</Text>
                 </View>
                 {exp.description ? <Text style={s.expDesc}>{exp.description}</Text> : null}
               </View>
@@ -243,11 +265,11 @@ function ModernPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<typeo
 
         {data.education.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Education</Text>
+            <Text style={s.sectionTitle}>{labels.education}</Text>
             {data.education.map((edu, i) => (
               <View key={i} style={s.eduItem}>
                 <View>
-                  <Text style={s.eduDegree}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</Text>
+                  <Text style={s.eduDegree}>{edu.degree}{edu.field ? `, ${edu.field}` : ""}</Text>
                   <Text style={s.eduInst}>{edu.institution}</Text>
                 </View>
                 {edu.graduationDate ? <Text style={s.expDate}>{edu.graduationDate}</Text> : null}
@@ -258,7 +280,7 @@ function ModernPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<typeo
 
         {data.projects?.length > 0 && (
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Projects</Text>
+            <Text style={s.sectionTitle}>{labels.projects}</Text>
             {data.projects.map((proj, i) => (
               <View key={i} style={s.projItem}>
                 <Text style={s.projTitle}>{proj.title}</Text>
@@ -276,11 +298,11 @@ function ModernPDF({ data, styles: s }: { data: CVForm; styles: ReturnType<typeo
    MINIMAL PDF
    ═══════════════════════════════════════ */
 
-function MinimalPDF({ data, styles: s, primary }: { data: CVForm; styles: ReturnType<typeof makeStyles>; primary: string }) {
+function MinimalPDF({ data, styles: s, primary, labels }: { data: CVForm; styles: ReturnType<typeof makeStyles>; primary: string; labels: CVPDFLabels }) {
   return (
     <Page size="A4" style={s.page}>
       <View style={{ textAlign: "center", marginBottom: 12, borderBottom: "0.5pt solid #e5e7eb", paddingBottom: 10 }}>
-        <Text style={{ ...s.name, color: primary, textAlign: "center", letterSpacing: 1 }}>{data.fullName || "Your Name"}</Text>
+        <Text style={{ ...s.name, color: primary, textAlign: "center", letterSpacing: 1 }}>{data.fullName || labels.yourName}</Text>
         {data.headline ? <Text style={{ ...s.headline, textAlign: "center" }}>{data.headline}</Text> : null}
         <View style={{ ...s.contactRow, justifyContent: "center" }}>
           {data.email ? <Text>{data.email}</Text> : null}
@@ -291,12 +313,12 @@ function MinimalPDF({ data, styles: s, primary }: { data: CVForm; styles: Return
 
       {data.experience.length > 0 && (
         <View style={s.section}>
-          <Text style={{ ...s.sectionTitle, borderBottom: "none", color: "#9ca3af", letterSpacing: 2 }}>EXPERIENCE</Text>
+          <Text style={{ ...s.sectionTitle, borderBottom: "none", color: "#9ca3af", letterSpacing: 2 }}>{labels.experience}</Text>
           {data.experience.map((exp, i) => (
             <View key={i} style={s.expItem}>
               <View style={s.expHeader}>
-                <Text style={s.expTitle}>{exp.jobTitle} <Text style={{ fontFamily: s.page.fontFamily, color: "#6b7280" }}>at {exp.company}</Text></Text>
-                <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? "Present" : exp.endDate}</Text>
+                <Text style={s.expTitle}>{exp.jobTitle} <Text style={{ fontFamily: s.page.fontFamily, color: "#6b7280" }}>{companyPhrase(labels, exp.company)}</Text></Text>
+                <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? labels.present : exp.endDate}</Text>
               </View>
               {exp.description ? <Text style={s.expDesc}>{exp.description}</Text> : null}
             </View>
@@ -306,7 +328,7 @@ function MinimalPDF({ data, styles: s, primary }: { data: CVForm; styles: Return
 
       {data.education.length > 0 && (
         <View style={s.section}>
-          <Text style={{ ...s.sectionTitle, borderBottom: "none", color: "#9ca3af", letterSpacing: 2 }}>EDUCATION</Text>
+          <Text style={{ ...s.sectionTitle, borderBottom: "none", color: "#9ca3af", letterSpacing: 2 }}>{labels.education}</Text>
           {data.education.map((edu, i) => (
             <View key={i} style={s.eduItem}>
               <View>
@@ -321,14 +343,14 @@ function MinimalPDF({ data, styles: s, primary }: { data: CVForm; styles: Return
 
       {data.skills.length > 0 && (
         <View style={s.section}>
-          <Text style={{ ...s.sectionTitle, borderBottom: "none", color: "#9ca3af", letterSpacing: 2 }}>SKILLS</Text>
+          <Text style={{ ...s.sectionTitle, borderBottom: "none", color: "#9ca3af", letterSpacing: 2 }}>{labels.skills}</Text>
           <Text style={{ fontSize: 9, color: "#4b5563" }}>{data.skills.join(" · ")}</Text>
         </View>
       )}
 
       {data.languages.length > 0 && (
         <View style={s.section}>
-          <Text style={{ ...s.sectionTitle, borderBottom: "none", color: "#9ca3af", letterSpacing: 2 }}>LANGUAGES</Text>
+          <Text style={{ ...s.sectionTitle, borderBottom: "none", color: "#9ca3af", letterSpacing: 2 }}>{labels.languages}</Text>
           <Text style={{ fontSize: 9, color: "#4b5563" }}>{data.languages.map((l) => l.language).join(" · ")}</Text>
         </View>
       )}
@@ -344,10 +366,12 @@ export function CVPDFDocument({
   data,
   templateId,
   formatting,
+  labels,
 }: {
   data: CVForm;
   templateId: string;
   formatting: FormattingOptions;
+  labels: CVPDFLabels;
 }) {
   const theme = getTheme(formatting);
   const scale = getFontScale(formatting);
@@ -359,13 +383,13 @@ export function CVPDFDocument({
   return (
     <Document>
       {templateId === "modern" ? (
-        <ModernPDF data={data} styles={s} />
+        <ModernPDF data={data} styles={s} labels={labels} />
       ) : templateId === "minimal" ? (
-        <MinimalPDF data={data} styles={s} primary={theme.primary} />
+        <MinimalPDF data={data} styles={s} primary={theme.primary} labels={labels} />
       ) : (
         /* classic, executive, creative, elegant all use Classic layout for PDF
            (full per-template PDF is a future enhancement) */
-        <ClassicPDF data={data} styles={s} />
+        <ClassicPDF data={data} styles={s} labels={labels} />
       )}
     </Document>
   );

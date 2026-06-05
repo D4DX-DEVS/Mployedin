@@ -16,6 +16,8 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
  * based on their role and recent platform activity.
  */
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
+  const locale = _req.nextUrl.searchParams.get("locale") === "ar" ? "ar" : "en";
+  const isArabic = locale === "ar";
   const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "ai", feature: "ai_daily_insights" });
   if (gateErr) return gateErr;
 
@@ -90,7 +92,10 @@ New applications today: ${newApps}`;
 
 USER CONTEXT:
 ${contextData}
-Current date: ${today.toLocaleDateString("en-AE")}
+Current date: ${today.toLocaleDateString(isArabic ? "ar-AE" : "en-AE")}
+
+Output language: ${isArabic ? "Arabic" : "English"}.
+${isArabic ? "IMPORTANT: Write every user-facing title, message, and action in Arabic. Keep proper nouns only if they are names, roles, companies, or skills from the user data." : ""}
 
 Generate 3 personalized, actionable daily insights for this user. Each insight should be:
 - Specific and relevant to their role
@@ -103,14 +108,67 @@ Return ONLY a JSON array (no markdown):
   ...
 ]`;
 
+  const arabicFallbackInsights = [
+    {
+      type: "tip",
+      title: "حدّث ملفك المهني",
+      message: "راجع الملخص والمهارات والتفضيلات حتى تظهر لك فرص أكثر دقة في أسواق الخليج.",
+      action: "تحديث الملف الشخصي",
+    },
+    {
+      type: "opportunity",
+      title: "راجع الوظائف المطابقة",
+      message: "افتح التوصيات الجديدة اليوم وركّز على الوظائف ذات نسبة التطابق الأعلى.",
+      action: "عرض الوظائف المطابقة",
+    },
+    {
+      type: "metric",
+      title: "تابع نشاطك اليومي",
+      message: "راقب الطلبات والمقابلات والمشاهدات من لوحة التحكم لتحسين خطواتك التالية.",
+      action: "فتح لوحة التحكم",
+    },
+  ];
+
+  const localizeArabicInsightText = (value: unknown): string => {
+    return String(value ?? "")
+      .replace(/\d+/g, (match) => Number(match).toLocaleString("ar-SA"))
+      .replace(/\bGulf\b/g, "الخليج")
+      .replace(/\bUAE\b/g, "الإمارات")
+      .replace(/\bSaudi Arabia\b/g, "المملكة العربية السعودية");
+  };
+
+  const normalizeArabicInsights = (items: unknown[]) =>
+    items.map((insight) => {
+      const item = insight as Record<string, unknown>;
+      return {
+        ...item,
+        title: localizeArabicInsightText(item.title),
+        message: localizeArabicInsightText(item.message),
+        action: localizeArabicInsightText(item.action),
+      };
+    });
+
   const text = await routeGenerate(prompt, "chat");
   let insights;
   try {
     const cleaned = redactPII(text).replace(/```json\n?|```\n?/g, "").trim();
     insights = JSON.parse(cleaned);
+    if (!Array.isArray(insights)) throw new Error("Invalid insights payload");
+
+    const visibleInsightText = insights
+      .map((insight) => `${insight?.title ?? ""} ${insight?.message ?? ""} ${insight?.action ?? ""}`)
+      .join(" ");
+
+    if (isArabic && !/[\u0600-\u06FF]/.test(visibleInsightText)) {
+      insights = arabicFallbackInsights;
+    } else if (isArabic) {
+      insights = normalizeArabicInsights(insights);
+    }
   } catch {
-    insights = [{ type: "tip", title: "Get Started", message: text.slice(0, 200), action: "Check your dashboard" }];
+    insights = isArabic
+      ? arabicFallbackInsights
+      : [{ type: "tip", title: "Get Started", message: text.slice(0, 200), action: "Check your dashboard" }];
   }
 
   return NextResponse.json({ insights, generatedAt: new Date().toISOString() });
-});
+}, { aiQuota: true });

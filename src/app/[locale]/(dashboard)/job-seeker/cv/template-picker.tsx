@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { Check, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -118,7 +119,8 @@ export function TemplatePicker({
   onFilterChange: (f: "all" | "free" | "pro") => void;
   hasProAccess: boolean;
 }) {
-  const filtered = TEMPLATES.filter((t) => filter === "all" ? true : t.tier === filter);
+  const t = useTranslations("cvBuilderPage.templatePicker");
+  const filtered = TEMPLATES.filter((template) => filter === "all" ? true : template.tier === filter);
 
   return (
     <div className="space-y-4">
@@ -137,21 +139,21 @@ export function TemplatePicker({
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             )}
           >
-            {f === "pro" ? "PRO" : f === "all" ? "All" : "Free"}
+            {f === "pro" ? t("filters.pro") : f === "all" ? t("filters.all") : t("filters.free")}
           </button>
         ))}
       </div>
 
       {/* Template grid */}
       <div className="grid grid-cols-2 gap-3">
-        {filtered.map((t) => {
-          const isSelected = selected === t.id;
-          const locked = t.tier === "pro" && !hasProAccess;
+        {filtered.map((template) => {
+          const isSelected = selected === template.id;
+          const locked = template.tier === "pro" && !hasProAccess;
 
           return (
             <button
-              key={t.id}
-              onClick={() => !locked && onSelect(t.id)}
+              key={template.id}
+              onClick={() => !locked && onSelect(template.id)}
               className={cn(
                 "relative rounded-xl border-2 p-2.5 text-left transition-all",
                 isSelected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-border/80",
@@ -162,10 +164,10 @@ export function TemplatePicker({
               <span
                 className={cn(
                   "absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[0.6rem] font-bold uppercase",
-                  t.tier === "pro" ? "bg-orange-500 text-white" : "bg-emerald-500 text-white"
+                  template.tier === "pro" ? "bg-orange-500 text-white" : "bg-emerald-500 text-white"
                 )}
               >
-                {t.tier === "pro" ? "PRO" : "Free"}
+                {template.tier === "pro" ? t("badges.pro") : t("badges.free")}
               </span>
 
               {/* Locked overlay */}
@@ -176,7 +178,7 @@ export function TemplatePicker({
               )}
 
               {/* Thumbnail */}
-              <TemplateThumbnail template={t} themeColor={themeColor} />
+              <TemplateThumbnail template={template} themeColor={themeColor} />
 
               {/* Selected check */}
               {isSelected && (
@@ -186,8 +188,8 @@ export function TemplatePicker({
               )}
 
               {/* Label */}
-              <p className="mt-1.5 text-xs font-medium">{t.name}</p>
-              <p className="text-[0.65rem] text-muted-foreground">{t.description}</p>
+              <p className="mt-1.5 text-xs font-medium">{t(`templates.${template.id}.name`)}</p>
+              <p className="text-[0.65rem] text-muted-foreground">{t(`templates.${template.id}.description`)}</p>
             </button>
           );
         })}
@@ -207,17 +209,18 @@ export function FormattingPanel({
   formatting: FormattingOptions;
   onChange: (f: FormattingOptions) => void;
 }) {
+  const t = useTranslations("cvBuilderPage.formatting");
   return (
     <div className="space-y-5">
       {/* Section Spacing */}
       <div>
-        <label className="text-xs font-medium text-foreground mb-1.5 block">Section spacing</label>
+        <label className="text-xs font-medium text-foreground mb-1.5 block">{t("sectionSpacing")}</label>
         <Select value={formatting.spacing} onValueChange={(v) => onChange({ ...formatting, spacing: v as FormattingOptions["spacing"] })}>
           <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="compact">Compact</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="spacious">Spacious</SelectItem>
+            <SelectItem value="compact">{t("spacing.compact")}</SelectItem>
+            <SelectItem value="medium">{t("spacing.medium")}</SelectItem>
+            <SelectItem value="spacious">{t("spacing.spacious")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -225,7 +228,7 @@ export function FormattingPanel({
       {/* Font + Size row */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-medium text-foreground mb-1.5 block">Select font</label>
+          <label className="text-xs font-medium text-foreground mb-1.5 block">{t("selectFont")}</label>
           <Select value={formatting.font} onValueChange={(v) => onChange({ ...formatting, font: v as FormattingOptions["font"] })}>
             <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -236,13 +239,13 @@ export function FormattingPanel({
           </Select>
         </div>
         <div>
-          <label className="text-xs font-medium text-foreground mb-1.5 block">Font size</label>
+          <label className="text-xs font-medium text-foreground mb-1.5 block">{t("fontSize")}</label>
           <Select value={formatting.fontSize} onValueChange={(v) => onChange({ ...formatting, fontSize: v as FormattingOptions["fontSize"] })}>
             <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="small">Small</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="large">Large</SelectItem>
+              <SelectItem value="small">{t("sizes.small")}</SelectItem>
+              <SelectItem value="medium">{t("sizes.medium")}</SelectItem>
+              <SelectItem value="large">{t("sizes.large")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -250,7 +253,7 @@ export function FormattingPanel({
 
       {/* Theme colors */}
       <div>
-        <label className="text-xs font-medium text-foreground mb-2 block">Theme</label>
+        <label className="text-xs font-medium text-foreground mb-2 block">{t("theme")}</label>
         <div className="flex gap-2.5">
           {THEME_COLORS.map((c) => (
             <button
@@ -275,7 +278,7 @@ export function FormattingPanel({
           onClick={() => onChange(DEFAULT_FORMATTING)}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
         >
-          ↺ Reset to default
+          {t("reset")}
         </button>
       </div>
     </div>

@@ -105,7 +105,7 @@ export function CountrySelect({
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>
           )}
-          <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-40" />
+          <ChevronsUpDown className="ms-auto h-4 w-4 shrink-0 opacity-40" />
         </button>
       </PopoverTrigger>
 
@@ -173,7 +173,7 @@ export function CountrySelect({
                   )} />
                   <span className="font-medium">{country}</span>
                   {isSelected && (
-                    <Check className="ml-auto h-4 w-4 shrink-0 text-primary" />
+                    <Check className="ms-auto h-4 w-4 shrink-0 text-primary" />
                   )}
                 </button>
               );

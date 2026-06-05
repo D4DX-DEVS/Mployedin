@@ -50,6 +50,10 @@ export function withSubscription(
       return handler(req, ctx, params);
     }
 
+    // All users get platinum-tier access until payment gateway is implemented
+    return handler(req, ctx, params);
+
+    /* eslint-disable no-unreachable -- subscription enforcement disabled temporarily */
     await connectDB();
 
     const targetRole = ctx.role === "employer" ? "employer" : "job_seeker";

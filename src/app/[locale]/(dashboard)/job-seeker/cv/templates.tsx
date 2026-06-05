@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import type { CVForm, FormattingOptions } from "./types";
 import { getTheme, getFontStack, getFontScale, getSectionGap } from "./types";
 
@@ -18,10 +19,11 @@ function SectionTitle({ children, color }: { children: React.ReactNode; color: s
 }
 
 function DateRange({ start, end, isCurrent }: { start: string; end: string; isCurrent: boolean }) {
+  const t = useTranslations("cvBuilderPage.previewSections");
   if (!start && !end) return null;
   return (
     <span className="text-[0.6rem] text-gray-500 whitespace-nowrap">
-      {start} – {isCurrent ? "Present" : end}
+      {start} – {isCurrent ? t("present") : end}
     </span>
   );
 }
@@ -32,6 +34,7 @@ function DateRange({ start, end, isCurrent }: { start: string; end: string; isCu
    ═══════════════════════════════════════ */
 
 export function ClassicTemplate({ data, formatting }: { data: CVForm; formatting: FormattingOptions }) {
+  const t = useTranslations("cvBuilderPage.previewSections");
   const theme = getTheme(formatting);
   const fontFamily = getFontStack(formatting);
   const scale = getFontScale(formatting);
@@ -42,7 +45,7 @@ export function ClassicTemplate({ data, formatting }: { data: CVForm; formatting
       {/* Header */}
       <div className="pb-3 mb-3" style={{ borderBottom: `2px solid ${theme.primary}` }}>
         <h1 className="font-bold text-gray-900" style={{ fontSize: `${20 * scale}px` }}>
-          {data.fullName || "Your Name"}
+          {data.fullName || t("yourName")}
         </h1>
         {data.headline && <p className="text-gray-600 mt-0.5" style={{ fontSize: `${9 * scale}px` }}>{data.headline}</p>}
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5" style={{ fontSize: `${8 * scale}px`, color: "#6b7280" }}>
@@ -62,7 +65,7 @@ export function ClassicTemplate({ data, formatting }: { data: CVForm; formatting
         {/* Experience */}
         {data.experience.length > 0 && (
           <div>
-            <SectionTitle color={theme.primary}>Experience</SectionTitle>
+            <SectionTitle color={theme.primary}>{t("experience")}</SectionTitle>
             <div className="space-y-2.5">
               {data.experience.map((exp, i) => (
                 <div key={i}>
@@ -87,7 +90,7 @@ export function ClassicTemplate({ data, formatting }: { data: CVForm; formatting
         {/* Education */}
         {data.education.length > 0 && (
           <div>
-            <SectionTitle color={theme.primary}>Education</SectionTitle>
+            <SectionTitle color={theme.primary}>{t("education")}</SectionTitle>
             <div className="space-y-2">
               {data.education.map((edu, i) => (
                 <div key={i} className="flex justify-between items-start">
@@ -96,7 +99,7 @@ export function ClassicTemplate({ data, formatting }: { data: CVForm; formatting
                       {edu.degree}{edu.field ? ` in ${edu.field}` : ""}
                     </p>
                     <p style={{ fontSize: `${8.5 * scale}px`, color: "#6b7280" }}>{edu.institution}</p>
-                    {edu.grade && <p style={{ fontSize: `${8 * scale}px`, color: "#9ca3af" }}>Grade: {edu.grade}</p>}
+                    {edu.grade && <p style={{ fontSize: `${8 * scale}px`, color: "#9ca3af" }}>{t("grade")}: {edu.grade}</p>}
                   </div>
                   {edu.graduationDate && <span className="text-[0.6rem] text-gray-500">{edu.graduationDate}</span>}
                 </div>
@@ -108,7 +111,7 @@ export function ClassicTemplate({ data, formatting }: { data: CVForm; formatting
         {/* Skills */}
         {data.skills.length > 0 && (
           <div>
-            <SectionTitle color={theme.primary}>Skills</SectionTitle>
+            <SectionTitle color={theme.primary}>{t("skills")}</SectionTitle>
             <div className="flex flex-wrap gap-1">
               {data.skills.map((s, i) => (
                 <span key={i} className="px-1.5 py-0.5 rounded text-gray-700" style={{ fontSize: `${8 * scale}px`, backgroundColor: theme.light }}>{s}</span>
@@ -120,7 +123,7 @@ export function ClassicTemplate({ data, formatting }: { data: CVForm; formatting
         {/* Projects */}
         {data.projects.length > 0 && (
           <div>
-            <SectionTitle color={theme.primary}>Projects</SectionTitle>
+            <SectionTitle color={theme.primary}>{t("projects")}</SectionTitle>
             <div className="space-y-2">
               {data.projects.map((p, i) => (
                 <div key={i}>
@@ -142,7 +145,7 @@ export function ClassicTemplate({ data, formatting }: { data: CVForm; formatting
         {/* Languages */}
         {data.languages.length > 0 && (
           <div>
-            <SectionTitle color={theme.primary}>Languages</SectionTitle>
+            <SectionTitle color={theme.primary}>{t("languages")}</SectionTitle>
             <div className="flex flex-wrap gap-x-3 gap-y-0.5" style={{ fontSize: `${8.5 * scale}px` }}>
               {data.languages.map((l, i) => (
                 <span key={i}>{l.language} <span className="text-gray-500 capitalize">({l.proficiency})</span></span>
@@ -154,7 +157,7 @@ export function ClassicTemplate({ data, formatting }: { data: CVForm; formatting
         {/* Certifications */}
         {data.certifications.length > 0 && (
           <div>
-            <SectionTitle color={theme.primary}>Certifications</SectionTitle>
+            <SectionTitle color={theme.primary}>{t("certifications")}</SectionTitle>
             <ul className="list-disc list-inside space-y-0.5" style={{ fontSize: `${8.5 * scale}px` }}>
               {data.certifications.map((c, i) => <li key={i}>{c}</li>)}
             </ul>
@@ -171,6 +174,7 @@ export function ClassicTemplate({ data, formatting }: { data: CVForm; formatting
    ═══════════════════════════════════════ */
 
 export function ModernTemplate({ data, formatting }: { data: CVForm; formatting: FormattingOptions }) {
+  const t = useTranslations("cvBuilderPage.previewSections");
   const theme = getTheme(formatting);
   const fontFamily = getFontStack(formatting);
   const scale = getFontScale(formatting);
@@ -181,7 +185,7 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
       {/* Left Sidebar */}
       <div className="w-[35%] p-4 text-white" style={{ backgroundColor: theme.primary }}>
         <h1 className="font-bold mb-0.5" style={{ fontSize: `${16 * scale}px` }}>
-          {data.fullName || "Your Name"}
+          {data.fullName || t("yourName")}
         </h1>
         {data.headline && <p className="text-white/80 mb-3" style={{ fontSize: `${8 * scale}px` }}>{data.headline}</p>}
 
@@ -195,7 +199,7 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
         {/* Skills */}
         {data.skills.length > 0 && (
           <div className="mb-4">
-            <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>Skills</h3>
+            <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>{t("skills")}</h3>
             <div className="flex flex-wrap gap-1">
               {data.skills.map((s, i) => (
                 <span key={i} className="px-1.5 py-0.5 rounded text-white" style={{ fontSize: `${7 * scale}px`, backgroundColor: "rgba(255,255,255,0.15)" }}>{s}</span>
@@ -207,7 +211,7 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
         {/* Languages */}
         {data.languages.length > 0 && (
           <div className="mb-4">
-            <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>Languages</h3>
+            <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>{t("languages")}</h3>
             <div className="space-y-0.5" style={{ fontSize: `${7.5 * scale}px` }}>
               {data.languages.map((l, i) => (
                 <p key={i} className="text-white/90">{l.language} <span className="text-white/60 capitalize">– {l.proficiency}</span></p>
@@ -219,7 +223,7 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
         {/* Certifications */}
         {data.certifications.length > 0 && (
           <div>
-            <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>Certifications</h3>
+            <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>{t("certifications")}</h3>
             <ul className="space-y-0.5" style={{ fontSize: `${7.5 * scale}px` }}>
               {data.certifications.map((c, i) => <li key={i} className="text-white/90">• {c}</li>)}
             </ul>
@@ -232,7 +236,7 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
         {/* Experience */}
         {data.experience.length > 0 && (
           <div>
-            <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>Experience</h2>
+            <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>{t("experience")}</h2>
             <div className="space-y-2.5">
               {data.experience.map((exp, i) => (
                 <div key={i}>
@@ -251,7 +255,7 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
         {/* Education */}
         {data.education.length > 0 && (
           <div>
-            <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>Education</h2>
+            <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>{t("education")}</h2>
             <div className="space-y-2">
               {data.education.map((edu, i) => (
                 <div key={i}>
@@ -269,7 +273,7 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
         {/* Projects */}
         {data.projects.length > 0 && (
           <div>
-            <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>Projects</h2>
+            <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>{t("projects")}</h2>
             <div className="space-y-2">
               {data.projects.map((p, i) => (
                 <div key={i}>
@@ -298,6 +302,7 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
    ═══════════════════════════════════════ */
 
 export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting: FormattingOptions }) {
+  const t = useTranslations("cvBuilderPage.previewSections");
   const theme = getTheme(formatting);
   const fontFamily = getFontStack(formatting);
   const scale = getFontScale(formatting);
@@ -308,7 +313,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
       {/* Header — centered */}
       <div className="text-center pb-3 mb-3 border-b border-gray-200">
         <h1 className="font-bold tracking-wide" style={{ fontSize: `${22 * scale}px`, color: theme.primary }}>
-          {data.fullName || "Your Name"}
+          {data.fullName || t("yourName")}
         </h1>
         {data.headline && <p className="text-gray-500 mt-0.5" style={{ fontSize: `${9 * scale}px` }}>{data.headline}</p>}
         <div className="flex justify-center flex-wrap gap-x-3 gap-y-0.5 mt-1.5" style={{ fontSize: `${8 * scale}px`, color: "#9ca3af" }}>
@@ -322,12 +327,12 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
         {/* Experience */}
         {data.experience.length > 0 && (
           <div>
-            <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-2" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>Experience</h2>
+            <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-2" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>{t("experience")}</h2>
             <div className="space-y-3">
               {data.experience.map((exp, i) => (
                 <div key={i}>
                   <div className="flex justify-between">
-                    <p className="font-medium" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">at {exp.company}</span></p>
+                    <p className="font-medium" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">{t("atCompany", { company: exp.company })}</span></p>
                     <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} />
                   </div>
                   {exp.description && <p className="text-gray-500 mt-0.5 whitespace-pre-line" style={{ fontSize: `${8 * scale}px` }}>{exp.description}</p>}
@@ -340,7 +345,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
         {/* Education */}
         {data.education.length > 0 && (
           <div>
-            <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-2" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>Education</h2>
+            <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-2" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>{t("education")}</h2>
             <div className="space-y-2">
               {data.education.map((edu, i) => (
                 <div key={i} className="flex justify-between">
@@ -358,7 +363,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
         {/* Skills */}
         {data.skills.length > 0 && (
           <div>
-            <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-2" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>Skills</h2>
+            <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-2" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>{t("skills")}</h2>
             <p className="text-gray-600" style={{ fontSize: `${8.5 * scale}px` }}>{data.skills.join(" · ")}</p>
           </div>
         )}
@@ -366,7 +371,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
         {/* Projects */}
         {data.projects.length > 0 && (
           <div>
-            <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-2" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>Projects</h2>
+            <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-2" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>{t("projects")}</h2>
             <div className="space-y-2">
               {data.projects.map((p, i) => (
                 <div key={i}>
@@ -382,7 +387,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
         <div className="flex gap-8">
           {data.languages.length > 0 && (
             <div>
-              <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-1" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>Languages</h2>
+              <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-1" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>{t("languages")}</h2>
               <div style={{ fontSize: `${8.5 * scale}px` }}>
                 {data.languages.map((l, i) => (
                   <span key={i}>{i > 0 ? " · " : ""}{l.language}</span>
@@ -392,7 +397,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
           )}
           {data.certifications.length > 0 && (
             <div>
-              <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-1" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>Certifications</h2>
+              <h2 className="font-semibold uppercase tracking-widest text-gray-400 mb-1" style={{ fontSize: `${8 * scale}px`, letterSpacing: "0.15em" }}>{t("certifications")}</h2>
               <div style={{ fontSize: `${8.5 * scale}px` }}>{data.certifications.join(" · ")}</div>
             </div>
           )}
@@ -408,6 +413,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
    ═══════════════════════════════════════ */
 
 export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatting: FormattingOptions }) {
+  const t = useTranslations("cvBuilderPage.previewSections");
   const theme = getTheme(formatting);
   const fontFamily = getFontStack(formatting);
   const scale = getFontScale(formatting);
@@ -421,7 +427,7 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
           {(data.fullName || "U").charAt(0).toUpperCase()}
         </div>
         <div>
-          <h1 className="font-bold" style={{ fontSize: `${18 * scale}px` }}>{data.fullName || "Your Name"}</h1>
+          <h1 className="font-bold" style={{ fontSize: `${18 * scale}px` }}>{data.fullName || t("yourName")}</h1>
           {data.headline && <p className="text-white/80" style={{ fontSize: `${9 * scale}px` }}>{data.headline}</p>}
           <div className="flex flex-wrap gap-x-3 mt-0.5" style={{ fontSize: `${7.5 * scale}px`, color: "rgba(255,255,255,0.7)" }}>
             {data.email && <span>{data.email}</span>}
@@ -437,13 +443,13 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
         <div className="w-[60%]" style={{ display: "flex", flexDirection: "column", gap }}>
           {data.experience.length > 0 && (
             <div>
-              <SectionTitle color={theme.primary}>Professional Experience</SectionTitle>
+              <SectionTitle color={theme.primary}>{t("professionalExperience")}</SectionTitle>
               <div className="space-y-3">
                 {data.experience.map((exp, i) => (
                   <div key={i} className="pl-3" style={{ borderLeft: `2px solid ${theme.primary}40` }}>
                     <p className="font-bold" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle}</p>
                     <p style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
-                    <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{exp.startDate} – {exp.isCurrent ? "Present" : exp.endDate}</p>
+                    <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{exp.startDate} – {exp.isCurrent ? t("present") : exp.endDate}</p>
                     {exp.description && <p className="text-gray-600 mt-0.5 whitespace-pre-line" style={{ fontSize: `${7.5 * scale}px` }}>{exp.description}</p>}
                   </div>
                 ))}
@@ -453,7 +459,7 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
 
           {data.projects.length > 0 && (
             <div>
-              <SectionTitle color={theme.primary}>Key Projects</SectionTitle>
+              <SectionTitle color={theme.primary}>{t("keyProjects")}</SectionTitle>
               <div className="space-y-2">
                 {data.projects.map((p, i) => (
                   <div key={i}>
@@ -477,7 +483,7 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
         <div className="w-[40%]" style={{ display: "flex", flexDirection: "column", gap }}>
           {data.education.length > 0 && (
             <div>
-              <SectionTitle color={theme.primary}>Education</SectionTitle>
+              <SectionTitle color={theme.primary}>{t("education")}</SectionTitle>
               <div className="space-y-2">
                 {data.education.map((edu, i) => (
                   <div key={i}>
@@ -492,7 +498,7 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
 
           {data.skills.length > 0 && (
             <div>
-              <SectionTitle color={theme.primary}>Core Competencies</SectionTitle>
+              <SectionTitle color={theme.primary}>{t("coreCompetencies")}</SectionTitle>
               <div className="flex flex-wrap gap-1">
                 {data.skills.map((s, i) => (
                   <span key={i} className="px-1.5 py-0.5 rounded font-medium" style={{ fontSize: `${7.5 * scale}px`, backgroundColor: theme.light, color: theme.primary }}>{s}</span>
@@ -503,7 +509,7 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
 
           {data.languages.length > 0 && (
             <div>
-              <SectionTitle color={theme.primary}>Languages</SectionTitle>
+              <SectionTitle color={theme.primary}>{t("languages")}</SectionTitle>
               <div className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
                 {data.languages.map((l, i) => (
                   <p key={i}>{l.language} <span className="text-gray-400 capitalize">({l.proficiency})</span></p>
@@ -514,7 +520,7 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
 
           {data.certifications.length > 0 && (
             <div>
-              <SectionTitle color={theme.primary}>Certifications</SectionTitle>
+              <SectionTitle color={theme.primary}>{t("certifications")}</SectionTitle>
               <ul className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
                 {data.certifications.map((c, i) => <li key={i}>• {c}</li>)}
               </ul>
@@ -532,6 +538,7 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
    ═══════════════════════════════════════ */
 
 export function CreativeTemplate({ data, formatting }: { data: CVForm; formatting: FormattingOptions }) {
+  const t = useTranslations("cvBuilderPage.previewSections");
   const theme = getTheme(formatting);
   const fontFamily = getFontStack(formatting);
   const scale = getFontScale(formatting);
@@ -543,7 +550,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
       <div className="p-5 text-white relative" style={{ backgroundColor: theme.primary }}>
         <div className="absolute inset-0 opacity-10" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 60%)" }} />
         <h1 className="font-bold relative" style={{ fontSize: `${24 * scale}px` }}>
-          {data.fullName || "Your Name"}
+          {data.fullName || t("yourName")}
         </h1>
         {data.headline && <p className="text-white/80 relative mt-0.5" style={{ fontSize: `${10 * scale}px` }}>{data.headline}</p>}
         <div className="flex flex-wrap gap-x-4 mt-2 relative" style={{ fontSize: `${8 * scale}px`, color: "rgba(255,255,255,0.8)" }}>
@@ -557,7 +564,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
         {/* Skills as progress bars */}
         {data.skills.length > 0 && (
           <div>
-            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>Skills</h2>
+            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("skills")}</h2>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
               {data.skills.slice(0, 10).map((s, i) => (
                 <div key={i}>
@@ -576,7 +583,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
         {/* Experience */}
         {data.experience.length > 0 && (
           <div>
-            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>Experience</h2>
+            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("experience")}</h2>
             <div className="space-y-3">
               {data.experience.map((exp, i) => (
                 <div key={i} className="flex gap-3">
@@ -598,7 +605,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
         {/* Education */}
         {data.education.length > 0 && (
           <div>
-            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>Education</h2>
+            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("education")}</h2>
             <div className="space-y-2">
               {data.education.map((edu, i) => (
                 <div key={i} className="flex gap-3">
@@ -616,7 +623,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
         {/* Projects */}
         {data.projects.length > 0 && (
           <div>
-            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>Projects</h2>
+            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("projects")}</h2>
             <div className="grid grid-cols-2 gap-3">
               {data.projects.map((p, i) => (
                 <div key={i} className="p-2 rounded-lg" style={{ backgroundColor: theme.light }}>
@@ -632,7 +639,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
         {data.languages.length > 0 && (
           <div className="flex gap-6">
             <div>
-              <h2 className="font-bold uppercase tracking-wide mb-1" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>Languages</h2>
+              <h2 className="font-bold uppercase tracking-wide mb-1" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("languages")}</h2>
               <div className="flex gap-2">
                 {data.languages.map((l, i) => (
                   <span key={i} className="px-2 py-0.5 rounded-full text-white" style={{ fontSize: `${7 * scale}px`, backgroundColor: theme.primary }}>{l.language}</span>
@@ -652,6 +659,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
    ═══════════════════════════════════════ */
 
 export function ElegantTemplate({ data, formatting }: { data: CVForm; formatting: FormattingOptions }) {
+  const t = useTranslations("cvBuilderPage.previewSections");
   const theme = getTheme(formatting);
   const fontFamily = getFontStack(formatting);
   const scale = getFontScale(formatting);
@@ -662,7 +670,7 @@ export function ElegantTemplate({ data, formatting }: { data: CVForm; formatting
       {/* Header with decorative line */}
       <div className="text-center pb-4 mb-3">
         <h1 className="font-bold tracking-[0.2em] uppercase" style={{ fontSize: `${20 * scale}px`, color: theme.primary }}>
-          {data.fullName || "Your Name"}
+          {data.fullName || t("yourName")}
         </h1>
         {data.headline && (
           <p className="italic text-gray-500 mt-1" style={{ fontSize: `${9.5 * scale}px` }}>{data.headline}</p>
@@ -684,14 +692,14 @@ export function ElegantTemplate({ data, formatting }: { data: CVForm; formatting
         {data.experience.length > 0 && (
           <div>
             <h2 className="font-bold tracking-[0.15em] uppercase text-center mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>
-              — Experience —
+              {t("decoratedExperience")}
             </h2>
             <div className="space-y-3">
               {data.experience.map((exp, i) => (
                 <div key={i} className="text-center">
                   <p className="font-bold" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle}</p>
                   <p className="italic" style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
-                  <p className="text-gray-400" style={{ fontSize: `${7.5 * scale}px` }}>{exp.startDate} – {exp.isCurrent ? "Present" : exp.endDate}</p>
+                  <p className="text-gray-400" style={{ fontSize: `${7.5 * scale}px` }}>{exp.startDate} – {exp.isCurrent ? t("present") : exp.endDate}</p>
                   {exp.description && <p className="text-gray-600 mt-0.5 text-left whitespace-pre-line" style={{ fontSize: `${8 * scale}px` }}>{exp.description}</p>}
                 </div>
               ))}
@@ -703,7 +711,7 @@ export function ElegantTemplate({ data, formatting }: { data: CVForm; formatting
         {data.education.length > 0 && (
           <div>
             <h2 className="font-bold tracking-[0.15em] uppercase text-center mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>
-              — Education —
+              {t("decoratedEducation")}
             </h2>
             <div className="space-y-2 text-center">
               {data.education.map((edu, i) => (
@@ -720,7 +728,7 @@ export function ElegantTemplate({ data, formatting }: { data: CVForm; formatting
         {data.skills.length > 0 && (
           <div>
             <h2 className="font-bold tracking-[0.15em] uppercase text-center mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>
-              — Skills —
+              {t("decoratedSkills")}
             </h2>
             <p className="text-center text-gray-600" style={{ fontSize: `${8.5 * scale}px` }}>
               {data.skills.join("  ·  ")}
@@ -732,7 +740,7 @@ export function ElegantTemplate({ data, formatting }: { data: CVForm; formatting
         {data.projects.length > 0 && (
           <div>
             <h2 className="font-bold tracking-[0.15em] uppercase text-center mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>
-              — Projects —
+              {t("decoratedProjects")}
             </h2>
             <div className="space-y-2">
               {data.projects.map((p, i) => (
@@ -749,7 +757,7 @@ export function ElegantTemplate({ data, formatting }: { data: CVForm; formatting
         <div className="flex justify-center gap-12">
           {data.languages.length > 0 && (
             <div className="text-center">
-              <h2 className="font-bold tracking-[0.15em] uppercase mb-1" style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>Languages</h2>
+              <h2 className="font-bold tracking-[0.15em] uppercase mb-1" style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>{t("languages")}</h2>
               <div style={{ fontSize: `${8.5 * scale}px` }}>
                 {data.languages.map((l, i) => (
                   <p key={i}>{l.language} <span className="text-gray-400 italic capitalize">({l.proficiency})</span></p>
@@ -759,7 +767,7 @@ export function ElegantTemplate({ data, formatting }: { data: CVForm; formatting
           )}
           {data.certifications.length > 0 && (
             <div className="text-center">
-              <h2 className="font-bold tracking-[0.15em] uppercase mb-1" style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>Certifications</h2>
+              <h2 className="font-bold tracking-[0.15em] uppercase mb-1" style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>{t("certifications")}</h2>
               <div style={{ fontSize: `${8.5 * scale}px` }}>
                 {data.certifications.map((c, i) => <p key={i}>{c}</p>)}
               </div>

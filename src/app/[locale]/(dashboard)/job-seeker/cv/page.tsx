@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import {
   Upload, CheckCircle, AlertCircle, Sparkles,
   X, Plus, Pencil, Save, Download, Loader2,
@@ -20,11 +21,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 import type {
   CVForm, WorkExperience, Education, LanguageSkill,
   Project, SocialLink, FormattingOptions,
 } from "./types";
+import type { CVPDFLabels } from "./cv-pdf-document";
 import {
   PROFICIENCY_OPTIONS, EMPTY_EXPERIENCE, EMPTY_EDUCATION,
   EMPTY_LANGUAGE, EMPTY_PROJECT, EMPTY_LINK,
@@ -52,6 +55,7 @@ function getVisibleForm(form: CVForm, hidden: Set<string>): CVForm {
    ══════════════════════════════════════════════════════════ */
 
 export default function CVBuilderPage() {
+  const t = useTranslations("cvBuilderPage");
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -88,7 +92,7 @@ export default function CVBuilderPage() {
   });
 
   useEffect(() => {
-    document.title = "CV Builder · MPLOYEDIN";
+    document.title = t("documentTitle");
     fetchProfile();
   }, []);
 
@@ -189,11 +193,11 @@ export default function CVBuilderPage() {
   async function handleImportCV(file: File) {
     const allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
     if (!allowed.includes(file.type)) {
-      setError("Supported formats: PDF, JPG, PNG, WEBP");
+      setError(t("errors.supportedFormats"));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError("File size must be under 10 MB");
+      setError(t("errors.fileSize"));
       return;
     }
 
@@ -205,13 +209,13 @@ export default function CVBuilderPage() {
     try {
       const formData = new FormData();
       formData.append("cv", file);
-      const res = await fetch("/api/ai/cv-extract", { method: "POST", body: formData });
+      const res = await csrfFetch("/api/ai/cv-extract", { method: "POST", body: formData });
       clearInterval(tick);
       setImportProgress(100);
 
       if (!res.ok) {
         const errData = await res.json().catch(() => null);
-        throw new Error(errData?.error ?? "Import failed");
+        throw new Error(errData?.error ?? t("errors.importFailed"));
       }
 
       const data = await res.json();
@@ -236,7 +240,7 @@ export default function CVBuilderPage() {
           if (ext.socialLinks?.length) {
             for (const l of ext.socialLinks as { label?: string; url?: string }[]) {
               if (l.url && !["linkedin", "portfolio", "website"].includes((l.label ?? "").toLowerCase())) {
-                links.push({ label: l.label ?? "Link", url: l.url });
+                links.push({ label: l.label ?? t("defaults.link"), url: l.url });
               }
             }
           }
@@ -285,11 +289,11 @@ export default function CVBuilderPage() {
             }))
           : prev.projects,
       }));
-      setSuccessMsg("CV imported successfully! Review and edit the fields below.");
+      setSuccessMsg(t("messages.importSuccess"));
       setTimeout(() => setSuccessMsg(""), 5000);
     } catch (e) {
       clearInterval(tick);
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(e instanceof Error ? e.message : t("errors.generic"));
     } finally {
       setImporting(false);
       setImportProgress(0);
@@ -364,15 +368,15 @@ export default function CVBuilderPage() {
           ...form.additionalLinks.filter((l) => l.url.trim()),
         ],
       };
-      const res = await fetch("/api/job-seeker/profile", {
+      const res = await csrfFetch("/api/job-seeker/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error("Failed to save profile");
-      toast.success("Profile saved successfully!");
+      if (!res.ok) throw new Error(t("errors.saveProfile"));
+      toast.success(t("messages.profileSaved"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : t("errors.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -386,7 +390,7 @@ export default function CVBuilderPage() {
       const { CVPDFDocument } = await import("./cv-pdf-document");
       const visibleForm = getVisibleForm(form, hiddenSections);
       const blob = await pdf(
-        <CVPDFDocument data={visibleForm} templateId={selectedTemplate} formatting={formatting} />
+        <CVPDFDocument data={visibleForm} templateId={selectedTemplate} formatting={formatting} labels={cvPdfLabels} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -396,10 +400,10 @@ export default function CVBuilderPage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("CV downloaded!");
+      toast.success(t("messages.downloaded"));
     } catch (e) {
       console.error("PDF generation failed:", e);
-      setError("Failed to generate PDF. Please try again.");
+      setError(t("errors.pdfFailed"));
     }
   }
 
@@ -413,6 +417,28 @@ export default function CVBuilderPage() {
   }
 
   const themeColor = THEME_COLORS.find((c) => c.id === formatting.themeColor)?.primary ?? "#2563eb";
+  const proficiencyOptions = PROFICIENCY_OPTIONS.map((option) => ({
+    ...option,
+    label: t(`proficiency.${option.value}`),
+  }));
+  const cvPdfLabels: CVPDFLabels = {
+    yourName: t("previewSections.yourName"),
+    present: t("previewSections.present"),
+    experience: t("previewSections.experience"),
+    education: t("previewSections.education"),
+    grade: t("previewSections.grade"),
+    skills: t("previewSections.skills"),
+    projects: t("previewSections.projects"),
+    languages: t("previewSections.languages"),
+    certifications: t("previewSections.certifications"),
+    atCompany: t("previewSections.atCompany", { company: "{company}" }),
+    proficiency: {
+      basic: t("proficiency.basic"),
+      conversational: t("proficiency.conversational"),
+      professional: t("proficiency.professional"),
+      native: t("proficiency.native"),
+    },
+  };
 
   /* ══════════════════════════════════════════════════════════
      RENDER
@@ -421,8 +447,8 @@ export default function CVBuilderPage() {
   return (
     <div className="page-container">
       <PageHeader
-        title="CV Builder"
-        description="Create a professional CV with AI assistance, templates, and custom formatting"
+        title={t("header.title")}
+        description={t("header.description")}
       />
 
       {error && (
@@ -449,15 +475,15 @@ export default function CVBuilderPage() {
             <TabsList className="mb-4">
               <TabsTrigger value="editor" className="gap-1.5">
                 <Pencil className="w-3.5 h-3.5" />
-                AI Editor
+                {t("tabs.editor")}
               </TabsTrigger>
               <TabsTrigger value="templates" className="gap-1.5">
                 <LayoutTemplate className="w-3.5 h-3.5" />
-                Templates
+                {t("tabs.templates")}
               </TabsTrigger>
               <TabsTrigger value="formatting" className="gap-1.5">
                 <Paintbrush className="w-3.5 h-3.5" />
-                Formatting
+                {t("tabs.formatting")}
               </TabsTrigger>
             </TabsList>
 
@@ -472,8 +498,8 @@ export default function CVBuilderPage() {
                         <Sparkles className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold">Import from CV</p>
-                        <p className="text-xs text-muted-foreground">Upload a PDF or image and let AI fill in the fields</p>
+                        <p className="text-sm font-semibold">{t("import.title")}</p>
+                        <p className="text-xs text-muted-foreground">{t("import.description")}</p>
                       </div>
                     </div>
                     <Button
@@ -484,7 +510,7 @@ export default function CVBuilderPage() {
                       className="gap-2 shrink-0"
                     >
                       {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                      {importing ? "Importing..." : "Upload CV"}
+                      {importing ? t("import.importing") : t("import.upload")}
                     </Button>
                     <input
                       ref={fileInputRef}
@@ -497,7 +523,7 @@ export default function CVBuilderPage() {
                   {importing && (
                     <div className="mt-3 space-y-1">
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>AI is reading your CV...</span>
+                        <span>{t("import.reading")}</span>
                         <span>{importProgress}%</span>
                       </div>
                       <Progress value={importProgress} className="h-2" />
@@ -506,34 +532,34 @@ export default function CVBuilderPage() {
                 </div>
 
                 {/* Personal Information */}
-                <SectionCard title="Personal Details" icon={<UserIcon className="w-4 h-4" />}>
+                <SectionCard title={t("sections.personalDetails")} icon={<UserIcon className="w-4 h-4" />}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField label="Full Name" value={form.fullName}
-                      onChange={(v) => setForm((f) => ({ ...f, fullName: v }))} placeholder="Your full name" />
-                    <FormField label="Email" value={form.email}
-                      onChange={(v) => setForm((f) => ({ ...f, email: v }))} placeholder="Contact email" />
-                    <FormField label="Phone" value={form.phone}
+                    <FormField label={t("fields.fullName")} value={form.fullName}
+                      onChange={(v) => setForm((f) => ({ ...f, fullName: v }))} placeholder={t("placeholders.fullName")} />
+                    <FormField label={t("fields.email")} value={form.email}
+                      onChange={(v) => setForm((f) => ({ ...f, email: v }))} placeholder={t("placeholders.email")} />
+                    <FormField label={t("fields.phone")} value={form.phone}
                       onChange={(v) => setForm((f) => ({ ...f, phone: v }))} placeholder="+971 50 000 0000" />
-                    <FormField label="Nationality" value={form.nationality}
-                      onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} placeholder="e.g. Indian" />
+                    <FormField label={t("fields.nationality")} value={form.nationality}
+                      onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} placeholder={t("placeholders.nationality")} />
                     <div className="md:col-span-2">
-                      <FormField label="Current Location" value={form.currentLocation}
-                        onChange={(v) => setForm((f) => ({ ...f, currentLocation: v }))} placeholder="City, Country" />
+                      <FormField label={t("fields.currentLocation")} value={form.currentLocation}
+                        onChange={(v) => setForm((f) => ({ ...f, currentLocation: v }))} placeholder={t("placeholders.location")} />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <Label className="text-xs text-muted-foreground">Profile Summary</Label>
+                        <Label className="text-xs text-muted-foreground">{t("fields.profileSummary")}</Label>
                         <AIWriteButton
                           section="summary"
                           context={{ currentText: form.headline, skills: form.skills.join(", ") }}
                           onResult={(text) => setForm((f) => ({ ...f, headline: text }))}
-                          label="Write with AI ✦"
+                          label={t("actions.writeWithAi")}
                         />
                       </div>
                       <Textarea
                         value={form.headline}
                         onChange={(e) => setForm((f) => ({ ...f, headline: e.target.value }))}
-                        placeholder="Brief professional summary or headline..."
+                        placeholder={t("placeholders.summary")}
                         rows={3}
                         className="resize-none"
                       />
@@ -541,13 +567,13 @@ export default function CVBuilderPage() {
                     </div>
                     <FormField label="LinkedIn" value={form.linkedin}
                       onChange={(v) => setForm((f) => ({ ...f, linkedin: v }))} placeholder="https://linkedin.com/in/..." />
-                    <FormField label="Portfolio / Website" value={form.portfolio}
+                    <FormField label={t("fields.portfolio")} value={form.portfolio}
                       onChange={(v) => setForm((f) => ({ ...f, portfolio: v }))} placeholder="https://..." />
                     {form.additionalLinks.map((link, i) => (
                       <div key={i} className="md:col-span-2 grid grid-cols-[1fr_2fr_auto] items-end gap-3 group">
-                        <FormField label="Title" value={link.label}
-                          onChange={(v) => updateLink(i, "label", v)} placeholder="e.g. GitHub" />
-                        <FormField label="URL" value={link.url}
+                        <FormField label={t("fields.title")} value={link.label}
+                          onChange={(v) => updateLink(i, "label", v)} placeholder={t("placeholders.linkTitle")} />
+                        <FormField label={t("fields.url")} value={link.url}
                           onChange={(v) => updateLink(i, "url", v)} placeholder="https://..." />
                         <button onClick={() => removeLink(i)} className="mb-[5px] text-muted-foreground hover:text-destructive transition-colors">
                           <Trash2 className="w-4 h-4" />
@@ -556,7 +582,7 @@ export default function CVBuilderPage() {
                     ))}
                     <div className="md:col-span-2">
                       <Button variant="ghost" size="sm" onClick={addLink} className="gap-1 h-7 text-xs text-muted-foreground hover:text-foreground">
-                        <Plus className="w-3.5 h-3.5" /> Add another link
+                        <Plus className="w-3.5 h-3.5" /> {t("actions.addAnotherLink")}
                       </Button>
                     </div>
                   </div>
@@ -564,14 +590,14 @@ export default function CVBuilderPage() {
 
                 {/* Experience */}
                 <SectionCard
-                  title={`Work Experience (${form.experience.length})`}
+                  title={t("sections.workExperience", { count: form.experience.length })}
                   icon={<Briefcase className="w-4 h-4" />}
-                  badge={<span className="text-[0.6rem] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" />AI-powered</span>}
-                  action={<Button variant="outline" size="sm" onClick={addExperience} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> Add</Button>}
+                  badge={<span className="text-[0.6rem] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" />{t("badges.aiPowered")}</span>}
+                  action={<Button variant="outline" size="sm" onClick={addExperience} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> {t("actions.add")}</Button>}
                   sectionKey="experience" hidden={hiddenSections.has("experience")} onToggle={() => toggleSection("experience")}
                 >
                   {form.experience.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-4 text-center">No experience yet. Click &quot;Add&quot; to start.</p>
+                    <p className="text-xs text-muted-foreground py-4 text-center">{t("empty.experience")}</p>
                   )}
                   <div className="space-y-4">
                     {form.experience.map((exp, i) => (
@@ -580,22 +606,22 @@ export default function CVBuilderPage() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <FormField label="Job Title" value={exp.jobTitle}
-                            onChange={(v) => updateExperience(i, "jobTitle", v)} placeholder="e.g. Senior Developer" />
-                          <FormField label="Company" value={exp.company}
-                            onChange={(v) => updateExperience(i, "company", v)} placeholder="Company name" />
+                          <FormField label={t("fields.jobTitle")} value={exp.jobTitle}
+                            onChange={(v) => updateExperience(i, "jobTitle", v)} placeholder={t("placeholders.jobTitle")} />
+                          <FormField label={t("fields.company")} value={exp.company}
+                            onChange={(v) => updateExperience(i, "company", v)} placeholder={t("placeholders.company")} />
                           <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <FormField label="Location" value={exp.country}
-                              onChange={(v) => updateExperience(i, "country", v)} placeholder="City, Country" />
-                            <FormField label="From" value={exp.startDate} type="month"
+                            <FormField label={t("fields.location")} value={exp.country}
+                              onChange={(v) => updateExperience(i, "country", v)} placeholder={t("placeholders.location")} />
+                            <FormField label={t("fields.from")} value={exp.startDate} type="month"
                               onChange={(v) => updateExperience(i, "startDate", v)} />
                             {!exp.isCurrent ? (
-                              <FormField label="To" value={exp.endDate} type="month"
+                              <FormField label={t("fields.to")} value={exp.endDate} type="month"
                                 onChange={(v) => updateExperience(i, "endDate", v)} />
                             ) : (
                               <div className="space-y-1.5">
-                                <Label className="text-xs text-muted-foreground">To</Label>
-                                <div className="h-10 flex items-center text-sm text-muted-foreground">Present</div>
+                                <Label className="text-xs text-muted-foreground">{t("fields.to")}</Label>
+                                <div className="h-10 flex items-center text-sm text-muted-foreground">{t("fields.present")}</div>
                               </div>
                             )}
                           </div>
@@ -604,11 +630,11 @@ export default function CVBuilderPage() {
                           <input type="checkbox" checked={exp.isCurrent}
                             onChange={(e) => updateExperience(i, "isCurrent", e.target.checked)}
                             className="rounded border-muted-foreground/40" id={`current-${i}`} />
-                          <label htmlFor={`current-${i}`} className="text-xs text-muted-foreground">I currently work here</label>
+                          <label htmlFor={`current-${i}`} className="text-xs text-muted-foreground">{t("fields.currentWork")}</label>
                         </div>
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs text-muted-foreground">Description</Label>
+                            <Label className="text-xs text-muted-foreground">{t("fields.description")}</Label>
                             <AIWriteButton
                               section="experience_description"
                               context={{ jobTitle: exp.jobTitle, company: exp.company, currentText: exp.description }}
@@ -618,7 +644,7 @@ export default function CVBuilderPage() {
                           <Textarea
                             value={exp.description}
                             onChange={(e) => updateExperience(i, "description", e.target.value)}
-                            placeholder="Key responsibilities and achievements..."
+                            placeholder={t("placeholders.experienceDescription")}
                             rows={2} className="resize-none text-sm"
                           />
                         </div>
@@ -629,13 +655,13 @@ export default function CVBuilderPage() {
 
                 {/* Education */}
                 <SectionCard
-                  title={`Education (${form.education.length})`}
+                  title={t("sections.education", { count: form.education.length })}
                   icon={<GraduationCap className="w-4 h-4" />}
-                  action={<Button variant="outline" size="sm" onClick={addEducation} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> Add</Button>}
+                  action={<Button variant="outline" size="sm" onClick={addEducation} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> {t("actions.add")}</Button>}
                   sectionKey="education" hidden={hiddenSections.has("education")} onToggle={() => toggleSection("education")}
                 >
                   {form.education.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-4 text-center">No education yet. Click &quot;Add&quot; to start.</p>
+                    <p className="text-xs text-muted-foreground py-4 text-center">{t("empty.education")}</p>
                   )}
                   <div className="space-y-4">
                     {form.education.map((edu, i) => (
@@ -644,16 +670,16 @@ export default function CVBuilderPage() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <FormField label="Degree" value={edu.degree}
-                            onChange={(v) => updateEducation(i, "degree", v)} placeholder="e.g. Bachelor of Science" />
-                          <FormField label="Field of Study" value={edu.field}
-                            onChange={(v) => updateEducation(i, "field", v)} placeholder="e.g. Computer Science" />
-                          <FormField label="Institution" value={edu.institution}
-                            onChange={(v) => updateEducation(i, "institution", v)} placeholder="University name" />
-                          <FormField label="Graduation Date" value={edu.graduationDate} type="month"
+                          <FormField label={t("fields.degree")} value={edu.degree}
+                            onChange={(v) => updateEducation(i, "degree", v)} placeholder={t("placeholders.degree")} />
+                          <FormField label={t("fields.fieldOfStudy")} value={edu.field}
+                            onChange={(v) => updateEducation(i, "field", v)} placeholder={t("placeholders.fieldOfStudy")} />
+                          <FormField label={t("fields.institution")} value={edu.institution}
+                            onChange={(v) => updateEducation(i, "institution", v)} placeholder={t("placeholders.institution")} />
+                          <FormField label={t("fields.graduationDate")} value={edu.graduationDate} type="month"
                             onChange={(v) => updateEducation(i, "graduationDate", v)} />
-                          <FormField label="Grade / GPA" value={edu.grade}
-                            onChange={(v) => updateEducation(i, "grade", v)} placeholder="e.g. 3.8 / 4.0" />
+                          <FormField label={t("fields.grade")} value={edu.grade}
+                            onChange={(v) => updateEducation(i, "grade", v)} placeholder={t("placeholders.grade")} />
                         </div>
                       </div>
                     ))}
@@ -661,7 +687,7 @@ export default function CVBuilderPage() {
                 </SectionCard>
 
                 {/* Skills */}
-                <SectionCard title={`Key Skills (${form.skills.length})`} icon={<Award className="w-4 h-4" />}
+                <SectionCard title={t("sections.skills", { count: form.skills.length })} icon={<Award className="w-4 h-4" />}
                   sectionKey="skills" hidden={hiddenSections.has("skills")} onToggle={() => toggleSection("skills")}
                 >
                   <div className="flex flex-wrap gap-2 min-h-[2rem]">
@@ -673,28 +699,28 @@ export default function CVBuilderPage() {
                         </button>
                       </Badge>
                     ))}
-                    {form.skills.length === 0 && <p className="text-xs text-muted-foreground">No skills yet — add some below</p>}
+                    {form.skills.length === 0 && <p className="text-xs text-muted-foreground">{t("empty.skills")}</p>}
                   </div>
                   <div className="flex gap-2 mt-2">
                     <Input value={skillInput} onChange={(e) => setSkillInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
-                      placeholder="Type a skill and press Enter..." className="h-8 text-sm" />
+                      placeholder={t("placeholders.skill")} className="h-8 text-sm" />
                     <Button size="sm" variant="outline" onClick={addSkill} className="h-8 gap-1 shrink-0">
-                      <Plus className="w-3.5 h-3.5" /> Add
+                      <Plus className="w-3.5 h-3.5" /> {t("actions.add")}
                     </Button>
                   </div>
                 </SectionCard>
 
                 {/* Projects */}
                 <SectionCard
-                  title={`Projects (${form.projects.length})`}
+                  title={t("sections.projects", { count: form.projects.length })}
                   icon={<FolderKanban className="w-4 h-4" />}
-                  badge={<span className="text-[0.6rem] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" />AI-powered</span>}
-                  action={<Button variant="outline" size="sm" onClick={addProject} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> Add</Button>}
+                  badge={<span className="text-[0.6rem] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" />{t("badges.aiPowered")}</span>}
+                  action={<Button variant="outline" size="sm" onClick={addProject} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> {t("actions.add")}</Button>}
                   sectionKey="projects" hidden={hiddenSections.has("projects")} onToggle={() => toggleSection("projects")}
                 >
                   {form.projects.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-4 text-center">No projects yet. Click &quot;Add&quot; to start.</p>
+                    <p className="text-xs text-muted-foreground py-4 text-center">{t("empty.projects")}</p>
                   )}
                   <div className="space-y-4">
                     {form.projects.map((proj, i) => (
@@ -704,12 +730,12 @@ export default function CVBuilderPage() {
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="md:col-span-2">
-                            <FormField label="Project Title" value={proj.title}
-                              onChange={(v) => updateProject(i, "title", v)} placeholder="e.g. E-Commerce Platform" />
+                            <FormField label={t("fields.projectTitle")} value={proj.title}
+                              onChange={(v) => updateProject(i, "title", v)} placeholder={t("placeholders.projectTitle")} />
                           </div>
                           <div className="md:col-span-2 space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <Label className="text-xs text-muted-foreground">Description</Label>
+                              <Label className="text-xs text-muted-foreground">{t("fields.description")}</Label>
                               <AIWriteButton
                                 section="project_description"
                                 context={{ projectTitle: proj.title, techStack: proj.techStack.join(", "), currentText: proj.description }}
@@ -718,17 +744,17 @@ export default function CVBuilderPage() {
                             </div>
                             <Textarea value={proj.description}
                               onChange={(e) => updateProject(i, "description", e.target.value)}
-                              placeholder="Brief project description..." rows={2} className="resize-none text-sm" />
+                              placeholder={t("placeholders.projectDescription")} rows={2} className="resize-none text-sm" />
                           </div>
                           <div className="md:col-span-2 space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">Tech Stack</Label>
+                            <Label className="text-xs text-muted-foreground">{t("fields.techStack")}</Label>
                             <Input value={proj.techStack.join(", ")}
                               onChange={(e) => updateProject(i, "techStack", e.target.value.split(",").map((t) => t.trim()).filter(Boolean))}
-                              placeholder="React, Node.js, MongoDB (comma-separated)" className="text-sm" />
+                              placeholder={t("placeholders.techStack")} className="text-sm" />
                           </div>
-                          <FormField label="Project URL" value={proj.projectUrl}
+                          <FormField label={t("fields.projectUrl")} value={proj.projectUrl}
                             onChange={(v) => updateProject(i, "projectUrl", v)} placeholder="https://..." />
-                          <FormField label="Repository URL" value={proj.repoUrl}
+                          <FormField label={t("fields.repositoryUrl")} value={proj.repoUrl}
                             onChange={(v) => updateProject(i, "repoUrl", v)} placeholder="https://github.com/..." />
                         </div>
                       </div>
@@ -738,20 +764,20 @@ export default function CVBuilderPage() {
 
                 {/* Languages */}
                 <SectionCard
-                  title={`Languages (${form.languages.length})`}
+                  title={t("sections.languages", { count: form.languages.length })}
                   icon={<Globe className="w-4 h-4" />}
-                  action={<Button variant="outline" size="sm" onClick={addLanguage} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> Add</Button>}
+                  action={<Button variant="outline" size="sm" onClick={addLanguage} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> {t("actions.add")}</Button>}
                   sectionKey="languages" hidden={hiddenSections.has("languages")} onToggle={() => toggleSection("languages")}
                 >
-                  {form.languages.length === 0 && <p className="text-xs text-muted-foreground py-2 text-center">No languages yet.</p>}
+                  {form.languages.length === 0 && <p className="text-xs text-muted-foreground py-2 text-center">{t("empty.languages")}</p>}
                   <div className="space-y-3">
                     {form.languages.map((lang, i) => (
                       <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-end gap-3 group">
-                        <FormField label="Language" value={lang.language}
-                          onChange={(v) => updateLanguage(i, "language", v)} placeholder="e.g. English" />
+                        <FormField label={t("fields.language")} value={lang.language}
+                          onChange={(v) => updateLanguage(i, "language", v)} placeholder={t("placeholders.language")} />
                         <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">Proficiency</Label>
-                          <SearchableSelect options={PROFICIENCY_OPTIONS} value={lang.proficiency}
+                          <Label className="text-xs text-muted-foreground">{t("fields.proficiency")}</Label>
+                          <SearchableSelect options={proficiencyOptions} value={lang.proficiency}
                             onValueChange={(v) => updateLanguage(i, "proficiency", v)} />
                         </div>
                         <button onClick={() => removeLanguage(i)} className="mb-[5px] opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
@@ -763,7 +789,7 @@ export default function CVBuilderPage() {
                 </SectionCard>
 
                 {/* Certifications */}
-                <SectionCard title={`Certifications (${form.certifications.length})`} icon={<Award className="w-4 h-4" />}
+                <SectionCard title={t("sections.certifications", { count: form.certifications.length })} icon={<Award className="w-4 h-4" />}
                   sectionKey="certifications" hidden={hiddenSections.has("certifications")} onToggle={() => toggleSection("certifications")}
                 >
                   <div className="space-y-2">
@@ -779,9 +805,9 @@ export default function CVBuilderPage() {
                   <div className="flex gap-2 mt-2">
                     <Input value={certInput} onChange={(e) => setCertInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCert(); } }}
-                      placeholder="Add a certification..." className="h-8 text-sm" />
+                      placeholder={t("placeholders.certification")} className="h-8 text-sm" />
                     <Button size="sm" variant="outline" onClick={addCert} className="h-8 gap-1 shrink-0">
-                      <Plus className="w-3.5 h-3.5" /> Add
+                      <Plus className="w-3.5 h-3.5" /> {t("actions.add")}
                     </Button>
                   </div>
                 </SectionCard>
@@ -813,11 +839,11 @@ export default function CVBuilderPage() {
           {/* Action Bar */}
           <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t pt-4 pb-2 mt-6 flex flex-col sm:flex-row gap-3">
             <Button onClick={handleDownloadPDF} className="gap-2 flex-1">
-              <Download className="w-4 h-4" /> Download PDF
+              <Download className="w-4 h-4" /> {t("actions.downloadPdf")}
             </Button>
             <Button variant="outline" onClick={handleSaveToProfile} disabled={saving} className="gap-2 flex-1 sm:flex-none sm:min-w-[160px]">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {saving ? "Saving..." : "Add to Profile"}
+              {saving ? t("actions.saving") : t("actions.addToProfile")}
             </Button>
           </div>
         </div>
@@ -832,7 +858,7 @@ export default function CVBuilderPage() {
             <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/30">
               <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <Eye className="w-3.5 h-3.5" />
-                Resume ✎
+                {t("preview.resume")}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -842,7 +868,7 @@ export default function CVBuilderPage() {
                   disabled={saving}
                   className="h-7 text-xs gap-1"
                 >
-                  Add to profile
+                  {t("actions.addToProfile")}
                 </Button>
                 <Button
                   variant="outline"
@@ -850,12 +876,12 @@ export default function CVBuilderPage() {
                   onClick={handleDownloadPDF}
                   className="h-7 text-xs gap-1"
                 >
-                  Download
+                  {t("actions.download")}
                 </Button>
                 <button
                   onClick={() => setPreviewExpanded((p) => !p)}
                   className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
-                  title={previewExpanded ? "Minimize" : "Expand"}
+                  title={previewExpanded ? t("preview.minimize") : t("preview.expand")}
                 >
                   {previewExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                 </button>
@@ -917,6 +943,7 @@ function SectionCard({
   hidden?: boolean;
   onToggle?: () => void;
 }) {
+  const t = useTranslations("cvBuilderPage.visibility");
   return (
     <div className={`card-base p-4 sm:p-5 space-y-4 ${hidden ? "opacity-50" : ""}`}>
       <div className="flex items-center justify-between">
@@ -933,10 +960,10 @@ function SectionCard({
                   ? "text-muted-foreground hover:text-foreground bg-muted/50"
                   : "text-primary hover:text-primary/80 bg-primary/5"
               }`}
-              title={hidden ? "Show in CV" : "Hide from CV"}
+              title={hidden ? t("showInCv") : t("hideFromCv")}
             >
               {hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              {hidden ? "Hidden" : "Visible"}
+              {hidden ? t("hidden") : t("visible")}
             </button>
           )}
           {action}

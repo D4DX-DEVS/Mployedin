@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { routeGenerate } from "@/lib/ai/router";
 
@@ -22,6 +23,9 @@ export async function POST(req: NextRequest) {
     if (!allowed) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
+
+    const __aiQuota = await enforceDailyAiQuota(session.user.id as string, (session.user as { role: string }).role);
+    if (__aiQuota) return __aiQuota;
 
     const body = await req.json();
     const { query } = body as { query?: string };

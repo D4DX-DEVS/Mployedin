@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { GEMINI_MODELS } from "@/lib/ai/gemini";
 import { getAssistantSystemPrompt, type AssistantContext } from "@/lib/ai/assistantPrompts";
@@ -60,6 +61,10 @@ export async function POST(req: NextRequest) {
         }
       );
     }
+
+    // Mongo-backed daily AI quota (matches every other AI route)
+    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole as UserRole);
+    if (__aiQuota) return __aiQuota;
 
     const body = await validateBody(req, aiChatSchema);
     const messages = sanitizeChatMessages(body.messages ?? [], 50, 4000);

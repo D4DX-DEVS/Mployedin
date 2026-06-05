@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateUploadedFile } from "@/lib/security/file-validation";
+import { scanForMalware } from "@/lib/security/malware-scan";
 import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { generateMultimodal, generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import type { UserRole } from "@/models/User";
@@ -90,6 +92,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const __aiQuota = await enforceDailyAiQuota(session.user.id!, role);
+  if (__aiQuota) return __aiQuota;
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -126,6 +131,12 @@ export async function POST(req: NextRequest) {
       if (validationError) {
         return NextResponse.json({ error: validationError }, { status: 400 });
       }
+    }
+
+    // Malware scan before the file is sent to the AI model (fail-closed).
+    const scan = await scanForMalware(bytes);
+    if (!scan.clean) {
+      return NextResponse.json({ error: scan.reason }, { status: 422 });
     }
 
     let text = "";

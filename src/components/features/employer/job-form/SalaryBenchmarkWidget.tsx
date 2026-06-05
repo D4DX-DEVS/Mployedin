@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { TrendingUp, Loader2, AlertTriangle, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -25,8 +26,8 @@ interface Props {
   onAdjust?: (min: number, max: number) => void;
 }
 
-function fmt(n: number, currency: string): string {
-  return new Intl.NumberFormat("en-US", {
+function fmt(n: number, currency: string, locale: string): string {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: currency || "USD",
     maximumFractionDigits: 0,
@@ -42,6 +43,9 @@ export function SalaryBenchmarkWidget({
   salaryMax = 0,
   onAdjust,
 }: Props) {
+  const t = useTranslations("employerJobForm.salaryBenchmark");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [data, setData] = useState<BenchmarkResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -74,7 +78,7 @@ export function SalaryBenchmarkWidget({
       setData(json as BenchmarkResult);
       lastFetchRef.current = params;
     } catch {
-      setError("Could not load market data.");
+      setError(t("error"));
     } finally {
       setLoading(false);
     }
@@ -94,21 +98,21 @@ export function SalaryBenchmarkWidget({
       color: "text-red-600 dark:text-red-400",
       bg: "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800",
       bar: "bg-red-400",
-      label: "Below Market",
+      label: t("below"),
       icon: "↓",
     },
     competitive: {
       color: "text-emerald-600 dark:text-emerald-400",
       bg: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800",
       bar: "bg-emerald-400",
-      label: "Competitive",
+      label: t("competitive"),
       icon: "✓",
     },
     above: {
       color: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800",
       bar: "bg-blue-400",
-      label: "Above Market",
+      label: t("above"),
       icon: "↑",
     },
   };
@@ -133,7 +137,7 @@ export function SalaryBenchmarkWidget({
       <div className="flex items-center justify-between px-3.5 py-2.5">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="font-medium text-foreground/80">Market Salary Benchmark</span>
+          <span className="font-medium text-foreground/80">{t("title")}</span>
           {data && cfg && (
             <span className={`font-semibold ${cfg.color}`}>
               {cfg.icon} {cfg.label}
@@ -150,7 +154,7 @@ export function SalaryBenchmarkWidget({
               onClick={fetchBenchmark}
             >
               <Sparkles className="w-3 h-3" />
-              Check Market
+              {t("checkMarket")}
             </Button>
           )}
           {data && (
@@ -163,7 +167,7 @@ export function SalaryBenchmarkWidget({
               disabled={loading}
             >
               {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "↻"}
-              Refresh
+              {t("refresh")}
             </Button>
           )}
           {data && (
@@ -184,7 +188,7 @@ export function SalaryBenchmarkWidget({
       {loading && (
         <div className="px-3.5 pb-3 flex items-center gap-2 text-muted-foreground">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          Checking market rates for &ldquo;{role}&rdquo;...
+          {t("loading", { role })}
         </div>
       )}
 
@@ -202,9 +206,9 @@ export function SalaryBenchmarkWidget({
           {/* Percentile bar */}
           <div className="relative">
             <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-              <span>P25 {fmt(data.p25, data.currency)}</span>
-              <span className="font-medium text-foreground">Median {fmt(data.median, data.currency)}</span>
-              <span>P75 {fmt(data.p75, data.currency)}</span>
+              <span>{t("p25", { amount: fmt(data.p25, data.currency, numberLocale) })}</span>
+              <span className="font-medium text-foreground">{t("median", { amount: fmt(data.median, data.currency, numberLocale) })}</span>
+              <span>{t("p75", { amount: fmt(data.p75, data.currency, numberLocale) })}</span>
             </div>
             <div className="h-2 rounded-full bg-muted relative overflow-visible">
               {/* Filled bar from p25 to p75 */}
@@ -219,19 +223,19 @@ export function SalaryBenchmarkWidget({
                 <div
                   className={`absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-background shadow-sm ${cfg?.bar ?? "bg-primary"}`}
                   style={{ left: `${markerPct}%`, transform: "translate(-50%, -50%)" }}
-                  title={`Your midpoint: ${fmt(employerMid!, data.currency)}`}
+                  title={t("midpointTitle", { amount: fmt(employerMid!, data.currency, numberLocale) })}
                 />
               )}
             </div>
             {markerPct !== null && (
               <p className="text-[10px] text-muted-foreground mt-1.5">
-                Your midpoint{" "}
+                {t("midpoint")}{" "}
                 <span className={`font-semibold ${cfg?.color ?? ""}`}>
-                  {fmt(employerMid!, data.currency)}
+                  {fmt(employerMid!, data.currency, numberLocale)}
                 </span>{" "}
-                {data.competitiveness === "below" && "is below market — consider raising to attract more applicants"}
-                {data.competitiveness === "competitive" && "is within the competitive range"}
-                {data.competitiveness === "above" && "is above market — excellent for attracting top talent"}
+                {data.competitiveness === "below" && t("belowInsight")}
+                {data.competitiveness === "competitive" && t("competitiveInsight")}
+                {data.competitiveness === "above" && t("aboveInsight")}
               </p>
             )}
           </div>
@@ -255,13 +259,18 @@ export function SalaryBenchmarkWidget({
                 onAdjust(suggestedMin, suggestedMax);
               }}
             >
-              Adjust to market rate → {fmt(
-                data.competitiveness === "below" ? data.p25 : data.median,
-                data.currency
-              )} – {fmt(
-                data.competitiveness === "below" ? data.median : data.p75,
-                data.currency
-              )}
+              {t("adjust", {
+                min: fmt(
+                  data.competitiveness === "below" ? data.p25 : data.median,
+                  data.currency,
+                  numberLocale
+                ),
+                max: fmt(
+                  data.competitiveness === "below" ? data.median : data.p75,
+                  data.currency,
+                  numberLocale
+                ),
+              })}
             </Button>
           )}
         </div>

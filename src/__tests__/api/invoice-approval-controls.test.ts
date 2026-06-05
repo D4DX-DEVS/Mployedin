@@ -12,6 +12,21 @@ jest.mock("@/lib/db/mongoose", () => ({
   connectDB,
 }));
 
+jest.mock("mongoose", () => {
+  const actual = jest.requireActual("mongoose");
+  const session = {
+    withTransaction: async (fn: () => Promise<unknown>) => fn(),
+    endSession: jest.fn(),
+  };
+  const startSession = jest.fn().mockResolvedValue(session);
+  return {
+    ...actual,
+    __esModule: true,
+    default: Object.assign(Object.create(actual.default ?? actual), { startSession }),
+    startSession,
+  };
+});
+
 jest.mock("@/lib/auth/config", () => ({
   auth: jest.fn(),
 }));
@@ -262,7 +277,7 @@ describe("Invoice approval and payment controls", () => {
       recordedBy: "admin_001",
     }));
     expect(invoice.commissions[0].status).toBe("approved");
-    expect(approvePendingCommissionsForPaidInvoice).toHaveBeenCalledWith(invoice._id, "admin_001", { sendNotifications: false });
+    expect(approvePendingCommissionsForPaidInvoice).toHaveBeenCalledWith(invoice._id, "admin_001", expect.objectContaining({ sendNotifications: false }));
     expect(sendCommissionApprovalNotifications).toHaveBeenCalledWith([
       { userId: "agent_user_001", role: "agent", amount: 100, currency: "AED" },
     ]);

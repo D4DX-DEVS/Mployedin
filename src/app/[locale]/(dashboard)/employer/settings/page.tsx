@@ -229,8 +229,8 @@ function CompanySettingsPage() {
   }, [company]);
 
   useEffect(() => {
-    document.title = "Company Settings · MPLOYEDIN";
-  }, []);
+    document.title = t("documentTitle");
+  }, [t]);
 
   const uploadDoc = async (file: File) => {
     setDocError("");

@@ -52,4 +52,4 @@ ${text}`;
   });
 
   return NextResponse.json({ enhanced });
-});
+}, { aiQuota: true });

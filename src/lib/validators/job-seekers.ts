@@ -3,7 +3,10 @@ import { commonSchemas } from "./index";
 
 /**
  * PATCH /api/job-seeker/profile — self-update by job seeker.
- * Uses .passthrough() so Mongoose runValidators can handle model-specific rules.
+ * Explicit allowlist of user-editable fields. System/sensitive fields
+ * (agentId, isOnboarded, applicationMode, premiumLinkTag, cv.rawText,
+ * profileCompleteness/boost, suggestedSkills, encrypted PII, documents, status)
+ * are intentionally excluded and may only be set via server-side paths.
  */
 export const jobSeekerProfileUpdateSchema = z
   .object({
@@ -14,6 +17,7 @@ export const jobSeekerProfileUpdateSchema = z
     nationality: z.string().max(100).trim().optional(),
     currentLocation: z.string().max(200).trim().optional(),
     profileVisibility: z.enum(["visible", "hidden"]).optional(),
+    sectionVisibility: z.record(z.string(), z.boolean()).optional(),
     skills: z
       .array(z.string().max(100).trim())
       .max(50)
@@ -21,6 +25,12 @@ export const jobSeekerProfileUpdateSchema = z
     experience: z.array(z.record(z.string(), z.unknown())).max(30).optional(),
     education: z.array(z.record(z.string(), z.unknown())).max(20).optional(),
     languages: z.array(z.record(z.string(), z.unknown())).max(15).optional(),
+    certifications: z.array(z.string().max(200).trim()).max(50).optional(),
+    projects: z.array(z.record(z.string(), z.unknown())).max(30).optional(),
+    socialLinks: z
+      .array(z.object({ label: z.string().max(50).trim(), url: z.string().url().max(2048) }))
+      .max(20)
+      .optional(),
     coverLetter: z.string().max(10000).trim().optional(),
     cv: z.string().url().max(2048).optional(),
     avatar: z.string().url().max(2048).optional(),
@@ -49,8 +59,7 @@ export const jobSeekerProfileUpdateSchema = z
     industryId: commonSchemas.objectId.optional(),
     jobTypeId: commonSchemas.objectId.optional(),
     jobShiftId: commonSchemas.objectId.optional(),
-  })
-  .passthrough(); // allow model fields not listed here
+  }); // unknown keys are stripped (no .passthrough) to block mass assignment
 
 /** PATCH /api/job-seekers/settings */
 export const jobSeekerSettingsSchema = z.object({

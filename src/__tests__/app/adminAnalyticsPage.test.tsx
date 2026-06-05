@@ -12,10 +12,6 @@ const originalCreateObjectURL = URL.createObjectURL;
 const originalRevokeObjectURL = URL.revokeObjectURL;
 const originalCreateElement = document.createElement.bind(document);
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const workbookWriteMock = jest.fn((..._args: any[]) => new ArrayBuffer(16));
-const workbookAppendSheetMock = jest.fn((..._args: any[]) => {});
-const workbookNewMock = jest.fn(() => ({}));
-const worksheetFromAoaMock = jest.fn((..._args: any[]) => ({}));
 const pdfSaveMock = jest.fn((..._args: any[]) => {});
 const autoTableMock = jest.fn();
 const toastErrorMock = jest.fn((..._args: any[]) => {});
@@ -25,15 +21,6 @@ jest.mock("sonner", () => ({
   toast: {
     error: (...args: unknown[]) => toastErrorMock(...args),
   },
-}));
-
-jest.mock("xlsx", () => ({
-  utils: {
-    aoa_to_sheet: (...args: unknown[]) => worksheetFromAoaMock(...args),
-    book_new: () => workbookNewMock(),
-    book_append_sheet: (...args: unknown[]) => workbookAppendSheetMock(...args),
-  },
-  write: (...args: unknown[]) => workbookWriteMock(...args),
 }));
 
 jest.mock("jspdf", () => ({
@@ -61,10 +48,6 @@ describe("AdminAnalyticsPage", () => {
 
   beforeEach(() => {
     createdAnchors.length = 0;
-    workbookWriteMock.mockClear();
-    workbookAppendSheetMock.mockClear();
-    workbookNewMock.mockClear();
-    worksheetFromAoaMock.mockClear();
     pdfSaveMock.mockClear();
     autoTableMock.mockClear();
     toastErrorMock.mockClear();
@@ -157,11 +140,9 @@ describe("AdminAnalyticsPage", () => {
     await user.click(screen.getByRole("button", { name: /export/i }));
     await user.click(await screen.findByRole("menuitem", { name: /export as excel/i }));
 
-    await waitFor(() => {
-      expect(workbookWriteMock).toHaveBeenCalled();
-    });
+    await waitFor(() => expect(anchorClickSpy).toHaveBeenCalled());
 
-    expect(createdAnchors.at(-1)?.download).toMatch(/^admin-analytics-\d{4}-\d{2}-\d{2}\.xlsx$/);
+    expect(createdAnchors.at(-1)?.download).toMatch(/^admin-analytics-\d{4}-\d{2}-\d{2}\.xls$/);
     expect(URL.createObjectURL).toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: /export/i }));

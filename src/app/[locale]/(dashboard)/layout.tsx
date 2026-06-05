@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
-import { setRequestLocale } from "next-intl/server";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, setRequestLocale } from "next-intl/server";
 import { getNavGroups } from "@/lib/nav/menuConfig";
 import { DashboardShell } from "@/components/shared/DashboardShell";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
@@ -32,6 +33,7 @@ export default async function DashboardLayout({
   // Always use the URL locale so LanguageSwitcher changes take effect immediately
   const locale = paramLocale;
   setRequestLocale(locale);
+  const messages = await getMessages();
 
   // ── Tenant view detection ────────────────────────────────────────────────
   // The middleware injects x-tenant-* headers when an agent/super-agent/admin
@@ -67,25 +69,27 @@ export default async function DashboardLayout({
     : undefined;
 
   return (
-    <SessionWrapper>
-      <CsrfProvider>
-        <DashboardProviders>
-          <DashboardShell
-            navGroups={navGroups}
-            locale={locale}
-            userName={session.user.name ?? undefined}
-            userEmail={session.user.email ?? undefined}
-            userRole={effectiveRole}
-            lastLogin={lastLogin}
-            companyLogo={companyLogo}
-            tenantViewData={tenantViewData}
-          >
-            {children}
-          </DashboardShell>
-          {/* Recruitment AI assistant — employer workspace (real or tenant view) */}
-          {effectiveRole === "employer" && <RecruitmentAssistantLoader />}
-        </DashboardProviders>
-      </CsrfProvider>
-    </SessionWrapper>
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <SessionWrapper>
+        <CsrfProvider>
+          <DashboardProviders>
+            <DashboardShell
+              navGroups={navGroups}
+              locale={locale}
+              userName={session.user.name ?? undefined}
+              userEmail={session.user.email ?? undefined}
+              userRole={effectiveRole}
+              lastLogin={lastLogin}
+              companyLogo={companyLogo}
+              tenantViewData={tenantViewData}
+            >
+              {children}
+            </DashboardShell>
+            {/* Recruitment AI assistant — employer workspace (real or tenant view) */}
+            {effectiveRole === "employer" && <RecruitmentAssistantLoader />}
+          </DashboardProviders>
+        </CsrfProvider>
+      </SessionWrapper>
+    </NextIntlClientProvider>
   );
 }

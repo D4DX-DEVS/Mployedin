@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import AuditLog from "@/models/AuditLog";
+import AuditLog, { type IAuditLog } from "@/models/AuditLog";
+import User from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
+
+type AuditLogFilter = {
+  resource?: string;
+  actorId?: { $in: unknown[] };
+  actorRole?: string;
+};
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/admin/activity-timeline — User activity timeline          */
@@ -22,7 +29,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const resource = url.searchParams.get("resource") ?? "";
   const role = url.searchParams.get("role") ?? "";
 
-  const filter: Record<string, unknown> = {};
+  const filter: AuditLogFilter = {};
 
   if (resource && resource !== "all") {
     filter.resource = resource;
@@ -30,14 +37,22 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   if (search) {
     const safe = escapeRegex(search);
-    filter.$or = [
-      { "userSnapshot.fullName": { $regex: safe, $options: "i" } },
-      { "userSnapshot.email": { $regex: safe, $options: "i" } },
-    ];
+    const matchingUsers = await User.find({
+      $or: [
+        { name: { $regex: safe, $options: "i" } },
+        { email: { $regex: safe, $options: "i" } },
+      ],
+    }).select("_id").lean();
+
+    if (matchingUsers.length === 0) {
+      return NextResponse.json({ items: [], total: 0 });
+    }
+
+    filter.actorId = { $in: matchingUsers.map((user) => user._id) };
   }
 
   if (role && role !== "all") {
-    filter["userSnapshot.role"] = role;
+    filter.actorRole = role;
   }
 
   const [items, total] = await Promise.all([
@@ -45,23 +60,23 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate("userId", "fullName email role")
+      .populate("actorId", "name email role")
       .lean(),
     AuditLog.countDocuments(filter),
   ]);
 
   const mapped = items.map((item: Record<string, unknown>) => {
-    const user = item.userId as Record<string, unknown> | null;
+    const actor = item.actorId as Record<string, unknown> | null;
     return {
       _id: String(item._id),
-      userId: user?._id ? String(user._id) : String(item.userId),
-      userName: user?.fullName ?? (item.userSnapshot as Record<string, unknown>)?.fullName ?? "Unknown",
-      userEmail: user?.email ?? (item.userSnapshot as Record<string, unknown>)?.email ?? "",
-      userRole: user?.role ?? (item.userSnapshot as Record<string, unknown>)?.role ?? "",
+      userId: actor?._id ? String(actor._id) : item.actorId ? String(item.actorId) : "system",
+      userName: actor?.name ?? "System",
+      userEmail: actor?.email ?? "",
+      userRole: actor?.role ?? item.actorRole ?? "system",
       action: item.action ?? "",
       resource: item.resource ?? "",
       resourceId: item.resourceId ? String(item.resourceId) : undefined,
-      details: item.details,
+      details: item.meta ?? item.changes,
       ipAddress: item.ipAddress,
       createdAt: item.createdAt,
     };

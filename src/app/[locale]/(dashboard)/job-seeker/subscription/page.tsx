@@ -10,6 +10,7 @@ import {
   Crown, Sparkles, FileText, Clock, CheckCircle, AlertTriangle,
   BarChart3, MessageSquare,
 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { useMySubscription, type MySubscription } from "@/hooks/useSubscription";
@@ -22,9 +23,9 @@ import { convertAndFormat } from "@/lib/currency";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(d: string | undefined) {
+function formatDate(d: string | undefined, locale: string) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
+  return new Date(d).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", {
     year: "numeric", month: "short", day: "numeric",
   });
 }
@@ -50,6 +51,8 @@ const AI_LABELS: Record<string, string> = {
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function JobSeekerSubscriptionPage() {
+  const t = useTranslations("jobSeekerExtra.subscription");
+  const locale = useLocale();
   const { data: subscription, isLoading } = useMySubscription();
   const { data: gateMap } = useFeatureGateMap();
   const { data: invoices } = useInvoices({});
@@ -59,7 +62,7 @@ export default function JobSeekerSubscriptionPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-4">
-        <PageHeader title="My Subscription" />
+        <PageHeader title={t("title")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-28 animate-pulse rounded-2xl bg-background/70" />
         ))}
@@ -71,14 +74,14 @@ export default function JobSeekerSubscriptionPage() {
     <div className="page-container space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <PageHeader
-          title="My Subscription"
-          description="View your plan, usage, and invoices"
+          title={t("title")}
+          description={t("description")}
         />
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>Display currency:</span>
+          <span>{t("displayCurrency")}</span>
           <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
           {rateSource === "live" && (
-            <span className="text-[10px] text-emerald-500" title="Live exchange rates">● live</span>
+            <span className="text-[10px] text-emerald-500" title={t("liveRates")}>● {t("live")}</span>
           )}
         </div>
       </div>
@@ -90,6 +93,7 @@ export default function JobSeekerSubscriptionPage() {
           invoices={invoices ?? []}
           displayCurrency={displayCurrency}
           rates={rates}
+          locale={locale}
         />
       ) : (
         <NoPlanView />
@@ -106,13 +110,16 @@ function ActivePlanView({
   invoices,
   displayCurrency,
   rates,
+  locale,
 }: {
   subscription: MySubscription;
   features: Record<string, { allowed: boolean; limit?: number; used?: number; remaining?: number }>;
   invoices: InvoiceItem[];
   displayCurrency: string;
   rates: Record<string, number>;
+  locale: string;
 }) {
+  const t = useTranslations("jobSeekerExtra.subscription");
   const snap = subscription.planSnapshot;
   const limits = snap?.jobSeekerLimits as Record<string, unknown> | undefined;
   const usage = subscription.usage;
@@ -128,11 +135,11 @@ function ActivePlanView({
               <Crown className="h-6 w-6 text-sky-500" />
             </div>
             <div>
-              <h3 className="text-xl font-bold">{snap?.name ?? "Unknown"}</h3>
+              <h3 className="text-xl font-bold">{snap?.name ?? t("unknown")}</h3>
               <p className="text-sm text-muted-foreground">
                 {snap?.price > 0
                   ? convertAndFormat(snap.price, snap.currency ?? "AED", displayCurrency, rates)
-                  : "Free"}{" "}
+                  : t("free")}{" "}
                 / {snap?.billingCycle}
               </p>
               {snap?.price > 0 && displayCurrency !== (snap.currency ?? "AED") && (
@@ -161,8 +168,8 @@ function ActivePlanView({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <InfoCard label="Start Date" value={formatDate(subscription.startDate)} icon={<Clock className="h-4 w-4" />} />
-          <InfoCard label="End Date" value={formatDate(subscription.endDate)} icon={<Clock className="h-4 w-4" />} />
+          <InfoCard label="Start Date" value={formatDate(subscription.startDate, locale)} icon={<Clock className="h-4 w-4" />} />
+          <InfoCard label="End Date" value={formatDate(subscription.endDate, locale)} icon={<Clock className="h-4 w-4" />} />
           <InfoCard label="Auto-Renew" value={subscription.autoRenew ? "Enabled" : "Disabled"} icon={<CheckCircle className="h-4 w-4" />} />
         </div>
       </section>
@@ -271,14 +278,13 @@ function ActivePlanView({
 // ── No Plan View ─────────────────────────────────────────────────────────────
 
 function NoPlanView() {
+  const t = useTranslations("jobSeekerExtra.subscription");
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-12 text-center space-y-3">
       <Crown className="h-12 w-12 text-muted-foreground/30 mx-auto" />
-      <h3 className="text-lg font-semibold">No Active Subscription</h3>
+      <h3 className="text-lg font-semibold">{t("noActive")}</h3>
       <p className="text-sm text-muted-foreground max-w-md mx-auto">
-        You are currently on the free tier. Contact your administrator
-        to unlock AI-powered features, more applications per month,
-        and profile visibility boosts.
+        {t("noActiveDescription")}
       </p>
     </section>
   );
@@ -349,6 +355,7 @@ function FeaturePill({ label, allowed }: { label: string; allowed?: boolean }) {
 }
 
 function InvoiceTable({ invoices, displayCurrency, rates }: { invoices: InvoiceItem[]; displayCurrency: string; rates: Record<string, number> }) {
+  const locale = useLocale();
   const TYPE_BADGE: Record<string, string> = {
     new: "bg-sky-500/10 text-sky-400 border-sky-500/30",
     renewal: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
@@ -403,7 +410,7 @@ function InvoiceTable({ invoices, displayCurrency, rates }: { invoices: InvoiceI
                     {inv.status}
                   </Badge>
                 </td>
-                <td className="py-2.5 text-muted-foreground">{formatDate(inv.issuedAt)}</td>
+                <td className="py-2.5 text-muted-foreground">{formatDate(inv.issuedAt, locale)}</td>
               </tr>
             ))}
           </tbody>

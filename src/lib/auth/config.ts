@@ -6,7 +6,6 @@ import { z } from "zod";
 import connectDB from "@/lib/db/mongoose";
 import { User } from "@/models/User";
 import type { UserRole } from "@/models/User";
-import { CompanyUser } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
@@ -16,6 +15,8 @@ import type { CompanyRole } from "@/models/CompanyUser";
 import logger from "@/lib/logger";
 import { fetchLinkedInExtras } from "@/lib/auth/linkedin-profile";
 import { encrypt } from "@/lib/security/encryption";
+import { checkRateLimit } from "@/lib/security/rateLimit";
+import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -29,8 +30,25 @@ const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 export const authConfig: NextAuthConfig = {
   providers: [
     Credentials({
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         try {
+        // IP-level brute-force protection (complements per-account lockout).
+        // Throttles distributed attacks that rotate across many accounts.
+        const ip = (
+          request?.headers?.get("x-forwarded-for") ??
+          request?.headers?.get("x-real-ip") ??
+          "unknown"
+        ).split(",")[0].trim();
+        const ipCheck = checkRateLimit(ip, { limit: 10, windowSec: 300, prefix: "login-ip" });
+        if (!ipCheck.allowed) {
+          logActivity({
+            action: "login.failed",
+            resource: "auth",
+            meta: { ip, reason: "ip_rate_limited" },
+          });
+          return null;
+        }
+
         const parsed = credentialsSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
@@ -481,14 +499,14 @@ export const authConfig: NextAuthConfig = {
       if (resolvedRole === "employer" && token.id && !token.companyId) {
         try {
           await connectDB();
-          const emp = await Employer.findOne({ userId: token.id as string }).select("_id").lean();
+          const emp = await Employer.findOne({ userId: token.id as string }).select("_id companyEmail").lean();
           if (emp) {
-            const member = await CompanyUser.findOne({
+            const member = await ensureEmployerOwnerMembership({
               companyId: emp._id,
               userId: token.id as string,
-              status: "active",
-            }).select("companyRole").lean();
-            token.companyUserRole = member?.companyRole ?? "owner";
+              email: emp.companyEmail,
+            });
+            token.companyUserRole = member?.companyRole;
             token.companyId = String(emp._id);
           }
         } catch {

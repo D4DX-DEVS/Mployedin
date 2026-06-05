@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
@@ -45,6 +46,9 @@ export async function POST(req: NextRequest) {
         }
       );
     }
+
+    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole);
+    if (__aiQuota) return __aiQuota;
 
     const body = await validateBody(req, aiScreenCandidatesSchema);
     const jobId = body.jobId;

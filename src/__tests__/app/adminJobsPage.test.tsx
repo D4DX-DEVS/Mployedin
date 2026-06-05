@@ -126,7 +126,8 @@ describe("AdminJobsPage", () => {
 
     expect(screen.queryByPlaceholderText("Filter by location")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /filter/i }));
+    await user.click(screen.getByRole("button", { name: /show filters/i }));
+    await user.click(screen.getByRole("button", { name: /advanced filters/i }));
 
     expect(screen.getByPlaceholderText("Filter by location")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Skills, comma separated")).toBeInTheDocument();

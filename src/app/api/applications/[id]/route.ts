@@ -3,14 +3,46 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
+import Agent from "@/models/Agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { applicationUpdateSchema } from "@/lib/validators/applications";
 import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
+
+/**
+ * Scope guard for agent / super_agent access to a single application, mirroring
+ * the applications LIST route. Agents are limited to applications for jobs they
+ * own or whose employer is in their assigned set; super_agents to jobs whose
+ * agent is within their jurisdiction. Returns 403 when out of scope, else null.
+ * Admin / employer / job_seeker are authorized by their own branches.
+ */
+async function verifyAgentScopeForApplication(
+  jobEmployerId: unknown,
+  jobAgentId: unknown,
+  ctx: AuthCtx
+): Promise<NextResponse | null> {
+  if (ctx.role === "agent") {
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const ok = Boolean(
+      agent && (
+        String(jobAgentId) === String(agent._id) ||
+        ((agent.assignedEmployerIds as unknown[]) ?? []).some((e) => String(e) === String(jobEmployerId))
+      )
+    );
+    return ok ? null : NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (ctx.role === "super_agent") {
+    const scope = await getSuperAgentScope(ctx.userId);
+    const ok = Boolean(jobAgentId && scope?.effectiveAgentIds.some((id) => String(id) === String(jobAgentId)));
+    return ok ? null : NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
+}
 
 interface WorkflowSettings {
   aiAutoScreen?: boolean;
@@ -37,12 +69,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
-  const application = await Application.findById(params?.id).populate("jobId", "employerId title");
+  const application = await Application.findById(params?.id).populate("jobId", "employerId title agentId");
   if (!application) return NextResponse.json({ error: "Application not found" }, { status: 404 });
 
   // Ownership check for employers — capture emp for automation rules below
   let emp = null as EmpLean | null;
-  const jobDoc = application.jobId as unknown as { employerId: string };
+  const jobDoc = application.jobId as unknown as { employerId: string; agentId?: unknown };
 
   if (ctx.role === "employer") {
     emp = (await Employer.findOne({ userId: ctx.userId }).select("_id userId companyName workflow").lean()) as EmpLean | null;
@@ -57,6 +89,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   } else if (["agent", "super_agent", "admin"].includes(ctx.role)) {
+    // Scope agent/super_agent to their assigned applications (admin is global)
+    if (ctx.role !== "admin") {
+      const scopeErr = await verifyAgentScopeForApplication(jobDoc?.employerId, jobDoc?.agentId, ctx);
+      if (scopeErr) return scopeErr;
+    }
     // Fetch employer so workflow automation (autoProgress, notifications) fires for these roles too
     if (jobDoc?.employerId) {
       emp = (await Employer.findOne({ _id: jobDoc.employerId }).select("_id userId companyName workflow").lean()) as EmpLean | null;
@@ -188,7 +225,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const application = await Application.findById(params?.id)
-    .populate("jobId", "title location salary employerId")
+    .populate("jobId", "title location salary employerId agentId")
     .populate("jobSeekerId", "name email phone skills")
     .lean();
 
@@ -197,6 +234,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   // Ownership / role check
   const appJobSeeker = String((application as unknown as { jobSeekerId?: { _id?: unknown } }).jobSeekerId?._id ?? (application as unknown as { jobSeekerId?: unknown }).jobSeekerId ?? "");
   const appEmployer = String((application as unknown as { jobId?: { employerId?: unknown } }).jobId?.employerId ?? "");
+  const appAgent = (application as unknown as { jobId?: { agentId?: unknown } }).jobId?.agentId;
 
   if (ctx.role === "job_seeker" && appJobSeeker !== ctx.userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -207,7 +245,11 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
-  // Agents / super_agents / admins can view any
+  if (ctx.role === "agent" || ctx.role === "super_agent") {
+    const scopeErr = await verifyAgentScopeForApplication(appEmployer, appAgent, ctx);
+    if (scopeErr) return scopeErr;
+  }
+  // Admins can view any
 
   // Include related interviews + offers if requested
   const { searchParams } = new URL(_req.url);

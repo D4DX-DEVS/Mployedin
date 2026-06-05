@@ -30,7 +30,7 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link href={`/${locale}`} className="flex items-center">
-          <Image src="/logo.png" alt="Mployedin" width={160} height={40} className="h-10 w-auto object-contain" style={{ width: "auto" }} priority />
+          <Image src="/logo.png" alt="Mployedin" width={100} height={34} className="h-auto w-[118px] object-contain" style={{ height: "auto" }} priority />
         </Link>
 
         {/* Desktop Nav */}

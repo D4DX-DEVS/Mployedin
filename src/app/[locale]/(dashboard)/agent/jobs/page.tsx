@@ -28,6 +28,7 @@ import { usePathname } from "next/navigation";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
+import { useTranslations } from "next-intl";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -65,12 +66,7 @@ interface AiFilters {
 
 const STATUS_TABS = ["", "draft", "active", "closed"] as const;
 
-const AI_SUGGESTIONS = [
-  "Show active jobs with most applicants",
-  "Draft jobs that need review",
-  "Jobs posted this week",
-  "Roles in Kochi with high applicant count",
-];
+const AI_SUGGESTION_KEYS = ["activeApplicants", "draftReview", "postedThisWeek", "kochiRoles"] as const;
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                               */
@@ -79,6 +75,8 @@ const AI_SUGGESTIONS = [
 export default function AgentJobsPage() {
   const pathname = usePathname();
   const locale = pathname?.split("/")[1] ?? "en";
+  const t = useTranslations("agentJobs");
+  const common = useTranslations("agentCommon");
   const pagination = usePagination();
 
   /* ----- Job list state ----- */
@@ -106,7 +104,7 @@ export default function AgentJobsPage() {
       .then((data) => {
         const list = (data.employers ?? []).map((e: { _id: string; companyName?: string; employer?: { companyName?: string } }) => ({
           _id: String(e._id),
-          companyName: e.companyName ?? e.employer?.companyName ?? "Unknown",
+          companyName: e.companyName ?? e.employer?.companyName ?? common("unknown"),
         }));
         setEmployers(list);
       })
@@ -155,11 +153,11 @@ export default function AgentJobsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: q }),
       });
-      if (!res.ok) throw new Error("AI search failed");
+      if (!res.ok) throw new Error(t("ai.failed"));
       const data = await res.json();
       const filters: AiFilters = data.filters ?? {};
       setActiveAiFilters(filters);
-      setAiSummary(data.summary ?? `AI search: "${q}"`);
+      setAiSummary(data.summary ?? t("ai.defaultSummary", { query: q }));
 
       // Apply extracted filters
       if (filters.search) setSearch(filters.search);
@@ -171,7 +169,7 @@ export default function AgentJobsPage() {
         if (match) setEmployerFilter(match._id);
       }
     } catch {
-      setAiSummary("AI search could not process the query. Try a different phrasing.");
+      setAiSummary(t("ai.tryDifferent"));
     } finally {
       setAiLoading(false);
     }
@@ -190,9 +188,18 @@ export default function AgentJobsPage() {
   /*  Helpers                                                         */
   /* ---------------------------------------------------------------- */
   const locationText = (loc?: JobItem["location"]) => {
-    if (!loc) return "—";
-    if (loc.isRemote) return "Remote";
-    return [loc.city, loc.country].filter(Boolean).join(", ") || "—";
+    if (!loc) return common("dash");
+    if (loc.isRemote) return t("remote");
+    return [loc.city, loc.country].filter(Boolean).join(", ") || common("dash");
+  };
+  const dateLocale = locale === "ar" ? "ar-SA" : "en-US";
+  const statusLabels: Record<string, string> = {
+    draft: t("statuses.draft"),
+    active: t("statuses.active"),
+    closed: t("statuses.closed"),
+    expired: t("statuses.expired"),
+    pending_approval: t("statuses.pending"),
+    paused: t("statuses.paused"),
   };
 
   /* ----- Summary cards ----- */
@@ -202,26 +209,26 @@ export default function AgentJobsPage() {
   const totalApplicants = jobs.reduce((sum, j) => sum + (j.applicationCount ?? j.applicantIds?.length ?? 0), 0);
 
   const summaryCards = [
-    { label: "Active", value: activeJobs, description: "Roles currently open for applications.", icon: ShieldCheck, tone: "workspace-tone-emerald" },
-    { label: "Drafts", value: draftJobs, description: "Jobs waiting for review or completion.", icon: BriefcaseBusiness, tone: "workspace-tone-amber" },
-    { label: "Employers", value: uniqueEmployers, description: "Companies with jobs in your portfolio.", icon: Building2, tone: "workspace-tone-sky" },
-    { label: "Applicants", value: totalApplicants, description: "Candidate volume across the current results.", icon: Users, tone: "workspace-tone-indigo" },
+    { label: t("cards.active.label"), value: activeJobs, description: t("cards.active.description"), icon: ShieldCheck, tone: "workspace-tone-emerald" },
+    { label: t("cards.drafts.label"), value: draftJobs, description: t("cards.drafts.description"), icon: BriefcaseBusiness, tone: "workspace-tone-amber" },
+    { label: t("cards.employers.label"), value: uniqueEmployers, description: t("cards.employers.description"), icon: Building2, tone: "workspace-tone-sky" },
+    { label: t("cards.applicants.label"), value: totalApplicants, description: t("cards.applicants.description"), icon: Users, tone: "workspace-tone-indigo" },
   ];
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Title", key: "title" },
-    { header: "Employer", key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
-    { header: "Location", key: "location", formatter: (_v, row) => { const loc = (row as unknown as JobItem).location; if (!loc) return ""; if (loc.isRemote) return "Remote"; return [loc.city, loc.country].filter(Boolean).join(", "); } },
-    { header: "Status", key: "status" },
-    { header: "Applicants", key: "applicationCount", formatter: (_v, row) => String((row as unknown as JobItem).applicationCount ?? (row as unknown as JobItem).applicantIds?.length ?? 0) },
-    { header: "Posted", key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
+    { header: t("table.title"), key: "title" },
+    { header: t("table.employer"), key: "employerId", formatter: (_v, row) => (row.employerId as { companyName?: string })?.companyName ?? "" },
+    { header: t("table.location"), key: "location", formatter: (_v, row) => locationText((row as unknown as JobItem).location) },
+    { header: t("table.status"), key: "status" },
+    { header: t("table.applicants"), key: "applicationCount", formatter: (_v, row) => String((row as unknown as JobItem).applicationCount ?? (row as unknown as JobItem).applicantIds?.length ?? 0) },
+    { header: t("table.posted"), key: "createdAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString(dateLocale) : "" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobs as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-jobs",
-    title: "Agent Jobs",
+    title: t("exportTitle"),
   });
 
   /* ================================================================ */
@@ -235,26 +242,26 @@ export default function AgentJobsPage() {
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Agent workspace
+              {common("workspace")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Managed Job Board
+              {t("title")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              View and manage jobs you own directly or through your assigned employers. Filter by employer and track candidates in one place.
+              {t("description")}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Portfolio</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} tracked jobs</p>
-              <p className="text-xs text-muted-foreground">Draft, live, and closed roles inside your current queue.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolio.eyebrow")}</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{t("portfolio.tracked", { count: pagination.total })}</p>
+              <p className="text-xs text-muted-foreground">{t("portfolio.description")}</p>
             </div>
             <Link href={`/${locale}/agent/jobs/new`}>
               <Button className="h-11 gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700">
                 <Plus className="h-4 w-4" />
-                Post Job
+                {t("postJob")}
               </Button>
             </Link>
           </div>
@@ -287,9 +294,9 @@ export default function AgentJobsPage() {
             <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold text-foreground">AI-Powered Search</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t("ai.title")}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Describe what you&apos;re looking for in plain language and let AI set the right filters.
+              {t("ai.description")}
             </p>
           </div>
         </div>
@@ -302,7 +309,7 @@ export default function AgentJobsPage() {
               value={aiQuery}
               onChange={(e) => setAiQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
-              placeholder='e.g. "active remote jobs posted this week"'
+              placeholder={t("ai.placeholder")}
               className="h-11 rounded-xl border-border bg-secondary/65 pl-9 pr-24 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
               disabled={aiLoading}
             />
@@ -313,22 +320,24 @@ export default function AgentJobsPage() {
               className="absolute right-1.5 top-1/2 h-8 -translate-y-1/2 gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-medium text-white hover:bg-violet-700"
             >
               {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-              Search
+              {t("ai.search")}
             </Button>
           </div>
 
           {/* Suggestions */}
           {!activeAiFilters && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {AI_SUGGESTIONS.map((s) => (
+              {AI_SUGGESTION_KEYS.map((key) => {
+                const suggestion = t(`ai.suggestions.${key}`);
+                return (
                 <button
-                  key={s}
-                  onClick={() => { setAiQuery(s); handleAiSearch(s); }}
+                  key={key}
+                  onClick={() => { setAiQuery(suggestion); handleAiSearch(suggestion); }}
                   className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                 >
-                  {s}
+                  {suggestion}
                 </button>
-              ))}
+              );})}
             </div>
           )}
 
@@ -349,9 +358,9 @@ export default function AgentJobsPage() {
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Browse roles</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Filter the jobs you need to act on next</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Search by title or narrow the queue to the status you want to work through.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filters.eyebrow")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filters.title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("filters.description")}</p>
           </div>
         </div>
 
@@ -362,7 +371,7 @@ export default function AgentJobsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search jobs by title, location..."
+              placeholder={t("filters.searchPlaceholder")}
               className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
             />
           </div>
@@ -381,7 +390,7 @@ export default function AgentJobsPage() {
                     : "h-11 rounded-xl border-border bg-secondary/65 px-4 text-muted-foreground hover:bg-card"
                   }
                 >
-                  {value || "All"}
+                  {value ? statusLabels[value] ?? value : common("all")}
                 </Button>
               );
             })}
@@ -396,7 +405,7 @@ export default function AgentJobsPage() {
                 onChange={(e) => setEmployerFilter(e.target.value)}
                 className="h-11 rounded-xl border border-border bg-secondary/65 px-3 text-sm text-foreground"
               >
-                <option value="">All Employers</option>
+                <option value="">{common("allEmployers")}</option>
                 {employers.map((emp) => (
                   <option key={emp._id} value={emp._id}>{emp.companyName}</option>
                 ))}
@@ -410,12 +419,12 @@ export default function AgentJobsPage() {
       <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current results</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Keep each role moving from posting to placement</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("results.eyebrow")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("results.title")}</h2>
           </div>
           <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
             <ArrowRight className="h-3.5 w-3.5 text-sky-600" />
-            {pagination.total} jobs across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}
+            {t("results.summary", { total: pagination.total, pages: pagination.totalPages })}
           </div>
         </div>
 
@@ -434,21 +443,21 @@ export default function AgentJobsPage() {
             <div className="py-12 text-center">
               <div className="flex flex-col items-center gap-2">
                 <Inbox className="h-8 w-8 text-muted-foreground/55" />
-                <p className="text-sm font-medium text-foreground">No jobs found</p>
-                <p className="text-sm text-muted-foreground">Try adjusting the filters or create a new role.</p>
+                <p className="text-sm font-medium text-foreground">{t("empty.title")}</p>
+                <p className="text-sm text-muted-foreground">{t("empty.description")}</p>
               </div>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/70 hover:bg-secondary/70">
-                  <TableHead>Job Title</TableHead>
-                  <TableHead>Employer</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Applicants</TableHead>
-                  <TableHead>Posted</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("table.title")}</TableHead>
+                  <TableHead>{t("table.employer")}</TableHead>
+                  <TableHead>{t("table.location")}</TableHead>
+                  <TableHead>{t("table.status")}</TableHead>
+                  <TableHead>{t("table.applicants")}</TableHead>
+                  <TableHead>{t("table.posted")}</TableHead>
+                  <TableHead className="text-right">{t("table.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -458,11 +467,11 @@ export default function AgentJobsPage() {
                   return (
                     <TableRow key={job._id} className="hover:bg-secondary/60">
                       <TableCell className="font-medium text-foreground">{job.title}</TableCell>
-                      <TableCell className="text-muted-foreground">{job.employerId?.companyName ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{job.employerId?.companyName ?? common("dash")}</TableCell>
                       <TableCell className="text-muted-foreground">{locationText(job.location)}</TableCell>
-                      <TableCell><StatusBadge status={job.status} /></TableCell>
+                      <TableCell><StatusBadge status={job.status} label={statusLabels[job.status] ?? job.status} /></TableCell>
                       <TableCell className="text-muted-foreground">{appCount}</TableCell>
-                      <TableCell className="text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-muted-foreground">{new Date(job.createdAt).toLocaleDateString(dateLocale)}</TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1.5">
                           {/* View candidates — redirects to candidates page */}
@@ -471,8 +480,8 @@ export default function AgentJobsPage() {
                               variant="ghost"
                               size="sm"
                               className="h-9 rounded-xl px-2.5"
-                              title="View Candidates"
-                              aria-label={`View candidates for ${job.title}`}
+                              title={t("actions.viewCandidates")}
+                              aria-label={t("actions.viewCandidatesFor", { title: job.title })}
                             >
                               <Users className="h-4 w-4 text-muted-foreground" />
                               {appCount > 0 && (
@@ -486,8 +495,8 @@ export default function AgentJobsPage() {
                               variant="ghost"
                               size="sm"
                               className="h-9 rounded-xl px-2.5"
-                              title="View Job"
-                              aria-label={`View ${job.title}`}
+                              title={t("actions.viewJob")}
+                              aria-label={t("actions.viewJobFor", { title: job.title })}
                             >
                               <Eye className="h-4 w-4 text-sky-600" />
                             </Button>

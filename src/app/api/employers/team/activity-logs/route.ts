@@ -7,7 +7,9 @@ import { Employer } from "@/models/Employer";
 import { User } from "@/models/User";
 import { canManageTeam } from "@/lib/permissions/team";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
 import type { UserRole } from "@/models/User";
+import type { CompanyRole } from "@/models/CompanyUser";
 
 interface AuthCtx {
   userId: string;
@@ -33,7 +35,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Get employer's company
   const employer = await Employer.findOne({ userId: ctx.userId })
-    .select("_id")
+    .select("_id companyEmail")
     .lean();
   if (!employer) {
     return NextResponse.json(
@@ -43,11 +45,26 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
 
   // Verify caller is owner or admin
-  const callerMember = await CompanyUser.findOne({
+  let callerMember: { companyRole: CompanyRole } | null = await CompanyUser.findOne({
     companyId: employer._id,
     userId: ctx.userId,
     status: "active",
-  }).lean();
+  }).select("companyRole").lean();
+
+  if (!callerMember) {
+    callerMember = await ensureEmployerOwnerMembership({
+      companyId: employer._id,
+      userId: ctx.userId,
+      email: employer.companyEmail,
+    });
+
+    if (!callerMember) {
+      return NextResponse.json(
+        { error: "Account verification failed. Please contact support." },
+        { status: 403 }
+      );
+    }
+  }
 
   if (!callerMember || !canManageTeam(callerMember.companyRole)) {
     return NextResponse.json(

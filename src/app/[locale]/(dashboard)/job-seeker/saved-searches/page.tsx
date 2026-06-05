@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,9 @@ interface SavedSearch {
 /* ------------------------------------------------------------------ */
 
 export default function SavedSearchesPage() {
+  const t = useTranslations("jobSeekerExtra.savedSearches");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -53,17 +57,17 @@ export default function SavedSearchesPage() {
         setSearches(data.items ?? []);
       }
     } catch {
-      toast.error("Failed to load saved searches");
+      toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { fetchSearches(); }, [fetchSearches]);
 
   const createSearch = async () => {
     if (!form.name.trim() || !form.query.trim()) {
-      toast.error("Name and search query are required");
+      toast.error(t("required"));
       return;
     }
     try {
@@ -82,13 +86,13 @@ export default function SavedSearchesPage() {
         }),
       });
       if (res.ok) {
-        toast.success("Saved search created");
+        toast.success(t("created"));
         setForm({ name: "", query: "", location: "", jobType: "", frequency: "weekly" });
         setShowForm(false);
         fetchSearches();
       }
     } catch {
-      toast.error("Failed to create saved search");
+      toast.error(t("createFailed"));
     }
   };
 
@@ -96,11 +100,11 @@ export default function SavedSearchesPage() {
     try {
       const res = await csrfFetch(`/api/user/saved-searches/${id}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("Search deleted");
+        toast.success(t("deleted"));
         fetchSearches();
       }
     } catch {
-      toast.error("Failed to delete");
+      toast.error(t("deleteFailed"));
     }
   };
 
@@ -111,69 +115,66 @@ export default function SavedSearchesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ emailAlert: enabled }),
       });
-      toast.success(enabled ? "Alert enabled" : "Alert disabled");
+      toast.success(enabled ? t("alertEnabled") : t("alertDisabled"));
       fetchSearches();
     } catch {
-      toast.error("Failed to update");
+      toast.error(t("updateFailed"));
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Saved Searches</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Save your job searches and get email alerts when new matches appear
+              {t("description")}
             </p>
           </div>
           <Button onClick={() => setShowForm(!showForm)}>
-            <Plus className="mr-1 h-4 w-4" /> New Search Alert
+            <Plus className="me-1 h-4 w-4" /> {t("newAlert")}
           </Button>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Saved Searches</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{searches.length}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("title")}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{searches.length.toLocaleString(numberLocale)}</p>
           </div>
           <div className="workspace-glass-panel rounded-2xl p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Active Alerts</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("activeAlerts")}</p>
             <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-              {searches.filter((s) => s.emailAlert).length}
+              {searches.filter((s) => s.emailAlert).length.toLocaleString(numberLocale)}
             </p>
           </div>
         </div>
       </section>
 
-      {/* Create Form */}
       {showForm && (
         <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Create Search Alert</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("createTitle")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input placeholder="Alert name *" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
-            <Input placeholder="Search keywords *" value={form.query} onChange={(e) => setForm((p) => ({ ...p, query: e.target.value }))} />
-            <Input placeholder="Location (optional)" value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />
+            <Input placeholder={t("namePlaceholder")} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+            <Input placeholder={t("queryPlaceholder")} value={form.query} onChange={(e) => setForm((p) => ({ ...p, query: e.target.value }))} />
+            <Input placeholder={t("locationPlaceholder")} value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />
             <select
               value={form.frequency}
               onChange={(e) => setForm((p) => ({ ...p, frequency: e.target.value }))}
               className="rounded-md border bg-background px-3 py-2 text-sm"
             >
-              <option value="daily">Daily alerts</option>
-              <option value="weekly">Weekly alerts</option>
-              <option value="never">No alerts</option>
+              <option value="daily">{t("daily")}</option>
+              <option value="weekly">{t("weekly")}</option>
+              <option value="never">{t("never")}</option>
             </select>
           </div>
           <div className="flex gap-2">
-            <Button onClick={createSearch}><Plus className="mr-1 h-4 w-4" /> Create</Button>
-            <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button onClick={createSearch}><Plus className="me-1 h-4 w-4" /> {t("create")}</Button>
+            <Button variant="ghost" onClick={() => setShowForm(false)}>{t("cancel")}</Button>
           </div>
         </section>
       )}
 
-      {/* Saved Searches List */}
       <section className="workspace-panel-surface rounded-[28px] p-5">
         {loading ? (
           <div className="flex items-center justify-center py-16">
@@ -182,9 +183,9 @@ export default function SavedSearchesPage() {
         ) : searches.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Inbox className="h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">No saved searches</p>
+            <p className="mt-4 text-sm font-medium text-muted-foreground">{t("empty")}</p>
             <p className="mt-1 text-xs text-muted-foreground/70">
-              Create a search alert to get notified about new job matches
+              {t("emptyDescription")}
             </p>
           </div>
         ) : (
@@ -211,11 +212,11 @@ export default function SavedSearchesPage() {
                     </div>
                     <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {s.frequency}
+                        <Clock className="h-3 w-3" /> {t(s.frequency)}
                       </span>
                       {s.emailAlert && (
                         <span className="inline-flex items-center gap-1 text-emerald-600">
-                          <BellRing className="h-3 w-3" /> Email alerts on
+                          <BellRing className="h-3 w-3" /> {t("emailAlertsOn")}
                         </span>
                       )}
                     </div>
@@ -225,7 +226,7 @@ export default function SavedSearchesPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => toggleAlert(s._id, !s.emailAlert)}
-                      title={s.emailAlert ? "Disable alert" : "Enable alert"}
+                      title={s.emailAlert ? t("disableAlert") : t("enableAlert")}
                     >
                       {s.emailAlert ? (
                         <BellRing className="h-3.5 w-3.5 text-emerald-500" />

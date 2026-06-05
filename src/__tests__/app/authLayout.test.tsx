@@ -16,6 +16,18 @@ jest.mock("@/components/shared/ThemeToggle", () => ({
   ThemeToggle: () => <button aria-label="theme-toggle">Theme</button>,
 }));
 
+jest.mock("next-intl/server", () => ({
+  getTranslations: async () => (key: string, values?: Record<string, string | number>) => {
+    const messages: Record<string, string> = {
+      heading: "Localized auth marketing heading",
+      description: "Localized auth marketing description",
+      copyright: "© {year} MPLOYEDIN. Localized rights.",
+    };
+
+    return (messages[key] ?? key).replace("{year}", String(values?.year ?? ""));
+  },
+}));
+
 describe("AuthLayout", () => {
   it("renders the shared theme toggle above auth pages", async () => {
     render(
@@ -27,5 +39,18 @@ describe("AuthLayout", () => {
 
     expect(screen.getByRole("button", { name: /theme-toggle/i })).toBeInTheDocument();
     expect(screen.getByText("Login form")).toBeInTheDocument();
+  });
+
+  it("renders auth marketing copy from translations", async () => {
+    render(
+      await AuthLayout({
+        children: <div>Login form</div>,
+        params: Promise.resolve({ locale: "ar" }),
+      })
+    );
+
+    expect(screen.getByText("Localized auth marketing heading")).toBeInTheDocument();
+    expect(screen.getByText("Localized auth marketing description")).toBeInTheDocument();
+    expect(screen.queryByText(/Elevate your hiring pipeline/i)).not.toBeInTheDocument();
   });
 });

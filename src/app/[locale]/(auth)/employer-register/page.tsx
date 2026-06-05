@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Building2, FileCheck, UserCircle, CheckCircle, ChevronRight, ChevronLeft, Loader2, ShieldCheck } from "lucide-react";
 import { FormInput, FormSelect, FormFileDrop } from "@/components/shared/AppForm";
@@ -32,122 +33,123 @@ interface Step3Data {
   confirmPassword: string;
 }
 
-const INDUSTRIES = [
-  { value: "technology", label: "Technology & IT" },
-  { value: "construction", label: "Construction & Engineering" },
-  { value: "healthcare", label: "Healthcare & Pharmaceuticals" },
-  { value: "hospitality", label: "Hospitality & Tourism" },
-  { value: "finance", label: "Finance & Banking" },
-  { value: "retail", label: "Retail & E-commerce" },
-  { value: "oil_gas", label: "Oil & Gas / Energy" },
-  { value: "logistics", label: "Logistics & Supply Chain" },
-  { value: "education", label: "Education & Training" },
-  { value: "real_estate", label: "Real Estate & Property" },
-  { value: "manufacturing", label: "Manufacturing" },
-  { value: "telecommunications", label: "Telecommunications" },
-  { value: "media", label: "Media & Entertainment" },
-  { value: "legal", label: "Legal & Consulting" },
-  { value: "government", label: "Government & Public Sector" },
-  { value: "agriculture", label: "Agriculture & Food" },
-  { value: "automotive", label: "Automotive" },
-  { value: "aviation", label: "Aviation & Aerospace" },
-  { value: "other", label: "Other" },
-];
+const INDUSTRY_VALUES = [
+  "technology",
+  "construction",
+  "healthcare",
+  "hospitality",
+  "finance",
+  "retail",
+  "oil_gas",
+  "logistics",
+  "education",
+  "real_estate",
+  "manufacturing",
+  "telecommunications",
+  "media",
+  "legal",
+  "government",
+  "agriculture",
+  "automotive",
+  "aviation",
+  "other",
+] as const;
 
-const SIZES = [
-  { value: "1-10", label: "1–10 employees" },
-  { value: "11-50", label: "11–50 employees" },
-  { value: "51-200", label: "51–200 employees" },
-  { value: "201-500", label: "201–500 employees" },
-  { value: "501-1000", label: "501–1,000 employees" },
-  { value: "1001-5000", label: "1,001–5,000 employees" },
-  { value: "5000+", label: "5,000+ employees" },
-];
+const SIZE_VALUES = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5000+"] as const;
 
-const COUNTRIES = [
+const COUNTRY_CODES = [
   // Gulf / GCC
-  { value: "AE", label: "United Arab Emirates" },
-  { value: "SA", label: "Saudi Arabia" },
-  { value: "QA", label: "Qatar" },
-  { value: "OM", label: "Oman" },
-  { value: "BH", label: "Bahrain" },
-  { value: "KW", label: "Kuwait" },
+  "AE",
+  "SA",
+  "QA",
+  "OM",
+  "BH",
+  "KW",
   // Middle East & North Africa
-  { value: "EG", label: "Egypt" },
-  { value: "JO", label: "Jordan" },
-  { value: "LB", label: "Lebanon" },
-  { value: "IQ", label: "Iraq" },
-  { value: "MA", label: "Morocco" },
-  { value: "TN", label: "Tunisia" },
-  { value: "DZ", label: "Algeria" },
-  { value: "LY", label: "Libya" },
-  { value: "PS", label: "Palestine" },
-  { value: "YE", label: "Yemen" },
-  { value: "SD", label: "Sudan" },
-  { value: "SY", label: "Syria" },
+  "EG",
+  "JO",
+  "LB",
+  "IQ",
+  "MA",
+  "TN",
+  "DZ",
+  "LY",
+  "PS",
+  "YE",
+  "SD",
+  "SY",
   // South Asia
-  { value: "IN", label: "India" },
-  { value: "PK", label: "Pakistan" },
-  { value: "BD", label: "Bangladesh" },
-  { value: "LK", label: "Sri Lanka" },
-  { value: "NP", label: "Nepal" },
+  "IN",
+  "PK",
+  "BD",
+  "LK",
+  "NP",
   // Southeast Asia
-  { value: "PH", label: "Philippines" },
-  { value: "ID", label: "Indonesia" },
-  { value: "MY", label: "Malaysia" },
-  { value: "SG", label: "Singapore" },
-  { value: "TH", label: "Thailand" },
-  { value: "VN", label: "Vietnam" },
+  "PH",
+  "ID",
+  "MY",
+  "SG",
+  "TH",
+  "VN",
   // East Asia
-  { value: "CN", label: "China" },
-  { value: "JP", label: "Japan" },
-  { value: "KR", label: "South Korea" },
+  "CN",
+  "JP",
+  "KR",
   // Africa
-  { value: "NG", label: "Nigeria" },
-  { value: "KE", label: "Kenya" },
-  { value: "ET", label: "Ethiopia" },
-  { value: "GH", label: "Ghana" },
-  { value: "ZA", label: "South Africa" },
-  { value: "TZ", label: "Tanzania" },
-  { value: "UG", label: "Uganda" },
+  "NG",
+  "KE",
+  "ET",
+  "GH",
+  "ZA",
+  "TZ",
+  "UG",
   // Europe
-  { value: "GB", label: "United Kingdom" },
-  { value: "DE", label: "Germany" },
-  { value: "FR", label: "France" },
-  { value: "IT", label: "Italy" },
-  { value: "ES", label: "Spain" },
-  { value: "NL", label: "Netherlands" },
-  { value: "TR", label: "Turkey" },
-  { value: "SE", label: "Sweden" },
-  { value: "CH", label: "Switzerland" },
-  { value: "PL", label: "Poland" },
+  "GB",
+  "DE",
+  "FR",
+  "IT",
+  "ES",
+  "NL",
+  "TR",
+  "SE",
+  "CH",
+  "PL",
   // Americas
-  { value: "US", label: "United States" },
-  { value: "CA", label: "Canada" },
-  { value: "BR", label: "Brazil" },
-  { value: "MX", label: "Mexico" },
-  { value: "AR", label: "Argentina" },
-  { value: "CO", label: "Colombia" },
+  "US",
+  "CA",
+  "BR",
+  "MX",
+  "AR",
+  "CO",
   // Oceania
-  { value: "AU", label: "Australia" },
-  { value: "NZ", label: "New Zealand" },
-];
+  "AU",
+  "NZ",
+] as const;
 
-const VERIFICATION_LEVELS: { value: VerificationLevel; label: string; description: string; badge: string }[] = [
-  { value: "basic", label: "Basic", description: "Quick setup — email verification only", badge: "Free" },
-  { value: "standard", label: "Standard", description: "Upload trade licence for verified badge & full access", badge: "Recommended" },
-  { value: "premium", label: "Premium", description: "Government-approved status badge (MoH / Free Zone)", badge: "Top tier" },
-];
+const VERIFICATION_LEVEL_VALUES: VerificationLevel[] = ["basic", "standard", "premium"];
 
 const STEP_LABELS = [
-  { icon: Building2, label: "Company" },
-  { icon: FileCheck, label: "Verification" },
-  { icon: UserCircle, label: "Contact" },
+  { icon: Building2, labelKey: "company" },
+  { icon: FileCheck, labelKey: "verification" },
+  { icon: UserCircle, labelKey: "contact" },
 ];
+
+function getCountryOptions(locale: string) {
+  const language = locale === "ar" ? "ar" : "en";
+  const displayNames = new Intl.DisplayNames([language], { type: "region" });
+
+  return COUNTRY_CODES.map((code) => ({
+    value: code,
+    label: displayNames.of(code) ?? code,
+  }));
+}
 
 export default function EmployerRegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const params = useParams<{ locale?: string }>();
+  const locale = params?.locale ?? "en";
+  const t = useTranslations("employerRegister");
   const referralCode = searchParams.get("ref") ?? "";
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -164,23 +166,45 @@ export default function EmployerRegisterPage() {
     contactName: "", contactTitle: "", contactEmail: "", contactPhone: "", password: "", confirmPassword: "",
   });
 
+  const industryOptions = useMemo(
+    () => INDUSTRY_VALUES.map((value) => ({ value, label: t(`industries.${value}`) })),
+    [t]
+  );
+  const sizeOptions = useMemo(
+    () => SIZE_VALUES.map((value) => ({ value, label: t(`sizes.${value}`) })),
+    [t]
+  );
+  const countryOptions = useMemo(() => getCountryOptions(locale), [locale]);
+  const verificationLevels = useMemo(
+    () =>
+      VERIFICATION_LEVEL_VALUES.map((value) => ({
+        value,
+        label: t(`verificationLevels.${value}.label`),
+        description: t(`verificationLevels.${value}.description`),
+        badge: t(`verificationLevels.${value}.badge`),
+      })),
+    [t]
+  );
+  const BackIcon = locale === "ar" ? ChevronRight : ChevronLeft;
+  const NextIcon = locale === "ar" ? ChevronLeft : ChevronRight;
+
   const validateStep1 = () => {
-    if (!step1.companyName.trim()) { setError("Company name is required."); return false; }
-    if (!step1.industry) { setError("Please select an industry."); return false; }
-    if (!step1.size) { setError("Please select company size."); return false; }
-    if (!step1.country) { setError("Please select a country."); return false; }
-    if (!step1.city.trim()) { setError("City is required."); return false; }
+    if (!step1.companyName.trim()) { setError(t("validation.companyNameRequired")); return false; }
+    if (!step1.industry) { setError(t("validation.industryRequired")); return false; }
+    if (!step1.size) { setError(t("validation.sizeRequired")); return false; }
+    if (!step1.country) { setError(t("validation.countryRequired")); return false; }
+    if (!step1.city.trim()) { setError(t("validation.cityRequired")); return false; }
     setError("");
     return true;
   };
 
   const validateStep2 = () => {
     if (step2.verificationLevel !== "basic" && !step2.tradeLicenseFile) {
-      setError("Please upload your trade licence document.");
+      setError(t("validation.tradeLicenceRequired"));
       return false;
     }
     if (step2.verificationLevel === "premium" && !step2.mohCertFile) {
-      setError("Please upload your MoH / Free Zone certificate.");
+      setError(t("validation.mohRequired"));
       return false;
     }
     setError("");
@@ -188,13 +212,13 @@ export default function EmployerRegisterPage() {
   };
 
   const validateStep3 = () => {
-    if (!step3.contactName.trim()) { setError("Full name is required."); return false; }
-    if (!step3.contactEmail.trim()) { setError("Work email is required."); return false; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(step3.contactEmail)) { setError("Please enter a valid email."); return false; }
-    if (!step3.password) { setError("Password is required."); return false; }
-    if (step3.password.length < 8) { setError("Password must be at least 8 characters."); return false; }
-    if (step3.password !== step3.confirmPassword) { setError("Passwords do not match."); return false; }
-    if (!agreedToTerms) { setError("You must agree to the Terms of Service and Privacy Policy."); return false; }
+    if (!step3.contactName.trim()) { setError(t("validation.fullNameRequired")); return false; }
+    if (!step3.contactEmail.trim()) { setError(t("validation.workEmailRequired")); return false; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(step3.contactEmail)) { setError(t("validation.validEmailRequired")); return false; }
+    if (!step3.password) { setError(t("validation.passwordRequired")); return false; }
+    if (step3.password.length < 8) { setError(t("validation.passwordTooShort")); return false; }
+    if (step3.password !== step3.confirmPassword) { setError(t("validation.passwordMismatch")); return false; }
+    if (!agreedToTerms) { setError(t("validation.termsRequired")); return false; }
     setError("");
     return true;
   };
@@ -221,10 +245,10 @@ export default function EmployerRegisterPage() {
       const res = await fetch("/api/auth/employer-register", { method: "POST", body: form });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.message ?? "Registration failed. Please try again.");
+        setError(data.message ?? t("validation.registrationFailed"));
         return;
       }
-      router.push(`/en/verify-email?email=${encodeURIComponent(step3.contactEmail)}`);
+      router.push(`/${locale}/verify-email?email=${encodeURIComponent(step3.contactEmail)}`);
     } finally {
       setLoading(false);
     }
@@ -242,22 +266,23 @@ export default function EmployerRegisterPage() {
 
       {/* Header */}
       <div className="text-center space-y-1.5">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">Register Your Company</h1>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Join MPLOYEDIN — Gulf&apos;s AI-powered recruitment platform
+          {t("subtitle")}
         </p>
         {referralCode && (
           <div className="inline-flex items-center gap-1.5 px-3 py-1 mt-1 rounded-full bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
             <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-            <span className="text-xs font-medium text-green-700 dark:text-green-400">Referral: {referralCode}</span>
+            <span className="text-xs font-medium text-green-700 dark:text-green-400">{t("referral", { code: referralCode })}</span>
           </div>
         )}
       </div>
 
       {/* Step Tracker */}
       <div className="flex items-center justify-between px-1">
-        {STEP_LABELS.map(({ icon: Icon, label }, i) => {
+        {STEP_LABELS.map(({ icon: Icon, labelKey }, i) => {
           const s = i + 1;
+          const label = t(`steps.${labelKey}`);
           const isActive = s === step;
           const isCompleted = s < step;
           return (
@@ -292,26 +317,26 @@ export default function EmployerRegisterPage() {
         {step === 1 && (
           <div className="space-y-3.5">
             <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <Building2 className="h-4 w-4 text-primary" /> Company Details
+              <Building2 className="h-4 w-4 text-primary" /> {t("companyDetails")}
             </h2>
-            <FormInput label="Company Name" required value={step1.companyName}
-              placeholder="e.g. Acme Corporation"
+            <FormInput label={t("companyName")} required value={step1.companyName}
+              placeholder={t("companyNamePlaceholder")}
               onChange={(e) => setStep1(p => ({ ...p, companyName: e.target.value }))} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormSelect label="Industry" required value={step1.industry} options={INDUSTRIES}
-                placeholder="Select industry"
+              <FormSelect label={t("industry")} required value={step1.industry} options={industryOptions}
+                placeholder={t("industryPlaceholder")}
                 onChange={(v) => setStep1(p => ({ ...p, industry: v }))} />
-              <FormSelect label="Company Size" required value={step1.size} options={SIZES}
-                placeholder="Select size"
+              <FormSelect label={t("companySize")} required value={step1.size} options={sizeOptions}
+                placeholder={t("sizePlaceholder")}
                 onChange={(v) => setStep1(p => ({ ...p, size: v }))} />
             </div>
-            <FormInput label="Website" value={step1.website} placeholder="https://example.com"
+            <FormInput label={t("website")} value={step1.website} placeholder="https://example.com"
               onChange={(e) => setStep1(p => ({ ...p, website: e.target.value }))} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormSelect label="Country" required value={step1.country} options={COUNTRIES}
-                placeholder="Select country"
+              <FormSelect label={t("country")} required value={step1.country} options={countryOptions}
+                placeholder={t("countryPlaceholder")}
                 onChange={(v) => setStep1(p => ({ ...p, country: v }))} />
-              <FormInput label="City" required value={step1.city} placeholder="e.g. Dubai"
+              <FormInput label={t("city")} required value={step1.city} placeholder={t("cityPlaceholder")}
                 onChange={(e) => setStep1(p => ({ ...p, city: e.target.value }))} />
             </div>
           </div>
@@ -321,13 +346,13 @@ export default function EmployerRegisterPage() {
         {step === 2 && (
           <div className="space-y-3.5">
             <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <FileCheck className="h-4 w-4 text-primary" /> Verification Level
+              <FileCheck className="h-4 w-4 text-primary" /> {t("verificationLevel")}
             </h2>
             <p className="text-xs text-muted-foreground">
-              Higher verification unlocks more features and a trust badge on your profile.
+              {t("verificationIntro")}
             </p>
             <div className="space-y-2">
-              {VERIFICATION_LEVELS.map((lvl) => (
+              {verificationLevels.map((lvl) => (
                 <label key={lvl.value} className={`relative flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
                   step2.verificationLevel === lvl.value
                     ? "border-primary bg-primary/5 shadow-sm"
@@ -359,14 +384,14 @@ export default function EmployerRegisterPage() {
               ))}
             </div>
             {step2.verificationLevel !== "basic" && (
-              <FormFileDrop label="Trade Licence" required accept=".pdf,.jpg,.jpeg,.png"
-                hint="PDF, JPG, or PNG (max 10MB)"
+              <FormFileDrop label={t("tradeLicence")} required accept=".pdf,.jpg,.jpeg,.png"
+                hint={t("uploadHint")}
                 value={step2.tradeLicenseFile}
                 onChange={(file: File | null) => setStep2(p => ({ ...p, tradeLicenseFile: file }))} />
             )}
             {step2.verificationLevel === "premium" && (
-              <FormFileDrop label="MoH / Free Zone Certificate" required accept=".pdf,.jpg,.jpeg,.png"
-                hint="PDF, JPG, or PNG (max 10MB)"
+              <FormFileDrop label={t("mohCertificate")} required accept=".pdf,.jpg,.jpeg,.png"
+                hint={t("uploadHint")}
                 value={step2.mohCertFile}
                 onChange={(file: File | null) => setStep2(p => ({ ...p, mohCertFile: file }))} />
             )}
@@ -377,28 +402,28 @@ export default function EmployerRegisterPage() {
         {step === 3 && (
           <div className="space-y-3.5">
             <h2 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <UserCircle className="h-4 w-4 text-primary" /> Contact Person
+              <UserCircle className="h-4 w-4 text-primary" /> {t("contactPerson")}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormInput label="Full Name" required value={step3.contactName}
-                placeholder="e.g. John Smith"
+              <FormInput label={t("fullName")} required value={step3.contactName}
+                placeholder={t("fullNamePlaceholder")}
                 onChange={(e) => setStep3(p => ({ ...p, contactName: e.target.value }))} />
-              <FormInput label="Job Title" value={step3.contactTitle}
-                placeholder="e.g. HR Manager"
+              <FormInput label={t("jobTitle")} value={step3.contactTitle}
+                placeholder={t("jobTitlePlaceholder")}
                 onChange={(e) => setStep3(p => ({ ...p, contactTitle: e.target.value }))} />
             </div>
-            <FormInput label="Work Email" required type="email" value={step3.contactEmail}
-              placeholder="you@company.com"
+            <FormInput label={t("workEmail")} required type="email" value={step3.contactEmail}
+              placeholder={t("workEmailPlaceholder")}
               onChange={(e) => setStep3(p => ({ ...p, contactEmail: e.target.value }))} />
-            <FormInput label="Phone" value={step3.contactPhone}
-              placeholder="+971 50 123 4567"
+            <FormInput label={t("phone")} value={step3.contactPhone}
+              placeholder={t("phonePlaceholder")}
               onChange={(e) => setStep3(p => ({ ...p, contactPhone: e.target.value }))} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormInput label="Password" required type="password" value={step3.password}
-                placeholder="Min. 8 characters"
+              <FormInput label={t("password")} required type="password" value={step3.password}
+                placeholder={t("passwordPlaceholder")}
                 onChange={(e) => setStep3(p => ({ ...p, password: e.target.value }))} />
-              <FormInput label="Confirm Password" required type="password" value={step3.confirmPassword}
-                placeholder="Re-enter password"
+              <FormInput label={t("confirmPassword")} required type="password" value={step3.confirmPassword}
+                placeholder={t("confirmPasswordPlaceholder")}
                 onChange={(e) => setStep3(p => ({ ...p, confirmPassword: e.target.value }))} />
             </div>
             <div className="flex items-start gap-2.5">
@@ -410,13 +435,13 @@ export default function EmployerRegisterPage() {
                 className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary/40"
               />
               <label htmlFor="employer-terms" className="text-xs text-muted-foreground leading-5">
-                I agree to the{" "}
-                <Link href="/en/terms" className="text-primary hover:underline" target="_blank">
-                  Terms of Service
+                {t("agreePrefix")}{" "}
+                <Link href={`/${locale}/terms`} className="text-primary hover:underline" target="_blank">
+                  {t("termsOfService")}
                 </Link>
-                {" "}and{" "}
-                <Link href="/en/privacy" className="text-primary hover:underline" target="_blank">
-                  Privacy Policy
+                {" "}{t("and")}{" "}
+                <Link href={`/${locale}/privacy`} className="text-primary hover:underline" target="_blank">
+                  {t("privacyPolicy")}
                 </Link>
               </label>
             </div>
@@ -437,7 +462,7 @@ export default function EmployerRegisterPage() {
             disabled={step === 1}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
-            <ChevronLeft className="h-4 w-4" /> Back
+            <BackIcon className="h-4 w-4" /> {t("back")}
           </button>
 
           {step < 3 ? (
@@ -445,7 +470,7 @@ export default function EmployerRegisterPage() {
               onClick={handleNext}
               className="btn-primary flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium"
             >
-              Next <ChevronRight className="h-4 w-4" />
+              {t("next")} <NextIcon className="h-4 w-4" />
             </button>
           ) : (
             <button
@@ -454,7 +479,7 @@ export default function EmployerRegisterPage() {
               className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm font-medium disabled:opacity-60"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {loading ? "Creating…" : "Complete Registration"}
+              {loading ? t("creating") : t("completeRegistration")}
             </button>
           )}
         </div>
@@ -462,8 +487,8 @@ export default function EmployerRegisterPage() {
 
       {/* Footer */}
       <p className="text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
-        <Link href="/en/login" className="text-primary font-medium hover:underline">Sign in</Link>
+        {t("alreadyHaveAccount")}{" "}
+        <Link href={`/${locale}/login`} className="text-primary font-medium hover:underline">{t("signIn")}</Link>
       </p>
     </div>
   );

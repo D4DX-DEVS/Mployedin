@@ -2,6 +2,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { MapPin, Briefcase, Clock, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import RelativeDate from "@/components/shared/RelativeDate";
 
@@ -60,12 +61,24 @@ function getStr(val: string | string[] | undefined): string {
   return Array.isArray(val) ? val[0] : val ?? "";
 }
 
-function salaryLabel(salary: { min?: number; max?: number; currency?: string; isNegotiable?: boolean } | null) {
+type Translator = (key: string, values?: Record<string, string | number>) => string;
+
+function getNumberLocale(locale: string): string {
+  return locale === "ar" ? "ar-SA" : "en-US";
+}
+
+function salaryLabel(
+  salary: { min?: number; max?: number; currency?: string; isNegotiable?: boolean } | null,
+  locale: string,
+  t: Translator
+) {
   if (!salary) return null;
-  if (salary.isNegotiable) return "Negotiable";
+  if (salary.isNegotiable) return t("negotiable");
+  const numberLocale = getNumberLocale(locale);
+  const currency = salary.currency ?? "AED";
   if (salary.min && salary.max)
-    return `${salary.currency ?? "AED"} ${salary.min.toLocaleString()} – ${salary.max.toLocaleString()}`;
-  if (salary.min) return `From ${salary.currency ?? "AED"} ${salary.min.toLocaleString()}`;
+    return `${currency} ${salary.min.toLocaleString(numberLocale)} – ${salary.max.toLocaleString(numberLocale)}`;
+  if (salary.min) return t("fromSalary", { amount: `${currency} ${salary.min.toLocaleString(numberLocale)}` });
   return null;
 }
 
@@ -81,6 +94,10 @@ function closesInDays(expiresAt?: Date | null): number | null {
 export default async function JobsPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
   const sp = await searchParams;
+  const t = await getTranslations("publicJobs");
+  const numberLocale = getNumberLocale(locale);
+  const PreviousIcon = locale === "ar" ? ChevronRight : ChevronLeft;
+  const NextIcon = locale === "ar" ? ChevronLeft : ChevronRight;
 
   const search = getStr(sp.search);
   const location = getStr(sp.location);
@@ -139,35 +156,35 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
       {/* Hero search bar */}
       <div className="bg-muted/30 border-b border-border">
         <div className="max-w-5xl mx-auto px-4 py-8">
-          <h1 className="text-2xl font-semibold text-foreground mb-1">Find your next opportunity</h1>
+          <h1 className="text-2xl font-semibold text-foreground mb-1">{t("heading")}</h1>
           <p className="text-muted-foreground text-sm mb-6">
-            {total > 0 ? `${total.toLocaleString()} active jobs` : "Browse open positions"}
+            {total > 0 ? t("activeJobs", { total: total.toLocaleString(numberLocale) }) : t("browseOpenPositions")}
           </p>
 
           <form method="GET" action={`/${locale}/jobs`} className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 name="search"
                 defaultValue={search}
-                placeholder="Job title, skills, or keyword"
-                className="w-full h-10 pl-9 pr-4 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+                placeholder={t("searchPlaceholder")}
+                className="w-full h-10 ps-9 pe-4 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
             </div>
             <div className="relative sm:w-48">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <MapPin className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 name="location"
                 defaultValue={location}
-                placeholder="City or country"
-                className="w-full h-10 pl-9 pr-4 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+                placeholder={t("locationPlaceholder")}
+                className="w-full h-10 ps-9 pe-4 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
             </div>
             <button
               type="submit"
               className="h-10 px-4 sm:px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors whitespace-nowrap"
             >
-              Search
+              {t("search")}
             </button>
           </form>
 
@@ -194,16 +211,16 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
         {jobs.length === 0 ? (
           <div className="text-center py-20">
             <Briefcase className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-            <h2 className="text-lg font-medium text-foreground mb-2">No jobs found</h2>
-            <p className="text-muted-foreground text-sm">Try adjusting your search or clearing filters.</p>
-            <a href={`/${locale}/jobs`} className="mt-4 inline-block text-sm text-primary hover:underline">Clear all filters</a>
+            <h2 className="text-lg font-medium text-foreground mb-2">{t("noJobsFound")}</h2>
+            <p className="text-muted-foreground text-sm">{t("adjustSearch")}</p>
+            <a href={`/${locale}/jobs`} className="mt-4 inline-block text-sm text-primary hover:underline">{t("clearFilters")}</a>
           </div>
         ) : (
           <div className="space-y-3">
             {jobs.map((job) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const employer = job.employerId as any;
-              const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0]) : null;
+              const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0], locale, t) : null;
               const daysLeft = closesInDays(job.expiresAt as Date | null);
 
               return (
@@ -219,7 +236,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                           {job.title}
                         </h2>
                         {(employer?.domainVerified || employer?.isAgentVerified) && (
-                          <span className="shrink-0 text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ Verified</span>
+                          <span className="shrink-0 text-[10px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">✓ {t("verified")}</span>
                         )}
                         {daysLeft !== null && daysLeft <= 14 && (
                           <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium ${
@@ -227,19 +244,19 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                               ? "bg-orange-500/10 text-orange-600"
                               : "bg-yellow-500/10 text-yellow-600"
                           }`}>
-                            Closes in {daysLeft}d
+                            {t("closesInDays", { days: daysLeft.toLocaleString(numberLocale) })}
                           </span>
                         )}
                       </div>
 
                       <p className="text-sm text-muted-foreground mb-3">
-                        {employer?.companyName ?? "Company"}
+                        {employer?.companyName ?? t("companyFallback")}
                       </p>
 
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {job.location?.isRemote ? "Remote" : `${job.location?.city}, ${job.location?.country}`}
+                          {job.location?.isRemote ? t("remote") : `${job.location?.city}, ${job.location?.country}`}
                         </span>
                         {salary && (
                           <span className="flex items-center gap-1">
@@ -250,7 +267,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                         {job.requirements?.experienceMin != null && (
                           <span className="flex items-center gap-1">
                             <Briefcase className="h-3 w-3" />
-                            {job.requirements.experienceMin}–{job.requirements.experienceMax ?? "+"} yrs
+                            {job.requirements.experienceMin.toLocaleString(numberLocale)}–{job.requirements.experienceMax?.toLocaleString(numberLocale) ?? "+"} {t("years")}
                           </span>
                         )}
                         <span className="flex items-center gap-1">
@@ -267,15 +284,15 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                             </span>
                           ))}
                           {job.requirements.skills.length > 5 && (
-                            <span className="text-[11px] text-muted-foreground/60">+{job.requirements.skills.length - 5} more</span>
+                            <span className="text-[11px] text-muted-foreground/60">{t("moreSkills", { count: job.requirements.skills.length - 5 })}</span>
                           )}
                         </div>
                       )}
                     </div>
 
                     {job.vacancies > 1 && (
-                      <div className="shrink-0 text-right">
-                        <span className="text-xs text-muted-foreground">{job.vacancies} openings</span>
+                      <div className="shrink-0 text-end">
+                        <span className="text-xs text-muted-foreground">{t("openings", { count: Number(job.vacancies).toLocaleString(numberLocale) })}</span>
                       </div>
                     )}
                   </div>
@@ -290,15 +307,15 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
           <div className="flex items-center justify-center gap-2 mt-10">
             {page > 1 && (
               <a href={buildUrl({ page: String(page - 1) })} className="flex items-center gap-1 text-sm px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors">
-                <ChevronLeft className="h-4 w-4" /> Previous
+                <PreviousIcon className="h-4 w-4" /> {t("previous")}
               </a>
             )}
             <span className="text-sm text-muted-foreground px-4">
-              Page {page} of {totalPages}
+              {t("pageOf", { page: page.toLocaleString(numberLocale), totalPages: totalPages.toLocaleString(numberLocale) })}
             </span>
             {page < totalPages && (
               <a href={buildUrl({ page: String(page + 1) })} className="flex items-center gap-1 text-sm px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors">
-                Next <ChevronRight className="h-4 w-4" />
+                {t("next")} <NextIcon className="h-4 w-4" />
               </a>
             )}
           </div>

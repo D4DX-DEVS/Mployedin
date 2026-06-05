@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { BarChart3, Download, FileSpreadsheet, FileText, Loader2, Sparkles, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { exportExcelRows } from "@/lib/export";
 
 type ReportRow = {
   section: string;
@@ -22,7 +23,6 @@ type ReportRow = {
 };
 
 const REPORT_TITLE = "Analytics Report";
-const EXCEL_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 function getExportFileBaseName(): string {
   return `admin-analytics-${new Date().toISOString().split("T")[0]}`;
@@ -151,25 +151,11 @@ export default function AdminAnalyticsPage() {
     setExporting("excel");
 
     try {
-      const XLSX = await import("xlsx");
       const rows = parseReportRows(result);
-      const worksheet = XLSX.utils.aoa_to_sheet([
+      exportExcelRows([
         ["Report", "Section", "Type", "Content"],
         ...rows.map((row) => [REPORT_TITLE, row.section, row.kind, row.content]),
-      ]);
-
-      worksheet["!cols"] = [
-        { wch: 22 },
-        { wch: 28 },
-        { wch: 14 },
-        { wch: 110 },
-      ];
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Analytics Report");
-
-      const output = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-      triggerDownload(new Blob([output], { type: EXCEL_MIME }), `${getExportFileBaseName()}.xlsx`);
+      ], `${getExportFileBaseName()}.xls`, REPORT_TITLE);
     } catch {
       toast.error("Failed to export analytics as Excel.");
     } finally {

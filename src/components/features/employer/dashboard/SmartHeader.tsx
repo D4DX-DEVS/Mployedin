@@ -57,7 +57,7 @@ export function SmartHeader({
     <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-5 sm:p-6">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="max-w-3xl min-w-0">
-          <Image src="/logo.png" alt="Mployedin" width={140} height={36} className="mb-4 h-9 w-auto object-contain" style={{ width: "auto" }} />
+          <Image src="/logo.png" alt="Mployedin" width={100} height={34} className="mb-4 h-auto w-[106px] object-contain" style={{ height: "auto" }} />
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300">
             <Sparkles className="h-3.5 w-3.5" />
             {t(eyebrowKey)}

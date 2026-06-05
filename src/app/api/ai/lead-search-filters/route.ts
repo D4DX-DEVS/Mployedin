@@ -143,4 +143,4 @@ User query: "${safeQuery}"`;
       degraded: true,
     });
   }
-}, { resource: "leads", action: "read" });
+}, { resource: "leads", action: "read", aiQuota: true });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
   Briefcase,
@@ -52,16 +53,19 @@ function toMonthInput(val: string | undefined | null): string {
 }
 
 /** Format YYYY-MM to readable string */
-function formatDate(val: string): string {
+function formatDate(val: string, locale: string): string {
   if (!val) return "";
   const [year, month] = val.split("-");
   const date = new Date(Number(year), Number(month) - 1);
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return date.toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { month: "long", year: "numeric" });
 }
 
 /* ── Main Page ── */
 
 export default function ExperiencePage() {
+  const t = useTranslations("jobSeekerExtra.experience");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const router = useRouter();
 
   const [experiences, setExperiences] = useState<WorkExperience[]>([]);
@@ -246,24 +250,24 @@ export default function ExperiencePage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">Work Experience</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Add your work history to stand out to employers
+            {t("description")}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {saveStatus === "saving" && (
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse">
-              <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+              <Loader2 className="h-3 w-3 animate-spin" /> {t("saving")}
             </span>
           )}
           {saveStatus === "saved" && (
             <span className="flex items-center gap-1.5 text-xs text-emerald-600">
-              <CheckCircle2 className="h-3 w-3" /> Saved
+              <CheckCircle2 className="h-3 w-3" /> {t("saved")}
             </span>
           )}
           <Button variant="outline" size="sm" onClick={addExperience} className="gap-1.5">
-            <Plus className="h-3.5 w-3.5" /> Add Experience
+            <Plus className="h-3.5 w-3.5" /> {t("add")}
           </Button>
         </div>
       </div>
@@ -273,21 +277,21 @@ export default function ExperiencePage() {
         <div className="card-base mb-6 flex items-center gap-6 px-5 py-3">
           <div className="flex items-center gap-2">
             <Briefcase className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">{experiences.length}</span>
+            <span className="text-sm font-medium">{experiences.length.toLocaleString(numberLocale)}</span>
             <span className="text-xs text-muted-foreground">
-              position{experiences.length !== 1 ? "s" : ""}
+              {experiences.length === 1 ? t("position") : t("positions")}
             </span>
           </div>
           <div className="h-4 w-px bg-border" />
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{totalYears.toFixed(1)}</span>
-            <span className="text-xs text-muted-foreground">years total</span>
+            <span className="text-sm font-medium">{totalYears.toLocaleString(numberLocale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+            <span className="text-xs text-muted-foreground">{t("yearsTotal")}</span>
           </div>
           {experiences.some((e) => e.isCurrent) && (
             <>
               <div className="h-4 w-px bg-border" />
               <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
-                Currently employed
+                {t("currentlyEmployed")}
               </Badge>
             </>
           )}
@@ -298,7 +302,7 @@ export default function ExperiencePage() {
       {!profileLoaded && (
         <div className="card-base flex items-center justify-center p-12">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="ml-2 text-sm text-muted-foreground">Loading experience…</span>
+          <span className="ms-2 text-sm text-muted-foreground">{t("loading")}</span>
         </div>
       )}
 
@@ -308,13 +312,12 @@ export default function ExperiencePage() {
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 mb-4">
             <Briefcase className="h-7 w-7 text-primary" />
           </div>
-          <h3 className="text-lg font-semibold mb-1">No experience added yet</h3>
+          <h3 className="text-lg font-semibold mb-1">{t("emptyTitle")}</h3>
           <p className="text-sm text-muted-foreground mb-5 max-w-sm">
-            Adding your work experience helps employers understand your background and increases
-            your profile match score.
+            {t("emptyDescription")}
           </p>
           <Button onClick={addExperience} className="gap-1.5">
-            <Plus className="h-4 w-4" /> Add Your First Experience
+            <Plus className="h-4 w-4" /> {t("addFirst")}
           </Button>
         </div>
       )}
@@ -332,18 +335,18 @@ export default function ExperiencePage() {
                 <div className="flex items-center gap-2">
                   <GripVertical className="h-4 w-4 text-muted-foreground/40" />
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    {exp.isCurrent ? "Current Position" : `Position ${i + 1}`}
+                    {exp.isCurrent ? t("currentPosition") : t("positionNumber", { count: (i + 1).toLocaleString(numberLocale) })}
                   </span>
                   {exp.isCurrent && (
                     <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0">
-                      Current
+                      {t("current")}
                     </Badge>
                   )}
                 </div>
                 <button
                   onClick={() => removeExperience(i)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                  title="Remove experience"
+                  title={t("remove")}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -352,20 +355,20 @@ export default function ExperiencePage() {
               {/* Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Job Title</Label>
+                  <Label className="text-xs text-muted-foreground">{t("jobTitle")}</Label>
                   <Input
                     value={exp.jobTitle}
                     onChange={(e) => updateExperience(i, "jobTitle", e.target.value)}
-                    placeholder="e.g. Senior Frontend Developer"
+                    placeholder={t("jobPlaceholder")}
                     className="h-10"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Company</Label>
+                  <Label className="text-xs text-muted-foreground">{t("company")}</Label>
                   <Input
                     value={exp.company}
                     onChange={(e) => updateExperience(i, "company", e.target.value)}
-                    placeholder="Company name"
+                    placeholder={t("companyPlaceholder")}
                     className="h-10"
                   />
                 </div>
@@ -373,16 +376,16 @@ export default function ExperiencePage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">Location</Label>
+                  <Label className="text-xs text-muted-foreground">{t("location")}</Label>
                   <Input
                     value={exp.country}
                     onChange={(e) => updateExperience(i, "country", e.target.value)}
-                    placeholder="City, Country"
+                    placeholder={t("locationPlaceholder")}
                     className="h-10"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">From</Label>
+                  <Label className="text-xs text-muted-foreground">{t("from")}</Label>
                   <Input
                     type="month"
                     value={exp.startDate}
@@ -392,7 +395,7 @@ export default function ExperiencePage() {
                 </div>
                 {!exp.isCurrent ? (
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">To</Label>
+                    <Label className="text-xs text-muted-foreground">{t("to")}</Label>
                     <Input
                       type="month"
                       value={exp.endDate}
@@ -402,9 +405,9 @@ export default function ExperiencePage() {
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">To</Label>
+                    <Label className="text-xs text-muted-foreground">{t("to")}</Label>
                     <div className="flex h-10 items-center text-sm text-muted-foreground px-3 border rounded-md bg-muted/30">
-                      Present
+                      {t("present")}
                     </div>
                   </div>
                 )}
@@ -420,14 +423,14 @@ export default function ExperiencePage() {
                   id={`current-${i}`}
                 />
                 <label htmlFor={`current-${i}`} className="text-xs text-muted-foreground cursor-pointer">
-                  I currently work here
+                  {t("currentWork")}
                 </label>
               </div>
 
               {/* Description with AI enhance */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground">Description</Label>
+                  <Label className="text-xs text-muted-foreground">{t("descriptionLabel")}</Label>
                   <Button
                     type="button"
                     variant="ghost"
@@ -441,13 +444,13 @@ export default function ExperiencePage() {
                     ) : (
                       <Sparkles className="h-3 w-3" />
                     )}
-                    AI Enhance
+                    {t("aiEnhance")}
                   </Button>
                 </div>
                 <Textarea
                   value={exp.description}
                   onChange={(e) => updateExperience(i, "description", e.target.value)}
-                  placeholder="Key responsibilities and achievements…"
+                  placeholder={t("descriptionPlaceholder")}
                   rows={3}
                   className="resize-none text-sm"
                 />
@@ -462,7 +465,7 @@ export default function ExperiencePage() {
               {exp.startDate && (
                 <div className="pt-1 border-t border-border/40">
                   <span className="text-[10px] text-muted-foreground">
-                    Duration: {formatDate(exp.startDate)} – {exp.isCurrent ? "Present" : exp.endDate ? formatDate(exp.endDate) : "—"}
+                    {t("duration")} {formatDate(exp.startDate, locale)} – {exp.isCurrent ? t("present") : exp.endDate ? formatDate(exp.endDate, locale) : "—"}
                     {(() => {
                       const start = new Date(exp.startDate + "-01");
                       const end = exp.isCurrent ? new Date() : exp.endDate ? new Date(exp.endDate + "-01") : null;
@@ -484,7 +487,7 @@ export default function ExperiencePage() {
             className="w-full card-base flex items-center justify-center gap-2 p-4 text-sm text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            Add another experience
+            {t("addAnother")}
           </button>
         </div>
       )}

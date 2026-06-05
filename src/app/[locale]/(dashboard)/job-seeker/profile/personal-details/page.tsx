@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
   User2,
@@ -91,12 +92,14 @@ function ChipGroup({
   items,
   value,
   onChange,
+  locale,
 }: {
   label: string;
   hint?: string;
   items: LookupItem[];
   value: string;
   onChange: (id: string) => void;
+  locale: string;
 }) {
   return (
     <div className="space-y-2">
@@ -117,7 +120,7 @@ function ChipGroup({
                   : "border-border bg-background text-foreground hover:border-primary/60 hover:bg-primary/5"
               )}
             >
-              {item.name}
+              {locale === "ar" ? item.nameAr || item.name : item.name}
             </button>
           );
         })}
@@ -159,6 +162,8 @@ function Section({
 
 export default function PersonalDetailsPage() {
   const router = useRouter();
+  const locale = useLocale();
+  const t = useTranslations("jobSeekerExtra.personalDetails");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
@@ -208,7 +213,10 @@ export default function PersonalDetailsPage() {
   }, []);
 
   useEffect(() => {
-    document.title = "Personal Details · MPLOYEDIN";
+    document.title = t("documentTitle");
+  }, [t]);
+
+  useEffect(() => {
     load();
   }, [load]);
 
@@ -275,7 +283,12 @@ export default function PersonalDetailsPage() {
 
   const countryOptions = countries.map((c) => ({
     value: c._id,
-    label: `${c.name} (${c.code})`,
+    label: `${locale === "ar" ? c.nameAr || c.name : c.name} (${c.code})`,
+  }));
+
+  const proficiencyOptions = PROFICIENCY_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(`proficiencyOptions.${option.value}`),
   }));
 
   // ── Skeleton ─────────────────────────────────────────────────────────────────
@@ -296,8 +309,8 @@ export default function PersonalDetailsPage() {
   return (
     <div className="page-container">
       <PageHeader
-        title="Personal Details"
-        description="Tell employers more about you — helps with equal opportunity matching"
+        title={t("title")}
+        description={t("description")}
         actions={
           <Button
             variant="ghost"
@@ -306,7 +319,7 @@ export default function PersonalDetailsPage() {
             className="gap-1.5"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Profile
+            {t("back")}
           </Button>
         }
       />
@@ -316,39 +329,41 @@ export default function PersonalDetailsPage() {
         {/* ── Gender ──────────────────────────────────────────────────────── */}
         <Section
           icon={<User2 className="h-4 w-4" />}
-          title="Gender"
-          description="Select your gender identity"
+          title={t("gender")}
+          description={t("genderDescription")}
         >
           <ChipGroup
-            label="Gender"
+            label={t("gender")}
             items={genders}
             value={form.genderId}
             onChange={(id) => setField("genderId", id)}
+            locale={locale}
           />
         </Section>
 
         {/* ── Marital Status ───────────────────────────────────────────────── */}
         <Section
           icon={<Heart className="h-4 w-4" />}
-          title="Marital Status"
-          description="Your current marital status"
+          title={t("marital")}
+          description={t("maritalDescription")}
         >
           <ChipGroup
-            label="Marital Status"
+            label={t("marital")}
             items={maritalStatuses}
             value={form.maritalStatusId}
             onChange={(id) => setField("maritalStatusId", id)}
+            locale={locale}
           />
         </Section>
 
         {/* ── Date of Birth ────────────────────────────────────────────────── */}
         <Section
           icon={<Calendar className="h-4 w-4" />}
-          title="Date of Birth"
-          description="You must be at least 16 years old"
+          title={t("dob")}
+          description={t("dobDescription")}
         >
           <FormDatePicker
-            label="Date of Birth"
+            label={t("dob")}
             value={form.dateOfBirth}
             onChange={(v) => setField("dateOfBirth", v)}
             max={maxDob()}
@@ -358,45 +373,45 @@ export default function PersonalDetailsPage() {
         {/* ── Work Permit ──────────────────────────────────────────────────── */}
         <Section
           icon={<Globe2 className="h-4 w-4" />}
-          title="Work Authorization"
-          description="Countries where you are legally authorized to work"
+          title={t("workAuth")}
+          description={t("workAuthDescription")}
         >
           <FormMultiSelect
-            label="Work Permit Countries"
-            hint="You can choose up to 5 countries"
+            label={t("workPermit")}
+            hint={t("workPermitHint")}
             options={countryOptions}
             value={form.workPermitCountries}
             onChange={(v) => setField("workPermitCountries", v)}
             maxSelections={5}
             searchable
-            placeholder="Select countries…"
+            placeholder={t("selectCountries")}
           />
         </Section>
 
         {/* ── Address ──────────────────────────────────────────────────────── */}
         <Section
           icon={<MapPin className="h-4 w-4" />}
-          title="Address"
-          description="Your residential address details"
+          title={t("address")}
+          description={t("addressDescription")}
         >
           <FormInput
-            label="Permanent Address"
-            placeholder="Enter your permanent address"
+            label={t("permanentAddress")}
+            placeholder={t("permanentAddressPlaceholder")}
             value={form.permanentAddress}
             onChange={(e) => setField("permanentAddress", e.target.value)}
             maxLength={500}
           />
           <div className="grid grid-cols-2 gap-4">
             <FormInput
-              label="Hometown"
-              placeholder="Your hometown"
+              label={t("hometown")}
+              placeholder={t("hometownPlaceholder")}
               value={form.hometown}
               onChange={(e) => setField("hometown", e.target.value)}
               maxLength={200}
             />
             <FormInput
-              label="Pincode / Postal Code"
-              placeholder="Postal code"
+              label={t("postal")}
+              placeholder={t("postalPlaceholder")}
               value={form.pincode}
               onChange={(e) => setField("pincode", e.target.value)}
               maxLength={20}
@@ -407,13 +422,13 @@ export default function PersonalDetailsPage() {
         {/* ── Language Proficiency ─────────────────────────────────────────── */}
         <Section
           icon={<Languages className="h-4 w-4" />}
-          title="Language Proficiency"
-          description="Strengthen your resume by letting recruiters know your languages"
+          title={t("languageProficiency")}
+          description={t("languageDescription")}
         >
           <div className="space-y-3">
             {form.languages.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No languages added yet. Click &quot;Add Language&quot; below.
+                {t("noLanguages")}
               </p>
             )}
 
@@ -421,8 +436,8 @@ export default function PersonalDetailsPage() {
               <div key={idx} className="flex items-end gap-3">
                 <div className="flex-1">
                   <FormInput
-                    label={idx === 0 ? "Language" : undefined}
-                    placeholder="e.g. English, Arabic…"
+                    label={idx === 0 ? t("language") : undefined}
+                    placeholder={t("languagePlaceholder")}
                     value={entry.language}
                     onChange={(e) => updateLanguage(idx, { language: e.target.value })}
                     maxLength={100}
@@ -430,8 +445,8 @@ export default function PersonalDetailsPage() {
                 </div>
                 <div className="w-44 shrink-0">
                   <FormSelect
-                    label={idx === 0 ? "Proficiency" : undefined}
-                    options={PROFICIENCY_OPTIONS}
+                    label={idx === 0 ? t("proficiency") : undefined}
+                    options={proficiencyOptions}
                     value={entry.proficiency}
                     onChange={(v) =>
                       updateLanguage(idx, { proficiency: v as LanguageEntry["proficiency"] })
@@ -442,7 +457,7 @@ export default function PersonalDetailsPage() {
                   type="button"
                   onClick={() => removeLanguage(idx)}
                   className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
-                  aria-label="Remove language"
+                  aria-label={t("removeLanguage")}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -458,7 +473,7 @@ export default function PersonalDetailsPage() {
               className="gap-1.5"
             >
               <Plus className="h-4 w-4" />
-              Add Language
+              {t("addLanguage")}
             </Button>
           </div>
         </Section>
@@ -469,18 +484,18 @@ export default function PersonalDetailsPage() {
             {saveState === "saved" && (
               <>
                 <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                <span className="text-emerald-600 font-medium">Saved successfully</span>
+                <span className="text-emerald-600 font-medium">{t("saved")}</span>
               </>
             )}
             {saveState === "error" && (
               <>
                 <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-                <span className="text-destructive font-medium">Failed to save — please try again</span>
+                <span className="text-destructive font-medium">{t("failed")}</span>
               </>
             )}
             {saveState === "idle" && (
               <span className="text-muted-foreground">
-                Fill in your details and click Save
+                {t("idle")}
               </span>
             )}
           </div>
@@ -491,11 +506,11 @@ export default function PersonalDetailsPage() {
               size="sm"
               onClick={() => router.push("../profile")}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save
+              {t("save")}
             </Button>
           </div>
         </div>

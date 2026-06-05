@@ -130,7 +130,7 @@ export default function LoginPage() {
           href={`/${locale}`}
           className="inline-flex w-fit items-center"
         >
-          <Image src="/logo.png" alt="Mployedin" width={156} height={40} className="h-9 w-auto object-contain" style={{ width: "auto" }} priority />
+          <Image src="/logo.png" alt="Mployedin" width={100} height={34} className="h-auto w-[106px] object-contain" style={{ height: "auto" }} priority />
         </Link>
       </div>
 

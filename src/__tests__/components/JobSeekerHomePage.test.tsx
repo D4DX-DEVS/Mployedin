@@ -168,7 +168,7 @@ describe("JobSeekerHomePage", () => {
     expect(screen.getByText("ابق قريباً من مسار طلباتك")).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith("/api/ai/daily-insights");
+      expect(global.fetch).toHaveBeenCalledWith("/api/ai/daily-insights?locale=ar");
     });
   });
 });

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Search, Sparkles, MapPin, Clock, Briefcase, Loader2 } from "lucide-react";
+import { formatLocalizedLocation } from "@/lib/i18n/locations";
 
 interface Job {
   _id: string;
@@ -18,13 +20,16 @@ interface Job {
 }
 
 const PROMPTS = [
-  "Remote frontend developer role with React in Dubai",
-  "Full-stack engineer with Node.js, 3-5 years, Abu Dhabi or remote",
-  "Marketing manager in Saudi Arabia, salary above SAR 15,000",
-  "Entry level finance roles in Bahrain or Kuwait",
-];
+  "frontend",
+  "fullstack",
+  "marketing",
+  "finance",
+] as const;
 
 export default function JobSeekerNLSearchPage() {
+  const t = useTranslations("jobSeekerExtra.search");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [query, setQuery] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,7 +57,7 @@ export default function JobSeekerNLSearchPage() {
           setJobs(data.jobs ?? []);
           setSearched(true);
         }
-      } catch { setError("Search failed. Please try again."); }
+      } catch { setError(t("failed")); }
     } finally {
       setLoading(false);
     }
@@ -68,21 +73,20 @@ export default function JobSeekerNLSearchPage() {
   return (
     <div className="page-container">
       <PageHeader
-        title="AI Job Search"
-        description='Search jobs in plain English — "I want a senior DevOps role in Dubai with remote option"'
+        title={t("title")}
+        description={t("description")}
       />
 
-      {/* Search bar */}
       <div className="card-base space-y-3">
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+            <Sparkles className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && search()}
-              placeholder='e.g. "Senior React developer Dubai salary AED 15k minimum"'
-              className="input-field w-full h-11 pl-9 pr-4 rounded-xl"
+              placeholder={t("placeholder")}
+              className="input-field w-full h-11 ps-9 pe-4 rounded-xl"
             />
           </div>
           <button
@@ -95,13 +99,13 @@ export default function JobSeekerNLSearchPage() {
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          {PROMPTS.map((p) => (
+          {PROMPTS.map((prompt) => (
             <button
-              key={p}
-              onClick={() => { setQuery(p); search(p); }}
+              key={prompt}
+              onClick={() => { const text = t(`prompts.${prompt}`); setQuery(text); search(text); }}
               className="btn-pill text-xs sm:text-sm"
             >
-              {p}
+              {t(`prompts.${prompt}`)}
             </button>
           ))}
         </div>
@@ -109,17 +113,16 @@ export default function JobSeekerNLSearchPage() {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {/* Results */}
       {searched && (
         <div>
           <p className="text-sm font-medium text-muted-foreground mb-3">
-            {jobs.length} result{jobs.length !== 1 ? "s" : ""} found
+            {t("resultsFound", { count: jobs.length.toLocaleString(numberLocale) })}
           </p>
           <div className="space-y-3">
             {jobs.length === 0 ? (
               <div className="card-base text-center py-12">
                 <Search className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground text-sm">No jobs match your search. Try different keywords.</p>
+                <p className="text-muted-foreground text-sm">{t("noResults")}</p>
               </div>
             ) : (
               jobs.map((job) => (
@@ -130,19 +133,19 @@ export default function JobSeekerNLSearchPage() {
                         <h3 className="font-semibold">{job.title}</h3>
                         {job.matchScore !== undefined && (
                           <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${scoreColor(job.matchScore)}`}>
-                            {job.matchScore}% match
+                            {t("match", { score: job.matchScore.toLocaleString(numberLocale) })}
                           </span>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{typeof job.location === "object" && job.location ? (job.location.isRemote ? "Remote" : [job.location.city, job.location.country].filter(Boolean).join(", ")) : job.location}</span>
+                        <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{formatLocalizedLocation(job.location, locale, { remoteLabel: t("remote"), fallback: "" })}</span>
                         <span className="flex items-center gap-1"><Briefcase className="h-3.5 w-3.5" />{job.category}</span>
                         <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />
-                          {new Date(job.createdAt).toLocaleDateString()}
+                          {new Date(job.createdAt).toLocaleDateString(numberLocale)}
                         </span>
                         {job.salary && (
                           <span className="font-medium text-foreground">
-                            {job.salary.currency} {job.salary.min?.toLocaleString()}–{job.salary.max?.toLocaleString()}
+                            {job.salary.currency} {job.salary.min?.toLocaleString(numberLocale)}–{job.salary.max?.toLocaleString(numberLocale)}
                           </span>
                         )}
                       </div>
@@ -153,7 +156,7 @@ export default function JobSeekerNLSearchPage() {
                         href={`./jobs/${job._id}`}
                         className="btn-primary text-xs px-3 py-1.5"
                       >
-                        Apply
+                        {t("apply")}
                       </a>
                     </div>
                   </div>

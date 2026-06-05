@@ -96,6 +96,7 @@ export interface IJobSeeker extends Document {
     originalUrl?: string;
     parsedAt?: Date;
     rawText?: string;
+    contentHash?: string;
   };
   // Skills & Experience
   skills: string[];
@@ -279,6 +280,7 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       originalUrl: String,
       parsedAt: Date,
       rawText: String,
+      contentHash: String,
     },
     skills: [String],
     suggestedSkills: [String],

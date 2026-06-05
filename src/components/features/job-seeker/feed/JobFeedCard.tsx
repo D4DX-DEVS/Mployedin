@@ -2,6 +2,7 @@
 
 import { memo, useMemo } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   MapPin,
   Briefcase,
@@ -18,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ShareJob } from "@/components/shared/ShareJob";
+import { formatLocalizedLocation } from "@/lib/i18n/locations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -86,18 +88,17 @@ function matchColor(score: number) {
   return "bg-amber-500 text-white border-amber-600 dark:bg-amber-500 dark:text-white dark:border-amber-400";
 }
 
-function relativeTime(iso: string) {
+function relativeTime(iso: string): { key: "justNow" | "hoursAgo" | "daysAgo" | "weeksAgo" | "monthsAgo"; value?: number } {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return "just now";
+  if (mins < 60) return { key: "justNow" };
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return { key: "hoursAgo", value: hrs };
   const days = Math.floor(hrs / 24);
-  if (days === 1) return "1 day ago";
-  if (days < 7) return `${days} days ago`;
+  if (days < 7) return { key: "daysAgo", value: days };
   const weeks = Math.floor(days / 7);
-  if (weeks < 5) return `${weeks}w ago`;
-  return `${Math.floor(days / 30)}mo ago`;
+  if (weeks < 5) return { key: "weeksAgo", value: weeks };
+  return { key: "monthsAgo", value: Math.floor(days / 30) };
 }
 
 function isNewJob(createdAt: string) {
@@ -110,18 +111,29 @@ function isUrgentJob(expiresAt?: string) {
   return remaining > 0 && remaining < 7 * 24 * 3600_000;
 }
 
-function fmtSalary(s: { min: number; max: number; currency: string }) {
+function fmtSalary(s: { min: number; max: number; currency: string }, numberLocale: string) {
   const fmt = (n: number) => {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-    return n.toString();
+    if (n >= 1_000) {
+      return new Intl.NumberFormat(numberLocale, {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(n);
+    }
+
+    return n.toLocaleString(numberLocale);
   };
   return `${fmt(s.min)}–${fmt(s.max)} ${s.currency}`;
 }
 
-function fmtCount(n: number) {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return n.toString();
+function fmtCount(n: number, numberLocale: string) {
+  if (n >= 1000) {
+    return new Intl.NumberFormat(numberLocale, {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(n);
+  }
+
+  return n.toLocaleString(numberLocale);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -138,7 +150,9 @@ export const JobFeedCard = memo(function JobFeedCard({
   locale,
   showMatchScore = true,
 }: JobCardProps) {
-  const company = job.employerId?.companyName ?? "Company";
+  const t = useTranslations("jobFeed.card");
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
+  const company = job.employerId?.companyName ?? t("company");
   const companyHref = job.employerId?._id
     ? `/${locale}/job-seeker/companies/${job.employerId._id}`
     : null;
@@ -147,6 +161,7 @@ export const JobFeedCard = memo(function JobFeedCard({
   const urgent = isUrgentJob(job.expiresAt);
   const fresh = isNewJob(job.createdAt);
   const remote = job.location.isRemote;
+  const posted = relativeTime(job.createdAt);
 
   const matchedSet = useMemo(
     () => new Set((job.matchedSkills ?? []).map((s) => s.toLowerCase())),
@@ -167,7 +182,7 @@ export const JobFeedCard = memo(function JobFeedCard({
           <Checkbox
             checked={isSelected}
             onCheckedChange={() => onToggleSelect()}
-            aria-label={isSelected ? "Deselect job" : "Select job"}
+            aria-label={isSelected ? t("deselectJob") : t("selectJob")}
           />
         </div>
 
@@ -176,7 +191,7 @@ export const JobFeedCard = memo(function JobFeedCard({
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {remote ? "Remote-ready" : "Recommended role"}
+                {remote ? t("remoteReady") : t("recommendedRole")}
               </div>
               <Link
                 href={`/${locale}/job-seeker/jobs/${job._id}`}
@@ -203,14 +218,14 @@ export const JobFeedCard = memo(function JobFeedCard({
                 <span
                   className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${matchColor(job.matchScore)}`}
                 >
-                  {job.matchScore}% match
+                  {t("matchPercent", { score: job.matchScore.toLocaleString(numberLocale) })}
                 </span>
               )}
 
               {companyHref ? (
                 <Link
                   href={companyHref}
-                  aria-label={`View ${company}`}
+                  aria-label={t("viewCompany", { company })}
                   className="transition-transform hover:scale-[1.02]"
                 >
                   <div
@@ -218,7 +233,7 @@ export const JobFeedCard = memo(function JobFeedCard({
                   >
                     {job.employerId?.logo ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={job.employerId.logo} alt={`${company} logo`} className="h-full w-full rounded-2xl object-cover" />
+                      <img src={job.employerId.logo} alt={t("companyLogo", { company })} className="h-full w-full rounded-2xl object-cover" />
                     ) : (
                       logo
                     )}
@@ -230,7 +245,7 @@ export const JobFeedCard = memo(function JobFeedCard({
                 >
                   {job.employerId?.logo ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={job.employerId.logo} alt={`${company} logo`} className="h-full w-full rounded-2xl object-cover" />
+                    <img src={job.employerId.logo} alt={t("companyLogo", { company })} className="h-full w-full rounded-2xl object-cover" />
                   ) : (
                     logo
                   )}
@@ -244,17 +259,17 @@ export const JobFeedCard = memo(function JobFeedCard({
             <div className="mt-2 flex flex-wrap gap-1.5">
               {urgent && (
                 <Badge variant="destructive" dot className="text-[10px] py-0">
-                  Urgent
+                  {t("urgent")}
                 </Badge>
               )}
               {remote && (
                 <Badge variant="success" dot className="text-[10px] py-0">
-                  Remote
+                  {t("remote")}
                 </Badge>
               )}
               {fresh && (
                 <Badge variant="info" dot className="text-[10px] py-0">
-                  New
+                  {t("new")}
                 </Badge>
               )}
             </div>
@@ -265,20 +280,23 @@ export const JobFeedCard = memo(function JobFeedCard({
             {(job.requirements?.experienceMin != null || job.requirements?.experienceMax != null) && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
                 <Briefcase className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-                {job.requirements.experienceMin ?? 0}–{job.requirements.experienceMax ?? 0} yrs
+                {t("yearsRange", {
+                  min: (job.requirements.experienceMin ?? 0).toLocaleString(numberLocale),
+                  max: (job.requirements.experienceMax ?? 0).toLocaleString(numberLocale),
+                })}
               </span>
             )}
             <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
               <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-              {job.location.city}
-              {remote && job.location.city ? " · Remote" : ""}
-              {!remote && job.location.country ? `, ${job.location.country}` : ""}
-              {remote && !job.location.city ? "Remote" : ""}
+              {formatLocalizedLocation(job.location, locale, {
+                remoteLabel: t("remote"),
+                includeLocationForRemote: true,
+              })}
             </span>
             {job.salary?.min > 0 && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
                 <DollarSign className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-                {fmtSalary(job.salary)}
+                {fmtSalary(job.salary, numberLocale)}
               </span>
             )}
           </div>
@@ -311,7 +329,7 @@ export const JobFeedCard = memo(function JobFeedCard({
               })}
               {job.requirements.skills.length > 6 && (
                 <span className="text-[11px] px-2 py-0.5 text-muted-foreground">
-                  +{job.requirements.skills.length - 6}
+                  +{(job.requirements.skills.length - 6).toLocaleString(numberLocale)}
                 </span>
               )}
             </div>
@@ -320,17 +338,17 @@ export const JobFeedCard = memo(function JobFeedCard({
           {/* Bottom: posted date + stats + actions */}
           <div className="mt-4 flex flex-col gap-3 border-t border-border/40 pt-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-              <span>{relativeTime(job.createdAt)}</span>
+              <span>{posted.value == null ? t(`time.${posted.key}`) : t(`time.${posted.key}`, { value: posted.value.toLocaleString(numberLocale) })}</span>
               {(job.views ?? 0) > 0 && (
                 <span className="flex items-center gap-1">
                   <Eye className="h-3 w-3" />
-                  {fmtCount(job.views!)}
+                  {fmtCount(job.views!, numberLocale)}
                 </span>
               )}
               {(job.uniqueViews ?? 0) > 0 && (
                 <span className="flex items-center gap-1">
                   <Users className="h-3 w-3" />
-                  {fmtCount(job.uniqueViews!)} viewers
+                  {t("viewers", { count: fmtCount(job.uniqueViews!, numberLocale) })}
                 </span>
               )}
             </div>
@@ -338,7 +356,7 @@ export const JobFeedCard = memo(function JobFeedCard({
               <ShareJob
                 jobId={job._id}
                 jobTitle={job.title}
-                companyName={job.employerId?.companyName ?? "Company"}
+                companyName={job.employerId?.companyName ?? t("company")}
                 locale={locale}
                 variant="icon"
               />
@@ -347,7 +365,7 @@ export const JobFeedCard = memo(function JobFeedCard({
                 className="inline-flex items-center gap-1 rounded-xl border border-border bg-secondary/80 px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <EyeOff className="h-3 w-3" />
-                <span className="hidden sm:inline">Hide</span>
+                <span className="hidden sm:inline">{t("hide")}</span>
               </button>
               <button
                 onClick={onSave}
@@ -358,7 +376,7 @@ export const JobFeedCard = memo(function JobFeedCard({
                 }`}
               >
                 {isSaved ? <BookmarkCheck className="h-3 w-3" /> : <Bookmark className="h-3 w-3" />}
-                <span className="hidden sm:inline">{isSaved ? "Saved" : "Save"}</span>
+                <span className="hidden sm:inline">{isSaved ? t("saved") : t("save")}</span>
               </button>
               <button
                 onClick={onApply}
@@ -372,12 +390,12 @@ export const JobFeedCard = memo(function JobFeedCard({
                 {isApplied ? (
                   <>
                     <CheckCircle className="h-3.5 w-3.5" />
-                    Applied
+                    {t("applied")}
                   </>
                 ) : (
                   <>
                     <Zap className="h-3.5 w-3.5" />
-                    Easy Apply
+                    {t("easyApply")}
                   </>
                 )}
               </button>

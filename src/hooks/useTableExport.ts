@@ -30,7 +30,7 @@ export function useTableExport<T extends Record<string, unknown>>({
 
   const handleExportExcel = useCallback(() => {
     import("@/lib/export").then(({ exportExcel }) =>
-      exportExcel(data, columns, `${filename}.xlsx`, title),
+      exportExcel(data, columns, `${filename}.xls`, title),
     );
   }, [data, columns, filename, title]);
 

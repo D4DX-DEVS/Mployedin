@@ -175,4 +175,4 @@ ${sectionPrompt}`;
     profileCompleteness: completeness,
     message: `Your ${sectionId} has been updated successfully.`,
   });
-});
+}, { aiQuota: true });

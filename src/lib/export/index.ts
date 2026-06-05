@@ -1,5 +1,5 @@
 /**
- * Client-side export utilities: CSV, Excel (xlsx), PDF (jspdf).
+ * Client-side export utilities: CSV, Excel-compatible HTML, PDF (jspdf).
  */
 
 export interface ExportColumn<T> {
@@ -28,6 +28,37 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function sanitizeSpreadsheetCell(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normalizeExcelFilename(filename: string): string {
+  return filename.replace(/\.xlsx$/i, ".xls") || "export.xls";
+}
+
+export function exportExcelRows(
+  rows: string[][],
+  filename = "export.xls",
+  sheetName = "Sheet1",
+): void {
+  const safeSheetName = escapeHtml(sheetName.slice(0, 31) || "Sheet1");
+  const tableRows = rows
+    .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(sanitizeSpreadsheetCell(cell))}</td>`).join("")}</tr>`)
+    .join("");
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>td{mso-number-format:"\\@";}</style></head><body><table><caption>${safeSheetName}</caption>${tableRows}</table></body></html>`;
+  const blob = new Blob(["\uFEFF", html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  triggerDownload(blob, normalizeExcelFilename(filename));
+}
+
 /* ── CSV ─────────────────────────────────────────────── */
 
 export function exportCSV<T extends Record<string, unknown>>(
@@ -39,7 +70,7 @@ export function exportCSV<T extends Record<string, unknown>>(
   const rows = data.map((row) =>
     columns
       .map((col) => {
-        const val = resolveValue(row, col);
+        const val = sanitizeSpreadsheetCell(resolveValue(row, col));
         return `"${String(val).replace(/"/g, '""')}"`;
       })
       .join(","),
@@ -52,28 +83,19 @@ export function exportCSV<T extends Record<string, unknown>>(
   triggerDownload(blob, filename);
 }
 
-/* ── Excel (xlsx) ────────────────────────────────────── */
+/* ── Excel-compatible HTML ───────────────────────────── */
 
 export async function exportExcel<T extends Record<string, unknown>>(
   data: T[],
   columns: ExportColumn<T>[],
-  filename = "export.xlsx",
+  filename = "export.xls",
   sheetName = "Sheet1",
 ): Promise<void> {
-  const XLSX = await import("xlsx");
-  const rows = data.map((row) => {
-    const obj: Record<string, string> = {};
-    columns.forEach((col) => {
-      obj[col.header] = resolveValue(row, col);
-    });
-    return obj;
-  });
-  const ws = XLSX.utils.json_to_sheet(rows);
-  // auto-width columns
-  ws["!cols"] = columns.map((c) => ({ wch: Math.max(c.header.length + 2, 14) }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  XLSX.writeFile(wb, filename);
+  exportExcelRows(
+    [columns.map((column) => column.header), ...data.map((row) => columns.map((column) => resolveValue(row, column)))],
+    filename,
+    sheetName,
+  );
 }
 
 /* ── PDF (jspdf + autotable) ─────────────────────────── */

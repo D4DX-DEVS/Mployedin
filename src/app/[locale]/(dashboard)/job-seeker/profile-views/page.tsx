@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Eye, Building2, TrendingUp, Calendar, User } from "lucide-react";
 
 interface ProfileViewItem {
@@ -22,6 +23,9 @@ interface ViewStats {
 }
 
 export default function ProfileViewsPage() {
+  const t = useTranslations("jobSeekerExtra.profileViews");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [stats, setStats] = useState<ViewStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,16 +53,16 @@ export default function ProfileViewsPage() {
     );
   }
 
-  if (!stats) return <div className="p-6 text-muted-foreground">Unable to load profile views</div>;
+  if (!stats) return <div className="p-6 text-muted-foreground">{t("unable")}</div>;
 
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Eye className="w-6 h-6 text-primary" />
-          Who Viewed Your Profile
+          {t("title")}
         </h1>
-        <p className="text-muted-foreground mt-1">See which companies and recruiters are checking out your CV</p>
+        <p className="text-muted-foreground mt-1">{t("description")}</p>
       </div>
 
       {/* KPI Cards */}
@@ -69,8 +73,8 @@ export default function ProfileViewsPage() {
               <Eye className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalViews}</p>
-              <p className="text-xs text-muted-foreground">Total views</p>
+              <p className="text-2xl font-bold text-foreground">{stats.totalViews.toLocaleString(numberLocale)}</p>
+              <p className="text-xs text-muted-foreground">{t("total")}</p>
             </div>
           </div>
         </div>
@@ -80,8 +84,8 @@ export default function ProfileViewsPage() {
               <TrendingUp className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.last7Days}</p>
-              <p className="text-xs text-muted-foreground">Last 7 days</p>
+              <p className="text-2xl font-bold text-foreground">{stats.last7Days.toLocaleString(numberLocale)}</p>
+              <p className="text-xs text-muted-foreground">{t("last7")}</p>
             </div>
           </div>
         </div>
@@ -91,8 +95,8 @@ export default function ProfileViewsPage() {
               <Calendar className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.last30Days}</p>
-              <p className="text-xs text-muted-foreground">Last 30 days</p>
+              <p className="text-2xl font-bold text-foreground">{stats.last30Days.toLocaleString(numberLocale)}</p>
+              <p className="text-xs text-muted-foreground">{t("last30")}</p>
             </div>
           </div>
         </div>
@@ -101,12 +105,12 @@ export default function ProfileViewsPage() {
       {/* View Source Breakdown */}
       {stats.bySource.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="font-semibold text-foreground mb-3">Views by Source</h3>
+          <h3 className="font-semibold text-foreground mb-3">{t("bySource")}</h3>
           <div className="flex gap-4 flex-wrap">
             {stats.bySource.map((s) => (
               <div key={s._id} className="px-4 py-2 bg-muted rounded-lg">
                 <span className="text-sm font-medium text-foreground capitalize">{s._id}</span>
-                <span className="ml-2 text-sm text-muted-foreground">({s.count})</span>
+                <span className="ms-2 text-sm text-muted-foreground">({s.count.toLocaleString(numberLocale)})</span>
               </div>
             ))}
           </div>
@@ -116,12 +120,12 @@ export default function ProfileViewsPage() {
       {/* Recent Views */}
       <div className="bg-card border border-border rounded-xl">
         <div className="px-5 py-4 border-b border-border">
-          <h3 className="font-semibold text-foreground">Recent Profile Views</h3>
+          <h3 className="font-semibold text-foreground">{t("recent")}</h3>
         </div>
         {stats.recentViews.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             <User className="w-10 h-10 mx-auto mb-3 opacity-50" />
-            <p>No profile views yet. Make sure your profile is visible and complete!</p>
+            <p>{t("empty")}</p>
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -133,15 +137,15 @@ export default function ProfileViewsPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      {view.viewerCompany ?? view.viewerName ?? "A recruiter"}
+                      {view.viewerCompany ?? view.viewerName ?? t("recruiter")}
                     </p>
                     <p className="text-xs text-muted-foreground capitalize">
-                      {view.viewerRole.replace("_", " ")} • via {view.source}
+                      {view.viewerRole.replace("_", " ")} • {t("via", { source: view.source })}
                     </p>
                   </div>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {new Date(view.viewedAt).toLocaleDateString()}
+                  {new Date(view.viewedAt).toLocaleDateString(numberLocale)}
                 </span>
               </div>
             ))}

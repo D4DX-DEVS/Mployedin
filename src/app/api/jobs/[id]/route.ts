@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
+import Agent from "@/models/Agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { jobUpdateSchema } from "@/lib/validators/jobs";
@@ -52,7 +53,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         { status: 403 }
       );
     }
-  } else if (!["agent", "super_agent", "admin"].includes(ctx.role)) {
+  } else if (ctx.role === "agent") {
+    // Scope agent writes to jobs they own or jobs of their assigned employers.
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const ok = Boolean(
+      agent && (
+        String(job.agentId) === String(agent._id) ||
+        ((agent.assignedEmployerIds as unknown[]) ?? []).some((e) => String(e) === String(job.employerId))
+      )
+    );
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -125,6 +136,6 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
   return NextResponse.json({ message: "Job deleted successfully" });
 }
 
-export const GET = withAuth(getHandler);
-export const PATCH = withAuth(patchHandler);
-export const DELETE = withAuth(deleteHandler);
+export const GET = withAuth(getHandler, { resource: "jobs", action: "read" });
+export const PATCH = withAuth(patchHandler, { resource: "jobs", action: "update" });
+export const DELETE = withAuth(deleteHandler, { resource: "jobs", action: "delete" });

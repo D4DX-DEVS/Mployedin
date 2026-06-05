@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
 import {
   User, MapPin, Globe, Briefcase, GraduationCap, Award,
@@ -25,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { cn } from "@/lib/utils";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -91,14 +93,16 @@ type ChecklistStep = {
   icon: React.ElementType;
 };
 
-function buildChecklist(profile: ProfileData | null): ChecklistStep[] {
+type ChecklistLabels = Record<"cv" | "skills" | "experience" | "education" | "personal" | "preferences", string>;
+
+function buildChecklist(profile: ProfileData | null, labels: ChecklistLabels): ChecklistStep[] {
   return [
-    { id: "cv",          label: "Upload CV with AI",   bonus: "+30%", done: !!(profile?.cvFileUrl || profile?.cv?.originalUrl), href: "./cv",                    icon: FileText      },
-    { id: "skills",      label: "Add Skills",         bonus: "+20%", done: (profile?.skills?.length ?? 0) > 0,        href: "./cv",                    icon: Award         },
-    { id: "experience",  label: "Add Experience",     bonus: "+15%", done: (profile?.experience?.length ?? 0) > 0,    href: "./cv",                    icon: Briefcase     },
-    { id: "education",   label: "Add Education",      bonus: "+10%", done: (profile?.education?.length ?? 0) > 0,     href: "./cv",                    icon: GraduationCap },
-    { id: "personal",    label: "Personal Details",   bonus: "+10%", done: !!(profile?.dateOfBirth || profile?.nationality), href: "./profile/personal-details", icon: UserCircle    },
-    { id: "preferences", label: "Set Job Preferences",bonus: "+15%", done: (profile?.preferredRoles?.length ?? 0) > 0,   href: "./preferences",           icon: Target        },
+    { id: "cv",          label: labels.cv,          bonus: "+30%", done: !!(profile?.cvFileUrl || profile?.cv?.originalUrl), href: "./cv",                    icon: FileText      },
+    { id: "skills",      label: labels.skills,      bonus: "+20%", done: (profile?.skills?.length ?? 0) > 0,        href: "./cv",                    icon: Award         },
+    { id: "experience",  label: labels.experience,  bonus: "+15%", done: (profile?.experience?.length ?? 0) > 0,    href: "./cv",                    icon: Briefcase     },
+    { id: "education",   label: labels.education,   bonus: "+10%", done: (profile?.education?.length ?? 0) > 0,     href: "./cv",                    icon: GraduationCap },
+    { id: "personal",    label: labels.personal,    bonus: "+10%", done: !!(profile?.dateOfBirth || profile?.nationality), href: "./profile/personal-details", icon: UserCircle    },
+    { id: "preferences", label: labels.preferences, bonus: "+15%", done: (profile?.preferredRoles?.length ?? 0) > 0,   href: "./preferences",           icon: Target        },
   ];
 }
 
@@ -106,6 +110,7 @@ export default function JobSeekerProfilePage() {
   const { data: session, status, update: updateSession } = useSession();
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const t = useTranslations("jobSeekerExtra.profile");
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -134,7 +139,7 @@ export default function JobSeekerProfilePage() {
   async function handleGenerateSummary() {
     setGeneratingSummary(true);
     try {
-      const res = await fetch("/api/ai/generate-summary", { method: "POST" });
+      const res = await csrfFetch("/api/ai/generate-summary", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to generate summary");
       // Refetch the full profile to get consistent data after AI save
@@ -157,7 +162,10 @@ export default function JobSeekerProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    document.title = "My Profile · MPLOYEDIN";
+    document.title = t("documentTitle");
+  }, [t]);
+
+  useEffect(() => {
     fetchProfile();
   }, []);
 
@@ -326,7 +334,14 @@ export default function JobSeekerProfilePage() {
     (profile.languages?.length ?? 0) > 0                                    ? 5  : 0,
     (profile.linkedin || profile.socialLinks?.some((l) => l.label?.toLowerCase() === "linkedin")) ? 5 : 0,
   ].reduce((a, b) => a + b, 0)) : 0;
-  const checklist       = buildChecklist(profile);
+  const checklist       = buildChecklist(profile, {
+    cv: t("checklist.cv"),
+    skills: t("checklist.skills"),
+    experience: t("checklist.experience"),
+    education: t("checklist.education"),
+    personal: t("checklist.personal"),
+    preferences: t("checklist.preferences"),
+  });
   const missingSteps    = checklist.filter((s) => !s.done);
   const doneSteps       = checklist.filter((s) => s.done);
   const potentialBoost  = missingSteps.reduce((acc, s) => acc + parseInt(s.bonus), 0);
@@ -366,14 +381,14 @@ export default function JobSeekerProfilePage() {
 
   // Quick links for sidebar
   const sectionRefs = [
-    { id: "about", label: "About", icon: User },
-    { id: "experience", label: "Experience", icon: Briefcase },
-    { id: "skills", label: "Skills", icon: Award },
-    { id: "education", label: "Education", icon: GraduationCap },
-    { id: "projects", label: "Projects", icon: FolderKanban },
-    { id: "accomplishments", label: "Accomplishments", icon: Trophy },
-    { id: "career-profile", label: "Career Profile", icon: Building2 },
-    { id: "languages", label: "Languages & Links", icon: LanguagesIcon },
+    { id: "about", label: t("sectionNav.about"), icon: User },
+    { id: "experience", label: t("sectionNav.experience"), icon: Briefcase },
+    { id: "skills", label: t("sectionNav.skills"), icon: Award },
+    { id: "education", label: t("sectionNav.education"), icon: GraduationCap },
+    { id: "projects", label: t("sectionNav.projects"), icon: FolderKanban },
+    { id: "accomplishments", label: t("sectionNav.accomplishments"), icon: Trophy },
+    { id: "career-profile", label: t("sectionNav.careerProfile"), icon: Building2 },
+    { id: "languages", label: t("sectionNav.languages"), icon: LanguagesIcon },
   ];
 
   // Scroll-spy: highlight active section in Quick Links
@@ -429,12 +444,12 @@ export default function JobSeekerProfilePage() {
 
       {/* ── Page Header ────────────────────────────────────────────────── */}
       <PageHeader
-        title="My Profile"
-        description="Build your career profile and get matched with top opportunities"
+        title={t("title")}
+        description={t("description")}
         actions={
-          <Button variant="outline" size="sm" onClick={() => router.push("./settings")} aria-label="Settings">
+          <Button variant="outline" size="sm" onClick={() => router.push("./settings")} aria-label={t("settings")}>
             <Settings className="w-4 h-4 me-1.5" />
-            Settings
+            {t("settings")}
           </Button>
         }
       />
@@ -447,18 +462,18 @@ export default function JobSeekerProfilePage() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-background/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              AI profile tools
+              {t("aiTools")}
             </div>
-            <h2 className="mt-3 text-lg font-semibold text-foreground sm:text-xl">Use AI to build your profile faster</h2>
+            <h2 className="mt-3 text-lg font-semibold text-foreground sm:text-xl">{t("aiTitle")}</h2>
             <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-              Upload your CV to extract your summary, skills, and experience automatically, then fine-tune how Mployedin uses AI for resumes, cover letters, and screening answers.
+              {t("aiDescription")}
             </p>
           </div>
 
           <div className="lg:w-[17rem]">
             <button
               onClick={() => router.push("./cv")}
-              aria-label={aiExtracted ? "Refresh CV with AI" : "Upload CV with AI"}
+              aria-label={aiExtracted ? t("refreshCvAi") : t("uploadCvAi")}
               className="group w-full rounded-2xl border border-border/60 bg-background/90 p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-3">
@@ -466,19 +481,19 @@ export default function JobSeekerProfilePage() {
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-[11px] font-medium">
-                  {aiExtracted ? "AI ready" : hasCv ? "CV uploaded" : "New"}
+                  {aiExtracted ? t("aiReady") : hasCv ? t("cvUploaded") : t("new")}
                 </Badge>
               </div>
-              <p className="mt-4 text-sm font-semibold text-foreground">AI CV extractor</p>
+              <p className="mt-4 text-sm font-semibold text-foreground">{t("aiExtractor")}</p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 {aiExtracted
-                  ? "Your latest CV has already been parsed into profile details. Upload a newer version anytime to refresh it."
+                  ? t("aiExtractedDescription")
                   : hasCv
-                    ? "Your CV is uploaded. Re-import it with AI whenever you want to refresh skills, experience, or summary."
-                    : "Upload a PDF or image CV and let AI fill in your summary, skills, and experience in minutes."}
+                    ? t("cvUploadedDescription")
+                    : t("noCvDescription")}
               </p>
               <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                {aiExtracted ? "Refresh with AI" : "Upload CV with AI"}
+                {aiExtracted ? t("refreshWithAi") : t("uploadCvAi")}
                 <ChevronRight className="h-3.5 w-3.5" />
               </div>
             </button>
@@ -503,7 +518,7 @@ export default function JobSeekerProfilePage() {
             <EyeOff className="w-4 h-4 text-amber-600" />
           )}
           <span className={visibility === "visible" ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}>
-            {visibility === "visible" ? "Employers can find you on Mployedin" : "Employers can't find you"}
+            {visibility === "visible" ? t("visibleBanner") : t("hiddenBanner")}
           </span>
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -1181,24 +1196,24 @@ export default function JobSeekerProfilePage() {
           <div id="languages" className="scroll-mt-24">
             <SectionCard
               icon={LanguagesIcon}
-              title="Languages & Links"
+              title={t("languagesSection.title")}
               onAdd={() => router.push("./profile/personal-details")}
               isEmpty={(profile?.languages?.length ?? 0) === 0 && !(profile?.socialLinks?.length) && !profile?.linkedin && !profile?.portfolio}
-              emptyLabel="Add languages and professional links"
+              emptyLabel={t("languagesSection.empty")}
             >
               <div className="space-y-4">
                 {(profile?.languages?.length ?? 0) > 0 && (
                   <div>
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Languages</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("languagesSection.languages")}</p>
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="text-muted-foreground border-b border-border/40">
-                            <th className="text-left py-1.5 font-medium">Language</th>
-                            <th className="text-left py-1.5 font-medium">Proficiency</th>
-                            <th className="text-center py-1.5 font-medium">Read</th>
-                            <th className="text-center py-1.5 font-medium">Write</th>
-                            <th className="text-center py-1.5 font-medium">Speak</th>
+                            <th className="text-start py-1.5 font-medium">{t("languagesSection.language")}</th>
+                            <th className="text-start py-1.5 font-medium">{t("languagesSection.proficiency")}</th>
+                            <th className="text-center py-1.5 font-medium">{t("languagesSection.read")}</th>
+                            <th className="text-center py-1.5 font-medium">{t("languagesSection.write")}</th>
+                            <th className="text-center py-1.5 font-medium">{t("languagesSection.speak")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1252,12 +1267,12 @@ export default function JobSeekerProfilePage() {
       <div className="card-base p-5 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-amber-500" />
-          <span className="text-sm font-semibold">Quick Actions</span>
+          <span className="text-sm font-semibold">{t("quickActions.title")}</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <QuickAction icon={FileText}  label="AI CV Extractor"   description="Import summary, skills, and experience" onClick={() => router.push("./cv")}          primary />
-          <QuickAction icon={Award}     label="Add Skills"        description="Improve your match score"        onClick={() => router.push("./cv")}                  />
-          <QuickAction icon={Target}    label="Job Preferences"   description="Get better recommendations"      onClick={() => router.push("./preferences")}         />
+          <QuickAction icon={FileText}  label={t("quickActions.aiCv")}       description={t("quickActions.aiCvDescription")}       onClick={() => router.push("./cv")}          primary />
+          <QuickAction icon={Award}     label={t("quickActions.addSkills")}  description={t("quickActions.addSkillsDescription")}  onClick={() => router.push("./cv")}                  />
+          <QuickAction icon={Target}    label={t("quickActions.preferences")} description={t("quickActions.preferencesDescription")} onClick={() => router.push("./preferences")}         />
         </div>
       </div>
 
@@ -1346,7 +1361,7 @@ export default function JobSeekerProfilePage() {
                   onClick={async () => {
                     setGeneratingSummary(true);
                     try {
-                      const res = await fetch("/api/ai/generate-summary", { method: "POST" });
+                      const res = await csrfFetch("/api/ai/generate-summary", { method: "POST" });
                       const data = await res.json();
                       if (!res.ok) throw new Error(data.error ?? "Failed");
                       setEditSummary(data.summary);
@@ -1488,6 +1503,8 @@ function SectionCard({
   visible?: boolean;
   onToggleVisibility?: (v: boolean) => void;
 }) {
+  const t = useTranslations("jobSeekerExtra.profile");
+
   return (
     <div className="card-base p-5 sm:p-6">
       {/* Header */}
@@ -1506,10 +1523,10 @@ function SectionCard({
                   ? "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                   : "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
               )}
-              title={visible !== false ? "Visible to employers – click to hide" : "Hidden from employers – click to show"}
+              title={visible !== false ? t("sectionActions.visibleTitle") : t("sectionActions.hiddenTitle")}
             >
               {visible !== false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              {visible !== false ? "Visible" : "Hidden"}
+              {visible !== false ? t("sectionActions.visible") : t("sectionActions.hidden")}
             </button>
           )}
           {onEdit && !isEmpty && (
@@ -1518,7 +1535,7 @@ function SectionCard({
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted"
             >
               <Pencil className="w-3 h-3" />
-              Edit
+              {t("sectionActions.edit")}
             </button>
           )}
           {onAdd && (
@@ -1527,7 +1544,7 @@ function SectionCard({
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted"
             >
               <Plus className="w-3.5 h-3.5" />
-              {isEmpty ? "Add" : "Update"}
+              {isEmpty ? t("sectionActions.add") : t("sectionActions.update")}
             </button>
           )}
         </div>
@@ -1543,7 +1560,7 @@ function SectionCard({
             <p className="text-sm text-muted-foreground">{emptyLabel}</p>
             {onAdd && (
               <button onClick={onAdd} className="text-xs text-primary hover:underline mt-0.5 block">
-                Upload CV to auto-fill →
+                {t("sectionActions.uploadToAutofill")} →
               </button>
             )}
           </div>

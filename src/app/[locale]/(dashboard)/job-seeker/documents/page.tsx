@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import {
   Upload, FileText, CheckCircle, Loader2, Sparkles, X,
   Award, GraduationCap, BookOpen, FolderOpen, Trash2, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 /* ── Document Categories ── */
 
@@ -79,6 +81,9 @@ interface ExtractedData {
 }
 
 export default function JobSeekerDocumentsPage() {
+  const t = useTranslations("jobSeekerExtra.documents");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [file, setFile] = useState<File | null>(null);
   const [category, setCategory] = useState<DocCategory>("resume");
   const [extracting, setExtracting] = useState(false);
@@ -98,9 +103,9 @@ export default function JobSeekerDocumentsPage() {
   ];
 
   useEffect(() => {
-    document.title = "Documents · MPLOYEDIN";
+    document.title = t("documentTitle");
     fetchDocuments();
-  }, []);
+  }, [t]);
 
   async function fetchDocuments() {
     try {
@@ -122,7 +127,7 @@ export default function JobSeekerDocumentsPage() {
     if (dropped && ALLOWED_TYPES.includes(dropped.type)) {
       setFile(dropped);
     } else {
-      toast.error("Supported formats: PDF, DOCX, JPG, PNG, WEBP");
+      toast.error(t("supportedFormats"));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -131,7 +136,7 @@ export default function JobSeekerDocumentsPage() {
     const selected = e.target.files?.[0];
     if (selected) {
       if (!ALLOWED_TYPES.includes(selected.type)) {
-        toast.error("Supported formats: PDF, DOCX, JPG, PNG, WEBP");
+        toast.error(t("supportedFormats"));
         return;
       }
       setFile(selected);
@@ -157,7 +162,7 @@ export default function JobSeekerDocumentsPage() {
         });
         if (!cvRes.ok) {
           const err = await cvRes.json().catch(() => null);
-          throw new Error(err?.error ?? "Failed to upload resume");
+          throw new Error(err?.error ?? t("uploadFailed"));
         }
       }
 
@@ -170,7 +175,7 @@ export default function JobSeekerDocumentsPage() {
       if (res.ok) {
         const data = await res.json();
         setDocuments((prev) => [data.document ?? { id: Date.now().toString(), name: file.name, category, url: "", size: file.size, uploadedAt: new Date().toISOString() }, ...prev]);
-        toast.success(`${getCategoryLabel(category)} uploaded successfully!`);
+        toast.success(t("uploaded", { category: getCategoryLabel(category) }));
         setFile(null);
         setExtracted(null);
         if (inputRef.current) inputRef.current.value = "";
@@ -178,16 +183,16 @@ export default function JobSeekerDocumentsPage() {
         // If the documents API doesn't exist yet, still count the CV upload as success
         if (category === "resume") {
           setDocuments((prev) => [{ id: Date.now().toString(), name: file.name, category, url: "", size: file.size, uploadedAt: new Date().toISOString() }, ...prev]);
-          toast.success("Resume uploaded successfully!");
+          toast.success(t("resumeUploaded"));
           setFile(null);
           setExtracted(null);
           if (inputRef.current) inputRef.current.value = "";
         } else {
-          toast.error("Failed to upload document");
+          toast.error(t("uploadFailed"));
         }
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed");
+      toast.error(e instanceof Error ? e.message : t("uploadGenericFailed"));
     } finally {
       setUploading(false);
     }
@@ -199,19 +204,19 @@ export default function JobSeekerDocumentsPage() {
     try {
       const formData = new FormData();
       formData.append("cv", file);
-      const res = await fetch("/api/ai/cv-extract", {
+      const res = await csrfFetch("/api/ai/cv-extract", {
         method: "POST",
         body: formData,
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => null);
-        throw new Error(errData?.error ?? "Extraction failed");
+        throw new Error(errData?.error ?? t("extractionFailed"));
       }
       const data = await res.json();
       setExtracted(data.extracted ?? data);
-      toast.success("CV data extracted successfully!");
+      toast.success(t("extractedSuccess"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Extraction failed");
+      toast.error(e instanceof Error ? e.message : t("extractionFailed"));
     } finally {
       setExtracting(false);
     }
@@ -262,12 +267,12 @@ export default function JobSeekerDocumentsPage() {
         }),
       });
       if (res.ok) {
-        toast.success("Profile updated successfully!");
+        toast.success(t("profileUpdated"));
       } else {
-        toast.error("Failed to save. Please try manually.");
+        toast.error(t("saveFailed"));
       }
     } catch {
-      toast.error("Failed to save profile");
+      toast.error(t("saveProfileFailed"));
     } finally {
       setSaving(false);
     }
@@ -278,15 +283,15 @@ export default function JobSeekerDocumentsPage() {
       const res = await fetch(`/api/job-seeker/documents?id=${doc.id}`, { method: "DELETE" });
       if (res.ok || res.status === 404) {
         setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-        toast.success("Document removed");
+        toast.success(t("removed"));
       }
     } catch {
-      toast.error("Failed to remove document");
+      toast.error(t("removeFailed"));
     }
   };
 
   function getCategoryLabel(cat: DocCategory) {
-    return DOC_CATEGORIES.find((c) => c.value === cat)?.label ?? "Document";
+    return t(`categories.${cat}`) ?? t("documentFallback");
   }
 
   function getCategoryConfig(cat: DocCategory) {
@@ -296,14 +301,14 @@ export default function JobSeekerDocumentsPage() {
   return (
     <div className="page-container">
       <PageHeader
-        title="Documents"
-        description="Upload your CV, certificates, and other documents"
+        title={t("title")}
+        description={t("description")}
       />
 
       <div className="space-y-6">
         {/* ── Category selector ── */}
         <div className="card-base p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Document Type</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{t("type")}</p>
           <div className="flex flex-wrap gap-2">
             {DOC_CATEGORIES.map((cat) => {
               const Icon = cat.icon;
@@ -319,7 +324,7 @@ export default function JobSeekerDocumentsPage() {
                   }`}
                 >
                   <Icon className="h-4 w-4" />
-                  {cat.label}
+                  {getCategoryLabel(cat.value)}
                 </button>
               );
             })}
@@ -343,13 +348,13 @@ export default function JobSeekerDocumentsPage() {
           {file ? (
             <div className="flex items-center justify-center gap-3">
               <FileText className="h-8 w-8 text-primary" />
-              <div className="text-left">
+              <div className="text-start">
                 <p className="font-medium text-sm">{file.name}</p>
                 <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB · {getCategoryLabel(category)}</p>
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); setFile(null); setExtracted(null); }}
-                className="ml-2 hover:text-red-500"
+                className="ms-2 hover:text-red-500"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -357,8 +362,8 @@ export default function JobSeekerDocumentsPage() {
           ) : (
             <>
               <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-medium">Drag & drop your {getCategoryLabel(category).toLowerCase()} here</p>
-              <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, JPG, PNG, WEBP up to 10MB</p>
+              <p className="text-sm font-medium">{t("uploadPrompt", { category: getCategoryLabel(category).toLowerCase() })}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("formats")}</p>
             </>
           )}
         </div>
@@ -372,7 +377,7 @@ export default function JobSeekerDocumentsPage() {
               className="flex-1 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              {uploading ? "Uploading…" : "Upload Document"}
+              {uploading ? t("uploading") : t("uploadDocument")}
             </button>
             {category === "resume" && !extracted && (
               <button
@@ -381,7 +386,7 @@ export default function JobSeekerDocumentsPage() {
                 className="flex-1 py-2.5 rounded-lg border-2 border-primary text-primary font-semibold hover:bg-primary/5 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {extracting ? "Extracting…" : "Extract with AI"}
+                {extracting ? t("extracting") : t("extractWithAi")}
               </button>
             )}
           </div>
@@ -392,7 +397,7 @@ export default function JobSeekerDocumentsPage() {
           <div className="card-base space-y-4">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
-              <h3 className="font-semibold">Extracted Profile</h3>
+              <h3 className="font-semibold">{t("extractedProfile")}</h3>
             </div>
 
             {extracted.fullName && <p className="text-sm"><strong>Name:</strong> {extracted.fullName}</p>}
@@ -418,7 +423,7 @@ export default function JobSeekerDocumentsPage() {
                   {extracted.experience.map((exp, i) => (
                     <div key={i} className="text-sm border-l-2 border-primary/30 pl-3">
                       <p className="font-medium">{exp.jobTitle} — {exp.company}</p>
-                      <p className="text-xs text-muted-foreground">{exp.from} – {exp.current ? "Present" : exp.to}</p>
+                      <p className="text-xs text-muted-foreground">{exp.from} – {exp.current ? t("present") : exp.to}</p>
                     </div>
                   ))}
                 </div>
@@ -469,7 +474,7 @@ export default function JobSeekerDocumentsPage() {
               className="w-full py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-              {saving ? "Saving…" : "Save to Profile"}
+              {saving ? t("saving") : t("saveToProfile")}
             </button>
           </div>
         )}
@@ -479,9 +484,9 @@ export default function JobSeekerDocumentsPage() {
           <div className="flex items-center justify-between p-4 border-b">
             <h3 className="font-semibold flex items-center gap-2">
               <FolderOpen className="h-4 w-4" />
-              My Documents
+              {t("myDocuments")}
               {documents.length > 0 && (
-                <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{documents.length}</span>
+                <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{documents.length.toLocaleString(numberLocale)}</span>
               )}
             </h3>
           </div>
@@ -493,8 +498,8 @@ export default function JobSeekerDocumentsPage() {
           ) : documents.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <FolderOpen className="h-10 w-10 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No documents uploaded yet</p>
-              <p className="text-xs mt-1">Upload your CV, certificates, and other documents above</p>
+              <p className="text-sm">{t("empty")}</p>
+              <p className="text-xs mt-1">{t("emptyDescription")}</p>
             </div>
           ) : (
             <div className="divide-y">
@@ -509,8 +514,8 @@ export default function JobSeekerDocumentsPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{doc.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {catConfig.label} · {(doc.size / 1024).toFixed(0)} KB
-                        {doc.uploadedAt && ` · ${new Date(doc.uploadedAt).toLocaleDateString()}`}
+                        {getCategoryLabel(doc.category)} · {(doc.size / 1024).toFixed(0)} KB
+                        {doc.uploadedAt && ` · ${new Date(doc.uploadedAt).toLocaleDateString(numberLocale)}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-1">
@@ -520,7 +525,7 @@ export default function JobSeekerDocumentsPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                          title="View document"
+                          title={t("view")}
                         >
                           <Eye className="h-4 w-4" />
                         </a>
@@ -528,7 +533,7 @@ export default function JobSeekerDocumentsPage() {
                       <button
                         onClick={() => deleteDocument(doc)}
                         className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
-                        title="Remove document"
+                        title={t("remove")}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

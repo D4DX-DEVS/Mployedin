@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Step0Data {
@@ -408,7 +409,7 @@ export default function JobSeekerOnboardingPage() {
     try {
       const formData = new FormData();
       formData.append("cv", file);
-      const res = await fetch("/api/ai/cv-extract", { method: "POST", body: formData });
+      const res = await csrfFetch("/api/ai/cv-extract", { method: "POST", body: formData });
       if (!res.ok) {
         const d = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(d.error ?? "CV parsing failed");
@@ -692,7 +693,7 @@ export default function JobSeekerOnboardingPage() {
       {/* Top bar */}
       <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="Mployedin" width={140} height={36} className="h-9 w-auto object-contain" style={{ width: "auto" }} />
+          <Image src="/logo.png" alt="Mployedin" width={100} height={34} className="h-auto w-[106px] object-contain" style={{ height: "auto" }} />
         </div>
         <div className="flex items-center gap-3">
           <div className="hidden text-right sm:block">

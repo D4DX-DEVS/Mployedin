@@ -19,6 +19,37 @@ interface AuthCtx {
   locale: string;
 }
 
+const EMPTY_STATS = { total: 0, pending: 0, accepted: 0, declined: 0 };
+
+function offersListResponse({
+  offers = [],
+  items = [],
+  total = 0,
+  page,
+  limit,
+  stats = EMPTY_STATS,
+}: {
+  offers?: unknown[];
+  items?: unknown[];
+  total?: number;
+  page: number;
+  limit: number;
+  stats?: typeof EMPTY_STATS;
+}) {
+  return NextResponse.json({
+    offers,
+    items,
+    total,
+    stats,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
+}
+
 // GET /api/offers — list offers
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
@@ -37,18 +68,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     // Agent views offers for their assigned employers
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
     if (!agentDoc || !agentDoc.assignedEmployerIds?.length) {
-      return NextResponse.json({ items: [], total: 0, stats: { total: 0, pending: 0, accepted: 0, declined: 0 } });
+      return offersListResponse({ page, limit });
     }
     query.employerId = { $in: agentDoc.assignedEmployerIds };
   } else if (ctx.role === "job_seeker") {
     // Job seeker views received offers
     const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!seeker) return NextResponse.json({ items: [], total: 0, stats: { total: 0, pending: 0, accepted: 0, declined: 0 } });
+    if (!seeker) return offersListResponse({ page, limit });
     query.jobSeekerId = seeker._id;
   } else if (ctx.role === "employer") {
     // Employer views sent offers
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp) return NextResponse.json({ items: [], total: 0, stats: { total: 0, pending: 0, accepted: 0, declined: 0 } });
+    if (!emp) return offersListResponse({ page, limit });
     query.employerId = emp._id;
   }
 
@@ -73,7 +104,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       ];
     } else {
       // No matches — return empty
-      return NextResponse.json({ items: [], total: 0, stats: { total: 0, pending: 0, accepted: 0, declined: 0 } });
+      return offersListResponse({ page, limit });
     }
   }
 
@@ -116,9 +147,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     createdAt: o.createdAt?.toISOString?.() ?? "",
   }));
 
-  return NextResponse.json({
+  return offersListResponse({
+    offers,
     items,
     total,
+    page,
+    limit,
     stats: { total: totalCount, pending: pendingCount, accepted: acceptedCount, declined: declinedCount },
   });
 }

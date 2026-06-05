@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -217,6 +218,9 @@ export async function POST(req: NextRequest) {
         }
       );
     }
+
+    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole);
+    if (__aiQuota) return __aiQuota;
 
     // Read audio from form data
     const formData = await req.formData();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Video, MapPin, Calendar, Clock, ExternalLink, CheckCircle, AlertCircle, Check, X, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,9 @@ interface Interview {
 }
 
 export default function InterviewsPage() {
+  const t = useTranslations("jobSeekerInterviews");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,8 +43,8 @@ export default function InterviewsPage() {
   const pagination = usePagination();
 
   useEffect(() => {
-    document.title = "Interviews · MPLOYEDIN";
-  }, []);
+    document.title = t("documentTitle");
+  }, [t]);
 
   const fetchInterviews = useCallback(async () => {
     setLoading(true);
@@ -71,43 +75,43 @@ export default function InterviewsPage() {
   const exportData = interviews.map((iv) => ({
     jobTitle: iv.jobTitle ?? "",
     company: iv.companyName ?? "",
-    type: iv.type,
-    scheduledAt: new Date(iv.scheduledAt).toLocaleString(),
-    duration: `${iv.duration} min`,
+    type: t(`type.${iv.type}`),
+    scheduledAt: new Date(iv.scheduledAt).toLocaleString(numberLocale),
+    duration: t("minutesShort", { count: iv.duration.toLocaleString(numberLocale) }),
     status: iv.status,
     outcome: iv.outcome ?? "",
-    response: iv.candidateResponse ?? "",
+    response: iv.candidateResponse && iv.candidateResponse !== "pending" ? t(`response.${iv.candidateResponse}`) : "",
   }));
 
   const exportColumns = [
-    { header: "Job Title", key: "jobTitle" },
-    { header: "Company", key: "company" },
-    { header: "Type", key: "type" },
-    { header: "Scheduled At", key: "scheduledAt" },
-    { header: "Duration", key: "duration" },
-    { header: "Status", key: "status" },
-    { header: "Outcome", key: "outcome" },
-    { header: "Response", key: "response" },
+    { header: t("export.jobTitle"), key: "jobTitle" },
+    { header: t("export.company"), key: "company" },
+    { header: t("export.type"), key: "type" },
+    { header: t("export.scheduledAt"), key: "scheduledAt" },
+    { header: t("export.duration"), key: "duration" },
+    { header: t("export.status"), key: "status" },
+    { header: t("export.outcome"), key: "outcome" },
+    { header: t("export.response"), key: "response" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: exportData as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "my-interviews",
-    title: "My Interviews",
+    title: t("export.title"),
   });
 
   return (
     <div className="page-container">
       <PageHeader
-        title="Interviews"
-        description={`${upcoming.length} upcoming · ${past.length} completed`}
+        title={t("title")}
+        description={t("summary", { upcoming: upcoming.length.toLocaleString(numberLocale), past: past.length.toLocaleString(numberLocale) })}
       />
 
       <TableToolbar
         search={searchTerm}
         onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
-        searchPlaceholder="Search by job title or company\u2026"
+        searchPlaceholder={t("searchPlaceholder")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -123,22 +127,22 @@ export default function InterviewsPage() {
       ) : interviews.length === 0 ? (
         <div className="card-base text-center py-16">
           <Video className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <h3 className="font-semibold mb-1">No interviews scheduled</h3>
+          <h3 className="font-semibold mb-1">{t("emptyTitle")}</h3>
           <p className="text-sm text-muted-foreground">
-            When an employer schedules an interview, it will appear here
+            {t("emptyDescription")}
           </p>
         </div>
       ) : (
         <>
           {upcoming.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-foreground">Upcoming</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("upcoming")}</h2>
               {upcoming.map((iv) => <InterviewCard key={iv._id} interview={iv} upcoming onRefresh={fetchInterviews} />)}
             </section>
           )}
           {past.length > 0 && (
             <section className="space-y-3 mt-6">
-              <h2 className="text-sm font-semibold text-muted-foreground">Past</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground">{t("past")}</h2>
               {past.map((iv) => <InterviewCard key={iv._id} interview={iv} upcoming={false} onRefresh={fetchInterviews} />)}
             </section>
           )}
@@ -158,13 +162,16 @@ export default function InterviewsPage() {
 }
 
 function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Interview; upcoming: boolean; onRefresh: () => void }) {
+  const t = useTranslations("jobSeekerInterviews");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [responding, setResponding] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [rescheduleNote, setRescheduleNote] = useState("");
 
   const dt = new Date(iv.scheduledAt);
-  const dateStr = dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-  const timeStr = dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  const dateStr = dt.toLocaleDateString(numberLocale, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  const timeStr = dt.toLocaleTimeString(numberLocale, { hour: "2-digit", minute: "2-digit" });
 
   const typeIcon = iv.type === "video" ? Video : MapPin;
   const TypeIcon = typeIcon;
@@ -196,9 +203,7 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
     }
   }
 
-  const responseLabel = iv.candidateResponse === "confirmed" ? "Confirmed" :
-    iv.candidateResponse === "declined" ? "Declined" :
-    iv.candidateResponse === "reschedule_requested" ? "Reschedule Requested" : null;
+  const responseLabel = iv.candidateResponse && iv.candidateResponse !== "pending" ? t(`response.${iv.candidateResponse}`) : null;
 
   const responseColor = iv.candidateResponse === "confirmed" ? "text-emerald-600" :
     iv.candidateResponse === "declined" ? "text-red-600" :
@@ -209,12 +214,12 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h3 className="font-semibold">{iv.jobTitle ?? "Interview"}</h3>
+            <h3 className="font-semibold">{iv.jobTitle ?? t("interviewFallback")}</h3>
             {iv.companyName && (
-              <span className="text-sm text-muted-foreground">at {iv.companyName}</span>
+              <span className="text-sm text-muted-foreground">{t("companyAt", { company: iv.companyName })}</span>
             )}
             <Badge variant={iv.type === "video" ? "secondary" : "outline"} className="text-xs capitalize">
-              <TypeIcon className="w-3 h-3 me-1" /> {iv.type}
+              <TypeIcon className="w-3 h-3 me-1" /> {t(`type.${iv.type}`)}
             </Badge>
             {responseLabel && (
               <Badge variant="outline" className={`text-xs ${responseColor}`}>
@@ -226,10 +231,10 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
           <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-              {isToday ? <strong className="text-primary">Today</strong> : dateStr}
+              {isToday ? <strong className="text-primary">{t("today")}</strong> : dateStr}
             </span>
             <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {timeStr} · {iv.duration} min
+              <Clock className="w-3 h-3" /> {timeStr} · {t("minutesShort", { count: iv.duration.toLocaleString(numberLocale) })}
             </span>
           </div>
 
@@ -246,7 +251,7 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
             <div className="flex items-center gap-1.5 text-xs mt-1.5">
               <Video className="w-3 h-3 shrink-0 text-primary/70" />
               <a href={iv.meetLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
-                Meeting Link <ExternalLink className="w-3 h-3" />
+                {t("meetingLink")} <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           )}
@@ -255,7 +260,7 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
           {upcoming && isToday && minutesUntil > 0 && minutesUntil < 60 && (
             <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 font-medium">
               <AlertCircle className="w-3.5 h-3.5" />
-              Starting in {minutesUntil} minutes
+              {t("startingIn", { count: minutesUntil.toLocaleString(numberLocale) })}
             </div>
           )}
 
@@ -266,7 +271,7 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
           {!upcoming && iv.outcome && (
             <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
               <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-              Outcome: <span className="capitalize">{iv.outcome}</span>
+              {t("outcome")} <span className="capitalize">{iv.outcome}</span>
             </div>
           )}
 
@@ -274,14 +279,14 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
           {canRespond && !showReschedule && (
             <div className="flex flex-col sm:flex-row gap-2 mt-3 pt-3 border-t border-border">
               <Button size="sm" onClick={() => handleRespond("confirmed")} disabled={responding} className="flex-1 sm:flex-none">
-                <Check className="w-3.5 h-3.5 me-1" /> Confirm
+                <Check className="w-3.5 h-3.5 me-1" /> {t("confirm")}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setShowReschedule(true)} disabled={responding} className="flex-1 sm:flex-none">
-                <RotateCcw className="w-3.5 h-3.5 me-1" /> Reschedule
+                <RotateCcw className="w-3.5 h-3.5 me-1" /> {t("reschedule")}
               </Button>
               <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 flex-1 sm:flex-none"
                 onClick={() => handleRespond("declined")} disabled={responding}>
-                <X className="w-3.5 h-3.5 me-1" /> Decline
+                <X className="w-3.5 h-3.5 me-1" /> {t("decline")}
               </Button>
             </div>
           )}
@@ -289,10 +294,10 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
           {/* Reschedule form */}
           {canRespond && showReschedule && (
             <div className="mt-3 pt-3 border-t border-border space-y-2">
-              <label className="text-xs font-medium">Why do you need to reschedule?</label>
+              <label className="text-xs font-medium">{t("rescheduleReasonLabel")}</label>
               <textarea
                 className="w-full h-16 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary/40 resize-none"
-                placeholder="Please explain your scheduling conflict..."
+                placeholder={t("reschedulePlaceholder")}
                 value={rescheduleNote}
                 onChange={(e) => setRescheduleNote(e.target.value)}
                 maxLength={500}
@@ -300,10 +305,10 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => handleRespond("reschedule_requested")}
                   disabled={responding || !rescheduleNote.trim()}>
-                  {responding ? "Sending..." : "Request Reschedule"}
+                  {responding ? t("sending") : t("requestReschedule")}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => { setShowReschedule(false); setRescheduleNote(""); }}>
-                  Cancel
+                  {t("cancel")}
                 </Button>
               </div>
             </div>
@@ -311,7 +316,7 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
 
           {iv.candidateRescheduleNote && (
             <div className="mt-2 bg-amber-50 text-amber-800 text-xs p-2 rounded">
-              Reschedule reason: {iv.candidateRescheduleNote}
+              {t("rescheduleReason", { reason: iv.candidateRescheduleNote })}
             </div>
           )}
         </div>
@@ -319,7 +324,7 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
         {upcoming && iv.type !== "offline" && iv.meetLink && (
           <a href={iv.meetLink} target="_blank" rel="noopener noreferrer">
             <Button size="sm" className="shrink-0">
-              <Video className="w-4 h-4 me-1.5" /> Join
+              <Video className="w-4 h-4 me-1.5" /> {t("join")}
               <ExternalLink className="w-3 h-3 ms-1.5" />
             </Button>
           </a>

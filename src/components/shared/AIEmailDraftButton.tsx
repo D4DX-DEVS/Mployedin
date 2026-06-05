@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Copy, Loader2, Mail, Send } from "lucide-react";
 import { toast } from "sonner";
+import { sanitizeHtml } from "@/lib/security/html";
 
 const EMAIL_CONTEXT_KEYS = [
   { value: "after_application", labelKey: "afterApplication" },
@@ -149,7 +150,7 @@ export function AIEmailDraftButton({ applicationId, candidateName, defaultContex
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("emailBody")}</p>
                   <div
                     className="mt-2 text-sm leading-6 text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: draft.body }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(draft.body) }}
                   />
                 </div>
 

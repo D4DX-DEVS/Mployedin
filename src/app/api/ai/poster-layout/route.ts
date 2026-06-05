@@ -163,4 +163,4 @@ Return ONLY valid JSON.`;
   });
 
   return NextResponse.json(result);
-});
+}, { aiQuota: true });

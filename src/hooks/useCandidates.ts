@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 // ── Types ──────────────────────────────────────────────────────────
 export interface Candidate {
@@ -183,7 +184,7 @@ export function useStartConversation() {
 export function useAiMatch() {
   return useMutation({
     mutationFn: async ({ jobId, jobSeekerId }: { jobId: string; jobSeekerId: string }) => {
-      const res = await fetch("/api/ai/match", {
+      const res = await csrfFetch("/api/ai/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobId, jobSeekerId }),

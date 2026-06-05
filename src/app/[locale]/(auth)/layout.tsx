@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 
@@ -11,11 +12,12 @@ export default async function AuthLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  const t = await getTranslations("authLayout");
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <div className="flex flex-1 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.08),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(var(--accent)/0.08),transparent_28%)]">
-        <div className="relative hidden w-0 flex-1 overflow-hidden border-r border-border/50 bg-[linear-gradient(160deg,hsl(var(--background)),hsl(var(--muted)/0.95))] lg:block">
+        <div className="relative hidden w-0 flex-1 overflow-hidden border-e border-border/50 bg-[linear-gradient(160deg,hsl(var(--background)),hsl(var(--muted)/0.95))] lg:block">
           <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.24)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.24)_1px,transparent_1px)] bg-[size:76px_76px] opacity-35" />
           <div className="absolute left-[-12%] top-[-12%] h-[360px] w-[360px] rounded-full bg-brand-blue/15 blur-[110px]" />
           <div className="absolute bottom-[-18%] right-[-10%] h-[420px] w-[420px] rounded-full bg-brand-cyan/15 blur-[130px]" />
@@ -31,16 +33,16 @@ export default async function AuthLayout({
             </div>
 
             <div className="max-w-xl space-y-4">
-              <h1 className="text-4xl font-semibold leading-[1.02] tracking-[-0.04em] text-foreground xl:text-6xl">
-                Elevate your hiring pipeline with a sharper command center.
+              <h1 className="text-4xl font-semibold leading-[1.02] tracking-normal text-foreground xl:text-6xl">
+                {t("heading")}
               </h1>
               <p className="text-base leading-7 text-muted-foreground xl:text-lg">
-                Move from sourcing to shortlist with a calmer workspace designed for modern recruitment teams, international hiring, and faster decision cycles.
+                {t("description")}
               </p>
             </div>
 
             <div className="text-sm text-muted-foreground/70">
-              © {new Date().getFullYear()} MPLOYEDIN. All rights reserved.
+              {t("copyright", { year: new Date().getFullYear() })}
             </div>
           </div>
         </div>

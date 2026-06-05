@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormContext } from "react-hook-form";
+import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -16,14 +17,17 @@ interface Step3RequirementsProps {
 }
 
 const EXPERIENCE_PRESETS = [
-  { label: "0-2 yrs", min: 0, max: 2 },
-  { label: "1-3 yrs", min: 1, max: 3 },
-  { label: "3-5 yrs", min: 3, max: 5 },
-  { label: "5-8 yrs", min: 5, max: 8 },
-  { label: "8+ yrs", min: 8, max: 12 },
+  { min: 0, max: 2 },
+  { min: 1, max: 3 },
+  { min: 3, max: 5 },
+  { min: 5, max: 8 },
+  { min: 8, max: 12 },
 ] as const;
 
 export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsProps) {
+  const t = useTranslations("employerJobForm.step3");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const {
     watch,
     setValue,
@@ -35,6 +39,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
   const rawPreferredSkills = watch("requirements.preferredSkills") ?? [];
   const expMin = watch("requirements.experienceMin");
   const expMax = watch("requirements.experienceMax");
+  const maxSkillsLabel = (30).toLocaleString(numberLocale);
 
   // Bridge between string[] (form) and Skill[] (SkillsChips)
   const skillObjects: Skill[] = rawSkills.map((name) => ({ name }));
@@ -65,7 +70,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
   const quickAddChips = suggestedSkills
     .filter((s) => !rawSkills.map((r) => r.toLowerCase()).includes(s.toLowerCase()))
     .slice(0, 8);
-  const skillsStatus = rawSkills.length >= 6 ? "Well defined" : rawSkills.length >= 3 ? "Good start" : "Add core skills";
+  const skillsStatus = rawSkills.length >= 6 ? t("status.wellDefined") : rawSkills.length >= 3 ? t("status.goodStart") : t("status.addCore");
 
   function applyExperiencePreset(min: number, max: number) {
     setValue("requirements.experienceMin", min, { shouldValidate: true });
@@ -82,9 +87,9 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
     >
       <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">Requirements</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
-            Define the must-have skills and experience so the right people self-select early.
+            {t("description")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -92,10 +97,13 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
             {skillsStatus}
           </Badge>
           <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {rawSkills.length} skills added
+            {t("skillsAdded", { count: rawSkills.length.toLocaleString(numberLocale) })}
           </Badge>
           <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {expMin ?? 0}–{expMax ?? 0} yrs
+            {t("experienceBadge", {
+              min: (expMin ?? 0).toLocaleString(numberLocale),
+              max: (expMax ?? 0).toLocaleString(numberLocale),
+            })}
           </Badge>
         </div>
       </div>
@@ -104,13 +112,13 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
         <div className="space-y-3 rounded-2xl border border-border bg-background p-4 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-foreground">Required Skills</p>
+              <p className="text-sm font-semibold text-foreground">{t("requiredSkills")}</p>
               <p className="text-xs text-muted-foreground">
-                Add the skills candidates truly need on day one. Use 5 to 8 strong signals where possible.
+                {t("requiredSkillsHint")}
               </p>
             </div>
             <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-              {rawSkills.length}/30
+              {rawSkills.length.toLocaleString(numberLocale)}/{maxSkillsLabel}
             </Badge>
           </div>
 
@@ -121,15 +129,15 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
             maxSkills={30}
             showLevels={false}
             enableAISuggest={false}
-            placeholder="Type a skill and press Enter (e.g. React, Python)"
+            placeholder={t("requiredSkillsPlaceholder")}
           />
 
           {quickAddChips.length > 0 && (
             <div className="space-y-2 rounded-xl border border-dashed border-primary/30 bg-primary/[0.03] p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Zap className="w-3.5 h-3.5 text-primary" />
-                <span className="font-medium">Suggested from AI</span>
-                <span>Click to add</span>
+                <span className="font-medium">{t("suggestedFromAi")}</span>
+                <span>{t("clickToAdd")}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {quickAddChips.map((skill) => (
@@ -147,7 +155,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
           )}
 
           {rawSkills.length >= 30 && (
-            <p className="text-xs text-muted-foreground">Maximum 30 skills reached.</p>
+            <p className="text-xs text-muted-foreground">{t("maxSkillsReached")}</p>
           )}
         </div>
 
@@ -156,14 +164,14 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-foreground">
-                Preferred Skills <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                {t("preferredSkills")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span>
               </p>
               <p className="text-xs text-muted-foreground">
-                Nice-to-have skills that give candidates an edge but are not mandatory.
+                {t("preferredSkillsHint")}
               </p>
             </div>
             <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-              {rawPreferredSkills.length}/30
+              {rawPreferredSkills.length.toLocaleString(numberLocale)}/{maxSkillsLabel}
             </Badge>
           </div>
 
@@ -174,22 +182,22 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
             maxSkills={30}
             showLevels={false}
             enableAISuggest={false}
-            placeholder="e.g. Kotlin, CI/CD, App Store publishing"
+            placeholder={t("preferredSkillsPlaceholder")}
           />
         </div>
 
         <div className="space-y-3 rounded-2xl border border-border bg-background p-4 shadow-sm">
           <div>
-            <Label className="text-sm font-semibold">Experience Range</Label>
+            <Label className="text-sm font-semibold">{t("experienceRange")}</Label>
             <p className="mt-1 text-xs text-muted-foreground">
-              Set a realistic range so strong candidates are not filtered out unnecessarily.
+              {t("experienceHint")}
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="exp-min" className="text-xs text-muted-foreground">
-                Minimum (years)
+                {t("minimumYears")}
               </Label>
               <Input
                 id="exp-min"
@@ -202,7 +210,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="exp-max" className="text-xs text-muted-foreground">
-                Maximum (years)
+                {t("maximumYears")}
               </Label>
               <Input
                 id="exp-max"
@@ -218,12 +226,15 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
           <div className="flex flex-wrap gap-2">
             {EXPERIENCE_PRESETS.map((preset) => (
               <button
-                key={preset.label}
+                key={`${preset.min}-${preset.max}`}
                 type="button"
                 onClick={() => applyExperiencePreset(preset.min, preset.max)}
                 className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/[0.04] hover:text-foreground"
               >
-                {preset.label}
+                  {t("experienceBadge", {
+                    min: preset.min.toLocaleString(numberLocale),
+                    max: preset.max.toLocaleString(numberLocale),
+                  })}
               </button>
             ))}
           </div>
@@ -235,8 +246,13 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
               className="rounded-xl border border-border/70 bg-muted/30 p-3"
             >
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Candidate fit range</span>
-                <span className="font-medium text-foreground">{expMin}–{expMax} yrs</span>
+                <span>{t("candidateFitRange")}</span>
+                <span className="font-medium text-foreground">
+                  {t("experienceBadge", {
+                    min: expMin.toLocaleString(numberLocale),
+                    max: expMax.toLocaleString(numberLocale),
+                  })}
+                </span>
               </div>
               <div className="relative mt-3 h-1.5 rounded-full bg-border">
                 <div

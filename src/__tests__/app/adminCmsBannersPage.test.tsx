@@ -88,7 +88,7 @@ describe("BannersAdminPage", () => {
 
     const workspaceRoot = view.container.querySelector('[data-admin-workspace="cms-page"]');
 
-    expect(workspaceRoot).toHaveClass("page-container", "space-y-4", "admin-cms-page-container");
+    expect(workspaceRoot).toHaveClass("page-container", "space-y-6", "admin-cms-page-container");
     expect(screen.getByRole("heading", { name: "Banners" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add new/i })).toBeInTheDocument();
     expect(screen.queryByLabelText("Status filter")).not.toBeInTheDocument();

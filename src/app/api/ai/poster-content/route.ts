@@ -144,4 +144,4 @@ Vacancies: ${body.vacancies ?? 1}
   });
 
   return NextResponse.json({ design });
-});
+}, { aiQuota: true });

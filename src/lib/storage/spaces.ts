@@ -23,6 +23,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import path from "path";
 import { validateUploadedFile, ALLOWED_FILE_TYPES } from "@/lib/security/file-validation";
+import { scanForMalware, MalwareDetectedError } from "@/lib/security/malware-scan";
 
 // ─── Client singleton ────────────────────────────────────────────────────────
 
@@ -97,6 +98,8 @@ export async function uploadBuffer(
     private?: boolean;
     /** File validation category — if set, validates magic bytes and size */
     validateAs?: keyof typeof ALLOWED_FILE_TYPES;
+    /** Skip malware scanning (caller has already scanned these exact bytes). */
+    skipMalwareScan?: boolean;
   } = {}
 ): Promise<UploadResult> {
   const client = getClient();
@@ -117,6 +120,15 @@ export async function uploadBuffer(
     const validationError = validateUploadedFile(file, options.validateAs, arrayBuf);
     if (validationError) {
       throw new Error(validationError);
+    }
+  }
+
+  // Malware scan — fail-closed. Every stored upload passes through here, so this
+  // is the single chokepoint that guarantees no infected file reaches storage.
+  if (!options.skipMalwareScan) {
+    const scan = await scanForMalware(body);
+    if (!scan.clean) {
+      throw new MalwareDetectedError(scan.reason ?? "File rejected: failed malware scan.");
     }
   }
 

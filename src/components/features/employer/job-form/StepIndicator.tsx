@@ -3,13 +3,18 @@
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { JOB_FORM_STEPS } from "./jobFormSchema";
+
+interface StepIndicatorStep {
+  id: number;
+  label: string;
+}
 
 interface StepIndicatorProps {
-  steps: typeof JOB_FORM_STEPS;
+  steps: ReadonlyArray<StepIndicatorStep>;
   currentStep: number;
   completedSteps: Set<number>;
   onStepClick?: (step: number) => void;
+  stepLabel?: (step: number) => string;
 }
 
 export function StepIndicator({
@@ -17,6 +22,7 @@ export function StepIndicator({
   currentStep,
   completedSteps,
   onStepClick,
+  stepLabel,
 }: StepIndicatorProps) {
   return (
     <nav aria-label="Form progress">
@@ -33,7 +39,7 @@ export function StepIndicator({
                 onClick={() => isClickable && onStepClick?.(step.id)}
                 disabled={!isClickable}
                 className={cn(
-                  "w-full rounded-xl border px-3 py-2.5 text-left transition-all",
+                  "w-full rounded-xl border px-3 py-2.5 text-start transition-all",
                   isClickable && "cursor-pointer hover:border-primary/40 hover:bg-primary/[0.04]",
                   isCurrent && "border-primary bg-primary/[0.07] shadow-sm",
                   isCompleted && !isCurrent && "border-primary/20 bg-primary/[0.05]",
@@ -65,7 +71,7 @@ export function StepIndicator({
                       initial={{ opacity: 0 }}
                       transition={{ delay: 0.05 * index }}
                     >
-                      Step {step.id}
+                      {stepLabel?.(step.id) ?? `Step ${step.id}`}
                     </motion.p>
                     <motion.p
                       className={cn(

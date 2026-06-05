@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Globe, DollarSign, Save, CheckCircle2, Bell, Shield, Clock,
   Users, Calendar, FileText, Briefcase, Mail, ChevronRight, Percent,
@@ -29,14 +30,14 @@ const COUNTRIES = Object.entries(COUNTRY_CURRENCIES).map(([code, info]) => ({
 
 type TabKey = "profile" | "region" | "commission" | "invoice" | "notifications" | "availability" | "security";
 
-const NAV_ITEMS: { key: TabKey; label: string; desc: string; icon: typeof Globe }[] = [
-  { key: "profile", label: "Profile & Avatar", desc: "Photo, name & display info", icon: UserCircle },
-  { key: "region", label: "Region & Currency", desc: "Country, currency, display", icon: Globe },
-  { key: "commission", label: "Commission Rate", desc: "Your placement rate", icon: Percent },
-  { key: "invoice", label: "Invoice Defaults", desc: "Billing & invoice presets", icon: Receipt },
-  { key: "notifications", label: "Notifications", desc: "Email & in-app alerts", icon: Bell },
-  { key: "availability", label: "Availability", desc: "Timezone & working hours", icon: Clock },
-  { key: "security", label: "Account & Security", desc: "Password & account actions", icon: Shield },
+const NAV_ITEMS: { key: TabKey; icon: typeof Globe }[] = [
+  { key: "profile", icon: UserCircle },
+  { key: "region", icon: Globe },
+  { key: "commission", icon: Percent },
+  { key: "invoice", icon: Receipt },
+  { key: "notifications", icon: Bell },
+  { key: "availability", icon: Clock },
+  { key: "security", icon: Shield },
 ];
 
 type Channel = "in_app" | "email";
@@ -53,24 +54,24 @@ interface NotifPrefs {
   timezone: string;
 }
 
-const AGENT_CATEGORIES: { key: CategoryKey; icon: typeof Bell; label: string; desc: string }[] = [
-  { key: "placements", icon: Users, label: "Placements & Leads", desc: "Candidate progress, employer updates, and lead activity" },
-  { key: "commissions", icon: DollarSign, label: "Commission Updates", desc: "New commissions earned, payouts, and rate changes" },
-  { key: "team", icon: Briefcase, label: "Team & Super Agent", desc: "Super agent assignments, team updates, and milestones" },
-  { key: "jobs", icon: FileText, label: "Job Updates", desc: "New job postings, expirations, and vacancy changes" },
-  { key: "system", icon: Shield, label: "System & Security", desc: "Login alerts, platform notices, and security events" },
+const AGENT_CATEGORIES: { key: CategoryKey; icon: typeof Bell }[] = [
+  { key: "placements", icon: Users },
+  { key: "commissions", icon: DollarSign },
+  { key: "team", icon: Briefcase },
+  { key: "jobs", icon: FileText },
+  { key: "system", icon: Shield },
 ];
 
-const FREQ_OPTIONS: { value: EmailFrequency; label: string; desc: string }[] = [
-  { value: "instant", label: "Instant", desc: "As events happen" },
-  { value: "daily", label: "Daily", desc: "One email/day" },
-  { value: "weekly", label: "Weekly", desc: "Sunday summary" },
-  { value: "none", label: "Off", desc: "In-app only" },
+const FREQ_OPTIONS: { value: EmailFrequency }[] = [
+  { value: "instant" },
+  { value: "daily" },
+  { value: "weekly" },
+  { value: "none" },
 ];
 
-const CH_LABELS: Record<Channel, { label: string; Icon: typeof Bell }> = {
-  in_app: { label: "In-App", Icon: Bell },
-  email: { label: "Email", Icon: Mail },
+const CH_LABELS: Record<Channel, { Icon: typeof Bell }> = {
+  in_app: { Icon: Bell },
+  email: { Icon: Mail },
 };
 
 const TIMEZONES = [
@@ -108,18 +109,19 @@ function SectionHeader({ icon: Icon, title, description }: { icon: typeof Globe;
   );
 }
 
-function SaveFeedback({ saving, saved, hasChanges, onSave, label = "Save Changes" }: {
+function SaveFeedback({ saving, saved, hasChanges, onSave, label }: {
   saving: boolean; saved: boolean; hasChanges: boolean; onSave: () => void; label?: string;
 }) {
+  const t = useTranslations("agentSettings");
   return (
     <div className="flex items-center gap-3">
       <Button type="button" onClick={onSave} disabled={saving || !hasChanges} size="sm" className="gap-2">
         <Save className="w-4 h-4" />
-        {saving ? "Saving…" : label}
+        {saving ? t("save.saving") : label ?? t("save.default")}
       </Button>
       {saved && (
         <span className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-          <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+          <CheckCircle2 className="w-3.5 h-3.5" /> {t("save.saved")}
         </span>
       )}
     </div>
@@ -142,6 +144,7 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function ProfileTab() {
   const { data: session, update: updateSession } = useSession();
+  const t = useTranslations("agentSettings");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -156,7 +159,7 @@ function ProfileTab() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileSnap, setProfileSnap] = useState("");
 
-  const userName = session?.user?.name ?? "Agent";
+  const userName = session?.user?.name ?? t("profile.fallbackName");
   const userEmail = session?.user?.email ?? "";
 
   // Load avatar from session
@@ -196,11 +199,11 @@ function ProfileTab() {
     setError("");
 
     if (!ALLOWED_TYPES.includes(file.type)) {
-      setError("Only JPEG, PNG, and WebP images are allowed.");
+      setError(t("profile.errors.fileType"));
       return;
     }
     if (file.size > MAX_SIZE) {
-      setError("Image must be under 2 MB.");
+      setError(t("profile.errors.fileSize"));
       return;
     }
 
@@ -220,7 +223,7 @@ function ProfileTab() {
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error ?? "Upload failed");
+        setError(data.error ?? t("profile.errors.uploadFailed"));
         setPreview(null);
         return;
       }
@@ -229,13 +232,13 @@ function ProfileTab() {
       setPreview(null);
       await updateSession({ image: data.url });
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("profile.errors.network"));
       setPreview(null);
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
     }
-  }, [updateSession]);
+  }, [t, updateSession]);
 
   const handleRemove = useCallback(async () => {
     setUploading(true);
@@ -251,11 +254,11 @@ function ProfileTab() {
         await updateSession({ image: null });
       }
     } catch {
-      setError("Failed to remove avatar.");
+      setError(t("profile.errors.removeFailed"));
     } finally {
       setUploading(false);
     }
-  }, [updateSession]);
+  }, [t, updateSession]);
 
   const handleProfileSave = async () => {
     if (!name.trim()) return;
@@ -287,7 +290,7 @@ function ProfileTab() {
           <div className="relative group shrink-0">
             <div className="w-20 h-20 rounded-2xl border-2 border-primary/20 bg-muted/30 flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary/40 shadow-sm">
               {displayUrl ? (
-                <img src={displayUrl} alt="Profile photo" className="w-full h-full object-cover" />
+                <img src={displayUrl} alt={t("profile.photoAlt")} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-xl font-bold text-primary/60">{initials}</span>
               )}
@@ -320,7 +323,7 @@ function ProfileTab() {
               <h3 className="text-lg font-semibold tracking-tight truncate">{name || userName}</h3>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
                 <Shield className="w-3 h-3" />
-                Agent
+                {t("role.agent")}
               </span>
             </div>
             <p className="text-sm text-muted-foreground mt-0.5 truncate">{userEmail}</p>
@@ -333,7 +336,7 @@ function ProfileTab() {
                 disabled={uploading}
                 className="h-7 text-xs"
               >
-                {displayUrl ? "Change Photo" : "Upload Photo"}
+                {displayUrl ? t("profile.changePhoto") : t("profile.uploadPhoto")}
               </Button>
               {displayUrl && (
                 <Button
@@ -345,19 +348,19 @@ function ProfileTab() {
                   className="h-7 text-xs text-destructive hover:text-destructive"
                 >
                   <Trash2 className="w-3 h-3 me-1" />
-                  Remove
+                  {t("profile.removePhoto")}
                 </Button>
               )}
             </div>
             {error && <p className="text-xs text-destructive mt-1">{error}</p>}
-            <p className="text-[10px] text-muted-foreground mt-1">JPEG, PNG or WebP. Max 2 MB.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">{t("profile.fileHint")}</p>
           </div>
         </div>
       </div>
 
       {/* Editable Profile Fields */}
       <SectionCard>
-        <SectionHeader icon={UserCircle} title="Basic Information" description="Update your display name and contact details" />
+        <SectionHeader icon={UserCircle} title={t("profile.basicTitle")} description={t("profile.basicDescription")} />
         <div className="p-6 space-y-5">
           {profileLoading ? (
             <div className="h-24 animate-pulse rounded-xl bg-muted/30" />
@@ -366,50 +369,50 @@ function ProfileTab() {
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="agent-name" className="text-sm font-medium text-foreground">
-                    Full Name <span className="text-destructive">*</span>
+                    {t("profile.fullName")} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="agent-name"
-                    placeholder="e.g. John Doe"
+                    placeholder={t("profile.fullNamePlaceholder")}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     maxLength={80}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Displayed in lead management, employer listings, and commission reports.
+                    {t("profile.fullNameHelp")}
                   </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="agent-phone" className="text-sm font-medium text-foreground">
-                    Phone Number
+                    {t("profile.phone")}
                   </Label>
                   <Input
                     id="agent-phone"
                     type="tel"
-                    placeholder="e.g. +971 50 123 4567"
+                    placeholder={t("profile.phonePlaceholder")}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     maxLength={20}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Used for urgent communication from your super agent or team.
+                    {t("profile.phoneHelp")}
                   </p>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">Email Address</Label>
+                <Label className="text-sm font-medium text-foreground">{t("profile.email")}</Label>
                 <div className="flex items-center gap-2 h-10 rounded-xl border border-border bg-muted/30 px-3">
                   <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="text-sm text-muted-foreground truncate">{userEmail}</span>
-                  <Badge variant="outline" className="ml-auto text-[10px] shrink-0">Read-only</Badge>
+                  <Badge variant="outline" className="ml-auto text-[10px] shrink-0">{t("profile.readOnly")}</Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Email is managed by your administrator and cannot be changed here.
+                  {t("profile.emailHelp")}
                 </p>
               </div>
 
-              <SaveFeedback saving={profileSaving} saved={profileSaved} hasChanges={profileHasChanges} onSave={handleProfileSave} label="Save Profile" />
+              <SaveFeedback saving={profileSaving} saved={profileSaved} hasChanges={profileHasChanges} onSave={handleProfileSave} label={t("profile.save")} />
             </>
           )}
         </div>
@@ -421,6 +424,9 @@ function ProfileTab() {
 // ─── Tab: Region & Currency ───────────────────────────────────────────────────
 
 function RegionTab() {
+  const t = useTranslations("agentSettings");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [country, setCountry] = useState("");
   const [currencyCode, setCurrencyCode] = useState("AED");
   const [loading, setLoading] = useState(true);
@@ -478,13 +484,13 @@ function RegionTab() {
   return (
     <>
       <SectionCard>
-        <SectionHeader icon={Globe} title="Country & Currency" description="Set your operating region and display currency" />
+        <SectionHeader icon={Globe} title={t("region.title")} description={t("region.description")} />
         <div className="p-6 space-y-6">
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="country" className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Globe className="h-4 w-4 text-muted-foreground" />
-                Country
+                {t("region.country")}
               </Label>
               <select
                 id="country"
@@ -492,20 +498,20 @@ function RegionTab() {
                 onChange={handleCountryChange}
                 className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
               >
-                <option value="">Select a country</option>
+                <option value="">{t("region.selectCountry")}</option>
                 {COUNTRIES.map((c) => (
                   <option key={c.code} value={c.code}>{c.label}</option>
                 ))}
               </select>
               <p className="text-xs text-muted-foreground">
-                Selecting a country auto-fills the currency used in that region.
+                {t("region.countryHelp")}
               </p>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="currency" className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
-                Display Currency
+                {t("region.displayCurrency")}
               </Label>
               <select
                 id="currency"
@@ -520,18 +526,18 @@ function RegionTab() {
                 ))}
               </select>
               <p className="text-xs text-muted-foreground">
-                This currency will be used to display commissions and all monetary values.
+                {t("region.currencyHelp")}
               </p>
             </div>
           </div>
 
-          <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label="Save Region Settings" />
+          <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label={t("region.save")} />
         </div>
       </SectionCard>
 
       {/* Currency Preview */}
       <SectionCard>
-        <SectionHeader icon={DollarSign} title="Currency Display Preview" description="How monetary values will appear across your workspace" />
+        <SectionHeader icon={DollarSign} title={t("region.previewTitle")} description={t("region.previewDescription")} />
         <div className="p-6">
           <div className="grid gap-4 sm:grid-cols-3">
             {[12500, 85000, 250000].map((amount) => {
@@ -539,9 +545,9 @@ function RegionTab() {
               const symbol = info?.symbol ?? currencyCode;
               return (
                 <div key={amount} className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Sample</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("region.sample")}</p>
                   <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                    {symbol} {amount.toLocaleString()}
+                    {symbol} {amount.toLocaleString(numberLocale)}
                   </p>
                 </div>
               );
@@ -556,6 +562,9 @@ function RegionTab() {
 // ─── Tab: Commission Rate (read-only for agents) ─────────────────────────────
 
 function CommissionTab() {
+  const t = useTranslations("agentSettings");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [commissionRate, setCommissionRate] = useState<number>(0);
   const [currencyCode, setCurrencyCode] = useState("AED");
   const [loading, setLoading] = useState(true);
@@ -578,26 +587,26 @@ function CommissionTab() {
   return (
     <>
       <SectionCard>
-        <SectionHeader icon={Percent} title="Commission Rate" description="Your current commission rate set by your super agent or admin" />
+        <SectionHeader icon={Percent} title={t("commission.title")} description={t("commission.description")} />
         <div className="p-6 space-y-6">
           <div className="max-w-md space-y-3">
             <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Percent className="h-4 w-4 text-muted-foreground" />
-              Current Rate
+              {t("commission.currentRate")}
             </Label>
             <div className="flex items-center gap-2 h-11 rounded-xl border border-border bg-muted/30 px-4">
               <span className="text-lg font-semibold text-foreground">{commissionRate}%</span>
-              <Badge variant="outline" className="ml-auto text-[10px] shrink-0">Set by Admin</Badge>
+              <Badge variant="outline" className="ml-auto text-[10px] shrink-0">{t("commission.setByAdmin")}</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Your commission rate is managed by your super agent or administrator. Contact them to request changes.
+              {t("commission.help")}
             </p>
           </div>
 
           {/* Commission Preview */}
           {commissionRate > 0 && (
             <div>
-              <p className="text-sm font-medium text-foreground mb-3">Projected Commission</p>
+              <p className="text-sm font-medium text-foreground mb-3">{t("commission.projected")}</p>
               <div className="grid gap-4 sm:grid-cols-3">
                 {[50000, 120000, 300000].map((salary) => {
                   const commission = salary * (commissionRate / 100);
@@ -606,12 +615,12 @@ function CommissionTab() {
                   return (
                     <div key={salary} className="rounded-xl border border-border/50 bg-muted/20 p-4">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        On {symbol} {salary.toLocaleString()} placement
+                        {t("commission.onPlacement", { amount: `${symbol} ${salary.toLocaleString(numberLocale)}` })}
                       </p>
                       <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                        {symbol} {commission.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {symbol} {commission.toLocaleString(numberLocale, { maximumFractionDigits: 0 })}
                       </p>
-                      <p className="mt-1 text-xs text-muted-foreground">{commissionRate}% commission</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{t("commission.rateLine", { rate: commissionRate })}</p>
                     </div>
                   );
                 })}
@@ -627,6 +636,7 @@ function CommissionTab() {
 // ─── Tab: Notifications ───────────────────────────────────────────────────────
 
 function NotificationsTab() {
+  const t = useTranslations("agentSettings");
   const defaultPrefs: NotifPrefs = {
     emailFrequency: "daily",
     categories: {
@@ -705,9 +715,9 @@ function NotificationsTab() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">All notifications paused</p>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{t("notifications.pausedTitle")}</p>
                 <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                  You won&apos;t receive any email or in-app notifications. Toggle this off to resume.
+                  {t("notifications.pausedDescription")}
                 </p>
               </div>
             </div>
@@ -721,7 +731,7 @@ function NotificationsTab() {
 
       {/* Email frequency */}
       <SectionCard>
-        <SectionHeader icon={Clock} title="Email Frequency" description="How often to receive email digests" />
+        <SectionHeader icon={Clock} title={t("notifications.frequencyTitle")} description={t("notifications.frequencyDescription")} />
         <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {FREQ_OPTIONS.map((opt) => (
             <button
@@ -734,8 +744,8 @@ function NotificationsTab() {
                   : "border-border/50 hover:border-border"
               }`}
             >
-              <div className="text-sm font-medium">{opt.label}</div>
-              <div className="text-[11px] text-muted-foreground mt-1">{opt.desc}</div>
+              <div className="text-sm font-medium">{t(`notifications.frequency.${opt.value}.label`)}</div>
+              <div className="text-[11px] text-muted-foreground mt-1">{t(`notifications.frequency.${opt.value}.description`)}</div>
             </button>
           ))}
         </div>
@@ -744,20 +754,20 @@ function NotificationsTab() {
       {/* Digest time */}
       {(prefs.emailFrequency === "daily" || prefs.emailFrequency === "weekly") && (
         <SectionCard>
-          <SectionHeader icon={Clock} title="Digest Schedule" description="When to receive your email digest" />
+          <SectionHeader icon={Clock} title={t("notifications.digestTitle")} description={t("notifications.digestDescription")} />
           <div className="p-6 grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">Digest Time</Label>
+              <Label className="text-sm font-medium text-foreground">{t("notifications.digestTime")}</Label>
               <Input
                 type="time"
                 value={prefs.dailyDigestTime}
                 onChange={(e) => setPrefs((p) => ({ ...p, dailyDigestTime: e.target.value }))}
                 className="max-w-[180px]"
               />
-              <p className="text-xs text-muted-foreground">Time in your selected timezone</p>
+              <p className="text-xs text-muted-foreground">{t("notifications.digestTimeHelp")}</p>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">Timezone</Label>
+              <Label className="text-sm font-medium text-foreground">{t("notifications.timezone")}</Label>
               <select
                 value={prefs.timezone}
                 onChange={(e) => setPrefs((p) => ({ ...p, timezone: e.target.value }))}
@@ -774,7 +784,7 @@ function NotificationsTab() {
 
       {/* Categories */}
       <SectionCard>
-        <SectionHeader icon={Bell} title="Notification Categories" description="Toggle categories and choose delivery channels" />
+        <SectionHeader icon={Bell} title={t("notifications.categoriesTitle")} description={t("notifications.categoriesDescription")} />
         <div className="divide-y divide-border/30">
           {AGENT_CATEGORIES.map((cat) => {
             const pref = prefs.categories[cat.key];
@@ -786,8 +796,8 @@ function NotificationsTab() {
                       <cat.icon className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{cat.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{cat.desc}</p>
+                      <p className="text-sm font-medium">{t(`notifications.categories.${cat.key}.label`)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{t(`notifications.categories.${cat.key}.description`)}</p>
                     </div>
                   </div>
                   <Switch
@@ -806,7 +816,7 @@ function NotificationsTab() {
                 {pref.enabled && (
                   <div className="flex items-center gap-2 mt-3 ml-11">
                     {(Object.keys(CH_LABELS) as Channel[]).map((ch) => {
-                      const { label, Icon: ChIcon } = CH_LABELS[ch];
+                      const { Icon: ChIcon } = CH_LABELS[ch];
                       const active = pref.channels.includes(ch);
                       return (
                         <button
@@ -828,7 +838,7 @@ function NotificationsTab() {
                           }`}
                         >
                           <ChIcon className="w-3 h-3" />
-                          {label}
+                          {t(`notifications.channels.${ch}`)}
                         </button>
                       );
                     })}
@@ -844,8 +854,8 @@ function NotificationsTab() {
       <SectionCard>
         <div className="flex items-center justify-between gap-4 px-6 py-4">
           <div>
-            <p className="text-sm font-medium">Pause all notifications</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Temporarily stop all email and in-app notifications</p>
+            <p className="text-sm font-medium">{t("notifications.pauseAll")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("notifications.pauseAllDescription")}</p>
           </div>
           <Switch
             checked={prefs.unsubscribedAll}
@@ -854,7 +864,7 @@ function NotificationsTab() {
         </div>
       </SectionCard>
 
-      <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label="Save Notification Settings" />
+      <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label={t("notifications.save")} />
     </>
   );
 }
@@ -862,6 +872,7 @@ function NotificationsTab() {
 // ─── Tab: Availability ────────────────────────────────────────────────────────
 
 function AvailabilityTab() {
+  const t = useTranslations("agentSettings");
   const [timezone, setTimezone] = useState("Asia/Dubai");
   const [workingHoursStart, setWorkingHoursStart] = useState("09:00");
   const [workingHoursEnd, setWorkingHoursEnd] = useState("18:00");
@@ -925,7 +936,7 @@ function AvailabilityTab() {
   return (
     <>
       <SectionCard>
-        <SectionHeader icon={MapPin} title="Timezone" description="Your local timezone for scheduling and digest delivery" />
+        <SectionHeader icon={MapPin} title={t("availability.timezoneTitle")} description={t("availability.timezoneDescription")} />
         <div className="p-6">
           <select
             value={timezone}
@@ -940,11 +951,11 @@ function AvailabilityTab() {
       </SectionCard>
 
       <SectionCard>
-        <SectionHeader icon={Clock} title="Working Hours" description="Define your typical working window" />
+        <SectionHeader icon={Clock} title={t("availability.hoursTitle")} description={t("availability.hoursDescription")} />
         <div className="p-6 space-y-6">
           <div className="grid gap-6 sm:grid-cols-2 max-w-md">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">Start Time</Label>
+              <Label className="text-sm font-medium text-foreground">{t("availability.startTime")}</Label>
               <Input
                 type="time"
                 value={workingHoursStart}
@@ -952,7 +963,7 @@ function AvailabilityTab() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-foreground">End Time</Label>
+              <Label className="text-sm font-medium text-foreground">{t("availability.endTime")}</Label>
               <Input
                 type="time"
                 value={workingHoursEnd}
@@ -962,7 +973,7 @@ function AvailabilityTab() {
           </div>
 
           <div className="space-y-3">
-            <Label className="text-sm font-medium text-foreground">Working Days</Label>
+            <Label className="text-sm font-medium text-foreground">{t("availability.workingDays")}</Label>
             <div className="flex flex-wrap gap-2">
               {DAYS_OF_WEEK.map((day) => {
                 const active = workingDays.includes(day);
@@ -977,19 +988,19 @@ function AvailabilityTab() {
                         : "border-border/50 text-muted-foreground hover:border-border"
                     }`}
                   >
-                    {day}
+                    {t(`availability.days.${day}`)}
                   </button>
                 );
               })}
             </div>
             <p className="text-xs text-muted-foreground">
-              These are shown to your super agent for coordination purposes.
+              {t("availability.daysHelp")}
             </p>
           </div>
         </div>
       </SectionCard>
 
-      <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label="Save Availability" />
+      <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label={t("availability.save")} />
     </>
   );
 }
@@ -997,38 +1008,38 @@ function AvailabilityTab() {
 // ─── Tab: Invoice Defaults ────────────────────────────────────────────────────
 
 const INVOICE_CATEGORIES = [
-  { value: "recruitment", label: "Recruitment Placement" },
-  { value: "subscription", label: "Employer Subscription" },
-  { value: "premium_posting", label: "Premium Job Posting" },
-  { value: "featured_promotion", label: "Featured Employer Promotion" },
-  { value: "exhibition", label: "Exhibition Billing" },
-  { value: "bulk_hiring", label: "Bulk Hiring Package" },
-  { value: "consulting", label: "Consulting Fee" },
-  { value: "custom_enterprise", label: "Custom Enterprise Billing" },
+  "recruitment",
+  "subscription",
+  "premium_posting",
+  "featured_promotion",
+  "exhibition",
+  "bulk_hiring",
+  "consulting",
+  "custom_enterprise",
 ];
 
 const INVOICE_TAX_TYPES = [
-  { value: "none", label: "No Tax" },
-  { value: "gst", label: "GST" },
-  { value: "vat", label: "VAT" },
-  { value: "reverse_charge", label: "Reverse Charge" },
-  { value: "sales_tax", label: "Sales Tax" },
-  { value: "service_tax", label: "Service Tax" },
-  { value: "withholding_tax", label: "Withholding Tax" },
-  { value: "tds", label: "TDS" },
-  { value: "pst", label: "PST" },
-  { value: "hst", label: "HST" },
+  "none",
+  "gst",
+  "vat",
+  "reverse_charge",
+  "sales_tax",
+  "service_tax",
+  "withholding_tax",
+  "tds",
+  "pst",
+  "hst",
 ];
 
 const INVOICE_PAYMENT_TERMS = [
-  { value: "immediate", label: "Immediate" },
-  { value: "net_7", label: "Net 7 days" },
-  { value: "net_15", label: "Net 15 days" },
-  { value: "net_30", label: "Net 30 days" },
-  { value: "net_45", label: "Net 45 days" },
-  { value: "net_60", label: "Net 60 days" },
-  { value: "net_90", label: "Net 90 days" },
-  { value: "custom", label: "Custom" },
+  "immediate",
+  "net_7",
+  "net_15",
+  "net_30",
+  "net_45",
+  "net_60",
+  "net_90",
+  "custom",
 ];
 
 interface InvoiceDefaultsState {
@@ -1066,6 +1077,7 @@ const EMPTY_DEFAULTS: InvoiceDefaultsState = {
 };
 
 function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }: { apiBase?: string }) {
+  const t = useTranslations("agentSettings");
   const [form, setForm] = useState<InvoiceDefaultsState>(EMPTY_DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1165,9 +1177,9 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
         <div className="flex items-start gap-3">
           <Receipt className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-medium text-foreground">Speed up invoice creation</p>
+            <p className="text-sm font-medium text-foreground">{t("invoice.bannerTitle")}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Set your default billing details, tax configuration, and payment terms here. These will auto-fill every new invoice you create — no need to retype the same information.
+              {t("invoice.bannerDescription")}
             </p>
           </div>
         </div>
@@ -1175,47 +1187,47 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
 
       {/* Billing Entity */}
       <SectionCard>
-        <SectionHeader icon={FileText} title="Your Billing Entity" description="Company or individual details that appear on your invoices" />
+        <SectionHeader icon={FileText} title={t("invoice.billingTitle")} description={t("invoice.billingDescription")} />
         <div className="p-6 space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="inv-company" className="text-sm font-medium">Company / Entity Name</Label>
-              <Input id="inv-company" placeholder="e.g. Acme Recruitment LLC" value={form.billingCompanyName} onChange={(e) => update("billingCompanyName", e.target.value)} maxLength={200} />
+              <Label htmlFor="inv-company" className="text-sm font-medium">{t("invoice.companyName")}</Label>
+              <Input id="inv-company" placeholder={t("invoice.companyNamePlaceholder")} value={form.billingCompanyName} onChange={(e) => update("billingCompanyName", e.target.value)} maxLength={200} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inv-contact" className="text-sm font-medium">Contact Person</Label>
-              <Input id="inv-contact" placeholder="e.g. John Smith" value={form.billingContactPerson} onChange={(e) => update("billingContactPerson", e.target.value)} maxLength={200} />
+              <Label htmlFor="inv-contact" className="text-sm font-medium">{t("invoice.contactPerson")}</Label>
+              <Input id="inv-contact" placeholder={t("invoice.contactPersonPlaceholder")} value={form.billingContactPerson} onChange={(e) => update("billingContactPerson", e.target.value)} maxLength={200} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inv-email" className="text-sm font-medium">Billing Email</Label>
-              <Input id="inv-email" type="email" placeholder="billing@company.com" value={form.billingEmail} onChange={(e) => update("billingEmail", e.target.value)} maxLength={200} />
+              <Label htmlFor="inv-email" className="text-sm font-medium">{t("invoice.billingEmail")}</Label>
+              <Input id="inv-email" type="email" placeholder={t("invoice.billingEmailPlaceholder")} value={form.billingEmail} onChange={(e) => update("billingEmail", e.target.value)} maxLength={200} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inv-phone" className="text-sm font-medium">Billing Phone</Label>
-              <Input id="inv-phone" type="tel" placeholder="+971 50 123 4567" value={form.billingPhone} onChange={(e) => update("billingPhone", e.target.value)} maxLength={50} />
+              <Label htmlFor="inv-phone" className="text-sm font-medium">{t("invoice.billingPhone")}</Label>
+              <Input id="inv-phone" type="tel" placeholder={t("invoice.billingPhonePlaceholder")} value={form.billingPhone} onChange={(e) => update("billingPhone", e.target.value)} maxLength={50} />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="inv-address" className="text-sm font-medium">Billing Address</Label>
-            <Textarea id="inv-address" placeholder="Street address, building, floor…" value={form.billingAddress} onChange={(e) => update("billingAddress", e.target.value)} maxLength={500} rows={2} className="resize-none" />
+            <Label htmlFor="inv-address" className="text-sm font-medium">{t("invoice.billingAddress")}</Label>
+            <Textarea id="inv-address" placeholder={t("invoice.billingAddressPlaceholder")} value={form.billingAddress} onChange={(e) => update("billingAddress", e.target.value)} maxLength={500} rows={2} className="resize-none" />
           </div>
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="inv-country" className="text-sm font-medium">Billing Country</Label>
+              <Label htmlFor="inv-country" className="text-sm font-medium">{t("invoice.billingCountry")}</Label>
               <select
                 id="inv-country"
                 value={form.billingCountry}
                 onChange={(e) => handleBillingCountryChange(e.target.value)}
                 className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
               >
-                <option value="">Select country</option>
+                <option value="">{t("invoice.selectCountry")}</option>
                 {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
               </select>
-              <p className="text-[11px] text-muted-foreground">Selecting a country auto-updates the default currency.</p>
+              <p className="text-[11px] text-muted-foreground">{t("invoice.countryHelp")}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inv-taxid" className="text-sm font-medium">Tax ID / VAT Number</Label>
-              <Input id="inv-taxid" placeholder="e.g. TRN 100234567890003" value={form.billingTaxId} onChange={(e) => update("billingTaxId", e.target.value)} maxLength={50} />
+              <Label htmlFor="inv-taxid" className="text-sm font-medium">{t("invoice.taxId")}</Label>
+              <Input id="inv-taxid" placeholder={t("invoice.taxIdPlaceholder")} value={form.billingTaxId} onChange={(e) => update("billingTaxId", e.target.value)} maxLength={50} />
             </div>
           </div>
         </div>
@@ -1223,22 +1235,22 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
 
       {/* Invoice Preferences */}
       <SectionCard>
-        <SectionHeader icon={Receipt} title="Invoice Preferences" description="Default values pre-filled when creating new invoices" />
+        <SectionHeader icon={Receipt} title={t("invoice.preferencesTitle")} description={t("invoice.preferencesDescription")} />
         <div className="p-6 space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="inv-category" className="text-sm font-medium">Default Invoice Type</Label>
+              <Label htmlFor="inv-category" className="text-sm font-medium">{t("invoice.defaultType")}</Label>
               <select
                 id="inv-category"
                 value={form.defaultCategory}
                 onChange={(e) => update("defaultCategory", e.target.value)}
                 className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
               >
-                {INVOICE_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {INVOICE_CATEGORIES.map((category) => <option key={category} value={category}>{t(`invoice.categories.${category}`)}</option>)}
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inv-currency" className="text-sm font-medium">Default Currency</Label>
+              <Label htmlFor="inv-currency" className="text-sm font-medium">{t("invoice.defaultCurrency")}</Label>
               <select
                 id="inv-currency"
                 value={form.defaultCurrency}
@@ -1252,21 +1264,21 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
 
           {/* Tax Configuration */}
           <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Tax Configuration</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("invoice.taxConfiguration")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="inv-taxtype" className="text-sm font-medium">Tax Type</Label>
+                <Label htmlFor="inv-taxtype" className="text-sm font-medium">{t("invoice.taxType")}</Label>
                 <select
                   id="inv-taxtype"
                   value={form.defaultTaxType}
                   onChange={(e) => update("defaultTaxType", e.target.value)}
                   className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
-                  {INVOICE_TAX_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  {INVOICE_TAX_TYPES.map((taxType) => <option key={taxType} value={taxType}>{t(`invoice.taxTypes.${taxType}`)}</option>)}
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="inv-taxpct" className="text-sm font-medium">Tax Rate (%)</Label>
+                <Label htmlFor="inv-taxpct" className="text-sm font-medium">{t("invoice.taxRate")}</Label>
                 <Input id="inv-taxpct" type="number" min={0} max={100} step={0.5} value={form.defaultTaxPercent} onChange={(e) => update("defaultTaxPercent", parseFloat(e.target.value) || 0)} />
               </div>
             </div>
@@ -1274,22 +1286,22 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
 
           {/* Payment Terms */}
           <div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Payment Terms</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("invoice.paymentTerms")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="inv-terms" className="text-sm font-medium">Default Terms</Label>
+                <Label htmlFor="inv-terms" className="text-sm font-medium">{t("invoice.defaultTerms")}</Label>
                 <select
                   id="inv-terms"
                   value={form.defaultPaymentTerms}
                   onChange={(e) => update("defaultPaymentTerms", e.target.value)}
                   className="h-11 w-full rounded-xl border border-border bg-background/85 px-3 text-sm text-foreground shadow-none focus:outline-none focus:ring-2 focus:ring-primary/35"
                 >
-                  {INVOICE_PAYMENT_TERMS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  {INVOICE_PAYMENT_TERMS.map((term) => <option key={term} value={term}>{t(`invoice.paymentTermOptions.${term}`)}</option>)}
                 </select>
               </div>
               {form.defaultPaymentTerms === "custom" && (
                 <div className="space-y-2">
-                  <Label htmlFor="inv-custom-days" className="text-sm font-medium">Custom Days</Label>
+                  <Label htmlFor="inv-custom-days" className="text-sm font-medium">{t("invoice.customDays")}</Label>
                   <Input id="inv-custom-days" type="number" min={1} max={365} value={form.customPaymentDays} onChange={(e) => update("customPaymentDays", parseInt(e.target.value) || 30)} />
                 </div>
               )}
@@ -1298,20 +1310,20 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
 
           {/* Default Notes */}
           <div className="space-y-2">
-            <Label htmlFor="inv-notes" className="text-sm font-medium">Default Invoice Notes</Label>
+            <Label htmlFor="inv-notes" className="text-sm font-medium">{t("invoice.defaultNotes")}</Label>
             <Textarea
               id="inv-notes"
-              placeholder="Standard payment terms, bank details, or any recurring notes to include on every invoice…"
+              placeholder={t("invoice.defaultNotesPlaceholder")}
               value={form.defaultNotes}
               onChange={(e) => update("defaultNotes", e.target.value)}
               maxLength={1000}
               rows={3}
               className="resize-none"
             />
-            <p className="text-[11px] text-muted-foreground">{form.defaultNotes.length}/1000 characters</p>
+            <p className="text-[11px] text-muted-foreground">{t("invoice.characters", { count: form.defaultNotes.length })}</p>
           </div>
 
-          <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label="Save Invoice Defaults" />
+          <SaveFeedback saving={saving} saved={saved} hasChanges={hasChanges} onSave={handleSave} label={t("invoice.save")} />
         </div>
       </SectionCard>
     </>
@@ -1321,24 +1333,25 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
 // ─── Tab: Account & Security ──────────────────────────────────────────────────
 
 function SecurityTab() {
+  const t = useTranslations("agentSettings");
   return (
     <>
       <SectionCard>
-        <SectionHeader icon={Shield} title="Account Information" description="Your agent account details" />
+        <SectionHeader icon={Shield} title={t("security.accountTitle")} description={t("security.accountDescription")} />
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
               <Calendar className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-[11px] text-muted-foreground">Role</p>
-                <p className="text-sm font-medium">Agent</p>
+                <p className="text-[11px] text-muted-foreground">{t("security.role")}</p>
+                <p className="text-sm font-medium">{t("role.agent")}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
               <Shield className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-[11px] text-muted-foreground">Account Status</p>
-                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Active</p>
+                <p className="text-[11px] text-muted-foreground">{t("security.accountStatus")}</p>
+                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{t("security.active")}</p>
               </div>
             </div>
           </div>
@@ -1346,14 +1359,14 @@ function SecurityTab() {
       </SectionCard>
 
       <SectionCard>
-        <SectionHeader icon={Shield} title="Security" description="Manage your security preferences" />
+        <SectionHeader icon={Shield} title={t("security.title")} description={t("security.description")} />
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-muted/20">
             <div className="flex items-start gap-3">
               <Mail className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm font-medium">Login Notifications</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Get notified when someone logs into your account</p>
+                <p className="text-sm font-medium">{t("security.loginNotifications")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("security.loginNotificationsDescription")}</p>
               </div>
             </div>
             <Switch defaultChecked />
@@ -1363,25 +1376,25 @@ function SecurityTab() {
             <div className="flex items-start gap-3">
               <Shield className="w-4 h-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm font-medium">Two-Factor Authentication</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Add an extra layer of security to your account</p>
+                <p className="text-sm font-medium">{t("security.twoFactor")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("security.twoFactorDescription")}</p>
               </div>
             </div>
-            <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+            <Badge variant="outline" className="text-xs">{t("security.comingSoon")}</Badge>
           </div>
         </div>
       </SectionCard>
 
       <SectionCard>
-        <SectionHeader icon={AlertTriangle} title="Danger Zone" description="Irreversible account actions" />
+        <SectionHeader icon={AlertTriangle} title={t("security.dangerTitle")} description={t("security.dangerDescription")} />
         <div className="p-6">
           <div className="flex items-center justify-between p-4 rounded-xl border border-destructive/20 bg-destructive/5">
             <div>
-              <p className="text-sm font-medium text-destructive">Deactivate Account</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Temporarily disable your agent account</p>
+              <p className="text-sm font-medium text-destructive">{t("security.deactivateTitle")}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("security.deactivateDescription")}</p>
             </div>
             <Button variant="outline" size="sm" className="border-destructive/30 text-destructive hover:bg-destructive/10">
-              Deactivate
+              {t("security.deactivate")}
             </Button>
           </div>
         </div>
@@ -1394,6 +1407,8 @@ function SecurityTab() {
 
 export default function AgentSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
+  const t = useTranslations("agentSettings");
+  const common = useTranslations("agentCommon");
 
   return (
     <div className="page-container agent-legacy-surface space-y-6">
@@ -1402,13 +1417,13 @@ export default function AgentSettingsPage() {
         <div className="max-w-3xl">
           <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            Agent workspace
+            {common("workspace")}
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-            Settings
+            {t("hero.title")}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Manage your agent workspace configuration — profile, regional preferences, commission rates, notification channels, availability, and account security.
+            {t("hero.description")}
           </p>
         </div>
       </section>
@@ -1421,6 +1436,8 @@ export default function AgentSettingsPage() {
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.key;
+            const label = t(`nav.${item.key}.label`);
+            const description = t(`nav.${item.key}.description`);
             return (
               <button
                 key={item.key}
@@ -1442,13 +1459,13 @@ export default function AgentSettingsPage() {
                   <Icon className={`w-4 h-4 ${isActive ? "text-primary" : ""}`} />
                 </div>
                 <div className="hidden lg:block flex-1 min-w-0">
-                  <p className={`text-sm font-medium truncate ${isActive ? "text-primary" : ""}`}>{item.label}</p>
-                  <p className="text-[11px] text-muted-foreground truncate mt-0.5">{item.desc}</p>
+                  <p className={`text-sm font-medium truncate ${isActive ? "text-primary" : ""}`}>{label}</p>
+                  <p className="text-[11px] text-muted-foreground truncate mt-0.5">{description}</p>
                 </div>
                 <span className="hidden lg:block text-xs text-muted-foreground ml-auto">
                   <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isActive ? "text-primary" : ""}`} />
                 </span>
-                <span className="lg:hidden text-xs font-medium">{item.label.split(" ")[0]}</span>
+                <span className="lg:hidden text-xs font-medium">{label.split(" ")[0]}</span>
               </button>
             );
           })}

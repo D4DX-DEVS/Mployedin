@@ -64,6 +64,8 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
 
   if (permanent) {
     const { Employer } = await import("@/models/Employer");
+    const { cascadeDeleteEmployer } = await import("@/lib/db/cascade");
+    const cascade = await cascadeDeleteEmployer(user._id);
     await Employer.deleteOne({ userId: user._id });
     await user.deleteOne();
     await logActivity({
@@ -71,9 +73,10 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
       action: "employer.delete",
       resource: "employers",
       resourceId: params?.id,
+      meta: { cascade },
       req,
     });
-    return NextResponse.json({ message: "Employer permanently deleted" });
+    return NextResponse.json({ message: "Employer permanently deleted", cascade });
   }
 
   user.isActive = false;

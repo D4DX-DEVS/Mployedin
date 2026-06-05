@@ -96,6 +96,137 @@
     "hiringQuestion": "Hiring?",
     "registerAsEmployer": "Register as an employer"
   },
+  "authLayout": {
+    "heading": "Elevate your hiring pipeline with a sharper command center.",
+    "description": "Move from sourcing to shortlist with a calmer workspace designed for modern recruitment teams, international hiring, and faster decision cycles.",
+    "copyright": "© {year} MPLOYEDIN. All rights reserved."
+  },
+  "forgotPasswordPage": {
+    "title": "Forgot password?",
+    "description": "Enter your email address and we'll send you a link to reset your password.",
+    "checkEmailTitle": "Check your email",
+    "checkEmailDescription": "If an account exists for {email}, we've sent a password reset link.",
+    "emailAddress": "Email address",
+    "sendResetLink": "Send reset link",
+    "backToSignIn": "Back to sign in",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tooManyRequests": "Too many requests. Please wait a few minutes and try again.",
+    "networkError": "Network error. Please check your connection and try again."
+  },
+  "employerRegister": {
+    "title": "Register Your Company",
+    "subtitle": "Join MPLOYEDIN — Gulf's AI-powered recruitment platform",
+    "referral": "Referral: {code}",
+    "steps": {
+      "company": "Company",
+      "verification": "Verification",
+      "contact": "Contact"
+    },
+    "companyDetails": "Company Details",
+    "companyName": "Company Name",
+    "companyNamePlaceholder": "e.g. Acme Corporation",
+    "industry": "Industry",
+    "industryPlaceholder": "Select industry",
+    "companySize": "Company Size",
+    "sizePlaceholder": "Select size",
+    "website": "Website",
+    "country": "Country",
+    "countryPlaceholder": "Select country",
+    "city": "City",
+    "cityPlaceholder": "e.g. Dubai",
+    "verificationLevel": "Verification Level",
+    "verificationIntro": "Higher verification unlocks more features and a trust badge on your profile.",
+    "tradeLicence": "Trade Licence",
+    "mohCertificate": "MoH / Free Zone Certificate",
+    "uploadHint": "PDF, JPG, or PNG (max 10MB)",
+    "contactPerson": "Contact Person",
+    "fullName": "Full Name",
+    "fullNamePlaceholder": "e.g. John Smith",
+    "jobTitle": "Job Title",
+    "jobTitlePlaceholder": "e.g. HR Manager",
+    "workEmail": "Work Email",
+    "workEmailPlaceholder": "you@company.com",
+    "phone": "Phone",
+    "phonePlaceholder": "+971 50 123 4567",
+    "password": "Password",
+    "passwordPlaceholder": "Min. 8 characters",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Re-enter password",
+    "agreePrefix": "I agree to the",
+    "termsOfService": "Terms of Service",
+    "and": "and",
+    "privacyPolicy": "Privacy Policy",
+    "back": "Back",
+    "next": "Next",
+    "creating": "Creating…",
+    "completeRegistration": "Complete Registration",
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign in",
+    "validation": {
+      "companyNameRequired": "Company name is required.",
+      "industryRequired": "Please select an industry.",
+      "sizeRequired": "Please select company size.",
+      "countryRequired": "Please select a country.",
+      "cityRequired": "City is required.",
+      "tradeLicenceRequired": "Please upload your trade licence document.",
+      "mohRequired": "Please upload your MoH / Free Zone certificate.",
+      "fullNameRequired": "Full name is required.",
+      "workEmailRequired": "Work email is required.",
+      "validEmailRequired": "Please enter a valid email.",
+      "passwordRequired": "Password is required.",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "passwordMismatch": "Passwords do not match.",
+      "termsRequired": "You must agree to the Terms of Service and Privacy Policy.",
+      "registrationFailed": "Registration failed. Please try again."
+    },
+    "industries": {
+      "technology": "Technology & IT",
+      "construction": "Construction & Engineering",
+      "healthcare": "Healthcare & Pharmaceuticals",
+      "hospitality": "Hospitality & Tourism",
+      "finance": "Finance & Banking",
+      "retail": "Retail & E-commerce",
+      "oil_gas": "Oil & Gas / Energy",
+      "logistics": "Logistics & Supply Chain",
+      "education": "Education & Training",
+      "real_estate": "Real Estate & Property",
+      "manufacturing": "Manufacturing",
+      "telecommunications": "Telecommunications",
+      "media": "Media & Entertainment",
+      "legal": "Legal & Consulting",
+      "government": "Government & Public Sector",
+      "agriculture": "Agriculture & Food",
+      "automotive": "Automotive",
+      "aviation": "Aviation & Aerospace",
+      "other": "Other"
+    },
+    "sizes": {
+      "1-10": "1–10 employees",
+      "11-50": "11–50 employees",
+      "51-200": "51–200 employees",
+      "201-500": "201–500 employees",
+      "501-1000": "501–1,000 employees",
+      "1001-5000": "1,001–5,000 employees",
+      "5000+": "5,000+ employees"
+    },
+    "verificationLevels": {
+      "basic": {
+        "label": "Basic",
+        "description": "Quick setup — email verification only",
+        "badge": "Free"
+      },
+      "standard": {
+        "label": "Standard",
+        "description": "Upload trade licence for verified badge & full access",
+        "badge": "Recommended"
+      },
+      "premium": {
+        "label": "Premium",
+        "description": "Government-approved status badge (MoH / Free Zone)",
+        "badge": "Top tier"
+      }
+    }
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -143,6 +274,19 @@
     "generating": "Generating...",
     "copy": "Copy",
     "regenerate": "Regenerate",
+    "dropFileHere": "Drop file here or",
+    "browse": "browse",
+    "fileTypesUpTo": "{types} up to {size}MB",
+    "fileUnderLimit": "File must be under {size}MB",
+    "maxSelections": "max {max}",
+    "selectOptions": "Select options…",
+    "popular": "Popular",
+    "add": "Add",
+    "aiSuggest": "AI Suggest",
+    "skillsCount": "{count}/{max} skills",
+    "skillsCountWithHint": "{count}/{max} skills · Click a skill to change level",
+    "changeSkillLevel": "Click to change level",
+    "removeSkill": "Remove {skill}",
     "selectCountry": "Select country",
     "selectState": "Select state",
     "stateRegion": "State / Region",
@@ -213,6 +357,1050 @@
     "education": "Education",
     "languages": "Languages"
   },
+  "jobFeed": {
+    "hero": {
+      "badge": "AI Job Matching",
+      "title": "Browse AI-matched jobs faster.",
+      "description": "AI scores every role against your profile. Switch to discovery mode and apply in bulk without leaving the dashboard."
+    },
+    "stats": {
+      "liveMatches": "Live matches",
+      "searchReturned": "Jobs returned for this search",
+      "profileAligned": "Jobs aligned to your profile",
+      "readyToApply": "Ready to apply",
+      "bulkTray": "Saved in the current bulk-apply tray",
+      "filterSignal": "Filter signal",
+      "activeFilters": "{count} active filters shaping the list"
+    },
+    "search": {
+      "placeholder": "Search jobs by title, skills, or keyword...",
+      "ariaLabel": "Search jobs",
+      "clear": "Clear search",
+      "results": "Search results",
+      "searching": "Searching...",
+      "resultsFor": "{count} results for \"{query}\"",
+      "employerActiveRoles": "{count} active roles from this employer",
+      "pendingResultsFor": "Results for \"{query}\"",
+      "employerRoles": "Employer roles"
+    },
+    "actions": {
+      "refinePreferences": "Refine preferences",
+      "editPreferences": "Edit preferences",
+      "setPreferences": "Set Preferences"
+    },
+    "aside": {
+      "eyebrow": "AI-powered search",
+      "title": "Keep the list relevant.",
+      "bestFor": "Best for",
+      "bestForText": "Profile match for strong-fit roles, discovery for fresh openings.",
+      "quickControl": "Quick control",
+      "quickControlText": "Press Escape to clear the search box instantly.",
+      "focusMode": "Focus mode",
+      "activeFilters": "{count} active filters are tightening the feed right now.",
+      "noFilters": "Add work type, match score, or date filters for a tighter shortlist."
+    },
+    "tabs": {
+      "eyebrow": "AI Matching",
+      "profile": "AI Profile Match",
+      "like": "You might like"
+    },
+    "sort": {
+      "label": "Sort",
+      "bestMatch": "Best match",
+      "latest": "Latest",
+      "salary": "Salary",
+      "count": "{visible} of {total} jobs",
+      "countWithPage": "{visible} of {total} jobs - Page {page}/{pages}"
+    },
+    "pagination": {
+      "pageOf": "Page {page} of {pages}",
+      "previous": "Previous",
+      "next": "Next",
+      "showingPage": "Showing page {page} of {pages} ({visible} of {total} jobs)",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "seenAll": "You have seen all {count} recommendations",
+      "backToFirst": "Back to page 1"
+    },
+    "empty": {
+      "noJobs": "No jobs found",
+      "noJobsHint": "Try different keywords or check your spelling",
+      "noMatches": "No matches right now",
+      "noMatchesHint": "Try adjusting your filters or expanding your preferences to see more jobs"
+    },
+    "errors": {
+      "failed": "Failed",
+      "searchFailed": "Search failed. Please try again.",
+      "recommendationsFailed": "Failed to load recommendations. Please try again."
+    },
+    "toast": {
+      "applicationSubmitted": "Application submitted!",
+      "applyFailed": "Failed to apply",
+      "jobSaved": "Job saved",
+      "jobUnsaved": "Job unsaved",
+      "savedUpdateFailed": "Failed to update saved jobs",
+      "bulkApplied": "Applied to {count} jobs!",
+      "bulkApplyFailed": "Bulk apply failed",
+      "maxBulk": "You can select up to {count} jobs",
+      "allAlreadyApplied": "All selected jobs are already applied",
+      "applicationLimitReached": "Application limit reached - upgrade your plan",
+      "jobHidden": "Job hidden"
+    },
+    "sidebar": {
+      "profileSignal": "Profile signal",
+      "preferencesTitle": "Your preferences",
+      "preferencesDescription": "These guide what stays high in the feed.",
+      "preferredRole": "Preferred role",
+      "location": "Location",
+      "experience": "Experience",
+      "salary": "Salary",
+      "edit": "Edit",
+      "setPreferredRole": "+ Set preferred role",
+      "setLocation": "+ Set location",
+      "setExperience": "+ Set experience",
+      "setSalary": "+ Set salary",
+      "years": "{count} yrs",
+      "refineResults": "Refine results",
+      "filters": "Filters",
+      "clearAll": "Clear all ({count})",
+      "workType": "Work type",
+      "remote": "Remote",
+      "onsite": "On-site",
+      "matchScore": "Match score",
+      "match80": "80%+ match",
+      "match60": "60-79% match",
+      "below60": "Below 60%",
+      "datePosted": "Date posted",
+      "last3Days": "Last 3 days",
+      "lastWeek": "Last week",
+      "lastMonth": "Last month"
+    },
+    "card": {
+      "company": "Company",
+      "selectJob": "Select job",
+      "deselectJob": "Deselect job",
+      "remoteReady": "Remote-ready",
+      "recommendedRole": "Recommended role",
+      "matchPercent": "{score}% match",
+      "viewCompany": "View {company}",
+      "companyLogo": "{company} logo",
+      "urgent": "Urgent",
+      "remote": "Remote",
+      "new": "New",
+      "yearsRange": "{min}-{max} yrs",
+      "viewers": "{count} viewers",
+      "hide": "Hide",
+      "save": "Save",
+      "saved": "Saved",
+      "applied": "Applied",
+      "easyApply": "Easy Apply",
+      "time": {
+        "justNow": "Just now",
+        "hoursAgo": "{value}h ago",
+        "daysAgo": "{value}d ago",
+        "weeksAgo": "{value}w ago",
+        "monthsAgo": "{value}mo ago"
+      }
+    }
+  },
+  "agentOffers": {
+    "header": {
+      "title": "Offers",
+      "description": "Track all offers made to your candidates"
+    },
+    "metrics": {
+      "total": "Total Offers"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by candidate or job...",
+      "status": "Status"
+    },
+    "statusOptions": {
+      "all": "All statuses"
+    },
+    "status": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "declined": "Declined",
+      "expired": "Expired",
+      "withdrawn": "Withdrawn"
+    },
+    "actions": {
+      "reset": "Reset"
+    },
+    "table": {
+      "candidate": "Candidate",
+      "job": "Job",
+      "salary": "Salary",
+      "status": "Status",
+      "startDate": "Start Date",
+      "expires": "Expires",
+      "sent": "Sent"
+    },
+    "empty": "No offers found",
+    "errors": {
+      "fetchFailed": "Failed to load offers. Please try again."
+    }
+  },
+  "jobSeekerOffers": {
+    "documentTitle": "My Offers · MPLOYEDIN",
+    "header": {
+      "title": "Job Offers",
+      "description": "Offers you have received"
+    },
+    "searchPlaceholder": "Search by job title...",
+    "empty": "No offers received yet",
+    "remote": "Remote",
+    "expiresOn": "Expires on {date}",
+    "expired": "(Expired)",
+    "period": {
+      "month": "month",
+      "year": "year"
+    },
+    "status": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "declined": "Declined",
+      "expired": "Expired",
+      "withdrawn": "Withdrawn"
+    },
+    "labels": {
+      "salary": "Salary",
+      "startDate": "Start Date",
+      "benefits": "Benefits",
+      "additionalNotes": "Additional Notes"
+    },
+    "decline": {
+      "reasonLabel": "Reason for declining (required)",
+      "reasonPlaceholder": "Share your reason for declining this offer..."
+    },
+    "actions": {
+      "acceptOffer": "Accept Offer",
+      "decline": "Decline",
+      "confirmDecline": "Confirm Decline",
+      "cancel": "Cancel"
+    },
+    "errors": {
+      "declineReasonRequired": "Please provide a reason for declining",
+      "fetchFailed": "Failed to load offers. Please try again.",
+      "acceptFailed": "Failed to accept offer. Please try again.",
+      "declineFailed": "Failed to decline offer. Please try again."
+    },
+    "export": {
+      "title": "My Offers",
+      "jobTitle": "Job Title",
+      "salary": "Salary",
+      "startDate": "Start Date",
+      "status": "Status",
+      "expiresAt": "Expires At",
+      "benefits": "Benefits"
+    }
+  },
+  "jobSeekerApplications": {
+    "documentTitle": "My Applications · MPLOYEDIN",
+    "title": "My Applications",
+    "summary": {
+      "total": "Total:",
+      "active": "Active:",
+      "progress": "Progress:",
+      "view": "View:"
+    },
+    "status": {
+      "all": "All",
+      "applied": "Applied",
+      "shortlisted": "Shortlisted",
+      "interview_scheduled": "Interview",
+      "selected": "Selected",
+      "offer": "Offer",
+      "hired": "Hired",
+      "rejected": "Rejected",
+      "withdrawn": "Withdrawn"
+    },
+    "searchLabel": "Search applications",
+    "searchPlaceholder": "Search by job title or company...",
+    "filters": "Filters",
+    "statusFiltersLabel": "Application status filters",
+    "appliedFrom": "Applied from",
+    "appliedTo": "Applied to",
+    "clearAll": "Clear all",
+    "emptyTitle": "No applications in this view",
+    "emptyAll": "You have not applied to any roles yet. Start browsing and build momentum from your dashboard.",
+    "emptyStatus": "Nothing is currently marked as {status}. Switch views or explore new opportunities.",
+    "browseJobs": "Browse Jobs",
+    "remote": "Remote",
+    "locationFlexible": "Location flexible",
+    "jobFallback": "Job",
+    "companyFallback": "Company",
+    "appliedDate": "Applied {date}",
+    "match": "{score}% match",
+    "viewDetails": "View details for {job}",
+    "hideDetails": "Hide details for {job}",
+    "rateExperience": "Rate experience",
+    "withdraw": "Withdraw",
+    "details": {
+      "interview": "Interview Details",
+      "joinMeeting": "Join Meeting",
+      "yourResponse": "Your response: {response}",
+      "outcome": "Outcome:",
+      "offer": "Offer Details",
+      "start": "Start: {date}",
+      "expires": "Expires: {date}",
+      "placement": "Placement Confirmed",
+      "perMonth": "{amount} / month",
+      "minutesShort": "{count} min"
+    },
+    "response": {
+      "confirmed": "Confirmed",
+      "declined": "Declined",
+      "reschedule_requested": "Reschedule Requested"
+    },
+    "withdrawal": {
+      "title": "Withdraw Application",
+      "description": "You're about to withdraw your application for {job}. This action cannot be undone.",
+      "reason": "Reason",
+      "required": "*",
+      "selectReason": "Select a reason…",
+      "comments": "Additional comments",
+      "optional": "optional",
+      "commentsPlaceholder": "Anything else you'd like to share…",
+      "confirm": "Confirm Withdrawal",
+      "cancel": "Cancel",
+      "reasons": {
+        "accepted_elsewhere": "Accepted offer elsewhere",
+        "salary_too_low": "Salary expectation not met",
+        "bad_experience": "Poor application experience",
+        "too_slow_process": "Process too slow",
+        "changed_mind": "Changed my mind",
+        "personal_reasons": "Personal reasons",
+        "other": "Other"
+      }
+    },
+    "export": {
+      "title": "My Applications",
+      "jobTitle": "Job Title",
+      "company": "Company",
+      "status": "Status",
+      "matchScore": "Match Score",
+      "appliedDate": "Applied Date"
+    }
+  },
+  "jobSeekerCalendar": {
+    "title": "My Calendar",
+    "description": "View all your upcoming interviews in one place",
+    "interviewFallback": "Interview",
+    "loadFailed": "Failed to load calendar events"
+  },
+  "jobSeekerCompanies": {
+    "title": "Companies",
+    "description": "Explore employers hiring on the platform and discover your next workplace",
+    "searchPlaceholder": "Search companies by name, industry, or location...",
+    "reset": "Reset",
+    "empty": "No companies found",
+    "openJobs": "{count} open jobs",
+    "remote": "Remote",
+    "loadFailed": "Failed to load companies"
+  },
+  "jobSeekerCourses": {
+    "title": "Courses & Training",
+    "description": "Boost your skills with curated courses to improve your employability",
+    "free": "Free",
+    "startCourse": "Start Course",
+    "recommendationsTitle": "Want personalised recommendations?",
+    "recommendationsDescription": "Complete your profile and skills section, and our AI will suggest courses tailored to your career goals.",
+    "duration": {
+      "fourWeeks": "4 weeks",
+      "sixHours": "6 hours",
+      "eightHours": "8 hours",
+      "threeHours": "3 hours",
+      "fortyHours": "40 hours",
+      "tenHours": "10 hours"
+    },
+    "level": {
+      "beginner": "Beginner",
+      "intermediate": "Intermediate"
+    },
+    "category": {
+      "language": "Language",
+      "management": "Management",
+      "technology": "Technology",
+      "customerService": "Customer Service",
+      "marketing": "Marketing",
+      "safety": "Safety"
+    },
+    "courses": {
+      "businessEnglish": "English for Business Communication",
+      "projectManagement": "Project Management Fundamentals",
+      "excelAnalysis": "Data Analysis with Excel",
+      "customerService": "Customer Service Excellence",
+      "digitalMarketing": "Digital Marketing Fundamentals",
+      "constructionSafety": "Construction Safety (OSHA 10)"
+    }
+  },
+  "jobSeekerInterviews": {
+    "documentTitle": "Interviews · MPLOYEDIN",
+    "title": "Interviews",
+    "summary": "{upcoming} upcoming · {past} completed",
+    "searchPlaceholder": "Search by job title or company…",
+    "emptyTitle": "No interviews scheduled",
+    "emptyDescription": "When an employer schedules an interview, it will appear here",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "interviewFallback": "Interview",
+    "companyAt": "at {company}",
+    "today": "Today",
+    "minutesShort": "{count} min",
+    "meetingLink": "Meeting Link",
+    "startingIn": "Starting in {count} minutes",
+    "outcome": "Outcome:",
+    "confirm": "Confirm",
+    "reschedule": "Reschedule",
+    "decline": "Decline",
+    "rescheduleReasonLabel": "Why do you need to reschedule?",
+    "reschedulePlaceholder": "Please explain your scheduling conflict...",
+    "sending": "Sending...",
+    "requestReschedule": "Request Reschedule",
+    "cancel": "Cancel",
+    "rescheduleReason": "Reschedule reason: {reason}",
+    "join": "Join",
+    "response": {
+      "confirmed": "Confirmed",
+      "declined": "Declined",
+      "reschedule_requested": "Reschedule Requested"
+    },
+    "type": {
+      "video": "Video",
+      "offline": "In person",
+      "hybrid": "Hybrid"
+    },
+    "export": {
+      "title": "My Interviews",
+      "jobTitle": "Job Title",
+      "company": "Company",
+      "type": "Type",
+      "scheduledAt": "Scheduled At",
+      "duration": "Duration",
+      "status": "Status",
+      "outcome": "Outcome",
+      "response": "Response"
+    }
+  },
+  "jobSeekerMessages": {
+    "title": "Support",
+    "description": "Contact support for help"
+  },
+  "jobSeekerExtra": {
+    "subscription": {
+      "title": "My Subscription",
+      "description": "View your plan, usage, and invoices",
+      "displayCurrency": "Display currency:",
+      "liveRates": "Live exchange rates",
+      "live": "live",
+      "noActive": "No Active Subscription",
+      "noActiveDescription": "You are currently on the free tier. Contact your administrator to unlock AI-powered features, more applications per month, and profile visibility boosts.",
+      "free": "Free",
+      "unknown": "Unknown"
+    },
+    "search": {
+      "title": "AI Job Search",
+      "description": "Search jobs in plain English — \"I want a senior DevOps role in Dubai with remote option\"",
+      "placeholder": "e.g. \"Senior React developer Dubai salary AED 15k minimum\"",
+      "failed": "Search failed. Please try again.",
+      "resultsFound": "{count} results found",
+      "noResults": "No jobs match your search. Try different keywords.",
+      "match": "{score}% match",
+      "remote": "Remote",
+      "apply": "Apply",
+      "prompts": {
+        "frontend": "Remote frontend developer role with React in Dubai",
+        "fullstack": "Full-stack engineer with Node.js, 3-5 years, Abu Dhabi or remote",
+        "marketing": "Marketing manager in Saudi Arabia, salary above SAR 15,000",
+        "finance": "Entry level finance roles in Bahrain or Kuwait"
+      }
+    },
+    "profileViews": {
+      "title": "Who Viewed Your Profile",
+      "description": "See which companies and recruiters are checking out your CV",
+      "unable": "Unable to load profile views",
+      "total": "Total views",
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "bySource": "Views by Source",
+      "recent": "Recent Profile Views",
+      "empty": "No profile views yet. Make sure your profile is visible and complete!",
+      "recruiter": "A recruiter",
+      "via": "via {source}"
+    },
+    "profileBoost": {
+      "title": "Profile Boost",
+      "description": "Get your profile noticed by more recruiters",
+      "active": "Profile Boost Active!",
+      "inactive": "Boost Your Visibility",
+      "activeUntil": "Active until {date} • Boosted {count} times",
+      "benefit": "Appear higher in recruiter search results for 7 days",
+      "viewsTitle": "3x More Views",
+      "viewsDescription": "Appear at the top of search results",
+      "matchingTitle": "Priority Matching",
+      "matchingDescription": "Get matched with more relevant jobs",
+      "daysTitle": "7 Days Active",
+      "daysDescription": "Profile boost lasts a full week",
+      "headlineLabel": "Update your headline (optional — makes your profile stand out)",
+      "headlinePlaceholder": "e.g. Senior React Developer | 5+ years | Open to remote",
+      "boosting": "Boosting...",
+      "boostButton": "Boost My Profile",
+      "failed": "Failed to boost",
+      "network": "Network error"
+    },
+    "savedSearches": {
+      "title": "Saved Searches",
+      "description": "Save your job searches and get email alerts when new matches appear",
+      "newAlert": "New Search Alert",
+      "activeAlerts": "Active Alerts",
+      "createTitle": "Create Search Alert",
+      "namePlaceholder": "Alert name *",
+      "queryPlaceholder": "Search keywords *",
+      "locationPlaceholder": "Location (optional)",
+      "daily": "Daily alerts",
+      "weekly": "Weekly alerts",
+      "never": "No alerts",
+      "create": "Create",
+      "cancel": "Cancel",
+      "empty": "No saved searches",
+      "emptyDescription": "Create a search alert to get notified about new job matches",
+      "emailAlertsOn": "Email alerts on",
+      "disableAlert": "Disable alert",
+      "enableAlert": "Enable alert",
+      "loadFailed": "Failed to load saved searches",
+      "required": "Name and search query are required",
+      "created": "Saved search created",
+      "createFailed": "Failed to create saved search",
+      "deleted": "Search deleted",
+      "deleteFailed": "Failed to delete",
+      "alertEnabled": "Alert enabled",
+      "alertDisabled": "Alert disabled",
+      "updateFailed": "Failed to update"
+    },
+    "referral": {
+      "title": "Referral Program",
+      "description": "Invite friends to join and earn rewards when they get hired",
+      "total": "Total Referrals",
+      "successful": "Successful",
+      "pending": "Pending",
+      "rewards": "Rewards Earned",
+      "linkTitle": "Your Referral Link",
+      "copy": "Copy",
+      "code": "Referral code:",
+      "share": "Share on social media",
+      "shareTitle": "Join me on MPLOYEDIN — the smart job platform!",
+      "shareDescription": "Sign up using my referral link and find your dream job faster",
+      "history": "Referral History",
+      "empty": "No referrals yet",
+      "emptyDescription": "Share your link to start referring friends",
+      "loadFailed": "Failed to load referral data",
+      "copied": "Referral link copied!",
+      "copyFailed": "Failed to copy"
+    },
+    "portfolio": {
+      "title": "Portfolio & Projects",
+      "description": "Showcase your work, side projects, and achievements to employers",
+      "addProject": "Add Project",
+      "projectTitlePlaceholder": "Project title *",
+      "urlPlaceholder": "Project URL (optional)",
+      "descriptionPlaceholder": "Description *",
+      "technologiesPlaceholder": "Technologies (comma-separated)",
+      "imagePlaceholder": "Image URL (optional)",
+      "add": "Add",
+      "cancel": "Cancel",
+      "empty": "No projects yet",
+      "emptyDescription": "Add your first project to showcase your work",
+      "present": "Present",
+      "view": "View",
+      "loadFailed": "Failed to load portfolio",
+      "required": "Title and description are required",
+      "added": "Project added",
+      "addFailed": "Failed to add project",
+      "removed": "Project removed",
+      "deleteFailed": "Failed to delete"
+    },
+    "documents": {
+      "documentTitle": "Documents · MPLOYEDIN",
+      "title": "Documents",
+      "description": "Upload your CV, certificates, and other documents",
+      "type": "Document Type",
+      "supportedFormats": "Supported formats: PDF, DOCX, JPG, PNG, WEBP",
+      "uploadPrompt": "Drag & drop your {category} here",
+      "formats": "PDF, DOCX, JPG, PNG, WEBP up to 10MB",
+      "uploading": "Uploading…",
+      "uploadDocument": "Upload Document",
+      "extracting": "Extracting…",
+      "extractWithAi": "Extract with AI",
+      "extractedProfile": "Extracted Profile",
+      "saveToProfile": "Save to Profile",
+      "saving": "Saving…",
+      "present": "Present",
+      "myDocuments": "My Documents",
+      "empty": "No documents uploaded yet",
+      "emptyDescription": "Upload your CV, certificates, and other documents above",
+      "view": "View document",
+      "remove": "Remove document",
+      "documentFallback": "Document",
+      "uploaded": "{category} uploaded successfully!",
+      "resumeUploaded": "Resume uploaded successfully!",
+      "uploadFailed": "Failed to upload document",
+      "uploadGenericFailed": "Upload failed",
+      "extractionFailed": "Extraction failed",
+      "extractedSuccess": "CV data extracted successfully!",
+      "profileUpdated": "Profile updated successfully!",
+      "saveFailed": "Failed to save. Please try manually.",
+      "saveProfileFailed": "Failed to save profile",
+      "removed": "Document removed",
+      "removeFailed": "Failed to remove document",
+      "categories": {
+        "resume": "Resume / CV",
+        "college_certificate": "College Certificate",
+        "course_certificate": "Course Certificate",
+        "professional_certificate": "Professional Certificate",
+        "other": "Other Document"
+      }
+    },
+    "experience": {
+      "title": "Work Experience",
+      "description": "Add your work history to stand out to employers",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "add": "Add Experience",
+      "position": "position",
+      "positions": "positions",
+      "yearsTotal": "years total",
+      "currentlyEmployed": "Currently employed",
+      "loading": "Loading experience…",
+      "emptyTitle": "No experience added yet",
+      "emptyDescription": "Adding your work experience helps employers understand your background and increases your profile match score.",
+      "addFirst": "Add Your First Experience",
+      "currentPosition": "Current Position",
+      "positionNumber": "Position {count}",
+      "current": "Current",
+      "remove": "Remove experience",
+      "jobTitle": "Job Title",
+      "jobPlaceholder": "e.g. Senior Frontend Developer",
+      "company": "Company",
+      "companyPlaceholder": "Company name",
+      "location": "Location",
+      "locationPlaceholder": "City, Country",
+      "from": "From",
+      "to": "To",
+      "present": "Present",
+      "currentWork": "I currently work here",
+      "descriptionLabel": "Description",
+      "aiEnhance": "AI Enhance",
+      "descriptionPlaceholder": "Key responsibilities and achievements…",
+      "duration": "Duration:",
+      "addAnother": "Add another experience"
+    },
+    "preferences": {
+      "title": "Job Preferences",
+      "description": "Set your preferences to get better job matches and recommendations",
+      "preferredRoles": "Preferred Roles",
+      "preferredRolesDescription": "What job titles are you looking for?",
+      "rolesPlaceholder": "e.g. Frontend Developer, Product Manager…",
+      "popular": "Popular:",
+      "preferredLocations": "Preferred Locations",
+      "preferredLocationsDescription": "Where do you want to work?",
+      "locationsPlaceholder": "e.g. UAE, Saudi Arabia, Qatar…",
+      "salary": "Salary Expectations",
+      "salaryDescription": "What is your expected monthly salary range?",
+      "quickSelect": "Quick select:",
+      "minimum": "Minimum",
+      "maximum": "Maximum",
+      "currency": "Currency",
+      "jobType": "Job Type",
+      "jobTypeDescription": "What type of work arrangement do you prefer?",
+      "jobTypes": {
+        "remote": "Remote",
+        "hybrid": "Hybrid",
+        "onsite": "Onsite",
+        "any": "Any"
+      },
+      "availability": "Availability",
+      "availabilityDescription": "When can you start a new role?",
+      "availabilityOptions": {
+        "immediately": "Immediately",
+        "within_month": "Within 1 Month",
+        "within_3_months": "Within 3 Months",
+        "not_available": "Not Available"
+      },
+      "activelyLooking": "Actively Looking",
+      "activelyLookingDescription": "Signal to employers you're open to opportunities",
+      "noticePeriod": "Notice Period (days)",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "failed": "Failed to save.",
+      "retry": "Retry",
+      "matchTitle": "AI Match Setup Score",
+      "matchDescription": "Complete your preferences for better job matches",
+      "optimized": "Profile fully optimized — you're getting the best matches!",
+      "companyFallback": "Company",
+      "remote": "Remote",
+      "removeTag": "Remove {tag}",
+      "jobsTitle": "Jobs matching your preferences",
+      "jobsDescription": "Based on your current setup",
+      "noMatches": "No matches yet — complete your preferences to unlock recommendations.",
+      "tips": {
+        "addMoreRoles": "Add {count} more role(s)",
+        "addPreferredRole": "Add at least one preferred role",
+        "addLocations": "Add preferred locations",
+        "setBothSalary": "Set both min & max salary",
+        "setSalary": "Set your salary expectations",
+        "specifyJobType": "Specify a job type preference"
+      }
+    },
+    "personalDetails": {
+      "documentTitle": "Personal Details · MPLOYEDIN",
+      "title": "Personal Details",
+      "description": "Tell employers more about you — helps with equal opportunity matching",
+      "back": "Back to Profile",
+      "gender": "Gender",
+      "genderDescription": "Select your gender identity",
+      "marital": "Marital Status",
+      "maritalDescription": "Your current marital status",
+      "dob": "Date of Birth",
+      "dobDescription": "You must be at least 16 years old",
+      "workAuth": "Work Authorization",
+      "workAuthDescription": "Countries where you are legally authorized to work",
+      "workPermit": "Work Permit Countries",
+      "workPermitHint": "You can choose up to 5 countries",
+      "selectCountries": "Select countries…",
+      "address": "Address",
+      "addressDescription": "Your residential address details",
+      "permanentAddress": "Permanent Address",
+      "permanentAddressPlaceholder": "Enter your permanent address",
+      "hometown": "Hometown",
+      "hometownPlaceholder": "Your hometown",
+      "postal": "Pincode / Postal Code",
+      "postalPlaceholder": "Postal code",
+      "languageProficiency": "Language Proficiency",
+      "languageDescription": "Strengthen your resume by letting recruiters know your languages",
+      "noLanguages": "No languages added yet. Click \"Add Language\" below.",
+      "language": "Language",
+      "languagePlaceholder": "e.g. English, Arabic…",
+      "proficiency": "Proficiency",
+      "proficiencyOptions": {
+        "basic": "Basic",
+        "conversational": "Conversational",
+        "professional": "Professional",
+        "native": "Native"
+      },
+      "removeLanguage": "Remove language",
+      "addLanguage": "Add Language",
+      "saved": "Saved successfully",
+      "failed": "Failed to save — please try again",
+      "idle": "Fill in your details and click Save",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "profile": {
+      "documentTitle": "My Profile · MPLOYEDIN",
+      "title": "My Profile",
+      "description": "Build your career profile and get matched with top opportunities",
+      "settings": "Settings",
+      "aiTools": "AI profile tools",
+      "aiTitle": "Use AI to build your profile faster",
+      "aiDescription": "Upload your CV to extract your summary, skills, and experience automatically, then fine-tune how Mployedin uses AI for resumes, cover letters, and screening answers.",
+      "refreshCvAi": "Refresh CV with AI",
+      "uploadCvAi": "Upload CV with AI",
+      "aiReady": "AI ready",
+      "cvUploaded": "CV uploaded",
+      "new": "New",
+      "aiExtractor": "AI CV extractor",
+      "aiExtractedDescription": "Your latest CV has already been parsed into profile details. Upload a newer version anytime to refresh it.",
+      "cvUploadedDescription": "Your CV is uploaded. Re-import it with AI whenever you want to refresh skills, experience, or summary.",
+      "noCvDescription": "Upload a PDF or image CV and let AI fill in your summary, skills, and experience in minutes.",
+      "refreshWithAi": "Refresh with AI",
+      "visibleBanner": "Employers can find you on Mployedin",
+      "hiddenBanner": "Employers can't find you",
+      "checklist": {
+        "cv": "Upload CV with AI",
+        "skills": "Add Skills",
+        "experience": "Add Experience",
+        "education": "Add Education",
+        "personal": "Personal Details",
+        "preferences": "Set Job Preferences"
+      },
+      "quickActions": {
+        "title": "Quick Actions",
+        "aiCv": "AI CV Extractor",
+        "aiCvDescription": "Import summary, skills, and experience",
+        "addSkills": "Add Skills",
+        "addSkillsDescription": "Improve your match score",
+        "preferences": "Job Preferences",
+        "preferencesDescription": "Get better recommendations"
+      },
+      "sectionActions": {
+        "visibleTitle": "Visible to employers - click to hide",
+        "hiddenTitle": "Hidden from employers - click to show",
+        "visible": "Visible",
+        "hidden": "Hidden",
+        "edit": "Edit",
+        "add": "Add",
+        "update": "Update",
+        "uploadToAutofill": "Upload CV to auto-fill"
+      },
+      "languagesSection": {
+        "title": "Languages & Links",
+        "empty": "Add languages and professional links",
+        "languages": "Languages",
+        "language": "Language",
+        "proficiency": "Proficiency",
+        "read": "Read",
+        "write": "Write",
+        "speak": "Speak"
+      },
+      "sectionNav": {
+        "about": "About",
+        "experience": "Experience",
+        "skills": "Skills",
+        "education": "Education",
+        "projects": "Projects",
+        "accomplishments": "Accomplishments",
+        "careerProfile": "Career Profile",
+        "languages": "Languages & Links"
+      }
+    },
+    "settings": {
+      "back": "Back",
+      "changePhoto": "Change photo",
+      "yourName": "Your Name",
+      "uploading": "Uploading…",
+      "changePhotoButton": "Change Photo",
+      "uploadPhoto": "Upload Photo",
+      "remove": "Remove",
+      "discard": "Discard",
+      "saving": "Saving…",
+      "saveSettings": "Save Settings",
+      "save": "Save",
+      "fileHint": "JPEG, PNG or WebP · max 2 MB",
+      "unsavedChanges": "Unsaved changes",
+      "savedToast": "Settings saved successfully",
+      "failedToast": "Failed to save settings. Please try again.",
+      "tabs": {
+        "interviews": "Interviews",
+        "schedule": "Schedule",
+        "profileVisibility": "Profile Visibility",
+        "visibility": "Visibility",
+        "resumeAi": "Resume & AI",
+        "ai": "AI",
+        "notifications": "Notifications",
+        "alerts": "Alerts"
+      },
+      "interviews": {
+        "title": "Interview Scheduling",
+        "description": "Control how and when employers can book interviews with you.",
+        "instantBooking": "Instant Interview Booking",
+        "instantBookingDescription": "Allow employers to book directly into your available time slots.",
+        "availabilityTitle": "Availability Settings",
+        "availabilityDescription": "Set your available days and working hours. Employers can only book interviews during these windows.",
+        "buffer": "Buffer Between Interviews",
+        "bufferDescription": "Minimum break time between consecutive interviews.",
+        "bufferTooltip": "Prevents employers from scheduling back-to-back interviews.",
+        "noBuffer": "No buffer",
+        "minutes": "{count} min"
+      }
+    }
+  },
+  "cvBuilderPage": {
+    "documentTitle": "CV Builder · MPLOYEDIN",
+    "header": {
+      "title": "CV Builder",
+      "description": "Create a professional CV with AI assistance, templates, and custom formatting"
+    },
+    "tabs": {
+      "editor": "AI Editor",
+      "templates": "Templates",
+      "formatting": "Formatting"
+    },
+    "import": {
+      "title": "Import from CV",
+      "description": "Upload a PDF or image and let AI fill in the fields",
+      "upload": "Upload CV",
+      "importing": "Importing...",
+      "reading": "AI is reading your CV..."
+    },
+    "sections": {
+      "personalDetails": "Personal Details",
+      "workExperience": "Work Experience ({count})",
+      "education": "Education ({count})",
+      "skills": "Key Skills ({count})",
+      "projects": "Projects ({count})",
+      "languages": "Languages ({count})",
+      "certifications": "Certifications ({count})"
+    },
+    "fields": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "phone": "Phone",
+      "nationality": "Nationality",
+      "currentLocation": "Current Location",
+      "profileSummary": "Profile Summary",
+      "portfolio": "Portfolio / Website",
+      "title": "Title",
+      "url": "URL",
+      "jobTitle": "Job Title",
+      "company": "Company",
+      "location": "Location",
+      "from": "From",
+      "to": "To",
+      "present": "Present",
+      "currentWork": "I currently work here",
+      "description": "Description",
+      "degree": "Degree",
+      "fieldOfStudy": "Field of Study",
+      "institution": "Institution",
+      "graduationDate": "Graduation Date",
+      "grade": "Grade / GPA",
+      "projectTitle": "Project Title",
+      "techStack": "Tech Stack",
+      "projectUrl": "Project URL",
+      "repositoryUrl": "Repository URL",
+      "language": "Language",
+      "proficiency": "Proficiency"
+    },
+    "placeholders": {
+      "fullName": "Your full name",
+      "email": "Contact email",
+      "nationality": "e.g. Indian",
+      "location": "City, Country",
+      "summary": "Brief professional summary or headline...",
+      "linkTitle": "e.g. GitHub",
+      "jobTitle": "e.g. Senior Developer",
+      "company": "Company name",
+      "experienceDescription": "Key responsibilities and achievements...",
+      "degree": "e.g. Bachelor of Science",
+      "fieldOfStudy": "e.g. Computer Science",
+      "institution": "University name",
+      "grade": "e.g. 3.8 / 4.0",
+      "skill": "Type a skill and press Enter...",
+      "projectTitle": "e.g. E-Commerce Platform",
+      "projectDescription": "Brief project description...",
+      "techStack": "React, Node.js, MongoDB (comma-separated)",
+      "language": "e.g. English",
+      "certification": "Add a certification..."
+    },
+    "actions": {
+      "writeWithAi": "Write with AI",
+      "addAnotherLink": "Add another link",
+      "add": "Add",
+      "downloadPdf": "Download PDF",
+      "download": "Download",
+      "saving": "Saving...",
+      "addToProfile": "Add to Profile"
+    },
+    "badges": {
+      "aiPowered": "AI-powered"
+    },
+    "empty": {
+      "experience": "No experience yet. Click Add to start.",
+      "education": "No education yet. Click Add to start.",
+      "skills": "No skills yet - add some below",
+      "projects": "No projects yet. Click Add to start.",
+      "languages": "No languages yet."
+    },
+    "visibility": {
+      "showInCv": "Show in CV",
+      "hideFromCv": "Hide from CV",
+      "hidden": "Hidden",
+      "visible": "Visible"
+    },
+    "preview": {
+      "resume": "Resume",
+      "minimize": "Minimize",
+      "expand": "Expand"
+    },
+    "messages": {
+      "importSuccess": "CV imported successfully! Review and edit the fields below.",
+      "profileSaved": "Profile saved successfully!",
+      "downloaded": "CV downloaded!"
+    },
+    "errors": {
+      "supportedFormats": "Supported formats: PDF, JPG, PNG, WEBP",
+      "fileSize": "File size must be under 10 MB",
+      "importFailed": "Import failed",
+      "generic": "Something went wrong",
+      "saveProfile": "Failed to save profile",
+      "saveFailed": "Failed to save",
+      "pdfFailed": "Failed to generate PDF. Please try again."
+    },
+    "defaults": {
+      "link": "Link"
+    },
+    "previewSections": {
+      "yourName": "Your Name",
+      "present": "Present",
+      "experience": "Experience",
+      "professionalExperience": "Professional Experience",
+      "education": "Education",
+      "skills": "Skills",
+      "projects": "Projects",
+      "keyProjects": "Key Projects",
+      "languages": "Languages",
+      "certifications": "Certifications",
+      "coreCompetencies": "Core Competencies",
+      "grade": "Grade",
+      "atCompany": "at {company}",
+      "decoratedExperience": "- Experience -",
+      "decoratedEducation": "- Education -",
+      "decoratedSkills": "- Skills -",
+      "decoratedProjects": "- Projects -"
+    },
+    "templatePicker": {
+      "filters": {
+        "all": "All",
+        "free": "Free",
+        "pro": "PRO"
+      },
+      "badges": {
+        "free": "Free",
+        "pro": "PRO"
+      },
+      "templates": {
+        "classic": { "name": "Classic", "description": "Clean professional layout with blue accents" },
+        "modern": { "name": "Modern", "description": "Contemporary design with sidebar layout" },
+        "minimal": { "name": "Minimal", "description": "Simple, ATS-friendly single-column design" },
+        "executive": { "name": "Executive", "description": "Premium two-column layout for senior roles" },
+        "creative": { "name": "Creative", "description": "Bold design with colored header and skill bars" },
+        "elegant": { "name": "Elegant", "description": "Refined serif typography with gold accents" }
+      }
+    },
+    "formatting": {
+      "sectionSpacing": "Section spacing",
+      "selectFont": "Select font",
+      "fontSize": "Font size",
+      "theme": "Theme",
+      "reset": "Reset to default",
+      "spacing": {
+        "compact": "Compact",
+        "medium": "Medium",
+        "spacious": "Spacious"
+      },
+      "sizes": {
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large"
+      }
+    },
+    "proficiency": {
+      "basic": "Basic",
+      "conversational": "Conversational",
+      "professional": "Professional",
+      "native": "Native"
+    },
+    "aiWrite": {
+      "button": "Write with AI",
+      "generating": "Generating...",
+      "generationFailed": "AI generation failed",
+      "generated": "AI content generated!",
+      "empty": "AI returned empty result",
+      "failed": "Failed to generate"
+    }
+  },
   "jobSeekerHome": {
     "common": {
       "cancel": "Cancel"
@@ -247,12 +1435,12 @@
       "aiSuggestions": "AI suggestions"
     },
     "summary": {
-      "activeMatches": "{count, plural, =0 {0 active matches} one {# active match} other {# active matches}}",
+      "activeMatches": "{count, plural, =0 {{countLabel} active matches} one {{countLabel} active match} other {{countLabel} active matches}}",
       "applications": "applications",
       "savedJobs": "saved jobs",
       "interviews": "interviews",
       "profileViews": "profile views",
-      "nextStepsQueued": "{count, plural, =0 {0 next steps queued} one {# next step queued} other {# next steps queued}}"
+      "nextStepsQueued": "{count, plural, =0 {{countLabel} next steps queued} one {{countLabel} next step queued} other {{countLabel} next steps queued}}"
     },
     "recommendedJobs": {
       "eyebrow": "Recommended jobs",
@@ -2082,6 +3270,72 @@
     "optional": "optional",
     "pickDateTime": "Pick date & time"
   },
+  "messagesPage": {
+    "defaultTitle": "Messages",
+    "defaultDescription": "Direct messages & conversations",
+    "newTicket": "New Ticket",
+    "newSupportTicket": "New Support Ticket",
+    "category": "Category",
+    "message": "Message",
+    "messagePlaceholder": "Describe your issue…",
+    "submitTicket": "Submit Ticket",
+    "messagesTab": "Messages",
+    "supportTab": "Support",
+    "searchPlaceholder": "Search conversations…",
+    "noConversationsSearch": "No conversations match your search.",
+    "noSupportTickets": "No support tickets yet. Click \"New Ticket\" to contact support.",
+    "noConversations": "No conversations yet. Start one with the \"New Chat\" button above.",
+    "unknown": "Unknown",
+    "startConversation": "Start a conversation",
+    "back": "Back",
+    "ticketStatus": "This ticket has been {status}.",
+    "reopen": "Re-open",
+    "selectConversation": "Select a conversation",
+    "selectSupportTicketHint": "Select a support ticket from the left to respond.",
+    "selectConversationHint": "Choose a conversation from the left, or start a new chat.",
+    "roles": {
+      "admin": "Admin",
+      "super_agent": "Super Agent",
+      "agent": "Agent",
+      "employer": "Employer",
+      "job_seeker": "Job Seeker"
+    },
+    "categories": {
+      "account": "Account",
+      "job_search": "Job Search",
+      "technical": "Technical",
+      "billing": "Billing",
+      "other": "Other"
+    },
+    "status": {
+      "open": "Open",
+      "assigned": "Assigned",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "priority": {
+      "urgent": "Urgent"
+    },
+    "chat": {
+      "unknown": "Unknown",
+      "noMessages": "No messages yet. Say hello!",
+      "inputPlaceholder": "Type a message… (Enter to send, Shift+Enter for new line)",
+      "clearChat": "Clear Chat",
+      "deleteChat": "Delete Chat",
+      "clearTitle": "Clear Chat",
+      "clearMessage": "This will permanently delete all messages in this conversation. The conversation will remain.",
+      "clearConfirm": "Clear Messages",
+      "deleteTitle": "Delete Conversation",
+      "deleteMessage": "This will permanently delete this conversation and all messages. This action cannot be undone.",
+      "deleteConfirm": "Delete",
+      "errors": {
+        "load": "Failed to load messages.",
+        "send": "Failed to send message.",
+        "clear": "Failed to clear chat.",
+        "delete": "Failed to delete conversation."
+      }
+    }
+  },
   "employerMessages": {
     "title": "Messages",
     "description": "Direct messages with agents & super agents",
@@ -2115,8 +3369,14 @@
     "offer": "Offer",
     "hired": "Hired",
     "rejected": "Rejected",
+    "withdrawn": "Withdrawn",
     "otherRole": "other role",
     "match": "match",
+    "aiPending": "AI pending",
+    "score": "Score",
+    "applicantRowFor": "Applicant row for {name}",
+    "selectCandidate": "Select {name}",
+    "viewCvFor": "View CV for {name}",
     "noApplications": "No applications yet",
     "noApplicationsDesc": "Applications will appear here once candidates apply",
     "bulkActions": "Bulk Actions",
@@ -2137,7 +3397,50 @@
     "roleNotSpecified": "Role not specified",
     "locationExpPending": "Location and experience pending",
     "yearsExp": "{count}+ yrs",
-    "appliedDate": "Applied {date}"
+    "appliedDate": "Applied {date}",
+    "appliedDateLabel": "Applied date",
+    "aiScorePending": "AI score pending",
+    "role": "Role",
+    "unassigned": "Unassigned",
+    "candidateDetailsFor": "Candidate details for {name}",
+    "closeCandidateDetails": "Close candidate details",
+    "currentRole": "Current role",
+    "location": "Location",
+    "notSpecified": "Not specified",
+    "experience": "Experience",
+    "scorecard": "Scorecard",
+    "overallScore": "{score}/5 overall",
+    "notAddedYet": "Not added yet",
+    "applicationOverview": "Application overview",
+    "untitledRole": "Untitled role",
+    "applicationOverviewText": "Applied on {date} and currently in the {stage} stage.",
+    "otherApplicationsSummary": "{count, plural, one {This candidate also applied to one other role.} other {This candidate also applied to # other roles.}}",
+    "reviewSignals": "Review signals",
+    "generateScore": "Generate score",
+    "aiMatch": "AI match",
+    "skills": "Skills",
+    "overall": "Overall",
+    "aiCategoryScoresUnavailable": "Detailed AI category scores are not available for this application yet.",
+    "generateAiMatchPrompt": "Generate an AI match score to inspect how this candidate aligns with the role requirements.",
+    "screeningAnswers": "Screening answers",
+    "yes": "Yes",
+    "no": "No",
+    "strengths": "Strengths",
+    "watchouts": "Watchouts",
+    "keySkills": "Key skills",
+    "noSkills": "No skills are attached to this profile yet.",
+    "education": "Education",
+    "noEducation": "No education details available.",
+    "noExperience": "No experience details available.",
+    "current": "Current",
+    "quickActions": "Quick actions",
+    "viewScorecard": "View scorecard",
+    "addScorecard": "Add scorecard",
+    "markSelected": "Mark selected",
+    "moveToStage": "Move to stage",
+    "updating": "Updating...",
+    "applyStage": "Apply stage",
+    "rejectionReasonRequired": "Rejection reason is required"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -2204,6 +3507,7 @@
   },
   "employerSettings": {
     "title": "Company Settings",
+    "documentTitle": "Company Settings · MPLOYEDIN",
     "description": "Manage your company profile, preferences, and notifications",
     "companyProfile": "Company Profile",
     "companyProfileDesc": "Logo, name, industry & about",
@@ -2266,6 +3570,721 @@
     "linkedin": "LinkedIn",
     "twitter": "Twitter / X"
   },
+  "adminDashboard": {
+    "trend": {
+      "vsLastMonth": "vs last month",
+      "flat": "No change {suffix}",
+      "count": "{value} {suffix}",
+      "percent": "{value}% {suffix}",
+      "total": "{count} total"
+    },
+    "roles": {
+      "admin": "Admin",
+      "superAgent": "Super Agent",
+      "agent": "Agent",
+      "employer": "Employer",
+      "jobSeeker": "Job Seeker",
+      "unknown": "Unknown"
+    },
+    "statuses": {
+      "active": "Active",
+      "draft": "Draft",
+      "closed": "Closed",
+      "expired": "Expired",
+      "applied": "Applied",
+      "interviewScheduled": "Interview Scheduled",
+      "selected": "Selected",
+      "offer": "Offer",
+      "hired": "Hired",
+      "unknown": "Unknown"
+    },
+    "dates": {
+      "unknown": "Unknown date"
+    },
+    "roleInsights": {
+      "dominant": "Dominant user group",
+      "underrepresented": "Underrepresented in the current mix",
+      "healthy": "Healthy share of the platform mix"
+    },
+    "common": {
+      "fixNow": "Fix Now",
+      "openUserManagement": "Open User Management",
+      "inspectAnalytics": "Inspect Analytics",
+      "openWorkspace": "Open workspace"
+    },
+    "hero": {
+      "eyebrow": "Admin workspace",
+      "title": "Admin Dashboard",
+      "description": "Platform overview, operational metrics, and shortcuts in an action-oriented workspace that tells admin teams where to move next."
+    },
+    "systemWatch": {
+      "eyebrow": "System watch",
+      "activeJobs": "{count} active jobs",
+      "applications": "{count} platform applications are currently moving through the funnel.",
+      "demand": "Demand",
+      "appsPerJob": "apps per active job",
+      "conversion": "Conversion",
+      "applicationsToPlacements": "applications to placements"
+    },
+    "kpis": {
+      "totalUsers": {
+        "label": "Total Users",
+        "detail": "{count} new accounts joined in the last 30 days.",
+        "dominant": "{role} is still the dominant cohort.",
+        "fallback": "Watch role distribution as new accounts come in."
+      },
+      "activeJobs": {
+        "label": "Active Jobs",
+        "detail": "{count} new roles opened in the last 30 days.",
+        "zeroApplications": "{count} active roles still have zero applications.",
+        "healthy": "Every active role is attracting candidate demand."
+      },
+      "totalApplications": {
+        "label": "Total Applications",
+        "detail": "{count} applications landed in the last 30 days.",
+        "insight": "{value} applications per active job across the platform."
+      },
+      "totalInterviews": {
+        "label": "Total Interviews",
+        "detail": "{count} interviews have been scheduled across the platform.",
+        "active": "Interview pipeline is active and progressing.",
+        "empty": "No interviews scheduled yet. Encourage employer engagement."
+      }
+    },
+    "insights": {
+      "jobDemand": {
+        "titleProblem": "{count} active jobs are missing applicant demand",
+        "titleHealthy": "Job demand is healthy across live roles",
+        "detailProblem": "Review job copy, sourcing, or distribution before roles go stale.",
+        "detailHealthy": "No active role is sitting without at least one application.",
+        "actionProblem": "View Jobs",
+        "actionHealthy": "Open Jobs Workspace"
+      },
+      "employerActivity": {
+        "titleProblem": "{count} employers have been inactive for 7+ days",
+        "titleHealthy": "Employer activity has stayed warm this week",
+        "detailProblem": "Re-engage accounts before new jobs or candidate reviews stall.",
+        "detailHealthy": "Recent logins suggest the employer side is moving steadily."
+      },
+      "conversion": {
+        "titleProblem": "Application-to-placement conversion is below target",
+        "titleHealthy": "Placement conversion is holding up",
+        "detailProblem": "Only {value}% of applications have converted into placements so far.",
+        "detailHealthy": "{value}% of applications are converting into placements."
+      }
+    },
+    "quickActions": {
+      "jobsOverview": {
+        "label": "Jobs Overview",
+        "desc": "Monitor role quality, demand, and activity across the platform.",
+        "badge": "{count} active"
+      },
+      "userManagement": {
+        "label": "User Management",
+        "desc": "Adjust roles, access, and follow up on inactive cohorts.",
+        "badge": "{count} inactive employers"
+      },
+      "jobsManagement": {
+        "label": "Jobs Management",
+        "desc": "Audit role quality, demand, and activity from one queue.",
+        "badge": "{count} low-demand roles"
+      },
+      "auditLogs": {
+        "label": "Audit Logs",
+        "desc": "Review sensitive changes, security events, and governance trails.",
+        "badge": "Security trail"
+      },
+      "analytics": {
+        "label": "Analytics",
+        "desc": "Investigate trend shifts, conversion pressure, and market movement.",
+        "badge": "{count} interviews tracked"
+      }
+    },
+    "recent": {
+      "userJoined": "{name} joined as {role}",
+      "userDetail": "New access footprint added to the platform mix.",
+      "jobPosted": "{title} was posted",
+      "applicationNew": "New application entered the hiring funnel",
+      "applicationMoved": "Application moved to {status}",
+      "applicationDetail": "Use analytics and follow-up workflows before momentum drops."
+    },
+    "funnel": {
+      "jobs": "Jobs",
+      "applications": "Applications",
+      "interviews": "Interviews",
+      "placements": "Placements"
+    },
+    "sections": {
+      "quickActions": {
+        "title": "Quick Actions",
+        "description": "Jump straight into the admin flows that keep governance and platform quality moving."
+      },
+      "recentActivity": {
+        "title": "Recent Activity",
+        "description": "Keep the dashboard alive with the latest account, job, and funnel movement."
+      },
+      "platformInsights": {
+        "title": "Platform Insights",
+        "description": "Turn raw volume into next-step decisions before demand or conversion slip out of view.",
+        "engine": "Insight engine",
+        "engineDetail": "Action-first heuristics"
+      },
+      "hiringFunnel": {
+        "title": "Hiring Funnel",
+        "description": "Spot where volume compresses between live roles, applications, interviews, and placements.",
+        "closed": "{count} closed",
+        "stageAria": "{label}: {count}",
+        "noData": "{label} - No data",
+        "nextStage": "{value}% move to the next stage"
+      },
+      "trends": {
+        "title": "Jobs vs Applications",
+        "description": "See whether demand is tracking alongside role creation over the last six months.",
+        "chartAria": "Jobs and applications trend",
+        "jobsOpened": "Jobs opened",
+        "jobsOpenedDesc": "new roles launched in the last 30 days",
+        "applicationFlow": "Application flow",
+        "applicationFlowDesc": "candidates entered the funnel this month",
+        "demandRatio": "Demand ratio",
+        "demandRatioDesc": "applications for every active role"
+      },
+      "usersByRole": {
+        "title": "Users by Role",
+        "description": "Monitor how access is distributed across the platform and where role mix may need intervention.",
+        "userCount": "{count} users"
+      }
+    },
+    "tones": {
+      "critical": "Critical",
+      "attention": "Attention",
+      "stable": "Stable"
+    }
+  },
+  "superAgentDashboard": {
+    "hero": {
+      "eyebrow": "Super agent workspace",
+      "title": "Super Agent Dashboard",
+      "description": "Run regional oversight, guide your agent team, and clear hiring blockers from the same modern workspace used across the employer dashboard."
+    },
+    "control": {
+      "lanesEyebrow": "Control lanes",
+      "teamOversight": "Team and oversight",
+      "teamOversightDesc": "Manage field execution, approvals, placements, and commission visibility without bouncing between layouts.",
+      "rhythmEyebrow": "Operating rhythm",
+      "dailyReview": "Built for daily review",
+      "dailyReviewDesc": "Open the day with agent performance, move into approvals, then finish with placements and commission checks."
+    },
+    "kpis": {
+      "activeAgents": { "label": "Active Agents", "helper": "Your live team roster with current delivery ownership." },
+      "totalEmployers": { "label": "Total Employers", "helper": "Employer accounts under your agents' management." },
+      "totalPlacements": { "label": "Total Placements", "helper": "Confirmed hires and closed outcomes flowing through your team." },
+      "commissionsEarned": { "label": "Commissions Earned", "helper": "Commission performance and payout visibility for your portfolio." }
+    },
+    "secondary": {
+      "jobsPosted": "Jobs Posted",
+      "active": "{count} active",
+      "cvsReceived": "CVs Received",
+      "totalApplications": "Total applications",
+      "leadsGenerated": "Leads Generated",
+      "acrossAgents": "Across all agents"
+    },
+    "actions": {
+      "agentPerformance": { "label": "Agent Performance", "description": "Review the team roster, throughput, and individual accountability." },
+      "leadPipeline": { "label": "Lead Pipeline", "description": "Track follow-ups, active prospecting, and employer conversion flow." },
+      "jobApprovals": { "label": "Job Approvals", "description": "Clear pending approvals quickly without leaving the oversight workspace." },
+      "commissionReport": { "label": "Commission Report", "description": "Stay on top of placement-driven earnings and regional payout status." }
+    },
+    "focus": {
+      "teamCoordination": { "title": "Team coordination", "description": "Keep agents, employers, and pipeline follow-ups moving from one compact control surface." },
+      "approvalControl": { "title": "Approval control", "description": "Resolve blockers in job approvals before they slow regional hiring momentum." },
+      "regionalGrowth": { "title": "Regional growth", "description": "Balance market coverage, employer activity, and placements against commission outcomes." }
+    },
+    "sections": {
+      "quickActions": {
+        "eyebrow": "Quick actions",
+        "title": "Jump into the work that moves your region forward",
+        "description": "Each route below stays unchanged. This refresh only upgrades the workspace surface and navigation flow."
+      },
+      "oversight": {
+        "eyebrow": "Oversight focus",
+        "title": "Use the dashboard as a daily control point"
+      }
+    }
+  },
+  "agentDashboard": {
+    "hero": {
+      "eyebrow": "Agent workspace",
+      "title": "Agent Dashboard",
+      "description": "Stay on top of assigned employers, active roles, and candidate momentum from the same modern workspace now used across hiring."
+    },
+    "portfolio": {
+      "eyebrow": "Portfolio",
+      "activeAccounts": "{count} active accounts",
+      "summary": "{jobs} live roles, {applications} applications, and {placements} completed placements in your current book."
+    },
+    "kpis": {
+      "activeEmployers": "Active Employers",
+      "activeJobs": "Active Jobs",
+      "totalApplications": "Total Applications",
+      "placements": "Placements"
+    },
+    "funnel": {
+      "leadsGenerated": "Leads Generated",
+      "employersCreated": "Employers Created",
+      "vacanciesPosted": "Vacancies Posted",
+      "interviewRate": "Interview Rate",
+      "offerRate": "Offer Rate"
+    },
+    "actions": {
+      "addEmployerLead": { "label": "Add Employer Lead", "note": "Capture new accounts and keep the pipeline moving." },
+      "postJob": { "label": "Post a Job", "note": "Launch a role for one of your assigned employers." },
+      "myJobs": { "label": "My Jobs", "note": "Review active, draft, and closed postings in one view." },
+      "candidates": { "label": "Candidates", "note": "Move shortlists, interviews, and offers forward." },
+      "jobSeekers": { "label": "View Job Seekers", "note": "Search profiles, match talent, and follow up faster." },
+      "performanceReport": { "label": "Performance Report", "note": "Track conversion quality, response rates, and wins." }
+    },
+    "heroStats": {
+      "activeEmployers": { "label": "Active employers", "description": "Accounts currently assigned to you." },
+      "activeJobs": { "label": "Active jobs", "description": "Live roles you can progress today." },
+      "applications": { "label": "Applications", "description": "Total candidate demand across managed roles." },
+      "placements": { "label": "Placements", "description": "Confirmed hires completed from your book." }
+    },
+    "sections": {
+      "funnel": { "eyebrow": "Conversion funnel", "title": "Track which parts of the desk need attention" },
+      "quickActions": { "eyebrow": "Quick actions", "title": "Jump into the work most agents do every day", "description": "Each shortcut keeps the underlying route and permissions unchanged." },
+      "rolePerformance": { "eyebrow": "Role performance", "title": "See where jobs are converting and where they stall", "description": "Top managed roles ranked by demand, interview flow, and offer conversion.", "reviewAll": "Review all jobs" }
+    },
+    "table": {
+      "job": "Job",
+      "status": "Status",
+      "applications": "Applications",
+      "interviews": "Interviews",
+      "offers": "Offers",
+      "interviewRate": "Interview rate",
+      "offerRate": "Offer rate"
+    },
+    "statuses": {
+      "active": "Active",
+      "draft": "Draft",
+      "closed": "Closed",
+      "expired": "Expired",
+      "unknown": "Unknown"
+    },
+    "empty": {
+      "title": "No job performance data yet",
+      "description": "Post a role or start receiving applications to unlock per-job conversion metrics here."
+    }
+  },
+  "agentCommon": {
+    "workspace": "Agent workspace",
+    "unknown": "Unknown",
+    "dash": "—",
+    "all": "All",
+    "allEmployers": "All Employers",
+    "back": "Back",
+    "cancel": "Cancel"
+  },
+  "agentJobs": {
+    "title": "Managed Job Board",
+    "description": "View and manage jobs you own directly or through your assigned employers. Filter by employer and track candidates in one place.",
+    "remote": "Remote",
+    "postJob": "Post Job",
+    "exportTitle": "Agent Jobs",
+    "portfolio": {
+      "eyebrow": "Portfolio",
+      "tracked": "{count} tracked jobs",
+      "description": "Draft, live, and closed roles inside your current queue."
+    },
+    "cards": {
+      "active": { "label": "Active", "description": "Roles currently open for applications." },
+      "drafts": { "label": "Drafts", "description": "Jobs waiting for review or completion." },
+      "employers": { "label": "Employers", "description": "Companies with jobs in your portfolio." },
+      "applicants": { "label": "Applicants", "description": "Candidate volume across the current results." }
+    },
+    "ai": {
+      "title": "AI-Powered Search",
+      "description": "Describe what you're looking for in plain language and let AI set the right filters.",
+      "placeholder": "e.g. \"active remote jobs posted this week\"",
+      "search": "Search",
+      "failed": "AI search failed",
+      "defaultSummary": "AI search: \"{query}\"",
+      "tryDifferent": "AI search could not process the query. Try a different phrasing.",
+      "suggestions": {
+        "activeApplicants": "Show active jobs with most applicants",
+        "draftReview": "Draft jobs that need review",
+        "postedThisWeek": "Jobs posted this week",
+        "kochiRoles": "Roles in Kochi with high applicant count"
+      }
+    },
+    "filters": {
+      "eyebrow": "Browse roles",
+      "title": "Filter the jobs you need to act on next",
+      "description": "Search by title or narrow the queue to the status you want to work through.",
+      "searchPlaceholder": "Search jobs by title, location..."
+    },
+    "results": {
+      "eyebrow": "Current results",
+      "title": "Keep each role moving from posting to placement",
+      "summary": "{total} jobs across {pages} pages"
+    },
+    "empty": {
+      "title": "No jobs found",
+      "description": "Try adjusting the filters or create a new role."
+    },
+    "table": {
+      "title": "Job Title",
+      "employer": "Employer",
+      "location": "Location",
+      "status": "Status",
+      "applicants": "Applicants",
+      "posted": "Posted",
+      "actions": "Actions"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "active": "Active",
+      "closed": "Closed",
+      "expired": "Expired",
+      "pending": "Pending approval",
+      "paused": "Paused"
+    },
+    "actions": {
+      "viewCandidates": "View Candidates",
+      "viewCandidatesFor": "View candidates for {title}",
+      "viewJob": "View Job",
+      "viewJobFor": "View {title}"
+    }
+  },
+  "agentJobNew": {
+    "title": "Post Job on Behalf of Employer",
+    "description": "Create a role for one of your assigned employers without leaving the agent workspace.",
+    "toast": {
+      "success": "Job posted successfully",
+      "error": "Failed to post job"
+    },
+    "employer": {
+      "title": "Select Employer",
+      "loading": "Loading employers...",
+      "empty": "No employers assigned to you. Contact your super-agent.",
+      "placeholder": "Choose an employer..."
+    },
+    "form": {
+      "title": "Job Details",
+      "jobTitle": "Job Title *",
+      "jobTitlePlaceholder": "e.g. Senior Accountant",
+      "category": "Category *",
+      "categoryPlaceholder": "Select category",
+      "country": "Country *",
+      "city": "City *",
+      "cityPlaceholder": "e.g. Dubai",
+      "employmentType": "Employment Type",
+      "currency": "Currency",
+      "salaryMin": "Salary Min",
+      "salaryMinPlaceholder": "e.g. 8000",
+      "salaryMax": "Salary Max",
+      "salaryMaxPlaceholder": "e.g. 12000",
+      "descriptionLabel": "Job Description *",
+      "descriptionPlaceholder": "Describe the role, responsibilities...",
+      "requirements": "Requirements (one per line)",
+      "requirementsPlaceholder": "5+ years experience\nBachelor's degree\nMS Excel proficiency",
+      "posting": "Posting...",
+      "submit": "Post Job"
+    },
+    "employmentTypes": {
+      "full_time": "Full Time",
+      "part_time": "Part Time",
+      "contract": "Contract",
+      "internship": "Internship",
+      "freelance": "Freelance"
+    }
+  },
+  "agentSettings": {
+    "hero": {
+      "title": "Settings",
+      "description": "Manage your agent workspace configuration: profile, regional preferences, commission rates, notification channels, availability, and account security."
+    },
+    "nav": {
+      "profile": { "label": "Profile & Avatar", "description": "Photo, name & display info" },
+      "region": { "label": "Region & Currency", "description": "Country, currency, display" },
+      "commission": { "label": "Commission Rate", "description": "Your placement rate" },
+      "invoice": { "label": "Invoice Defaults", "description": "Billing & invoice presets" },
+      "notifications": { "label": "Notifications", "description": "Email & in-app alerts" },
+      "availability": { "label": "Availability", "description": "Timezone & working hours" },
+      "security": { "label": "Account & Security", "description": "Password & account actions" }
+    },
+    "save": {
+      "default": "Save Changes",
+      "saving": "Saving...",
+      "saved": "Saved"
+    },
+    "role": {
+      "agent": "Agent"
+    },
+    "profile": {
+      "fallbackName": "Agent",
+      "photoAlt": "Profile photo",
+      "uploadPhoto": "Upload Photo",
+      "changePhoto": "Change Photo",
+      "removePhoto": "Remove",
+      "fileHint": "JPEG, PNG or WebP. Max 2 MB.",
+      "basicTitle": "Basic Information",
+      "basicDescription": "Update your display name and contact details",
+      "fullName": "Full Name",
+      "fullNamePlaceholder": "e.g. John Doe",
+      "fullNameHelp": "Displayed in lead management, employer listings, and commission reports.",
+      "phone": "Phone Number",
+      "phonePlaceholder": "e.g. +971 50 123 4567",
+      "phoneHelp": "Used for urgent communication from your super agent or team.",
+      "email": "Email Address",
+      "readOnly": "Read-only",
+      "emailHelp": "Email is managed by your administrator and cannot be changed here.",
+      "save": "Save Profile",
+      "errors": {
+        "fileType": "Only JPEG, PNG, and WebP images are allowed.",
+        "fileSize": "Image must be under 2 MB.",
+        "uploadFailed": "Upload failed",
+        "network": "Network error. Please try again.",
+        "removeFailed": "Failed to remove avatar."
+      }
+    },
+    "region": {
+      "title": "Country & Currency",
+      "description": "Set your operating region and display currency",
+      "country": "Country",
+      "selectCountry": "Select a country",
+      "countryHelp": "Selecting a country auto-fills the currency used in that region.",
+      "displayCurrency": "Display Currency",
+      "currencyHelp": "This currency will be used to display commissions and all monetary values.",
+      "save": "Save Region Settings",
+      "previewTitle": "Currency Display Preview",
+      "previewDescription": "How monetary values will appear across your workspace",
+      "sample": "Sample"
+    },
+    "commission": {
+      "title": "Commission Rate",
+      "description": "Your current commission rate set by your super agent or admin",
+      "currentRate": "Current Rate",
+      "setByAdmin": "Set by Admin",
+      "help": "Your commission rate is managed by your super agent or administrator. Contact them to request changes.",
+      "projected": "Projected Commission",
+      "onPlacement": "On {amount} placement",
+      "rateLine": "{rate}% commission"
+    },
+    "notifications": {
+      "pausedTitle": "All notifications paused",
+      "pausedDescription": "You won't receive any email or in-app notifications. Toggle this off to resume.",
+      "frequencyTitle": "Email Frequency",
+      "frequencyDescription": "How often to receive email digests",
+      "frequency": {
+        "instant": { "label": "Instant", "description": "As events happen" },
+        "daily": { "label": "Daily", "description": "One email/day" },
+        "weekly": { "label": "Weekly", "description": "Sunday summary" },
+        "none": { "label": "Off", "description": "In-app only" }
+      },
+      "digestTitle": "Digest Schedule",
+      "digestDescription": "When to receive your email digest",
+      "digestTime": "Digest Time",
+      "digestTimeHelp": "Time in your selected timezone",
+      "timezone": "Timezone",
+      "categoriesTitle": "Notification Categories",
+      "categoriesDescription": "Toggle categories and choose delivery channels",
+      "categories": {
+        "placements": { "label": "Placements & Leads", "description": "Candidate progress, employer updates, and lead activity" },
+        "commissions": { "label": "Commission Updates", "description": "New commissions earned, payouts, and rate changes" },
+        "team": { "label": "Team & Super Agent", "description": "Super agent assignments, team updates, and milestones" },
+        "jobs": { "label": "Job Updates", "description": "New job postings, expirations, and vacancy changes" },
+        "system": { "label": "System & Security", "description": "Login alerts, platform notices, and security events" }
+      },
+      "channels": {
+        "in_app": "In-App",
+        "email": "Email"
+      },
+      "pauseAll": "Pause all notifications",
+      "pauseAllDescription": "Temporarily stop all email and in-app notifications",
+      "save": "Save Notification Settings"
+    },
+    "availability": {
+      "timezoneTitle": "Timezone",
+      "timezoneDescription": "Your local timezone for scheduling and digest delivery",
+      "hoursTitle": "Working Hours",
+      "hoursDescription": "Define your typical working window",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "workingDays": "Working Days",
+      "daysHelp": "These are shown to your super agent for coordination purposes.",
+      "save": "Save Availability",
+      "days": {
+        "Mon": "Mon",
+        "Tue": "Tue",
+        "Wed": "Wed",
+        "Thu": "Thu",
+        "Fri": "Fri",
+        "Sat": "Sat",
+        "Sun": "Sun"
+      }
+    },
+    "invoice": {
+      "bannerTitle": "Speed up invoice creation",
+      "bannerDescription": "Set your default billing details, tax configuration, and payment terms here. These will auto-fill every new invoice you create.",
+      "billingTitle": "Your Billing Entity",
+      "billingDescription": "Company or individual details that appear on your invoices",
+      "companyName": "Company / Entity Name",
+      "companyNamePlaceholder": "e.g. Acme Recruitment LLC",
+      "contactPerson": "Contact Person",
+      "contactPersonPlaceholder": "e.g. John Smith",
+      "billingEmail": "Billing Email",
+      "billingEmailPlaceholder": "billing@company.com",
+      "billingPhone": "Billing Phone",
+      "billingPhonePlaceholder": "+971 50 123 4567",
+      "billingAddress": "Billing Address",
+      "billingAddressPlaceholder": "Street address, building, floor...",
+      "billingCountry": "Billing Country",
+      "selectCountry": "Select country",
+      "countryHelp": "Selecting a country auto-updates the default currency.",
+      "taxId": "Tax ID / VAT Number",
+      "taxIdPlaceholder": "e.g. TRN 100234567890003",
+      "preferencesTitle": "Invoice Preferences",
+      "preferencesDescription": "Default values pre-filled when creating new invoices",
+      "defaultType": "Default Invoice Type",
+      "defaultCurrency": "Default Currency",
+      "taxConfiguration": "Tax Configuration",
+      "taxType": "Tax Type",
+      "taxRate": "Tax Rate (%)",
+      "paymentTerms": "Payment Terms",
+      "defaultTerms": "Default Terms",
+      "customDays": "Custom Days",
+      "defaultNotes": "Default Invoice Notes",
+      "defaultNotesPlaceholder": "Standard payment terms, bank details, or any recurring notes to include on every invoice...",
+      "characters": "{count}/1000 characters",
+      "save": "Save Invoice Defaults",
+      "categories": {
+        "recruitment": "Recruitment Placement",
+        "subscription": "Employer Subscription",
+        "premium_posting": "Premium Job Posting",
+        "featured_promotion": "Featured Employer Promotion",
+        "exhibition": "Exhibition Billing",
+        "bulk_hiring": "Bulk Hiring Package",
+        "consulting": "Consulting Fee",
+        "custom_enterprise": "Custom Enterprise Billing"
+      },
+      "taxTypes": {
+        "none": "No Tax",
+        "gst": "GST",
+        "vat": "VAT",
+        "reverse_charge": "Reverse Charge",
+        "sales_tax": "Sales Tax",
+        "service_tax": "Service Tax",
+        "withholding_tax": "Withholding Tax",
+        "tds": "TDS",
+        "pst": "PST",
+        "hst": "HST"
+      },
+      "paymentTermOptions": {
+        "immediate": "Immediate",
+        "net_7": "Net 7 days",
+        "net_15": "Net 15 days",
+        "net_30": "Net 30 days",
+        "net_45": "Net 45 days",
+        "net_60": "Net 60 days",
+        "net_90": "Net 90 days",
+        "custom": "Custom"
+      }
+    },
+    "security": {
+      "accountTitle": "Account Information",
+      "accountDescription": "Your agent account details",
+      "role": "Role",
+      "accountStatus": "Account Status",
+      "active": "Active",
+      "title": "Security",
+      "description": "Manage your security preferences",
+      "loginNotifications": "Login Notifications",
+      "loginNotificationsDescription": "Get notified when someone logs into your account",
+      "twoFactor": "Two-Factor Authentication",
+      "twoFactorDescription": "Add an extra layer of security to your account",
+      "comingSoon": "Coming Soon",
+      "dangerTitle": "Danger Zone",
+      "dangerDescription": "Irreversible account actions",
+      "deactivateTitle": "Deactivate Account",
+      "deactivateDescription": "Temporarily disable your agent account",
+      "deactivate": "Deactivate"
+    }
+  },
+  "adminActivityTimeline": {
+    "title": "Activity Timeline",
+    "description": "Visual timeline of all user actions across the platform",
+    "searchPlaceholder": "Search by user name or email...",
+    "reset": "Reset",
+    "resourcePlaceholder": "Resource",
+    "rolePlaceholder": "Role",
+    "errors": {
+      "fetchFailed": "Failed to load activity timeline"
+    },
+    "time": {
+      "justNow": "Just now",
+      "minutesAgo": "{count}m ago",
+      "hoursAgo": "{count}h ago",
+      "daysAgo": "{count}d ago"
+    },
+    "roles": {
+      "all": "All roles",
+      "admin": "Admin",
+      "superAgent": "Super Agent",
+      "agent": "Agent",
+      "employer": "Employer",
+      "jobSeeker": "Job Seeker",
+      "unknown": "Unknown"
+    },
+    "actions": {
+      "create": "Create",
+      "read": "Read",
+      "update": "Update",
+      "delete": "Delete",
+      "login": "Login",
+      "logout": "Logout",
+      "approve": "Approve",
+      "reject": "Reject",
+      "export": "Export",
+      "import": "Import",
+      "send": "Send",
+      "register": "Register",
+      "settings": "Settings",
+      "unknown": "Unknown action",
+      "other": "Other action"
+    },
+    "resources": {
+      "all": "All resources",
+      "auth": "Authentication",
+      "users": "Users",
+      "agents": "Agents",
+      "jobs": "Jobs",
+      "applications": "Applications",
+      "interviews": "Interviews",
+      "employers": "Employers",
+      "commissions": "Commissions",
+      "gdpr": "GDPR",
+      "offers": "Offers",
+      "placements": "Placements",
+      "leads": "Leads",
+      "reports": "Reports",
+      "subscriptions": "Subscriptions",
+      "targets": "Targets",
+      "ai": "AI",
+      "hiringDecisions": "Hiring decisions",
+      "notificationPreferences": "Notification preferences",
+      "careerPages": "Career pages",
+      "apiKeys": "API keys",
+      "webhooks": "Webhooks",
+      "talentPools": "Talent pools",
+      "surveys": "Surveys",
+      "workflowTemplates": "Workflow templates",
+      "unknown": "Unknown resource"
+    },
+    "empty": {
+      "title": "No activity found",
+      "description": "Try adjusting your filters"
+    }
+  },
   "employerTeam": {
     "title": "Team Management",
     "activeMembers": "{count} active members",
@@ -2304,7 +4323,44 @@
     "failedToSendInvite": "Failed to send invite",
     "pageTitle": "Team Management · MPLOYEDIN",
     "descriptionActiveOnly": "{activeCount} active members",
-    "descriptionWithPending": "{activeCount} active members · {pendingCount} pending invites"
+    "descriptionWithPending": "{activeCount} active members · {pendingCount} pending invites",
+    "pending": "Pending",
+    "selectAtLeastOneRole": "Please select at least one role",
+    "jobCount": "{count} job(s)",
+    "searchPlaceholder": "Search by name, email, or role...",
+    "editJobAccess": "Edit job access",
+    "deactivateMember": "Deactivate member",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "saveChanges": "Save Changes",
+    "empty": {
+      "title": "No team members yet",
+      "description": "Invite hiring managers, admins, and viewers to collaborate on your open roles.",
+      "cta": "Invite Your First Member"
+    },
+    "roleOptions": {
+      "admin": "Admin - Full access, can manage team",
+      "hiringManager": "Hiring Manager - Manage assigned jobs",
+      "accounting": "Accounting - Billing, invoices & commissions",
+      "financeViewer": "Finance Viewer - View-only financial access",
+      "viewer": "Viewer - Read-only access"
+    },
+    "inviteModal": {
+      "title": "Invite Team Member",
+      "description": "Enter an email address and role to invite a new member to your team.",
+      "emailLabel": "Email Address",
+      "emailPlaceholder": "colleague@company.com",
+      "rolesLabel": "Roles",
+      "rolesDescription": "Select one or more roles for this member.",
+      "rolesPlaceholder": "Select roles...",
+      "jobAccessDescription": "Select specific jobs this member can access. Leave empty for access to all jobs."
+    },
+    "jobAccessModal": {
+      "title": "Edit Job Access",
+      "assignedJobs": "Assigned Jobs",
+      "description": "Select the jobs this member can access. Leave empty to grant access to all jobs.",
+      "allJobsPlaceholder": "All Jobs (no restriction)"
+    }
   },
   "employerActivity": {
     "title": "Activity History",
@@ -2562,6 +4618,7 @@
   },
   "employerCommTemplates": {
     "title": "Communication Templates",
+    "documentTitle": "Communication Templates · MPLOYEDIN",
     "description": "Pre-written templates for rejection emails, interview invites, follow-ups, and offers",
     "newTemplate": "New Template",
     "allTemplates": "All Templates",
@@ -2647,6 +4704,9 @@
     "aiScreening": "AI Screening",
     "shortlisted": "Shortlisted",
     "interview": "Interview",
+    "interviewCompleted": "Interview Completed",
+    "offerExtended": "Offer Extended",
+    "accepted": "Accepted",
     "offer": "Offer",
     "hired": "Hired",
     "rejected": "Rejected",
@@ -2655,7 +4715,64 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "daysThreshold": "Days threshold",
-    "stage": "Stage"
+    "stage": "Stage",
+    "loadingError": "Could not load workflow settings. Please try again.",
+    "saveError": "Could not save workflow settings. Please try again.",
+    "templateSaveError": "Could not save workflow template. Please try again.",
+    "savingChanges": "Saving changes",
+    "workflowSaved": "Workflow saved",
+    "unsavedEdits": "Unsaved edits",
+    "loadFromTemplate": "Load from template",
+    "loadFromTemplateDesc": "Apply a saved workflow structure to this employer pipeline.",
+    "systemTemplate": "System",
+    "customTemplate": "Custom",
+    "defaultTemplate": "Default",
+    "templateStageSummary": "{count} stages · {state}",
+    "aiOn": "AI on",
+    "aiOff": "AI off",
+    "noTemplates": "No workflow templates are available yet.",
+    "templateNamePlaceholder": "Template name",
+    "save": "Save",
+    "cancel": "Cancel",
+    "templateSaved": "Workflow template saved.",
+    "unsavedChanges": "You have unsaved workflow changes.",
+    "emptyPreview": "Enable at least one stage to preview the pipeline.",
+    "candidateAlerts": "Candidate alerts",
+    "alertsEnabled": "Alerts enabled",
+    "alertsDisabled": "Alerts disabled",
+    "autoRejectFloor": "Auto-reject floor",
+    "matchScore": "{value}% match score",
+    "workflowBuilder": "Workflow builder",
+    "pipelineStages": "Pipeline stages",
+    "builderDesc": "Reorder, pause, or add stages to match your hiring process.",
+    "addStage": "Add stage",
+    "stageNamePlaceholder": "Stage name",
+    "add": "Add",
+    "noStages": "No stages configured",
+    "noStagesDesc": "Restore the default pipeline to continue.",
+    "useDefaultPipeline": "Use default pipeline",
+    "paused": "Paused",
+    "removeStage": "Remove stage",
+    "order": "Order {order}",
+    "movesAutomatically": "Moves automatically",
+    "manualReviewRequired": "Manual review required",
+    "automation": "Automation",
+    "recruitmentRules": "Recruitment rules",
+    "rulesDesc": "Tune how AI screening, candidate notifications, and rejection thresholds behave.",
+    "aiAutoScreening": "AI auto-screening",
+    "aiAutoScreeningDesc": "Automatically score new applications against the role requirements.",
+    "notifyCandidates": "Notify candidates",
+    "notifyCandidatesDesc": "Send candidate updates when their application moves between stages.",
+    "autoRejectThreshold": "Auto-reject threshold",
+    "autoRejectThresholdDesc": "Candidates below <strong>{value}%</strong> can be flagged for rejection review.",
+    "thresholdOff": "Off",
+    "thresholdDefault": "Default",
+    "thresholdStrict": "Strict",
+    "guidance": "Guidance",
+    "guidanceTitle": "Keep automation explainable",
+    "guidanceDesc": "Use thresholds to prioritize review, but keep a recruiter in the loop for final rejection decisions.",
+    "saving": "Saving",
+    "saved": "Saved"
   },
   "employerJobNew": {
     "title": "Create a Job Posting",
@@ -2670,6 +4787,7 @@
     "reviewBeforeSave": "Review before save",
     "reviewBeforeSaveDesc": "AI prefills the form, then the recruiter checks and submits it.",
     "startAiPosting": "Start AI Job Posting",
+    "uploadJobPoster": "Upload Job Poster",
     "openManualForm": "Open Manual Form",
     "manualPosting": "Manual posting",
     "manualHeading": "Best when you already know the exact role details.",
@@ -2679,6 +4797,439 @@
     "manualBullet3": "Optional openings and applicant caps",
     "continueManual": "Continue with manual posting",
     "continueManualDesc": "Open the full wizard now."
+  },
+  "publicJobs": {
+    "heading": "Find your next opportunity",
+    "activeJobs": "{total} active jobs",
+    "browseOpenPositions": "Browse open positions",
+    "searchPlaceholder": "Job title, skills, or keyword",
+    "locationPlaceholder": "City or country",
+    "search": "Search",
+    "verified": "Verified",
+    "closesInDays": "Closes in {days}d",
+    "companyFallback": "Company",
+    "remote": "Remote",
+    "negotiable": "Negotiable",
+    "fromSalary": "From {amount}",
+    "years": "yrs",
+    "moreSkills": "+{count} more",
+    "openings": "{count} openings",
+    "noJobsFound": "No jobs found",
+    "adjustSearch": "Try adjusting your search or clearing filters.",
+    "clearFilters": "Clear all filters",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {totalPages}"
+  },
+  "employerJobForm": {
+    "title": "Post a New Job",
+    "description": "Create a job posting to attract qualified candidates",
+    "autoSaves": "Auto-saves while you type",
+    "loadTemplate": "Load Template",
+    "postSuccess": "Job posted successfully!",
+    "postSuccessDescription": "Share it as a poster on LinkedIn & social media.",
+    "createPoster": "Create Poster",
+    "postFailed": "Failed to post job. Please try again.",
+    "networkError": "Network error. Please try again.",
+    "templateLoadError": "Could not load templates right now. Please try again.",
+    "templateEyebrow": "Reuse proven job formats",
+    "templateTitle": "Select a Template",
+    "templateDescription": "Start from a previous hiring format, then adjust only what changed.",
+    "available": "Available",
+    "closeTemplateModal": "Close template modal",
+    "retry": "Retry",
+    "emptyTemplatesTitle": "No templates saved yet",
+    "emptyTemplatesDescription": "Create and save a few strong job posts first, then they will appear here.",
+    "openings": "{count} openings",
+    "useTemplate": "Use",
+    "cancel": "Cancel",
+    "review": "review",
+    "steps": {
+      "1": "Basic Info",
+      "2": "Job Details",
+      "3": "Requirements",
+      "4": "Salary & Settings",
+      "5": "Screening Questions"
+    },
+    "stepIndicator": {
+      "step": "Step {step}"
+    },
+    "actions": {
+      "toolbarLabel": "Form navigation",
+      "stepOf": "Step {current} of {total}",
+      "saved": "Saved",
+      "back": "Back",
+      "saveDraft": "Save Draft",
+      "savingDraft": "Saving…",
+      "next": "Next",
+      "postJob": "Post Job",
+      "posting": "Posting…",
+      "previousStep": "Go to previous step"
+    },
+    "applicationModes": {
+      "auto": "Auto",
+      "manual": "Manual"
+    },
+    "step1": {
+      "title": "Basic Information",
+      "description": "Start with the essentials and keep the role easy to scan.",
+      "suggestionHint": "Use a suggested title to prefill skills, salary, and experience.",
+      "defaultHint": "Clear titles and location details usually improve candidate quality first.",
+      "jobTitle": "Job Title",
+      "jobTitlePlaceholder": "e.g. Senior Software Engineer",
+      "jobTitleHint": "Use the exact role candidates search for instead of internal team titles.",
+      "autoFill": "Auto-fill skills, salary & experience from AI",
+      "category": "Category",
+      "categoryPlaceholder": "Select a job category",
+      "categoryHint": "Pick the closest category so recommendations and benchmarks stay relevant.",
+      "categories": {
+        "technology": "Technology",
+        "healthcare": "Healthcare",
+        "finance": "Finance",
+        "construction": "Construction",
+        "hospitality": "Hospitality",
+        "education": "Education",
+        "manufacturing": "Manufacturing",
+        "logistics": "Logistics",
+        "oilGas": "Oil & Gas",
+        "retail": "Retail",
+        "marketing": "Marketing",
+        "legal": "Legal",
+        "humanResources": "Human Resources",
+        "other": "Other"
+      },
+      "employmentType": "Employment Type",
+      "employmentTypePlaceholder": "Select employment type",
+      "employmentTypeHint": "Full-time, part-time, contract, etc. Helps candidates filter by work arrangement.",
+      "duration": "Duration",
+      "durationPlaceholder": "e.g. 3-6 Months, 1 Year",
+      "durationHint": "Useful for internships or contract roles. Leave blank for permanent positions.",
+      "optional": "optional",
+      "location": "Location",
+      "locationHint": "Add the base location and select the work arrangement.",
+      "country": "Country",
+      "countryPlaceholder": "Select country",
+      "countries": {
+        "remoteGlobal": "Remote / Global"
+      },
+      "city": "City",
+      "cityPlaceholder": "e.g. Dubai, Pune, London",
+      "validation": {
+        "titleRequired": "Job title is required",
+        "titleMin": "Title must be at least 5 characters",
+        "countryRequired": "Country is required",
+        "cityRequired": "City is required"
+      },
+      "assignAgent": "Assign Agent",
+      "noAgent": "No agent - self-manage",
+      "loadingAgents": "Loading agents...",
+      "assignAgentHint": "Assigning an agent routes this job through the approval workflow before going live.",
+      "employmentTypes": {
+        "full_time": "Full-time",
+        "part_time": "Part-time",
+        "contract": "Contract",
+        "internship": "Internship",
+        "freelance": "Freelance"
+      },
+      "workModes": {
+        "onsite": "On-site",
+        "hybrid": "Hybrid",
+        "remote": "Remote"
+      }
+    },
+    "quality": {
+      "title": "Listing Health",
+      "strong": "Strong listing - ready to stand out",
+      "good": "Good base - a few edits will lift visibility",
+      "low": "Low detail so far - finish the essentials first",
+      "checksComplete": "{completed}/{total} checks complete",
+      "readyToPublish": "Ready to publish",
+      "improveFirst": "Improve the essentials first",
+      "bestNext": "Best next improvements",
+      "moreImprovements": "{count} more improvements remain",
+      "factors": {
+        "title": "Job Title",
+        "description": "Description",
+        "location": "Location",
+        "skills": "Skills",
+        "salary": "Salary Range",
+        "experience": "Experience Range"
+      },
+      "tips": {
+        "title": "Add a clear, specific job title (+15%)",
+        "description": "Description is short — aim for 100+ characters (+25%)",
+        "location": "Add country + city to attract local candidates (+10%)",
+        "skills": "Add {count} more skills (+20%)",
+        "salary": "Add salary range — 3× more applicants (+20%)",
+        "experience": "Specify experience range (+10%)"
+      }
+    },
+    "step2": {
+      "title": "Job Details",
+      "description": "Write a clear, skimmable description so candidates can qualify themselves quickly.",
+      "strength": {
+        "strong": "Strong",
+        "good": "Good start",
+        "needsDetail": "Needs detail"
+      },
+      "characters": "{count} characters",
+      "aiReady": "AI assist ready",
+      "jobDescription": "Job Description",
+      "descriptionHint": "Keep it structured. Candidates scan responsibilities, requirements, and benefits first.",
+      "generating": "Generating…",
+      "generateWithAi": "Generate with AI",
+      "placeholder": "Describe the role, responsibilities, and what you're looking for…\n\n## Role Summary\n- Briefly explain what the person will own.\n\n## Key Responsibilities\n- List the main day-to-day work.\n\n## Must-Have Requirements\n- Highlight essential experience and skills.",
+      "moreCharactersNeeded": "{count} more characters needed",
+      "validHint": "Looks valid. Add specifics to improve candidate quality.",
+      "enterTitleFirst": "Please enter a job title in step 1 first.",
+      "generationFailed": "Generation failed. Please try again.",
+      "networkError": "Network error. Please try again.",
+      "strongListingsTitle": "What strong listings include",
+      "strongListings": {
+        "summary": "Start with one short summary sentence that explains the role and team.",
+        "bullets": "Use bullets for responsibilities and must-have skills so candidates can scan quickly.",
+        "impact": "Mention impact, tools, and growth opportunities to make the role feel concrete."
+      },
+      "aiDraftSections": "AI draft sections",
+      "aiDraftApplied": "Full text has already been applied to the editor. Review before posting.",
+      "generatedLabels": {
+        "responsibilities": "Responsibilities",
+        "requirements": "Requirements",
+        "niceToHave": "Nice to Have"
+      },
+      "sections": {
+        "roleSummary": {
+          "label": "Role summary",
+          "anchor": "## Role Summary",
+          "content": "## Role Summary\n- Explain what this role owns and why it matters."
+        },
+        "keyResponsibilities": {
+          "label": "Key responsibilities",
+          "anchor": "## Key Responsibilities",
+          "content": "## Key Responsibilities\n- Lead or support the main workstreams for this role."
+        },
+        "mustHave": {
+          "label": "Must-have requirements",
+          "anchor": "## Must-Have Requirements",
+          "content": "## Must-Have Requirements\n- List the skills, tools, and experience candidates must already have."
+        },
+        "benefits": {
+          "label": "Benefits",
+          "anchor": "## Benefits",
+          "content": "## Benefits\n- Mention standout perks, flexibility, or growth opportunities."
+        }
+      },
+      "listFields": {
+        "optional": "optional",
+        "responsibilities": {
+          "label": "Key Responsibilities",
+          "hint": "List what this person will do day-to-day.",
+          "placeholder": "e.g. Develop and maintain cross-platform mobile apps"
+        },
+        "qualifications": {
+          "label": "Qualifications",
+          "hint": "Academic or professional qualifications for this role.",
+          "placeholder": "e.g. Bachelor's degree in Computer Science"
+        },
+        "benefits": {
+          "label": "Benefits",
+          "hint": "Perks and benefits that make this role attractive.",
+          "placeholder": "e.g. Flexible working hours"
+        },
+        "learningOutcomes": {
+          "label": "What You Will Learn",
+          "hint": "Skills or experience candidates will gain in this role.",
+          "placeholder": "e.g. Real-world software testing workflows"
+        }
+      }
+    },
+    "matchPreview": {
+      "title": "Candidate Preview",
+      "description": "Live talent-pool snapshot for the criteria you have entered.",
+      "locationFilter": "Location: {country}",
+      "remoteGlobal": "Remote / Global",
+      "skillsFilter": "{count} skills",
+      "experienceFilter": "{min}-{max} yrs",
+      "talentPoolSize": "Talent pool size",
+      "matchingCandidates": "matching candidates",
+      "commonSkills": "Most common skills in this pool",
+      "estimate": "Live estimate based on current candidate profiles."
+    },
+    "step3": {
+      "title": "Requirements",
+      "description": "Define the must-have skills and experience so the right people self-select early.",
+      "status": {
+        "wellDefined": "Well defined",
+        "goodStart": "Good start",
+        "addCore": "Add core skills"
+      },
+      "skillsAdded": "{count} skills added",
+      "experienceBadge": "{min}-{max} yrs",
+      "requiredSkills": "Required Skills",
+      "requiredSkillsHint": "Add the skills candidates truly need on day one. Use 5 to 8 strong signals where possible.",
+      "requiredSkillsPlaceholder": "Type a skill and press Enter (e.g. React, Python)",
+      "suggestedFromAi": "Suggested from AI",
+      "clickToAdd": "Click to add",
+      "maxSkillsReached": "Maximum 30 skills reached.",
+      "preferredSkills": "Preferred Skills",
+      "optional": "optional",
+      "preferredSkillsHint": "Nice-to-have skills that give candidates an edge but are not mandatory.",
+      "preferredSkillsPlaceholder": "e.g. Kotlin, CI/CD, App Store publishing",
+      "experienceRange": "Experience Range",
+      "experienceHint": "Set a realistic range so strong candidates are not filtered out unnecessarily.",
+      "minimumYears": "Minimum (years)",
+      "maximumYears": "Maximum (years)",
+      "candidateFitRange": "Candidate fit range"
+    },
+    "step4": {
+      "title": "Salary & Settings",
+      "description": "Keep compensation and hiring details clear. Transparent listings usually convert better.",
+      "salaryVisible": "Salary visible",
+      "salaryHidden": "Salary hidden",
+      "addSalaryRange": "Add salary range",
+      "openings": "{count} openings",
+      "openingsHidden": "Openings hidden",
+      "salaryPackage": "Salary Package",
+      "shareSalary": "Share salary publicly",
+      "shareSalaryHint": "Visible salary ranges usually improve trust and application quality.",
+      "currency": "Currency",
+      "payPeriod": "Pay Period",
+      "salaryPeriods": {
+        "monthly": "Monthly",
+        "yearly": "Yearly",
+        "lpa": "LPA (India)"
+      },
+      "minimum": "Minimum",
+      "maximum": "Maximum",
+      "salaryError": "Maximum salary must be greater than or equal to minimum",
+      "shownToCandidates": "will be shown to candidates",
+      "quickPresets": "Quick presets",
+      "negotiable": "Negotiable",
+      "negotiableHint": "Show a salary negotiable label on the listing.",
+      "undisclosedHint": "Candidates will see this role as compensation not disclosed.",
+      "salaryDisclosureWarning": "Salary disclosure is required by law for job postings in {location}. Hiding salary may violate local pay transparency regulations.",
+      "hiringPlan": "Hiring Plan",
+      "trackOpenings": "Track number of openings",
+      "trackOpeningsHint": "Turn this on if you want applicants to see how many people you plan to hire.",
+      "showOpeningsHint": "Show how many people you plan to hire for this role.",
+      "noOpeningsHint": "No opening count will be shown on the job posting.",
+      "advancedHint": "Keep hiring details simple here. Screening thresholds, visibility rules, and limits stay in Advanced Settings below."
+    },
+    "step5": {
+      "title": "Screening Questions",
+      "description": "Add custom questions that applicants must answer when applying. This helps you filter candidates early.",
+      "questionCount": "{count}/{max} questions",
+      "questionLabel": "Q{number}",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "removeQuestion": "Remove question",
+      "questionText": "Question Text",
+      "questionRequired": "Question text is required",
+      "questionPlaceholder": "e.g. Do you have a valid driving license?",
+      "answerType": "Answer Type",
+      "placeholder": "Placeholder",
+      "placeholderText": "Optional placeholder text",
+      "required": "Required",
+      "options": "Options",
+      "optionPlaceholder": "Option {number}",
+      "removeOption": "Remove option",
+      "addOption": "Add Option",
+      "addQuestion": "Add Screening Question",
+      "emptyTitle": "No screening questions yet",
+      "emptyDescription": "Add questions to help filter applicants. This step is optional — you can skip it if not needed.",
+      "types": {
+        "text": "Short Text",
+        "textarea": "Long Text",
+        "select": "Dropdown",
+        "checkbox": "Checkbox",
+        "radio": "Multiple Choice",
+        "number": "Number",
+        "date": "Date"
+      }
+    },
+    "advanced": {
+      "title": "Advanced Settings",
+      "autoMatch": "Auto match",
+      "manualReview": "Manual review",
+      "inviteOnly": "Invite only",
+      "screeningAt": "Screening at {score}%",
+      "expires": "Expires {date}",
+      "maxApplicantsBadge": "Max {count} applicants",
+      "tagsBadge": "{count} tags",
+      "agentBadge": "Agent: {name}",
+      "assigned": "assigned",
+      "workflowTemplateBadge": "Workflow template",
+      "weightTemplateBadge": "Weight template",
+      "applicationMode": "Application Mode",
+      "applicationModes": {
+        "manual": "Manual Review — You review every applicant",
+        "auto": "Auto Match — AI shortlists top candidates"
+      },
+      "visibility": "Visibility",
+      "visibilityOptions": {
+        "public": "Public — Visible on job board",
+        "private": "Private — Only via direct link",
+        "invite_only": "Invite Only — Specific candidates"
+      },
+      "visibilityBadges": {
+        "public": "Public",
+        "private": "Private",
+        "invite_only": "Invite only"
+      },
+      "autoScreening": "Auto Screening",
+      "autoScreeningHint": "Automatically reject candidates below the match threshold",
+      "minMatchScore": "Minimum Match Score",
+      "minMatchScoreAria": "Minimum match score threshold",
+      "thresholdAll": "0% (All)",
+      "thresholdModerate": "50% (Moderate)",
+      "thresholdExact": "100% (Exact)",
+      "expiryDate": "Expiry Date",
+      "expiryHint": "Job auto-closes on this date (optional)",
+      "maxApplicants": "Max Applicants",
+      "noLimit": "No limit",
+      "maxApplicantsHint": "Job auto-closes when this many applications are received (optional)",
+      "assignAgent": "Assign Agent",
+      "noAgent": "No agent — self-manage",
+      "assignAgentHint": "Assigned agent will manage candidates for this job. Job will require approval before going live.",
+      "configurationTemplates": "Hiring Configuration Templates",
+      "configurationTemplatesHint": "Optionally apply a workflow pipeline and matching weight preset to this job",
+      "tags": "Tags",
+      "tagPlaceholder": "Add tag (press Enter)",
+      "tagsHint": "Tags improve search visibility. Max 20."
+    },
+    "templates": {
+      "workflowTemplate": "Workflow Template",
+      "workflowHint": "Apply a hiring pipeline preset to this job",
+      "defaultWorkflow": "Default (employer workflow)",
+      "matchingWeightTemplate": "Matching Weight Template",
+      "matchingHint": "Apply a candidate scoring preset to this job",
+      "defaultWeights": "Default (employer weights)",
+      "system": "System",
+      "custom": "Custom",
+      "workflowSummary": "{count} stages · AI screen: {status} · Reject below: {score}%",
+      "on": "on",
+      "off": "off",
+      "weightSummary": "Skills: {skills}% · Exp: {experience}% · Edu: {education}%"
+    },
+    "salaryBenchmark": {
+      "title": "Market Salary Benchmark",
+      "below": "Below Market",
+      "competitive": "Competitive",
+      "above": "Above Market",
+      "checkMarket": "Check Market",
+      "refresh": "Refresh",
+      "loading": "Checking market rates for “{role}”...",
+      "error": "Could not load market data.",
+      "p25": "P25 {amount}",
+      "median": "Median {amount}",
+      "p75": "P75 {amount}",
+      "midpointTitle": "Your midpoint: {amount}",
+      "midpoint": "Your midpoint",
+      "belowInsight": "is below market — consider raising to attract more applicants",
+      "competitiveInsight": "is within the competitive range",
+      "aboveInsight": "is above market — excellent for attracting top talent",
+      "adjust": "Adjust to market rate → {min} – {max}"
+    }
   },
   "employerCommon": {
     "workspace": "Employer workspace",
@@ -2725,7 +5276,26 @@
   "employerScorecards": {
     "title": "Interview Scorecards",
     "totalScorecards": "{count} total scorecards",
+    "loadingFeedbackTrends": "Loading feedback trends…",
     "feedbackTrends": "Feedback trends will appear here once you have scorecards.",
+    "totalEvaluations": "Total Evaluations",
+    "avgScore": "Avg Score (5)",
+    "positiveRecs": "Positive Recs",
+    "negativeRecs": "Negative Recs",
+    "averageScoresByDimension": "Average Scores by Dimension",
+    "recommendationDistribution": "Recommendation Distribution",
+    "monthlyScoreTrends": "Monthly Score Trends",
+    "scoreDistribution": "Score Distribution",
+    "month": "Month",
+    "count": "Count",
+    "overall": "Overall",
+    "dimensions": {
+      "technical": "Technical Skills",
+      "communication": "Communication",
+      "cultureFit": "Culture Fit",
+      "problemSolving": "Problem Solving",
+      "motivation": "Motivation"
+    },
     "noScorecards": "No scorecards yet",
     "noScorecardsDesc": "Scorecards will appear here once you evaluate candidates",
     "strongYes": "Strong Yes",
@@ -3577,7 +6147,8 @@
     "noInterviews": "No interviews scheduled",
     "noActivity": "No activity yet",
     "noNotes": "No notes yet",
-    "applied": "Applied {date}",
+    "applied": "Applied",
+    "appliedOn": "Applied {date}",
     "viaSource": "via {source}",
     "matchBreakdown": "Match Breakdown"
   },

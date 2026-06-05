@@ -7,6 +7,7 @@ import type { UserRole } from "@/types/user";
 import { SECURITY_HEADERS, getSecurityHeaders } from "@/lib/security/headers";
 import { setCsrfCookie, validateCsrf, isCsrfExempt } from "@/lib/security/csrf";
 import { TENANT_COOKIE_NAME, verifyTenantCookie } from "@/lib/security/tenantCookie";
+import { isPublicRoute } from "@/lib/routing/publicRoutes";
 
 const locales = ["en", "ar"] as const;
 const defaultLocale = "en";
@@ -27,28 +28,6 @@ const AUTH_ROUTES = [
   "/onboarding",
 ];
 
-/** Public routes that don't require auth */
-const PUBLIC_ROUTES = [
-  "/login",
-  "/register",
-  "/employer-register",
-  "/forgot-password",
-  "/reset-password",
-  "/verify-email",
-  "/maintenance",
-  "/api/auth",
-  "/api/contact",
-  "/api/public",
-  "/api/jobs",
-  "/about",
-  "/contact",
-  "/blog",
-  "/faq",
-  "/privacy",
-  "/cookies",
-  "/jobs",
-];
-
 /** Role → allowed dashboard path prefixes */
 const ROLE_ROUTES: Record<string, string[]> = {
   admin: ["/admin", "/super-agent", "/agent", "/employer", "/job-seeker"],
@@ -57,14 +36,6 @@ const ROLE_ROUTES: Record<string, string[]> = {
   employer: ["/employer"],
   job_seeker: ["/job-seeker"],
 };
-
-/** Check if path is a public route (locale-stripped) */
-function isPublicRoute(pathname: string): boolean {
-  const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
-  // Root path "/" is public (landing page)
-  if (stripped === "/") return true;
-  return PUBLIC_ROUTES.some((r) => stripped.startsWith(r));
-}
 
 /** Check if user role is allowed to access the dashboard section */
 function isRoleAllowed(role: UserRole, pathname: string): boolean {

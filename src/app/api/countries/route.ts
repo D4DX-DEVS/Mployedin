@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
-  const limit = Math.min(50, parseInt(searchParams.get("limit") ?? "20"));
+  const parsedLimit = parseInt(searchParams.get("limit") ?? "20", 10);
+  const limit = Math.min(50, Number.isNaN(parsedLimit) ? 20 : Math.max(1, parsedLimit));
 
   const query = q
     ? { name: { $regex: escapeRegex(q), $options: "i" }, isActive: true }

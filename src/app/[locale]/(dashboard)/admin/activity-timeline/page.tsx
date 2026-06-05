@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -61,46 +62,28 @@ const ACTION_COLORS: Record<string, string> = {
   export: "bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400",
 };
 
-const RESOURCE_OPTIONS = [
-  { value: "all", label: "All resources" },
-  { value: "users", label: "Users" },
-  { value: "jobs", label: "Jobs" },
-  { value: "applications", label: "Applications" },
-  { value: "interviews", label: "Interviews" },
-  { value: "employers", label: "Employers" },
-  { value: "commissions", label: "Commissions" },
-  { value: "gdpr", label: "GDPR" },
-];
-
-const ROLE_OPTIONS = [
-  { value: "all", label: "All roles" },
-  { value: "admin", label: "Admin" },
-  { value: "super_agent", label: "Super Agent" },
-  { value: "agent", label: "Agent" },
-  { value: "employer", label: "Employer" },
-  { value: "job_seeker", label: "Job Seeker" },
-];
+type TimelineTranslator = (key: string, values?: Record<string, string | number>) => string;
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function formatTimeAgo(dateStr: string): string {
+function formatTimeAgo(dateStr: string, locale: string, t: TimelineTranslator): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("time.justNow");
+  if (mins < 60) return t("time.minutesAgo", { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("time.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  if (days < 7) return t("time.daysAgo", { count: days });
+  return new Date(dateStr).toLocaleDateString(locale);
 }
 
-function groupByDate(events: TimelineEvent[]): Record<string, TimelineEvent[]> {
+function groupByDate(events: TimelineEvent[], locale: string): Record<string, TimelineEvent[]> {
   const groups: Record<string, TimelineEvent[]> = {};
   for (const e of events) {
-    const date = new Date(e.createdAt).toLocaleDateString("en-US", {
+    const date = new Date(e.createdAt).toLocaleDateString(locale, {
       weekday: "long", year: "numeric", month: "long", day: "numeric",
     });
     if (!groups[date]) groups[date] = [];
@@ -109,17 +92,169 @@ function groupByDate(events: TimelineEvent[]): Record<string, TimelineEvent[]> {
   return groups;
 }
 
+function getRoleLabel(role: string | undefined, t: TimelineTranslator): string {
+  switch (role) {
+    case "admin":
+      return t("roles.admin");
+    case "super_agent":
+      return t("roles.superAgent");
+    case "agent":
+      return t("roles.agent");
+    case "employer":
+      return t("roles.employer");
+    case "job_seeker":
+      return t("roles.jobSeeker");
+    default:
+      return t("roles.unknown");
+  }
+}
+
+function getActionLabel(action: string | undefined, t: TimelineTranslator): string {
+  const normalizedAction = action?.toLowerCase() ?? "";
+  const actionTokens = normalizedAction.split(/[._-]/).filter(Boolean);
+  const hasActionToken = (...tokens: string[]) => actionTokens.some((token) => tokens.includes(token));
+  switch (normalizedAction) {
+    case "create":
+    case "created":
+      return t("actions.create");
+    case "read":
+      return t("actions.read");
+    case "update":
+    case "updated":
+      return t("actions.update");
+    case "delete":
+    case "deleted":
+      return t("actions.delete");
+    case "login":
+    case "login.success":
+      return t("actions.login");
+    case "logout":
+      return t("actions.logout");
+    case "approve":
+      return t("actions.approve");
+    case "reject":
+      return t("actions.reject");
+    case "export":
+      return t("actions.export");
+    case "import":
+      return t("actions.import");
+    case "send":
+      return t("actions.send");
+    case "register":
+      return t("actions.register");
+    case "settings":
+      return t("actions.settings");
+    default:
+      if (hasActionToken("create", "created")) return t("actions.create");
+      if (hasActionToken("update", "updated")) return t("actions.update");
+      if (hasActionToken("delete", "deleted")) return t("actions.delete");
+      if (hasActionToken("reject", "rejected", "revoke", "revoked", "denied")) return t("actions.reject");
+      if (hasActionToken("approve", "approved", "verify", "verified")) return t("actions.approve");
+      if (hasActionToken("export", "exported")) return t("actions.export");
+      if (hasActionToken("import", "imported")) return t("actions.import");
+      if (hasActionToken("send", "sent")) return t("actions.send");
+      if (hasActionToken("register", "registered")) return t("actions.register");
+      if (hasActionToken("login")) return t("actions.login");
+      if (hasActionToken("logout")) return t("actions.logout");
+      return t("actions.other");
+  }
+}
+
+function getResourceLabel(resource: string | undefined, t: TimelineTranslator): string {
+  const normalizedResource = resource?.toLowerCase() ?? "";
+  switch (normalizedResource) {
+    case "auth":
+      return t("resources.auth");
+    case "users":
+      return t("resources.users");
+    case "agent":
+    case "agents":
+      return t("resources.agents");
+    case "jobs":
+      return t("resources.jobs");
+    case "applications":
+      return t("resources.applications");
+    case "interviews":
+      return t("resources.interviews");
+    case "employers":
+      return t("resources.employers");
+    case "commissions":
+      return t("resources.commissions");
+    case "gdpr":
+      return t("resources.gdpr");
+    case "offers":
+      return t("resources.offers");
+    case "placements":
+      return t("resources.placements");
+    case "leads":
+      return t("resources.leads");
+    case "reports":
+      return t("resources.reports");
+    case "subscriptions":
+      return t("resources.subscriptions");
+    case "targets":
+      return t("resources.targets");
+    case "ai":
+      return t("resources.ai");
+    case "hiring_decisions":
+      return t("resources.hiringDecisions");
+    case "notification_preferences":
+      return t("resources.notificationPreferences");
+    case "careerpage":
+    case "career_page":
+      return t("resources.careerPages");
+    case "apikey":
+    case "api_key":
+      return t("resources.apiKeys");
+    case "webhook":
+    case "webhooks":
+      return t("resources.webhooks");
+    case "talentpool":
+    case "talent_pool":
+      return t("resources.talentPools");
+    case "surveytemplate":
+    case "survey_template":
+      return t("resources.surveys");
+    case "workflow_templates":
+      return t("resources.workflowTemplates");
+    default:
+      return t("resources.unknown");
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 export default function AdminActivityTimelinePage() {
+  const t = useTranslations("adminActivityTimeline");
+  const locale = useLocale();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [resourceFilter, setResourceFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const pagination = usePagination(20);
+
+  const resourceOptions = [
+    { value: "all", label: t("resources.all") },
+    { value: "users", label: t("resources.users") },
+    { value: "jobs", label: t("resources.jobs") },
+    { value: "applications", label: t("resources.applications") },
+    { value: "interviews", label: t("resources.interviews") },
+    { value: "employers", label: t("resources.employers") },
+    { value: "commissions", label: t("resources.commissions") },
+    { value: "gdpr", label: t("resources.gdpr") },
+  ];
+
+  const roleOptions = [
+    { value: "all", label: t("roles.all") },
+    { value: "admin", label: t("roles.admin") },
+    { value: "super_agent", label: t("roles.superAgent") },
+    { value: "agent", label: t("roles.agent") },
+    { value: "employer", label: t("roles.employer") },
+    { value: "job_seeker", label: t("roles.jobSeeker") },
+  ];
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
@@ -136,15 +271,15 @@ export default function AdminActivityTimelinePage() {
         pagination.updateTotal(data.total ?? 0);
       }
     } catch {
-      toast.error("Failed to load activity timeline");
+      toast.error(t("errors.fetchFailed"));
     } finally {
       setLoading(false);
     }
-  }, [search, resourceFilter, roleFilter, pagination.page, pagination.limit]);
+  }, [search, resourceFilter, roleFilter, pagination.page, pagination.limit, t]);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
-  const grouped = groupByDate(events);
+  const grouped = groupByDate(events, locale);
 
   return (
     <div className="space-y-6">
@@ -155,39 +290,39 @@ export default function AdminActivityTimelinePage() {
             <Activity className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Activity Timeline</h1>
-            <p className="text-sm text-muted-foreground">Visual timeline of all user actions across the platform</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("description")}</p>
           </div>
         </div>
       </section>
 
       {/* Filters */}
       <TableToolbar
-        title="Activity Timeline"
-        description="Visual timeline of all user actions across the platform"
+        title={t("title")}
+        description={t("description")}
         search={search}
         onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
-        searchPlaceholder="Search by user name or email..."
+        searchPlaceholder={t("searchPlaceholder")}
         hasActiveFilters={resourceFilter !== "all" || roleFilter !== "all"}
         actions={
           <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setResourceFilter("all"); setRoleFilter("all"); pagination.resetPage(); }}>
-            <RotateCcw className="mr-1 h-4 w-4" /> Reset
+            <RotateCcw className="mr-1 h-4 w-4" /> {t("reset")}
           </Button>
         }
         filterContent={
           <div className="flex flex-wrap items-center gap-3">
             <SearchableSelect
-              options={RESOURCE_OPTIONS}
+              options={resourceOptions}
               value={resourceFilter}
               onValueChange={(v) => { setResourceFilter(v); pagination.resetPage(); }}
-              placeholder="Resource"
+              placeholder={t("resourcePlaceholder")}
               className="h-11 w-44 rounded-xl border-border bg-card"
             />
             <SearchableSelect
-              options={ROLE_OPTIONS}
+              options={roleOptions}
               value={roleFilter}
               onValueChange={(v) => { setRoleFilter(v); pagination.resetPage(); }}
-              placeholder="Role"
+              placeholder={t("rolePlaceholder")}
               className="h-11 w-44 rounded-xl border-border bg-card"
             />
           </div>
@@ -203,8 +338,8 @@ export default function AdminActivityTimelinePage() {
         ) : events.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Clock className="h-12 w-12 text-muted-foreground/40" />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">No activity found</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">Try adjusting your filters</p>
+            <p className="mt-4 text-sm font-medium text-muted-foreground">{t("empty.title")}</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">{t("empty.description")}</p>
           </div>
         ) : (
           <div className="space-y-8">
@@ -228,14 +363,14 @@ export default function AdminActivityTimelinePage() {
                             <User className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="text-sm font-medium text-foreground">{event.userName}</span>
                             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
-                              {event.userRole?.replace("_", " ")}
+                              {getRoleLabel(event.userRole, t)}
                             </span>
                           </div>
-                          <span className="text-xs text-muted-foreground">{formatTimeAgo(event.createdAt)}</span>
+                          <span className="text-xs text-muted-foreground">{formatTimeAgo(event.createdAt, locale, t)}</span>
                         </div>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          <span className="font-medium capitalize text-foreground">{event.action}</span>{" "}
-                          <span className="capitalize">{event.resource?.replace(/_/g, " ")}</span>
+                          <span className="font-medium text-foreground">{getActionLabel(event.action, t)}</span>{" "}
+                          <span>{getResourceLabel(event.resource, t)}</span>
                           {event.resourceId && <span className="text-xs"> (#{event.resourceId.slice(-6)})</span>}
                         </p>
                       </div>

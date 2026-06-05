@@ -566,7 +566,7 @@ export default function UnifiedCandidatePage() {
                     <div className="text-left">
                       <p className="font-medium text-sm">{app.job?.title ?? "Unknown Job"}</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-2">
-                        <Calendar className="h-3 w-3" /> {t("applied", { date: formatDate(app.appliedAt) })}
+                        <Calendar className="h-3 w-3" /> {t("appliedOn", { date: formatDate(app.appliedAt) })}
                         {app.source && <span>· {t("viaSource", { source: app.source.replace("_", " ") })}</span>}
                       </p>
                     </div>

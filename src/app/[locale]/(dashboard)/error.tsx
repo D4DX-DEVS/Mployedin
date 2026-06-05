@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { reportError } from "@/lib/observability/report-error";
 
 /**
  * Dashboard-level error boundary (Next.js App Router convention).
@@ -14,7 +15,7 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[Dashboard Error]", error);
+    reportError(error, { source: "dashboard-boundary", digest: error.digest });
   }, [error]);
 
   return (

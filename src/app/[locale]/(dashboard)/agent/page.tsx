@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Agent from "@/models/Agent";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
+import { getTranslations } from "next-intl/server";
 import {
   ArrowRight,
   BarChart3,
@@ -21,6 +22,7 @@ import {
 export default async function AgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
   const { locale } = await params;
+  const t = await getTranslations("agentDashboard");
   if (!session?.user) redirect(`/${locale}/login`);
 
   await connectDB();
@@ -132,61 +134,61 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   }
 
   const kpis = [
-    { label: "Active Employers", value: employerCount },
-    { label: "Active Jobs", value: activeJobs },
-    { label: "Total Applications", value: totalApps },
-    { label: "Placements", value: (perf as Record<string, number>).placementsCompleted ?? 0 },
+    { label: t("kpis.activeEmployers"), value: employerCount },
+    { label: t("kpis.activeJobs"), value: activeJobs },
+    { label: t("kpis.totalApplications"), value: totalApps },
+    { label: t("kpis.placements"), value: (perf as Record<string, number>).placementsCompleted ?? 0 },
   ];
 
   const funnel = [
-    { label: "Leads Generated", value: (perf as Record<string, number>).leadsGenerated ?? 0 },
-    { label: "Employers Created", value: (perf as Record<string, number>).employersCreated ?? 0 },
-    { label: "Vacancies Posted", value: (perf as Record<string, number>).vacanciesPosted ?? 0 },
-    { label: "Interview Rate", value: `${interviewRate}%` },
-    { label: "Offer Rate", value: `${offerRate}%` },
-    { label: "Placements", value: (perf as Record<string, number>).placementsCompleted ?? 0 },
+    { label: t("funnel.leadsGenerated"), value: (perf as Record<string, number>).leadsGenerated ?? 0 },
+    { label: t("funnel.employersCreated"), value: (perf as Record<string, number>).employersCreated ?? 0 },
+    { label: t("funnel.vacanciesPosted"), value: (perf as Record<string, number>).vacanciesPosted ?? 0 },
+    { label: t("funnel.interviewRate"), value: `${interviewRate}%` },
+    { label: t("funnel.offerRate"), value: `${offerRate}%` },
+    { label: t("kpis.placements"), value: (perf as Record<string, number>).placementsCompleted ?? 0 },
   ];
 
   const actions = [
     {
-      label: "Add Employer Lead",
+      label: t("actions.addEmployerLead.label"),
       href: `/${locale}/agent/leads/new`,
-      note: "Capture new accounts and keep the pipeline moving.",
+      note: t("actions.addEmployerLead.note"),
       icon: Target,
       tone: "workspace-tone-amber",
     },
     {
-      label: "Post a Job",
+      label: t("actions.postJob.label"),
       href: `/${locale}/agent/jobs/new`,
-      note: "Launch a role for one of your assigned employers.",
+      note: t("actions.postJob.note"),
       icon: BriefcaseBusiness,
       tone: "workspace-tone-sky",
     },
     {
-      label: "My Jobs",
+      label: t("actions.myJobs.label"),
       href: `/${locale}/agent/jobs`,
-      note: "Review active, draft, and closed postings in one view.",
+      note: t("actions.myJobs.note"),
       icon: BarChart3,
       tone: "workspace-tone-indigo",
     },
     {
-      label: "Candidates",
+      label: t("actions.candidates.label"),
       href: `/${locale}/agent/candidates`,
-      note: "Move shortlists, interviews, and offers forward.",
+      note: t("actions.candidates.note"),
       icon: Users,
       tone: "workspace-tone-emerald",
     },
     {
-      label: "View Job Seekers",
+      label: t("actions.jobSeekers.label"),
       href: `/${locale}/agent/job-seekers`,
-      note: "Search profiles, match talent, and follow up faster.",
+      note: t("actions.jobSeekers.note"),
       icon: UserRoundSearch,
       tone: "workspace-tone-violet",
     },
     {
-      label: "Performance Report",
+      label: t("actions.performanceReport.label"),
       href: `/${locale}/agent/reports`,
-      note: "Track conversion quality, response rates, and wins.",
+      note: t("actions.performanceReport.note"),
       icon: CircleDollarSign,
       tone: "workspace-tone-rose",
     },
@@ -194,30 +196,30 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
 
   const heroStats = [
     {
-      label: "Active employers",
+      label: t("heroStats.activeEmployers.label"),
       value: employerCount,
-      description: "Accounts currently assigned to you.",
+      description: t("heroStats.activeEmployers.description"),
       icon: Building2,
       tone: "workspace-tone-sky",
     },
     {
-      label: "Active jobs",
+      label: t("heroStats.activeJobs.label"),
       value: activeJobs,
-      description: "Live roles you can progress today.",
+      description: t("heroStats.activeJobs.description"),
       icon: BriefcaseBusiness,
       tone: "workspace-tone-emerald",
     },
     {
-      label: "Applications",
+      label: t("heroStats.applications.label"),
       value: totalApps,
-      description: "Total candidate demand across managed roles.",
+      description: t("heroStats.applications.description"),
       icon: Users,
       tone: "workspace-tone-indigo",
     },
     {
-      label: "Placements",
+      label: t("heroStats.placements.label"),
       value: (perf as Record<string, number>).placementsCompleted ?? 0,
-      description: "Confirmed hires completed from your book.",
+      description: t("heroStats.placements.description"),
       icon: CalendarCheck2,
       tone: "workspace-tone-amber",
     },
@@ -238,6 +240,21 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     }
   }
 
+  function getJobStatusLabel(status: string): string {
+    switch (status) {
+      case "active":
+        return t("statuses.active");
+      case "draft":
+        return t("statuses.draft");
+      case "closed":
+        return t("statuses.closed");
+      case "expired":
+        return t("statuses.expired");
+      default:
+        return t("statuses.unknown");
+    }
+  }
+
   return (
     <div className="page-container agent-legacy-surface space-y-6">
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
@@ -245,21 +262,21 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Agent workspace
+              {t("hero.eyebrow")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Agent Dashboard
+              {t("hero.title")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Stay on top of assigned employers, active roles, and candidate momentum from the same modern workspace now used across hiring.
+              {t("hero.description")}
             </p>
           </div>
 
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Portfolio</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{employerCount} active accounts</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolio.eyebrow")}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{t("portfolio.activeAccounts", { count: employerCount })}</p>
             <p className="text-xs text-muted-foreground">
-              {activeJobs} live roles, {totalApps} applications, and {kpis[3]?.value ?? 0} completed placements in your current book.
+              {t("portfolio.summary", { jobs: activeJobs, applications: totalApps, placements: kpis[3]?.value ?? 0 })}
             </p>
           </div>
         </div>
@@ -290,11 +307,11 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Conversion funnel</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Track which parts of the desk need attention</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.funnel.eyebrow")}</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.funnel.title")}</h2>
             </div>
             <div className="workspace-subtle-surface rounded-2xl px-3 py-2 text-right text-primary">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">Offer rate</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">{t("funnel.offerRate")}</p>
               <p className="mt-1 text-lg font-semibold">{offerRate}%</p>
             </div>
           </div>
@@ -311,9 +328,9 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
 
         <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Quick actions</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Jump into the work most agents do every day</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Each shortcut keeps the underlying route and permissions unchanged.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("sections.quickActions.description")}</p>
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -344,15 +361,15 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       <section className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Role performance</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">See where jobs are converting and where they stall</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Top managed roles ranked by demand, interview flow, and offer conversion.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.rolePerformance.eyebrow")}</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.rolePerformance.title")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("sections.rolePerformance.description")}</p>
           </div>
           <Link
             href={`/${locale}/agent/jobs`}
             className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/85"
           >
-            Review all jobs
+            {t("sections.rolePerformance.reviewAll")}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -362,13 +379,13 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className="pb-3 pr-4 font-semibold text-muted-foreground">Job</th>
-                  <th className="pb-3 pr-4 font-semibold text-muted-foreground">Status</th>
-                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">Applications</th>
-                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">Interviews</th>
-                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">Offers</th>
-                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">Interview rate</th>
-                  <th className="pb-3 text-right font-semibold text-muted-foreground">Offer rate</th>
+                  <th className="pb-3 pr-4 font-semibold text-muted-foreground">{t("table.job")}</th>
+                  <th className="pb-3 pr-4 font-semibold text-muted-foreground">{t("table.status")}</th>
+                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.applications")}</th>
+                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.interviews")}</th>
+                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.offers")}</th>
+                  <th className="pb-3 pr-4 text-right font-semibold text-muted-foreground">{t("table.interviewRate")}</th>
+                  <th className="pb-3 text-right font-semibold text-muted-foreground">{t("table.offerRate")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/80">
@@ -381,7 +398,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
                     </td>
                     <td className="py-4 pr-4">
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${getJobStatusClasses(row.status)}`}>
-                        {row.status.replace(/_/g, " ")}
+                        {getJobStatusLabel(row.status)}
                       </span>
                     </td>
                     <td className="py-4 pr-4 text-right font-medium tabular-nums text-foreground/80">{row.applications}</td>
@@ -396,8 +413,8 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
           </div>
         ) : (
           <div className="workspace-empty-state mt-5 rounded-2xl p-6 text-center">
-            <p className="text-sm font-medium text-foreground">No job performance data yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">Post a role or start receiving applications to unlock per-job conversion metrics here.</p>
+            <p className="text-sm font-medium text-foreground">{t("empty.title")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("empty.description")}</p>
           </div>
         )}
       </section>

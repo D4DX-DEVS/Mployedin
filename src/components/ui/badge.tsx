@@ -28,7 +28,7 @@ function Badge({ className, variant, dot, children, ...props }: BadgeProps) {
   return (
     <div className={cn(badgeVariants({ variant }), className)} {...props}>
       {dot && (
-        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+        <span className="me-1.5 h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       )}
       {children}
     </div>

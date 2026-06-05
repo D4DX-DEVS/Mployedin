@@ -4,13 +4,32 @@ import { useState, useEffect, useRef } from "react";
 import { useFormContext } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Wifi, Sparkles, UserCog } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
+import { getLocalizedCountryName } from "@/lib/i18n/locations";
 import { cn } from "@/lib/utils";
 import { JOB_CATEGORIES, COUNTRIES, EMPLOYMENT_TYPES, WORK_MODES, type JobFormValues } from "./jobFormSchema";
+
+const CATEGORY_TRANSLATION_KEYS: Record<(typeof JOB_CATEGORIES)[number], string> = {
+  Technology: "technology",
+  Healthcare: "healthcare",
+  Finance: "finance",
+  Construction: "construction",
+  Hospitality: "hospitality",
+  Education: "education",
+  Manufacturing: "manufacturing",
+  Logistics: "logistics",
+  "Oil & Gas": "oilGas",
+  Retail: "retail",
+  Marketing: "marketing",
+  Legal: "legal",
+  "Human Resources": "humanResources",
+  Other: "other",
+};
 
 interface Suggestions {
   titles: string[];
@@ -24,6 +43,8 @@ interface Step1BasicInfoProps {
 }
 
 export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
+  const t = useTranslations("employerJobForm.step1");
+  const locale = useLocale();
   const {
     register,
     setValue,
@@ -131,6 +152,17 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
     onSuggestionsLoaded?.(suggestions);
   }
 
+  function getCountryLabel(country: (typeof COUNTRIES)[number]) {
+    return getLocalizedCountryName(country, locale, {
+      remoteGlobalLabel: t("countries.remoteGlobal"),
+    });
+  }
+
+  function getTitleError() {
+    if (!errors.title) return null;
+    return title?.trim() ? t("validation.titleMin") : t("validation.titleRequired");
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -141,15 +173,15 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
     >
       <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">Basic Information</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
-            Start with the essentials and keep the role easy to scan.
+            {t("description")}
           </p>
         </div>
         <div className="rounded-xl border border-border/70 bg-background px-3 py-2 text-xs text-muted-foreground sm:max-w-xs">
           {suggestions
-            ? "Use a suggested title to prefill skills, salary, and experience."
-            : "Clear titles and location details usually improve candidate quality first."}
+            ? t("suggestionHint")
+            : t("defaultHint")}
         </div>
       </div>
 
@@ -157,13 +189,13 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
         {/* Job Title */}
         <div className="space-y-1.5">
           <Label htmlFor="title" className="text-sm font-medium">
-            Job Title <span className="text-destructive">*</span>
+            {t("jobTitle")} <span className="text-destructive">*</span>
           </Label>
           <div className="relative" ref={suggestionsRef}>
             <Input
               id="title"
               {...register("title")}
-              placeholder="e.g. Senior Software Engineer"
+              placeholder={t("jobTitlePlaceholder")}
               className={cn(errors.title && "border-destructive")}
               autoComplete="off"
               aria-autocomplete="list"
@@ -172,7 +204,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               onFocus={() => titleSuggestions.length > 0 && setShowSuggestions(true)}
             />
             {fetchingSuggestions && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="absolute end-3 top-1/2 -translate-y-1/2">
                 <Sparkles className="w-4 h-4 text-primary animate-pulse" />
               </div>
             )}
@@ -186,7 +218,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
                   transition={{ duration: 0.15 }}
                   id={suggestionsListId}
                   role="listbox"
-                  className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-border bg-background shadow-lg"
+                  className="absolute start-0 end-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-border bg-background shadow-lg"
                 >
                   {suggestions && (
                     <button
@@ -195,19 +227,19 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
                       className="flex w-full items-center gap-1.5 border-b border-border bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      Auto-fill skills, salary &amp; experience from AI
+                      {t("autoFill")}
                     </button>
                   )}
                   <ul>
-                    {titleSuggestions.map((t) => (
-                      <li key={t}>
+                    {titleSuggestions.map((suggestedTitle) => (
+                      <li key={suggestedTitle}>
                         <button
                           type="button"
-                          onClick={() => applyTitleSuggestion(t)}
+                          onClick={() => applyTitleSuggestion(suggestedTitle)}
                           role="option"
-                          className="w-full px-3 py-2.5 text-left text-sm transition-colors hover:bg-accent"
+                          className="w-full px-3 py-2.5 text-start text-sm transition-colors hover:bg-accent"
                         >
-                          {t}
+                          {suggestedTitle}
                         </button>
                       </li>
                     ))}
@@ -217,52 +249,55 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             </AnimatePresence>
           </div>
           <p className="text-xs text-muted-foreground">
-            Use the exact role candidates search for instead of internal team titles.
+            {t("jobTitleHint")}
           </p>
           {errors.title && (
-            <p className="mt-1 text-xs text-destructive">{errors.title.message}</p>
+            <p className="mt-1 text-xs text-destructive">{getTitleError()}</p>
           )}
         </div>
 
         {/* Category */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-medium">Category</Label>
+          <Label className="text-sm font-medium">{t("category")}</Label>
           <SearchableSelect
-            options={JOB_CATEGORIES.map((c) => ({ value: c, label: c }))}
+            options={JOB_CATEGORIES.map((categoryValue) => ({
+              value: categoryValue,
+              label: t(`categories.${CATEGORY_TRANSLATION_KEYS[categoryValue]}`),
+            }))}
             value={category ?? ""}
             onValueChange={(v) => setValue("category", v, { shouldValidate: true })}
-            placeholder="Select a job category"
+            placeholder={t("categoryPlaceholder")}
           />
           <p className="text-xs text-muted-foreground">
-            Pick the closest category so recommendations and benchmarks stay relevant.
+            {t("categoryHint")}
           </p>
         </div>
       </div>
 
       {/* Employment Type */}
       <div className="space-y-1.5">
-        <Label className="text-sm font-medium">Employment Type <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
+        <Label className="text-sm font-medium">{t("employmentType")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span></Label>
         <SearchableSelect
-          options={EMPLOYMENT_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+          options={EMPLOYMENT_TYPES.map((type) => ({ value: type.value, label: t(`employmentTypes.${type.value}`) }))}
           value={watch("employmentType") ?? ""}
           onValueChange={(v) => setValue("employmentType", v as JobFormValues["employmentType"], { shouldValidate: true })}
-          placeholder="Select employment type"
+          placeholder={t("employmentTypePlaceholder")}
         />
         <p className="text-xs text-muted-foreground">
-          Full-time, part-time, contract, etc. Helps candidates filter by work arrangement.
+          {t("employmentTypeHint")}
         </p>
       </div>
 
       {/* Duration (for internships/contracts) */}
       <div className="space-y-1.5">
-        <Label className="text-sm font-medium">Duration <span className="text-xs text-muted-foreground font-normal">(optional)</span></Label>
+        <Label className="text-sm font-medium">{t("duration")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span></Label>
         <Input
           {...register("duration")}
-          placeholder="e.g. 3-6 Months, 1 Year"
+          placeholder={t("durationPlaceholder")}
           maxLength={100}
         />
         <p className="text-xs text-muted-foreground">
-          Useful for internships or contract roles. Leave blank for permanent positions.
+          {t("durationHint")}
         </p>
       </div>
 
@@ -272,10 +307,10 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
           <div className="space-y-1">
             <Label className="flex items-center gap-1.5 text-sm font-medium">
               <MapPin className="w-3.5 h-3.5" />
-              Location
+              {t("location")}
             </Label>
             <p className="text-xs text-muted-foreground">
-              Add the base location and select the work arrangement.
+              {t("locationHint")}
             </p>
           </div>
 
@@ -297,7 +332,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
                       : "text-muted-foreground hover:bg-muted"
                   )}
                 >
-                  {mode.label}
+                  {t(`workModes.${mode.value}`)}
                 </button>
               ))}
             </div>
@@ -308,11 +343,11 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
           {/* Country */}
           <div className="space-y-1.5">
             <Label htmlFor="location-country" className="text-xs text-muted-foreground">
-              Country <span className="text-destructive">*</span>
+              {t("country")} <span className="text-destructive">*</span>
             </Label>
             <SearchableSelect
               id="location-country"
-              options={COUNTRIES.map((c) => ({ value: c, label: c }))}
+              options={COUNTRIES.map((country) => ({ value: country, label: getCountryLabel(country) }))}
               value={watch("location.country") ?? ""}
               onValueChange={(v) => {
                 setValue("location.country", v, { shouldValidate: true });
@@ -328,26 +363,26 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
                     // ignore auto-currency lookup failures
                   });
               }}
-              placeholder="Select country"
+              placeholder={t("countryPlaceholder")}
             />
             {errors.location?.country && (
-              <p className="text-xs text-destructive">{errors.location.country.message}</p>
+              <p className="text-xs text-destructive">{t("validation.countryRequired")}</p>
             )}
           </div>
 
           {/* City */}
           <div className="space-y-1.5">
             <Label htmlFor="location-city" className="text-xs text-muted-foreground">
-              City <span className="text-destructive">*</span>
+              {t("city")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="location-city"
               {...register("location.city")}
-              placeholder="e.g. Dubai, Pune, London"
+              placeholder={t("cityPlaceholder")}
               className={cn(errors.location?.city && "border-destructive")}
             />
             {errors.location?.city && (
-              <p className="text-xs text-destructive">{errors.location.city.message}</p>
+              <p className="text-xs text-destructive">{t("validation.cityRequired")}</p>
             )}
           </div>
         </div>
@@ -358,11 +393,11 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
         <div className="space-y-2 rounded-2xl border border-dashed border-border/80 bg-background/60 p-4">
           <Label className="flex items-center gap-1.5 text-sm font-medium">
             <UserCog className="w-3.5 h-3.5" />
-            Assign Agent <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+            {t("assignAgent")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span>
           </Label>
           <SearchableSelect
             options={[
-              { value: "__none__", label: "No agent - self-manage" },
+              { value: "__none__", label: t("noAgent") },
               ...agents.map((agent) => ({ value: agent._id, label: agent.name })),
             ]}
             value={watch("agentId") ?? "__none__"}
@@ -371,10 +406,10 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
                 shouldValidate: false,
               })
             }
-            placeholder={loadingAgents ? "Loading agents..." : "No agent - self-manage"}
+            placeholder={loadingAgents ? t("loadingAgents") : t("noAgent")}
           />
           <p className="text-xs text-muted-foreground">
-            Assigning an agent routes this job through the approval workflow before going live.
+            {t("assignAgentHint")}
           </p>
         </div>
       )}

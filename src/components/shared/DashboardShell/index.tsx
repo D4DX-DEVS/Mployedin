@@ -104,10 +104,10 @@ export function DashboardShell({
                 <Image
                   src="/logo.png"
                   alt="Mployedin"
-                  width={176}
-                  height={48}
-                  className="h-8 w-auto object-contain sm:h-12"
-                  style={{ width: "auto" }}
+                  width={100}
+                  height={34}
+                  className="h-auto w-[94px] object-contain sm:w-[141px]"
+                  style={{ height: "auto" }}
                   priority
                 />
               </Link>
@@ -125,7 +125,7 @@ export function DashboardShell({
               {mounted && (
                 <>
                   <ThemeToggle />
-                  {userRole === "employer" && <LanguageSwitcher />}
+                  <LanguageSwitcher />
                   <NotificationBell locale={locale} />
                   <UserProfileDropdown
                     userName={userName ?? "User"}

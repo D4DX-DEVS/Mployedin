@@ -51,8 +51,8 @@ export default function CommTemplatesPage() {
   const deleteMutation = useDeleteCommTemplate();
 
   useEffect(() => {
-    document.title = "Communication Templates · MPLOYEDIN";
-  }, []);
+    document.title = t("documentTitle");
+  }, [t]);
 
   async function handleCreateTemplate(e: React.FormEvent) {
     e.preventDefault();

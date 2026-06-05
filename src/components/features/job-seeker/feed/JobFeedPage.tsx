@@ -8,11 +8,13 @@ import {
 } from "@tanstack/react-query";
 import { useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight, ArrowUp } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
 import Link from "next/link";
 import { toast } from "sonner";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -31,12 +33,6 @@ interface JobPage {
   totalPoolPages: number;
   totalJobs: number;
 }
-
-const SORT_LABELS: Record<SortMode, string> = {
-  match: "Best match",
-  latest: "Latest",
-  salary: "Salary",
-};
 
 const MAX_BULK = 5;
 
@@ -167,6 +163,7 @@ function CardSkeleton() {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function JobFeedPage({ locale }: { locale: string }) {
+  const t = useTranslations("jobFeed");
   const qc = useQueryClient();
   const searchParams = useSearchParams();
   const employerIdParam = searchParams.get("employerId")?.trim() ?? "";
@@ -243,19 +240,24 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   // ── Subscription gate ────────────────────────────────────────────────────────
   const { allowed: applyAllowed } = useFeatureGate("applicationsSubmitted");
+  const sortLabels: Record<SortMode, string> = {
+    match: t("sort.bestMatch"),
+    latest: t("sort.latest"),
+    salary: t("sort.salary"),
+  };
 
   // ── Mutations ───────────────────────────────────────────────────────────────
 
   const applyMutation = useMutation({
     mutationFn: (jobId: string) =>
-      fetch(`/api/jobs/${jobId}/apply`, { method: "POST" }).then((r) => {
+      csrfFetch(`/api/jobs/${jobId}/apply`, { method: "POST" }).then((r) => {
         if (!r.ok)
-          return r.json().then((d: { error?: string }) => Promise.reject(d.error ?? "Failed"));
+          return r.json().then((d: { error?: string }) => Promise.reject(d.error ?? t("errors.failed")));
         return r.json();
       }),
     onMutate: (jobId) => setAppliedIds((s) => new Set([...s, jobId])),
     onSuccess: () => {
-      toast.success("Application submitted!");
+      toast.success(t("toast.applicationSubmitted"));
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
     onError: (err: unknown, jobId) => {
@@ -264,13 +266,13 @@ export function JobFeedPage({ locale }: { locale: string }) {
         n.delete(jobId);
         return n;
       });
-      toast.error(typeof err === "string" ? err : "Failed to apply");
+      toast.error(typeof err === "string" ? err : t("toast.applyFailed"));
     },
   });
 
   const saveMutation = useMutation({
     mutationFn: (jobId: string) =>
-      fetch(`/api/jobs/${jobId}/save`, { method: "POST" }).then((r) => r.json()),
+      csrfFetch(`/api/jobs/${jobId}/save`, { method: "POST" }).then((r) => r.json()),
     onMutate: (jobId) => {
       setSavedIds((s) => {
         const n = new Set(s);
@@ -279,7 +281,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
       });
     },
     onSuccess: (data: { saved: boolean }, jobId) => {
-      toast.success(data.saved ? "Job saved" : "Job unsaved");
+      toast.success(data.saved ? t("toast.jobSaved") : t("toast.jobUnsaved"));
       data.saved
         ? setSavedIds((s) => new Set([...s, jobId]))
         : setSavedIds((s) => {
@@ -288,14 +290,14 @@ export function JobFeedPage({ locale }: { locale: string }) {
             return n;
           });
     },
-    onError: () => toast.error("Failed to update saved jobs"),
+    onError: () => toast.error(t("toast.savedUpdateFailed")),
   });
 
   const bulkApplyMutation = useMutation({
     mutationFn: async (jobIds: string[]) => {
       const results = await Promise.allSettled(
         jobIds.map((id) =>
-          fetch(`/api/jobs/${id}/apply`, { method: "POST" }).then((r) => {
+          csrfFetch(`/api/jobs/${id}/apply`, { method: "POST" }).then((r) => {
             if (!r.ok) throw new Error("fail");
             return r.json();
           }),
@@ -305,12 +307,12 @@ export function JobFeedPage({ locale }: { locale: string }) {
     },
     onSuccess: (results) => {
       const ok = results.filter((r) => r.status === "fulfilled").length;
-      if (ok > 0) toast.success(`Applied to ${ok} job${ok > 1 ? "s" : ""}!`);
+      if (ok > 0) toast.success(t("toast.bulkApplied", { count: ok }));
       setSelected(new Set());
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       qc.invalidateQueries({ queryKey: ["recommended-jobs"] });
     },
-    onError: () => toast.error("Bulk apply failed"),
+    onError: () => toast.error(t("toast.bulkApplyFailed")),
   });
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -322,7 +324,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
         n.delete(jobId);
       } else {
         if (n.size >= MAX_BULK) {
-          toast.error(`You can select up to ${MAX_BULK} jobs`);
+          toast.error(t("toast.maxBulk", { count: MAX_BULK }));
           return prev;
         }
         n.add(jobId);
@@ -335,7 +337,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
     if (selected.size === 0) return;
     const ids = [...selected].filter((id) => !appliedIds.has(id));
     if (ids.length === 0) {
-      toast.error("All selected jobs are already applied");
+      toast.error(t("toast.allAlreadyApplied"));
       return;
     }
     setAppliedIds((s) => new Set([...s, ...ids]));
@@ -366,14 +368,14 @@ export function JobFeedPage({ locale }: { locale: string }) {
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
-                AI Job Matching
+                {t("hero.badge")}
               </div>
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                  Browse AI-matched jobs faster.
+                  {t("hero.title")}
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
-                  AI scores every role against your profile. Switch to discovery mode and apply in bulk without leaving the dashboard.
+                  {t("hero.description")}
                 </p>
               </div>
             </div>
@@ -381,42 +383,42 @@ export function JobFeedPage({ locale }: { locale: string }) {
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Live matches
+                  {t("stats.liveMatches")}
                 </div>
                 <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                   {isSearchMode ? searchData?.total ?? 0 : totalJobs}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {isSearchMode ? "jobs returned for this search" : "jobs aligned to your profile"}
+                  {isSearchMode ? t("stats.searchReturned") : t("stats.profileAligned")}
                 </p>
               </div>
               <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Ready to apply
+                  {t("stats.readyToApply")}
                 </div>
                 <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                   {selected.size}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  saved in the current bulk-apply tray
+                  {t("stats.bulkTray")}
                 </p>
               </div>
               <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Filter signal
+                  {t("stats.filterSignal")}
                 </div>
                 <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
                   {activeFilterCount}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  active filter{activeFilterCount === 1 ? "" : "s"} shaping the list
+                  {t("stats.activeFilters", { count: activeFilterCount })}
                 </p>
               </div>
             </div>
 
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-[60%] text-muted-foreground" />
+                <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-[60%] text-muted-foreground" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -425,10 +427,9 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     setSearchPage(1);
                   }}
                   onKeyDown={(e) => e.key === "Escape" && setSearchQuery("")}
-                  placeholder="Search jobs by title, skills, or keyword..."
-                  aria-label="Search jobs"
-                  style={{ paddingLeft: "2.25rem" }}
-                  className="input-field h-12 w-full rounded-2xl border-border/70 bg-background/95 pr-12 text-sm shadow-none"
+                  placeholder={t("search.placeholder")}
+                  aria-label={t("search.ariaLabel")}
+                  className="input-field h-12 w-full rounded-2xl border-border/70 bg-background/95 pe-12 ps-9 text-sm shadow-none"
                 />
                 {searchQuery && (
                   <button
@@ -436,8 +437,8 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       setSearchQuery("");
                       setSearchPage(1);
                     }}
-                    className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label="Clear search"
+                    className="absolute end-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={t("search.clear")}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -449,7 +450,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   href={`/${locale}/job-seeker/preferences`}
                   className="inline-flex h-12 items-center justify-center rounded-2xl border border-border/70 bg-background/90 px-4 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary"
                 >
-                  Refine preferences
+                  {t("actions.refinePreferences")}
                 </Link>
               </div>
             </div>
@@ -459,10 +460,10 @@ export function JobFeedPage({ locale }: { locale: string }) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                  AI-powered search
+                  {t("aside.eyebrow")}
                 </div>
                 <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
-                  Keep the list relevant.
+                  {t("aside.title")}
                 </h2>
               </div>
               <div className="rounded-2xl bg-primary/[0.08] p-2 text-primary">
@@ -473,28 +474,28 @@ export function JobFeedPage({ locale }: { locale: string }) {
             <div className="mt-4 space-y-3">
               <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Best for
+                  {t("aside.bestFor")}
                 </div>
                 <p className="mt-1 text-sm font-medium text-foreground">
-                  Profile match for strong-fit roles, discovery for fresh openings.
+                  {t("aside.bestForText")}
                 </p>
               </div>
               <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Quick control
+                  {t("aside.quickControl")}
                 </div>
                 <p className="mt-1 text-sm font-medium text-foreground">
-                  Press Escape to clear the search box instantly.
+                  {t("aside.quickControlText")}
                 </p>
               </div>
               <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Focus mode
+                  {t("aside.focusMode")}
                 </div>
                 <p className="mt-1 text-sm font-medium text-foreground">
                   {activeFilterCount > 0
-                    ? `${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"} are tightening the feed right now.`
-                    : "Add work type, match score, or date filters for a tighter shortlist."}
+                    ? t("aside.activeFilters", { count: activeFilterCount })
+                    : t("aside.noFilters")}
                 </p>
               </div>
             </div>
@@ -515,19 +516,19 @@ export function JobFeedPage({ locale }: { locale: string }) {
           <div className="flex flex-col gap-3 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                AI Matching
+                {t("tabs.eyebrow")}
               </div>
               <TabsList className="mt-3 h-auto rounded-full border border-border/60 bg-muted/30 p-1">
                 <TabsTrigger value="profile" className="rounded-full px-4 py-2 text-xs sm:text-sm">
-                  AI Profile Match
+                  {t("tabs.profile")}
                   {total > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 rounded-full px-1.5 py-0 text-[10px]">
+                    <Badge variant="secondary" className="ms-1.5 rounded-full px-1.5 py-0 text-[10px]">
                       {total}
                     </Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="like" className="rounded-full px-4 py-2 text-xs sm:text-sm">
-                  You might like
+                  {t("tabs.like")}
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -536,7 +537,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
               href={`/${locale}/job-seeker/preferences`}
               className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
             >
-              Edit preferences
+              {t("actions.editPreferences")}
               <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
@@ -551,23 +552,23 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                      Search results
+                      {t("search.results")}
                     </div>
                     <span className="mt-1 block text-sm text-muted-foreground">
                       {searchLoading
-                        ? "Searching..."
+                        ? t("search.searching")
                         : searchData
                         ? debouncedSearch.trim().length > 0
-                          ? `${searchData.total} result${searchData.total !== 1 ? "s" : ""} for "${debouncedSearch}"`
-                          : `${searchData.total} active role${searchData.total !== 1 ? "s" : ""} from this employer`
+                          ? t("search.resultsFor", { count: searchData.total, query: debouncedSearch })
+                          : t("search.employerActiveRoles", { count: searchData.total })
                         : debouncedSearch.trim().length > 0
-                          ? `Results for "${debouncedSearch}"`
-                          : "Employer roles"}
+                          ? t("search.pendingResultsFor", { query: debouncedSearch })
+                          : t("search.employerRoles")}
                     </span>
                   </div>
                   {searchData && searchData.pages > 1 && (
                     <span className="text-xs text-muted-foreground">
-                      Page {searchPage} of {searchData.pages}
+                      {t("pagination.pageOf", { page: searchPage, pages: searchData.pages })}
                     </span>
                   )}
                 </div>
@@ -583,7 +584,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
               {searchError && !searchLoading && (
                 <div className="card-base rounded-[24px] py-10 text-center">
-                  <p className="text-sm text-muted-foreground">Search failed. Please try again.</p>
+                  <p className="text-sm text-muted-foreground">{t("errors.searchFailed")}</p>
                 </div>
               )}
 
@@ -592,9 +593,9 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                     <Search className="h-7 w-7 text-primary/60" />
                   </div>
-                  <p className="mb-1 text-sm font-semibold text-foreground">No jobs found</p>
+                  <p className="mb-1 text-sm font-semibold text-foreground">{t("empty.noJobs")}</p>
                   <p className="mx-auto max-w-xs text-xs text-muted-foreground">
-                    Try different keywords or check your spelling
+                    {t("empty.noJobsHint")}
                   </p>
                 </div>
               )}
@@ -612,10 +613,10 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       isApplied={appliedIds.has(job._id)}
                       onToggleSelect={() => toggleSelect(job._id)}
                       onSave={() => saveMutation.mutate(job._id)}
-                      onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error("Application limit reached — upgrade your plan")}
+                      onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("toast.applicationLimitReached"))}
                       onHide={() => {
                         setHidden((s) => new Set([...s, job._id]));
-                        toast.success("Job hidden");
+                        toast.success(t("toast.jobHidden"));
                       }}
                       locale={locale}
                       showMatchScore={false}
@@ -630,7 +631,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary/80 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronLeft className="h-3.5 w-3.5" />
-                    Previous
+                    {t("pagination.previous")}
                   </button>
                   <span className="text-xs text-muted-foreground">
                     {searchPage} / {searchData.pages}
@@ -640,7 +641,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     disabled={searchPage >= searchData.pages}
                     className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary/80 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Next
+                    {t("pagination.next")}
                     <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -652,7 +653,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2.5">
                     <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Sort
+                      {t("sort.label")}
                     </span>
                     <div className="flex gap-1">
                       {(["match", "latest", "salary"] as SortMode[]).map((mode) => (
@@ -665,13 +666,15 @@ export function JobFeedPage({ locale }: { locale: string }) {
                               : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                           }`}
                         >
-                          {SORT_LABELS[mode]}
+                          {sortLabels[mode]}
                         </button>
                       ))}
                     </div>
                   </div>
                   <span className="text-xs text-muted-foreground hidden sm:inline">
-                    {visibleJobs.length} of {totalJobs} jobs{totalPoolPages > 1 ? ` · Page ${poolPage}/${totalPoolPages}` : ""}
+                    {totalPoolPages > 1
+                      ? t("sort.countWithPage", { visible: visibleJobs.length, total: totalJobs, page: poolPage, pages: totalPoolPages })
+                      : t("sort.count", { visible: visibleJobs.length, total: totalJobs })}
                   </span>
                 </div>
               </div>
@@ -687,7 +690,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
               {error && !isLoading && (
                 <div className="card-base rounded-[24px] py-10 text-center">
                   <p className="text-sm text-muted-foreground">
-                    Failed to load recommendations. Please try again.
+                    {t("errors.recommendationsFailed")}
                   </p>
                 </div>
               )}
@@ -697,16 +700,16 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                     <Search className="h-7 w-7 text-primary/60" />
                   </div>
-                  <p className="mb-1 text-sm font-semibold text-foreground">No matches right now</p>
+                  <p className="mb-1 text-sm font-semibold text-foreground">{t("empty.noMatches")}</p>
                   <p className="mx-auto mb-4 max-w-xs text-xs text-muted-foreground">
-                    Try adjusting your filters or expanding your preferences to see more jobs
+                    {t("empty.noMatchesHint")}
                   </p>
                   <Link
                     href={`/${locale}/job-seeker/preferences`}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
                   >
                     <Sparkles className="h-3.5 w-3.5" />
-                    Set Preferences
+                    {t("actions.setPreferences")}
                   </Link>
                 </div>
               )}
@@ -720,10 +723,10 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   isApplied={appliedIds.has(job._id)}
                   onToggleSelect={() => toggleSelect(job._id)}
                   onSave={() => saveMutation.mutate(job._id)}
-                  onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error("Application limit reached — upgrade your plan")}
+                  onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("toast.applicationLimitReached"))}
                   onHide={() => {
                     setHidden((s) => new Set([...s, job._id]));
-                    toast.success("Job hidden");
+                    toast.success(t("toast.jobHidden"));
                   }}
                   locale={locale}
                 />
@@ -743,7 +746,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   {hasMorePoolPages ? (
                     <div className="space-y-4">
                       <p className="text-center text-sm text-muted-foreground">
-                        Showing page {poolPage} of {totalPoolPages} ({visibleJobs.length} of {totalJobs} jobs)
+                        {t("pagination.showingPage", { page: poolPage, pages: totalPoolPages, visible: visibleJobs.length, total: totalJobs })}
                       </p>
                       <div className="flex items-center justify-center gap-3">
                         {poolPage > 1 && (
@@ -755,7 +758,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                             className="inline-flex items-center gap-1.5 rounded-xl border border-border/70 bg-secondary/80 px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                           >
                             <ChevronLeft className="h-4 w-4" />
-                            Previous page
+                            {t("pagination.previousPage")}
                           </button>
                         )}
                         <button
@@ -765,7 +768,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                           }}
                           className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
                         >
-                          Next page
+                          {t("pagination.nextPage")}
                           <ChevronRight className="h-4 w-4" />
                         </button>
                       </div>
@@ -773,7 +776,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   ) : (
                     <div className="space-y-3">
                       <p className="text-center text-sm text-muted-foreground">
-                        You&apos;ve seen all {totalJobs} recommendations
+                        {t("pagination.seenAll", { count: totalJobs })}
                       </p>
                       {poolPage > 1 && (
                         <div className="flex justify-center">
@@ -785,7 +788,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                             className="inline-flex items-center gap-1.5 rounded-xl border border-border/70 bg-secondary/80 px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                           >
                             <ArrowUp className="h-4 w-4" />
-                            Back to page 1
+                            {t("pagination.backToFirst")}
                           </button>
                         </div>
                       )}

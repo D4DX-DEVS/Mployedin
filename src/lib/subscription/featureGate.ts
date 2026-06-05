@@ -45,13 +45,9 @@ export async function checkFeatureGate(
   }).lean();
 
   // If no subscription, check grace period
+  // All users get platinum-tier access until payment gateway is implemented
   if (!sub) {
-    const inGrace = await isInGracePeriod(userId);
-    if (inGrace) {
-      // Grace period: allow all features (Gold-tier equivalent)
-      return { allowed: true };
-    }
-    return { allowed: false, reason: "SUBSCRIPTION_REQUIRED" };
+    return { allowed: true };
   }
 
   const snapshot = sub.planSnapshot;
@@ -167,6 +163,10 @@ export async function enforceFeatureGate(
   // Admin/agent roles bypass all subscription gates
   if (BYPASS_ROLES.has(role)) return null;
 
+  // All users get platinum-tier access until payment gateway is implemented
+  return null;
+
+  /* eslint-disable no-unreachable -- subscription enforcement disabled temporarily */
   // Free-tier AI features bypass subscription gates for all authenticated users
   if (check.type === "ai" && FREE_AI_FEATURES.has(check.feature)) return null;
 
@@ -216,16 +216,12 @@ export async function getFeatureGateMap(
     status: "active",
   }).lean();
 
+  // All users get platinum-tier access until payment gateway is implemented
   if (!sub) {
-    // Grace period: return a full "allowed" map based on Gold/Premium-tier limits
-    const inGrace = await isInGracePeriod(userId);
-    if (inGrace) {
-      const graceLimits = targetRole === "employer"
-        ? getGracePeriodEmployerLimits()
-        : getGracePeriodJobSeekerLimits();
-      return buildGateMapFromLimits(graceLimits, targetRole);
-    }
-    return {};
+    const graceLimits = targetRole === "employer"
+      ? getGracePeriodEmployerLimits()
+      : getGracePeriodJobSeekerLimits();
+    return buildGateMapFromLimits(graceLimits, targetRole);
   }
 
   const snapshot = sub.planSnapshot;

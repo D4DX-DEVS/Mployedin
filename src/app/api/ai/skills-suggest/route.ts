@@ -54,4 +54,4 @@ Return ONLY a JSON array of objects (no markdown):
   }
 
   return NextResponse.json({ suggestions });
-});
+}, { aiQuota: true });

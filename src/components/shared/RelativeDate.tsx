@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale } from "next-intl";
+
 /**
  * Renders a relative date string using the **viewer's browser timezone**.
  * Must be a client component so it runs in the user's locale, not on the UTC server.
@@ -14,9 +16,11 @@ interface RelativeDateProps {
   prefix?: string;
 }
 
-function timeAgo(date: string | Date): string {
+function timeAgo(date: string | Date, locale: string): string {
   const now = new Date();
   const posted = new Date(date);
+  const language = locale === "ar" ? "ar" : "en";
+  const formatter = new Intl.RelativeTimeFormat(language, { numeric: "auto" });
 
   // Compare calendar dates at local midnight — timezone-aware
   const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -29,19 +33,18 @@ function timeAgo(date: string | Date): string {
     (nowMidnight.getTime() - postedMidnight.getTime()) / 86_400_000
   );
 
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
+  if (days < 7) return formatter.format(-days, "day");
   if (days < 30) {
     const weeks = Math.floor(days / 7);
-    return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+    return formatter.format(-weeks, "week");
   }
   const months = Math.floor(days / 30);
-  return `${months} month${months > 1 ? "s" : ""} ago`;
+  return formatter.format(-months, "month");
 }
 
 export default function RelativeDate({ date, prefix }: RelativeDateProps) {
-  const label = timeAgo(date);
+  const locale = useLocale();
+  const label = timeAgo(date, locale);
   return (
     <span suppressHydrationWarning>
       {prefix ? `${prefix} ${label}` : label}

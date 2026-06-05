@@ -71,14 +71,14 @@ export function TableToolbar({
 
   const searchControl = onSearchChange ? (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+      <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
       <Input
         aria-label={resolvedSearchPlaceholder}
         placeholder={resolvedSearchPlaceholder}
         value={search ?? ""}
         onChange={(e) => onSearchChange(e.target.value)}
         className={cn(
-          "h-9 w-full pl-9",
+          "h-9 w-full ps-9",
           usesCompactAdminLayout ? "rounded-lg border-border bg-secondary/65 shadow-none sm:w-[220px] lg:w-[260px]" : "sm:w-[200px] lg:w-[280px]"
         )}
       />
@@ -149,7 +149,7 @@ export function TableToolbar({
                   <SlidersHorizontal className="h-3.5 w-3.5" />
                   {resolvedFilterLabel}
                   {hasActiveFilters && (
-                    <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
+                    <span className="ms-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
                       !
                     </span>
                   )}

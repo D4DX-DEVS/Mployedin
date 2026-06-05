@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
+import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
@@ -7,10 +8,12 @@ import User, { type UserRole } from "@/models/User";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import { validateUploadedFile } from "@/lib/security/file-validation";
+import { scanForMalware } from "@/lib/security/malware-scan";
 import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { generateMultimodal, generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { uploadBuffer } from "@/lib/storage/spaces";
 import mammoth from "mammoth";
+import { createHash } from "crypto";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -44,6 +47,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const __aiQuota = await enforceDailyAiQuota(session.user.id!, role);
+  if (__aiQuota) return __aiQuota;
+
   try {
     const formData = await req.formData();
     const file = formData.get("cv") as File | null;
@@ -57,6 +63,30 @@ export async function POST(req: NextRequest) {
     const validationError = validateUploadedFile(file, "cv", bytes);
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 });
+    }
+
+    // Malware scan before the file is sent to the AI model (fail-closed).
+    const scan = await scanForMalware(bytes);
+    if (!scan.clean) {
+      return NextResponse.json({ error: scan.reason }, { status: 422 });
+    }
+
+    // Duplicate detection: skip the (costly) AI extraction if this exact CV
+    // file was already parsed for this user. Content hash of the raw bytes.
+    const contentHash = createHash("sha256").update(Buffer.from(bytes)).digest("hex");
+    await connectDB();
+    const existing = await JobSeeker.findOne(
+      { userId: session.user.id },
+      { "cv.contentHash": 1, "cv.originalUrl": 1, profileCompleteness: 1 }
+    ).lean();
+    if (existing?.cv?.contentHash === contentHash) {
+      return NextResponse.json({
+        success: true,
+        duplicate: true,
+        message: "This CV was already processed — extraction skipped.",
+        profileCompleteness: existing.profileCompleteness ?? 0,
+        cvUrl: existing.cv?.originalUrl ?? null,
+      });
     }
 
     const mimeType = file.type;
@@ -238,12 +268,16 @@ Rules:
       await User.findByIdAndUpdate(userId, { name: extracted.fullName }, { runValidators: true });
     }
 
+    // Persist the content hash so an identical re-upload is detected as duplicate.
+    (updateData as Record<string, unknown>)["cv.contentHash"] = contentHash;
+
     // Upload CV file to Spaces and store real URL
     try {
       const uploaded = await uploadBuffer(Buffer.from(bytes), {
         folder: "cvs",
         fileName: file.name,
         contentType: mimeType,
+        skipMalwareScan: true, // already scanned above
       });
       (updateData as Record<string, unknown>)["cv.originalUrl"] = uploaded.url;
       (updateData as Record<string, unknown>)["cv.parsedAt"] = new Date();

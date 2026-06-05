@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import TenantViewSession from "@/models/TenantViewSession";
 import { verifyTenantCookie, TENANT_COOKIE_NAME } from "@/lib/security/tenantCookie";
 import { logActivity } from "@/lib/audit/log";
+import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import type { CompanyRole } from "@/models/CompanyUser";
 
@@ -43,9 +44,12 @@ type RouteHandler = (
  */
 export function withAuth(
   handler: RouteHandler,
-  guard?: { resource: Resource; action: Action; skipTenantView?: boolean } | { skipTenantView: boolean }
+  guard?:
+    | { resource: Resource; action: Action; skipTenantView?: boolean; aiQuota?: boolean }
+    | { skipTenantView?: boolean; aiQuota?: boolean }
 ) {
   const skipTenantView = guard && "skipTenantView" in guard ? guard.skipTenantView : false;
+  const aiQuota = guard && "aiQuota" in guard ? guard.aiQuota === true : false;
   return async (
     req: NextRequest,
     context: { params: Promise<Record<string, string>> }
@@ -158,6 +162,10 @@ export function withAuth(
       };
 
       try {
+        if (aiQuota) {
+          const quota = await enforceDailyAiQuota(tenantCtx.userId, tenantCtx.role);
+          if (quota) return quota;
+        }
         const response = await handler(req, tenantCtx, resolvedParams);
 
         // ── Auto-audit: log all write actions performed on behalf of employer
@@ -222,6 +230,10 @@ export function withAuth(
     }
 
     try {
+      if (aiQuota) {
+        const quota = await enforceDailyAiQuota(userId, role);
+        if (quota) return quota;
+      }
       return await handler(req, { userId, role, locale, permissionMode, customPermissions, companyUserRole, companyId }, resolvedParams);
     } catch (err) {
       // validateBody() throws a NextResponse on validation failure — surface it directly

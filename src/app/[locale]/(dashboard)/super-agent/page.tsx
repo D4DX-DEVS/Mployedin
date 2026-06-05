@@ -11,6 +11,7 @@ import Application from "@/models/Application";
 import Placement from "@/models/Placement";
 import Lead from "@/models/Lead";
 import { formatCurrency } from "@/lib/currency";
+import { getTranslations } from "next-intl/server";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -29,6 +30,7 @@ import {
 export default async function SuperAgentDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const session = await auth();
   const { locale } = await params;
+  const t = await getTranslations("superAgentDashboard");
   if (!session?.user) redirect(`/${locale}/login`);
 
   await connectDB();
@@ -88,62 +90,62 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
 
   const kpis = [
     {
-      label: "Active Agents",
+      label: t("kpis.activeAgents.label"),
       value: String(activeAgents),
-      helper: "Your live team roster with current delivery ownership.",
+      helper: t("kpis.activeAgents.helper"),
       icon: Users2,
       iconClassName: "border border-emerald-200 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-800/70 dark:bg-emerald-950/70 dark:text-emerald-200",
     },
     {
-      label: "Total Employers",
+      label: t("kpis.totalEmployers.label"),
       value: String(totalEmployers),
-      helper: "Employer accounts under your agents' management.",
+      helper: t("kpis.totalEmployers.helper"),
       icon: Building2,
       iconClassName: "border border-sky-200 bg-sky-100 text-sky-700 shadow-sm dark:border-sky-800/70 dark:bg-sky-950/70 dark:text-sky-200",
     },
     {
-      label: "Total Placements",
+      label: t("kpis.totalPlacements.label"),
       value: String(totalPlacements),
-      helper: "Confirmed hires and closed outcomes flowing through your team.",
+      helper: t("kpis.totalPlacements.helper"),
       icon: ShieldCheck,
       iconClassName: "border border-indigo-200 bg-indigo-100 text-indigo-700 shadow-sm dark:border-indigo-800/70 dark:bg-indigo-950/70 dark:text-indigo-200",
     },
     {
-      label: "Commissions Earned",
+      label: t("kpis.commissionsEarned.label"),
       value: commissions.total > 0 ? formatCurrency(commissions.total, currencyCode) : formatCurrency(0, currencyCode),
-      helper: "Commission performance and payout visibility for your portfolio.",
+      helper: t("kpis.commissionsEarned.helper"),
       icon: DollarSign,
       iconClassName: "border border-amber-200 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-800/70 dark:bg-amber-950/70 dark:text-amber-200",
     },
   ];
 
   const secondaryKpis = [
-    { label: "Jobs Posted", value: totalJobs, sub: `${activeJobs} active` },
-    { label: "CVs Received", value: totalApplications, sub: "Total applications" },
-    { label: "Leads Generated", value: totalLeads, sub: "Across all agents" },
+    { label: t("secondary.jobsPosted"), value: totalJobs, sub: t("secondary.active", { count: activeJobs }) },
+    { label: t("secondary.cvsReceived"), value: totalApplications, sub: t("secondary.totalApplications") },
+    { label: t("secondary.leadsGenerated"), value: totalLeads, sub: t("secondary.acrossAgents") },
   ];
   const actions = [
     {
-      label: "Agent Performance",
-      description: "Review the team roster, throughput, and individual accountability.",
+      label: t("actions.agentPerformance.label"),
+      description: t("actions.agentPerformance.description"),
       href: `/${locale}/super-agent/agents`,
       icon: Users2,
     },
     {
-      label: "Lead Pipeline",
-      description: "Track follow-ups, active prospecting, and employer conversion flow.",
+      label: t("actions.leadPipeline.label"),
+      description: t("actions.leadPipeline.description"),
       href: `/${locale}/super-agent/leads`,
       icon: Target,
     },
     {
-      label: "Job Approvals",
-      description: "Clear pending approvals quickly without leaving the oversight workspace.",
+      label: t("actions.jobApprovals.label"),
+      description: t("actions.jobApprovals.description"),
       href: `/${locale}/super-agent/approvals`,
       icon: CheckCircle2,
     },
     {
-      label: "Commission Report",
-      description: "Stay on top of placement-driven earnings and regional payout status.",
+      label: t("actions.commissionReport.label"),
+      description: t("actions.commissionReport.description"),
       href: `/${locale}/super-agent/commissions`,
       icon: DollarSign,
     },
@@ -151,18 +153,18 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
 
   const focusAreas = [
     {
-      title: "Team coordination",
-      description: "Keep agents, employers, and pipeline follow-ups moving from one compact control surface.",
+      title: t("focus.teamCoordination.title"),
+      description: t("focus.teamCoordination.description"),
       icon: Users2,
     },
     {
-      title: "Approval control",
-      description: "Resolve blockers in job approvals before they slow regional hiring momentum.",
+      title: t("focus.approvalControl.title"),
+      description: t("focus.approvalControl.description"),
       icon: CheckCircle2,
     },
     {
-      title: "Regional growth",
-      description: "Balance market coverage, employer activity, and placements against commission outcomes.",
+      title: t("focus.regionalGrowth.title"),
+      description: t("focus.regionalGrowth.description"),
       icon: Building2,
     },
   ];
@@ -174,26 +176,26 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
           <div className="max-w-3xl">
             <div className="workspace-glass-panel inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Super agent workspace
+              {t("hero.eyebrow")}
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">
-              Super Agent Dashboard
+              {t("hero.title")}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Run regional oversight, guide your agent team, and clear hiring blockers from the same modern workspace used across the employer dashboard.
+              {t("hero.description")}
             </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 xl:w-[420px]">
             <div className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Control lanes</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">Team and oversight</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Manage field execution, approvals, placements, and commission visibility without bouncing between layouts.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("control.lanesEyebrow")}</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{t("control.teamOversight")}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("control.teamOversightDesc")}</p>
             </div>
             <div className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Operating rhythm</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">Built for daily review</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Open the day with agent performance, move into approvals, then finish with placements and commission checks.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("control.rhythmEyebrow")}</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{t("control.dailyReview")}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("control.dailyReviewDesc")}</p>
             </div>
           </div>
         </div>
@@ -232,9 +234,9 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Quick actions</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Jump into the work that moves your region forward</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Each route below stays unchanged. This refresh only upgrades the workspace surface and navigation flow.</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.quickActions.eyebrow")}</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.quickActions.title")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("sections.quickActions.description")}</p>
 
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {actions.map((action) => {
@@ -261,8 +263,8 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
         </div>
 
         <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Oversight focus</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Use the dashboard as a daily control point</h2>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("sections.oversight.eyebrow")}</p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("sections.oversight.title")}</h2>
           <div className="mt-5 space-y-3">
             {focusAreas.map((area) => {
               const Icon = area.icon;

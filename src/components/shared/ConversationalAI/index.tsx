@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useTranslations } from "next-intl";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 interface Message {
   role: "user" | "assistant";
@@ -346,7 +347,7 @@ export function ConversationalAI({
 
   const deleteThread = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await fetch(`/api/ai/chat-history?threadId=${id}`, { method: "DELETE" });
+    await csrfFetch(`/api/ai/chat-history?threadId=${id}`, { method: "DELETE" });
     setThreads((prev) => prev.filter((t) => t._id !== id));
     if (threadId === id) newConversation();
   };
@@ -398,7 +399,7 @@ export function ConversationalAI({
 
     try {
       // Save user message immediately (before AI stream) to prevent data loss
-      const saveUserRes = await fetch("/api/ai/chat-history", {
+      const saveUserRes = await csrfFetch("/api/ai/chat-history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -449,7 +450,7 @@ export function ConversationalAI({
       // Persist assistant response to DB (user message already saved above)
       if (!accumulated.trim()) return;
 
-      await fetch("/api/ai/chat-history", {
+      await csrfFetch("/api/ai/chat-history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -6,6 +6,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, X, Upload, Phone, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 
@@ -121,6 +122,7 @@ interface FormMultiSelectProps {
 }
 
 export function FormMultiSelect({ label, error, hint, placeholder, options, value, onChange, required, maxSelections, searchable, groupLabel, popularOptions }: FormMultiSelectProps & { searchable?: boolean; groupLabel?: string; popularOptions?: FormSelectOption[] }) {
+  const t = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -176,7 +178,7 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
       {label && (
         <label className="block text-xs font-medium text-muted-foreground">
           {label} {required && <span className="text-destructive">*</span>}
-          {maxSelections && <span className="text-muted-foreground/60 font-normal"> (max {maxSelections})</span>}
+          {maxSelections && <span className="text-muted-foreground/60 font-normal"> ({t("maxSelections", { max: maxSelections })})</span>}
         </label>
       )}
       <div
@@ -186,7 +188,7 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
         }`}
       >
         {selectedLabels.length === 0 && value.length === 0 ? (
-          <span className="text-muted-foreground">{placeholder ?? "Select options…"}</span>
+          <span className="text-muted-foreground">{placeholder ?? t("selectOptions")}</span>
         ) : (
           value.map((v) => (
             <span key={v}
@@ -196,21 +198,21 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
             </span>
           ))
         )}
-        <ChevronDown className={`ml-auto h-4 w-4 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`ms-auto h-4 w-4 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </div>
       {open && (
         <div className="absolute z-[99] w-full top-full mt-1 bg-background border rounded-lg shadow-lg overflow-hidden">
           {searchable && (
             <div className="p-2 border-b">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search…"
-                  className="w-full h-8 pl-8 pr-3 text-sm rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  placeholder={t("searchEllipsis")}
+                  className="w-full h-8 ps-8 pe-3 text-sm rounded-md border bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
                 />
               </div>
             </div>
@@ -218,7 +220,7 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
           <div className="max-h-48 overflow-y-auto">
             {filteredPopular.length > 0 && (
               <>
-                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">Popular</div>
+                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">{t("popular")}</div>
                 {filteredPopular.map((o) => (
                   <div
                     key={`pop-${o.value}`}
@@ -231,11 +233,11 @@ export function FormMultiSelect({ label, error, hint, placeholder, options, valu
                     {value.includes(o.value) && <span className="text-primary text-xs">✓</span>}
                   </div>
                 ))}
-                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">{groupLabel ?? "All"}</div>
+                <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-muted/30">{groupLabel ?? t("all")}</div>
               </>
             )}
             {filtered.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-muted-foreground">No results</div>
+              <div className="px-3 py-2 text-sm text-muted-foreground">{t("noResults")}</div>
             ) : (
               filtered.map((o) => (
                 <div
@@ -315,6 +317,7 @@ interface FormFileDropProps {
 }
 
 export function FormFileDrop({ label, error, hint, accept, maxSizeMB = 10, value, onChange, required }: FormFileDropProps) {
+  const t = useTranslations("common");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = (e: React.DragEvent) => {
@@ -325,7 +328,7 @@ export function FormFileDrop({ label, error, hint, accept, maxSizeMB = 10, value
 
   const validateAndSet = (file: File) => {
     if (maxSizeMB && file.size > maxSizeMB * 1024 * 1024) {
-      toast.error(`File must be under ${maxSizeMB}MB`);
+      toast.error(t("fileUnderLimit", { size: maxSizeMB }));
       return;
     }
     onChange(file);
@@ -363,8 +366,8 @@ export function FormFileDrop({ label, error, hint, accept, maxSizeMB = 10, value
         ) : (
           <div className="text-sm text-muted-foreground">
             <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground/60" />
-            <p>Drop file here or <span className="text-primary">browse</span></p>
-            {accept && <p className="text-xs mt-0.5">{accept.replace(/\./g, "").toUpperCase()} up to {maxSizeMB}MB</p>}
+            <p>{t("dropFileHere")} <span className="text-primary">{t("browse")}</span></p>
+            {accept && <p className="text-xs mt-0.5">{t("fileTypesUpTo", { types: accept.replace(/\./g, "").toUpperCase(), size: maxSizeMB })}</p>}
           </div>
         )}
       </div>

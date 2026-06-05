@@ -55,6 +55,8 @@ export async function ensureIndexes() {
     { key: { verificationLevel: 1 } },
     { key: { industry: 1 } },
     { key: { country: 1 } },
+    { key: { paymentStatus: 1 } },
+    { key: { subscriptionType: 1 } },
   ]);
 
   // ── Agents ─────────────────────────────────────────────────────────────────
@@ -79,6 +81,9 @@ export async function ensureIndexes() {
     { key: { createdAt: -1 } },
     { key: { expiresAt: 1 } },
     { key: { "requirements.skills": 1 } },
+    { key: { deletedAt: 1 } },
+    // Hot path: list active (non-deleted) jobs, newest first
+    { key: { status: 1, deletedAt: 1, createdAt: -1 } },
     {
       key: { title: "text", description: "text", "requirements.skills": "text" },
       name: "jobs_text_search",
@@ -91,9 +96,14 @@ export async function ensureIndexes() {
     { key: { jobSeekerId: 1, jobId: 1 }, unique: true },
     { key: { jobId: 1 } },
     { key: { jobSeekerId: 1 } },
+    { key: { employerId: 1 } },
+    { key: { agentId: 1 } },
     { key: { status: 1 } },
     { key: { aiMatchScore: -1 } },
     { key: { appliedAt: -1 } },
+    // Pipeline views: applications for a job filtered by status, newest first
+    { key: { jobId: 1, status: 1, appliedAt: -1 } },
+    { key: { employerId: 1, status: 1, appliedAt: -1 } },
   ]);
 
   // ── Interviews ─────────────────────────────────────────────────────────────
@@ -101,8 +111,11 @@ export async function ensureIndexes() {
     { key: { applicationId: 1 } },
     { key: { jobSeekerId: 1 } },
     { key: { employerId: 1 } },
+    { key: { agentId: 1 } },
     { key: { scheduledAt: 1 } },
     { key: { status: 1 } },
+    // Upcoming interviews by status, soonest first
+    { key: { status: 1, scheduledAt: 1 } },
   ]);
 
   // ── Placements ─────────────────────────────────────────────────────────────
@@ -130,6 +143,9 @@ export async function ensureIndexes() {
     { key: { placementId: 1 } },
     { key: { status: 1 } },
     { key: { createdAt: -1 } },
+    // Agent/super-agent earnings breakdown by status
+    { key: { agentId: 1, status: 1 } },
+    { key: { superAgentId: 1, status: 1 } },
   ]);
 
   // ── Notifications ──────────────────────────────────────────────────────────
@@ -137,6 +153,7 @@ export async function ensureIndexes() {
     { key: { userId: 1, isRead: 1 } },
     { key: { createdAt: -1 } },
     { key: { userId: 1, createdAt: -1 } },
+    { key: { userId: 1, type: 1, createdAt: -1 } },
   ]);
 
   // ── AuditLogs ──────────────────────────────────────────────────────────────
@@ -217,12 +234,22 @@ export async function ensureIndexes() {
     { key: { userId: 1, createdAt: -1 } },
     { key: { subscriptionId: 1 } },
     { key: { status: 1 } },
+    { key: { employerId: 1 } },
+    { key: { agentId: 1 } },
+    { key: { superAgentId: 1 } },
+    { key: { dueDate: 1, status: 1 } },
   ]);
 
   // ── Subscription History ──────────────────────────────────────────────────
   await safeCreateIndexes(db, "subscriptionhistories", [
     { key: { userId: 1, createdAt: -1 } },
     { key: { subscriptionId: 1 } },
+  ]);
+
+  // ── AI Daily Usage (per-user daily quota counter) ──────────────────────────
+  await safeCreateIndexes(db, "aidailyusages", [
+    { key: { userId: 1, day: 1 }, unique: true },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
   ]);
 
   console.log("[DB] Indexes ensured ✅");

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 interface Question {
   question: string;
@@ -106,7 +107,7 @@ export function AIInterviewQuestionsPanel({
     setError("");
     setExpanded({});
     try {
-      const res = await fetch("/api/ai/interview-questions", {
+      const res = await csrfFetch("/api/ai/interview-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

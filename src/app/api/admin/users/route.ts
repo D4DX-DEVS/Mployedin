@@ -267,21 +267,40 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx) {
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   if (permanent) {
-    // Clean up role profile before deleting user
+    // Clean up dependents and role profile before deleting the user.
+    const {
+      cascadeDeleteEmployer,
+      cascadeDeleteJobSeeker,
+      cascadeDeleteAgentUser,
+    } = await import("@/lib/db/cascade");
+    let cascade: Record<string, number> = {};
+
     if (user.role === "agent") {
+      cascade = await cascadeDeleteAgentUser(user._id, "agent");
       await Agent.findOneAndDelete({ userId: user._id });
     } else if (user.role === "super_agent") {
+      cascade = await cascadeDeleteAgentUser(user._id, "super_agent");
       await SuperAgent.findOneAndDelete({ userId: user._id });
+    } else if (user.role === "employer") {
+      cascade = await cascadeDeleteEmployer(user._id);
+      const { Employer } = await import("@/models/Employer");
+      await Employer.deleteOne({ userId: user._id });
+    } else if (user.role === "job_seeker") {
+      cascade = await cascadeDeleteJobSeeker(user._id);
+      const { JobSeeker } = await import("@/models/JobSeeker");
+      await JobSeeker.deleteOne({ userId: user._id });
     }
+
     await user.deleteOne();
     await logActivity({
       ...actorFromCtx(ctx),
       action: "user.delete",
       resource: "users",
       resourceId: String(userId),
+      meta: { cascade },
       req,
     });
-    return NextResponse.json({ message: "User permanently deleted" });
+    return NextResponse.json({ message: "User permanently deleted", cascade });
   }
 
   user.isActive = false;

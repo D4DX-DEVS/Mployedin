@@ -16,6 +16,32 @@ import { sanitizeAIInput } from "@/lib/ai/sanitize";
 const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent"];
 const MIN_SIMILARITY = 0.35; // Minimum cosine similarity threshold
 const MAX_RESULTS = 50;
+// Hard cap on how many pre-embedded candidates are scanned per request, so a
+// growing collection can never load an unbounded number of vectors into memory.
+const SCAN_LIMIT = 5000;
+// Bound on-the-fly embedding generation per request. Candidates missing an
+// embedding are backfilled a few at a time instead of generating thousands of
+// synchronous Gemini calls inside a single search request.
+const MAX_BACKFILL_PER_REQUEST = 10;
+
+// Fields needed to build the embedding text for a candidate without one.
+const BACKFILL_FIELDS = {
+  fullName: 1, headline: 1, summary: 1, nationality: 1, currentLocation: 1,
+  skills: 1, experience: 1, education: 1, languages: 1, certifications: 1,
+  preferredJobType: 1, availabilityStatus: 1, preferredLocations: 1,
+  totalExperienceYears: 1, industry: 1, profileCompleteness: 1, status: 1,
+  userId: 1,
+} as const;
+
+// Fields returned for the paged result rows (hydrated after scoring).
+const RESULT_FIELDS = {
+  fullName: 1, headline: 1, summary: 1, nationality: 1, currentLocation: 1,
+  skills: 1, experience: 1, education: 1, languages: 1, certifications: 1,
+  preferredJobType: 1, availabilityStatus: 1, preferredLocations: 1,
+  totalExperienceYears: 1, profileCompleteness: 1, status: 1,
+  industry: 1, "cv.originalUrl": 1, createdAt: 1, userId: 1,
+  email: 1, phone: 1, badges: 1,
+} as const;
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   if (!ALLOWED_ROLES.includes(ctx.role)) {
@@ -43,56 +69,80 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
   }
 
-  // Fetch all job seekers with their data (cached embeddings or compute on-the-fly)
-  const jobSeekers = await JobSeeker.find({ status: { $ne: "deleted" } })
-    .populate("userId", "name email")
-    .select({
-      fullName: 1, headline: 1, summary: 1, nationality: 1, currentLocation: 1,
-      skills: 1, experience: 1, education: 1, languages: 1, certifications: 1,
-      preferredJobType: 1, availabilityStatus: 1, preferredLocations: 1,
-      totalExperienceYears: 1, profileCompleteness: 1, status: 1,
-      industry: 1, "cv.originalUrl": 1, createdAt: 1, userId: 1,
-      searchEmbedding: 1, email: 1, phone: 1, badges: 1,
-    })
+  // Phase 1 — light scan: pull only _id + searchEmbedding for candidates that
+  // already have an embedding. Each row is a vector instead of a full profile,
+  // and the count is capped, so memory usage stays bounded.
+  const preEmbedded = await JobSeeker.find({
+    status: { $ne: "deleted" },
+    "searchEmbedding.0": { $exists: true },
+  })
+    .select({ _id: 1, searchEmbedding: 1 })
+    .limit(SCAN_LIMIT)
     .lean();
 
-  // Compute similarity scores
-  const scoredResults: { doc: typeof jobSeekers[0]; score: number }[] = [];
+  const scored: { id: unknown; score: number }[] = [];
 
-  for (const js of jobSeekers) {
-    let embedding = (js as Record<string, unknown>).searchEmbedding as number[] | undefined;
-
-    if (!embedding || embedding.length === 0) {
-      // Generate and store embedding on-the-fly for candidates without one
-      try {
-        const profileText = buildProfileText(js as unknown as Record<string, unknown>);
-        embedding = await generateEmbedding(profileText);
-        // Store embedding for future use (fire-and-forget)
-        JobSeeker.updateOne(
-          { _id: js._id },
-          { $set: { searchEmbedding: embedding } }
-        ).exec().catch(() => { /* ignore */ });
-      } catch {
-        continue; // Skip if embedding generation fails
-      }
-    }
-
+  for (const js of preEmbedded) {
+    const embedding = (js as Record<string, unknown>).searchEmbedding as number[] | undefined;
+    if (!embedding || embedding.length === 0) continue;
     const score = cosineSimilarity(queryEmbedding, embedding);
     if (score >= MIN_SIMILARITY) {
-      scoredResults.push({ doc: js, score });
+      scored.push({ id: js._id, score });
+    }
+  }
+
+  // Phase 2 — bounded backfill: generate embeddings for a small batch of
+  // candidates that don't have one yet. This converges over repeated searches
+  // without ever firing an unbounded number of synchronous embedding calls.
+  const missing = await JobSeeker.find({
+    status: { $ne: "deleted" },
+    "searchEmbedding.0": { $exists: false },
+  })
+    .select(BACKFILL_FIELDS)
+    .limit(MAX_BACKFILL_PER_REQUEST)
+    .lean();
+
+  for (const js of missing) {
+    try {
+      const profileText = buildProfileText(js as unknown as Record<string, unknown>);
+      const embedding = await generateEmbedding(profileText);
+      // Persist for future searches (fire-and-forget).
+      JobSeeker.updateOne(
+        { _id: js._id },
+        { $set: { searchEmbedding: embedding } }
+      ).exec().catch(() => { /* ignore */ });
+
+      const score = cosineSimilarity(queryEmbedding, embedding);
+      if (score >= MIN_SIMILARITY) {
+        scored.push({ id: js._id, score });
+      }
+    } catch {
+      continue; // Skip if embedding generation fails
     }
   }
 
   // Sort by similarity score (highest first)
-  scoredResults.sort((a, b) => b.score - a.score);
+  scored.sort((a, b) => b.score - a.score);
 
-  const total = scoredResults.length;
-  const paged = scoredResults.slice((page - 1) * limit, page * limit);
+  const total = scored.length;
+  const pagedScored = scored.slice((page - 1) * limit, page * limit);
 
-  const items = paged.map(({ doc, score }) => ({
-    ...doc,
-    _relevanceScore: Math.round(score * 100), // 0-100%
-  }));
+  // Phase 3 — hydrate full fields only for the page being returned.
+  const pagedIds = pagedScored.map((s) => s.id);
+  const docs = await JobSeeker.find({ _id: { $in: pagedIds } })
+    .populate("userId", "name email")
+    .select(RESULT_FIELDS)
+    .lean();
+
+  const docMap = new Map(docs.map((d) => [String(d._id), d]));
+
+  const items = pagedScored
+    .map(({ id, score }) => {
+      const doc = docMap.get(String(id));
+      if (!doc) return null;
+      return { ...doc, _relevanceScore: Math.round(score * 100) }; // 0-100%
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
 
   return NextResponse.json({
     items,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useForm, FormProvider, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence } from "framer-motion";
@@ -126,6 +127,7 @@ function mergeJobFormValues(base: JobFormValues, incoming: Partial<JobFormValues
 
 export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardProps) {
   const router = useRouter();
+  const t = useTranslations("employerJobForm");
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
@@ -267,10 +269,10 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
         try {
           localStorage.removeItem(getDraftStorageKey());
         } catch { /* ignore */ }
-        toast.success("Job posted successfully!", {
-          description: "Share it as a poster on LinkedIn & social media.",
+        toast.success(t("postSuccess"), {
+          description: t("postSuccessDescription"),
           action: {
-            label: "Create Poster",
+            label: t("createPoster"),
             onClick: () => {
               // Navigate with poster query param to auto-open dialog
               router.push(`/${locale}/employer/jobs/${jobId}?poster=1`);
@@ -281,10 +283,10 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
         router.push(`/${locale}/employer/jobs/${jobId}`);
       } else {
         const err = (await res.json()) as { error?: string };
-        setSubmitError(err.error ?? "Failed to post job. Please try again.");
+        setSubmitError(err.error ?? t("postFailed"));
       }
     } catch {
-      setSubmitError("Network error. Please try again.");
+      setSubmitError(t("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -301,10 +303,10 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
         const data = (await res.json()) as { templates: JobTemplateData[] };
         setTemplates(data.templates);
       } else {
-        setTemplateLoadError("Could not load templates right now. Please try again.");
+        setTemplateLoadError(t("templateLoadError"));
       }
     } catch {
-      setTemplateLoadError("Could not load templates right now. Please try again.");
+      setTemplateLoadError(t("templateLoadError"));
     }
     finally { setLoadingTemplates(false); }
   }
@@ -338,9 +340,40 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
   const expMin = formValues.requirements?.experienceMin ?? 0;
   const expMax = formValues.requirements?.experienceMax ?? 10;
   const isLastStep = currentStep === JOB_FORM_STEPS.length;
+  const localizedSteps = JOB_FORM_STEPS.map((step) => ({
+    ...step,
+    label: t(`steps.${step.id}`),
+  }));
   const handleSuggestionsLoaded = useCallback((suggestions: Suggestions) => {
     setAiSuggestions(suggestions);
   }, []);
+
+  function renderCurrentStep() {
+    switch (currentStep) {
+      case 1:
+        return (
+          <Step1BasicInfo
+            key="step1"
+            onSuggestionsLoaded={handleSuggestionsLoaded}
+          />
+        );
+      case 2:
+        return <Step2JobDetails key="step2" />;
+      case 3:
+        return (
+          <Step3Requirements
+            key="step3"
+            suggestedSkills={aiSuggestions?.skills ?? []}
+          />
+        );
+      case 4:
+        return <Step4SalarySettings key="step4" />;
+      case 5:
+        return <Step5ScreeningQuestions key="step5" />;
+      default:
+        return null;
+    }
+  }
 
   const closeTemplateModal = useCallback(() => {
     setShowTemplateModal(false);
@@ -352,13 +385,13 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
     <div className="page-container gap-4 sm:gap-5">
       <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 p-4 shadow-sm">
         <PageHeader
-          title="Post a New Job"
-          description="Create a job posting to attract qualified candidates"
+          title={t("title")}
+          description={t("description")}
           className="pb-0"
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <span className="hidden rounded-full border border-border/70 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground md:inline-flex">
-                Auto-saves while you type
+                {t("autoSaves")}
               </span>
               <Button
                 ref={templateTriggerRef}
@@ -372,7 +405,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
                 }}
               >
                 <Copy className="w-4 h-4" />
-                Load Template
+                {t("loadTemplate")}
               </Button>
             </div>
           }
@@ -380,9 +413,10 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
 
         <div className="mt-3 rounded-xl border border-border/70 bg-background/85 p-2.5 shadow-sm sm:p-3">
           <StepIndicator
-            steps={JOB_FORM_STEPS}
+            steps={localizedSteps}
             currentStep={currentStep}
             completedSteps={completedSteps}
+            stepLabel={(step) => t("stepIndicator.step", { step })}
             onStepClick={async (step) => {
               if (step < currentStep) {
                 setCurrentStep(step);
@@ -408,19 +442,19 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/85 px-3 py-1 text-xs font-medium text-muted-foreground">
                   <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  Reuse proven job formats
+                  {t("templateEyebrow")}
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-semibold text-foreground">Select a Template</DialogTitle>
+                  <DialogTitle className="text-lg font-semibold text-foreground">{t("templateTitle")}</DialogTitle>
                   <DialogDescription className="mt-1 text-sm text-muted-foreground">
-                    Start from a previous hiring format, then adjust only what changed.
+                    {t("templateDescription")}
                   </DialogDescription>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 {!loadingTemplates && templates.length > 0 && (
                   <div className="rounded-2xl border border-border/70 bg-background/85 px-3 py-2 text-right">
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Available</p>
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{t("available")}</p>
                     <p className="text-lg font-semibold text-foreground">{templates.length}</p>
                   </div>
                 )}
@@ -430,7 +464,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
                     variant="ghost"
                     size="sm"
                     className="h-9 w-9 rounded-full p-0"
-                    aria-label="Close template modal"
+                    aria-label={t("closeTemplateModal")}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -460,7 +494,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
                   onClick={loadTemplates}
                   className="mt-3"
                 >
-                  Retry
+                  {t("retry")}
                 </Button>
               </div>
             ) : templates.length === 0 ? (
@@ -468,9 +502,9 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <FileText className="h-5 w-5" />
                 </div>
-                <p className="text-sm font-medium text-foreground">No templates saved yet</p>
+                <p className="text-sm font-medium text-foreground">{t("emptyTemplatesTitle")}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Create and save a few strong job posts first, then they will appear here.
+                  {t("emptyTemplatesDescription")}
                 </p>
               </div>
             ) : (
@@ -480,7 +514,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
                     key={tpl._id}
                     type="button"
                     onClick={() => applyTemplate(tpl)}
-                    className="group w-full rounded-2xl border border-border/70 bg-background p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.03] hover:shadow-sm"
+                    className="group w-full rounded-2xl border border-border/70 bg-background p-4 text-start transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.03] hover:shadow-sm"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-2">
@@ -496,18 +530,18 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
                           )}
                           {typeof tpl.vacancies === "number" && tpl.vacancies > 0 && (
                             <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground">
-                              {tpl.vacancies} openings
+                              {t("openings", { count: tpl.vacancies })}
                             </span>
                           )}
                           {tpl.applicationMode && (
                             <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground capitalize">
-                              {tpl.applicationMode} review
+                              {t(`applicationModes.${tpl.applicationMode}`)} {t("review")}
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="inline-flex items-center gap-1 text-xs font-medium text-primary opacity-70 transition-opacity group-hover:opacity-100">
-                        Use
+                        {t("useTemplate")}
                         <ChevronRight className="h-3.5 w-3.5" />
                       </div>
                     </div>
@@ -523,7 +557,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
                   variant="outline"
                   className="w-full sm:w-auto"
                 >
-                  Cancel
+                  {t("cancel")}
                 </Button>
               </DialogClose>
             </div>
@@ -537,22 +571,8 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
             {/* Main content */}
             <div className="min-w-0">
               <div className="rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5">
-                <AnimatePresence mode="wait">
-                  {currentStep === 1 && (
-                    <Step1BasicInfo
-                      key="step1"
-                      onSuggestionsLoaded={handleSuggestionsLoaded}
-                    />
-                  )}
-                  {currentStep === 2 && <Step2JobDetails key="step2" />}
-                  {currentStep === 3 && (
-                    <Step3Requirements
-                      key="step3"
-                      suggestedSkills={aiSuggestions?.skills ?? []}
-                    />
-                  )}
-                  {currentStep === 4 && <Step4SalarySettings key="step4" />}
-                  {currentStep === 5 && <Step5ScreeningQuestions key="step5" />}
+                <AnimatePresence mode="wait" initial={false}>
+                  {renderCurrentStep()}
                 </AnimatePresence>
               </div>
 

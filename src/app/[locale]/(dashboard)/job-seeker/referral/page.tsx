@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,9 @@ interface ReferralData {
 /* ------------------------------------------------------------------ */
 
 export default function JobSeekerReferralPage() {
+  const t = useTranslations("jobSeekerExtra.referral");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [data, setData] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,11 +50,11 @@ export default function JobSeekerReferralPage() {
         setData(await res.json());
       }
     } catch {
-      toast.error("Failed to load referral data");
+      toast.error(t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { fetchReferralData(); }, [fetchReferralData]);
 
@@ -58,9 +62,9 @@ export default function JobSeekerReferralPage() {
     if (!data?.referralLink) return;
     try {
       await navigator.clipboard.writeText(data.referralLink);
-      toast.success("Referral link copied!");
+      toast.success(t("copied"));
     } catch {
-      toast.error("Failed to copy");
+      toast.error(t("copyFailed"));
     }
   };
 
@@ -74,26 +78,25 @@ export default function JobSeekerReferralPage() {
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
             <Gift className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Referral Program</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Invite friends to join and earn rewards when they get hired
+              {t("description")}
             </p>
           </div>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: "Total Referrals", value: data?.totalReferrals ?? 0, icon: <Users className="h-5 w-5" /> },
-            { label: "Successful", value: data?.successfulReferrals ?? 0, icon: <CheckCircle2 className="h-5 w-5" /> },
-            { label: "Pending", value: data?.pendingReferrals ?? 0, icon: <TrendingUp className="h-5 w-5" /> },
-            { label: "Rewards Earned", value: `${data?.rewardsEarned ?? 0}`, icon: <Gift className="h-5 w-5" /> },
+            { label: t("total"), value: (data?.totalReferrals ?? 0).toLocaleString(numberLocale), icon: <Users className="h-5 w-5" /> },
+            { label: t("successful"), value: (data?.successfulReferrals ?? 0).toLocaleString(numberLocale), icon: <CheckCircle2 className="h-5 w-5" /> },
+            { label: t("pending"), value: (data?.pendingReferrals ?? 0).toLocaleString(numberLocale), icon: <TrendingUp className="h-5 w-5" /> },
+            { label: t("rewards"), value: (data?.rewardsEarned ?? 0).toLocaleString(numberLocale), icon: <Gift className="h-5 w-5" /> },
           ].map((m) => (
             <div key={m.label} className="workspace-glass-panel rounded-2xl p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{m.label}</p>
@@ -103,51 +106,49 @@ export default function JobSeekerReferralPage() {
         </div>
       </section>
 
-      {/* Referral Link */}
       <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Your Referral Link</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t("linkTitle")}</h2>
 
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Link2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Link2 className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               readOnly
               value={data?.referralLink ?? ""}
-              className="pl-9 font-mono text-sm"
+              className="ps-9 font-mono text-sm"
             />
           </div>
           <Button onClick={copyCode}>
-            <Copy className="mr-1 h-4 w-4" /> Copy
+            <Copy className="me-1 h-4 w-4" /> {t("copy")}
           </Button>
         </div>
 
         {data?.referralCode && (
           <p className="text-xs text-muted-foreground">
-            Referral code: <span className="font-mono font-semibold text-foreground">{data.referralCode}</span>
+            {t("code")} <span className="font-mono font-semibold text-foreground">{data.referralCode}</span>
           </p>
         )}
 
         {data?.referralLink && (
           <div>
-            <p className="mb-2 text-sm font-medium text-foreground">Share on social media</p>
+            <p className="mb-2 text-sm font-medium text-foreground">{t("share")}</p>
             <SocialShareButtons
               url={data.referralLink}
-              title="Join me on MPLOYEDIN — the smart job platform!"
-              description="Sign up using my referral link and find your dream job faster"
+              title={t("shareTitle")}
+              description={t("shareDescription")}
             />
           </div>
         )}
       </section>
 
-      {/* Referral History */}
       <section className="workspace-panel-surface rounded-[28px] p-5">
-        <h2 className="text-lg font-semibold text-foreground">Referral History</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t("history")}</h2>
 
         {(!data?.referrals || data.referrals.length === 0) ? (
           <div className="mt-6 flex flex-col items-center justify-center py-10 text-center">
             <Inbox className="h-10 w-10 text-muted-foreground/30" />
-            <p className="mt-3 text-sm text-muted-foreground">No referrals yet</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">Share your link to start referring friends</p>
+            <p className="mt-3 text-sm text-muted-foreground">{t("empty")}</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">{t("emptyDescription")}</p>
           </div>
         ) : (
           <div className="mt-4 space-y-3">
@@ -165,7 +166,7 @@ export default function JobSeekerReferralPage() {
                   }`}>
                     {r.status}
                   </span>
-                  <p className="mt-1 text-[10px] text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">{new Date(r.createdAt).toLocaleDateString(numberLocale)}</p>
                 </div>
               </div>
             ))}

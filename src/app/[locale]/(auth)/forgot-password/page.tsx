@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const { locale } = useParams<{ locale: string }>();
+  const t = useTranslations("forgotPasswordPage");
+  const BackIcon = locale === "ar" ? ArrowRight : ArrowLeft;
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,14 +32,14 @@ export default function ForgotPasswordPage() {
 
       if (!res.ok && res.status !== 429) {
         const data = await res.json().catch(() => null);
-        setError(data?.error ?? "Something went wrong. Please try again.");
+        setError(data?.error ?? t("somethingWentWrong"));
       } else if (res.status === 429) {
-        setError("Too many requests. Please wait a few minutes and try again.");
+        setError(t("tooManyRequests"));
       } else {
         setSubmitted(true);
       }
     } catch {
-      setError("Network error. Please check your connection and try again.");
+      setError(t("networkError"));
     } finally {
       setLoading(false);
     }
@@ -62,18 +65,18 @@ export default function ForgotPasswordPage() {
           </div>
           <div className="space-y-1.5">
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Check your email
+              {t("checkEmailTitle")}
             </h1>
             <p className="text-base text-muted-foreground font-light max-w-xs mx-auto">
-              If an account exists for <span className="font-medium text-foreground">{email}</span>, we&apos;ve sent a password reset link.
+              {t("checkEmailDescription", { email })}
             </p>
           </div>
         </div>
 
         <Link href={`/${locale}/login`}>
           <Button variant="outline" className="w-full h-11 font-medium rounded-lg">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to sign in
+            <BackIcon className="w-4 h-4 me-2" />
+            {t("backToSignIn")}
           </Button>
         </Link>
       </div>
@@ -96,16 +99,16 @@ export default function ForgotPasswordPage() {
 
       <div className="space-y-1.5">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-          Forgot password?
+          {t("title")}
         </h1>
         <p className="text-base text-muted-foreground font-light">
-          Enter your email address and we&apos;ll send you a link to reset your password.
+          {t("description")}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
+          <Label htmlFor="email" className="text-sm font-medium">{t("emailAddress")}</Label>
           <Input
             id="email"
             type="email"
@@ -129,8 +132,8 @@ export default function ForgotPasswordPage() {
           className="w-full h-11 text-base font-medium shadow-sm transition-all rounded-lg"
           disabled={loading}
         >
-          {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          Send reset link
+          {loading && <Loader2 className="h-4 w-4 animate-spin me-2" />}
+          {t("sendResetLink")}
         </Button>
       </form>
 
@@ -139,8 +142,8 @@ export default function ForgotPasswordPage() {
           href={`/${locale}/login`}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Back to sign in
+          <BackIcon className="w-3.5 h-3.5" />
+          {t("backToSignIn")}
         </Link>
       </div>
     </div>

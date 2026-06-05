@@ -13,6 +13,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { sendEmail } from "@/lib/communications/email";
 import { canManageTeam } from "@/lib/permissions/team";
+import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
 
 /**
  * GET /api/employers/team — list team members for the employer's company
@@ -23,17 +24,32 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
   }
 
   await connectDB();
-  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id companyEmail").lean();
   if (!employer) {
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }
 
   // Verify caller is owner or admin
-  const callerMember = await CompanyUser.findOne({
+  let callerMember: { companyRole: CompanyRole } | null = await CompanyUser.findOne({
     companyId: employer._id,
     userId: ctx.userId,
     status: "active",
-  }).lean();
+  }).select("companyRole").lean();
+
+  if (!callerMember) {
+    callerMember = await ensureEmployerOwnerMembership({
+      companyId: employer._id,
+      userId: ctx.userId,
+      email: employer.companyEmail,
+    });
+
+    if (!callerMember) {
+      return NextResponse.json(
+        { error: "Account verification failed. Please contact support." },
+        { status: 403 },
+      );
+    }
+  }
 
   if (!callerMember || !canManageTeam(callerMember.companyRole)) {
     return NextResponse.json({ error: "Only owners and admins can view team" }, { status: 403 });
@@ -69,17 +85,32 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   const body = await validateBody(req, teamInviteSchema);
 
   await connectDB();
-  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id companyName").lean();
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id companyName companyEmail").lean();
   if (!employer) {
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }
 
   // Verify caller can manage team
-  const callerMember = await CompanyUser.findOne({
+  let callerMember: { companyRole: CompanyRole } | null = await CompanyUser.findOne({
     companyId: employer._id,
     userId: ctx.userId,
     status: "active",
-  }).lean();
+  }).select("companyRole").lean();
+
+  if (!callerMember) {
+    callerMember = await ensureEmployerOwnerMembership({
+      companyId: employer._id,
+      userId: ctx.userId,
+      email: employer.companyEmail,
+    });
+
+    if (!callerMember) {
+      return NextResponse.json(
+        { error: "Account verification failed. Please contact support." },
+        { status: 403 },
+      );
+    }
+  }
 
   if (!callerMember || !canManageTeam(callerMember.companyRole)) {
     return NextResponse.json({ error: "Insufficient permissions to invite" }, { status: 403 });

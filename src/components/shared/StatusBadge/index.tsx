@@ -98,12 +98,14 @@ const statusVariants: Record<
 
 interface StatusBadgeProps {
   status: string;
+  label?: string;
   className?: string;
   size?: "sm" | "md";
 }
 
 export function StatusBadge({
   status,
+  label,
   className,
   size = "sm",
 }: StatusBadgeProps) {
@@ -122,7 +124,7 @@ export function StatusBadge({
       )}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
-      {variant.label}
+      {label ?? variant.label}
     </span>
   );
 }

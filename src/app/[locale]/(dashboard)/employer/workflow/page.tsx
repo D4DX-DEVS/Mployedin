@@ -78,8 +78,8 @@ export default function EmployerWorkflowPage() {
   }, [serverData]);
 
   useEffect(() => {
-    if (fetchError) setError("Could not load workflow settings");
-  }, [fetchError]);
+    if (fetchError) setError(t("loadingError"));
+  }, [fetchError, t]);
 
   const markDirty = useCallback(() => { setDirty(true); setSaved(false); }, []);
 
@@ -132,7 +132,7 @@ export default function EmployerWorkflowPage() {
       setDirty(false);
       setTimeout(() => setSaved(false), 3000);
     } catch {
-      setError("Failed to save workflow");
+      setError(t("saveError"));
     }
   };
 
@@ -158,7 +158,7 @@ export default function EmployerWorkflowPage() {
       setTemplateName("");
       setTimeout(() => setTemplateSaved(false), 3000);
     } catch {
-      setError("Failed to save template");
+      setError(t("templateSaveError"));
     }
   };
 
@@ -177,13 +177,26 @@ export default function EmployerWorkflowPage() {
   const activeStages = stages.filter((s) => s.enabled);
   const sortedStages = [...stages].sort((a, b) => a.order - b.order);
   const automatedStages = activeStages.filter((stage) => stage.autoProgress).length;
+  const getStageLabel = (stage: WorkflowStage) => {
+    const labels: Record<string, string> = {
+      new: t("newApplication"),
+      screening: t("aiScreening"),
+      shortlisted: t("shortlisted"),
+      interview_scheduled: t("interview"),
+      interview_completed: t("interviewCompleted"),
+      offer_extended: t("offerExtended"),
+      accepted: t("accepted"),
+      rejected: t("rejected"),
+    };
+    return labels[stage.id] ?? stage.label;
+  };
   const saveStateLabel = saveWorkflow.isPending
-    ? "Saving changes"
+    ? t("savingChanges")
     : saved
-      ? "Workflow saved"
+      ? t("workflowSaved")
       : dirty
-        ? "Unsaved edits"
-        : "Live configuration";
+        ? t("unsavedEdits")
+        : t("liveConfig");
 
   return (
     <FeatureGate feature="workflowCustomization">
@@ -235,8 +248,8 @@ export default function EmployerWorkflowPage() {
         <section className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-foreground">Load from Template</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Select a preset workflow to apply to your current configuration</p>
+              <h3 className="text-sm font-semibold text-foreground">{t("loadFromTemplate")}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">{t("loadFromTemplateDesc")}</p>
             </div>
             <button onClick={() => setShowTemplateSelector(false)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
           </div>
@@ -253,20 +266,23 @@ export default function EmployerWorkflowPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-foreground">{tpl.name}</span>
                     <Badge variant={tpl.scope === "system" ? "outline" : "secondary"} className="text-[10px]">
-                      {tpl.scope === "system" ? "System" : "Custom"}
+                      {tpl.scope === "system" ? t("systemTemplate") : t("customTemplate")}
                     </Badge>
-                    {tpl.isDefault && <Badge variant="secondary" className="text-[10px]">Default</Badge>}
+                    {tpl.isDefault && <Badge variant="secondary" className="text-[10px]">{t("defaultTemplate")}</Badge>}
                   </div>
                   {tpl.description && <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{tpl.description}</p>}
                   <p className="mt-1 text-[10px] text-muted-foreground">
-                    {tpl.stages.filter((s) => s.enabled).length} stages · AI: {tpl.settings.aiAutoScreen ? "on" : "off"}
+                    {t("templateStageSummary", {
+                      count: tpl.stages.filter((s) => s.enabled).length,
+                      state: tpl.settings.aiAutoScreen ? t("aiOn") : t("aiOff"),
+                    })}
                   </p>
                 </button>
               ))}
             </div>
           ) : (
             <p className="rounded-xl border border-dashed border-border bg-background/60 p-4 text-center text-sm text-muted-foreground">
-              No workflow templates available yet.
+              {t("noTemplates")}
             </p>
           )}
         </section>
@@ -279,7 +295,7 @@ export default function EmployerWorkflowPage() {
             <Input
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
-              placeholder="Template name (e.g. My Tech Pipeline)"
+              placeholder={t("templateNamePlaceholder")}
               maxLength={100}
               className="flex-1"
               onKeyDown={(e) => e.key === "Enter" && handleSaveAsTemplate()}
@@ -291,10 +307,10 @@ export default function EmployerWorkflowPage() {
               size="sm"
             >
               {createTemplate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save
+              {t("save")}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => { setShowSaveAsTemplate(false); setTemplateName(""); }} className="rounded-xl">
-              Cancel
+              {t("cancel")}
             </Button>
           </div>
         </section>
@@ -304,7 +320,7 @@ export default function EmployerWorkflowPage() {
       {templateSaved && (
         <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
           <CheckCircle className="h-4 w-4" />
-          Workflow saved as template successfully!
+          {t("templateSaved")}
         </div>
       )}
 
@@ -312,7 +328,7 @@ export default function EmployerWorkflowPage() {
       {dirty && (
         <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
           <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-          You have unsaved changes
+          {t("unsavedChanges")}
         </div>
       )}
 
@@ -374,7 +390,7 @@ export default function EmployerWorkflowPage() {
                     <div key={stage.id} className="flex items-center gap-1.5">
                       <div className="flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-2 text-xs font-medium text-foreground">
                         <span className={`h-2 w-2 rounded-full ${STAGE_COLORS[stage.id] ?? "bg-gray-400"}`} />
-                        {stage.label}
+                        {getStageLabel(stage)}
                       </div>
                       {index < activeStages.length - 1 && <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />}
                     </div>
@@ -382,20 +398,20 @@ export default function EmployerWorkflowPage() {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-border bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-                  Enable at least one stage to preview the live pipeline.
+                  {t("emptyPreview")}
                 </div>
               )}
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-border bg-background/60 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Candidate alerts</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("candidateAlerts")}</p>
                 <p className="mt-2 text-sm font-semibold text-foreground">
-                  {notifyOnStageChange ? "Enabled for stage changes" : "Disabled for stage changes"}
+                  {notifyOnStageChange ? t("alertsEnabled") : t("alertsDisabled")}
                 </p>
               </div>
               <div className="rounded-2xl border border-border bg-background/60 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Auto-reject floor</p>
-                <p className="mt-2 text-sm font-semibold text-foreground">{autoRejectBelow}% match score</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("autoRejectFloor")}</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">{t("matchScore", { value: autoRejectBelow })}</p>
               </div>
             </div>
           </div>
@@ -407,12 +423,12 @@ export default function EmployerWorkflowPage() {
         <section className="workspace-panel-surface space-y-4 rounded-[28px] p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Workflow builder</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("workflowBuilder")}</p>
               <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
-                <Settings2 className="h-4 w-4 text-sky-600" /> Pipeline stages
+                <Settings2 className="h-4 w-4 text-sky-600" /> {t("pipelineStages")}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Reorder the pipeline, toggle stage automation, and keep up to 20 stages active.
+                {t("builderDesc")}
               </p>
             </div>
             <Button
@@ -422,7 +438,7 @@ export default function EmployerWorkflowPage() {
               disabled={stages.length >= 20}
               className="gap-1.5 rounded-xl border-border bg-background/80 hover:bg-background"
             >
-              <Plus className="h-3.5 w-3.5" /> Add Stage
+              <Plus className="h-3.5 w-3.5" /> {t("addStage")}
             </Button>
           </div>
 
@@ -432,7 +448,7 @@ export default function EmployerWorkflowPage() {
               <Input
                 value={newStageLabel}
                 onChange={(e) => setNewStageLabel(e.target.value)}
-                placeholder="Stage name (e.g. Technical Test)"
+                placeholder={t("stageNamePlaceholder")}
                 className="h-10 flex-1 border-border bg-background/80"
                 maxLength={100}
                 onKeyDown={(e) => e.key === "Enter" && addStage()}
@@ -444,7 +460,7 @@ export default function EmployerWorkflowPage() {
                   disabled={!newStageLabel.trim()}
                   className="flex-1 rounded-xl bg-sky-600 text-white hover:bg-sky-700 sm:flex-none"
                 >
-                  Add
+                  {t("add")}
                 </Button>
                 <Button
                   size="sm"
@@ -452,7 +468,7 @@ export default function EmployerWorkflowPage() {
                   onClick={() => { setAddingStage(false); setNewStageLabel(""); }}
                   className="flex-1 rounded-xl text-muted-foreground hover:bg-background/70 sm:flex-none"
                 >
-                  Cancel
+                  {t("cancel")}
                 </Button>
               </div>
             </div>
@@ -462,9 +478,9 @@ export default function EmployerWorkflowPage() {
           {stages.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-[22px] border border-dashed border-border bg-background/60 py-16 text-center">
               <Settings2 className="mb-3 h-10 w-10 text-muted-foreground" />
-              <p className="text-sm font-semibold text-foreground">No stages added yet</p>
+              <p className="text-sm font-semibold text-foreground">{t("noStages")}</p>
               <p className="mb-4 mt-1 text-xs text-muted-foreground">
-                Create your hiring pipeline to get started
+                {t("noStagesDesc")}
               </p>
               <Button
                 size="sm"
@@ -472,7 +488,7 @@ export default function EmployerWorkflowPage() {
                 onClick={() => { setStages(DEFAULT_STAGES); markDirty(); }}
                 className="gap-1.5 rounded-xl border-border bg-background/80 hover:bg-background"
               >
-                <Plus className="h-3.5 w-3.5" /> Use Default Pipeline
+                <Plus className="h-3.5 w-3.5" /> {t("useDefaultPipeline")}
               </Button>
             </div>
           ) : (
@@ -509,9 +525,9 @@ export default function EmployerWorkflowPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className={`h-3 w-3 flex-shrink-0 rounded-full ${STAGE_COLORS[stage.id] ?? "bg-gray-400"}`} />
-                          <span className="truncate text-sm font-semibold text-foreground">{stage.label}</span>
+                          <span className="truncate text-sm font-semibold text-foreground">{getStageLabel(stage)}</span>
                           <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                            {stage.enabled ? t("enabled") : "Paused"}
+                            {stage.enabled ? t("enabled") : t("paused")}
                           </span>
                         </div>
                         <div className="mt-3 flex flex-wrap items-center gap-4">
@@ -537,15 +553,15 @@ export default function EmployerWorkflowPage() {
                       <button
                         onClick={() => removeStage(stage.id)}
                         className="rounded-xl p-2 text-muted-foreground transition-all hover:bg-red-500/10 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 dark:hover:text-red-300"
-                        title="Remove stage"
+                        title={t("removeStage")}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
-                      <span className="rounded-full bg-background/70 px-2.5 py-1">Order {stage.order}</span>
+                      <span className="rounded-full bg-background/70 px-2.5 py-1">{t("order", { order: stage.order })}</span>
                       <span className="rounded-full bg-background/70 px-2.5 py-1">
-                        {stage.autoProgress ? "Moves automatically" : "Manual review required"}
+                        {stage.autoProgress ? t("movesAutomatically") : t("manualReviewRequired")}
                       </span>
                     </div>
                   </div>
@@ -558,9 +574,9 @@ export default function EmployerWorkflowPage() {
         <div className="space-y-4">
           <section className="workspace-panel-surface space-y-5 rounded-[28px] p-6">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Automation</p>
-              <h3 className="mt-2 text-lg font-semibold text-foreground">Recruitment rules</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Set which steps are automated and how strict the AI gate should be.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("automation")}</p>
+              <h3 className="mt-2 text-lg font-semibold text-foreground">{t("recruitmentRules")}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t("rulesDesc")}</p>
             </div>
 
             {/* AI Auto-Screening */}
@@ -571,7 +587,7 @@ export default function EmployerWorkflowPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">AI Auto-Screening</p>
+                    <p className="truncate text-sm font-medium text-foreground">{t("aiAutoScreening")}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Switch
                         checked={aiAutoScreen}
@@ -581,11 +597,11 @@ export default function EmployerWorkflowPage() {
                         variant={aiAutoScreen ? "default" : "secondary"}
                         className="w-16 justify-center rounded-full text-[10px]"
                       >
-                        {aiAutoScreen ? "Enabled" : "Disabled"}
+                        {aiAutoScreen ? t("enabled") : t("disabled")}
                       </Badge>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Automatically score and rank new applications.</p>
+                  <p className="text-xs text-muted-foreground">{t("aiAutoScreeningDesc")}</p>
                 </div>
               </div>
             </div>
@@ -598,7 +614,7 @@ export default function EmployerWorkflowPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">Notify Candidates</p>
+                    <p className="truncate text-sm font-medium text-foreground">{t("notifyCandidates")}</p>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Switch
                         checked={notifyOnStageChange}
@@ -608,11 +624,11 @@ export default function EmployerWorkflowPage() {
                         variant={notifyOnStageChange ? "default" : "secondary"}
                         className="w-16 justify-center rounded-full text-[10px]"
                       >
-                        {notifyOnStageChange ? "Enabled" : "Disabled"}
+                        {notifyOnStageChange ? t("enabled") : t("disabled")}
                       </Badge>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Send notifications as candidates move through the workflow.</p>
+                  <p className="text-xs text-muted-foreground">{t("notifyCandidatesDesc")}</p>
                 </div>
               </div>
             </div>
@@ -628,11 +644,14 @@ export default function EmployerWorkflowPage() {
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between items-baseline">
-                    <p className="text-sm font-medium text-foreground">Auto-reject Threshold</p>
+                    <p className="text-sm font-medium text-foreground">{t("autoRejectThreshold")}</p>
                     <span className="text-lg font-bold text-sky-700 dark:text-sky-300">{autoRejectBelow}%</span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Candidates scoring below <strong>{autoRejectBelow}%</strong> AI match score will be automatically rejected
+                    {t.rich("autoRejectThresholdDesc", {
+                      value: autoRejectBelow,
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                    })}
                   </p>
                 </div>
               </div>
@@ -646,17 +665,17 @@ export default function EmployerWorkflowPage() {
                 className="w-full cursor-pointer accent-sky-600"
               />
               <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>0% (off)</span>
-                <span>40% (default)</span>
-                <span>80% (strict)</span>
+                <span>{t("thresholdOff")}</span>
+                <span>{t("thresholdDefault")}</span>
+                <span>{t("thresholdStrict")}</span>
               </div>
             </div>
 
             <div className="rounded-[22px] border border-border bg-background/60 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Guidance</p>
-              <p className="mt-2 text-sm font-semibold text-foreground">Use automation where it reduces repetition, not judgment.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("guidance")}</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{t("guidanceTitle")}</p>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Keep manual checkpoints for interviews and offers so recruiters still review high-impact decisions before moving candidates forward.
+                {t("guidanceDesc")}
               </p>
             </div>
           </section>
@@ -674,7 +693,7 @@ export default function EmployerWorkflowPage() {
             ) : (
               <Save className="h-4 w-4" />
             )}
-            {saveWorkflow.isPending ? "Saving…" : saved ? "Saved!" : "Save Workflow"}
+            {saveWorkflow.isPending ? t("saving") : saved ? t("saved") : t("saveWorkflow")}
           </Button>
         </div>
       </div>

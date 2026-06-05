@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
+import { useLocale, useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Settings, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,8 @@ interface AssignedAgent {
 }
 
 export function AdvancedSettingsSection() {
+  const t = useTranslations("employerJobForm.advanced");
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const { register, watch, setValue } = useFormContext<JobFormValues>();
 
@@ -45,6 +48,16 @@ export function AdvancedSettingsSection() {
 
   const [tagInput, setTagInput] = useState("");
 
+  function formatDate(date: string) {
+    const parsed = new Date(`${date}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return date;
+    return new Intl.DateTimeFormat(locale === "ar" ? "ar-SA" : "en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(parsed);
+  }
+
   function addTag(value: string) {
     const trimmed = value.trim().toLowerCase();
     if (!trimmed || tags.includes(trimmed) || tags.length >= 20) return;
@@ -64,51 +77,51 @@ export function AdvancedSettingsSection() {
         aria-expanded={open}
         className="flex w-full items-center justify-between px-5 py-4 text-sm font-medium transition-colors hover:bg-muted/40"
       >
-        <div className="space-y-2 text-left">
+        <div className="space-y-2 text-start">
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4 text-muted-foreground" />
-            Advanced Settings
+            {t("title")}
           </div>
           <div className="flex flex-wrap gap-1.5">
             <Badge variant="secondary" className="text-[11px]">
-              {applicationMode === "auto" ? "Auto match" : "Manual review"}
+              {applicationMode === "auto" ? t("autoMatch") : t("manualReview")}
             </Badge>
             <Badge variant="secondary" className="text-[11px]">
-              {visibility === "invite_only" ? "Invite only" : visibility}
+              {t(`visibilityBadges.${visibility}`)}
             </Badge>
             {autoScreening && (
               <Badge variant="secondary" className="text-[11px]">
-                Screening at {minMatchScore}%
+                {t("screeningAt", { score: minMatchScore })}
               </Badge>
             )}
             {expiresAt && (
               <Badge variant="secondary" className="text-[11px]">
-                Expires {expiresAt}
+                {t("expires", { date: formatDate(expiresAt) })}
               </Badge>
             )}
             {typeof maxApplicants === "number" && !Number.isNaN(maxApplicants) && (
               <Badge variant="secondary" className="text-[11px]">
-                Max {maxApplicants} applicants
+                {t("maxApplicantsBadge", { count: maxApplicants })}
               </Badge>
             )}
             {tags.length > 0 && (
               <Badge variant="secondary" className="text-[11px]">
-                {tags.length} tags
+                {t("tagsBadge", { count: tags.length })}
               </Badge>
             )}
             {agentId && agents.length > 0 && (
               <Badge variant="secondary" className="text-[11px]">
-                Agent: {agents.find((a) => a._id === agentId)?.name ?? "assigned"}
+                {t("agentBadge", { name: agents.find((a) => a._id === agentId)?.name ?? t("assigned") })}
               </Badge>
             )}
             {selectedWorkflowTemplateId && (
               <Badge variant="secondary" className="text-[11px]">
-                Workflow template
+                {t("workflowTemplateBadge")}
               </Badge>
             )}
             {selectedMatchingWeightTemplateId && (
               <Badge variant="secondary" className="text-[11px]">
-                Weight template
+                {t("weightTemplateBadge")}
               </Badge>
             )}
           </div>
@@ -132,11 +145,11 @@ export function AdvancedSettingsSection() {
 
               <div className="grid gap-4 xl:grid-cols-2">
                 <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
-                  <Label className="text-sm font-medium">Application Mode</Label>
+                  <Label className="text-sm font-medium">{t("applicationMode")}</Label>
                   <SearchableSelect
                     options={[
-                      { value: "manual", label: "Manual Review — You review every applicant" },
-                      { value: "auto", label: "Auto Match — AI shortlists top candidates" },
+                      { value: "manual", label: t("applicationModes.manual") },
+                      { value: "auto", label: t("applicationModes.auto") },
                     ]}
                     value={applicationMode}
                     onValueChange={(v) =>
@@ -146,12 +159,12 @@ export function AdvancedSettingsSection() {
                 </div>
 
                 <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
-                  <Label className="text-sm font-medium">Visibility</Label>
+                  <Label className="text-sm font-medium">{t("visibility")}</Label>
                   <SearchableSelect
                     options={[
-                      { value: "public", label: "Public — Visible on job board" },
-                      { value: "private", label: "Private — Only via direct link" },
-                      { value: "invite_only", label: "Invite Only — Specific candidates" },
+                      { value: "public", label: t("visibilityOptions.public") },
+                      { value: "private", label: t("visibilityOptions.private") },
+                      { value: "invite_only", label: t("visibilityOptions.invite_only") },
                     ]}
                     value={visibility}
                     onValueChange={(v) =>
@@ -166,9 +179,9 @@ export function AdvancedSettingsSection() {
               <div className="space-y-3 rounded-xl border border-border/70 bg-background p-4">
                 <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
                   <div className="flex-1">
-                    <p className="text-sm font-medium">Auto Screening</p>
+                    <p className="text-sm font-medium">{t("autoScreening")}</p>
                     <p className="text-xs text-muted-foreground">
-                      Automatically reject candidates below the match threshold
+                      {t("autoScreeningHint")}
                     </p>
                   </div>
                   <Switch
@@ -187,10 +200,10 @@ export function AdvancedSettingsSection() {
                       exit={{ opacity: 0, height: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="space-y-2 border-l-2 border-primary/30 pl-4">
+                      <div className="space-y-2 border-s-2 border-primary/30 ps-4">
                         <div className="flex items-center justify-between">
                           <Label htmlFor="min-match-score" className="text-xs text-muted-foreground">
-                            Minimum Match Score
+                            {t("minMatchScore")}
                           </Label>
                           <span className="text-sm font-semibold text-primary">
                             {minMatchScore}%
@@ -203,7 +216,7 @@ export function AdvancedSettingsSection() {
                           max={100}
                           step={5}
                           value={minMatchScore}
-                          aria-label="Minimum match score threshold"
+                          aria-label={t("minMatchScoreAria")}
                           onChange={(e) =>
                             setValue("minMatchScore", Number(e.target.value), {
                               shouldValidate: false,
@@ -212,9 +225,9 @@ export function AdvancedSettingsSection() {
                           className="w-full accent-primary"
                         />
                         <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>0% (All)</span>
-                          <span>50% (Moderate)</span>
-                          <span>100% (Exact)</span>
+                          <span>{t("thresholdAll")}</span>
+                          <span>{t("thresholdModerate")}</span>
+                          <span>{t("thresholdExact")}</span>
                         </div>
                       </div>
                     </motion.div>
@@ -225,7 +238,7 @@ export function AdvancedSettingsSection() {
               <div className="grid gap-4 xl:grid-cols-2">
                 <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
                   <Label htmlFor="expires-at" className="text-sm font-medium">
-                    Expiry Date
+                    {t("expiryDate")}
                   </Label>
                   <Input
                     id="expires-at"
@@ -235,13 +248,13 @@ export function AdvancedSettingsSection() {
                     className="w-48"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Job auto-closes on this date (optional)
+                    {t("expiryHint")}
                   </p>
                 </div>
 
                 <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
                   <Label htmlFor="max-applicants" className="text-sm font-medium">
-                    Max Applicants
+                    {t("maxApplicants")}
                   </Label>
                   <Input
                     id="max-applicants"
@@ -249,21 +262,21 @@ export function AdvancedSettingsSection() {
                     min={1}
                     max={10000}
                     {...register("maxApplicants", { valueAsNumber: true, setValueAs: (v) => v === "" || isNaN(v) ? undefined : Number(v) })}
-                    placeholder="No limit"
+                    placeholder={t("noLimit")}
                     className="w-36"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Job auto-closes when this many applications are received (optional)
+                    {t("maxApplicantsHint")}
                   </p>
                 </div>
               </div>
 
               {agents.length > 0 && (
                 <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-4">
-                  <Label className="text-sm font-medium">Assign Agent</Label>
+                  <Label className="text-sm font-medium">{t("assignAgent")}</Label>
                   <SearchableSelect
                     options={[
-                      { value: "", label: "No agent — self-manage" },
+                      { value: "", label: t("noAgent") },
                       ...agents.map((a) => ({ value: a._id, label: a.name })),
                     ]}
                     value={agentId ?? ""}
@@ -272,16 +285,16 @@ export function AdvancedSettingsSection() {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Assigned agent will manage candidates for this job. Job will require approval before going live.
+                    {t("assignAgentHint")}
                   </p>
                 </div>
               )}
 
               {/* ─── Workflow & Matching Weight Templates ─── */}
               <div className="space-y-2 rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
-                <Label className="text-sm font-medium">Hiring Configuration Templates</Label>
+                <Label className="text-sm font-medium">{t("configurationTemplates")}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Optionally apply a workflow pipeline and matching weight preset to this job
+                  {t("configurationTemplatesHint")}
                 </p>
                 <div className="mt-2">
                   <JobTemplatePickers
@@ -294,10 +307,10 @@ export function AdvancedSettingsSection() {
               </div>
 
               <div className="space-y-2 rounded-xl border border-border/70 bg-background p-4">
-                <Label className="text-sm font-medium">Tags</Label>
+                <Label className="text-sm font-medium">{t("tags")}</Label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Add tag (press Enter)"
+                    placeholder={t("tagPlaceholder")}
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -325,7 +338,7 @@ export function AdvancedSettingsSection() {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Tags improve search visibility. Max 20.
+                  {t("tagsHint")}
                 </p>
               </div>
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,13 +27,13 @@ const ROLE_ICONS: Record<string, React.ReactNode> = {
   job_seeker: <Headset className="h-3 w-3" />,
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  super_agent: "Super Agent",
-  agent: "Agent",
-  employer: "Employer",
-  job_seeker: "Job Seeker",
-};
+const ROLE_LABEL_KEYS = ["admin", "super_agent", "agent", "employer", "job_seeker"] as const;
+const CATEGORY_KEYS = ["account", "job_search", "technical", "billing", "other"] as const;
+const STATUS_KEYS = ["open", "assigned", "resolved", "closed"] as const;
+
+function hasKey<T extends readonly string[]>(keys: T, value: string): value is T[number] {
+  return keys.includes(value as T[number]);
+}
 
 interface UnifiedMessagesPageProps {
   /** The current role's dashboard prefix for routing */
@@ -61,8 +62,8 @@ interface UnifiedMessagesPageProps {
 
 export function UnifiedMessagesPage({
   dashboardPrefix,
-  title = "Messages",
-  description = "Direct messages & conversations",
+  title,
+  description,
   showNewChat = true,
   showCustomerCare = false,
   supportOnly = false,
@@ -72,6 +73,7 @@ export function UnifiedMessagesPage({
   selectConversationTitle,
   selectConversationHint,
 }: UnifiedMessagesPageProps) {
+  const t = useTranslations("messagesPage");
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -258,43 +260,41 @@ export function UnifiedMessagesPage({
   return (
     <div className="page-container">
       <PageHeader
-        title={title}
-        description={description}
+        title={title ?? t("defaultTitle")}
+        description={description ?? t("defaultDescription")}
         actions={
           supportOnly ? (
             <Dialog open={ticketDialogOpen} onOpenChange={setTicketDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="gap-1.5">
                   <Plus className="h-4 w-4" />
-                  New Ticket
+                  {t("newTicket")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>New Support Ticket</DialogTitle>
+                  <DialogTitle>{t("newSupportTicket")}</DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col gap-4 pt-2">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium">Category</label>
+                    <label className="text-sm font-medium">{t("category")}</label>
                     <Select value={ticketCategory} onValueChange={setTicketCategory}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="account">Account</SelectItem>
-                        <SelectItem value="job_search">Job Search</SelectItem>
-                        <SelectItem value="technical">Technical</SelectItem>
-                        <SelectItem value="billing">Billing</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        {CATEGORY_KEYS.map((category) => (
+                          <SelectItem key={category} value={category}>{t(`categories.${category}`)}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium">Message</label>
+                    <label className="text-sm font-medium">{t("message")}</label>
                     <Textarea
                       value={ticketMessage}
                       onChange={(e) => setTicketMessage(e.target.value)}
-                      placeholder="Describe your issue…"
+                      placeholder={t("messagePlaceholder")}
                       rows={4}
                     />
                   </div>
@@ -303,9 +303,9 @@ export function UnifiedMessagesPage({
                     disabled={!ticketMessage.trim() || ticketSubmitting}
                   >
                     {ticketSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <Loader2 className="h-4 w-4 animate-spin me-2" />
                     ) : null}
-                    Submit Ticket
+                    {t("submitTicket")}
                   </Button>
                 </div>
               </DialogContent>
@@ -338,7 +338,7 @@ export function UnifiedMessagesPage({
                 )}
               >
                 <MessageSquare className="h-3.5 w-3.5" />
-                Messages
+                {t("messagesTab")}
                 {dmUnreadTotal > 0 && (
                   <Badge variant="destructive" className="h-4 px-1 text-[10px]">
                     {dmUnreadTotal > 99 ? "99+" : dmUnreadTotal}
@@ -355,7 +355,7 @@ export function UnifiedMessagesPage({
                 )}
               >
                 <Headset className="h-3.5 w-3.5" />
-                Support
+                {t("supportTab")}
                 {ccUnreadTotal > 0 && (
                   <Badge variant="destructive" className="h-4 px-1 text-[10px]">
                     {ccUnreadTotal > 99 ? "99+" : ccUnreadTotal}
@@ -367,12 +367,12 @@ export function UnifiedMessagesPage({
 
           <div className="p-3 border-b">
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute start-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={searchPlaceholder ?? "Search conversations…"}
-                className="pl-8 h-8 text-xs"
+                placeholder={searchPlaceholder ?? t("searchPlaceholder")}
+                className="ps-8 h-8 text-xs"
               />
             </div>
           </div>
@@ -387,10 +387,10 @@ export function UnifiedMessagesPage({
                 <Inbox className="h-6 w-6 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground">
                   {search
-                    ? "No conversations match your search."
+                    ? t("noConversationsSearch")
                     : (activeTab === "support" || supportOnly)
-                    ? 'No support tickets yet. Click "New Ticket" to contact support.'
-                    : (emptyStateText ?? 'No conversations yet. Start one with the "New Chat" button above.')}
+                    ? t("noSupportTickets")
+                    : (emptyStateText ?? t("noConversations"))}
                 </p>
               </div>
             ) : (
@@ -432,7 +432,7 @@ export function UnifiedMessagesPage({
                       <div className="flex items-center justify-between gap-1">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {other?.name ?? "Unknown"}
+                            {other?.name ?? t("unknown")}
                           </p>
                           {other?.role && (
                             <span className="shrink-0 text-muted-foreground/60">
@@ -449,7 +449,7 @@ export function UnifiedMessagesPage({
                       <div className="flex items-center gap-1.5">
                         {other?.role && (
                           <span className="text-[10px] text-muted-foreground/60 capitalize">
-                            {ROLE_LABELS[other.role] ?? other.role.replace("_", " ")}
+                            {hasKey(ROLE_LABEL_KEYS, other.role) ? t(`roles.${other.role}`) : other.role.replace("_", " ")}
                           </span>
                         )}
                         {subtitle && (
@@ -474,26 +474,26 @@ export function UnifiedMessagesPage({
                             }
                             className="h-4 px-1 text-[9px]"
                           >
-                            {customerCare.status}
+                            {hasKey(STATUS_KEYS, customerCare.status) ? t(`status.${customerCare.status}`) : customerCare.status}
                           </Badge>
                           {customerCare.priority === "urgent" && (
                             <Badge variant="destructive" className="h-4 px-1 text-[9px]">
-                              urgent
+                              {t("priority.urgent")}
                             </Badge>
                           )}
                           {customerCare.category && (
                             <Badge variant="outline" className="h-4 px-1 text-[9px]">
-                              {customerCare.category}
+                              {hasKey(CATEGORY_KEYS, customerCare.category) ? t(`categories.${customerCare.category}`) : customerCare.category}
                             </Badge>
                           )}
                         </div>
                       )}
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {conv.lastMessage ?? "Start a conversation"}
+                        {conv.lastMessage ?? t("startConversation")}
                       </p>
                       {conv.lastMessageAt && (
                         <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                          {new Date(conv.lastMessageAt).toLocaleDateString()}
+                          {new Date(conv.lastMessageAt).toLocaleDateString(locale)}
                         </p>
                       )}
                     </div>
@@ -519,7 +519,7 @@ export function UnifiedMessagesPage({
                 className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-border/40 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Back
+                {t("back")}
               </button>
               {/* Re-open banner for resolved/closed tickets */}
               {supportOnly &&
@@ -527,8 +527,11 @@ export function UnifiedMessagesPage({
                 ["resolved", "closed"].includes(activeConversation.customerCare.status) && (
                   <div className="flex items-center justify-between px-4 py-2.5 bg-muted/60 border-b border-border/40">
                     <p className="text-sm text-muted-foreground">
-                      This ticket has been{" "}
-                      <span className="font-medium">{activeConversation.customerCare.status}</span>.
+                      {t("ticketStatus", {
+                        status: hasKey(STATUS_KEYS, activeConversation.customerCare.status)
+                          ? t(`status.${activeConversation.customerCare.status}`)
+                          : activeConversation.customerCare.status,
+                      })}
                     </p>
                     <Button
                       size="sm"
@@ -542,7 +545,7 @@ export function UnifiedMessagesPage({
                       ) : (
                         <RotateCcw className="h-3.5 w-3.5" />
                       )}
-                      Re-open
+                      {t("reopen")}
                     </Button>
                   </div>
                 )}
@@ -560,11 +563,11 @@ export function UnifiedMessagesPage({
                 <MessageSquare className="h-8 w-8 text-muted-foreground/40" />
               </div>
               <div>
-                <p className="font-medium text-foreground">{selectConversationTitle ?? "Select a conversation"}</p>
+                <p className="font-medium text-foreground">{selectConversationTitle ?? t("selectConversation")}</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {activeTab === "support"
-                    ? "Select a support ticket from the left to respond."
-                    : (selectConversationHint ?? "Choose a conversation from the left, or start a new chat.")}
+                    ? t("selectSupportTicketHint")
+                    : (selectConversationHint ?? t("selectConversationHint"))}
                 </p>
               </div>
             </div>

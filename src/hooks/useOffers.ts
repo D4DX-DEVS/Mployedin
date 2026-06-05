@@ -21,6 +21,8 @@ export interface Offer {
 
 interface OffersResponse {
   offers: Offer[];
+  items?: Array<Record<string, unknown>>;
+  stats?: { total: number; pending: number; accepted: number; declined: number };
   pagination: { total: number; page: number; limit: number; totalPages: number };
 }
 

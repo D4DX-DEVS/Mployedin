@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -37,10 +38,14 @@ function PrefItem({
   label,
   value,
   editHref,
+  editLabel,
+  setLabel,
 }: {
   label: string;
   value?: string;
   editHref: string;
+  editLabel: string;
+  setLabel: string;
 }) {
   return (
     <div className="mb-3">
@@ -52,9 +57,9 @@ function PrefItem({
           <span className="truncate font-medium text-foreground">{value}</span>
           <Link
             href={editHref}
-            className="ml-2 shrink-0 text-[11px] font-medium text-primary hover:underline"
+            className="ms-2 shrink-0 text-[11px] font-medium text-primary hover:underline"
           >
-            Edit
+            {editLabel}
           </Link>
         </div>
       ) : (
@@ -62,8 +67,8 @@ function PrefItem({
           href={editHref}
           className="group flex items-center justify-between rounded-2xl border border-dashed border-primary/30 bg-primary/[0.03] px-3 py-2.5 text-xs text-primary transition-colors hover:bg-primary/[0.06]"
         >
-          <span>+ Set {label.toLowerCase()}</span>
-          <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <span>{setLabel}</span>
+          <ChevronRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100 rtl:rotate-180" />
         </Link>
       )}
     </div>
@@ -101,6 +106,7 @@ function FilterCheckbox({
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProps) {
+  const t = useTranslations("jobFeed.sidebar");
   const { data: profile } = useQuery<SeekerProfile>({
     queryKey: ["seeker-profile-sidebar"],
     queryFn: () => fetch("/api/job-seeker/profile").then((r) => r.json()),
@@ -138,31 +144,39 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProp
       {/* ── Preferences ── */}
       <div className="card-base rounded-[26px]">
         <div className="mb-4">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Profile signal</div>
-          <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Your preferences</h3>
-          <p className="mt-1 text-sm text-muted-foreground">These guide what stays high in the feed.</p>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("profileSignal")}</div>
+          <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("preferencesTitle")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("preferencesDescription")}</p>
         </div>
         <PrefItem
-          label="Preferred role"
+          label={t("preferredRole")}
           value={profile?.preferredRoles?.join(", ") || undefined}
           editHref={`/${locale}/job-seeker/preferences`}
+          editLabel={t("edit")}
+          setLabel={t("setPreferredRole")}
         />
         <PrefItem
-          label="Location"
+          label={t("location")}
           value={profile?.preferredCountries?.join(", ") || undefined}
           editHref={`/${locale}/job-seeker/preferences`}
+          editLabel={t("edit")}
+          setLabel={t("setLocation")}
         />
         {totalExp != null && totalExp > 0 && (
           <PrefItem
-            label="Experience"
-            value={`${totalExp} yr${totalExp !== 1 ? "s" : ""}`}
+            label={t("experience")}
+            value={t("years", { count: totalExp })}
             editHref={`/${locale}/job-seeker/profile`}
+            editLabel={t("edit")}
+            setLabel={t("setExperience")}
           />
         )}
         <PrefItem
-          label="Salary"
+          label={t("salary")}
           value={salaryLabel}
           editHref={`/${locale}/job-seeker/preferences`}
+          editLabel={t("edit")}
+          setLabel={t("setSalary")}
         />
       </div>
 
@@ -170,44 +184,45 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProp
       <div className="card-base rounded-[26px]">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Refine results</div>
-            <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Filters</h3>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("refineResults")}</div>
+            <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("filters")}</h3>
           </div>
           {activeFilterCount > 0 && (
             <button
               onClick={() => onFiltersChange({ workTypes: [], matchRanges: [], dateRanges: [] })}
               className="text-[11px] font-medium text-primary hover:underline"
             >
-              Clear all ({activeFilterCount})
+              {t("clearAll", { count: activeFilterCount })}
             </button>
           )}
         </div>
 
         <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
           <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Work type
+            {t("workType")}
           </div>
-          <FilterCheckbox label="Remote" checked={filters.workTypes.includes("remote")} onChange={() => toggle("workTypes", "remote")} />
-          <FilterCheckbox label="On-site" checked={filters.workTypes.includes("onsite")} onChange={() => toggle("workTypes", "onsite")} />
+          <FilterCheckbox label={t("remote")} checked={filters.workTypes.includes("remote")} onChange={() => toggle("workTypes", "remote")} />
+          <FilterCheckbox label={t("onsite")} checked={filters.workTypes.includes("onsite")} onChange={() => toggle("workTypes", "onsite")} />
         </div>
 
         <div className="mt-3 rounded-2xl border border-border/60 bg-muted/20 p-3">
           <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Match score
+            {t("matchScore")}
           </div>
-          <FilterCheckbox label="80%+ match" checked={filters.matchRanges.includes("80+")} onChange={() => toggle("matchRanges", "80+")} />
-          <FilterCheckbox label="60–79% match" checked={filters.matchRanges.includes("60-79")} onChange={() => toggle("matchRanges", "60-79")} />
-          <FilterCheckbox label="Below 60%" checked={filters.matchRanges.includes("below60")} onChange={() => toggle("matchRanges", "below60")} />
+          <FilterCheckbox label={t("match80")} checked={filters.matchRanges.includes("80+")} onChange={() => toggle("matchRanges", "80+")} />
+          <FilterCheckbox label={t("match60")}
+            checked={filters.matchRanges.includes("60-79")} onChange={() => toggle("matchRanges", "60-79")} />
+          <FilterCheckbox label={t("below60")} checked={filters.matchRanges.includes("below60")} onChange={() => toggle("matchRanges", "below60")} />
         </div>
 
         <div className="h-px bg-border/60 my-2.5" />
 
         <div className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold mb-1.5">
-          Date posted
+          {t("datePosted")}
         </div>
-        <FilterCheckbox label="Last 3 days" checked={filters.dateRanges.includes("3days")} onChange={() => toggle("dateRanges", "3days")} />
-        <FilterCheckbox label="Last week" checked={filters.dateRanges.includes("week")} onChange={() => toggle("dateRanges", "week")} />
-        <FilterCheckbox label="Last month" checked={filters.dateRanges.includes("month")} onChange={() => toggle("dateRanges", "month")} />
+        <FilterCheckbox label={t("last3Days")} checked={filters.dateRanges.includes("3days")} onChange={() => toggle("dateRanges", "3days")} />
+        <FilterCheckbox label={t("lastWeek")} checked={filters.dateRanges.includes("week")} onChange={() => toggle("dateRanges", "week")} />
+        <FilterCheckbox label={t("lastMonth")} checked={filters.dateRanges.includes("month")} onChange={() => toggle("dateRanges", "month")} />
       </div>
     </div>
   );

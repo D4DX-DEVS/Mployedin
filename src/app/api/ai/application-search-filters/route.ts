@@ -151,4 +151,4 @@ User query: "${safeQuery}"`;
       degraded: true,
     });
   }
-}, { resource: "applications", action: "read" });
+}, { resource: "applications", action: "read", aiQuota: true });

@@ -406,4 +406,4 @@ Formatting rules:
     generatedAt: new Date().toISOString(),
     dataAsOf: now.toISOString(),
   });
-}, { resource: "reports", action: "read" });
+}, { resource: "reports", action: "read", aiQuota: true });

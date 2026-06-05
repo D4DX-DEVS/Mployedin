@@ -95,7 +95,11 @@ jest.mock("@/models/Invoice", () => ({
 jest.mock("@/models/Commission", () => ({
   __esModule: true,
   default: {
-    create: jest.fn((payload) => commissionCreate(payload)),
+    create: jest.fn((...args) => {
+      commissionCreate(...args);
+      return [{ _id: "comm_rec" }];
+    }),
+    countDocuments: jest.fn(() => ({ session: jest.fn().mockResolvedValue(0) })),
   },
 }));
 
@@ -243,8 +247,8 @@ describe("Recruitment invoice creation API", () => {
       ])
     );
 
-    expect(Commission.create).toHaveBeenNthCalledWith(1, expect.objectContaining({ type: "placement", amount: 99.5 }));
-    expect(Commission.create).toHaveBeenNthCalledWith(2, expect.objectContaining({ type: "override", amount: 49.75 }));
+    expect(Commission.create).toHaveBeenNthCalledWith(1, [expect.objectContaining({ type: "placement", amount: 99.5 })], {});
+    expect(Commission.create).toHaveBeenNthCalledWith(2, [expect.objectContaining({ type: "override", amount: 49.75 })], {});
   });
 
   it("forces agent-created invoices into pending approval and defers commission records", async () => {

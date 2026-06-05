@@ -133,4 +133,4 @@ User query: "${safeQuery}"`;
       degraded: true,
     });
   }
-}, { resource: "jobs", action: "read" });
+}, { resource: "jobs", action: "read", aiQuota: true });

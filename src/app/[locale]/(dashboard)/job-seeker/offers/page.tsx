@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Check, X, Calendar, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -15,6 +14,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 interface OfferJob {
   _id: string;
@@ -36,6 +36,8 @@ interface Offer {
 }
 
 export default function OffersPage() {
+  const t = useTranslations("jobSeekerOffers");
+  const locale = useLocale();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [respondingId, setRespondingId] = useState<string | null>(null);
@@ -43,28 +45,37 @@ export default function OffersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
+  const { paginationParams, updateTotal } = pagination;
 
   useEffect(() => {
-    document.title = "My Offers · MPLOYEDIN";
-  }, []);
+    document.title = t("documentTitle");
+  }, [t]);
+
+  const formatDate = useCallback((date: string) => new Date(date).toLocaleDateString(locale), [locale]);
 
   const fetchOffers = useCallback(async () => {
     setLoading(true);
     try {
-      const params = pagination.paginationParams();
+      const params = paginationParams();
       if (debouncedSearch) params.set("search", debouncedSearch);
       const res = await fetch(`/api/offers?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setOffers(data.offers);
-        pagination.updateTotal(data.pagination?.total ?? data.total ?? data.offers?.length ?? 0);
+      if (!res.ok) {
+        throw new Error("Failed to fetch offers");
       }
+
+      const data = await res.json();
+      const nextOffers = data.offers ?? [];
+      setOffers(nextOffers);
+      updateTotal(data.pagination?.total ?? data.total ?? nextOffers.length);
     } catch (err) {
       console.error("Error fetching offers:", err);
+      setOffers([]);
+      updateTotal(0);
+      toast.error(t("errors.fetchFailed"));
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, pagination.limit, debouncedSearch]);
+  }, [paginationParams, updateTotal, debouncedSearch, t]);
 
   useEffect(() => {
     fetchOffers();
@@ -72,31 +83,34 @@ export default function OffersPage() {
 
   async function handleAcceptOffer(offerId: string) {
     try {
-      const res = await fetch(`/api/offers/${offerId}`, {
+      const res = await csrfFetch(`/api/offers/${offerId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "accepted" }),
       });
 
-      if (res.ok) {
-        setOffers((prev) =>
-          prev.map((o) => (o._id === offerId ? { ...o, status: "accepted" } : o))
-        );
-        setRespondingId(null);
+      if (!res.ok) {
+        throw new Error("Failed to accept offer");
       }
+
+      setOffers((prev) =>
+        prev.map((o) => (o._id === offerId ? { ...o, status: "accepted" } : o))
+      );
+      setRespondingId(null);
     } catch (err) {
       console.error("Error accepting offer:", err);
+      toast.error(t("errors.acceptFailed"));
     }
   }
 
   async function handleDeclineOffer(offerId: string) {
     if (!declineReason.trim()) {
-      toast.error("Please provide a reason for declining");
+      toast.error(t("errors.declineReasonRequired"));
       return;
     }
 
     try {
-      const res = await fetch(`/api/offers/${offerId}`, {
+      const res = await csrfFetch(`/api/offers/${offerId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -105,15 +119,18 @@ export default function OffersPage() {
         }),
       });
 
-      if (res.ok) {
-        setOffers((prev) =>
-          prev.map((o) => (o._id === offerId ? { ...o, status: "declined" } : o))
-        );
-        setRespondingId(null);
-        setDeclineReason("");
+      if (!res.ok) {
+        throw new Error("Failed to decline offer");
       }
+
+      setOffers((prev) =>
+        prev.map((o) => (o._id === offerId ? { ...o, status: "declined" } : o))
+      );
+      setRespondingId(null);
+      setDeclineReason("");
     } catch (err) {
       console.error("Error declining offer:", err);
+      toast.error(t("errors.declineFailed"));
     }
   }
 
@@ -138,39 +155,43 @@ export default function OffersPage() {
   const isExpired = (offer: Offer) =>
     new Date(offer.expiresAt) < new Date() && offer.status === "pending";
 
+  const statusLabel = (status: Offer["status"]) => t(`status.${status}`);
+  const periodLabel = (period: Offer["salary"]["period"]) =>
+    period === "monthly" ? t("period.month") : t("period.year");
+
   const exportData = offers.map((o) => ({
     jobTitle: o.jobId?.title ?? "",
-    salary: `${o.salary.currency} ${o.salary.amount.toLocaleString()} / ${o.salary.period === "monthly" ? "month" : "year"}`,
-    startDate: new Date(o.startDate).toLocaleDateString(),
-    status: o.status,
-    expiresAt: new Date(o.expiresAt).toLocaleDateString(),
+    salary: `${o.salary.currency} ${o.salary.amount.toLocaleString(locale)} / ${periodLabel(o.salary.period)}`,
+    startDate: formatDate(o.startDate),
+    status: statusLabel(o.status),
+    expiresAt: formatDate(o.expiresAt),
     benefits: o.benefits ?? "",
   }));
 
   const exportColumns = [
-    { header: "Job Title", key: "jobTitle" },
-    { header: "Salary", key: "salary" },
-    { header: "Start Date", key: "startDate" },
-    { header: "Status", key: "status" },
-    { header: "Expires At", key: "expiresAt" },
-    { header: "Benefits", key: "benefits" },
+    { header: t("export.jobTitle"), key: "jobTitle" },
+    { header: t("export.salary"), key: "salary" },
+    { header: t("export.startDate"), key: "startDate" },
+    { header: t("export.status"), key: "status" },
+    { header: t("export.expiresAt"), key: "expiresAt" },
+    { header: t("export.benefits"), key: "benefits" },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: exportData as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "my-offers",
-    title: "My Offers",
+    title: t("export.title"),
   });
 
   return (
     <div className="page-container">
-      <PageHeader title="Job Offers" description="Offers you have received" />
+      <PageHeader title={t("header.title")} description={t("header.description")} />
 
       <TableToolbar
         search={searchTerm}
         onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
-        searchPlaceholder="Search by job title\u2026"
+        searchPlaceholder={t("searchPlaceholder")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -185,7 +206,7 @@ export default function OffersPage() {
         </div>
       ) : offers.length === 0 ? (
         <div className="card-base text-center py-16">
-          <p className="text-muted-foreground">No offers received yet</p>
+          <p className="text-muted-foreground">{t("empty")}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -195,11 +216,11 @@ export default function OffersPage() {
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg">{offer.jobId.title}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {typeof offer.jobId.location === "object" && offer.jobId.location ? (offer.jobId.location.isRemote ? "Remote" : [offer.jobId.location.city, offer.jobId.location.country].filter(Boolean).join(", ") || "—") : (offer.jobId.location ?? "—")}
+                    {typeof offer.jobId.location === "object" && offer.jobId.location ? (offer.jobId.location.isRemote ? t("remote") : [offer.jobId.location.city, offer.jobId.location.country].filter(Boolean).join(", ") || "—") : (offer.jobId.location ?? "—")}
                   </p>
                 </div>
                 <Badge variant={getStatusBadgeVariant(offer.status)}>
-                  {offer.status.charAt(0).toUpperCase() + offer.status.slice(1)}
+                  {statusLabel(offer.status)}
                 </Badge>
               </div>
 
@@ -207,10 +228,10 @@ export default function OffersPage() {
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-muted-foreground" />
                   <div>
-                    <p className="text-muted-foreground">Salary</p>
+                    <p className="text-muted-foreground">{t("labels.salary")}</p>
                     <p className="font-medium">
-                      {offer.salary.currency} {offer.salary.amount.toLocaleString()} /{" "}
-                      {offer.salary.period === "monthly" ? "month" : "year"}
+                      {offer.salary.currency} {offer.salary.amount.toLocaleString(locale)} /{" "}
+                      {periodLabel(offer.salary.period)}
                     </p>
                   </div>
                 </div>
@@ -218,9 +239,9 @@ export default function OffersPage() {
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-muted-foreground" />
                   <div>
-                    <p className="text-muted-foreground">Start Date</p>
+                    <p className="text-muted-foreground">{t("labels.startDate")}</p>
                     <p className="font-medium">
-                      {new Date(offer.startDate).toLocaleDateString()}
+                      {formatDate(offer.startDate)}
                     </p>
                   </div>
                 </div>
@@ -228,21 +249,21 @@ export default function OffersPage() {
 
               {offer.benefits && (
                 <div>
-                  <p className="text-sm font-medium mb-1">Benefits</p>
+                  <p className="text-sm font-medium mb-1">{t("labels.benefits")}</p>
                   <p className="text-sm text-muted-foreground">{offer.benefits}</p>
                 </div>
               )}
 
               {offer.notes && (
                 <div>
-                  <p className="text-sm font-medium mb-1">Additional Notes</p>
+                  <p className="text-sm font-medium mb-1">{t("labels.additionalNotes")}</p>
                   <p className="text-sm text-muted-foreground">{offer.notes}</p>
                 </div>
               )}
 
               <div className="text-xs text-muted-foreground">
-                Expires on {new Date(offer.expiresAt).toLocaleDateString()}
-                {isExpired(offer) && " (Expired)"}
+                {t("expiresOn", { date: formatDate(offer.expiresAt) })}
+                {isExpired(offer) && ` ${t("expired")}`}
               </div>
 
               {offer.status === "pending" && !isExpired(offer) && (
@@ -251,10 +272,10 @@ export default function OffersPage() {
                     <div className="space-y-3">
                       <div>
                         <label className="text-sm font-medium">
-                          Reason for declining (required)
+                          {t("decline.reasonLabel")}
                         </label>
                         <Textarea
-                          placeholder="Share your reason for declining this offer..."
+                          placeholder={t("decline.reasonPlaceholder")}
                           value={declineReason}
                           onChange={(e) => setDeclineReason(e.target.value)}
                           className="mt-1 min-h-20"
@@ -268,7 +289,7 @@ export default function OffersPage() {
                           disabled={!declineReason.trim()}
                         >
                           <X className="w-4 h-4 mr-2" />
-                          Confirm Decline
+                          {t("actions.confirmDecline")}
                         </Button>
                         <Button
                           size="sm"
@@ -278,7 +299,7 @@ export default function OffersPage() {
                             setDeclineReason("");
                           }}
                         >
-                          Cancel
+                          {t("actions.cancel")}
                         </Button>
                       </div>
                     </div>
@@ -290,7 +311,7 @@ export default function OffersPage() {
                         className="flex-1 sm:flex-none"
                       >
                         <Check className="w-4 h-4 mr-2" />
-                        Accept Offer
+                        {t("actions.acceptOffer")}
                       </Button>
                       <Button
                         size="sm"
@@ -299,7 +320,7 @@ export default function OffersPage() {
                         className="flex-1 sm:flex-none"
                       >
                         <X className="w-4 h-4 mr-2" />
-                        Decline
+                        {t("actions.decline")}
                       </Button>
                     </div>
                   )}
@@ -309,7 +330,7 @@ export default function OffersPage() {
               {offer.status === "declined" && offer.declineReason && (
                 <div className="bg-destructive/10 p-3 rounded text-sm">
                   <p className="font-medium text-destructive-foreground">
-                    Declined
+                    {t("status.declined")}
                   </p>
                   <p className="text-muted-foreground">{offer.declineReason}</p>
                 </div>

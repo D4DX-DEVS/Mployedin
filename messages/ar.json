@@ -96,6 +96,137 @@
     "hiringQuestion": "توظف؟",
     "registerAsEmployer": "سجل كصاحب عمل"
   },
+  "authLayout": {
+    "heading": "ارتقِ بمسار التوظيف من خلال مركز قيادة أكثر وضوحًا.",
+    "description": "انتقل من البحث عن المرشحين إلى القائمة المختصرة عبر مساحة عمل هادئة مصممة لفرق التوظيف الحديثة، والتوظيف الدولي، وتسريع قرارات الاختيار.",
+    "copyright": "© {year} MPLOYEDIN. جميع الحقوق محفوظة."
+  },
+  "forgotPasswordPage": {
+    "title": "نسيت كلمة المرور؟",
+    "description": "أدخل عنوان بريدك الإلكتروني وسنرسل لك رابطًا لإعادة تعيين كلمة المرور.",
+    "checkEmailTitle": "تحقق من بريدك الإلكتروني",
+    "checkEmailDescription": "إذا كان هناك حساب مرتبط بـ {email}، فقد أرسلنا رابط إعادة تعيين كلمة المرور.",
+    "emailAddress": "عنوان البريد الإلكتروني",
+    "sendResetLink": "إرسال رابط الإعادة",
+    "backToSignIn": "العودة إلى تسجيل الدخول",
+    "somethingWentWrong": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    "tooManyRequests": "طلبات كثيرة جدًا. يرجى الانتظار بضع دقائق ثم المحاولة مرة أخرى.",
+    "networkError": "خطأ في الاتصال. يرجى التحقق من اتصالك والمحاولة مرة أخرى."
+  },
+  "employerRegister": {
+    "title": "تسجيل شركتك",
+    "subtitle": "انضم إلى MPLOYEDIN، منصة التوظيف الخليجية المدعومة بالذكاء الاصطناعي",
+    "referral": "إحالة: {code}",
+    "steps": {
+      "company": "الشركة",
+      "verification": "التحقق",
+      "contact": "التواصل"
+    },
+    "companyDetails": "بيانات الشركة",
+    "companyName": "اسم الشركة",
+    "companyNamePlaceholder": "مثال: شركة أكمي",
+    "industry": "القطاع",
+    "industryPlaceholder": "اختر القطاع",
+    "companySize": "حجم الشركة",
+    "sizePlaceholder": "اختر الحجم",
+    "website": "الموقع الإلكتروني",
+    "country": "الدولة",
+    "countryPlaceholder": "اختر الدولة",
+    "city": "المدينة",
+    "cityPlaceholder": "مثال: دبي",
+    "verificationLevel": "مستوى التحقق",
+    "verificationIntro": "تمنحك مستويات التحقق الأعلى مزايا إضافية وشارة موثوقية على ملفك.",
+    "tradeLicence": "الرخصة التجارية",
+    "mohCertificate": "شهادة وزارة الصحة / المنطقة الحرة",
+    "uploadHint": "PDF أو JPG أو PNG (بحد أقصى 10MB)",
+    "contactPerson": "مسؤول التواصل",
+    "fullName": "الاسم الكامل",
+    "fullNamePlaceholder": "مثال: أحمد علي",
+    "jobTitle": "المسمى الوظيفي",
+    "jobTitlePlaceholder": "مثال: مدير الموارد البشرية",
+    "workEmail": "البريد الإلكتروني للعمل",
+    "workEmailPlaceholder": "you@company.com",
+    "phone": "الهاتف",
+    "phonePlaceholder": "+971 50 123 4567",
+    "password": "كلمة المرور",
+    "passwordPlaceholder": "8 أحرف على الأقل",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "confirmPasswordPlaceholder": "أعد إدخال كلمة المرور",
+    "agreePrefix": "أوافق على",
+    "termsOfService": "شروط الخدمة",
+    "and": "و",
+    "privacyPolicy": "سياسة الخصوصية",
+    "back": "رجوع",
+    "next": "التالي",
+    "creating": "جارٍ الإنشاء…",
+    "completeRegistration": "إكمال التسجيل",
+    "alreadyHaveAccount": "لديك حساب بالفعل؟",
+    "signIn": "تسجيل الدخول",
+    "validation": {
+      "companyNameRequired": "اسم الشركة مطلوب.",
+      "industryRequired": "يرجى اختيار القطاع.",
+      "sizeRequired": "يرجى اختيار حجم الشركة.",
+      "countryRequired": "يرجى اختيار الدولة.",
+      "cityRequired": "المدينة مطلوبة.",
+      "tradeLicenceRequired": "يرجى رفع وثيقة الرخصة التجارية.",
+      "mohRequired": "يرجى رفع شهادة وزارة الصحة / المنطقة الحرة.",
+      "fullNameRequired": "الاسم الكامل مطلوب.",
+      "workEmailRequired": "البريد الإلكتروني للعمل مطلوب.",
+      "validEmailRequired": "يرجى إدخال بريد إلكتروني صحيح.",
+      "passwordRequired": "كلمة المرور مطلوبة.",
+      "passwordTooShort": "يجب أن تكون كلمة المرور 8 أحرف على الأقل.",
+      "passwordMismatch": "كلمتا المرور غير متطابقتين.",
+      "termsRequired": "يجب الموافقة على شروط الخدمة وسياسة الخصوصية.",
+      "registrationFailed": "فشل التسجيل. يرجى المحاولة مرة أخرى."
+    },
+    "industries": {
+      "technology": "التقنية وتكنولوجيا المعلومات",
+      "construction": "البناء والهندسة",
+      "healthcare": "الرعاية الصحية والأدوية",
+      "hospitality": "الضيافة والسياحة",
+      "finance": "التمويل والمصارف",
+      "retail": "التجزئة والتجارة الإلكترونية",
+      "oil_gas": "النفط والغاز والطاقة",
+      "logistics": "اللوجستيات وسلاسل الإمداد",
+      "education": "التعليم والتدريب",
+      "real_estate": "العقارات وإدارة الممتلكات",
+      "manufacturing": "التصنيع",
+      "telecommunications": "الاتصالات",
+      "media": "الإعلام والترفيه",
+      "legal": "القانون والاستشارات",
+      "government": "القطاع الحكومي والعام",
+      "agriculture": "الزراعة والغذاء",
+      "automotive": "السيارات",
+      "aviation": "الطيران والفضاء",
+      "other": "أخرى"
+    },
+    "sizes": {
+      "1-10": "1–10 موظفين",
+      "11-50": "11–50 موظفًا",
+      "51-200": "51–200 موظف",
+      "201-500": "201–500 موظف",
+      "501-1000": "501–1,000 موظف",
+      "1001-5000": "1,001–5,000 موظف",
+      "5000+": "أكثر من 5,000 موظف"
+    },
+    "verificationLevels": {
+      "basic": {
+        "label": "أساسي",
+        "description": "إعداد سريع — التحقق من البريد الإلكتروني فقط",
+        "badge": "مجاني"
+      },
+      "standard": {
+        "label": "قياسي",
+        "description": "ارفع الرخصة التجارية للحصول على شارة موثقة ووصول كامل",
+        "badge": "موصى به"
+      },
+      "premium": {
+        "label": "مميز",
+        "description": "شارة اعتماد حكومية (وزارة الصحة / المنطقة الحرة)",
+        "badge": "أعلى مستوى"
+      }
+    }
+  },
   "common": {
     "save": "حفظ",
     "cancel": "إلغاء",
@@ -143,6 +274,19 @@
     "generating": "جاري الإنشاء...",
     "copy": "نسخ",
     "regenerate": "إعادة الإنشاء",
+    "dropFileHere": "اسحب الملف هنا أو",
+    "browse": "تصفح",
+    "fileTypesUpTo": "{types} حتى {size}MB",
+    "fileUnderLimit": "يجب أن يكون الملف أقل من {size}MB",
+    "maxSelections": "الحد الأقصى {max}",
+    "selectOptions": "اختر الخيارات…",
+    "popular": "الأكثر استخدامًا",
+    "add": "إضافة",
+    "aiSuggest": "اقتراح بالذكاء الاصطناعي",
+    "skillsCount": "{count}/{max} مهارات",
+    "skillsCountWithHint": "{count}/{max} مهارات · انقر على المهارة لتغيير المستوى",
+    "changeSkillLevel": "انقر لتغيير المستوى",
+    "removeSkill": "إزالة {skill}",
     "selectCountry": "اختر البلد",
     "selectState": "اختر المنطقة",
     "stateRegion": "الولاية / المنطقة",
@@ -213,6 +357,1050 @@
     "education": "التعليم",
     "languages": "اللغات"
   },
+  "jobFeed": {
+    "hero": {
+      "badge": "مطابقة الوظائف بالذكاء الاصطناعي",
+      "title": "تصفح الوظائف المطابقة لك بسرعة أكبر.",
+      "description": "يقيم الذكاء الاصطناعي كل وظيفة مقارنة بملفك. انتقل إلى وضع الاكتشاف وقدّم على عدة وظائف من لوحة التحكم."
+    },
+    "stats": {
+      "liveMatches": "المطابقات الحالية",
+      "searchReturned": "وظائف ظهرت لهذا البحث",
+      "profileAligned": "وظائف مناسبة لملفك",
+      "readyToApply": "جاهزة للتقديم",
+      "bulkTray": "محفوظة في قائمة التقديم الحالية",
+      "filterSignal": "إشارات التصفية",
+      "activeFilters": "{count} عوامل تصفية تؤثر على القائمة"
+    },
+    "search": {
+      "placeholder": "ابحث عن وظيفة بالمسمى أو المهارات أو الكلمة المفتاحية...",
+      "ariaLabel": "البحث عن وظائف",
+      "clear": "مسح البحث",
+      "results": "نتائج البحث",
+      "searching": "جار البحث...",
+      "resultsFor": "{count} نتائج عن \"{query}\"",
+      "employerActiveRoles": "{count} وظائف نشطة من هذا صاحب العمل",
+      "pendingResultsFor": "نتائج عن \"{query}\"",
+      "employerRoles": "وظائف صاحب العمل"
+    },
+    "actions": {
+      "refinePreferences": "تحسين التفضيلات",
+      "editPreferences": "تعديل التفضيلات",
+      "setPreferences": "تحديد التفضيلات"
+    },
+    "aside": {
+      "eyebrow": "بحث مدعوم بالذكاء الاصطناعي",
+      "title": "حافظ على صلة النتائج.",
+      "bestFor": "الأفضل لـ",
+      "bestForText": "مطابقة الملف للوظائف الأنسب، والاكتشاف للفرص الجديدة.",
+      "quickControl": "تحكم سريع",
+      "quickControlText": "اضغط Escape لمسح مربع البحث فوراً.",
+      "focusMode": "وضع التركيز",
+      "activeFilters": "{count} عوامل تصفية تضيق النتائج حالياً.",
+      "noFilters": "أضف نوع العمل أو درجة المطابقة أو تاريخ النشر للحصول على قائمة أدق."
+    },
+    "tabs": {
+      "eyebrow": "مطابقة الذكاء الاصطناعي",
+      "profile": "مطابقة الملف الشخصي",
+      "like": "قد تعجبك"
+    },
+    "sort": {
+      "label": "ترتيب",
+      "bestMatch": "أفضل تطابق",
+      "latest": "الأحدث",
+      "salary": "الراتب",
+      "count": "{visible} من {total} وظائف",
+      "countWithPage": "{visible} من {total} وظائف - صفحة {page}/{pages}"
+    },
+    "pagination": {
+      "pageOf": "صفحة {page} من {pages}",
+      "previous": "السابق",
+      "next": "التالي",
+      "showingPage": "عرض صفحة {page} من {pages} ({visible} من {total} وظائف)",
+      "previousPage": "الصفحة السابقة",
+      "nextPage": "الصفحة التالية",
+      "seenAll": "لقد شاهدت كل التوصيات وعددها {count}",
+      "backToFirst": "العودة إلى الصفحة 1"
+    },
+    "empty": {
+      "noJobs": "لم يتم العثور على وظائف",
+      "noJobsHint": "جرّب كلمات مختلفة أو تحقق من الكتابة",
+      "noMatches": "لا توجد مطابقات حالياً",
+      "noMatchesHint": "جرّب تعديل عوامل التصفية أو توسيع تفضيلاتك لعرض مزيد من الوظائف"
+    },
+    "errors": {
+      "failed": "فشل الإجراء",
+      "searchFailed": "فشل البحث. حاول مرة أخرى.",
+      "recommendationsFailed": "فشل تحميل التوصيات. حاول مرة أخرى."
+    },
+    "toast": {
+      "applicationSubmitted": "تم إرسال الطلب!",
+      "applyFailed": "فشل التقديم",
+      "jobSaved": "تم حفظ الوظيفة",
+      "jobUnsaved": "تم إلغاء حفظ الوظيفة",
+      "savedUpdateFailed": "فشل تحديث الوظائف المحفوظة",
+      "bulkApplied": "تم التقديم على {count} وظائف!",
+      "bulkApplyFailed": "فشل التقديم الجماعي",
+      "maxBulk": "يمكنك اختيار حتى {count} وظائف",
+      "allAlreadyApplied": "كل الوظائف المحددة تم التقديم عليها بالفعل",
+      "applicationLimitReached": "تم بلوغ حد التقديم - قم بترقية خطتك",
+      "jobHidden": "تم إخفاء الوظيفة"
+    },
+    "sidebar": {
+      "profileSignal": "إشارات الملف",
+      "preferencesTitle": "تفضيلاتك",
+      "preferencesDescription": "تساعد هذه التفضيلات على إبقاء النتائج المهمة في الأعلى.",
+      "preferredRole": "الدور المفضل",
+      "location": "الموقع",
+      "experience": "الخبرة",
+      "salary": "الراتب",
+      "edit": "تعديل",
+      "setPreferredRole": "+ تحديد الدور المفضل",
+      "setLocation": "+ تحديد الموقع",
+      "setExperience": "+ تحديد الخبرة",
+      "setSalary": "+ تحديد الراتب",
+      "years": "{count} سنة",
+      "refineResults": "تحسين النتائج",
+      "filters": "عوامل التصفية",
+      "clearAll": "مسح الكل ({count})",
+      "workType": "نوع العمل",
+      "remote": "عن بعد",
+      "onsite": "في الموقع",
+      "matchScore": "درجة المطابقة",
+      "match80": "مطابقة 80%+",
+      "match60": "مطابقة 60-79%",
+      "below60": "أقل من 60%",
+      "datePosted": "تاريخ النشر",
+      "last3Days": "آخر 3 أيام",
+      "lastWeek": "آخر أسبوع",
+      "lastMonth": "آخر شهر"
+    },
+    "card": {
+      "company": "الشركة",
+      "selectJob": "تحديد الوظيفة",
+      "deselectJob": "إلغاء تحديد الوظيفة",
+      "remoteReady": "مناسبة للعمل عن بعد",
+      "recommendedRole": "وظيفة موصى بها",
+      "matchPercent": "تطابق {score}%",
+      "viewCompany": "عرض {company}",
+      "companyLogo": "شعار {company}",
+      "urgent": "عاجلة",
+      "remote": "عن بعد",
+      "new": "جديدة",
+      "yearsRange": "{min}-{max} سنوات",
+      "viewers": "{count} مشاهدين",
+      "hide": "إخفاء",
+      "save": "حفظ",
+      "saved": "محفوظة",
+      "applied": "تم التقديم",
+      "easyApply": "تقديم سريع",
+      "time": {
+        "justNow": "الآن",
+        "hoursAgo": "منذ {value} س",
+        "daysAgo": "منذ {value} ي",
+        "weeksAgo": "منذ {value} أ",
+        "monthsAgo": "منذ {value} ش"
+      }
+    }
+  },
+  "agentOffers": {
+    "header": {
+      "title": "العروض",
+      "description": "تابع جميع العروض المرسلة إلى مرشحيك"
+    },
+    "metrics": {
+      "total": "إجمالي العروض"
+    },
+    "filters": {
+      "searchPlaceholder": "ابحث باسم المرشح أو الوظيفة...",
+      "status": "الحالة"
+    },
+    "statusOptions": {
+      "all": "كل الحالات"
+    },
+    "status": {
+      "pending": "قيد الانتظار",
+      "accepted": "مقبول",
+      "declined": "مرفوض",
+      "expired": "منتهي",
+      "withdrawn": "مسحوب"
+    },
+    "actions": {
+      "reset": "إعادة التعيين"
+    },
+    "table": {
+      "candidate": "المرشح",
+      "job": "الوظيفة",
+      "salary": "الراتب",
+      "status": "الحالة",
+      "startDate": "تاريخ البدء",
+      "expires": "ينتهي",
+      "sent": "أُرسل"
+    },
+    "empty": "لا توجد عروض",
+    "errors": {
+      "fetchFailed": "فشل تحميل العروض. يرجى المحاولة مرة أخرى."
+    }
+  },
+  "jobSeekerOffers": {
+    "documentTitle": "عروضي · MPLOYEDIN",
+    "header": {
+      "title": "عروض العمل",
+      "description": "العروض التي وصلت إليك"
+    },
+    "searchPlaceholder": "ابحث باسم الوظيفة...",
+    "empty": "لم تصلك أي عروض بعد",
+    "remote": "عن بعد",
+    "expiresOn": "ينتهي في {date}",
+    "expired": "(منتهي)",
+    "period": {
+      "month": "شهر",
+      "year": "سنة"
+    },
+    "status": {
+      "pending": "قيد الانتظار",
+      "accepted": "مقبول",
+      "declined": "مرفوض",
+      "expired": "منتهي",
+      "withdrawn": "مسحوب"
+    },
+    "labels": {
+      "salary": "الراتب",
+      "startDate": "تاريخ البدء",
+      "benefits": "المزايا",
+      "additionalNotes": "ملاحظات إضافية"
+    },
+    "decline": {
+      "reasonLabel": "سبب الرفض (مطلوب)",
+      "reasonPlaceholder": "شارك سبب رفض هذا العرض..."
+    },
+    "actions": {
+      "acceptOffer": "قبول العرض",
+      "decline": "رفض",
+      "confirmDecline": "تأكيد الرفض",
+      "cancel": "إلغاء"
+    },
+    "errors": {
+      "declineReasonRequired": "يرجى كتابة سبب الرفض",
+      "fetchFailed": "فشل تحميل العروض. يرجى المحاولة مرة أخرى.",
+      "acceptFailed": "فشل قبول العرض. يرجى المحاولة مرة أخرى.",
+      "declineFailed": "فشل رفض العرض. يرجى المحاولة مرة أخرى."
+    },
+    "export": {
+      "title": "عروضي",
+      "jobTitle": "المسمى الوظيفي",
+      "salary": "الراتب",
+      "startDate": "تاريخ البدء",
+      "status": "الحالة",
+      "expiresAt": "ينتهي في",
+      "benefits": "المزايا"
+    }
+  },
+  "jobSeekerApplications": {
+    "documentTitle": "طلباتي · MPLOYEDIN",
+    "title": "طلباتي",
+    "summary": {
+      "total": "الإجمالي:",
+      "active": "النشطة:",
+      "progress": "التقدم:",
+      "view": "العرض:"
+    },
+    "status": {
+      "all": "الكل",
+      "applied": "تم التقديم",
+      "shortlisted": "في القائمة المختصرة",
+      "interview_scheduled": "مقابلة",
+      "selected": "مختار",
+      "offer": "عرض",
+      "hired": "تم التوظيف",
+      "rejected": "مرفوض",
+      "withdrawn": "مسحوب"
+    },
+    "searchLabel": "البحث في الطلبات",
+    "searchPlaceholder": "ابحث باسم الوظيفة أو الشركة...",
+    "filters": "الفلاتر",
+    "statusFiltersLabel": "فلاتر حالة الطلب",
+    "appliedFrom": "تم التقديم من",
+    "appliedTo": "تم التقديم إلى",
+    "clearAll": "مسح الكل",
+    "emptyTitle": "لا توجد طلبات في هذا العرض",
+    "emptyAll": "لم تتقدم لأي وظائف بعد. ابدأ التصفح وابنِ زخماً من لوحة التحكم.",
+    "emptyStatus": "لا يوجد حالياً ما يحمل حالة {status}. غيّر العرض أو استكشف فرصاً جديدة.",
+    "browseJobs": "تصفح الوظائف",
+    "remote": "عن بُعد",
+    "locationFlexible": "الموقع مرن",
+    "jobFallback": "وظيفة",
+    "companyFallback": "شركة",
+    "appliedDate": "تم التقديم {date}",
+    "match": "{score}% تطابق",
+    "viewDetails": "عرض تفاصيل {job}",
+    "hideDetails": "إخفاء تفاصيل {job}",
+    "rateExperience": "قيّم التجربة",
+    "withdraw": "سحب الطلب",
+    "details": {
+      "interview": "تفاصيل المقابلة",
+      "joinMeeting": "انضم للاجتماع",
+      "yourResponse": "ردك: {response}",
+      "outcome": "النتيجة:",
+      "offer": "تفاصيل العرض",
+      "start": "البداية: {date}",
+      "expires": "ينتهي: {date}",
+      "placement": "تم تأكيد التوظيف",
+      "perMonth": "{amount} / شهر",
+      "minutesShort": "{count} دقيقة"
+    },
+    "response": {
+      "confirmed": "مؤكد",
+      "declined": "مرفوض",
+      "reschedule_requested": "تم طلب إعادة الجدولة"
+    },
+    "withdrawal": {
+      "title": "سحب الطلب",
+      "description": "أنت على وشك سحب طلبك لوظيفة {job}. لا يمكن التراجع عن هذا الإجراء.",
+      "reason": "السبب",
+      "required": "*",
+      "selectReason": "اختر سبباً…",
+      "comments": "تعليقات إضافية",
+      "optional": "اختياري",
+      "commentsPlaceholder": "أي شيء آخر ترغب في مشاركته…",
+      "confirm": "تأكيد السحب",
+      "cancel": "إلغاء",
+      "reasons": {
+        "accepted_elsewhere": "قبلت عرضاً آخر",
+        "salary_too_low": "الراتب لا يلبي التوقعات",
+        "bad_experience": "تجربة تقديم غير جيدة",
+        "too_slow_process": "الإجراءات بطيئة جداً",
+        "changed_mind": "غيّرت رأيي",
+        "personal_reasons": "أسباب شخصية",
+        "other": "أخرى"
+      }
+    },
+    "export": {
+      "title": "طلباتي",
+      "jobTitle": "المسمى الوظيفي",
+      "company": "الشركة",
+      "status": "الحالة",
+      "matchScore": "نسبة التطابق",
+      "appliedDate": "تاريخ التقديم"
+    }
+  },
+  "jobSeekerCalendar": {
+    "title": "تقويمي",
+    "description": "اعرض كل مقابلاتك القادمة في مكان واحد",
+    "interviewFallback": "مقابلة",
+    "loadFailed": "فشل تحميل أحداث التقويم"
+  },
+  "jobSeekerCompanies": {
+    "title": "الشركات",
+    "description": "استكشف أصحاب العمل الذين يوظفون عبر المنصة واكتشف مكان عملك القادم",
+    "searchPlaceholder": "ابحث عن الشركات بالاسم أو القطاع أو الموقع...",
+    "reset": "إعادة ضبط",
+    "empty": "لم يتم العثور على شركات",
+    "openJobs": "{count} وظائف مفتوحة",
+    "remote": "عن بُعد",
+    "loadFailed": "فشل تحميل الشركات"
+  },
+  "jobSeekerCourses": {
+    "title": "الدورات والتدريب",
+    "description": "طوّر مهاراتك بدورات مختارة لتحسين فرصك الوظيفية",
+    "free": "مجاني",
+    "startCourse": "ابدأ الدورة",
+    "recommendationsTitle": "هل تريد توصيات مخصصة؟",
+    "recommendationsDescription": "أكمل ملفك وقسم المهارات، وسيقترح الذكاء الاصطناعي دورات مناسبة لأهدافك المهنية.",
+    "duration": {
+      "fourWeeks": "٤ أسابيع",
+      "sixHours": "٦ ساعات",
+      "eightHours": "٨ ساعات",
+      "threeHours": "٣ ساعات",
+      "fortyHours": "٤٠ ساعة",
+      "tenHours": "١٠ ساعات"
+    },
+    "level": {
+      "beginner": "مبتدئ",
+      "intermediate": "متوسط"
+    },
+    "category": {
+      "language": "لغة",
+      "management": "إدارة",
+      "technology": "تقنية",
+      "customerService": "خدمة العملاء",
+      "marketing": "تسويق",
+      "safety": "سلامة"
+    },
+    "courses": {
+      "businessEnglish": "الإنجليزية للتواصل في الأعمال",
+      "projectManagement": "أساسيات إدارة المشاريع",
+      "excelAnalysis": "تحليل البيانات باستخدام Excel",
+      "customerService": "التميز في خدمة العملاء",
+      "digitalMarketing": "أساسيات التسويق الرقمي",
+      "constructionSafety": "سلامة البناء (OSHA 10)"
+    }
+  },
+  "jobSeekerInterviews": {
+    "documentTitle": "المقابلات · MPLOYEDIN",
+    "title": "المقابلات",
+    "summary": "{upcoming} قادمة · {past} مكتملة",
+    "searchPlaceholder": "ابحث باسم الوظيفة أو الشركة…",
+    "emptyTitle": "لا توجد مقابلات مجدولة",
+    "emptyDescription": "عندما يحدد صاحب عمل مقابلة، ستظهر هنا",
+    "upcoming": "القادمة",
+    "past": "السابقة",
+    "interviewFallback": "مقابلة",
+    "companyAt": "لدى {company}",
+    "today": "اليوم",
+    "minutesShort": "{count} د",
+    "meetingLink": "رابط الاجتماع",
+    "startingIn": "تبدأ خلال {count} دقيقة",
+    "outcome": "النتيجة:",
+    "confirm": "تأكيد",
+    "reschedule": "إعادة الجدولة",
+    "decline": "رفض",
+    "rescheduleReasonLabel": "لماذا تحتاج إلى إعادة الجدولة؟",
+    "reschedulePlaceholder": "اشرح تعارض الموعد...",
+    "sending": "جار الإرسال...",
+    "requestReschedule": "طلب إعادة الجدولة",
+    "cancel": "إلغاء",
+    "rescheduleReason": "سبب إعادة الجدولة: {reason}",
+    "join": "انضم",
+    "response": {
+      "confirmed": "مؤكد",
+      "declined": "مرفوض",
+      "reschedule_requested": "تم طلب إعادة الجدولة"
+    },
+    "type": {
+      "video": "فيديو",
+      "offline": "حضوري",
+      "hybrid": "مختلط"
+    },
+    "export": {
+      "title": "مقابلاتي",
+      "jobTitle": "المسمى الوظيفي",
+      "company": "الشركة",
+      "type": "النوع",
+      "scheduledAt": "وقت المقابلة",
+      "duration": "المدة",
+      "status": "الحالة",
+      "outcome": "النتيجة",
+      "response": "الرد"
+    }
+  },
+  "jobSeekerMessages": {
+    "title": "الدعم",
+    "description": "تواصل مع الدعم للحصول على المساعدة"
+  },
+  "jobSeekerExtra": {
+    "subscription": {
+      "title": "اشتراكي",
+      "description": "اعرض خطتك والاستخدام والفواتير",
+      "displayCurrency": "عملة العرض:",
+      "liveRates": "أسعار صرف مباشرة",
+      "live": "مباشر",
+      "noActive": "لا يوجد اشتراك نشط",
+      "noActiveDescription": "أنت حالياً على الخطة المجانية. تواصل مع المسؤول لفتح ميزات الذكاء الاصطناعي، والمزيد من الطلبات شهرياً، وتعزيز ظهور ملفك.",
+      "free": "مجاني",
+      "unknown": "غير معروف"
+    },
+    "search": {
+      "title": "بحث الوظائف بالذكاء الاصطناعي",
+      "description": "ابحث عن الوظائف باللغة الطبيعية، مثل: \"أريد وظيفة DevOps أولى في دبي مع خيار العمل عن بُعد\"",
+      "placeholder": "مثال: \"مطور React أول في دبي براتب لا يقل عن 15 ألف درهم\"",
+      "failed": "فشل البحث. حاول مرة أخرى.",
+      "resultsFound": "تم العثور على {count} نتيجة",
+      "noResults": "لا توجد وظائف تطابق بحثك. جرّب كلمات مختلفة.",
+      "match": "{score}% تطابق",
+      "remote": "عن بُعد",
+      "apply": "تقديم",
+      "prompts": {
+        "frontend": "وظيفة مطور واجهات أمامية عن بُعد باستخدام React في دبي",
+        "fullstack": "مهندس Full-stack بخبرة Node.js من 3 إلى 5 سنوات في أبوظبي أو عن بُعد",
+        "marketing": "مدير تسويق في السعودية براتب أعلى من 15,000 ريال",
+        "finance": "وظائف مالية للمبتدئين في البحرين أو الكويت"
+      }
+    },
+    "profileViews": {
+      "title": "من شاهد ملفك الشخصي",
+      "description": "اعرف الشركات ومسؤولي التوظيف الذين يطلعون على سيرتك الذاتية",
+      "unable": "تعذر تحميل مشاهدات الملف",
+      "total": "إجمالي المشاهدات",
+      "last7": "آخر 7 أيام",
+      "last30": "آخر 30 يوماً",
+      "bySource": "المشاهدات حسب المصدر",
+      "recent": "أحدث مشاهدات الملف",
+      "empty": "لا توجد مشاهدات بعد. تأكد أن ملفك ظاهر ومكتمل!",
+      "recruiter": "مسؤول توظيف",
+      "via": "عبر {source}"
+    },
+    "profileBoost": {
+      "title": "تعزيز الملف",
+      "description": "اجعل ملفك أكثر ظهوراً لمسؤولي التوظيف",
+      "active": "تعزيز الملف نشط!",
+      "inactive": "عزّز ظهورك",
+      "activeUntil": "نشط حتى {date} • تم التعزيز {count} مرات",
+      "benefit": "اظهر أعلى في نتائج بحث مسؤولي التوظيف لمدة 7 أيام",
+      "viewsTitle": "مشاهدات أكثر 3 مرات",
+      "viewsDescription": "اظهر في أعلى نتائج البحث",
+      "matchingTitle": "مطابقة بأولوية",
+      "matchingDescription": "احصل على تطابقات مع وظائف أكثر صلة",
+      "daysTitle": "نشط لمدة 7 أيام",
+      "daysDescription": "يستمر تعزيز الملف أسبوعاً كاملاً",
+      "headlineLabel": "حدّث عنوانك المهني (اختياري — يجعل ملفك بارزاً)",
+      "headlinePlaceholder": "مثال: مطور React أول | خبرة 5+ سنوات | متاح للعمل عن بُعد",
+      "boosting": "جار التعزيز...",
+      "boostButton": "تعزيز ملفي",
+      "failed": "فشل تعزيز الملف",
+      "network": "خطأ في الشبكة"
+    },
+    "savedSearches": {
+      "title": "عمليات البحث المحفوظة",
+      "description": "احفظ عمليات البحث وتلقَّ تنبيهات بريدية عند ظهور مطابقات جديدة",
+      "newAlert": "تنبيه بحث جديد",
+      "activeAlerts": "التنبيهات النشطة",
+      "createTitle": "إنشاء تنبيه بحث",
+      "namePlaceholder": "اسم التنبيه *",
+      "queryPlaceholder": "كلمات البحث *",
+      "locationPlaceholder": "الموقع (اختياري)",
+      "daily": "تنبيهات يومية",
+      "weekly": "تنبيهات أسبوعية",
+      "never": "بدون تنبيهات",
+      "create": "إنشاء",
+      "cancel": "إلغاء",
+      "empty": "لا توجد عمليات بحث محفوظة",
+      "emptyDescription": "أنشئ تنبيه بحث ليصلك إشعار بالوظائف الجديدة المطابقة",
+      "emailAlertsOn": "تنبيهات البريد مفعّلة",
+      "disableAlert": "تعطيل التنبيه",
+      "enableAlert": "تفعيل التنبيه",
+      "loadFailed": "فشل تحميل عمليات البحث المحفوظة",
+      "required": "الاسم وكلمات البحث مطلوبان",
+      "created": "تم إنشاء البحث المحفوظ",
+      "createFailed": "فشل إنشاء البحث المحفوظ",
+      "deleted": "تم حذف البحث",
+      "deleteFailed": "فشل الحذف",
+      "alertEnabled": "تم تفعيل التنبيه",
+      "alertDisabled": "تم تعطيل التنبيه",
+      "updateFailed": "فشل التحديث"
+    },
+    "referral": {
+      "title": "برنامج الإحالة",
+      "description": "ادعُ أصدقاءك للانضمام واكسب مكافآت عندما يتم توظيفهم",
+      "total": "إجمالي الإحالات",
+      "successful": "الناجحة",
+      "pending": "قيد الانتظار",
+      "rewards": "المكافآت المكتسبة",
+      "linkTitle": "رابط الإحالة الخاص بك",
+      "copy": "نسخ",
+      "code": "رمز الإحالة:",
+      "share": "المشاركة على وسائل التواصل",
+      "shareTitle": "انضم إليّ على MPLOYEDIN، منصة الوظائف الذكية!",
+      "shareDescription": "سجّل باستخدام رابط الإحالة الخاص بي واعثر على وظيفة أحلامك أسرع",
+      "history": "سجل الإحالات",
+      "empty": "لا توجد إحالات بعد",
+      "emptyDescription": "شارك رابطك لتبدأ بإحالة الأصدقاء",
+      "loadFailed": "فشل تحميل بيانات الإحالة",
+      "copied": "تم نسخ رابط الإحالة!",
+      "copyFailed": "فشل النسخ"
+    },
+    "portfolio": {
+      "title": "المعرض والمشاريع",
+      "description": "اعرض أعمالك ومشاريعك الجانبية وإنجازاتك لأصحاب العمل",
+      "addProject": "إضافة مشروع",
+      "projectTitlePlaceholder": "عنوان المشروع *",
+      "urlPlaceholder": "رابط المشروع (اختياري)",
+      "descriptionPlaceholder": "الوصف *",
+      "technologiesPlaceholder": "التقنيات (مفصولة بفواصل)",
+      "imagePlaceholder": "رابط الصورة (اختياري)",
+      "add": "إضافة",
+      "cancel": "إلغاء",
+      "empty": "لا توجد مشاريع بعد",
+      "emptyDescription": "أضف مشروعك الأول لعرض أعمالك",
+      "present": "حتى الآن",
+      "view": "عرض",
+      "loadFailed": "فشل تحميل المعرض",
+      "required": "العنوان والوصف مطلوبان",
+      "added": "تمت إضافة المشروع",
+      "addFailed": "فشل إضافة المشروع",
+      "removed": "تمت إزالة المشروع",
+      "deleteFailed": "فشل الحذف"
+    },
+    "documents": {
+      "documentTitle": "المستندات · MPLOYEDIN",
+      "title": "المستندات",
+      "description": "ارفع سيرتك الذاتية والشهادات والمستندات الأخرى",
+      "type": "نوع المستند",
+      "supportedFormats": "الصيغ المدعومة: PDF و DOCX و JPG و PNG و WEBP",
+      "uploadPrompt": "اسحب وأفلت {category} هنا",
+      "formats": "PDF و DOCX و JPG و PNG و WEBP حتى 10 ميغابايت",
+      "uploading": "جار الرفع…",
+      "uploadDocument": "رفع المستند",
+      "extracting": "جار الاستخراج…",
+      "extractWithAi": "استخراج بالذكاء الاصطناعي",
+      "extractedProfile": "الملف المستخرج",
+      "saveToProfile": "حفظ في الملف",
+      "saving": "جار الحفظ…",
+      "present": "حتى الآن",
+      "myDocuments": "مستنداتي",
+      "empty": "لا توجد مستندات مرفوعة بعد",
+      "emptyDescription": "ارفع سيرتك الذاتية والشهادات والمستندات الأخرى أعلاه",
+      "view": "عرض المستند",
+      "remove": "إزالة المستند",
+      "documentFallback": "مستند",
+      "uploaded": "تم رفع {category} بنجاح!",
+      "resumeUploaded": "تم رفع السيرة الذاتية بنجاح!",
+      "uploadFailed": "فشل رفع المستند",
+      "uploadGenericFailed": "فشل الرفع",
+      "extractionFailed": "فشل الاستخراج",
+      "extractedSuccess": "تم استخراج بيانات السيرة الذاتية بنجاح!",
+      "profileUpdated": "تم تحديث الملف بنجاح!",
+      "saveFailed": "فشل الحفظ. يرجى المحاولة يدوياً.",
+      "saveProfileFailed": "فشل حفظ الملف",
+      "removed": "تمت إزالة المستند",
+      "removeFailed": "فشل إزالة المستند",
+      "categories": {
+        "resume": "السيرة الذاتية / CV",
+        "college_certificate": "شهادة جامعية",
+        "course_certificate": "شهادة دورة",
+        "professional_certificate": "شهادة مهنية",
+        "other": "مستند آخر"
+      }
+    },
+    "experience": {
+      "title": "الخبرة العملية",
+      "description": "أضف تاريخك العملي لتبرز أمام أصحاب العمل",
+      "saving": "جار الحفظ…",
+      "saved": "تم الحفظ",
+      "add": "إضافة خبرة",
+      "position": "منصب",
+      "positions": "مناصب",
+      "yearsTotal": "سنوات إجمالاً",
+      "currentlyEmployed": "يعمل حالياً",
+      "loading": "جار تحميل الخبرة…",
+      "emptyTitle": "لم تتم إضافة خبرة بعد",
+      "emptyDescription": "إضافة خبرتك العملية تساعد أصحاب العمل على فهم خلفيتك وترفع درجة تطابق ملفك.",
+      "addFirst": "أضف أول خبرة",
+      "currentPosition": "المنصب الحالي",
+      "positionNumber": "منصب {count}",
+      "current": "حالي",
+      "remove": "إزالة الخبرة",
+      "jobTitle": "المسمى الوظيفي",
+      "jobPlaceholder": "مثال: مطور واجهات أمامية أول",
+      "company": "الشركة",
+      "companyPlaceholder": "اسم الشركة",
+      "location": "الموقع",
+      "locationPlaceholder": "المدينة، الدولة",
+      "from": "من",
+      "to": "إلى",
+      "present": "حتى الآن",
+      "currentWork": "أعمل هنا حالياً",
+      "descriptionLabel": "الوصف",
+      "aiEnhance": "تحسين بالذكاء الاصطناعي",
+      "descriptionPlaceholder": "أهم المسؤوليات والإنجازات…",
+      "duration": "المدة:",
+      "addAnother": "إضافة خبرة أخرى"
+    },
+    "preferences": {
+      "title": "تفضيلات الوظائف",
+      "description": "حدّد تفضيلاتك للحصول على مطابقات وتوصيات أفضل",
+      "preferredRoles": "الأدوار المفضلة",
+      "preferredRolesDescription": "ما المسميات الوظيفية التي تبحث عنها؟",
+      "rolesPlaceholder": "مثال: مطور واجهات، مدير منتج…",
+      "popular": "الشائع:",
+      "preferredLocations": "المواقع المفضلة",
+      "preferredLocationsDescription": "أين تريد العمل؟",
+      "locationsPlaceholder": "مثال: الإمارات، السعودية، قطر…",
+      "salary": "توقعات الراتب",
+      "salaryDescription": "ما نطاق راتبك الشهري المتوقع؟",
+      "quickSelect": "اختيار سريع:",
+      "minimum": "الحد الأدنى",
+      "maximum": "الحد الأقصى",
+      "currency": "العملة",
+      "jobType": "نوع العمل",
+      "jobTypeDescription": "ما نمط العمل الذي تفضله؟",
+      "jobTypes": {
+        "remote": "عن بُعد",
+        "hybrid": "مختلط",
+        "onsite": "في الموقع",
+        "any": "أي نوع"
+      },
+      "availability": "التوفر",
+      "availabilityDescription": "متى يمكنك بدء دور جديد؟",
+      "availabilityOptions": {
+        "immediately": "فوراً",
+        "within_month": "خلال شهر",
+        "within_3_months": "خلال 3 أشهر",
+        "not_available": "غير متاح"
+      },
+      "activelyLooking": "أبحث بنشاط",
+      "activelyLookingDescription": "أظهر لأصحاب العمل أنك منفتح على الفرص",
+      "noticePeriod": "فترة الإشعار (أيام)",
+      "saving": "جار الحفظ…",
+      "saved": "تم الحفظ",
+      "failed": "فشل الحفظ.",
+      "retry": "إعادة المحاولة",
+      "matchTitle": "درجة إعداد المطابقة بالذكاء الاصطناعي",
+      "matchDescription": "أكمل تفضيلاتك للحصول على مطابقات وظيفية أفضل",
+      "optimized": "ملفك محسّن بالكامل — تحصل الآن على أفضل المطابقات!",
+      "companyFallback": "شركة",
+      "remote": "عن بُعد",
+      "removeTag": "إزالة {tag}",
+      "jobsTitle": "وظائف تطابق تفضيلاتك",
+      "jobsDescription": "بناءً على إعداداتك الحالية",
+      "noMatches": "لا توجد مطابقات بعد — أكمل تفضيلاتك لفتح التوصيات.",
+      "tips": {
+        "addMoreRoles": "أضف {count} أدوار أخرى",
+        "addPreferredRole": "أضف دوراً مفضلاً واحداً على الأقل",
+        "addLocations": "أضف المواقع المفضلة",
+        "setBothSalary": "حدد الحد الأدنى والأقصى للراتب",
+        "setSalary": "حدد توقعات راتبك",
+        "specifyJobType": "حدد نوع العمل المفضل"
+      }
+    },
+    "personalDetails": {
+      "documentTitle": "البيانات الشخصية · MPLOYEDIN",
+      "title": "البيانات الشخصية",
+      "description": "أخبر أصحاب العمل المزيد عنك — يساعد ذلك في مطابقة فرص عادلة",
+      "back": "العودة إلى الملف",
+      "gender": "الجنس",
+      "genderDescription": "اختر الهوية الجندرية",
+      "marital": "الحالة الاجتماعية",
+      "maritalDescription": "حالتك الاجتماعية الحالية",
+      "dob": "تاريخ الميلاد",
+      "dobDescription": "يجب ألا يقل عمرك عن 16 عاماً",
+      "workAuth": "تصريح العمل",
+      "workAuthDescription": "الدول التي يحق لك العمل فيها قانونياً",
+      "workPermit": "دول تصريح العمل",
+      "workPermitHint": "يمكنك اختيار حتى 5 دول",
+      "selectCountries": "اختر الدول…",
+      "address": "العنوان",
+      "addressDescription": "تفاصيل عنوان سكنك",
+      "permanentAddress": "العنوان الدائم",
+      "permanentAddressPlaceholder": "أدخل عنوانك الدائم",
+      "hometown": "مسقط الرأس",
+      "hometownPlaceholder": "مسقط رأسك",
+      "postal": "الرمز البريدي",
+      "postalPlaceholder": "الرمز البريدي",
+      "languageProficiency": "إجادة اللغات",
+      "languageDescription": "عزّز سيرتك بإظهار اللغات التي تتقنها للمسؤولين",
+      "noLanguages": "لا توجد لغات بعد. اضغط \"إضافة لغة\" أدناه.",
+      "language": "اللغة",
+      "languagePlaceholder": "مثال: الإنجليزية، العربية…",
+      "proficiency": "مستوى الإتقان",
+      "proficiencyOptions": {
+        "basic": "أساسي",
+        "conversational": "محادثة",
+        "professional": "مهني",
+        "native": "لغة أم"
+      },
+      "removeLanguage": "إزالة اللغة",
+      "addLanguage": "إضافة لغة",
+      "saved": "تم الحفظ بنجاح",
+      "failed": "فشل الحفظ — يرجى المحاولة مرة أخرى",
+      "idle": "املأ بياناتك واضغط حفظ",
+      "cancel": "إلغاء",
+      "save": "حفظ"
+    },
+    "profile": {
+      "documentTitle": "ملفي الشخصي · MPLOYEDIN",
+      "title": "ملفي الشخصي",
+      "description": "أنشئ ملفك المهني واحصل على فرص مناسبة",
+      "settings": "الإعدادات",
+      "aiTools": "أدوات الملف بالذكاء الاصطناعي",
+      "aiTitle": "استخدم الذكاء الاصطناعي لبناء ملفك بسرعة أكبر",
+      "aiDescription": "ارفع سيرتك الذاتية لاستخراج الملخص والمهارات والخبرة تلقائياً، ثم اضبط كيفية استخدام Mployedin للذكاء الاصطناعي في السير الذاتية وخطابات التقديم وإجابات الفرز.",
+      "refreshCvAi": "تحديث السيرة بالذكاء الاصطناعي",
+      "uploadCvAi": "رفع السيرة بالذكاء الاصطناعي",
+      "aiReady": "الذكاء الاصطناعي جاهز",
+      "cvUploaded": "تم رفع السيرة",
+      "new": "جديد",
+      "aiExtractor": "مستخرج السيرة بالذكاء الاصطناعي",
+      "aiExtractedDescription": "تم تحليل أحدث سيرتك الذاتية إلى بيانات الملف. يمكنك رفع نسخة أحدث في أي وقت لتحديثها.",
+      "cvUploadedDescription": "سيرتك الذاتية مرفوعة. أعد استيرادها بالذكاء الاصطناعي متى أردت تحديث المهارات أو الخبرة أو الملخص.",
+      "noCvDescription": "ارفع سيرة ذاتية بصيغة PDF أو صورة ودع الذكاء الاصطناعي يملأ الملخص والمهارات والخبرة خلال دقائق.",
+      "refreshWithAi": "تحديث بالذكاء الاصطناعي",
+      "visibleBanner": "يمكن لأصحاب العمل العثور عليك على Mployedin",
+      "hiddenBanner": "لا يمكن لأصحاب العمل العثور عليك",
+      "checklist": {
+        "cv": "رفع السيرة بالذكاء الاصطناعي",
+        "skills": "إضافة المهارات",
+        "experience": "إضافة الخبرة",
+        "education": "إضافة التعليم",
+        "personal": "البيانات الشخصية",
+        "preferences": "تحديد تفضيلات الوظائف"
+      },
+      "quickActions": {
+        "title": "إجراءات سريعة",
+        "aiCv": "مستخرج السيرة بالذكاء الاصطناعي",
+        "aiCvDescription": "استيراد الملخص والمهارات والخبرة",
+        "addSkills": "إضافة المهارات",
+        "addSkillsDescription": "حسّن درجة المطابقة",
+        "preferences": "تفضيلات الوظائف",
+        "preferencesDescription": "احصل على توصيات أفضل"
+      },
+      "sectionActions": {
+        "visibleTitle": "ظاهر لأصحاب العمل - اضغط للإخفاء",
+        "hiddenTitle": "مخفي عن أصحاب العمل - اضغط للإظهار",
+        "visible": "ظاهر",
+        "hidden": "مخفي",
+        "edit": "تعديل",
+        "add": "إضافة",
+        "update": "تحديث",
+        "uploadToAutofill": "رفع السيرة للتعبئة تلقائياً"
+      },
+      "languagesSection": {
+        "title": "اللغات والروابط",
+        "empty": "أضف اللغات والروابط المهنية",
+        "languages": "اللغات",
+        "language": "اللغة",
+        "proficiency": "مستوى الإتقان",
+        "read": "القراءة",
+        "write": "الكتابة",
+        "speak": "التحدث"
+      },
+      "sectionNav": {
+        "about": "نبذة",
+        "experience": "الخبرة",
+        "skills": "المهارات",
+        "education": "التعليم",
+        "projects": "المشاريع",
+        "accomplishments": "الإنجازات",
+        "careerProfile": "الملف المهني",
+        "languages": "اللغات والروابط"
+      }
+    },
+    "settings": {
+      "back": "رجوع",
+      "changePhoto": "تغيير الصورة",
+      "yourName": "اسمك",
+      "uploading": "جار الرفع…",
+      "changePhotoButton": "تغيير الصورة",
+      "uploadPhoto": "رفع صورة",
+      "remove": "إزالة",
+      "discard": "تجاهل",
+      "saving": "جار الحفظ…",
+      "saveSettings": "حفظ الإعدادات",
+      "save": "حفظ",
+      "fileHint": "JPEG أو PNG أو WebP · الحد الأقصى 2 ميغابايت",
+      "unsavedChanges": "تغييرات غير محفوظة",
+      "savedToast": "تم حفظ الإعدادات بنجاح",
+      "failedToast": "فشل حفظ الإعدادات. يرجى المحاولة مرة أخرى.",
+      "tabs": {
+        "interviews": "المقابلات",
+        "schedule": "الجدول",
+        "profileVisibility": "ظهور الملف",
+        "visibility": "الظهور",
+        "resumeAi": "السيرة والذكاء الاصطناعي",
+        "ai": "الذكاء الاصطناعي",
+        "notifications": "الإشعارات",
+        "alerts": "التنبيهات"
+      },
+      "interviews": {
+        "title": "جدولة المقابلات",
+        "description": "تحكم في كيفية ووقت حجز أصحاب العمل للمقابلات معك.",
+        "instantBooking": "حجز المقابلات فورياً",
+        "instantBookingDescription": "السماح لأصحاب العمل بالحجز مباشرة ضمن أوقاتك المتاحة.",
+        "availabilityTitle": "إعدادات التوفر",
+        "availabilityDescription": "حدد أيامك وساعات عملك المتاحة. لا يمكن لأصحاب العمل حجز مقابلات إلا ضمن هذه الفترات.",
+        "buffer": "فاصل بين المقابلات",
+        "bufferDescription": "أقل وقت استراحة بين المقابلات المتتالية.",
+        "bufferTooltip": "يمنع أصحاب العمل من جدولة مقابلات متتالية دون فاصل.",
+        "noBuffer": "بدون فاصل",
+        "minutes": "{count} دقيقة"
+      }
+    }
+  },
+  "cvBuilderPage": {
+    "documentTitle": "بناء السيرة الذاتية · MPLOYEDIN",
+    "header": {
+      "title": "بناء السيرة الذاتية",
+      "description": "أنشئ سيرة ذاتية احترافية بمساعدة الذكاء الاصطناعي والقوالب والتنسيق المخصص"
+    },
+    "tabs": {
+      "editor": "محرر الذكاء الاصطناعي",
+      "templates": "القوالب",
+      "formatting": "التنسيق"
+    },
+    "import": {
+      "title": "استيراد من السيرة الذاتية",
+      "description": "ارفع ملف PDF أو صورة ليملأ الذكاء الاصطناعي الحقول",
+      "upload": "رفع السيرة الذاتية",
+      "importing": "جار الاستيراد...",
+      "reading": "الذكاء الاصطناعي يقرأ سيرتك الذاتية..."
+    },
+    "sections": {
+      "personalDetails": "البيانات الشخصية",
+      "workExperience": "الخبرة العملية ({count})",
+      "education": "التعليم ({count})",
+      "skills": "المهارات الأساسية ({count})",
+      "projects": "المشاريع ({count})",
+      "languages": "اللغات ({count})",
+      "certifications": "الشهادات ({count})"
+    },
+    "fields": {
+      "fullName": "الاسم الكامل",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "nationality": "الجنسية",
+      "currentLocation": "الموقع الحالي",
+      "profileSummary": "نبذة الملف",
+      "portfolio": "المعرض / الموقع",
+      "title": "العنوان",
+      "url": "الرابط",
+      "jobTitle": "المسمى الوظيفي",
+      "company": "الشركة",
+      "location": "الموقع",
+      "from": "من",
+      "to": "إلى",
+      "present": "حتى الآن",
+      "currentWork": "أعمل هنا حالياً",
+      "description": "الوصف",
+      "degree": "الدرجة العلمية",
+      "fieldOfStudy": "مجال الدراسة",
+      "institution": "المؤسسة التعليمية",
+      "graduationDate": "تاريخ التخرج",
+      "grade": "المعدل / الدرجة",
+      "projectTitle": "عنوان المشروع",
+      "techStack": "التقنيات",
+      "projectUrl": "رابط المشروع",
+      "repositoryUrl": "رابط المستودع",
+      "language": "اللغة",
+      "proficiency": "مستوى الإتقان"
+    },
+    "placeholders": {
+      "fullName": "اسمك الكامل",
+      "email": "بريد التواصل",
+      "nationality": "مثال: هندي",
+      "location": "المدينة، الدولة",
+      "summary": "نبذة مهنية مختصرة أو عنوان مهني...",
+      "linkTitle": "مثال: GitHub",
+      "jobTitle": "مثال: مطور أول",
+      "company": "اسم الشركة",
+      "experienceDescription": "أهم المسؤوليات والإنجازات...",
+      "degree": "مثال: بكالوريوس علوم",
+      "fieldOfStudy": "مثال: علوم الحاسوب",
+      "institution": "اسم الجامعة",
+      "grade": "مثال: 3.8 / 4.0",
+      "skill": "اكتب مهارة واضغط Enter...",
+      "projectTitle": "مثال: منصة تجارة إلكترونية",
+      "projectDescription": "وصف مختصر للمشروع...",
+      "techStack": "React, Node.js, MongoDB (مفصولة بفواصل)",
+      "language": "مثال: الإنجليزية",
+      "certification": "أضف شهادة..."
+    },
+    "actions": {
+      "writeWithAi": "اكتب بالذكاء الاصطناعي",
+      "addAnotherLink": "إضافة رابط آخر",
+      "add": "إضافة",
+      "downloadPdf": "تحميل PDF",
+      "download": "تحميل",
+      "saving": "جار الحفظ...",
+      "addToProfile": "إضافة إلى الملف"
+    },
+    "badges": {
+      "aiPowered": "مدعوم بالذكاء الاصطناعي"
+    },
+    "empty": {
+      "experience": "لا توجد خبرة بعد. اضغط إضافة للبدء.",
+      "education": "لا يوجد تعليم بعد. اضغط إضافة للبدء.",
+      "skills": "لا توجد مهارات بعد - أضف بعضها أدناه",
+      "projects": "لا توجد مشاريع بعد. اضغط إضافة للبدء.",
+      "languages": "لا توجد لغات بعد."
+    },
+    "visibility": {
+      "showInCv": "إظهار في السيرة الذاتية",
+      "hideFromCv": "إخفاء من السيرة الذاتية",
+      "hidden": "مخفي",
+      "visible": "ظاهر"
+    },
+    "preview": {
+      "resume": "السيرة الذاتية",
+      "minimize": "تصغير",
+      "expand": "توسيع"
+    },
+    "messages": {
+      "importSuccess": "تم استيراد السيرة الذاتية بنجاح! راجع الحقول وعدلها أدناه.",
+      "profileSaved": "تم حفظ الملف بنجاح!",
+      "downloaded": "تم تحميل السيرة الذاتية!"
+    },
+    "errors": {
+      "supportedFormats": "الصيغ المدعومة: PDF و JPG و PNG و WEBP",
+      "fileSize": "يجب أن يكون حجم الملف أقل من 10 ميغابايت",
+      "importFailed": "فشل الاستيراد",
+      "generic": "حدث خطأ ما",
+      "saveProfile": "فشل حفظ الملف",
+      "saveFailed": "فشل الحفظ",
+      "pdfFailed": "فشل إنشاء ملف PDF. حاول مرة أخرى."
+    },
+    "defaults": {
+      "link": "رابط"
+    },
+    "previewSections": {
+      "yourName": "اسمك",
+      "present": "حتى الآن",
+      "experience": "الخبرة",
+      "professionalExperience": "الخبرة المهنية",
+      "education": "التعليم",
+      "skills": "المهارات",
+      "projects": "المشاريع",
+      "keyProjects": "المشاريع الرئيسية",
+      "languages": "اللغات",
+      "certifications": "الشهادات",
+      "coreCompetencies": "الكفاءات الأساسية",
+      "grade": "الدرجة",
+      "atCompany": "في {company}",
+      "decoratedExperience": "- الخبرة -",
+      "decoratedEducation": "- التعليم -",
+      "decoratedSkills": "- المهارات -",
+      "decoratedProjects": "- المشاريع -"
+    },
+    "templatePicker": {
+      "filters": {
+        "all": "الكل",
+        "free": "مجاني",
+        "pro": "PRO"
+      },
+      "badges": {
+        "free": "مجاني",
+        "pro": "PRO"
+      },
+      "templates": {
+        "classic": { "name": "كلاسيكي", "description": "تصميم مهني واضح مع لمسات زرقاء" },
+        "modern": { "name": "حديث", "description": "تصميم معاصر بتخطيط جانبي" },
+        "minimal": { "name": "بسيط", "description": "تصميم أحادي العمود مناسب لأنظمة تتبع الطلبات" },
+        "executive": { "name": "تنفيذي", "description": "تخطيط ثنائي الأعمدة للأدوار العليا" },
+        "creative": { "name": "إبداعي", "description": "تصميم بارز برأس ملون وأشرطة مهارات" },
+        "elegant": { "name": "أنيق", "description": "خطوط رصينة مع لمسات ذهبية" }
+      }
+    },
+    "formatting": {
+      "sectionSpacing": "تباعد الأقسام",
+      "selectFont": "اختيار الخط",
+      "fontSize": "حجم الخط",
+      "theme": "السمة",
+      "reset": "إعادة التعيين الافتراضي",
+      "spacing": {
+        "compact": "مضغوط",
+        "medium": "متوسط",
+        "spacious": "واسع"
+      },
+      "sizes": {
+        "small": "صغير",
+        "medium": "متوسط",
+        "large": "كبير"
+      }
+    },
+    "proficiency": {
+      "basic": "أساسي",
+      "conversational": "محادثة",
+      "professional": "مهني",
+      "native": "لغة أم"
+    },
+    "aiWrite": {
+      "button": "اكتب بالذكاء الاصطناعي",
+      "generating": "جار التوليد...",
+      "generationFailed": "فشل توليد النص بالذكاء الاصطناعي",
+      "generated": "تم توليد المحتوى بالذكاء الاصطناعي!",
+      "empty": "أعاد الذكاء الاصطناعي نتيجة فارغة",
+      "failed": "فشل التوليد"
+    }
+  },
   "jobSeekerHome": {
     "common": {
       "cancel": "إلغاء"
@@ -247,12 +1435,12 @@
       "aiSuggestions": "اقتراحات الذكاء الاصطناعي"
     },
     "summary": {
-      "activeMatches": "{count, plural, =0 {0 تطابقات نشطة} one {# تطابق نشط} two {# تطابقان نشطان} few {# تطابقات نشطة} many {# تطابقاً نشطاً} other {# تطابق نشط}}",
+      "activeMatches": "{count, plural, =0 {{countLabel} تطابقات نشطة} one {{countLabel} تطابق نشط} two {{countLabel} تطابقان نشطان} few {{countLabel} تطابقات نشطة} many {{countLabel} تطابقاً نشطاً} other {{countLabel} تطابق نشط}}",
       "applications": "طلبات التقديم",
       "savedJobs": "وظائف محفوظة",
       "interviews": "مقابلات",
       "profileViews": "مشاهدات الملف",
-      "nextStepsQueued": "{count, plural, =0 {0 خطوات تالية بانتظارك} one {# خطوة تالية بانتظارك} two {# خطوتان تاليتان بانتظارك} few {# خطوات تالية بانتظارك} many {# خطوة تالية بانتظارك} other {# خطوة تالية بانتظارك}}"
+      "nextStepsQueued": "{count, plural, =0 {{countLabel} خطوات تالية بانتظارك} one {{countLabel} خطوة تالية بانتظارك} two {{countLabel} خطوتان تاليتان بانتظارك} few {{countLabel} خطوات تالية بانتظارك} many {{countLabel} خطوة تالية بانتظارك} other {{countLabel} خطوة تالية بانتظارك}}"
     },
     "recommendedJobs": {
       "eyebrow": "وظائف موصى بها",
@@ -2082,6 +3270,72 @@
     "optional": "اختياري",
     "pickDateTime": "اختر التاريخ والوقت"
   },
+  "messagesPage": {
+    "defaultTitle": "الرسائل",
+    "defaultDescription": "رسائل مباشرة ومحادثات",
+    "newTicket": "تذكرة جديدة",
+    "newSupportTicket": "تذكرة دعم جديدة",
+    "category": "الفئة",
+    "message": "الرسالة",
+    "messagePlaceholder": "صف مشكلتك…",
+    "submitTicket": "إرسال التذكرة",
+    "messagesTab": "الرسائل",
+    "supportTab": "الدعم",
+    "searchPlaceholder": "ابحث في المحادثات…",
+    "noConversationsSearch": "لا توجد محادثات تطابق بحثك.",
+    "noSupportTickets": "لا توجد تذاكر دعم بعد. اضغط \"تذكرة جديدة\" للتواصل مع الدعم.",
+    "noConversations": "لا توجد محادثات بعد. ابدأ واحدة بزر \"محادثة جديدة\" أعلاه.",
+    "unknown": "غير معروف",
+    "startConversation": "ابدأ محادثة",
+    "back": "رجوع",
+    "ticketStatus": "تم وضع هذه التذكرة كـ {status}.",
+    "reopen": "إعادة الفتح",
+    "selectConversation": "اختر محادثة",
+    "selectSupportTicketHint": "اختر تذكرة دعم من القائمة للرد.",
+    "selectConversationHint": "اختر محادثة من القائمة، أو ابدأ محادثة جديدة.",
+    "roles": {
+      "admin": "مشرف",
+      "super_agent": "مشرف إقليمي",
+      "agent": "وكيل",
+      "employer": "صاحب عمل",
+      "job_seeker": "باحث عن عمل"
+    },
+    "categories": {
+      "account": "الحساب",
+      "job_search": "البحث عن وظيفة",
+      "technical": "تقني",
+      "billing": "الفوترة",
+      "other": "أخرى"
+    },
+    "status": {
+      "open": "مفتوحة",
+      "assigned": "مُسندة",
+      "resolved": "محلولة",
+      "closed": "مغلقة"
+    },
+    "priority": {
+      "urgent": "عاجلة"
+    },
+    "chat": {
+      "unknown": "غير معروف",
+      "noMessages": "لا توجد رسائل بعد. ابدأ بالتحية!",
+      "inputPlaceholder": "اكتب رسالة… (Enter للإرسال، Shift+Enter لسطر جديد)",
+      "clearChat": "مسح المحادثة",
+      "deleteChat": "حذف المحادثة",
+      "clearTitle": "مسح المحادثة",
+      "clearMessage": "سيتم حذف كل الرسائل في هذه المحادثة نهائياً. ستبقى المحادثة موجودة.",
+      "clearConfirm": "مسح الرسائل",
+      "deleteTitle": "حذف المحادثة",
+      "deleteMessage": "سيتم حذف هذه المحادثة وكل رسائلها نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+      "deleteConfirm": "حذف",
+      "errors": {
+        "load": "فشل تحميل الرسائل.",
+        "send": "فشل إرسال الرسالة.",
+        "clear": "فشل مسح المحادثة.",
+        "delete": "فشل حذف المحادثة."
+      }
+    }
+  },
   "employerMessages": {
     "title": "الرسائل",
     "description": "رسائل مباشرة مع الوكلاء والوكلاء الرئيسيين",
@@ -2115,8 +3369,14 @@
     "offer": "عرض",
     "hired": "تم التوظيف",
     "rejected": "مرفوض",
+    "withdrawn": "منسحب",
     "otherRole": "دور آخر",
     "match": "تطابق",
+    "aiPending": "الذكاء الاصطناعي قيد الانتظار",
+    "score": "تقييم",
+    "applicantRowFor": "صف طلب المرشح {name}",
+    "selectCandidate": "تحديد {name}",
+    "viewCvFor": "عرض السيرة الذاتية لـ {name}",
     "noApplications": "لا توجد طلبات بعد",
     "noApplicationsDesc": "ستظهر الطلبات هنا بمجرد تقديم المرشحين",
     "bulkActions": "إجراءات جماعية",
@@ -2137,7 +3397,50 @@
     "roleNotSpecified": "الدور غير محدد",
     "locationExpPending": "الموقع والخبرة قيد التحديث",
     "yearsExp": "+{count} سنوات",
-    "appliedDate": "تقدّم في {date}"
+    "appliedDate": "تقدّم في {date}",
+    "appliedDateLabel": "تاريخ التقديم",
+    "aiScorePending": "تقييم الذكاء الاصطناعي قيد الانتظار",
+    "role": "الدور",
+    "unassigned": "غير معين",
+    "candidateDetailsFor": "تفاصيل المرشح {name}",
+    "closeCandidateDetails": "إغلاق تفاصيل المرشح",
+    "currentRole": "الدور الحالي",
+    "location": "الموقع",
+    "notSpecified": "غير محدد",
+    "experience": "الخبرة",
+    "scorecard": "بطاقة التقييم",
+    "overallScore": "{score}/5 إجمالاً",
+    "notAddedYet": "لم تتم الإضافة بعد",
+    "applicationOverview": "نظرة عامة على الطلب",
+    "untitledRole": "دور بلا عنوان",
+    "applicationOverviewText": "تقدّم في {date} وهو حالياً في مرحلة {stage}.",
+    "otherApplicationsSummary": "تقدّم هذا المرشح أيضاً إلى {count} من الأدوار الأخرى.",
+    "reviewSignals": "إشارات المراجعة",
+    "generateScore": "إنشاء التقييم",
+    "aiMatch": "تطابق الذكاء الاصطناعي",
+    "skills": "المهارات",
+    "overall": "الإجمالي",
+    "aiCategoryScoresUnavailable": "درجات فئات الذكاء الاصطناعي التفصيلية غير متاحة لهذا الطلب بعد.",
+    "generateAiMatchPrompt": "أنشئ تقييم تطابق بالذكاء الاصطناعي لفحص مدى توافق هذا المرشح مع متطلبات الدور.",
+    "screeningAnswers": "إجابات الفرز",
+    "yes": "نعم",
+    "no": "لا",
+    "strengths": "نقاط القوة",
+    "watchouts": "نقاط الانتباه",
+    "keySkills": "المهارات الرئيسية",
+    "noSkills": "لا توجد مهارات مرفقة بهذا الملف بعد.",
+    "education": "التعليم",
+    "noEducation": "لا توجد تفاصيل تعليم متاحة.",
+    "noExperience": "لا توجد تفاصيل خبرة متاحة.",
+    "current": "حالي",
+    "quickActions": "إجراءات سريعة",
+    "viewScorecard": "عرض بطاقة التقييم",
+    "addScorecard": "إضافة بطاقة تقييم",
+    "markSelected": "وضع علامة مختار",
+    "moveToStage": "نقل إلى مرحلة",
+    "updating": "جارٍ التحديث...",
+    "applyStage": "تطبيق المرحلة",
+    "rejectionReasonRequired": "سبب الرفض مطلوب"
   },
   "employerAnalytics": {
     "title": "مركز قيادة التحليلات",
@@ -2204,6 +3507,7 @@
   },
   "employerSettings": {
     "title": "إعدادات الشركة",
+    "documentTitle": "إعدادات الشركة · MPLOYEDIN",
     "description": "إدارة ملف شركتك وتفضيلاتك وإشعاراتك",
     "companyProfile": "ملف الشركة",
     "companyProfileDesc": "الشعار والاسم والصناعة ونبذة عنا",
@@ -2266,6 +3570,721 @@
     "linkedin": "لينكد إن",
     "twitter": "تويتر / إكس"
   },
+  "adminDashboard": {
+    "trend": {
+      "vsLastMonth": "مقارنة بالشهر الماضي",
+      "flat": "لا تغيير {suffix}",
+      "count": "{value} {suffix}",
+      "percent": "{value}% {suffix}",
+      "total": "{count} إجمالاً"
+    },
+    "roles": {
+      "admin": "مدير النظام",
+      "superAgent": "مشرف الوكلاء",
+      "agent": "وكيل",
+      "employer": "صاحب عمل",
+      "jobSeeker": "باحث عن عمل",
+      "unknown": "غير معروف"
+    },
+    "statuses": {
+      "active": "نشط",
+      "draft": "مسودة",
+      "closed": "مغلقة",
+      "expired": "منتهية",
+      "applied": "مقدّم",
+      "interviewScheduled": "مقابلة مجدولة",
+      "selected": "مختار",
+      "offer": "عرض",
+      "hired": "تم التوظيف",
+      "unknown": "غير معروف"
+    },
+    "dates": {
+      "unknown": "تاريخ غير معروف"
+    },
+    "roleInsights": {
+      "dominant": "المجموعة الأكبر",
+      "underrepresented": "حضور منخفض في التوزيع الحالي",
+      "healthy": "حصة جيدة من مزيج المنصة"
+    },
+    "common": {
+      "fixNow": "معالجة الآن",
+      "openUserManagement": "فتح إدارة المستخدمين",
+      "inspectAnalytics": "فحص التحليلات",
+      "openWorkspace": "فتح مساحة العمل"
+    },
+    "hero": {
+      "eyebrow": "مساحة المدير",
+      "title": "لوحة تحكم المدير",
+      "description": "نظرة عامة على المنصة ومؤشرات التشغيل والاختصارات في مساحة عملية توضّح لفريق الإدارة الخطوة التالية."
+    },
+    "systemWatch": {
+      "eyebrow": "مراقبة النظام",
+      "activeJobs": "{count} وظائف نشطة",
+      "applications": "{count} طلبات على المنصة تتحرك حالياً عبر المسار.",
+      "demand": "الطلب",
+      "appsPerJob": "طلبات لكل وظيفة نشطة",
+      "conversion": "التحويل",
+      "applicationsToPlacements": "من الطلبات إلى التوظيف"
+    },
+    "kpis": {
+      "totalUsers": {
+        "label": "إجمالي المستخدمين",
+        "detail": "انضم {count} حسابات جديدة خلال آخر 30 يوماً.",
+        "dominant": "ما زال {role} هو القسم الأكبر.",
+        "fallback": "راقب توزيع الأدوار مع دخول حسابات جديدة."
+      },
+      "activeJobs": {
+        "label": "الوظائف النشطة",
+        "detail": "تم فتح {count} أدوار جديدة خلال آخر 30 يوماً.",
+        "zeroApplications": "{count} وظائف نشطة لم تستقبل أي طلبات بعد.",
+        "healthy": "كل وظيفة نشطة تستقطب طلبات مرشحين."
+      },
+      "totalApplications": {
+        "label": "إجمالي الطلبات",
+        "detail": "وصل {count} طلبات خلال آخر 30 يوماً.",
+        "insight": "{value} طلبات لكل وظيفة نشطة عبر المنصة."
+      },
+      "totalInterviews": {
+        "label": "إجمالي المقابلات",
+        "detail": "تمت جدولة {count} مقابلات عبر المنصة.",
+        "active": "مسار المقابلات نشط ويتقدم.",
+        "empty": "لا توجد مقابلات مجدولة بعد. شجّع أصحاب العمل على التفاعل."
+      }
+    },
+    "insights": {
+      "jobDemand": {
+        "titleProblem": "{count} وظائف نشطة تفتقد طلب المرشحين",
+        "titleHealthy": "الطلب على الوظائف صحي عبر الأدوار النشطة",
+        "detailProblem": "راجع وصف الوظيفة أو قنوات الاستقطاب قبل أن تفقد الأدوار زخمها.",
+        "detailHealthy": "لا توجد وظيفة نشطة بدون طلب واحد على الأقل.",
+        "actionProblem": "عرض الوظائف",
+        "actionHealthy": "فتح مساحة الوظائف"
+      },
+      "employerActivity": {
+        "titleProblem": "{count} أصحاب عمل غير نشطين منذ 7 أيام أو أكثر",
+        "titleHealthy": "نشاط أصحاب العمل جيد هذا الأسبوع",
+        "detailProblem": "أعد تنشيط الحسابات قبل أن تتعطل الوظائف أو مراجعات المرشحين.",
+        "detailHealthy": "تسجيلات الدخول الأخيرة تشير إلى حركة مستقرة من جانب أصحاب العمل."
+      },
+      "conversion": {
+        "titleProblem": "تحويل الطلبات إلى توظيف أقل من المستهدف",
+        "titleHealthy": "تحويل التوظيف مستقر",
+        "detailProblem": "تحول {value}% فقط من الطلبات إلى توظيف حتى الآن.",
+        "detailHealthy": "تتحول {value}% من الطلبات إلى توظيف."
+      }
+    },
+    "quickActions": {
+      "jobsOverview": {
+        "label": "نظرة على الوظائف",
+        "desc": "راقب جودة الأدوار والطلب والنشاط عبر المنصة.",
+        "badge": "{count} نشطة"
+      },
+      "userManagement": {
+        "label": "إدارة المستخدمين",
+        "desc": "عدّل الأدوار والصلاحيات وتابع المجموعات غير النشطة.",
+        "badge": "{count} أصحاب عمل غير نشطين"
+      },
+      "jobsManagement": {
+        "label": "إدارة الوظائف",
+        "desc": "راجع جودة الأدوار والطلب والنشاط من قائمة واحدة.",
+        "badge": "{count} أدوار منخفضة الطلب"
+      },
+      "auditLogs": {
+        "label": "سجلات التدقيق",
+        "desc": "راجع التغييرات الحساسة وأحداث الأمان ومسارات الحوكمة.",
+        "badge": "مسار الأمان"
+      },
+      "analytics": {
+        "label": "التحليلات",
+        "desc": "افحص تغيرات الاتجاه وضغط التحويل وحركة السوق.",
+        "badge": "{count} مقابلات متتبعة"
+      }
+    },
+    "recent": {
+      "userJoined": "انضم {name} بدور {role}",
+      "userDetail": "تمت إضافة صلاحية جديدة إلى مزيج المنصة.",
+      "jobPosted": "تم نشر {title}",
+      "applicationNew": "دخل طلب جديد إلى مسار التوظيف",
+      "applicationMoved": "انتقل الطلب إلى {status}",
+      "applicationDetail": "استخدم التحليلات والمتابعة قبل أن ينخفض الزخم."
+    },
+    "funnel": {
+      "jobs": "الوظائف",
+      "applications": "الطلبات",
+      "interviews": "المقابلات",
+      "placements": "التوظيفات"
+    },
+    "sections": {
+      "quickActions": {
+        "title": "إجراءات سريعة",
+        "description": "انتقل مباشرة إلى مسارات الإدارة التي تحافظ على الحوكمة وجودة المنصة."
+      },
+      "recentActivity": {
+        "title": "النشاط الأخير",
+        "description": "تابع أحدث حركة الحسابات والوظائف ومسار التوظيف."
+      },
+      "platformInsights": {
+        "title": "رؤى المنصة",
+        "description": "حوّل الأرقام إلى قرارات قبل أن يخرج الطلب أو التحويل عن الأنظار.",
+        "engine": "محرك الرؤى",
+        "engineDetail": "توصيات عملية أولاً"
+      },
+      "hiringFunnel": {
+        "title": "مسار التوظيف",
+        "description": "اكتشف أين ينضغط الحجم بين الوظائف النشطة والطلبات والمقابلات والتوظيف.",
+        "closed": "{count} مكتملة",
+        "stageAria": "{label}: {count}",
+        "noData": "{label} - لا توجد بيانات",
+        "nextStage": "{value}% ينتقلون إلى المرحلة التالية"
+      },
+      "trends": {
+        "title": "الوظائف مقابل الطلبات",
+        "description": "تحقق مما إذا كان الطلب يتحرك مع إنشاء الأدوار خلال آخر ستة أشهر.",
+        "chartAria": "اتجاه الوظائف والطلبات",
+        "jobsOpened": "الوظائف المفتوحة",
+        "jobsOpenedDesc": "أدوار جديدة أُطلقت خلال آخر 30 يوماً",
+        "applicationFlow": "تدفق الطلبات",
+        "applicationFlowDesc": "مرشحون دخلوا المسار هذا الشهر",
+        "demandRatio": "نسبة الطلب",
+        "demandRatioDesc": "طلبات لكل وظيفة نشطة"
+      },
+      "usersByRole": {
+        "title": "المستخدمون حسب الدور",
+        "description": "راقب توزيع الصلاحيات عبر المنصة وأماكن الحاجة للتدخل في مزيج الأدوار.",
+        "userCount": "{count} مستخدمين"
+      }
+    },
+    "tones": {
+      "critical": "حرج",
+      "attention": "يحتاج انتباه",
+      "stable": "مستقر"
+    }
+  },
+  "superAgentDashboard": {
+    "hero": {
+      "eyebrow": "مساحة مشرف الوكلاء",
+      "title": "لوحة تحكم مشرف الوكلاء",
+      "description": "أدر الإشراف الإقليمي ووجّه فريق الوكلاء وأزل عوائق التوظيف من مساحة عمل حديثة واحدة."
+    },
+    "control": {
+      "lanesEyebrow": "مسارات التحكم",
+      "teamOversight": "الفريق والإشراف",
+      "teamOversightDesc": "أدر التنفيذ الميداني والموافقات والتوظيفات والعمولات دون التنقل بين واجهات متعددة.",
+      "rhythmEyebrow": "إيقاع التشغيل",
+      "dailyReview": "مصممة للمراجعة اليومية",
+      "dailyReviewDesc": "ابدأ اليوم بأداء الوكلاء، ثم انتقل للموافقات، وأنهِه بمراجعة التوظيفات والعمولات."
+    },
+    "kpis": {
+      "activeAgents": { "label": "الوكلاء النشطون", "helper": "قائمة فريقك النشطة مع ملكية التنفيذ الحالية." },
+      "totalEmployers": { "label": "إجمالي أصحاب العمل", "helper": "حسابات أصحاب العمل تحت إدارة وكلائك." },
+      "totalPlacements": { "label": "إجمالي التوظيفات", "helper": "التوظيفات المؤكدة والنتائج المغلقة عبر فريقك." },
+      "commissionsEarned": { "label": "العمولات المكتسبة", "helper": "أداء العمولات وحالة المدفوعات لمحفظتك." }
+    },
+    "secondary": {
+      "jobsPosted": "الوظائف المنشورة",
+      "active": "{count} نشطة",
+      "cvsReceived": "السير الذاتية المستلمة",
+      "totalApplications": "إجمالي الطلبات",
+      "leadsGenerated": "العملاء المحتملون",
+      "acrossAgents": "عبر جميع الوكلاء"
+    },
+    "actions": {
+      "agentPerformance": { "label": "أداء الوكلاء", "description": "راجع قائمة الفريق والإنتاجية والمساءلة الفردية." },
+      "leadPipeline": { "label": "مسار العملاء المحتملين", "description": "تابع المتابعات والتنقيب النشط وتحويل أصحاب العمل." },
+      "jobApprovals": { "label": "موافقات الوظائف", "description": "أنهِ الموافقات المعلقة بسرعة دون مغادرة مساحة الإشراف." },
+      "commissionReport": { "label": "تقرير العمولات", "description": "تابع أرباح التوظيف وحالة المدفوعات الإقليمية." }
+    },
+    "focus": {
+      "teamCoordination": { "title": "تنسيق الفريق", "description": "حافظ على حركة الوكلاء وأصحاب العمل والمتابعات من سطح تحكم واحد." },
+      "approvalControl": { "title": "التحكم بالموافقات", "description": "عالج عوائق موافقات الوظائف قبل أن تبطئ زخم التوظيف الإقليمي." },
+      "regionalGrowth": { "title": "النمو الإقليمي", "description": "وازن تغطية السوق ونشاط أصحاب العمل والتوظيفات مع نتائج العمولات." }
+    },
+    "sections": {
+      "quickActions": {
+        "eyebrow": "إجراءات سريعة",
+        "title": "انتقل إلى العمل الذي يدفع منطقتك للأمام",
+        "description": "تبقى المسارات كما هي؛ تم تحسين سطح العمل وتدفق التنقل فقط."
+      },
+      "oversight": {
+        "eyebrow": "محور الإشراف",
+        "title": "استخدم اللوحة كنقطة تحكم يومية"
+      }
+    }
+  },
+  "agentDashboard": {
+    "hero": {
+      "eyebrow": "مساحة الوكيل",
+      "title": "لوحة تحكم الوكيل",
+      "description": "تابع أصحاب العمل المخصصين والأدوار النشطة وزخم المرشحين من مساحة عمل حديثة واحدة."
+    },
+    "portfolio": {
+      "eyebrow": "المحفظة",
+      "activeAccounts": "{count} حسابات نشطة",
+      "summary": "{jobs} وظائف مباشرة، و{applications} طلبات، و{placements} توظيفات مكتملة في محفظتك الحالية."
+    },
+    "kpis": {
+      "activeEmployers": "أصحاب عمل نشطون",
+      "activeJobs": "وظائف نشطة",
+      "totalApplications": "إجمالي الطلبات",
+      "placements": "التوظيفات"
+    },
+    "funnel": {
+      "leadsGenerated": "العملاء المحتملون",
+      "employersCreated": "أصحاب العمل المنشؤون",
+      "vacanciesPosted": "الشواغر المنشورة",
+      "interviewRate": "معدل المقابلات",
+      "offerRate": "معدل العروض"
+    },
+    "actions": {
+      "addEmployerLead": { "label": "إضافة عميل محتمل", "note": "سجّل حسابات جديدة وحافظ على حركة المسار." },
+      "postJob": { "label": "نشر وظيفة", "note": "أطلق دوراً لأحد أصحاب العمل المخصصين لك." },
+      "myJobs": { "label": "وظائفي", "note": "راجع المنشورات النشطة والمسودات والمغلقة في عرض واحد." },
+      "candidates": { "label": "المرشحون", "note": "حرّك القوائم المختصرة والمقابلات والعروض للأمام." },
+      "jobSeekers": { "label": "عرض الباحثين عن عمل", "note": "ابحث في الملفات وطابق المواهب وتابع بسرعة." },
+      "performanceReport": { "label": "تقرير الأداء", "note": "تابع جودة التحويل ومعدلات الاستجابة والنتائج." }
+    },
+    "heroStats": {
+      "activeEmployers": { "label": "أصحاب عمل نشطون", "description": "حسابات مخصصة لك حالياً." },
+      "activeJobs": { "label": "وظائف نشطة", "description": "أدوار مباشرة يمكنك دفعها اليوم." },
+      "applications": { "label": "الطلبات", "description": "إجمالي طلب المرشحين عبر الأدوار المدارة." },
+      "placements": { "label": "التوظيفات", "description": "توظيفات مؤكدة اكتملت من محفظتك." }
+    },
+    "sections": {
+      "funnel": { "eyebrow": "قمع التحويل", "title": "تابع أجزاء العمل التي تحتاج انتباهاً" },
+      "quickActions": { "eyebrow": "إجراءات سريعة", "title": "انتقل إلى العمل اليومي للوكلاء", "description": "كل اختصار يحافظ على المسار والصلاحيات كما هي." },
+      "rolePerformance": { "eyebrow": "أداء الأدوار", "title": "اعرف أين تتحول الوظائف وأين تتعطل", "description": "أعلى الأدوار المدارة مرتبة حسب الطلب وتدفق المقابلات وتحويل العروض.", "reviewAll": "مراجعة كل الوظائف" }
+    },
+    "table": {
+      "job": "الوظيفة",
+      "status": "الحالة",
+      "applications": "الطلبات",
+      "interviews": "المقابلات",
+      "offers": "العروض",
+      "interviewRate": "معدل المقابلات",
+      "offerRate": "معدل العروض"
+    },
+    "statuses": {
+      "active": "نشطة",
+      "draft": "مسودة",
+      "closed": "مغلقة",
+      "expired": "منتهية",
+      "unknown": "غير معروف"
+    },
+    "empty": {
+      "title": "لا توجد بيانات أداء وظائف بعد",
+      "description": "انشر وظيفة أو ابدأ باستقبال الطلبات لعرض مؤشرات التحويل لكل وظيفة هنا."
+    }
+  },
+  "agentCommon": {
+    "workspace": "مساحة الوكيل",
+    "unknown": "غير معروف",
+    "dash": "—",
+    "all": "الكل",
+    "allEmployers": "كل أصحاب العمل",
+    "back": "رجوع",
+    "cancel": "إلغاء"
+  },
+  "agentJobs": {
+    "title": "لوحة الوظائف المدارة",
+    "description": "اعرض وأدر الوظائف التي تملكها مباشرة أو عبر أصحاب العمل المخصصين لك. صفِّ حسب صاحب العمل وتابع المرشحين في مكان واحد.",
+    "remote": "عن بُعد",
+    "postJob": "نشر وظيفة",
+    "exportTitle": "وظائف الوكيل",
+    "portfolio": {
+      "eyebrow": "المحفظة",
+      "tracked": "{count} وظيفة قيد المتابعة",
+      "description": "مسودات وأدوار مباشرة ومغلقة داخل قائمتك الحالية."
+    },
+    "cards": {
+      "active": { "label": "نشطة", "description": "أدوار مفتوحة حالياً لاستقبال الطلبات." },
+      "drafts": { "label": "مسودات", "description": "وظائف تنتظر المراجعة أو الإكمال." },
+      "employers": { "label": "أصحاب العمل", "description": "شركات لديها وظائف ضمن محفظتك." },
+      "applicants": { "label": "المتقدمون", "description": "حجم المرشحين ضمن النتائج الحالية." }
+    },
+    "ai": {
+      "title": "بحث مدعوم بالذكاء الاصطناعي",
+      "description": "صف ما تبحث عنه بلغة بسيطة ودع الذكاء الاصطناعي يضبط الفلاتر المناسبة.",
+      "placeholder": "مثال: \"وظائف نشطة عن بُعد نُشرت هذا الأسبوع\"",
+      "search": "بحث",
+      "failed": "فشل بحث الذكاء الاصطناعي",
+      "defaultSummary": "بحث الذكاء الاصطناعي: \"{query}\"",
+      "tryDifferent": "تعذر على الذكاء الاصطناعي معالجة الطلب. جرّب صياغة مختلفة.",
+      "suggestions": {
+        "activeApplicants": "اعرض الوظائف النشطة ذات المتقدمين الأكثر",
+        "draftReview": "المسودات التي تحتاج مراجعة",
+        "postedThisWeek": "الوظائف المنشورة هذا الأسبوع",
+        "kochiRoles": "أدوار في كوتشي ذات عدد متقدمين مرتفع"
+      }
+    },
+    "filters": {
+      "eyebrow": "تصفح الأدوار",
+      "title": "صفِّ الوظائف التي تحتاج إجراءً تالياً",
+      "description": "ابحث بالعنوان أو حدد القائمة حسب الحالة التي تريد العمل عليها.",
+      "searchPlaceholder": "ابحث عن الوظائف بالعنوان أو الموقع..."
+    },
+    "results": {
+      "eyebrow": "النتائج الحالية",
+      "title": "حافظ على تقدم كل دور من النشر إلى التوظيف",
+      "summary": "{total} وظيفة عبر {pages} صفحات"
+    },
+    "empty": {
+      "title": "لم يتم العثور على وظائف",
+      "description": "جرّب تعديل الفلاتر أو إنشاء دور جديد."
+    },
+    "table": {
+      "title": "عنوان الوظيفة",
+      "employer": "صاحب العمل",
+      "location": "الموقع",
+      "status": "الحالة",
+      "applicants": "المتقدمون",
+      "posted": "تاريخ النشر",
+      "actions": "الإجراءات"
+    },
+    "statuses": {
+      "draft": "مسودة",
+      "active": "نشطة",
+      "closed": "مغلقة",
+      "expired": "منتهية",
+      "pending": "بانتظار الموافقة",
+      "paused": "متوقفة"
+    },
+    "actions": {
+      "viewCandidates": "عرض المرشحين",
+      "viewCandidatesFor": "عرض المرشحين لوظيفة {title}",
+      "viewJob": "عرض الوظيفة",
+      "viewJobFor": "عرض {title}"
+    }
+  },
+  "agentJobNew": {
+    "title": "نشر وظيفة نيابة عن صاحب عمل",
+    "description": "أنشئ دوراً لأحد أصحاب العمل المخصصين لك دون مغادرة مساحة الوكيل.",
+    "toast": {
+      "success": "تم نشر الوظيفة بنجاح",
+      "error": "فشل نشر الوظيفة"
+    },
+    "employer": {
+      "title": "اختيار صاحب العمل",
+      "loading": "جارٍ تحميل أصحاب العمل...",
+      "empty": "لا يوجد أصحاب عمل مخصصون لك. تواصل مع مشرف الوكلاء.",
+      "placeholder": "اختر صاحب عمل..."
+    },
+    "form": {
+      "title": "تفاصيل الوظيفة",
+      "jobTitle": "عنوان الوظيفة *",
+      "jobTitlePlaceholder": "مثال: محاسب أول",
+      "category": "الفئة *",
+      "categoryPlaceholder": "اختر الفئة",
+      "country": "الدولة *",
+      "city": "المدينة *",
+      "cityPlaceholder": "مثال: دبي",
+      "employmentType": "نوع التوظيف",
+      "currency": "العملة",
+      "salaryMin": "الحد الأدنى للراتب",
+      "salaryMinPlaceholder": "مثال: 8000",
+      "salaryMax": "الحد الأقصى للراتب",
+      "salaryMaxPlaceholder": "مثال: 12000",
+      "descriptionLabel": "وصف الوظيفة *",
+      "descriptionPlaceholder": "صف الدور والمسؤوليات...",
+      "requirements": "المتطلبات (واحد في كل سطر)",
+      "requirementsPlaceholder": "خبرة 5+ سنوات\nدرجة البكالوريوس\nإتقان MS Excel",
+      "posting": "جارٍ النشر...",
+      "submit": "نشر الوظيفة"
+    },
+    "employmentTypes": {
+      "full_time": "دوام كامل",
+      "part_time": "دوام جزئي",
+      "contract": "عقد",
+      "internship": "تدريب",
+      "freelance": "عمل حر"
+    }
+  },
+  "agentSettings": {
+    "hero": {
+      "title": "الإعدادات",
+      "description": "أدر إعدادات مساحة الوكيل: الملف الشخصي، تفضيلات المنطقة، نسب العمولة، قنوات الإشعارات، التوفر، وأمان الحساب."
+    },
+    "nav": {
+      "profile": { "label": "الملف والصورة", "description": "الصورة والاسم ومعلومات العرض" },
+      "region": { "label": "المنطقة والعملة", "description": "الدولة والعملة وطريقة العرض" },
+      "commission": { "label": "نسبة العمولة", "description": "نسبة التوظيف الخاصة بك" },
+      "invoice": { "label": "إعدادات الفواتير", "description": "البيانات الافتراضية للفوترة" },
+      "notifications": { "label": "الإشعارات", "description": "تنبيهات البريد وداخل التطبيق" },
+      "availability": { "label": "التوفر", "description": "المنطقة الزمنية وساعات العمل" },
+      "security": { "label": "الحساب والأمان", "description": "كلمة المرور وإجراءات الحساب" }
+    },
+    "save": {
+      "default": "حفظ التغييرات",
+      "saving": "جارٍ الحفظ...",
+      "saved": "تم الحفظ"
+    },
+    "role": {
+      "agent": "وكيل"
+    },
+    "profile": {
+      "fallbackName": "وكيل",
+      "photoAlt": "صورة الملف الشخصي",
+      "uploadPhoto": "رفع صورة",
+      "changePhoto": "تغيير الصورة",
+      "removePhoto": "إزالة",
+      "fileHint": "JPEG أو PNG أو WebP. الحد الأقصى 2 م.ب.",
+      "basicTitle": "المعلومات الأساسية",
+      "basicDescription": "حدّث اسم العرض وبيانات التواصل",
+      "fullName": "الاسم الكامل",
+      "fullNamePlaceholder": "مثال: محمد علي",
+      "fullNameHelp": "يظهر في إدارة العملاء المحتملين وقوائم أصحاب العمل وتقارير العمولات.",
+      "phone": "رقم الهاتف",
+      "phonePlaceholder": "مثال: +971 50 123 4567",
+      "phoneHelp": "يُستخدم للتواصل العاجل من مشرف الوكلاء أو الفريق.",
+      "email": "البريد الإلكتروني",
+      "readOnly": "للقراءة فقط",
+      "emailHelp": "يدير المسؤول البريد الإلكتروني ولا يمكن تغييره من هنا.",
+      "save": "حفظ الملف الشخصي",
+      "errors": {
+        "fileType": "يُسمح فقط بصور JPEG وPNG وWebP.",
+        "fileSize": "يجب أن يكون حجم الصورة أقل من 2 م.ب.",
+        "uploadFailed": "فشل رفع الصورة",
+        "network": "خطأ في الشبكة. حاول مرة أخرى.",
+        "removeFailed": "فشل إزالة الصورة."
+      }
+    },
+    "region": {
+      "title": "الدولة والعملة",
+      "description": "حدد منطقة عملك وعملة العرض",
+      "country": "الدولة",
+      "selectCountry": "اختر دولة",
+      "countryHelp": "اختيار الدولة يملأ العملة المستخدمة في تلك المنطقة تلقائياً.",
+      "displayCurrency": "عملة العرض",
+      "currencyHelp": "ستُستخدم هذه العملة لعرض العمولات وكل القيم المالية.",
+      "save": "حفظ إعدادات المنطقة",
+      "previewTitle": "معاينة عرض العملة",
+      "previewDescription": "كيف ستظهر القيم المالية في مساحة عملك",
+      "sample": "مثال"
+    },
+    "commission": {
+      "title": "نسبة العمولة",
+      "description": "نسبة عمولتك الحالية التي يحددها مشرف الوكلاء أو المسؤول",
+      "currentRate": "النسبة الحالية",
+      "setByAdmin": "يحددها المسؤول",
+      "help": "يدير مشرف الوكلاء أو المسؤول نسبة عمولتك. تواصل معهم لطلب التغييرات.",
+      "projected": "العمولة المتوقعة",
+      "onPlacement": "على توظيف بقيمة {amount}",
+      "rateLine": "عمولة {rate}%"
+    },
+    "notifications": {
+      "pausedTitle": "كل الإشعارات متوقفة",
+      "pausedDescription": "لن تتلقى أي إشعارات عبر البريد أو داخل التطبيق. أوقف هذا الخيار لاستئنافها.",
+      "frequencyTitle": "تكرار البريد الإلكتروني",
+      "frequencyDescription": "كم مرة تريد استلام ملخصات البريد",
+      "frequency": {
+        "instant": { "label": "فوري", "description": "عند حدوث الأحداث" },
+        "daily": { "label": "يومي", "description": "رسالة واحدة يومياً" },
+        "weekly": { "label": "أسبوعي", "description": "ملخص يوم الأحد" },
+        "none": { "label": "إيقاف", "description": "داخل التطبيق فقط" }
+      },
+      "digestTitle": "جدول الملخص",
+      "digestDescription": "موعد استلام ملخص البريد الإلكتروني",
+      "digestTime": "وقت الملخص",
+      "digestTimeHelp": "الوقت حسب المنطقة الزمنية المحددة",
+      "timezone": "المنطقة الزمنية",
+      "categoriesTitle": "فئات الإشعارات",
+      "categoriesDescription": "فعّل الفئات واختر قنوات الإرسال",
+      "categories": {
+        "placements": { "label": "التوظيفات والعملاء المحتملون", "description": "تقدم المرشحين وتحديثات أصحاب العمل ونشاط العملاء المحتملين" },
+        "commissions": { "label": "تحديثات العمولة", "description": "عمولات جديدة ومدفوعات وتغييرات النسبة" },
+        "team": { "label": "الفريق ومشرف الوكلاء", "description": "تعيينات مشرف الوكلاء وتحديثات الفريق والإنجازات" },
+        "jobs": { "label": "تحديثات الوظائف", "description": "منشورات وظائف جديدة وانتهاء صلاحيات وتغييرات الشواغر" },
+        "system": { "label": "النظام والأمان", "description": "تنبيهات تسجيل الدخول وإشعارات المنصة وأحداث الأمان" }
+      },
+      "channels": {
+        "in_app": "داخل التطبيق",
+        "email": "البريد الإلكتروني"
+      },
+      "pauseAll": "إيقاف كل الإشعارات",
+      "pauseAllDescription": "إيقاف كل إشعارات البريد وداخل التطبيق مؤقتاً",
+      "save": "حفظ إعدادات الإشعارات"
+    },
+    "availability": {
+      "timezoneTitle": "المنطقة الزمنية",
+      "timezoneDescription": "منطقتك الزمنية المحلية للجدولة وإرسال الملخصات",
+      "hoursTitle": "ساعات العمل",
+      "hoursDescription": "حدد نافذة العمل المعتادة لديك",
+      "startTime": "وقت البدء",
+      "endTime": "وقت الانتهاء",
+      "workingDays": "أيام العمل",
+      "daysHelp": "تُعرض هذه الأيام لمشرف الوكلاء لأغراض التنسيق.",
+      "save": "حفظ التوفر",
+      "days": {
+        "Mon": "الاثنين",
+        "Tue": "الثلاثاء",
+        "Wed": "الأربعاء",
+        "Thu": "الخميس",
+        "Fri": "الجمعة",
+        "Sat": "السبت",
+        "Sun": "الأحد"
+      }
+    },
+    "invoice": {
+      "bannerTitle": "تسريع إنشاء الفواتير",
+      "bannerDescription": "حدد بيانات الفوترة الافتراضية وإعدادات الضريبة وشروط الدفع هنا. ستُملأ تلقائياً في كل فاتورة جديدة تنشئها.",
+      "billingTitle": "جهة الفوترة الخاصة بك",
+      "billingDescription": "بيانات الشركة أو الفرد التي تظهر على فواتيرك",
+      "companyName": "اسم الشركة / الجهة",
+      "companyNamePlaceholder": "مثال: أكمي للتوظيف ذ.م.م",
+      "contactPerson": "الشخص المسؤول",
+      "contactPersonPlaceholder": "مثال: محمد علي",
+      "billingEmail": "بريد الفوترة",
+      "billingEmailPlaceholder": "billing@company.com",
+      "billingPhone": "هاتف الفوترة",
+      "billingPhonePlaceholder": "+971 50 123 4567",
+      "billingAddress": "عنوان الفوترة",
+      "billingAddressPlaceholder": "عنوان الشارع، المبنى، الطابق...",
+      "billingCountry": "دولة الفوترة",
+      "selectCountry": "اختر الدولة",
+      "countryHelp": "اختيار الدولة يحدّث العملة الافتراضية تلقائياً.",
+      "taxId": "الرقم الضريبي / رقم ضريبة القيمة المضافة",
+      "taxIdPlaceholder": "مثال: TRN 100234567890003",
+      "preferencesTitle": "تفضيلات الفاتورة",
+      "preferencesDescription": "قيم افتراضية تُملأ عند إنشاء فواتير جديدة",
+      "defaultType": "نوع الفاتورة الافتراضي",
+      "defaultCurrency": "العملة الافتراضية",
+      "taxConfiguration": "إعدادات الضريبة",
+      "taxType": "نوع الضريبة",
+      "taxRate": "نسبة الضريبة (%)",
+      "paymentTerms": "شروط الدفع",
+      "defaultTerms": "الشروط الافتراضية",
+      "customDays": "أيام مخصصة",
+      "defaultNotes": "ملاحظات الفاتورة الافتراضية",
+      "defaultNotesPlaceholder": "شروط الدفع أو بيانات البنك أو أي ملاحظات متكررة تُضاف إلى كل فاتورة...",
+      "characters": "{count}/1000 حرف",
+      "save": "حفظ إعدادات الفواتير",
+      "categories": {
+        "recruitment": "توظيف مرشح",
+        "subscription": "اشتراك صاحب عمل",
+        "premium_posting": "نشر وظيفة مميز",
+        "featured_promotion": "ترويج صاحب عمل مميز",
+        "exhibition": "فوترة معرض",
+        "bulk_hiring": "حزمة توظيف جماعي",
+        "consulting": "رسوم استشارة",
+        "custom_enterprise": "فوترة مؤسسية مخصصة"
+      },
+      "taxTypes": {
+        "none": "بلا ضريبة",
+        "gst": "GST",
+        "vat": "VAT",
+        "reverse_charge": "احتساب عكسي",
+        "sales_tax": "ضريبة مبيعات",
+        "service_tax": "ضريبة خدمة",
+        "withholding_tax": "ضريبة استقطاع",
+        "tds": "TDS",
+        "pst": "PST",
+        "hst": "HST"
+      },
+      "paymentTermOptions": {
+        "immediate": "فوري",
+        "net_7": "صافي 7 أيام",
+        "net_15": "صافي 15 يوماً",
+        "net_30": "صافي 30 يوماً",
+        "net_45": "صافي 45 يوماً",
+        "net_60": "صافي 60 يوماً",
+        "net_90": "صافي 90 يوماً",
+        "custom": "مخصص"
+      }
+    },
+    "security": {
+      "accountTitle": "معلومات الحساب",
+      "accountDescription": "تفاصيل حساب الوكيل الخاص بك",
+      "role": "الدور",
+      "accountStatus": "حالة الحساب",
+      "active": "نشط",
+      "title": "الأمان",
+      "description": "أدر تفضيلات الأمان الخاصة بك",
+      "loginNotifications": "تنبيهات تسجيل الدخول",
+      "loginNotificationsDescription": "استلم تنبيهاً عند تسجيل الدخول إلى حسابك",
+      "twoFactor": "المصادقة الثنائية",
+      "twoFactorDescription": "أضف طبقة أمان إضافية إلى حسابك",
+      "comingSoon": "قريباً",
+      "dangerTitle": "منطقة الخطر",
+      "dangerDescription": "إجراءات حساب لا يمكن التراجع عنها",
+      "deactivateTitle": "تعطيل الحساب",
+      "deactivateDescription": "تعطيل حساب الوكيل مؤقتاً",
+      "deactivate": "تعطيل"
+    }
+  },
+  "adminActivityTimeline": {
+    "title": "الخط الزمني للنشاط",
+    "description": "عرض زمني مرئي لجميع إجراءات المستخدمين عبر المنصة",
+    "searchPlaceholder": "ابحث باسم المستخدم أو البريد الإلكتروني...",
+    "reset": "إعادة ضبط",
+    "resourcePlaceholder": "المورد",
+    "rolePlaceholder": "الدور",
+    "errors": {
+      "fetchFailed": "فشل في تحميل الخط الزمني للنشاط"
+    },
+    "time": {
+      "justNow": "الآن",
+      "minutesAgo": "قبل {count} د",
+      "hoursAgo": "قبل {count} س",
+      "daysAgo": "قبل {count} يوم"
+    },
+    "roles": {
+      "all": "كل الأدوار",
+      "admin": "مدير النظام",
+      "superAgent": "مشرف الوكلاء",
+      "agent": "وكيل",
+      "employer": "صاحب عمل",
+      "jobSeeker": "باحث عن عمل",
+      "unknown": "غير معروف"
+    },
+    "actions": {
+      "create": "إنشاء",
+      "read": "قراءة",
+      "update": "تحديث",
+      "delete": "حذف",
+      "login": "تسجيل دخول",
+      "logout": "تسجيل خروج",
+      "approve": "موافقة",
+      "reject": "رفض",
+      "export": "تصدير",
+      "import": "استيراد",
+      "send": "إرسال",
+      "register": "تسجيل",
+      "settings": "إعدادات",
+      "unknown": "إجراء غير معروف",
+      "other": "إجراء آخر"
+    },
+    "resources": {
+      "all": "كل الموارد",
+      "auth": "المصادقة",
+      "users": "المستخدمون",
+      "agents": "الوكلاء",
+      "jobs": "الوظائف",
+      "applications": "الطلبات",
+      "interviews": "المقابلات",
+      "employers": "أصحاب العمل",
+      "commissions": "العمولات",
+      "gdpr": "حماية البيانات",
+      "offers": "العروض",
+      "placements": "التوظيفات",
+      "leads": "العملاء المحتملون",
+      "reports": "التقارير",
+      "subscriptions": "الاشتراكات",
+      "targets": "الأهداف",
+      "ai": "الذكاء الاصطناعي",
+      "hiringDecisions": "قرارات التوظيف",
+      "notificationPreferences": "تفضيلات الإشعارات",
+      "careerPages": "صفحات الوظائف",
+      "apiKeys": "مفاتيح API",
+      "webhooks": "خطافات الويب",
+      "talentPools": "مجموعات المواهب",
+      "surveys": "الاستبيانات",
+      "workflowTemplates": "قوالب سير العمل",
+      "unknown": "مورد غير معروف"
+    },
+    "empty": {
+      "title": "لا يوجد نشاط",
+      "description": "جرّب تعديل عوامل التصفية"
+    }
+  },
   "employerTeam": {
     "title": "إدارة الفريق",
     "activeMembers": "{count} عضو نشط",
@@ -2304,7 +4323,44 @@
     "failedToSendInvite": "فشل في إرسال الدعوة",
     "pageTitle": "إدارة الفريق · MPLOYEDIN",
     "descriptionActiveOnly": "{activeCount} أعضاء نشطون",
-    "descriptionWithPending": "{activeCount} أعضاء نشطون · {pendingCount} دعوات معلقة"
+    "descriptionWithPending": "{activeCount} أعضاء نشطون · {pendingCount} دعوات معلقة",
+    "pending": "معلق",
+    "selectAtLeastOneRole": "يرجى اختيار دور واحد على الأقل",
+    "jobCount": "{count} وظيفة",
+    "searchPlaceholder": "ابحث بالاسم أو البريد الإلكتروني أو الدور...",
+    "editJobAccess": "تعديل صلاحية الوظائف",
+    "deactivateMember": "تعطيل العضو",
+    "cancel": "إلغاء",
+    "saving": "جارٍ الحفظ...",
+    "saveChanges": "حفظ التغييرات",
+    "empty": {
+      "title": "لا يوجد أعضاء فريق بعد",
+      "description": "ادعُ مديري التوظيف والمديرين والمشاهدين للتعاون على وظائفك المفتوحة.",
+      "cta": "دعوة أول عضو"
+    },
+    "roleOptions": {
+      "admin": "مدير - صلاحية كاملة وإدارة الفريق",
+      "hiringManager": "مدير توظيف - إدارة الوظائف المخصصة",
+      "accounting": "محاسبة - الفواتير والعمولات",
+      "financeViewer": "مراجع مالي - عرض مالي فقط",
+      "viewer": "مشاهد - صلاحية قراءة فقط"
+    },
+    "inviteModal": {
+      "title": "دعوة عضو فريق",
+      "description": "أدخل البريد الإلكتروني والدور لدعوة عضو جديد إلى فريقك.",
+      "emailLabel": "البريد الإلكتروني",
+      "emailPlaceholder": "colleague@company.com",
+      "rolesLabel": "الأدوار",
+      "rolesDescription": "اختر دوراً واحداً أو أكثر لهذا العضو.",
+      "rolesPlaceholder": "اختر الأدوار...",
+      "jobAccessDescription": "اختر الوظائف المحددة التي يمكن لهذا العضو الوصول إليها. اتركها فارغة للسماح بكل الوظائف."
+    },
+    "jobAccessModal": {
+      "title": "تعديل صلاحية الوظائف",
+      "assignedJobs": "الوظائف المخصصة",
+      "description": "اختر الوظائف التي يمكن لهذا العضو الوصول إليها. اتركها فارغة لمنح الوصول إلى كل الوظائف.",
+      "allJobsPlaceholder": "كل الوظائف (بدون تقييد)"
+    }
   },
   "employerActivity": {
     "title": "سجل النشاط",
@@ -2562,6 +4618,7 @@
   },
   "employerCommTemplates": {
     "title": "قوالب الاتصالات",
+    "documentTitle": "قوالب الاتصالات · MPLOYEDIN",
     "description": "قوالب جاهزة لرسائل الرفض ودعوات المقابلات والمتابعة والعروض",
     "newTemplate": "قالب جديد",
     "allTemplates": "كل القوالب",
@@ -2647,6 +4704,9 @@
     "aiScreening": "فرز الذكاء الاصطناعي",
     "shortlisted": "مرشّح",
     "interview": "مقابلة",
+    "interviewCompleted": "اكتملت المقابلة",
+    "offerExtended": "تم إرسال العرض",
+    "accepted": "مقبول",
     "offer": "عرض",
     "hired": "تم التوظيف",
     "rejected": "مرفوض",
@@ -2655,7 +4715,64 @@
     "enabled": "مفعل",
     "disabled": "معطل",
     "daysThreshold": "حد الأيام",
-    "stage": "المرحلة"
+    "stage": "المرحلة",
+    "loadingError": "تعذر تحميل إعدادات سير العمل. يرجى المحاولة مرة أخرى.",
+    "saveError": "تعذر حفظ إعدادات سير العمل. يرجى المحاولة مرة أخرى.",
+    "templateSaveError": "تعذر حفظ قالب سير العمل. يرجى المحاولة مرة أخرى.",
+    "savingChanges": "جارٍ حفظ التغييرات",
+    "workflowSaved": "تم حفظ سير العمل",
+    "unsavedEdits": "تعديلات غير محفوظة",
+    "loadFromTemplate": "تحميل من قالب",
+    "loadFromTemplateDesc": "طبّق بنية سير عمل محفوظة على مسار صاحب العمل هذا.",
+    "systemTemplate": "نظامي",
+    "customTemplate": "مخصص",
+    "defaultTemplate": "افتراضي",
+    "templateStageSummary": "{count} مراحل · {state}",
+    "aiOn": "الذكاء الاصطناعي مفعل",
+    "aiOff": "الذكاء الاصطناعي متوقف",
+    "noTemplates": "لا توجد قوالب سير عمل متاحة بعد.",
+    "templateNamePlaceholder": "اسم القالب",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "templateSaved": "تم حفظ قالب سير العمل.",
+    "unsavedChanges": "لديك تغييرات غير محفوظة في سير العمل.",
+    "emptyPreview": "فعّل مرحلة واحدة على الأقل لمعاينة المسار.",
+    "candidateAlerts": "تنبيهات المرشحين",
+    "alertsEnabled": "التنبيهات مفعلة",
+    "alertsDisabled": "التنبيهات متوقفة",
+    "autoRejectFloor": "حد الرفض التلقائي",
+    "matchScore": "درجة تطابق {value}%",
+    "workflowBuilder": "منشئ سير العمل",
+    "pipelineStages": "مراحل المسار",
+    "builderDesc": "أعد الترتيب أو أوقف المراحل أو أضف مراحل جديدة لتطابق عملية التوظيف لديك.",
+    "addStage": "إضافة مرحلة",
+    "stageNamePlaceholder": "اسم المرحلة",
+    "add": "إضافة",
+    "noStages": "لا توجد مراحل مهيأة",
+    "noStagesDesc": "استعد المسار الافتراضي للمتابعة.",
+    "useDefaultPipeline": "استخدام المسار الافتراضي",
+    "paused": "متوقف",
+    "removeStage": "إزالة المرحلة",
+    "order": "الترتيب {order}",
+    "movesAutomatically": "ينتقل تلقائياً",
+    "manualReviewRequired": "تتطلب مراجعة يدوية",
+    "automation": "الأتمتة",
+    "recruitmentRules": "قواعد التوظيف",
+    "rulesDesc": "اضبط طريقة عمل فرز الذكاء الاصطناعي وتنبيهات المرشحين وعتبات الرفض.",
+    "aiAutoScreening": "الفرز التلقائي بالذكاء الاصطناعي",
+    "aiAutoScreeningDesc": "تقييم الطلبات الجديدة تلقائياً مقابل متطلبات الدور.",
+    "notifyCandidates": "إشعار المرشحين",
+    "notifyCandidatesDesc": "إرسال تحديثات للمرشحين عند انتقال طلباتهم بين المراحل.",
+    "autoRejectThreshold": "عتبة الرفض التلقائي",
+    "autoRejectThresholdDesc": "يمكن تمييز المرشحين الأقل من <strong>{value}%</strong> للمراجعة قبل الرفض.",
+    "thresholdOff": "متوقف",
+    "thresholdDefault": "افتراضي",
+    "thresholdStrict": "صارم",
+    "guidance": "إرشادات",
+    "guidanceTitle": "اجعل الأتمتة قابلة للتفسير",
+    "guidanceDesc": "استخدم العتبات لترتيب أولوية المراجعة، مع إبقاء مسؤول التوظيف ضمن القرار النهائي للرفض.",
+    "saving": "جارٍ الحفظ",
+    "saved": "تم الحفظ"
   },
   "employerJobNew": {
     "title": "إنشاء إعلان وظيفي",
@@ -2670,6 +4787,7 @@
     "reviewBeforeSave": "مراجعة قبل الحفظ",
     "reviewBeforeSaveDesc": "يملأ الذكاء الاصطناعي النموذج مسبقًا، ثم يفحصه المسؤول ويقدمه.",
     "startAiPosting": "بدء النشر بالذكاء الاصطناعي",
+    "uploadJobPoster": "رفع ملصق الوظيفة",
     "openManualForm": "فتح النموذج اليدوي",
     "manualPosting": "النشر اليدوي",
     "manualHeading": "الأفضل عندما تعرف تفاصيل الدور بالضبط.",
@@ -2679,6 +4797,439 @@
     "manualBullet3": "شواغر وحدود متقدمين اختيارية",
     "continueManual": "متابعة النشر اليدوي",
     "continueManualDesc": "افتح المعالج الكامل الآن."
+  },
+  "publicJobs": {
+    "heading": "اعثر على فرصتك القادمة",
+    "activeJobs": "{total} وظيفة نشطة",
+    "browseOpenPositions": "تصفح الوظائف المتاحة",
+    "searchPlaceholder": "المسمى الوظيفي أو المهارات أو كلمة مفتاحية",
+    "locationPlaceholder": "المدينة أو الدولة",
+    "search": "بحث",
+    "verified": "موثق",
+    "closesInDays": "يغلق خلال {days} يوم",
+    "companyFallback": "شركة",
+    "remote": "عن بُعد",
+    "negotiable": "قابل للتفاوض",
+    "fromSalary": "ابتداءً من {amount}",
+    "years": "سنوات",
+    "moreSkills": "+{count} أخرى",
+    "openings": "{count} شاغر",
+    "noJobsFound": "لم يتم العثور على وظائف",
+    "adjustSearch": "جرّب تعديل البحث أو مسح عوامل التصفية.",
+    "clearFilters": "مسح جميع عوامل التصفية",
+    "previous": "السابق",
+    "next": "التالي",
+    "pageOf": "صفحة {page} من {totalPages}"
+  },
+  "employerJobForm": {
+    "title": "نشر وظيفة جديدة",
+    "description": "أنشئ إعلانًا وظيفيًا لجذب المرشحين المؤهلين",
+    "autoSaves": "يتم الحفظ تلقائيًا أثناء الكتابة",
+    "loadTemplate": "تحميل قالب",
+    "postSuccess": "تم نشر الوظيفة بنجاح!",
+    "postSuccessDescription": "شاركها كملصق على LinkedIn ووسائل التواصل الاجتماعي.",
+    "createPoster": "إنشاء ملصق",
+    "postFailed": "تعذر نشر الوظيفة. يرجى المحاولة مرة أخرى.",
+    "networkError": "خطأ في الاتصال. يرجى المحاولة مرة أخرى.",
+    "templateLoadError": "تعذر تحميل القوالب الآن. يرجى المحاولة مرة أخرى.",
+    "templateEyebrow": "إعادة استخدام نماذج وظائف مجربة",
+    "templateTitle": "اختر قالبًا",
+    "templateDescription": "ابدأ من صيغة توظيف سابقة، ثم عدّل فقط ما تغيّر.",
+    "available": "متاح",
+    "closeTemplateModal": "إغلاق نافذة القالب",
+    "retry": "إعادة المحاولة",
+    "emptyTemplatesTitle": "لا توجد قوالب محفوظة بعد",
+    "emptyTemplatesDescription": "أنشئ واحفظ بعض إعلانات الوظائف القوية أولًا، ثم ستظهر هنا.",
+    "openings": "{count} شواغر",
+    "useTemplate": "استخدام",
+    "cancel": "إلغاء",
+    "review": "مراجعة",
+    "steps": {
+      "1": "المعلومات الأساسية",
+      "2": "تفاصيل الوظيفة",
+      "3": "المتطلبات",
+      "4": "الراتب والإعدادات",
+      "5": "أسئلة الفرز"
+    },
+    "stepIndicator": {
+      "step": "الخطوة {step}"
+    },
+    "actions": {
+      "toolbarLabel": "تنقل النموذج",
+      "stepOf": "الخطوة {current} من {total}",
+      "saved": "تم الحفظ",
+      "back": "رجوع",
+      "saveDraft": "حفظ كمسودة",
+      "savingDraft": "جارٍ الحفظ…",
+      "next": "التالي",
+      "postJob": "نشر الوظيفة",
+      "posting": "جارٍ النشر…",
+      "previousStep": "الانتقال إلى الخطوة السابقة"
+    },
+    "applicationModes": {
+      "auto": "تلقائي",
+      "manual": "يدوي"
+    },
+    "step1": {
+      "title": "المعلومات الأساسية",
+      "description": "ابدأ بالأساسيات واجعل الدور سهل القراءة.",
+      "suggestionHint": "استخدم مسمى مقترحًا لملء المهارات والراتب والخبرة تلقائيًا.",
+      "defaultHint": "المسميات الواضحة وتفاصيل الموقع تحسّن جودة المرشحين عادةً.",
+      "jobTitle": "المسمى الوظيفي",
+      "jobTitlePlaceholder": "مثال: مهندس برمجيات أول",
+      "jobTitleHint": "استخدم المسمى الذي يبحث عنه المرشحون بدل المسميات الداخلية للفريق.",
+      "autoFill": "ملء المهارات والراتب والخبرة تلقائيًا بالذكاء الاصطناعي",
+      "category": "الفئة",
+      "categoryPlaceholder": "اختر فئة الوظيفة",
+      "categoryHint": "اختر أقرب فئة كي تبقى التوصيات والمقارنات ذات صلة.",
+      "categories": {
+        "technology": "التقنية",
+        "healthcare": "الرعاية الصحية",
+        "finance": "المالية",
+        "construction": "الإنشاءات",
+        "hospitality": "الضيافة",
+        "education": "التعليم",
+        "manufacturing": "التصنيع",
+        "logistics": "الخدمات اللوجستية",
+        "oilGas": "النفط والغاز",
+        "retail": "التجزئة",
+        "marketing": "التسويق",
+        "legal": "القانونية",
+        "humanResources": "الموارد البشرية",
+        "other": "أخرى"
+      },
+      "employmentType": "نوع التوظيف",
+      "employmentTypePlaceholder": "اختر نوع التوظيف",
+      "employmentTypeHint": "دوام كامل أو جزئي أو عقد وغيرها. يساعد المرشحين على التصفية حسب نمط العمل.",
+      "duration": "المدة",
+      "durationPlaceholder": "مثال: 3-6 أشهر، سنة واحدة",
+      "durationHint": "مفيد للتدريب أو العقود. اتركه فارغًا للوظائف الدائمة.",
+      "optional": "اختياري",
+      "location": "الموقع",
+      "locationHint": "أضف موقع العمل الأساسي واختر نمط العمل.",
+      "country": "الدولة",
+      "countryPlaceholder": "اختر الدولة",
+      "countries": {
+        "remoteGlobal": "عن بُعد / عالمي"
+      },
+      "city": "المدينة",
+      "cityPlaceholder": "مثال: دبي، الرياض، الدوحة",
+      "validation": {
+        "titleRequired": "المسمى الوظيفي مطلوب",
+        "titleMin": "يجب أن يتكون المسمى من 5 أحرف على الأقل",
+        "countryRequired": "الدولة مطلوبة",
+        "cityRequired": "المدينة مطلوبة"
+      },
+      "assignAgent": "تعيين مسؤول توظيف",
+      "noAgent": "بدون مسؤول - إدارة ذاتية",
+      "loadingAgents": "جارٍ تحميل مسؤولي التوظيف...",
+      "assignAgentHint": "عند تعيين مسؤول توظيف، تمر الوظيفة عبر مسار الموافقة قبل نشرها.",
+      "employmentTypes": {
+        "full_time": "دوام كامل",
+        "part_time": "دوام جزئي",
+        "contract": "عقد",
+        "internship": "تدريب",
+        "freelance": "عمل حر"
+      },
+      "workModes": {
+        "onsite": "حضوري",
+        "hybrid": "هجين",
+        "remote": "عن بُعد"
+      }
+    },
+    "quality": {
+      "title": "جودة الإعلان",
+      "strong": "إعلان قوي وجاهز للتميز",
+      "good": "أساس جيد، وبعض التعديلات سترفع الظهور",
+      "low": "التفاصيل قليلة حتى الآن، أكمل الأساسيات أولًا",
+      "checksComplete": "{completed}/{total} فحوصات مكتملة",
+      "readyToPublish": "جاهز للنشر",
+      "improveFirst": "حسّن الأساسيات أولًا",
+      "bestNext": "أفضل التحسينات التالية",
+      "moreImprovements": "تبقى {count} تحسينات أخرى",
+      "factors": {
+        "title": "المسمى الوظيفي",
+        "description": "الوصف",
+        "location": "الموقع",
+        "skills": "المهارات",
+        "salary": "نطاق الراتب",
+        "experience": "نطاق الخبرة"
+      },
+      "tips": {
+        "title": "أضف مسمى وظيفيًا واضحًا ومحددًا (+15%)",
+        "description": "الوصف قصير — استهدف أكثر من 100 حرف (+25%)",
+        "location": "أضف الدولة والمدينة لجذب المرشحين المحليين (+10%)",
+        "skills": "أضف {count} مهارات أخرى (+20%)",
+        "salary": "أضف نطاق الراتب — يجذب متقدمين أكثر بثلاث مرات (+20%)",
+        "experience": "حدد نطاق الخبرة (+10%)"
+      }
+    },
+    "step2": {
+      "title": "تفاصيل الوظيفة",
+      "description": "اكتب وصفًا واضحًا وسهل التصفح كي يستطيع المرشحون تقييم ملاءمتهم بسرعة.",
+      "strength": {
+        "strong": "قوي",
+        "good": "بداية جيدة",
+        "needsDetail": "يحتاج تفاصيل"
+      },
+      "characters": "{count} حرفًا",
+      "aiReady": "مساعدة الذكاء الاصطناعي جاهزة",
+      "jobDescription": "وصف الوظيفة",
+      "descriptionHint": "حافظ على هيكل واضح. يراجع المرشحون المسؤوليات والمتطلبات والمزايا أولًا.",
+      "generating": "جارٍ الإنشاء…",
+      "generateWithAi": "إنشاء بالذكاء الاصطناعي",
+      "placeholder": "صف الدور والمسؤوليات وما تبحث عنه…\n\n## ملخص الدور\n- اشرح بإيجاز ما سيتولاه الشخص.\n\n## المسؤوليات الرئيسية\n- اذكر الأعمال اليومية الأساسية.\n\n## المتطلبات الأساسية\n- أبرز الخبرة والمهارات الضرورية.",
+      "moreCharactersNeeded": "تبقى {count} حرفًا مطلوبًا",
+      "validHint": "الوصف صالح. أضف تفاصيل محددة لتحسين جودة المرشحين.",
+      "enterTitleFirst": "يرجى إدخال المسمى الوظيفي في الخطوة الأولى أولًا.",
+      "generationFailed": "تعذر الإنشاء. يرجى المحاولة مرة أخرى.",
+      "networkError": "خطأ في الاتصال. يرجى المحاولة مرة أخرى.",
+      "strongListingsTitle": "ما الذي تتضمنه الإعلانات القوية",
+      "strongListings": {
+        "summary": "ابدأ بجملة موجزة تشرح الدور والفريق.",
+        "bullets": "استخدم النقاط للمسؤوليات والمهارات الأساسية كي يتمكن المرشحون من التصفح بسرعة.",
+        "impact": "اذكر الأثر والأدوات وفرص النمو لجعل الدور أكثر وضوحًا."
+      },
+      "aiDraftSections": "أقسام مسودة الذكاء الاصطناعي",
+      "aiDraftApplied": "تم تطبيق النص الكامل في المحرر. راجعه قبل النشر.",
+      "generatedLabels": {
+        "responsibilities": "المسؤوليات",
+        "requirements": "المتطلبات",
+        "niceToHave": "مهارات إضافية"
+      },
+      "sections": {
+        "roleSummary": {
+          "label": "ملخص الدور",
+          "anchor": "## ملخص الدور",
+          "content": "## ملخص الدور\n- اشرح ما يتولاه هذا الدور ولماذا هو مهم."
+        },
+        "keyResponsibilities": {
+          "label": "المسؤوليات الرئيسية",
+          "anchor": "## المسؤوليات الرئيسية",
+          "content": "## المسؤوليات الرئيسية\n- قيادة أو دعم مسارات العمل الرئيسية لهذا الدور."
+        },
+        "mustHave": {
+          "label": "المتطلبات الأساسية",
+          "anchor": "## المتطلبات الأساسية",
+          "content": "## المتطلبات الأساسية\n- اذكر المهارات والأدوات والخبرة التي يجب أن يمتلكها المرشح مسبقًا."
+        },
+        "benefits": {
+          "label": "المزايا",
+          "anchor": "## المزايا",
+          "content": "## المزايا\n- اذكر المزايا البارزة أو المرونة أو فرص النمو."
+        }
+      },
+      "listFields": {
+        "optional": "اختياري",
+        "responsibilities": {
+          "label": "المسؤوليات الرئيسية",
+          "hint": "اذكر ما سيقوم به هذا الشخص يوميًا.",
+          "placeholder": "مثال: تطوير وصيانة تطبيقات متعددة المنصات"
+        },
+        "qualifications": {
+          "label": "المؤهلات",
+          "hint": "المؤهلات الأكاديمية أو المهنية المطلوبة لهذا الدور.",
+          "placeholder": "مثال: بكالوريوس في علوم الحاسب"
+        },
+        "benefits": {
+          "label": "المزايا",
+          "hint": "المزايا والحوافز التي تجعل الدور جذابًا.",
+          "placeholder": "مثال: ساعات عمل مرنة"
+        },
+        "learningOutcomes": {
+          "label": "ما الذي سيتعلمه المرشح",
+          "hint": "المهارات أو الخبرات التي سيكتسبها المرشح في هذا الدور.",
+          "placeholder": "مثال: سير عمل اختبار برمجيات في بيئة فعلية"
+        }
+      }
+    },
+    "matchPreview": {
+      "title": "معاينة المرشحين",
+      "description": "لقطة مباشرة لمجموعة المواهب حسب المعايير التي أدخلتها.",
+      "locationFilter": "الموقع: {country}",
+      "remoteGlobal": "عن بُعد / عالمي",
+      "skillsFilter": "{count} مهارات",
+      "experienceFilter": "{min}-{max} سنوات",
+      "talentPoolSize": "حجم مجموعة المواهب",
+      "matchingCandidates": "مرشحون مطابقون",
+      "commonSkills": "أكثر المهارات شيوعًا في هذه المجموعة",
+      "estimate": "تقدير مباشر بناءً على ملفات المرشحين الحالية."
+    },
+    "step3": {
+      "title": "المتطلبات",
+      "description": "حدد المهارات والخبرة الأساسية كي يقيّم المرشحون المناسبون ملاءمتهم مبكرًا.",
+      "status": {
+        "wellDefined": "محددة جيدًا",
+        "goodStart": "بداية جيدة",
+        "addCore": "أضف المهارات الأساسية"
+      },
+      "skillsAdded": "تمت إضافة {count} مهارات",
+      "experienceBadge": "{min}-{max} سنوات",
+      "requiredSkills": "المهارات المطلوبة",
+      "requiredSkillsHint": "أضف المهارات التي يحتاجها المرشح فعليًا منذ اليوم الأول. استخدم 5 إلى 8 إشارات قوية قدر الإمكان.",
+      "requiredSkillsPlaceholder": "اكتب مهارة واضغط Enter (مثال: React، Python)",
+      "suggestedFromAi": "مقترحة من الذكاء الاصطناعي",
+      "clickToAdd": "انقر للإضافة",
+      "maxSkillsReached": "تم الوصول إلى الحد الأقصى وهو 30 مهارة.",
+      "preferredSkills": "المهارات المفضلة",
+      "optional": "اختياري",
+      "preferredSkillsHint": "مهارات إضافية تمنح المرشحين أفضلية لكنها ليست إلزامية.",
+      "preferredSkillsPlaceholder": "مثال: Kotlin، CI/CD، نشر التطبيقات",
+      "experienceRange": "نطاق الخبرة",
+      "experienceHint": "حدد نطاقًا واقعيًا حتى لا يتم استبعاد المرشحين الأقوياء دون داعٍ.",
+      "minimumYears": "الحد الأدنى (سنوات)",
+      "maximumYears": "الحد الأقصى (سنوات)",
+      "candidateFitRange": "نطاق ملاءمة المرشح"
+    },
+    "step4": {
+      "title": "الراتب والإعدادات",
+      "description": "اجعل التعويض وتفاصيل التوظيف واضحة. الإعلانات الشفافة تحقق عادةً تحويلًا أفضل.",
+      "salaryVisible": "الراتب ظاهر",
+      "salaryHidden": "الراتب مخفي",
+      "addSalaryRange": "أضف نطاق الراتب",
+      "openings": "{count} شواغر",
+      "openingsHidden": "الشواغر مخفية",
+      "salaryPackage": "حزمة الراتب",
+      "shareSalary": "إظهار الراتب للعامة",
+      "shareSalaryHint": "نطاقات الرواتب الظاهرة تعزز الثقة وجودة الطلبات عادةً.",
+      "currency": "العملة",
+      "payPeriod": "فترة الدفع",
+      "salaryPeriods": {
+        "monthly": "شهريًا",
+        "yearly": "سنويًا",
+        "lpa": "LPA (الهند)"
+      },
+      "minimum": "الحد الأدنى",
+      "maximum": "الحد الأقصى",
+      "salaryError": "يجب أن يكون الحد الأقصى للراتب أكبر من الحد الأدنى أو مساويا له",
+      "shownToCandidates": "سيظهر للمرشحين",
+      "quickPresets": "إعدادات سريعة",
+      "negotiable": "قابل للتفاوض",
+      "negotiableHint": "إظهار وسم أن الراتب قابل للتفاوض في الإعلان.",
+      "undisclosedHint": "سيرى المرشحون أن التعويض غير معلن لهذا الدور.",
+      "salaryDisclosureWarning": "الإفصاح عن الراتب مطلوب قانونًا لإعلانات الوظائف في {location}. قد يخالف إخفاء الراتب لوائح شفافية الأجور المحلية.",
+      "hiringPlan": "خطة التوظيف",
+      "trackOpenings": "تتبع عدد الشواغر",
+      "trackOpeningsHint": "فعّل هذا الخيار إذا أردت أن يرى المتقدمون عدد الأشخاص المطلوب توظيفهم.",
+      "showOpeningsHint": "أظهر عدد الأشخاص الذين تخطط لتوظيفهم لهذا الدور.",
+      "noOpeningsHint": "لن يظهر عدد الشواغر في إعلان الوظيفة.",
+      "advancedHint": "اجعل تفاصيل التوظيف بسيطة هنا. تبقى حدود الفرز وقواعد الظهور والقيود في الإعدادات المتقدمة أدناه."
+    },
+    "step5": {
+      "title": "أسئلة الفرز",
+      "description": "أضف أسئلة مخصصة يجب على المتقدمين الإجابة عنها عند التقديم. يساعدك ذلك على فرز المرشحين مبكرًا.",
+      "questionCount": "{count}/{max} سؤالًا",
+      "questionLabel": "س{number}",
+      "moveUp": "تحريك لأعلى",
+      "moveDown": "تحريك لأسفل",
+      "removeQuestion": "حذف السؤال",
+      "questionText": "نص السؤال",
+      "questionRequired": "نص السؤال مطلوب",
+      "questionPlaceholder": "مثال: هل لديك رخصة قيادة سارية؟",
+      "answerType": "نوع الإجابة",
+      "placeholder": "النص الإرشادي",
+      "placeholderText": "نص إرشادي اختياري",
+      "required": "إلزامي",
+      "options": "الخيارات",
+      "optionPlaceholder": "الخيار {number}",
+      "removeOption": "حذف الخيار",
+      "addOption": "إضافة خيار",
+      "addQuestion": "إضافة سؤال فرز",
+      "emptyTitle": "لا توجد أسئلة فرز بعد",
+      "emptyDescription": "أضف أسئلة للمساعدة في فرز المتقدمين. هذه الخطوة اختيارية ويمكنك تجاوزها إذا لم تكن مطلوبة.",
+      "types": {
+        "text": "نص قصير",
+        "textarea": "نص طويل",
+        "select": "قائمة منسدلة",
+        "checkbox": "مربع اختيار",
+        "radio": "اختيار متعدد",
+        "number": "رقم",
+        "date": "تاريخ"
+      }
+    },
+    "advanced": {
+      "title": "الإعدادات المتقدمة",
+      "autoMatch": "مطابقة تلقائية",
+      "manualReview": "مراجعة يدوية",
+      "inviteOnly": "بدعوة فقط",
+      "screeningAt": "الفرز عند {score}%",
+      "expires": "ينتهي في {date}",
+      "maxApplicantsBadge": "حد أقصى {count} متقدمين",
+      "tagsBadge": "{count} وسوم",
+      "agentBadge": "المسؤول: {name}",
+      "assigned": "معين",
+      "workflowTemplateBadge": "قالب سير العمل",
+      "weightTemplateBadge": "قالب الأوزان",
+      "applicationMode": "وضع التقديم",
+      "applicationModes": {
+        "manual": "مراجعة يدوية — تراجع كل متقدم",
+        "auto": "مطابقة تلقائية — يرشح الذكاء الاصطناعي أفضل المرشحين"
+      },
+      "visibility": "الظهور",
+      "visibilityOptions": {
+        "public": "عام — ظاهر في لوحة الوظائف",
+        "private": "خاص — عبر الرابط المباشر فقط",
+        "invite_only": "بدعوة فقط — لمرشحين محددين"
+      },
+      "visibilityBadges": {
+        "public": "عام",
+        "private": "خاص",
+        "invite_only": "بدعوة فقط"
+      },
+      "autoScreening": "الفرز التلقائي",
+      "autoScreeningHint": "رفض المرشحين تلقائيًا إذا كانوا دون حد المطابقة",
+      "minMatchScore": "الحد الأدنى لدرجة المطابقة",
+      "minMatchScoreAria": "حد درجة المطابقة الدنيا",
+      "thresholdAll": "0% (الكل)",
+      "thresholdModerate": "50% (متوسط)",
+      "thresholdExact": "100% (مطابق تمامًا)",
+      "expiryDate": "تاريخ الانتهاء",
+      "expiryHint": "تغلق الوظيفة تلقائيًا في هذا التاريخ (اختياري)",
+      "maxApplicants": "الحد الأقصى للمتقدمين",
+      "noLimit": "بدون حد",
+      "maxApplicantsHint": "تغلق الوظيفة تلقائيًا عند وصول هذا العدد من الطلبات (اختياري)",
+      "assignAgent": "تعيين مسؤول توظيف",
+      "noAgent": "بدون مسؤول — إدارة ذاتية",
+      "assignAgentHint": "سيدير مسؤول التوظيف المرشحين لهذه الوظيفة. ستحتاج الوظيفة إلى موافقة قبل نشرها.",
+      "configurationTemplates": "قوالب إعدادات التوظيف",
+      "configurationTemplatesHint": "يمكنك اختياريًا تطبيق مسار عمل وقالب أوزان مطابقة على هذه الوظيفة",
+      "tags": "الوسوم",
+      "tagPlaceholder": "أضف وسمًا (اضغط Enter)",
+      "tagsHint": "تحسن الوسوم ظهور البحث. الحد الأقصى 20."
+    },
+    "templates": {
+      "workflowTemplate": "قالب سير العمل",
+      "workflowHint": "طبّق إعدادًا مسبقًا لمسار التوظيف على هذه الوظيفة",
+      "defaultWorkflow": "الافتراضي (سير عمل صاحب العمل)",
+      "matchingWeightTemplate": "قالب أوزان المطابقة",
+      "matchingHint": "طبّق إعدادًا مسبقًا لتقييم المرشحين على هذه الوظيفة",
+      "defaultWeights": "الافتراضي (أوزان صاحب العمل)",
+      "system": "النظام",
+      "custom": "مخصص",
+      "workflowSummary": "{count} مراحل · فرز الذكاء الاصطناعي: {status} · رفض أقل من: {score}%",
+      "on": "مفعل",
+      "off": "متوقف",
+      "weightSummary": "المهارات: {skills}% · الخبرة: {experience}% · التعليم: {education}%"
+    },
+    "salaryBenchmark": {
+      "title": "مقارنة راتب السوق",
+      "below": "أقل من السوق",
+      "competitive": "منافس",
+      "above": "أعلى من السوق",
+      "checkMarket": "فحص السوق",
+      "refresh": "تحديث",
+      "loading": "جارٍ فحص أسعار السوق لـ “{role}”...",
+      "error": "تعذر تحميل بيانات السوق.",
+      "p25": "P25 {amount}",
+      "median": "الوسيط {amount}",
+      "p75": "P75 {amount}",
+      "midpointTitle": "منتصف نطاقك: {amount}",
+      "midpoint": "منتصف نطاقك",
+      "belowInsight": "أقل من السوق — فكّر في رفعه لجذب متقدمين أكثر",
+      "competitiveInsight": "ضمن النطاق التنافسي",
+      "aboveInsight": "أعلى من السوق — ممتاز لجذب أفضل المواهب",
+      "adjust": "اضبط على سعر السوق ← {min} – {max}"
+    }
   },
   "employerCommon": {
     "workspace": "مساحة عمل صاحب العمل",
@@ -2725,7 +5276,26 @@
   "employerScorecards": {
     "title": "بطاقات تقييم المقابلات",
     "totalScorecards": "{count} بطاقة تقييم",
+    "loadingFeedbackTrends": "جارٍ تحميل اتجاهات التقييم…",
     "feedbackTrends": "ستظهر اتجاهات التقييم هنا بمجرد وجود بطاقات تقييم.",
+    "totalEvaluations": "إجمالي التقييمات",
+    "avgScore": "متوسط الدرجة (5)",
+    "positiveRecs": "توصيات إيجابية",
+    "negativeRecs": "توصيات سلبية",
+    "averageScoresByDimension": "متوسط الدرجات حسب البُعد",
+    "recommendationDistribution": "توزيع التوصيات",
+    "monthlyScoreTrends": "اتجاهات الدرجات الشهرية",
+    "scoreDistribution": "توزيع الدرجات",
+    "month": "الشهر",
+    "count": "العدد",
+    "overall": "الإجمالي",
+    "dimensions": {
+      "technical": "المهارات التقنية",
+      "communication": "التواصل",
+      "cultureFit": "التوافق الثقافي",
+      "problemSolving": "حل المشكلات",
+      "motivation": "الدافعية"
+    },
     "noScorecards": "لا توجد بطاقات تقييم بعد",
     "noScorecardsDesc": "ستظهر بطاقات التقييم هنا بمجرد تقييم المرشحين",
     "strongYes": "موافق بشدة",
@@ -3577,7 +6147,8 @@
     "noInterviews": "لا توجد مقابلات مجدولة",
     "noActivity": "لا يوجد نشاط بعد",
     "noNotes": "لا توجد ملاحظات بعد",
-    "applied": "تقدم في {date}",
+    "applied": "مقدّم",
+    "appliedOn": "تقدم في {date}",
     "viaSource": "عبر {source}",
     "matchBreakdown": "تفصيل التطابق"
   },

@@ -118,4 +118,4 @@ User query: "${safeQuery}"`;
       { status: 200 }
     );
   }
-});
+}, { aiQuota: true });

@@ -2,6 +2,7 @@
 
 import { useState, useRef, KeyboardEvent } from "react";
 import { X, Plus, Sparkles, Loader2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
 export interface Skill {
   name: string;
@@ -47,6 +48,9 @@ export function SkillsChips({
   placeholder = "Type a skill and press Enter…",
   label,
 }: SkillsChipsProps) {
+  const t = useTranslations("common");
+  const locale = useLocale();
+  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [input, setInput] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -132,11 +136,11 @@ export function SkillsChips({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); cycleLevel(i); }}
-                title="Click to change level"
-                className="hover:opacity-70 text-left"
+                title={t("changeSkillLevel")}
+                className="text-start hover:opacity-70"
               >
                 {skill.name}
-                <span className="ml-1 opacity-60 capitalize">{skill.level?.[0]}</span>
+                <span className="ms-1 opacity-60 capitalize">{skill.level?.[0]}</span>
               </button>
             ) : (
               skill.name
@@ -144,7 +148,8 @@ export function SkillsChips({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); removeSkill(i); }}
-              className="hover:opacity-70 ml-0.5"
+              aria-label={t("removeSkill", { skill: skill.name })}
+              className="ms-0.5 hover:opacity-70"
             >
               <X className="h-3 w-3" />
             </button>
@@ -168,21 +173,23 @@ export function SkillsChips({
       {/* Footer */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {value.length}/{maxSkills} skills
-          {showLevels && " · Click skill to change level"}
+          {t(showLevels ? "skillsCountWithHint" : "skillsCount", {
+            count: value.length.toLocaleString(numberLocale),
+            max: maxSkills.toLocaleString(numberLocale),
+          })}
         </p>
         <div className="flex items-center gap-2">
           {input.trim() && (
             <button type="button" onClick={() => addSkill(input)}
               className="flex items-center gap-1 text-xs text-primary hover:underline">
-              <Plus className="h-3 w-3" /> Add
+              <Plus className="h-3 w-3" /> {t("add")}
             </button>
           )}
           {enableAISuggest && (
             <button type="button" onClick={getAISuggestions} disabled={aiLoading}
               className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 transition-colors">
               {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-              AI Suggest
+              {t("aiSuggest")}
             </button>
           )}
         </div>
