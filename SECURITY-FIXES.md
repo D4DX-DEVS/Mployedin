@@ -31,12 +31,17 @@ Reusable ownership pattern: mirror `offers/[id]`, `invoices/[id]` (`canAccessInv
 
 ---
 
-## Wave 2 — Auth-core (pending approval)
+## Wave 2 — Auth-core
 
 | ID | Sev | Status | Summary |
 |----|-----|--------|---------|
-| W2-1 | HIGH | _pending_ | Deactivation / password-change session invalidation. |
-| W2-2 | HIGH | _pending_ | Tenant-view per-request re-authorization. |
+| W2-1 | HIGH | **Fixed** | `auth/config.ts` JWT callback: DB re-check (isActive + passwordChangedAt) now runs on the normal 5-min updateAge rotation regardless of `pca`, throttled via `token.lastDbCheck`. Deactivated/password-changed users are invalidated within ~5 min instead of up to 3 days. |
+| W2-2 | HIGH | **Fixed** | `auth/withAuth.ts`: added `verifyTenantViewStillEligible` re-check on every tenant-view request, mirroring the eligibility rules in `POST /api/tenant/switch` (agent `assignedEmployerIds`, super_agent `agentIds`→employer.agentId, admin global). A removed/de-scoped actor now gets 403 immediately rather than at session expiry. Cookie signing left unchanged. |
+
+### Wave 2 checkpoint
+- `tsc --noEmit`: PASS.
+- Auth/security suites: `security/auth-helpers.test.ts` + `lib/csrf.test.ts` — 15 passed, 0 failed.
+- Full `jest`: remaining failures are NOT from this work — (a) `subscription-withSubscription` / `subscription-featureGate` fail by design because the subscription gates were intentionally opened to grant all employers/job-seekers full access until the payment gateway is wired (out of scope); (b) admin/agent/super-agent/employer dashboard page render tests fail on a pre-existing next-intl `getTranslations` client-component issue.
 
 ## Wave 3 — Medium (pending)
 

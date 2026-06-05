@@ -339,16 +339,26 @@ export const authConfig: NextAuthConfig = {
         token.pca = pca ? Math.floor(new Date(pca).getTime() / 1000) : null;
       }
 
-      // Token refresh path — verify password hasn't changed since this token was issued.
-      // Only hit DB when token.pca is set (password was changed at least once) or
-      // periodically (every updateAge cycle — controlled by NextAuth).
+      // Token refresh path — verify the account is still active and the
+      // password hasn't changed since this token was issued.
+      //
+      // SECURITY (W2-1): the DB re-check must run on the normal updateAge (5-min)
+      // rotation window REGARDLESS of token.pca. Previously it only ran when a
+      // password change was already known to postdate the token, so tokens
+      // issued before any password change (or for users who never changed their
+      // password) skipped the check entirely — letting deactivated users stay
+      // logged in up to the 3-day max. We throttle to once per updateAge window
+      // via token.lastDbCheck so this does not add a DB round-trip per request.
       if (token.id && !user) {
-        // Quick JWT-only check: if passwordChangedAt (cached as token.pca) is
-        // still older than iat, skip the DB round-trip entirely.
+        const nowSec = Math.floor(Date.now() / 1000);
         const pcaSec = (token.pca as number | null) ?? 0;
-        const needsDbCheck = pcaSec > 0 && (token.iat as number) < pcaSec;
+        const lastCheck = (token.lastDbCheck as number | undefined) ?? (token.iat as number | undefined) ?? 0;
+        // Immediate re-check if a known password change postdates this token,
+        // otherwise re-check at most once per updateAge (5-min) window.
+        const passwordChangedAfterToken = pcaSec > 0 && (token.iat as number) < pcaSec;
+        const dueForPeriodicCheck = nowSec - lastCheck >= 5 * 60;
 
-        if (needsDbCheck) {
+        if (passwordChangedAfterToken || dueForPeriodicCheck) {
           await connectDB();
           const dbUser = await User.findById(token.id)
             .select("passwordChangedAt isActive")
@@ -361,9 +371,11 @@ export const authConfig: NextAuthConfig = {
               new Date(dbUser.passwordChangedAt).getTime() / 1000
             );
             if ((token.iat as number) < changedAt) return null;
-            // Update cached value so future refreshes can skip DB
+            // Update cached value so future refreshes can skip the comparison
             token.pca = changedAt;
           }
+          // Record when we last validated against the DB to throttle re-checks
+          token.lastDbCheck = nowSec;
         }
       }
       // OAuth sign-in: create/find user in DB (LinkedIn OAuth — Firebase handles its own flow in authorize())

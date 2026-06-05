@@ -12,6 +12,43 @@ import type { CompanyRole } from "@/models/CompanyUser";
 type Resource = Parameters<typeof canAccess>[1];
 type Action = Parameters<typeof canAccess>[2];
 
+/**
+ * SECURITY (W2-2): re-check, on every tenant-view request, whether the actor
+ * STILL satisfies the eligibility rule that allowed the switch. A valid signed
+ * cookie + live TenantViewSession is not enough — a removed agent / de-scoped
+ * super_agent must lose access immediately, not at session expiry. Mirrors the
+ * access-control checks in POST /api/tenant/switch exactly.
+ */
+async function verifyTenantViewStillEligible(
+  actorId: string,
+  actorRole: UserRole,
+  employerId: string
+): Promise<boolean> {
+  if (actorRole === "admin") return true;
+
+  if (actorRole === "agent") {
+    const { default: Agent } = await import("@/models/Agent");
+    const agent = await Agent.findOne({ userId: actorId }).select("assignedEmployerIds").lean();
+    return Boolean(
+      agent && ((agent.assignedEmployerIds as unknown[]) ?? []).some((id) => String(id) === String(employerId))
+    );
+  }
+
+  if (actorRole === "super_agent") {
+    const { default: SuperAgent } = await import("@/models/SuperAgent");
+    const { Employer } = await import("@/models/Employer");
+    const sa = await SuperAgent.findOne({ userId: actorId }).select("agentIds").lean();
+    if (!sa) return false;
+    const employer = await Employer.findById(employerId).select("agentId").lean();
+    const employerAgentId = employer?.agentId ? String(employer.agentId) : null;
+    return Boolean(
+      employerAgentId && ((sa.agentIds as unknown[]) ?? []).some((id) => String(id) === employerAgentId)
+    );
+  }
+
+  return false;
+}
+
 export interface AuthContext {
   userId: string;
   role: UserRole;
@@ -121,6 +158,22 @@ export function withAuth(
         return NextResponse.json(
           { error: "Tenant view session expired — please switch again" },
           { status: 401 }
+        );
+      }
+
+      // ── Re-authorize the actor for THIS employer on every request (W2-2).
+      // The signed cookie + live session prove the switch happened; they do not
+      // prove the actor is still assigned. Re-check current eligibility so a
+      // removed agent / de-scoped super_agent loses access immediately.
+      const stillEligible = await verifyTenantViewStillEligible(
+        userId,
+        role,
+        resolvedTenantEmployerId
+      );
+      if (!stillEligible) {
+        return NextResponse.json(
+          { error: "Tenant view access revoked — you are no longer assigned to this employer" },
+          { status: 403 }
         );
       }
 
