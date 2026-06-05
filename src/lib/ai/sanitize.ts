@@ -13,10 +13,20 @@ export function sanitizeAIInput(input: string, maxLength = 4000): string {
     .replace(/\0/g, "")
     // Remove other control characters (except newline, tab, carriage return)
     .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
-    // Strip common prompt injection prefixes
-    .replace(/^(ignore|forget|disregard)\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|context)/gi, "[filtered]")
-    // Strip system prompt override attempts
-    .replace(/\[?(SYSTEM|INST|SYS)\]?\s*:?\s*/gi, "");
+    // Strip "ignore/forget/disregard/override (all) previous instructions" overrides
+    .replace(/\b(ignore|forget|disregard|override)\s+(all\s+|any\s+|the\s+)?(previous|above|prior|earlier|preceding)\s+(instructions?|prompts?|context|rules?|messages?)/gi, "[filtered]")
+    // Strip "new/updated system prompt" overrides (requires "system" to avoid
+    // matching legitimate phrases like "new rules" in job text)
+    .replace(/\b(new|updated|revised|ignore\s+the)\s+system\s+(prompt|instructions?|rules?|message)/gi, "[filtered]")
+    // Strip explicit persona resets (high-precision — avoids common job phrases
+    // like "act as a liaison" / "behave as")
+    .replace(/\b(you\s+are\s+now|roleplay\s+as|pretend\s+(you\s+are|to\s+be))\b/gi, "[filtered]")
+    // Strip well-known jailbreak handles
+    .replace(/\b(do\s+anything\s+now|developer\s+mode|jailbreak)\b/gi, "[filtered]")
+    // Strip faked conversation turns at line starts (system:/assistant: markers)
+    .replace(/(^|\n)\s*\[?(system|assistant|inst|sys)\]?\s*:/gi, "$1[filtered]:")
+    // Strip residual system prompt override tags anywhere
+    .replace(/\[?(SYSTEM|INST|SYS|\/INST)\]?\s*:?\s*/gi, "");
 
   // Enforce max length
   if (cleaned.length > maxLength) {
@@ -66,6 +76,8 @@ const PII_PATTERNS = [
   /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
   // Passport-like (2 letters + 7 digits)
   /\b[A-Z]{2}\d{7}\b/g,
+  // Email addresses (safe to redact from analytical AI output)
+  /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
 ];
 
 /**
@@ -73,7 +85,12 @@ const PII_PATTERNS = [
  * Returns true if potential PII is found.
  */
 export function detectPII(text: string): boolean {
-  return PII_PATTERNS.some((pattern) => pattern.test(text));
+  return PII_PATTERNS.some((pattern) => {
+    // Global-flagged regexes carry `lastIndex` state across .test() calls; reset
+    // before each use so detection is deterministic.
+    pattern.lastIndex = 0;
+    return pattern.test(text);
+  });
 }
 
 /**
@@ -82,6 +99,7 @@ export function detectPII(text: string): boolean {
 export function redactPII(text: string): string {
   let result = text;
   for (const pattern of PII_PATTERNS) {
+    pattern.lastIndex = 0;
     result = result.replace(pattern, "[REDACTED]");
   }
   return result;

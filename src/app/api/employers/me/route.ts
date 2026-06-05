@@ -5,6 +5,7 @@ import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { employerUpdateSchema } from "@/lib/validators/employers";
+import { encryptIfPlain } from "@/lib/security/encryption";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -49,6 +50,15 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   const updateData: Record<string, unknown> = {};
   for (const f of allowed) {
     if (body[f] !== undefined) updateData[f] = body[f];
+  }
+
+  // SECURITY (W3-1): registrationNo/taxId are encrypted-at-rest PII. updateOne
+  // bypasses the Mongoose pre("save") encryption hook, so encrypt here before
+  // $set (mirrors the SMTP route). encryptIfPlain is idempotent.
+  for (const f of ["registrationNo", "taxId"] as const) {
+    if (typeof updateData[f] === "string" && updateData[f]) {
+      updateData[f] = encryptIfPlain(updateData[f] as string);
+    }
   }
 
   // Use updateOne to avoid full Mongoose validation on PII-encrypted fields

@@ -317,7 +317,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({ message: "User deactivated" });
 }
 
-export const GET = withAuth(getHandler);
-export const PATCH = withAuth(patchHandler);
-export const POST = withAuth(postHandler);
-export const DELETE = withAuth(deleteHandler);
+export const GET = withAuth(getHandler, { resource: "users", action: "read" });
+export const PATCH = withAuth(patchHandler, { resource: "users", action: "update" });
+export const POST = withAuth(postHandler, { resource: "users", action: "create" });
+export const DELETE = withAuth(deleteHandler, { resource: "users", action: "delete" });

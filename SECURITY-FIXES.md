@@ -43,15 +43,22 @@ Reusable ownership pattern: mirror `offers/[id]`, `invoices/[id]` (`canAccessInv
 - Auth/security suites: `security/auth-helpers.test.ts` + `lib/csrf.test.ts` — 15 passed, 0 failed.
 - Full `jest`: remaining failures are NOT from this work — (a) `subscription-withSubscription` / `subscription-featureGate` fail by design because the subscription gates were intentionally opened to grant all employers/job-seekers full access until the payment gateway is wired (out of scope); (b) admin/agent/super-agent/employer dashboard page render tests fail on a pre-existing next-intl `getTranslations` client-component issue.
 
-## Wave 3 — Medium (pending)
+## Wave 3 — Medium
 
 | ID | Status | Summary |
 |----|--------|---------|
-| W3-1 | _pending_ | Employer PII encryption on updateOne path. |
-| W3-2 | _pending_ | Consolidate apply endpoints. |
-| W3-3 | _pending_ | AI prompt-injection / PII redaction hardening. |
-| W3-4 | _pending_ | admin/users matrix guards. |
-| W3-5 | _pending_ | CSRF-exempt AI routes review. |
+| W3-1 | **Fixed** | `employers/me` PATCH: `registrationNo`/`taxId` are encrypted-at-rest PII but `updateOne` bypasses the `pre("save")` encryption hook, so they were stored plaintext. Now encrypted via `encryptIfPlain` before `$set` (idempotent), mirroring the sibling SMTP route. Reads still decrypt via the existing post-find hooks. |
+| W3-2 | **Fixed** | `jobs/[id]/apply` (easy-apply) diverged from `POST /api/applications`, skipping the rate limiter, subscription gate, and screening-question enforcement. Brought to parity: added `checkRateLimitDual` throttle, wrapped in `withSubscription("applicationsSubmitted")`, reject easy-apply on jobs with required screening questions (→ full form), and `$addToSet applicantIds` for accurate counts. Behavior change: easy-apply now 400s on jobs with required screening questions instead of silently creating an answerless application. |
+| W3-3 | **Fixed** | `lib/ai/sanitize.ts`: hardened prompt-injection input filtering with high-precision patterns (instruction-override, system-prompt override, persona reset, jailbreak handles, faked `system:`/`assistant:` turns) — deliberately avoided broad patterns like "act as" that collide with legitimate job text. Fixed a stateful global-regex bug in `detectPII` (reset `lastIndex` before `.test()`). Added email to `redactPII` (analytical AI outputs only); phone deliberately excluded to avoid redacting salary/score/year numbers in reports. |
+| W3-4 | **Fixed** | `admin/users` GET/PATCH/POST/DELETE exported with bare `withAuth(handler)`, so the permission matrix + restricted-admin `customPermissions` were never consulted (only the handler's `role !== "admin"` check ran). Added `{ resource: "users", action: read/update/create/delete }` guards (mirrors W1-4). No change for normal admins (matrix grants all `users` actions); restricted/custom-permission admins are now enforced. |
+| W3-5 | **Fixed** (verified safe) | Reviewed CSRF-exempt AI routes. No code-level vulnerability: all are authenticated and the NextAuth session cookie is `sameSite=lax` (v5 default, not overridden anywhere), so cross-site state-changing requests can't carry the session cookie → 401 before the handler runs; routes are also rate-limited. Added a documented rationale + invariant comment in `lib/security/csrf.ts` (don't set the session cookie to `sameSite=none`, don't add data-mutating routes to the exempt set). No behavior change. |
+
+### Wave 3 checkpoint
+- `tsc --noEmit`: **PASS** (no errors).
+- Targeted tests: `csrf` (15) **PASS**, `auth-helpers` **PASS**, `application-feedback` + `ai/report` **PASS** (8).
+- Full suite: 546 passed / 593. The 15 failures are pre-existing and unrelated to these fixes:
+  - `subscription-withSubscription`, `subscription-featureGate` — fail **by design** (payment-gateway bypass flags are intentionally enabled until the gateway lands; OUT OF SCOPE).
+  - `agentDashboardPage`, `adminDashboardPage`, `superAgentDashboardPage`, `employerApplicationsPage` — pre-existing `next-intl getTranslations` render-test issue, not touched by Wave 3.
 
 ## Wave 4 — Low / hardening (pending)
 

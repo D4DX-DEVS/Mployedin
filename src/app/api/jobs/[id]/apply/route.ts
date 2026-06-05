@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
+import { withSubscription } from "@/lib/subscription/withSubscription";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
@@ -10,8 +11,12 @@ import User from "@/models/User";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import { sendEmail } from "@/lib/communications/email";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { inngest } from "@/lib/inngest/client";
 import { logActivity } from "@/lib/audit/log";
+import type { UserRole } from "@/models/User";
+
+interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 /**
  * POST /api/jobs/[id]/apply
@@ -19,10 +24,20 @@ import { logActivity } from "@/lib/audit/log";
  * Creates an Application for the current job seeker.
  * Fires an ActivityEvent (priority 1).
  */
-export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
+async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // SECURITY (W3-2): parity with POST /api/applications — rate limit the
+  // easy-apply path so it cannot be used to bypass the application throttle.
+  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.applications);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
   }
 
   const jobId = params!.id;
@@ -30,7 +45,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
   await connectDB();
 
   const [job, seeker, seekerUser] = await Promise.all([
-    Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status").lean(),
+    Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status screeningQuestions").lean(),
     JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt").lean(),
     User.findById(ctx.userId).select("email name").lean(),
   ]);
@@ -49,6 +64,17 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
   const existing = await Application.findOne({ jobSeekerId: seeker._id, jobId }).lean();
   if (existing) {
     return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
+  }
+
+  // SECURITY (W3-2): easy-apply submits no answer payload, so it cannot satisfy
+  // required screening questions. Mirror POST /api/applications and force such
+  // jobs through the full application form instead of silently skipping them.
+  const screeningQs = (job as { screeningQuestions?: Array<{ required?: boolean }> }).screeningQuestions;
+  if (screeningQs?.some((q) => q.required)) {
+    return NextResponse.json(
+      { error: "This job requires screening questions. Please use the full application form." },
+      { status: 400 }
+    );
   }
 
   // Resolve employer info for ActivityEvent metadata and email notification
@@ -75,6 +101,9 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
     behaviorSignals: signals,
     behaviorScore: bScore,
   });
+
+  // Track applicant on the job document for accurate applicant counts (parity with full apply)
+  await Job.updateOne({ _id: jobId }, { $addToSet: { applicantIds: seeker._id } });
 
   // Send emails (non-blocking — don't fail the response if email errors)
   const seekerName = (seeker as { fullName?: string }).fullName ?? seekerUser?.name ?? "Applicant";
@@ -152,8 +181,12 @@ export const POST = withAuth(async (_req: NextRequest, ctx, params) => {
     resource: "applications",
     resourceId: String(application._id),
     meta: { jobId, jobTitle: job.title, company },
-    req: _req,
+    req,
   });
 
   return NextResponse.json({ success: true, applicationId: String(application._id) }, { status: 201 });
-});
+}
+
+export const POST = withAuth(
+  withSubscription(applyHandler, { type: "limit", feature: "applicationsSubmitted" }),
+);

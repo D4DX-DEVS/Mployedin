@@ -98,6 +98,14 @@ const CSRF_EXEMPT_PREFIXES = [
 /**
  * AI routes that are exempt from CSRF due to streaming/audio constraints.
  * Only truly stateless inference endpoints — not those that persist data.
+ *
+ * SECURITY (W3-5): these exemptions are safe because (1) every route is
+ * authenticated behind withAuth/auth(), and (2) the NextAuth session cookie is
+ * sameSite=lax (v5 default, not overridden), so a forged cross-site POST/PATCH/
+ * DELETE cannot carry the session cookie and is rejected with 401 before any
+ * handler runs. They are additionally rate-limited per user. INVARIANT: do not
+ * change the session cookie to sameSite=none and do not add data-mutating routes
+ * here without restoring CSRF (or another anti-forgery) protection.
  */
 const CSRF_EXEMPT_AI_ROUTES = new Set([
   "/api/ai/chat",
