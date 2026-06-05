@@ -81,6 +81,8 @@ export default function AgentJobsPage() {
 
   /* ----- Job list state ----- */
   const [jobs, setJobs] = useState<JobItem[]>([]);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [portfolioStats, setPortfolioStats] = useState<{ employerCount: number; totalApplicants: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -125,6 +127,8 @@ export default function AgentJobsPage() {
       if (res.ok) {
         const data = await res.json();
         setJobs(data.jobs ?? []);
+        setStatusCounts(data.statusCounts ?? {});
+        setPortfolioStats(data.portfolioStats ?? null);
         pagination.updateTotal(data.pagination?.total ?? 0);
       }
     } finally {
@@ -203,10 +207,21 @@ export default function AgentJobsPage() {
   };
 
   /* ----- Summary cards ----- */
-  const activeJobs = jobs.filter((j) => j.status === "active").length;
-  const draftJobs = jobs.filter((j) => j.status === "draft").length;
-  const uniqueEmployers = new Set(jobs.map((j) => j.employerId?._id ?? j.employerId).filter(Boolean)).size;
-  const totalApplicants = jobs.reduce((sum, j) => sum + (j.applicationCount ?? j.applicantIds?.length ?? 0), 0);
+  // Portfolio-wide status totals come from the API aggregate (statusCounts);
+  // fall back to current-page counts only when the aggregate is unavailable.
+  const hasStatusCounts = Object.keys(statusCounts).length > 0;
+  const activeJobs = hasStatusCounts
+    ? (statusCounts.active ?? 0)
+    : jobs.filter((j) => j.status === "active").length;
+  const draftJobs = hasStatusCounts
+    ? (statusCounts.draft ?? 0)
+    : jobs.filter((j) => j.status === "draft").length;
+  const uniqueEmployers = portfolioStats
+    ? portfolioStats.employerCount
+    : new Set(jobs.map((j) => j.employerId?._id ?? j.employerId).filter(Boolean)).size;
+  const totalApplicants = portfolioStats
+    ? portfolioStats.totalApplicants
+    : jobs.reduce((sum, j) => sum + (j.applicationCount ?? j.applicantIds?.length ?? 0), 0);
 
   const summaryCards = [
     { label: t("cards.active.label"), value: activeJobs, description: t("cards.active.description"), icon: ShieldCheck, tone: "workspace-tone-emerald" },

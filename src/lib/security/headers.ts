@@ -11,7 +11,9 @@ const SHARED_HEADERS: Record<string, string> = {
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   "X-XSS-Protection": "1; mode=block",
-  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  // SECURITY (W4-3): preload added — eligibility already met (max-age >= 1y +
+  // includeSubDomains). Enables HSTS preload-list submission for HTTPS-only.
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(self), geolocation=()",
 };
@@ -28,7 +30,11 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       "default-src 'self'",
       isDev
         ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
-        : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+        : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'`,
+      // SECURITY (W4-2): 'unsafe-inline' is required here because React emits
+      // inline style= attributes (style-src-attr only accepts 'unsafe-inline',
+      // never a nonce) and Next.js injects non-nonced inline <style> tags.
+      // TODO: drop 'unsafe-inline' once all inline styles are extracted to CSS.
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com",

@@ -236,8 +236,14 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   const appEmployer = String((application as unknown as { jobId?: { employerId?: unknown } }).jobId?.employerId ?? "");
   const appAgent = (application as unknown as { jobId?: { agentId?: unknown } }).jobId?.agentId;
 
-  if (ctx.role === "job_seeker" && appJobSeeker !== ctx.userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (ctx.role === "job_seeker") {
+    // SECURITY (W4-1): jobSeekerId is a JobSeeker._id, not a User._id. Resolve
+    // the caller's JobSeeker doc and compare _ids (mirrors the PATCH handler).
+    const JobSeeker = (await import("@/models/JobSeeker")).default;
+    const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!seeker || appJobSeeker !== String(seeker._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
   if (ctx.role === "employer") {
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();

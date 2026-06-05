@@ -60,9 +60,19 @@ export function verifyCronRequest(req: NextRequest): NextResponse | null {
     return null; // authorised
   }
 
+  // ── Static Bearer fallback (Vercel Cron) ─────────────────────────────────
+  // SECURITY (W4-4): the signed HMAC path above is preferred. This fallback is
+  // required because Vercel Cron sends a static `Authorization: Bearer <secret>`
+  // and cannot attach the HMAC headers. Compare in constant time so the secret
+  // can't be recovered via a timing side-channel.
   const bearer = req.headers.get("authorization");
-  if (bearer === `Bearer ${secret}`) {
-    return null;
+  if (bearer) {
+    const expectedBearer = `Bearer ${secret}`;
+    const bearerBuf = Buffer.from(bearer);
+    const expectedBuf = Buffer.from(expectedBearer);
+    if (bearerBuf.length === expectedBuf.length && timingSafeEqual(bearerBuf, expectedBuf)) {
+      return null;
+    }
   }
 
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

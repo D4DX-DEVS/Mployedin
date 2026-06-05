@@ -383,11 +383,15 @@ export default function CVBuilderPage() {
   }
 
   /* ── PDF Download ── */
+  const [pdfLoading, setPdfLoading] = useState(false);
   async function handleDownloadPDF() {
     setError("");
+    setPdfLoading(true);
     try {
-      const { pdf } = await import("@react-pdf/renderer");
-      const { CVPDFDocument } = await import("./cv-pdf-document");
+      const [{ pdf }, { CVPDFDocument }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("./cv-pdf-document"),
+      ]);
       const visibleForm = getVisibleForm(form, hiddenSections);
       const blob = await pdf(
         <CVPDFDocument data={visibleForm} templateId={selectedTemplate} formatting={formatting} labels={cvPdfLabels} />
@@ -404,6 +408,8 @@ export default function CVBuilderPage() {
     } catch (e) {
       console.error("PDF generation failed:", e);
       setError(t("errors.pdfFailed"));
+    } finally {
+      setPdfLoading(false);
     }
   }
 
@@ -838,8 +844,8 @@ export default function CVBuilderPage() {
 
           {/* Action Bar */}
           <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t pt-4 pb-2 mt-6 flex flex-col sm:flex-row gap-3">
-            <Button onClick={handleDownloadPDF} className="gap-2 flex-1">
-              <Download className="w-4 h-4" /> {t("actions.downloadPdf")}
+            <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="gap-2 flex-1">
+              {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} {t("actions.downloadPdf")}
             </Button>
             <Button variant="outline" onClick={handleSaveToProfile} disabled={saving} className="gap-2 flex-1 sm:flex-none sm:min-w-[160px]">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -874,6 +880,7 @@ export default function CVBuilderPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadPDF}
+                  disabled={pdfLoading}
                   className="h-7 text-xs gap-1"
                 >
                   {t("actions.download")}

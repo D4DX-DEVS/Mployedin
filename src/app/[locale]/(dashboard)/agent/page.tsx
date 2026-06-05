@@ -55,33 +55,48 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   let jobMetrics: JobMetricRow[] = [];
 
   if (agentId) {
-    const jobDocs = await Job.find({
+    // Portfolio scope: jobs owned directly or via assigned employers.
+    const jobFilter = {
       $or: [
         { agentId },
         ...(agentDoc?.assignedEmployerIds?.length
           ? [{ employerId: { $in: agentDoc.assignedEmployerIds } }]
           : []),
       ],
-    })
-      .select("_id title status")
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean();
+    };
 
-    activeJobs = jobDocs.filter((j) => j.status === "active").length;
+    // Portfolio-wide active count (not limited to the displayed rows).
+    activeJobs = await Job.countDocuments({ ...jobFilter, status: "active" });
 
-    const allJobIds = jobDocs.map((j) => j._id);
-    if (allJobIds.length > 0) {
-      const perJobCounts = await Application.aggregate([
-        { $match: { jobId: { $in: allJobIds } } },
+    // Per-job status counts across the ENTIRE portfolio for accurate totals
+    // and rates, joined to job titles/statuses for the displayed top rows.
+    const [perJobCounts, recentJobDocs] = await Promise.all([
+      Application.aggregate([
+        {
+          $lookup: {
+            from: "jobs",
+            localField: "jobId",
+            foreignField: "_id",
+            as: "job",
+            pipeline: [{ $match: jobFilter }, { $project: { _id: 1 } }],
+          },
+        },
+        { $match: { "job.0": { $exists: true } } },
         {
           $group: {
             _id: { jobId: "$jobId", status: "$status" },
             count: { $sum: 1 },
           },
         },
-      ]);
+      ]),
+      Job.find(jobFilter)
+        .select("_id title status")
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean(),
+    ]);
 
+    {
       // Build per-job map
       const jobMap = new Map<string, Record<string, number>>();
       perJobCounts.forEach((r: { _id: { jobId: unknown; status: string }; count: number }) => {
@@ -107,7 +122,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       offerRate = totalApps > 0 ? Math.round((totalOffers / totalApps) * 100) : 0;
 
       // Build per-job metrics rows (top 10 by application count)
-      jobMetrics = jobDocs
+      jobMetrics = recentJobDocs
         .map((j) => {
           const counts = jobMap.get(String(j._id)) ?? {};
           const apps = Object.values(counts).reduce((a, b) => a + b, 0);

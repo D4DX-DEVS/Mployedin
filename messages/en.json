@@ -3788,6 +3788,25 @@
       "leadsGenerated": "Leads Generated",
       "acrossAgents": "Across all agents"
     },
+    "approvals": {
+      "title": "{count} job approvals waiting on you",
+      "description": "Clear pending postings so your agents can go live without delay.",
+      "action": "Review approvals"
+    },
+    "funnel": {
+      "leads": "Leads",
+      "employers": "Employers",
+      "jobs": "Jobs",
+      "applications": "Applications",
+      "placements": "Placements",
+      "placementRate": "Placement rate"
+    },
+    "leaderboard": {
+      "summary": "{leads} leads · {jobs} jobs posted",
+      "placements": "Placements",
+      "emptyTitle": "No agent activity yet",
+      "emptyDescription": "Performance will appear here as your agents generate leads and placements."
+    },
     "actions": {
       "agentPerformance": { "label": "Agent Performance", "description": "Review the team roster, throughput, and individual accountability." },
       "leadPipeline": { "label": "Lead Pipeline", "description": "Track follow-ups, active prospecting, and employer conversion flow." },
@@ -3808,6 +3827,16 @@
       "oversight": {
         "eyebrow": "Oversight focus",
         "title": "Use the dashboard as a daily control point"
+      },
+      "funnel": {
+        "eyebrow": "Conversion funnel",
+        "title": "See where the region converts and where it stalls",
+        "description": "Track volume from first lead through to confirmed placement across your whole team."
+      },
+      "leaderboard": {
+        "eyebrow": "Team performance",
+        "title": "Top agents",
+        "viewAll": "View all agents"
       }
     }
   },

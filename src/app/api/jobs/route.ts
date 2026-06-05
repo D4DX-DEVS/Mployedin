@@ -169,6 +169,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       : Promise.resolve(undefined),
   ]);
   // Aggregate real application counts from Application collection for managed job views
+  let portfolioStats: { employerCount: number; totalApplicants: number } | undefined;
   if (canFilterManagedJobs && jobs.length > 0) {
     const jobIds = jobs.map((j) => j._id);
     const appCounts = await Application.aggregate([
@@ -180,11 +181,27 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       (job as Record<string, unknown>).applicationCount = countMap.get(String(job._id)) ?? 0;
     }
   }
+  // Portfolio-wide employer + applicant totals for the stat cards (ignores the
+  // status tab so the cards stay stable while filtering). Uses the full query
+  // scope, not just the current page.
+  if (canFilterManagedJobs) {
+    const baseQuery = { ...query, ...(status ? { status: { $exists: true } } : {}) };
+    const portfolioJobs = await Job.find(baseQuery).select("_id employerId").lean();
+    const employerSet = new Set(
+      portfolioJobs.map((j) => (j.employerId ? String(j.employerId) : null)).filter(Boolean),
+    );
+    const portfolioJobIds = portfolioJobs.map((j) => j._id);
+    const totalApplicants = portfolioJobIds.length
+      ? await Application.countDocuments({ jobId: { $in: portfolioJobIds } })
+      : 0;
+    portfolioStats = { employerCount: employerSet.size, totalApplicants };
+  }
 
   return NextResponse.json({
     jobs,
     pagination: { page, limit, total, pages: Math.ceil(total / limit), totalPages: Math.ceil(total / limit) },
     ...(statusAgg && { statusCounts: statusAgg }),
+    ...(portfolioStats && { portfolioStats }),
   }, {
     headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
   });

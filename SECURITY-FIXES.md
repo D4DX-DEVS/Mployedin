@@ -22,6 +22,7 @@ Reusable ownership pattern: mirror `offers/[id]`, `invoices/[id]` (`canAccessInv
 
 ### Wave 1 deviations / behavior notes
 - W1-1/W1-2: super_agent kept as read-only scoped (matrix grants `job_seekers:read`); employer denied on this staff route (no frontend caller). Admin can no longer change a seeker's `name`/`email` via this route — those `User` fields move through user-administration only (admin job-seekers edit form name/email fields now no-op).
+- **Decision (super_agent read on job-seekers/[id]) — finalized:** keep super_agent read, scoped to jurisdiction via `getSuperAgentScope().effectiveAgentIds`, matching the `jobs/[id]` and `applications/[id]` pattern. NOT restricted to admin+agent, NOT left as unscoped global read. Already implemented in `verifySeekerStaffAccess`; no code change required. PATCH is additionally matrix-gated by the `{resource:"job_seekers", action:"update"}` guard on `withAuth`.
 - W1-3: DELETE remains a soft-cancel; guard applied identically to GET/PATCH.
 
 ### Wave 1 checkpoint
@@ -64,8 +65,13 @@ Reusable ownership pattern: mirror `offers/[id]`, `invoices/[id]` (`canAccessInv
 
 | ID | Status | Summary |
 |----|--------|---------|
-| W4-1 | _pending_ | applications/[id] GET fail-closed seeker id comparison bug. |
-| W4-2 | _pending_ | CSP style-src 'unsafe-inline'. |
-| W4-3 | _pending_ | HSTS preload directive. |
-| W4-4 | _pending_ | Cron static Bearer fallback. |
+| W4-1 | **Fixed** | `applications/[id]` GET job-seeker ownership check compared `jobSeekerId` (a `JobSeeker._id`) to `ctx.userId` (a `User._id`), so it was always true → owners were always 403'd (fail-closed). Now resolves the caller's `JobSeeker` doc and compares `_id`s, mirroring the PATCH handler. Owners can view their own application again; non-owners still 403. |
+| W4-2 | **Skipped** (documented constraint) | `style-src 'unsafe-inline'` cannot be removed in this stack: React emits inline `style=` attributes (governed by `style-src-attr`, which only accepts `'unsafe-inline'`/`'unsafe-hashes'` — never a nonce) and Next.js injects non-nonced inline `<style>` tags. Tightening would break app-wide styling and needs full inline-style extraction (infra not present). Added a TODO + rationale in `lib/security/headers.ts`. No behavior change. |
+| W4-3 | **Fixed** | Added `preload` to HSTS (`max-age=31536000; includeSubDomains; preload`). Eligibility prerequisites (1y max-age + includeSubDomains) were already met; enables HSTS preload-list submission. |
+| W4-4 | **Fixed** (hardened; HMAC preferred) | Cron static Bearer fallback now compared in constant time via `timingSafeEqual` instead of `===` (removes a timing side-channel on `CRON_SECRET`). Fallback retained because Vercel Cron (4 jobs in `vercel.json`) sends a static `Authorization: Bearer <secret>` and cannot attach HMAC headers; the signed HMAC path remains preferred for non-Vercel callers. Replay/log-leakage are inherent to Vercel's static-secret model (out of scope). |
 | W4-DEFER | **Deferred** | In-memory rate-limit store needs shared Redis — out of scope; TODO only. |
+
+### Wave 4 checkpoint
+- `tsc --noEmit`: **PASS** (no errors).
+- Targeted tests: `application-feedback`, `job-alerts`, `csrf`, `auth-helpers` — **23 passed / 23**.
+- No new failures. The same pre-existing/by-design failures noted in the Wave 3 checkpoint remain (subscription bypass suites + `next-intl` page-render tests), none related to Wave 4.

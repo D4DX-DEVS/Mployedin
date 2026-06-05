@@ -59,6 +59,13 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // Turbopack: resolve browser field for @react-pdf packages (required for PDF generation)
+  turbopack: {
+    resolveAlias: {
+      "@react-pdf/pdfkit": "@react-pdf/pdfkit/lib/pdfkit.browser.js",
+    },
+  },
+
   // Stabilise file-watching on OneDrive / cloud-synced folders
   webpack: (config, { dev }) => {
     if (dev) {
@@ -137,7 +144,7 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://www.googletagmanager.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://www.google.com https://www.gstatic.com https://www.googletagmanager.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com https://media.licdn.com https://*.digitaloceanspaces.com",

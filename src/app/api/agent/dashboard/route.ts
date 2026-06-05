@@ -27,20 +27,35 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   }
 
   const agentId = (agent as Record<string, unknown>)._id;
+  const assignedEmployerIds = (agent as Record<string, unknown>).assignedEmployerIds as
+    | unknown[]
+    | undefined;
+
+  // Portfolio scope: jobs owned directly or via assigned employers — matches
+  // the agent dashboard page so headline numbers are consistent.
+  const jobFilter = {
+    $or: [
+      { agentId },
+      ...(assignedEmployerIds?.length ? [{ employerId: { $in: assignedEmployerIds } }] : []),
+    ],
+  };
+  const portfolioJobIds = (await Job.find(jobFilter).select("_id").lean()).map((j) => j._id);
 
   const [
     activeJobs, totalApplications, scheduledInterviews,
     totalPlacements, totalLeads, pendingCommissions,
     totalOffers, recentApplications,
   ] = await Promise.all([
-    Job.countDocuments({ agentId, status: "active" }),
-    Application.countDocuments({ agentId }),
+    Job.countDocuments({ ...jobFilter, status: "active" }),
+    portfolioJobIds.length
+      ? Application.countDocuments({ jobId: { $in: portfolioJobIds } })
+      : Promise.resolve(0),
     Interview.countDocuments({ agentId, status: "scheduled" }),
     Placement.countDocuments({ agentId }),
     Lead.countDocuments({ agentId }),
     Commission.countDocuments({ agentId, status: "pending" }),
     Offer.countDocuments({ agentId }),
-    Application.find({ agentId })
+    Application.find(portfolioJobIds.length ? { jobId: { $in: portfolioJobIds } } : { agentId })
       .sort({ createdAt: -1 })
       .limit(5)
       .populate("jobSeekerId", "fullName")
