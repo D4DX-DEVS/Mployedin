@@ -15,6 +15,7 @@ import {
   List,
   CalendarDays,
   Plus,
+  CalendarPlus,
 } from "lucide-react";
 import { InterviewBookingModal } from "./InterviewBookingModal";
 
@@ -187,6 +188,63 @@ function formatHour(hour: number, locale: string) {
 
 function formatDateLocale(date: Date, locale: string, opts: Intl.DateTimeFormatOptions) {
   return date.toLocaleDateString(locale, opts);
+}
+
+/** Format a Date as an ICS UTC timestamp: YYYYMMDDTHHMMSSZ */
+function toIcsUtc(date: Date) {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+/** Escape reserved characters per RFC 5545 */
+function escapeIcsText(value: string) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
+}
+
+/** Build a standards-compliant .ics calendar invite for an interview event */
+function buildIcs(event: CalendarEvent) {
+  const start = new Date(event.scheduledAt);
+  const end = new Date(start.getTime() + (event.duration ?? 30) * 60000);
+  const descriptionParts: string[] = [];
+  if (event.subtitle) descriptionParts.push(event.subtitle);
+  if (event.meetLink) descriptionParts.push(`Join: ${event.meetLink}`);
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Mployedin//Interview//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${event._id}@mployedin`,
+    `DTSTAMP:${toIcsUtc(new Date())}`,
+    `DTSTART:${toIcsUtc(start)}`,
+    `DTEND:${toIcsUtc(end)}`,
+    `SUMMARY:${escapeIcsText(event.title)}`,
+    descriptionParts.length ? `DESCRIPTION:${escapeIcsText(descriptionParts.join("\n"))}` : "",
+    event.location ? `LOCATION:${escapeIcsText(event.location)}` : "",
+    event.meetLink ? `URL:${escapeIcsText(event.meetLink)}` : "",
+    "STATUS:CONFIRMED",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].filter(Boolean);
+  return lines.join("\r\n");
+}
+
+/** Trigger a client-side download of the interview as an .ics file */
+function downloadIcs(event: CalendarEvent) {
+  const blob = new Blob([buildIcs(event)], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  const safeName = event.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "interview";
+  link.download = `${safeName}.ics`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function typeIcon(type: string, className = "h-3.5 w-3.5") {
@@ -394,6 +452,18 @@ function EventDetail({
             {t("joinMeeting")}
           </a>
         )}
+
+        {/* Add to calendar / download .ics invite */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => downloadIcs(event)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3.5 py-2 text-xs font-semibold text-foreground transition-all duration-150 hover:bg-muted hover:shadow-sm"
+          >
+            <CalendarPlus className="h-3.5 w-3.5" />
+            {t("addToCalendar")}
+          </button>
+        </div>
 
         {renderExtra?.(event)}
       </div>

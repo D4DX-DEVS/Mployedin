@@ -193,7 +193,7 @@ export default function AIJobExtractPage() {
         setPostingStatuses((prev) => new Map(prev).set(index, "posted"));
       } else {
         const err = await res.json();
-        toast.error(`Failed to post "${job.title}": ${err.error ?? "Unknown error"}`);
+        toast.error(t("toastSinglePostFailed", { title: job.title, error: err.error ?? t("unknownError") }));
         setPostingStatuses((prev) => new Map(prev).set(index, "error"));
       }
     } catch {
@@ -503,7 +503,7 @@ export default function AIJobExtractPage() {
                   {status === "error" && (
                     <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
                       <AlertCircle className="h-3 w-3" />
-                      Failed
+                      {t("failed")}
                     </div>
                   )}
 
@@ -527,7 +527,7 @@ export default function AIJobExtractPage() {
                           <MapPin className="h-3 w-3 flex-shrink-0" />
                           <span>
                             {[job.location.city, job.location.country].filter(Boolean).join(", ")}
-                            {job.location.isRemote && " (Remote)"}
+                            {job.location.isRemote && t("remoteSuffix")}
                           </span>
                         </div>
                       )}
@@ -542,7 +542,7 @@ export default function AIJobExtractPage() {
                       {(job.vacancies ?? 0) > 1 && (
                         <div className="flex items-center gap-1.5">
                           <Users className="h-3 w-3 flex-shrink-0" />
-                          <span>{job.vacancies} openings</span>
+                          <span>{t("openingsCount", { count: job.vacancies ?? 0 })}</span>
                         </div>
                       )}
                       {job.employmentType && (
@@ -583,7 +583,7 @@ export default function AIJobExtractPage() {
                           onClick={() => editInForm(job)}
                         >
                           <Edit className="h-3 w-3" />
-                          Edit & Post
+                          {t("editAndPost")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -597,7 +597,7 @@ export default function AIJobExtractPage() {
                           ) : (
                             <ArrowRight className="h-3 w-3" />
                           )}
-                          Quick Post
+                          {t("quickPost")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -622,7 +622,7 @@ export default function AIJobExtractPage() {
                 onClick={() => router.push(`/${locale}/employer/jobs`)}
                 className="gap-2"
               >
-                View All Jobs
+                {t("viewAllJobs")}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

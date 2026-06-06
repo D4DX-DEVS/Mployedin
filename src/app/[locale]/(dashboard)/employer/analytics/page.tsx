@@ -46,6 +46,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useTranslations } from "next-intl";
 
 type DateRange = "7d" | "30d" | "90d" | "180d" | "custom";
@@ -53,10 +54,10 @@ type DateRange = "7d" | "30d" | "90d" | "180d" | "custom";
 const AUTO_REFRESH_MS = 30000;
 
 const ANALYTICS_TABS = [
-  { key: "pipeline" as const, label: "Pipeline", icon: BarChart3, description: "Live funnel health and conversion metrics" },
-  { key: "historical" as const, label: "Historical", icon: TrendingUp, description: "Trends, drop-off, and time-to-hire benchmarks" },
-  { key: "performance" as const, label: "Performance", icon: Eye, description: "Job-level visibility and application lift" },
-  { key: "response" as const, label: "Response Time", icon: Clock, description: "Service-level tracking and commitment promises" },
+  { key: "pipeline" as const, icon: BarChart3 },
+  { key: "historical" as const, icon: TrendingUp },
+  { key: "performance" as const, icon: Eye },
+  { key: "response" as const, icon: Clock },
 ];
 
 const FUNNEL_STAGES = ["applied", "shortlisted", "interview", "offer", "hired"];
@@ -310,8 +311,8 @@ export default function EmployerAnalyticsPage() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {t("viewFocus")}
               </p>
-                <p className="mt-1 text-lg font-semibold text-foreground">{activeTabMeta.label}</p>
-                <p className="text-xs text-muted-foreground">{activeTabMeta.description}</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{t(activeTabMeta.key === "response" ? "responseTime" : activeTabMeta.key)}</p>
+                <p className="text-xs text-muted-foreground">{t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`)}</p>
             </div>
             <div className="workspace-glass-panel rounded-2xl px-4 py-3">
               <div className="flex items-start justify-between gap-3">
@@ -328,14 +329,15 @@ export default function EmployerAnalyticsPage() {
                   <p className="text-xs text-muted-foreground">
                     {activeTab === "pipeline"
                       ? t("autoRefreshNote")
-                      : "Manual refresh keeps this view current on demand."}
+                      : t("manualRefreshNote")}
                   </p>
                 </div>
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-sky-700 dark:hover:text-sky-300 disabled:cursor-not-allowed disabled:opacity-60"
-                  title="Refresh now"
+                  title={t("refreshNow")}
+                  aria-label={t("refreshNow")}
                 >
                   <RefreshCw
                     className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
@@ -344,7 +346,8 @@ export default function EmployerAnalyticsPage() {
                 <button
                   onClick={handleExportCSV}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-emerald-700 dark:hover:text-emerald-300"
-                  title="Export CSV"
+                  title={t("exportCsv")}
+                  aria-label={t("exportCsv")}
                 >
                   <Download className="h-4 w-4" />
                 </button>
@@ -397,7 +400,7 @@ export default function EmployerAnalyticsPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               {t("currentLens")}
             </p>
-            <p className="mt-1 font-medium text-slate-900">{activeTabMeta.description}</p>
+            <p className="mt-1 font-medium text-slate-900">{t(activeTabMeta.key === "response" ? "responseTimeDesc" : `${activeTabMeta.key}Desc`)}</p>
           </div>
         </div>
       </AnalyticsPanel>
@@ -543,18 +546,15 @@ function PipelineTab({
               <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 {t("selectedJob")}
               </label>
-              <select
+              <SearchableSelect
                 value={selectedJobId}
-                onChange={(e) => setSelectedJobId(e.target.value)}
-                className="w-full rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-500/20"
-              >
-                <option value="">All Jobs</option>
-                {jobOptions.map((j) => (
-                  <option key={j.jobId} value={j.jobId}>
-                    {j.title} ({j.total})
-                  </option>
-                ))}
-              </select>
+                onValueChange={setSelectedJobId}
+                placeholder={t("allJobs")}
+                options={[
+                  { value: "", label: t("allJobs") },
+                  ...jobOptions.map((j) => ({ value: j.jobId, label: `${j.title} (${j.total})` })),
+                ]}
+              />
             </div>
           </div>
         </AnalyticsPanel>
@@ -568,13 +568,13 @@ function PipelineTab({
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-600">
-                Action needed
+                {t("actionNeeded")}
               </p>
               <p className="mt-2 text-lg font-semibold text-amber-950">
-                {pipeline.stalledCount} stalled candidate{pipeline.stalledCount > 1 ? "s" : ""}
+                {t("stalledCandidates", { count: pipeline.stalledCount })}
               </p>
               <p className="mt-1 text-sm leading-6 text-amber-800">
-                These applications have had no activity for 7+ days. Review them to keep your pipeline moving.
+                {t("stalledHint")}
               </p>
             </div>
           </div>
@@ -720,7 +720,7 @@ function PipelineTab({
         </div>
 
         {data.topJobs.length === 0 ? (
-          <p className="px-6 py-12 text-center text-slate-500">No job applications yet</p>
+          <p className="px-6 py-12 text-center text-slate-500">{t("noJobApplications")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
@@ -797,10 +797,10 @@ function HistoricalTab({
             <Calendar className="h-4 w-4" />
           </div>
           <div className="mr-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Date range</p>
-            <p className="mt-1 text-sm font-medium text-slate-900">Compare historical patterns over any hiring window.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t("dateRange")}</p>
+            <p className="mt-1 text-sm font-medium text-slate-900">{t("dateRangeDesc")}</p>
           </div>
-          {(["7d", "30d", "90d", "180d"] as DateRange[]).map((r) => (
+          {((["7d", "30d", "90d", "180d"] as DateRange[]).map((r) => (
             <button
               key={r}
               onClick={() => setDateRange(r)}
@@ -810,9 +810,9 @@ function HistoricalTab({
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {r === "7d" ? "7 Days" : r === "30d" ? "30 Days" : r === "90d" ? "90 Days" : "180 Days"}
+              {r === "7d" ? t("days7") : r === "30d" ? t("days30") : r === "90d" ? t("days90") : t("days180")}
             </button>
-          ))}
+          )))}
           <button
             onClick={() => setDateRange("custom")}
             className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
@@ -821,7 +821,7 @@ function HistoricalTab({
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
-            Custom
+            {t("customRange")}
           </button>
           {dateRange === "custom" && (
             <div className="flex items-center gap-2">
@@ -831,7 +831,7 @@ function HistoricalTab({
                 onChange={(e) => setCustomStart(e.target.value)}
                 className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
               />
-              <span className="text-slate-400">to</span>
+              <span className="text-slate-400">{t("rangeTo")}</span>
               <input
                 type="date"
                 value={customEnd}

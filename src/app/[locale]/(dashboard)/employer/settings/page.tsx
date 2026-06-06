@@ -395,7 +395,7 @@ function CompanySettingsPage() {
   const vBadge = VERIFICATION_BADGES[company?.verificationLevel ?? "basic"];
   const VBadgeIcon = vBadge.icon;
   const memberSince = company?.createdAt
-    ? new Date(company.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    ? new Date(company.createdAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", { month: "long", year: "numeric" })
     : "";
   const initials = company?.companyName
     ? company.companyName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
@@ -590,7 +590,7 @@ function CompanySettingsPage() {
                         <Input
                           value={form.companyName}
                           onChange={(e) => setField("companyName", e.target.value)}
-                          placeholder="Your company name"
+                          placeholder={t("companyNamePlaceholder")}
                           required
                         />
                       </div>
@@ -612,14 +612,14 @@ function CompanySettingsPage() {
                           options={COMPANY_SIZES.map((s) => ({ value: s, label: `${s} employees` }))}
                           value={form.companySize}
                           onValueChange={(v) => setField("companySize", v)}
-                          placeholder="Select size"
+                          placeholder={t("selectSize")}
                         />
                       </div>
                       <div>
                         <FieldLabel>{t("foundedYear")}</FieldLabel>
                         <Input
                           type="number"
-                          placeholder="e.g. 2015"
+                          placeholder={t("foundedYearPlaceholder")}
                           min={1800}
                           max={new Date().getFullYear()}
                           value={form.foundedYear}
@@ -629,7 +629,7 @@ function CompanySettingsPage() {
                       <div>
                         <FieldLabel>{t("yourTitle")}</FieldLabel>
                         <Input
-                          placeholder="e.g. HR Manager"
+                          placeholder={t("yourTitlePlaceholder")}
                           value={form.designation}
                           onChange={(e) => setField("designation", e.target.value)}
                         />
@@ -640,7 +640,7 @@ function CompanySettingsPage() {
                       <div>
                         <FieldLabel>{t("address")}</FieldLabel>
                         <Input
-                          placeholder="Company address"
+                          placeholder={t("addressPlaceholder")}
                           value={form.address}
                           onChange={(e) => setField("address", e.target.value)}
                         />
@@ -652,28 +652,28 @@ function CompanySettingsPage() {
                           value={form.country}
                           onValueChange={(v) => setField("country", v)}
                           placeholder={t("selectCountry")}
-                          searchPlaceholder="Search countries..."
+                          searchPlaceholder={t("searchCountries")}
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <FieldLabel>Registration No.</FieldLabel>
+                        <FieldLabel>{t("registrationNo")}</FieldLabel>
                         <Input
-                          placeholder="Company registration number (optional)"
+                          placeholder={t("registrationNoPlaceholder")}
                           value={form.registrationNo}
                           onChange={(e) => setField("registrationNo", e.target.value)}
                         />
                       </div>
                       <div>
-                        <FieldLabel>Tax ID</FieldLabel>
+                        <FieldLabel>{t("taxId")}</FieldLabel>
                         <Input
-                          placeholder="VAT / GST / Tax ID (optional)"
+                          placeholder={t("taxIdPlaceholder")}
                           value={form.taxId}
                           onChange={(e) => setField("taxId", e.target.value)}
                         />
-                        <p className="mt-1 text-[10px] text-muted-foreground">Used for invoice billing. e.g. VAT number, GST number, TIN</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">{t("taxIdHint")}</p>
                       </div>
                     </div>
 
@@ -682,7 +682,7 @@ function CompanySettingsPage() {
                     <div>
                       <FieldLabel>{t("aboutCompany")}</FieldLabel>
                       <Textarea
-                        placeholder="Tell candidates about your company culture, mission, and what makes you a great place to work..."
+                        placeholder={t("aboutCompanyPlaceholder")}
                         value={form.description}
                         onChange={(e) => setField("description", e.target.value)}
                         maxLength={2000}
@@ -706,11 +706,11 @@ function CompanySettingsPage() {
             {activeTab === "contact" && (
               <>
                 <SectionCard>
-                  <SectionHeader icon={Mail} title="Contact Details" description="Primary contact information for your company" />
+                  <SectionHeader icon={Mail} title={t("contactDetails")} description={t("contactDetailsDesc")} />
                   <div className="p-6 space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div data-field="companyEmail" className="transition-all duration-300">
-                        <FieldLabel required>Company Email</FieldLabel>
+                        <FieldLabel required>{t("companyEmail")}</FieldLabel>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                           <Input
@@ -718,13 +718,13 @@ function CompanySettingsPage() {
                             className="pl-10"
                             value={form.companyEmail}
                             onChange={(e) => setField("companyEmail", e.target.value)}
-                            placeholder="contact@company.com"
+                            placeholder={t("companyEmailPlaceholder")}
                             required
                           />
                         </div>
                       </div>
                       <div data-field="phone" className="transition-all duration-300">
-                        <FieldLabel required>Phone</FieldLabel>
+                        <FieldLabel required>{t("phone")}</FieldLabel>
                         <div className="relative">
                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                           <Input
@@ -732,7 +732,7 @@ function CompanySettingsPage() {
                             className="pl-10"
                             value={form.phone}
                             onChange={(e) => setField("phone", e.target.value)}
-                            placeholder="+971 50 000 0000"
+                            placeholder={t("phonePlaceholder")}
                             required
                           />
                         </div>
@@ -740,13 +740,13 @@ function CompanySettingsPage() {
                     </div>
 
                     <div data-field="website" className="transition-all duration-300">
-                      <FieldLabel>Website</FieldLabel>
+                      <FieldLabel>{t("website")}</FieldLabel>
                       <div className="relative">
                         <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                         <Input
                           type="text"
                           className="pl-10"
-                          placeholder="https://yourcompany.com"
+                          placeholder={t("websitePlaceholder")}
                           value={form.website}
                           onChange={(e) => setField("website", e.target.value)}
                         />
@@ -756,56 +756,56 @@ function CompanySettingsPage() {
                 </SectionCard>
 
                 <SectionCard>
-                  <SectionHeader icon={Link2} title="Social Media" description="Links shown on your public company profile" />
+                  <SectionHeader icon={Link2} title={t("socialMedia")} description={t("socialMediaDesc")} />
                   <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <FieldLabel>LinkedIn</FieldLabel>
+                        <FieldLabel>{t("linkedin")}</FieldLabel>
                         <div className="relative">
                           <Linkedin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#0077B5]" />
                           <Input
                             type="text"
                             className="pl-10"
-                            placeholder="https://linkedin.com/company/..."
+                            placeholder={t("linkedinPlaceholder")}
                             value={form.linkedin}
                             onChange={(e) => setField("linkedin", e.target.value)}
                           />
                         </div>
                       </div>
                       <div>
-                        <FieldLabel>Twitter / X</FieldLabel>
+                        <FieldLabel>{t("twitter")}</FieldLabel>
                         <div className="relative">
                           <Twitter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1DA1F2]" />
                           <Input
                             type="text"
                             className="pl-10"
-                            placeholder="https://twitter.com/..."
+                            placeholder={t("twitterPlaceholder")}
                             value={form.twitter}
                             onChange={(e) => setField("twitter", e.target.value)}
                           />
                         </div>
                       </div>
                       <div>
-                        <FieldLabel>Facebook</FieldLabel>
+                        <FieldLabel>{t("facebook")}</FieldLabel>
                         <div className="relative">
                           <Facebook className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1877F2]" />
                           <Input
                             type="text"
                             className="pl-10"
-                            placeholder="https://facebook.com/..."
+                            placeholder={t("facebookPlaceholder")}
                             value={form.facebook}
                             onChange={(e) => setField("facebook", e.target.value)}
                           />
                         </div>
                       </div>
                       <div>
-                        <FieldLabel>Instagram</FieldLabel>
+                        <FieldLabel>{t("instagram")}</FieldLabel>
                         <div className="relative">
                           <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E4405F]" />
                           <Input
                             type="text"
                             className="pl-10"
-                            placeholder="https://instagram.com/..."
+                            placeholder={t("instagramPlaceholder")}
                             value={form.instagram}
                             onChange={(e) => setField("instagram", e.target.value)}
                           />
@@ -820,44 +820,44 @@ function CompanySettingsPage() {
             {/* ── Hiring Preferences Tab ───────────────────────────────── */}
             {activeTab === "hiring" && (
               <SectionCard>
-                <SectionHeader icon={Briefcase} title="Hiring Preferences" description="Default settings for new job postings — can be overridden per job" />
+                <SectionHeader icon={Briefcase} title={t("hiringPreferences")} description={t("hiringPrefsSectionDesc")} />
                 <div className="p-6 space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <FieldLabel>Default Job Visibility</FieldLabel>
+                      <FieldLabel>{t("defaultJobVisibility")}</FieldLabel>
                       <SearchableSelect
                         options={[
-                          { value: "public", label: "Public \u2014 Visible on job board" },
-                          { value: "private", label: "Private \u2014 Invite only" },
+                          { value: "public", label: t("visibilityPublic") },
+                          { value: "private", label: t("visibilityPrivate") },
                         ]}
                         value={form.defaultVisibility}
                         onValueChange={(v) => setField("defaultVisibility", v)}
                       />
                     </div>
                     <div>
-                      <FieldLabel>Preferred Work Type</FieldLabel>
+                      <FieldLabel>{t("preferredWorkType")}</FieldLabel>
                       <SearchableSelect
                         options={WORK_TYPES.map((w) => ({ value: w.value, label: w.label }))}
                         value={form.workType}
                         onValueChange={(v) => setField("workType", v)}
-                        placeholder="Select work type"
+                        placeholder={t("selectWorkType")}
                       />
                     </div>
                   </div>
 
                   <div>
-                    <FieldLabel>Preferred Hiring Locations</FieldLabel>
+                    <FieldLabel>{t("preferredHiringLocations")}</FieldLabel>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                       <Input
                         className="pl-10"
-                        placeholder="e.g. Dubai, Riyadh, Cairo"
+                        placeholder={t("preferredLocationsPlaceholder")}
                         value={form.preferredLocations}
                         onChange={(e) => setField("preferredLocations", e.target.value)}
                       />
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-1.5">
-                      Comma-separated list of cities or regions where you typically hire.
+                      {t("preferredLocationsHint")}
                     </p>
                   </div>
                 </div>
@@ -873,7 +873,7 @@ function CompanySettingsPage() {
             {activeTab === "account" && (
               <>
                 <SectionCard>
-                  <SectionHeader icon={Shield} title="Verification & Trust" description="Your verification status and trust level" />
+                  <SectionHeader icon={Shield} title={t("verificationTrust")} description={t("verificationTrustDesc")} />
                   <div className="p-6 space-y-4">
                     <div className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 border border-border/30">
                       <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${
@@ -891,8 +891,8 @@ function CompanySettingsPage() {
                         </div>
                         <p className="text-sm text-muted-foreground mt-1.5">
                           {company?.verificationLevel === "basic"
-                            ? "Upload company documents to get verified and build trust with candidates."
-                            : "Your company is verified. Candidates see a trust badge on your job postings."}
+                            ? t("verifyUploadPrompt")
+                            : t("verifiedTrustNote")}
                         </p>
                       </div>
                     </div>
@@ -910,9 +910,9 @@ function CompanySettingsPage() {
                       <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
                         <Briefcase className="w-4 h-4 text-muted-foreground" />
                         <div>
-                          <p className="text-[11px] text-muted-foreground">Current Plan</p>
+                          <p className="text-[11px] text-muted-foreground">{t("currentPlan")}</p>
                           <p className="text-sm font-medium capitalize">
-                            {company?.subscriptionType ?? "Free"}
+                            {company?.subscriptionType ?? t("freePlan")}
                           </p>
                         </div>
                       </div>
@@ -920,8 +920,8 @@ function CompanySettingsPage() {
                         <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
                           <FileText className="w-4 h-4 text-muted-foreground" />
                           <div>
-                            <p className="text-[11px] text-muted-foreground">Documents</p>
-                            <p className="text-sm font-medium">{company.verificationDocs.length} uploaded</p>
+                            <p className="text-[11px] text-muted-foreground">{t("documents")}</p>
+                            <p className="text-sm font-medium">{t("documentsUploaded", { count: company.verificationDocs.length })}</p>
                           </div>
                         </div>
                       )}
@@ -931,7 +931,7 @@ function CompanySettingsPage() {
 
                 {/* Document Upload */}
                 <SectionCard>
-                  <SectionHeader icon={FileText} title="Verification Documents" description="Upload documents to verify your company (PDF, images, DOCX — max 10MB each)" />
+                  <SectionHeader icon={FileText} title={t("verificationDocuments")} description={t("verificationDocumentsDesc")} />
                   <div className="p-6 space-y-4">
                     {docError && (
                       <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{docError}</p>
@@ -974,10 +974,10 @@ function CompanySettingsPage() {
                       onClick={() => docInputRef.current?.click()}
                     >
                       <Upload className="w-3.5 h-3.5 me-1.5" />
-                      {uploadDocMutation.isPending ? "Uploading…" : "Upload Document"}
+                      {uploadDocMutation.isPending ? t("uploading") : t("uploadDocument")}
                     </Button>
                     {(company?.verificationDocs?.length ?? 0) >= 10 && (
-                      <p className="text-xs text-muted-foreground">Maximum 10 documents reached.</p>
+                      <p className="text-xs text-muted-foreground">{t("maxDocumentsReached")}</p>
                     )}
                   </div>
                 </SectionCard>
@@ -992,27 +992,27 @@ function CompanySettingsPage() {
                       <AlertTriangle className="w-4 h-4 text-destructive" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
+                      <h3 className="text-sm font-semibold text-destructive">{t("dangerZone")}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Irreversible or significant account actions
+                        {t("dangerZoneDesc")}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/15 bg-background">
                     <div>
-                      <p className="text-sm font-medium">Deactivate Account</p>
+                      <p className="text-sm font-medium">{t("deactivateAccount")}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Hides your profile and unpublishes all jobs. Reversible via support.
+                        {t("deactivateAccountDesc")}
                       </p>
                     </div>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="border-destructive/40 text-destructive hover:bg-destructive hover:text-white shrink-0 ml-4"
+                      className="border-destructive/40 text-destructive hover:bg-destructive hover:text-white shrink-0 ms-4"
                       disabled={deactivating}
                       onClick={async () => {
-                        const ok = await confirmDialog("Are you sure you want to deactivate your account? All active jobs will be unpublished.");
+                        const ok = await confirmDialog(t("deactivateConfirm"));
                         if (!ok) return;
                         setDeactivating(true);
                         fetch("/api/employers/me", {
@@ -1022,7 +1022,7 @@ function CompanySettingsPage() {
                         }).finally(() => setDeactivating(false));
                       }}
                     >
-                      {deactivating ? "Processing…" : "Deactivate"}
+                      {deactivating ? t("processing") : t("deactivate")}
                     </Button>
                   </div>
                 </div>
@@ -1085,27 +1085,28 @@ interface NotifPrefs {
   unsubscribedAll: boolean;
 }
 
-const EMPLOYER_CATEGORIES: { key: CategoryKey; icon: typeof Bell; label: string; desc: string }[] = [
-  { key: "applications", icon: Users, label: "New Applicants", desc: "When a candidate applies to your jobs" },
-  { key: "interviews", icon: Calendar, label: "Interview Updates", desc: "Scheduling, confirmations, and candidate responses" },
-  { key: "offers", icon: FileText, label: "Offer Responses", desc: "Candidate accepts, rejects, or negotiates offers" },
-  { key: "jobs", icon: Briefcase, label: "Job Updates", desc: "Approval status, expiry, and applicant limits" },
-  { key: "system", icon: Shield, label: "System & Security", desc: "Login alerts, team changes, and platform notices" },
+const EMPLOYER_CATEGORIES: { key: CategoryKey; icon: typeof Bell; labelKey: string; descKey: string }[] = [
+  { key: "applications", icon: Users, labelKey: "catApplications", descKey: "catApplicationsDesc" },
+  { key: "interviews", icon: Calendar, labelKey: "catInterviews", descKey: "catInterviewsDesc" },
+  { key: "offers", icon: FileText, labelKey: "catOffers", descKey: "catOffersDesc" },
+  { key: "jobs", icon: Briefcase, labelKey: "catJobs", descKey: "catJobsDesc" },
+  { key: "system", icon: Shield, labelKey: "catSystem", descKey: "catSystemDesc" },
 ];
 
-const FREQ_OPTIONS: { value: EmailFrequency; label: string; desc: string }[] = [
-  { value: "instant", label: "Instant", desc: "As events happen" },
-  { value: "daily", label: "Daily", desc: "One email/day at 9 AM" },
-  { value: "weekly", label: "Weekly", desc: "Sunday summary" },
-  { value: "none", label: "Off", desc: "In-app only" },
+const FREQ_OPTIONS: { value: EmailFrequency; labelKey: string; descKey: string }[] = [
+  { value: "instant", labelKey: "freqInstant", descKey: "freqInstantDesc" },
+  { value: "daily", labelKey: "freqDaily", descKey: "freqDailyDesc" },
+  { value: "weekly", labelKey: "freqWeekly", descKey: "freqWeeklyDesc" },
+  { value: "none", labelKey: "freqNone", descKey: "freqNoneDesc" },
 ];
 
-const CH_LABELS: Record<Channel, { label: string; Icon: typeof Bell }> = {
-  in_app: { label: "In-App", Icon: Bell },
-  email: { label: "Email", Icon: Mail },
+const CH_LABELS: Record<Channel, { labelKey: string; Icon: typeof Bell }> = {
+  in_app: { labelKey: "channelInApp", Icon: Bell },
+  email: { labelKey: "channelEmail", Icon: Mail },
 };
 
 function EmployerNotificationsTab() {
+  const t = useTranslations("employerSettings");
   const [prefs, setPrefs] = useState<NotifPrefs>({
     emailFrequency: "daily",
     categories: {
@@ -1174,7 +1175,7 @@ function EmployerNotificationsTab() {
     <>
       {/* Frequency selector */}
       <SectionCard>
-        <SectionHeader icon={Clock} title="Email Frequency" description="How often to receive email notifications" />
+        <SectionHeader icon={Clock} title={t("emailFrequency")} description={t("emailFrequencyDesc")} />
         <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {FREQ_OPTIONS.map((opt) => (
             <button
@@ -1187,8 +1188,8 @@ function EmployerNotificationsTab() {
                   : "border-border/50 hover:border-border"
               }`}
             >
-              <div className="text-sm font-medium">{opt.label}</div>
-              <div className="text-[11px] text-muted-foreground mt-1">{opt.desc}</div>
+              <div className="text-sm font-medium">{t(opt.labelKey)}</div>
+              <div className="text-[11px] text-muted-foreground mt-1">{t(opt.descKey)}</div>
             </button>
           ))}
         </div>
@@ -1196,7 +1197,7 @@ function EmployerNotificationsTab() {
 
       {/* Categories */}
       <SectionCard>
-        <SectionHeader icon={Bell} title="Notification Categories" description="Toggle categories and choose delivery channels" />
+        <SectionHeader icon={Bell} title={t("notificationCategories")} description={t("notificationCategoriesDesc")} />
         <div className="divide-y divide-border/30">
           {EMPLOYER_CATEGORIES.map((cat) => {
             const pref = prefs.categories[cat.key];
@@ -1208,8 +1209,8 @@ function EmployerNotificationsTab() {
                       <cat.icon className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{cat.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{cat.desc}</p>
+                      <p className="text-sm font-medium">{t(cat.labelKey)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{t(cat.descKey)}</p>
                     </div>
                   </div>
                   <Switch
@@ -1226,9 +1227,9 @@ function EmployerNotificationsTab() {
                   />
                 </div>
                 {pref.enabled && (
-                  <div className="flex items-center gap-2 mt-3 ml-11">
+                  <div className="flex items-center gap-2 mt-3 ms-11">
                     {(Object.keys(CH_LABELS) as Channel[]).map((ch) => {
-                      const { label, Icon: ChIcon } = CH_LABELS[ch];
+                      const { labelKey, Icon: ChIcon } = CH_LABELS[ch];
                       const active = pref.channels.includes(ch);
                       return (
                         <button
@@ -1250,7 +1251,7 @@ function EmployerNotificationsTab() {
                           }`}
                         >
                           <ChIcon className="w-3 h-3" />
-                          {label}
+                          {t(labelKey)}
                         </button>
                       );
                     })}
@@ -1266,11 +1267,11 @@ function EmployerNotificationsTab() {
       <div className="flex items-center gap-3">
         <Button type="button" onClick={handleSave} disabled={saving || !hasChanges} size="sm" className="gap-2">
           <Save className="w-4 h-4" />
-          {saving ? "Saving…" : "Save Notification Settings"}
+          {saving ? t("saving") : t("saveNotificationSettings")}
         </Button>
         {saved && (
           <span className="text-sm text-green-600 flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+            <CheckCircle2 className="w-3.5 h-3.5" /> {t("saved")}
           </span>
         )}
       </div>
@@ -1281,6 +1282,7 @@ function EmployerNotificationsTab() {
 // ─── Employer SMTP Override (Premium Feature) ────────────────────────────────
 
 function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
+  const t = useTranslations("employerSettings");
   const [smtp, setSmtp] = useState({
     smtpEmail: "",
     smtpAppPassword: "",
@@ -1341,9 +1343,9 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
         body: JSON.stringify({ smtp }),
       });
       const data = await res.json();
-      setTestResult({ ok: res.ok, message: data.message ?? (res.ok ? "Test email sent!" : "Failed") });
+      setTestResult({ ok: res.ok, message: data.message ?? (res.ok ? t("testEmailSent") : t("testFailed")) });
     } catch {
-      setTestResult({ ok: false, message: "Network error" });
+      setTestResult({ ok: false, message: t("networkError") });
     } finally {
       setTesting(false);
     }
@@ -1368,14 +1370,14 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
   if (!isPremium) {
     return (
       <SectionCard>
-        <SectionHeader icon={Mail} title="Custom Email (SMTP)" description="Send emails from your own G Suite / Gmail account" />
+        <SectionHeader icon={Mail} title={t("customEmailSmtp")} description={t("customEmailSmtpNonPremiumDesc")} />
         <div className="p-6">
           <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20">
             <Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Premium Feature</p>
+              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{t("premiumFeature")}</p>
               <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-0.5">
-                Upgrade to Premium to send emails from your own domain. Platform emails will be used by default.
+                {t("premiumFeatureDesc")}
               </p>
             </div>
           </div>
@@ -1390,28 +1392,28 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
 
   return (
     <SectionCard>
-      <SectionHeader icon={Mail} title="Custom Email (SMTP)" description="Override platform email — send from your own G Suite / Gmail" />
+      <SectionHeader icon={Mail} title={t("customEmailSmtp")} description={t("customEmailSmtpDesc")} />
       <div className="p-6 space-y-4">
         <p className="text-xs text-muted-foreground">
-          When configured, candidate emails (offers, rejections, status updates) will be sent from your email address instead of the platform default.
+          {t("smtpIntro")}
         </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <FieldLabel>SMTP Email</FieldLabel>
+            <FieldLabel>{t("smtpEmail")}</FieldLabel>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
               <Input
                 type="email"
                 className="pl-10"
-                placeholder="hr@yourcompany.com"
+                placeholder={t("smtpEmailPlaceholder")}
                 value={smtp.smtpEmail}
                 onChange={(e) => setSmtp((s) => ({ ...s, smtpEmail: e.target.value }))}
               />
             </div>
           </div>
           <div>
-            <FieldLabel>App Password</FieldLabel>
+            <FieldLabel>{t("appPassword")}</FieldLabel>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
@@ -1429,14 +1431,14 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
               </button>
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">
-              Gmail: Enable 2FA → myaccount.google.com/apppasswords
+              {t("appPasswordHint")}
             </p>
           </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <FieldLabel>SMTP Host</FieldLabel>
+            <FieldLabel>{t("smtpHost")}</FieldLabel>
             <Input
               placeholder="smtp.gmail.com"
               value={smtp.smtpHost}
@@ -1444,7 +1446,7 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
             />
           </div>
           <div>
-            <FieldLabel>SMTP Port</FieldLabel>
+            <FieldLabel>{t("smtpPort")}</FieldLabel>
             <Input
               type="number"
               placeholder="587"
@@ -1460,7 +1462,7 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
                 onChange={(e) => setSmtp((s) => ({ ...s, smtpSecure: e.target.checked }))}
                 className="h-4 w-4 rounded border-border"
               />
-              SSL/TLS (port 465)
+              {t("sslTls")}
             </label>
           </div>
         </div>
@@ -1468,7 +1470,7 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Button size="sm" onClick={handleSave} disabled={saving || !smtp.smtpEmail}>
             <Save className="w-3.5 h-3.5 me-1.5" />
-            {saving ? "Saving…" : "Save SMTP"}
+            {saving ? t("saving") : t("saveSmtp")}
           </Button>
           <Button
             variant="outline"
@@ -1477,12 +1479,12 @@ function EmployerSmtpOverride({ isPremium }: { isPremium: boolean }) {
             disabled={testing || !smtp.smtpEmail || !smtp.smtpAppPassword || smtp.smtpAppPassword === "••••••••"}
           >
             <Send className="w-3.5 h-3.5 me-1.5" />
-            {testing ? "Sending…" : "Test Email"}
+            {testing ? t("sending") : t("testEmail")}
           </Button>
           {smtp.smtpEmail && (
             <Button variant="ghost" size="sm" onClick={handleClear} disabled={saving} className="text-destructive hover:text-destructive">
               <Trash2 className="w-3.5 h-3.5 me-1.5" />
-              Clear Override
+              {t("clearOverride")}
             </Button>
           )}
           {saved && (

@@ -265,13 +265,13 @@ export default function EmployerApplicationsPage() {
   const scorecardMap: Record<string, Scorecard> = scorecardsQuery.data ?? {};
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Candidate", key: "jobSeekerId", formatter: (_v, r) => { const a = r as Record<string, any>; const u = a.jobSeekerId?.userId; return typeof u === "object" && u?.name ? u.name : `Candidate #${String(a._id).slice(-4)}`; } },
-    { header: "Job", key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title ?? "Untitled" },
-    { header: "Status", key: "status", formatter: (v) => String(v ?? "—") },
-    { header: "AI Match", key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
-    { header: "Skills", key: "jobSeekerId", formatter: (_v, r) => ((r as Record<string, any>).jobSeekerId?.skills ?? []).slice(0, 5).join(", ") },
-    { header: "Location", key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.currentLocation ?? "—" },
-    { header: "Applied", key: "appliedAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
+    { header: t("exportCandidateCol"), key: "jobSeekerId", formatter: (_v, r) => { const a = r as Record<string, any>; const u = a.jobSeekerId?.userId; return typeof u === "object" && u?.name ? u.name : `${t("candidate")} #${String(a._id).slice(-4)}`; } },
+    { header: t("exportJobCol"), key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title ?? t("exportUntitled") },
+    { header: t("exportStatusCol"), key: "status", formatter: (v) => String(v ?? "—") },
+    { header: t("exportAiMatchCol"), key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
+    { header: t("exportSkillsCol"), key: "jobSeekerId", formatter: (_v, r) => ((r as Record<string, any>).jobSeekerId?.skills ?? []).slice(0, 5).join(", ") },
+    { header: t("exportLocationCol"), key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.currentLocation ?? "—" },
+    { header: t("exportAppliedCol"), key: "appliedAt", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],
@@ -300,10 +300,10 @@ export default function EmployerApplicationsPage() {
     if (!jobId || !jobSeekerId) return;
     try {
       await computeAiMatch.mutateAsync({ applicationId: app._id, jobId, jobSeekerId });
-      toast.success("AI match score generated");
+      toast.success(t("aiMatchGenerated"));
     } catch (err) {
       console.error("Failed to compute AI match:", err);
-      const message = err instanceof Error ? err.message : "Failed to generate AI score";
+      const message = err instanceof Error ? err.message : t("aiMatchFailed");
       toast.error(message);
     }
   }
@@ -582,7 +582,7 @@ export default function EmployerApplicationsPage() {
     try {
       const resolvedJobId = jobFilter || filteredApplications[0]?.jobId?._id;
       if (!resolvedJobId) {
-        toast.error("Unable to determine job for interview scheduling. Please select a job filter.");
+        toast.error(t("interviewNoJob"));
         return;
       }
       await createInterview.mutateAsync({
@@ -657,8 +657,8 @@ export default function EmployerApplicationsPage() {
                 onClick={toggleAll}
                 disabled={!filteredApplications.length}
               >
-                {allVisibleSelected ? <CheckSquare className="mr-2 h-3.5 w-3.5 text-sky-600 dark:text-sky-300" /> : <Square className="mr-2 h-3.5 w-3.5 text-muted-foreground" />}
-                {allVisibleSelected ? "Clear Visible" : t("selectVisible")}
+                {allVisibleSelected ? <CheckSquare className="me-2 h-3.5 w-3.5 text-sky-600 dark:text-sky-300" /> : <Square className="me-2 h-3.5 w-3.5 text-muted-foreground" />}
+                {allVisibleSelected ? t("clearVisible") : t("selectVisible")}
               </Button>
               <Button
                 size="sm"
@@ -709,7 +709,7 @@ export default function EmployerApplicationsPage() {
                 setExperienceRange([null, null]);
                 setSkillsFilter([]);
               }}
-              placeholder="Select a Job"
+              placeholder={t("selectJob")}
             />
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -795,12 +795,12 @@ export default function EmployerApplicationsPage() {
         <div className="mt-3 grid gap-4 rounded-[20px] border border-border/60 bg-background/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* AI Score Range */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">AI Score Range</label>
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("aiScoreRange")}</label>
             <div className="flex items-center gap-2">
               <input type="number" min={0} max={100} value={scoreRange[0]}
                 onChange={(e) => setScoreRange([Math.max(0, +e.target.value), scoreRange[1]])}
                 className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
-              <span className="text-xs text-muted-foreground">to</span>
+              <span className="text-xs text-muted-foreground">{t("rangeTo")}</span>
               <input type="number" min={0} max={100} value={scoreRange[1]}
                 onChange={(e) => setScoreRange([scoreRange[0], Math.min(100, +e.target.value)])}
                 className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
@@ -811,40 +811,40 @@ export default function EmployerApplicationsPage() {
           {/* Experience Range */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Experience (Years)
+              {t("experienceYears")}
               {selectedJob && (selectedJob.requirements.experienceMin > 0 || selectedJob.requirements.experienceMax < 30) ? (
-                <span className="ml-1 font-normal normal-case text-sky-600 dark:text-sky-300">
-                  Job requires {selectedJob.requirements.experienceMin}–{selectedJob.requirements.experienceMax}
+                <span className="ms-1 font-normal normal-case text-sky-600 dark:text-sky-300">
+                  {t("jobRequires", { min: selectedJob.requirements.experienceMin, max: selectedJob.requirements.experienceMax })}
                 </span>
               ) : null}
             </label>
             <div className="flex items-center gap-2">
               <input type="number" min={0} max={50}
                 value={experienceRange[0] ?? ""}
-                placeholder={selectedJob ? String(selectedJob.requirements.experienceMin) : "Min"}
+                placeholder={selectedJob ? String(selectedJob.requirements.experienceMin) : t("min")}
                 onChange={(e) => setExperienceRange([e.target.value ? +e.target.value : null, experienceRange[1]])}
                 className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
-              <span className="text-xs text-muted-foreground">to</span>
+              <span className="text-xs text-muted-foreground">{t("rangeTo")}</span>
               <input type="number" min={0} max={50}
                 value={experienceRange[1] ?? ""}
-                placeholder={selectedJob ? String(selectedJob.requirements.experienceMax) : "Max"}
+                placeholder={selectedJob ? String(selectedJob.requirements.experienceMax) : t("max")}
                 onChange={(e) => setExperienceRange([experienceRange[0], e.target.value ? +e.target.value : null])}
                 className="h-9 w-20 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
-              <span className="text-xs text-muted-foreground">yrs</span>
+              <span className="text-xs text-muted-foreground">{t("yrs")}</span>
             </div>
           </div>
 
           {/* Days in Pipeline */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Days in Pipeline</label>
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("daysInPipeline")}</label>
             <SearchableSelect
               className="h-9 w-40 rounded-xl border-border bg-background/80 text-sm"
               options={[
-                { value: "any", label: "Any" },
-                { value: "3", label: "3+ days" },
-                { value: "7", label: "7+ days" },
-                { value: "14", label: "14+ days" },
-                { value: "30", label: "30+ days" },
+                { value: "any", label: t("any") },
+                { value: "3", label: t("daysPlus", { days: 3 }) },
+                { value: "7", label: t("daysPlus", { days: 7 }) },
+                { value: "14", label: t("daysPlus", { days: 14 }) },
+                { value: "30", label: t("daysPlus", { days: 30 }) },
               ]}
               value={daysFilter?.toString() ?? "any"}
               onValueChange={(v) => setDaysFilter(v === "any" ? null : +v)}
@@ -854,10 +854,10 @@ export default function EmployerApplicationsPage() {
           {/* Skills Filter */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Skills
+              {t("skills")}
               {selectedJob && selectedJob.requirements.skills.length > 0 ? (
-                <span className="ml-1 font-normal normal-case text-sky-600 dark:text-sky-300">
-                  ({selectedJob.requirements.skills.length} required)
+                <span className="ms-1 font-normal normal-case text-sky-600 dark:text-sky-300">
+                  {t("skillsRequired", { count: selectedJob.requirements.skills.length })}
                 </span>
               ) : null}
             </label>
@@ -886,14 +886,14 @@ export default function EmployerApplicationsPage() {
                 })}
               </div>
             ) : (
-              <p className="text-[11px] text-muted-foreground">Select a job to see required skills</p>
+              <p className="text-[11px] text-muted-foreground">{t("selectJobForSkills")}</p>
             )}
           </div>
 
           {/* Quick-fill from job requirements */}
           {selectedJob && (
             <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
-              <span className="text-xs font-medium text-muted-foreground">Quick fill:</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("quickFill")}</span>
               {(selectedJob.requirements.experienceMin > 0 || selectedJob.requirements.experienceMax < 30) && experienceRange[0] === null && experienceRange[1] === null ? (
                 <Button
                   size="sm"
@@ -901,8 +901,8 @@ export default function EmployerApplicationsPage() {
                   className="h-7 rounded-lg border-border bg-background/80 px-2.5 text-[11px]"
                   onClick={() => setExperienceRange([selectedJob.requirements.experienceMin, selectedJob.requirements.experienceMax])}
                 >
-                  <Clock className="mr-1 h-3 w-3" />
-                  Experience {selectedJob.requirements.experienceMin}–{selectedJob.requirements.experienceMax} yrs
+                  <Clock className="me-1 h-3 w-3" />
+                  {t("experienceRangeChip", { min: selectedJob.requirements.experienceMin, max: selectedJob.requirements.experienceMax })}
                 </Button>
               ) : null}
               {selectedJob.requirements.skills.length > 0 && skillsFilter.length === 0 ? (
@@ -912,11 +912,11 @@ export default function EmployerApplicationsPage() {
                   className="h-7 rounded-lg border-border bg-background/80 px-2.5 text-[11px]"
                   onClick={() => setSkillsFilter([...selectedJob.requirements.skills])}
                 >
-                  <Sparkles className="mr-1 h-3 w-3" />
-                  All required skills
+                  <Sparkles className="me-1 h-3 w-3" />
+                  {t("allRequiredSkills")}
                 </Button>
               ) : null}
-              <div className="ml-auto">
+              <div className="ms-auto">
                 <Button size="sm" variant="ghost" className="h-7 rounded-lg px-3 text-[11px] text-muted-foreground"
                   onClick={() => {
                     setScoreRange([0, 100]);
@@ -924,7 +924,7 @@ export default function EmployerApplicationsPage() {
                     setExperienceRange([null, null]);
                     setSkillsFilter([]);
                   }}>
-                  Reset All Filters
+                  {t("resetAllFilters")}
                 </Button>
               </div>
             </div>
@@ -933,7 +933,7 @@ export default function EmployerApplicationsPage() {
             <div className="flex items-end">
               <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4 text-sm text-muted-foreground"
                 onClick={() => { setScoreRange([0, 100]); setDaysFilter(null); setExperienceRange([null, null]); setSkillsFilter([]); }}>
-                Reset
+                {t("reset")}
               </Button>
             </div>
           )}
@@ -951,7 +951,7 @@ export default function EmployerApplicationsPage() {
             </Button>
             <Button size="sm" variant="outline" className="h-10 rounded-xl border-violet-300/40 bg-background/80 px-4 text-sm text-violet-700 hover:bg-violet-500/10 dark:text-violet-300"
               onClick={openBulkInterviewModal} disabled={createInterview.isPending}>
-              <Calendar className="mr-2 h-3.5 w-3.5" />
+              <Calendar className="me-2 h-3.5 w-3.5" />
               {t("scheduleInterview")}
             </Button>
             <Button size="sm" variant="outline" className="h-10 rounded-xl border-destructive/30 bg-background/80 px-4 text-sm text-destructive hover:bg-destructive/10"
@@ -959,7 +959,7 @@ export default function EmployerApplicationsPage() {
               {t("reject")}
             </Button>
           </div>
-          <Button size="sm" variant="ghost" className="ml-auto h-10 w-10 rounded-xl p-0 text-muted-foreground hover:bg-background/70" onClick={() => setSelected([])}>
+          <Button size="sm" variant="ghost" className="ms-auto h-10 w-10 rounded-xl p-0 text-muted-foreground hover:bg-background/70" onClick={() => setSelected([])}>
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -967,20 +967,20 @@ export default function EmployerApplicationsPage() {
 
       {showRejectPrompt && (
         <div className="flex flex-col gap-3 rounded-[24px] border border-destructive/30 bg-destructive/5 p-4">
-          <p className="text-sm font-semibold text-destructive">Rejection reason is required before bulk reject.</p>
+          <p className="text-sm font-semibold text-destructive">{t("rejectionRequired")}</p>
           <div className="flex gap-2">
             <input
               className="h-11 flex-1 rounded-xl border border-border bg-background/80 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-destructive/40"
-              placeholder="e.g. Skills don't match requirements"
+              placeholder={t("rejectionPlaceholder")}
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               maxLength={500}
             />
             <Button size="sm" variant="destructive" className="h-11 rounded-xl px-4"
               onClick={() => openEmailPreview("reject")} disabled={bulkAction.isPending || !rejectionReason.trim()}>
-              {bulkAction.isPending ? "Rejecting…" : "Preview & Reject"}
+              {bulkAction.isPending ? t("rejecting") : t("previewReject")}
             </Button>
-            <Button size="sm" variant="ghost" className="h-11 rounded-xl px-4" onClick={() => setShowRejectPrompt(false)}>Cancel</Button>
+            <Button size="sm" variant="ghost" className="h-11 rounded-xl px-4" onClick={() => setShowRejectPrompt(false)}>{t("cancel")}</Button>
           </div>
         </div>
       )}
@@ -994,15 +994,15 @@ export default function EmployerApplicationsPage() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">
-                {shortlistConfirm.total} high-matched candidate{shortlistConfirm.total > 1 ? "s" : ""} found
+                {t("highMatchedFound", { count: shortlistConfirm.total })}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Select how many of the top candidates you want to shortlist. They are ranked by AI match score (highest first).
+                {t("shortlistHowMany")}
               </p>
 
               {/* Number picker */}
               <div className="mt-3 flex items-center gap-3">
-                <label className="text-xs font-medium text-foreground">Shortlist top</label>
+                <label className="text-xs font-medium text-foreground">{t("shortlistTop")}</label>
                 <div className="flex items-center gap-1">
                   <Button
                     type="button" size="sm" variant="outline"
@@ -1032,7 +1032,7 @@ export default function EmployerApplicationsPage() {
                     +
                   </Button>
                 </div>
-                <span className="text-xs text-muted-foreground">of {shortlistConfirm.total}</span>
+                <span className="text-xs text-muted-foreground">{t("ofTotal", { total: shortlistConfirm.total })}</span>
               </div>
 
               {/* Candidate list — highlight which are included */}
@@ -1073,7 +1073,7 @@ export default function EmployerApplicationsPage() {
           </div>
           <div className="flex gap-2 justify-end">
             <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4" onClick={() => setShortlistConfirm(null)}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               size="sm"
@@ -1081,8 +1081,8 @@ export default function EmployerApplicationsPage() {
               disabled={bulkAction.isPending || shortlistCount < 1}
               onClick={confirmAutoShortlist}
             >
-              <CheckCheck className="mr-2 h-3.5 w-3.5" />
-              {bulkAction.isPending ? "Shortlisting..." : `Shortlist Top ${shortlistCount}`}
+              <CheckCheck className="me-2 h-3.5 w-3.5" />
+              {bulkAction.isPending ? t("shortlisting") : t("shortlistTopCount", { count: shortlistCount })}
             </Button>
           </div>
         </div>
@@ -1097,10 +1097,10 @@ export default function EmployerApplicationsPage() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">
-                {postShortlistPrompt.shortlistedIds.length} candidate{postShortlistPrompt.shortlistedIds.length > 1 ? "s" : ""} shortlisted successfully!
+                {t("shortlistedSuccess", { count: postShortlistPrompt.shortlistedIds.length })}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Would you like to schedule interviews for these candidates? You can set a start time and each candidate will be auto-assigned consecutive time slots.
+                {t("scheduleInterviewsPrompt")}
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {postShortlistPrompt.candidateNames.map((name, i) => (
@@ -1113,15 +1113,15 @@ export default function EmployerApplicationsPage() {
           </div>
           <div className="flex gap-2 justify-end">
             <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4" onClick={() => setPostShortlistPrompt(null)}>
-              Skip for Now
+              {t("skipForNow")}
             </Button>
             <Button
               size="sm"
               className="h-9 rounded-xl bg-violet-600 px-4 text-white hover:bg-violet-700"
               onClick={handlePostShortlistInterview}
             >
-              <Calendar className="mr-2 h-3.5 w-3.5" />
-              Schedule Interviews
+              <Calendar className="me-2 h-3.5 w-3.5" />
+              {t("scheduleInterviews")}
             </Button>
           </div>
         </div>
@@ -1133,10 +1133,10 @@ export default function EmployerApplicationsPage() {
             <Inbox className="h-7 w-7" />
           </div>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-            Unable to load applications
+            {t("unableToLoad")}
           </h3>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-            Something went wrong while fetching applications. This may be a subscription limit — please check your plan or try refreshing the page.
+            {t("unableToLoadDesc")}
           </p>
           <Button variant="outline" className="mt-4" onClick={() => applicationsQuery.refetch()}>
             {tc("tryAgain")}
@@ -1167,9 +1167,9 @@ export default function EmployerApplicationsPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 overflow-y-auto py-8">
           <div className="bg-background rounded-lg border border-border shadow-lg max-w-2xl w-full mx-4">
             <div className="px-6 py-4 border-b border-border">
-              <h2 className="text-lg font-semibold">Create Interview Scorecard</h2>
+              <h2 className="text-lg font-semibold">{t("createScorecardTitle")}</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Evaluate the candidate for this interview
+                {t("createScorecardDesc")}
               </p>
             </div>
             <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">

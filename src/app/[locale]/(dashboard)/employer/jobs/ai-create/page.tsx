@@ -62,13 +62,13 @@ For example: "Senior React developer in Kochi, hybrid, Node and React, salary op
 const AI_PREFILL_STORAGE_KEY = "job-ai-prefill";
 const VOICE_WAVE_BARS = [0.45, 0.8, 1, 0.65, 0.9, 0.55, 0.75] as const;
 const DETECTED_LANGUAGE_LABELS: Record<string, string> = {
-  "en-US": "English",
-  "ar-SA": "Arabic",
-  "ml-IN": "Malayalam",
-  "hi-IN": "Hindi",
-  "ta-IN": "Tamil",
-  "te-IN": "Telugu",
-  "ur-PK": "Urdu",
+  "en-US": "langEnglish",
+  "ar-SA": "langArabic",
+  "ml-IN": "langMalayalam",
+  "hi-IN": "langHindi",
+  "ta-IN": "langTamil",
+  "te-IN": "langTelugu",
+  "ur-PK": "langUrdu",
 };
 
 function extractSkills(requirements?: ExtractedJob["requirements"]): string[] {
@@ -152,23 +152,24 @@ function buildPrefill(job: ExtractedJob): Partial<JobFormValues> {
   };
 }
 
-function getDetectedLanguageLabel(language: string | null): string | null {
+function getDetectedLanguageLabel(language: string | null, t: (key: string) => string): string | null {
   if (!language) {
     return null;
   }
 
-  return DETECTED_LANGUAGE_LABELS[language] ?? language;
+  const key = DETECTED_LANGUAGE_LABELS[language];
+  return key ? t(`jobCreator.${key}`) : language;
 }
 
 const VOICE_LANGUAGES = [
-  { code: "auto", label: "Auto", flag: "🌐" },
-  { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "ar", label: "Arabic", flag: "🇸🇦" },
-  { code: "ml", label: "Malayalam", flag: "🇮🇳" },
-  { code: "hi", label: "Hindi", flag: "🇮🇳" },
-  { code: "ur", label: "Urdu", flag: "🇵🇰" },
-  { code: "ta", label: "Tamil", flag: "🇮🇳" },
-  { code: "te", label: "Telugu", flag: "🇮🇳" },
+  { code: "auto", labelKey: "langAuto", flag: "🌐" },
+  { code: "en", labelKey: "langEnglish", flag: "🇬🇧" },
+  { code: "ar", labelKey: "langArabic", flag: "🇸🇦" },
+  { code: "ml", labelKey: "langMalayalam", flag: "🇮🇳" },
+  { code: "hi", labelKey: "langHindi", flag: "🇮🇳" },
+  { code: "ur", labelKey: "langUrdu", flag: "🇵🇰" },
+  { code: "ta", labelKey: "langTamil", flag: "🇮🇳" },
+  { code: "te", labelKey: "langTelugu", flag: "🇮🇳" },
 ];
 
 // ─── Markdown renderer ─────────────────────────────────────────
@@ -272,7 +273,7 @@ export default function EmployerAIJobCreatePage() {
     },
   });
 
-  const detectedLanguageLabel = getDetectedLanguageLabel(detectedLanguage);
+  const detectedLanguageLabel = getDetectedLanguageLabel(detectedLanguage, t);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -301,7 +302,7 @@ export default function EmployerAIJobCreatePage() {
         }),
       });
 
-      if (!res.ok || !res.body) throw new Error("Stream error");
+      if (!res.ok || !res.body) throw new Error(t("jobCreator.streamError"));
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -572,7 +573,7 @@ export default function EmployerAIJobCreatePage() {
                             )}
                           >
                             <span>{lang.flag}</span>
-                            <span>{lang.label}</span>
+                            <span>{t(`jobCreator.${lang.labelKey}`)}</span>
                           </button>
                         ))}
                       </div>

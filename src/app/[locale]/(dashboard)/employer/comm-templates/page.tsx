@@ -9,6 +9,9 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import type { CommTemplateType } from "@/models/CommTemplate";
@@ -62,20 +65,20 @@ export default function CommTemplatesPage() {
       setFormData({ name: "", type: "rejection", subject: "", body: "" });
       setShowForm(false);
     } catch (err: unknown) {
-      toast.error("Error creating template: " + (err instanceof Error ? err.message : "Unknown error"));
+      toast.error(t("errorCreating", { error: err instanceof Error ? err.message : t("unknownError") }));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDeleteTemplate(templateId: string, templateName: string) {
-    const ok = await confirmDialog(`Delete template "${templateName}"?`);
+    const ok = await confirmDialog(t("deleteConfirmNamed", { name: templateName }));
     if (!ok) return;
 
     try {
       await deleteMutation.mutateAsync(templateId);
     } catch {
-      toast.error("Error deleting template");
+      toast.error(t("errorDeleting"));
     }
   }
 
@@ -126,7 +129,7 @@ export default function CommTemplatesPage() {
             <div>
               <label className="block text-sm font-medium mb-1">{t("templateName")}</label>
               <Input
-                placeholder="e.g., Standard Rejection"
+                placeholder={t("nameExample")}
                 maxLength={100}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -136,24 +139,26 @@ export default function CommTemplatesPage() {
 
             <div>
               <label className="block text-sm font-medium mb-1">{t("templateType")}</label>
-              <select
-                className="w-full px-3 py-2 border rounded-md bg-background text-foreground"
+              <Select
                 value={formData.type}
-                onChange={(e) =>
-                  setFormData({ ...formData, type: e.target.value as CommTemplateType })
-                }
+                onValueChange={(v) => setFormData({ ...formData, type: v as CommTemplateType })}
               >
-                <option value="rejection">{t("rejection")}</option>
-                <option value="invite">{t("interviewInvite")}</option>
-                <option value="followup">{t("followUp")}</option>
-                <option value="offer">{t("offer")}</option>
-              </select>
+                <SelectTrigger aria-label={t("templateType")} className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="rejection">{t("rejection")}</SelectItem>
+                  <SelectItem value="invite">{t("interviewInvite")}</SelectItem>
+                  <SelectItem value="followup">{t("followUp")}</SelectItem>
+                  <SelectItem value="offer">{t("offer")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">{t("emailSubject")}</label>
               <Input
-                placeholder="e.g., Application Status Update"
+                placeholder={t("subjectExample")}
                 maxLength={200}
                 value={formData.subject}
                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
@@ -164,10 +169,10 @@ export default function CommTemplatesPage() {
             <div>
               <label className="block text-sm font-medium mb-1">{t("body")}</label>
               <p className="text-xs text-muted-foreground mb-2">
-                Supported placeholders: {"{"}candidateName{"}"}, {"{"}jobTitle{"}"}, {"{"}companyName{"}"}
+                {t("placeholdersHint")}
               </p>
               <textarea
-                placeholder={`Dear {{candidateName}},\n\nThank you for your interest in the {{jobTitle}} position at {{companyName}}...`}
+                placeholder={t("bodyPlaceholder")}
                 maxLength={5000}
                 rows={8}
                 value={formData.body}
@@ -176,7 +181,7 @@ export default function CommTemplatesPage() {
                 className="w-full px-3 py-2 border rounded-md bg-background text-foreground font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                {formData.body.length} / 5000 characters
+                {t("charactersCount", { count: formData.body.length })}
               </p>
             </div>
 
@@ -202,7 +207,7 @@ export default function CommTemplatesPage() {
 
       {/* Templates Grid */}
       {loading ? (
-        <div className="text-center py-8 text-muted-foreground">Loading templates...</div>
+        <div className="text-center py-8 text-muted-foreground">{t("loadingTemplates")}</div>
       ) : filteredTemplates.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           {t("noTemplates")}
@@ -222,18 +227,18 @@ export default function CommTemplatesPage() {
 
               <div className="space-y-2">
                 <div className="text-sm">
-                  <p className="text-xs text-muted-foreground uppercase">Subject:</p>
+                  <p className="text-xs text-muted-foreground uppercase">{t("subjectLabel")}</p>
                   <p className="text-foreground font-medium truncate">{template.subject}</p>
                 </div>
                 <div className="text-sm">
-                  <p className="text-xs text-muted-foreground uppercase">Preview:</p>
+                  <p className="text-xs text-muted-foreground uppercase">{t("previewLabel")}</p>
                   <p className="text-foreground text-sm line-clamp-3">{template.body}</p>
                 </div>
               </div>
 
               {template.isDefault && (
                 <div className="text-xs bg-emerald-50 text-emerald-700 rounded px-2 py-1 w-fit">
-                  Default Template
+                  {t("defaultTemplate")}
                 </div>
               )}
 

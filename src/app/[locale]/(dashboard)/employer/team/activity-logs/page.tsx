@@ -383,9 +383,9 @@ export default function TeamActivityLogsPage() {
       ) : logs.length === 0 ? (
         <div className="card-base text-center py-16">
           <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <p className="font-semibold text-foreground">No activity logs found</p>
+          <p className="font-semibold text-foreground">{t("noLogs")}</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Team member activities will appear here once they start using the platform.
+            {t("noLogsDesc")}
           </p>
         </div>
       ) : (
@@ -406,11 +406,11 @@ export default function TeamActivityLogsPage() {
               <tbody className="divide-y divide-border/40">
                 {logs.map((log) => {
                   const dt = new Date(log.createdAt);
-                  const dateStr = dt.toLocaleDateString("en-US", {
+                  const dateStr = dt.toLocaleDateString(locale === "ar" ? "ar" : "en-US", {
                     month: "short",
                     day: "numeric",
                   });
-                  const timeStr = dt.toLocaleTimeString("en-US", {
+                  const timeStr = dt.toLocaleTimeString(locale === "ar" ? "ar" : "en-US", {
                     hour: "2-digit",
                     minute: "2-digit",
                   });
@@ -489,7 +489,7 @@ export default function TeamActivityLogsPage() {
           <div className="md:hidden space-y-2">
             {logs.map((log) => {
               const dt = new Date(log.createdAt);
-              const dateStr = dt.toLocaleDateString("en-US", {
+              const dateStr = dt.toLocaleDateString(locale === "ar" ? "ar" : "en-US", {
                 month: "short",
                 day: "numeric",
                 hour: "2-digit",

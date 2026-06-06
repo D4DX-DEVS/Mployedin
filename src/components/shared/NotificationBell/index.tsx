@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { formatRelativeTime } from "@/lib/utils";
 import { useBellNotifications, useMarkAllRead, useMarkOneRead } from "@/hooks/useNotifications";
+import { resolveNotificationText } from "@/lib/notifications/resolve";
 
 interface NotificationBellProps {
   locale: string;
@@ -17,6 +19,8 @@ interface NotificationBellProps {
 
 export function NotificationBell({ locale }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("notificationsPage");
+  const tc = useTranslations("notificationContent");
   const { data } = useBellNotifications(locale);
   const notifications = data?.notifications ?? [];
   const unreadCount = data?.unreadCount ?? 0;
@@ -37,23 +41,25 @@ export function NotificationBell({ locale }: NotificationBellProps) {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h4 className="text-sm font-semibold">Notifications</h4>
+          <h4 className="text-sm font-semibold">{t("title")}</h4>
           {unreadCount > 0 && (
             <button
               onClick={() => markAllRead.mutate()}
               className="text-xs text-brand-blue hover:underline"
             >
-              Mark all read
+              {t("markAllRead")}
             </button>
           )}
         </div>
         <div className="max-h-80 overflow-y-auto">
           {notifications.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              No notifications
+              {t("empty")}
             </div>
           ) : (
-            notifications.map((n) => (
+            notifications.map((n) => {
+              const { title, body } = resolveNotificationText(n, tc, locale);
+              return (
               <div
                 key={n._id}
                 onClick={() => !n.isRead && markOneRead.mutate(n._id)}
@@ -65,16 +71,17 @@ export function NotificationBell({ locale }: NotificationBellProps) {
                   <span className="absolute left-1.5 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-blue-500" />
                 )}
                 <p className={`text-sm font-medium ${!n.isRead ? "text-foreground" : "text-muted-foreground"}`}>
-                  {n.title}
+                  {title}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-                  {n.body}
+                  {body}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {formatRelativeTime(new Date(n.createdAt))}
                 </p>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </PopoverContent>

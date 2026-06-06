@@ -155,11 +155,11 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
         setActiveTab("pay");
         return;
       }
-      if (!res.ok) throw new Error(data.error || "Failed to initiate payment");
+      if (!res.ok) throw new Error(data.error || t("paymentInitiateFailed"));
       // Redirect to payment gateway checkout
       window.location.href = data.checkoutUrl;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Payment failed");
+      toast.error(err instanceof Error ? err.message : t("toastPaymentFailed"));
     } finally {
       setGatewayLoading(false);
     }
@@ -384,7 +384,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                         <span className="flex items-center gap-1"><Globe className="h-3 w-3" /> {invoice.billingDetails.country}</span>
                       )}
                       {invoice.billingDetails.taxId && (
-                        <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Tax ID: {invoice.billingDetails.taxId}</span>
+                        <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> {t("taxIdLabel", { id: invoice.billingDetails.taxId })}</span>
                       )}
                     </div>
                   )}
@@ -406,7 +406,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
             {/* Line Items */}
             {invoice.lineItems && invoice.lineItems.length > 0 && (
               <div className="rounded-xl border border-border/70 p-4">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Items</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("items")}</p>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-xs text-muted-foreground">
@@ -447,7 +447,7 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                     <span>{fmt(invoice.taxAmount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between border-t pt-1.5 font-bold"><span>Total</span><span className="text-primary">{fmt(invoice.totalAmount)}</span></div>
+                <div className="flex justify-between border-t pt-1.5 font-bold"><span>{t("total")}</span><span className="text-primary">{fmt(invoice.totalAmount)}</span></div>
               </div>
             </div>
 
@@ -967,9 +967,9 @@ export default function EmployerInvoicesPage() {
                   <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(inv)} className="h-7 w-7 p-0" title="View"><Eye className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(inv)} className="h-7 w-7 p-0" title={t("view")} aria-label={t("view")}><Eye className="h-3.5 w-3.5" /></Button>
                       <Button
-                        variant="ghost" size="sm" className="h-7 w-7 p-0" title="Download PDF"
+                        variant="ghost" size="sm" className="h-7 w-7 p-0" title={t("downloadPdf")} aria-label={t("downloadPdf")}
                         onClick={async () => {
                           try {
                             const res = await fetch(`/api/invoices/${inv._id}/pdf`);
@@ -978,8 +978,8 @@ export default function EmployerInvoicesPage() {
                             const url = URL.createObjectURL(blob);
                             const a = document.createElement("a"); a.href = url; a.download = `${inv.invoiceNumber}.pdf`; a.click();
                             URL.revokeObjectURL(url);
-                            toast.success("PDF downloaded");
-                          } catch { toast.error("Failed to download PDF"); }
+                            toast.success(t("toastPdfDownloaded"));
+                          } catch { toast.error(t("toastPdfFailed")); }
                         }}
                       >
                         <Download className="h-3.5 w-3.5" />

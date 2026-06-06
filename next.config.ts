@@ -66,18 +66,6 @@ const nextConfig: NextConfig = {
     },
   },
 
-  // Stabilise file-watching on OneDrive / cloud-synced folders
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.watchOptions = {
-        ...config.watchOptions,
-        poll: 3000,           // fall back to polling (3 s — reduces HMR noise on OneDrive)
-        aggregateTimeout: 600, // batch changes within 600 ms
-        ignored: /node_modules|\.next|\.git|\.tmp$|~\$/,
-      };
-    }
-    return config;
-  },
   serverExternalPackages: ["mongoose", "bcryptjs", "pdf-parse", "mammoth", "jsdom", "isomorphic-dompurify", "dompurify"],
   images: {
     formats: ["image/avif", "image/webp"],

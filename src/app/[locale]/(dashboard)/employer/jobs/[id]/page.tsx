@@ -130,17 +130,18 @@ export default function JobDetailPage() {
     );
   }
 
+  const dateLocale = locale === "ar" ? "ar" : "en-US";
   const loc = typeof job.location === "string"
     ? job.location
     : job.location
-      ? `${job.location.city ?? ""}${job.location.city && job.location.country ? ", " : ""}${job.location.country ?? ""}${job.location.isRemote ? " (Remote)" : ""}`
+      ? `${job.location.city ?? ""}${job.location.city && job.location.country ? ", " : ""}${job.location.country ?? ""}${job.location.isRemote ? t("remoteSuffix") : ""}`
       : null;
 
-  const posted = new Date(job.createdAt).toLocaleDateString("en-US", {
+  const posted = new Date(job.createdAt).toLocaleDateString(dateLocale, {
     month: "long", day: "numeric", year: "numeric",
   });
   const expires = job.expiresAt
-    ? new Date(job.expiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    ? new Date(job.expiresAt).toLocaleDateString(dateLocale, { month: "long", day: "numeric", year: "numeric" })
     : null;
 
   return (

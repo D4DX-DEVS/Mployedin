@@ -5,6 +5,13 @@ import { createPortal } from "react-dom";
 import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
   Video,
   MapPin,
   Phone,
@@ -293,7 +300,7 @@ export function InterviewBookingModal({
             </h3>
             {selectedCandidates.length > 1 && step === "candidate" && (
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                {selectedCandidates.length} selected
+                {t("selectedCount", { count: selectedCandidates.length })}
               </span>
             )}
           </div>
@@ -325,35 +332,52 @@ export function InterviewBookingModal({
               <div className="flex flex-wrap items-center gap-2">
                 {/* Job filter */}
                 {jobs.length > 0 && (
-                  <select
-                    value={selectedJobId}
-                    onChange={(e) => setSelectedJobId(e.target.value)}
-                    className="rounded-lg border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  <Select
+                    value={selectedJobId || "__all__"}
+                    onValueChange={(v) => setSelectedJobId(v === "__all__" ? "" : v)}
                   >
-                    <option value="">All Jobs</option>
-                    {jobs.map((job) => (
-                      <option key={job.id} value={job.id}>
-                        {job.title} {job.applicantCount != null ? `(${job.applicantCount})` : ""}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      aria-label={t("filterByJob")}
+                      className="h-8 w-auto min-w-[140px] max-w-[220px] gap-1.5 rounded-lg px-2.5 text-xs"
+                    >
+                      <Briefcase className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <SelectValue placeholder={t("allJobs")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">{t("allJobs")}</SelectItem>
+                      {jobs.map((job) => (
+                        <SelectItem key={job.id} value={job.id}>
+                          {job.title}
+                          {job.applicantCount != null ? ` (${job.applicantCount})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
                 {/* Score filter */}
-                <select
-                  value={scoreFilter}
-                  onChange={(e) => setScoreFilter(Number(e.target.value))}
-                  className="rounded-lg border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                <Select
+                  value={String(scoreFilter)}
+                  onValueChange={(v) => setScoreFilter(Number(v))}
                 >
-                  <option value={0}>Any Match Score</option>
-                  <option value={50}>50%+ Match</option>
-                  <option value={70}>70%+ Match</option>
-                  <option value={80}>80%+ Match</option>
-                  <option value={90}>90%+ Match</option>
-                </select>
+                  <SelectTrigger
+                    aria-label={t("filterByMatch")}
+                    className="h-8 w-auto min-w-[150px] gap-1.5 rounded-lg px-2.5 text-xs"
+                  >
+                    <SelectValue placeholder={t("anyMatchScore")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">{t("anyMatchScore")}</SelectItem>
+                    {[50, 70, 80, 90].map((score) => (
+                      <SelectItem key={score} value={String(score)}>
+                        {t("matchThreshold", { score })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {/* Result count */}
                 {searchDone && !searchLoading && (
-                  <span className="text-[10px] text-muted-foreground ms-auto">
-                    {candidates.length} candidate{candidates.length !== 1 ? "s" : ""}
+                  <span className="text-[11px] text-muted-foreground ms-auto">
+                    {t("candidatesCount", { count: candidates.length })}
                   </span>
                 )}
               </div>
@@ -404,10 +428,10 @@ export function InterviewBookingModal({
                           )}
                         </button>
                       </th>
-                      <th className="px-3 py-2.5 text-start font-medium text-muted-foreground">Candidate</th>
-                      <th className="px-3 py-2.5 text-start font-medium text-muted-foreground hidden sm:table-cell">Job</th>
-                      <th className="px-3 py-2.5 text-center font-medium text-muted-foreground">Match</th>
-                      <th className="px-3 py-2.5 text-start font-medium text-muted-foreground hidden sm:table-cell">Status</th>
+                      <th className="px-3 py-2.5 text-start font-medium text-muted-foreground">{t("candidateColumn")}</th>
+                      <th className="px-3 py-2.5 text-start font-medium text-muted-foreground hidden sm:table-cell">{t("jobColumn")}</th>
+                      <th className="px-3 py-2.5 text-center font-medium text-muted-foreground">{t("matchColumn")}</th>
+                      <th className="px-3 py-2.5 text-start font-medium text-muted-foreground hidden sm:table-cell">{t("statusColumn")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
@@ -475,8 +499,8 @@ export function InterviewBookingModal({
             <div className="border-t px-5 py-3 flex items-center justify-between shrink-0">
               <p className="text-[11px] text-muted-foreground">
                 {selectedCandidates.length > 0
-                  ? `${selectedCandidates.length} selected — interviews will be scheduled back-to-back`
-                  : "Select one or more candidates"}
+                  ? t("backToBackHint", { count: selectedCandidates.length })
+                  : t("selectOneOrMore")}
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="rounded-xl" onClick={onClose}>
@@ -488,7 +512,7 @@ export function InterviewBookingModal({
                   disabled={selectedCandidates.length === 0}
                   onClick={handleGoToDetails}
                 >
-                  Next ({selectedCandidates.length})
+                  {t("next")} ({selectedCandidates.length})
                 </Button>
               </div>
             </div>

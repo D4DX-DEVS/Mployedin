@@ -79,21 +79,21 @@ function getResourceFromPath(path: string | null): string {
   return parts[parts.length - 1] ?? "";
 }
 
-function getDetailedDescription(entry: ActivityEntry): string {
+function getDetailedDescription(entry: ActivityEntry, t: (key: string, values?: Record<string, string>) => string): string {
   const resource = getResourceFromPath(entry.path);
   switch (entry.action) {
     case "start":
-      return "Started a session to manage your account";
+      return t("descStart");
     case "exit":
-      return "Ended their management session";
+      return t("descExit");
     case "create":
-      return resource ? `Created a new ${resource.toLowerCase()} on your account` : "Created a new resource";
+      return resource ? t("descCreate", { resource: resource.toLowerCase() }) : t("descCreateGeneric");
     case "update":
-      return resource ? `Updated ${resource.toLowerCase()} on your account` : "Updated a resource";
+      return resource ? t("descUpdate", { resource: resource.toLowerCase() }) : t("descUpdateGeneric");
     case "delete":
-      return resource ? `Deleted ${resource.toLowerCase()} from your account` : "Deleted a resource";
+      return resource ? t("descDelete", { resource: resource.toLowerCase() }) : t("descDeleteGeneric");
     default:
-      return resource ? `Performed an action on ${resource.toLowerCase()}` : "Performed an action";
+      return resource ? t("descDefault", { resource: resource.toLowerCase() }) : t("descDefaultGeneric");
   }
 }
 
@@ -267,6 +267,9 @@ export default function ActivityHistoryPage() {
           entries.map((entry) => {
             const actionMeta = ACTION_META[entry.action] ?? ACTION_META.write;
             const roleMeta = ROLE_META[entry.actorRole] ?? { label: entry.actorRole, color: "bg-slate-100 text-slate-700" };
+            const actionLabel = ACTION_META[entry.action] ? t(entry.action) : t("write");
+            const roleLabelKey: Record<string, string> = { admin: "roleAdmin", super_agent: "roleSuperAgent", agent: "roleAgent" };
+            const roleLabel = roleLabelKey[entry.actorRole] ? t(roleLabelKey[entry.actorRole]) : entry.actorRole;
             const ActionIcon = actionMeta.icon;
 
             return (
@@ -287,15 +290,15 @@ export default function ActivityHistoryPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm text-foreground">{entry.actorName}</span>
                     <Badge variant="outline" className="text-[10px] font-medium rounded-lg px-2 py-0.5">
-                      {roleMeta.label}
+                      {roleLabel}
                     </Badge>
                     <Badge variant="outline" className={cn("text-[10px] font-medium rounded-lg px-2 py-0.5", actionMeta.color)}>
-                      {actionMeta.label}
+                      {actionLabel}
                     </Badge>
                   </div>
 
                   <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                    {getDetailedDescription(entry)}
+                    {getDetailedDescription(entry, t)}
                   </p>
 
                   <div className="flex items-center gap-4 mt-2.5 text-xs text-muted-foreground flex-wrap">
@@ -334,9 +337,11 @@ export default function ActivityHistoryPage() {
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between rounded-[20px] border border-slate-200 bg-white/90 px-5 py-3.5 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/80">
           <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium text-foreground">{(pagination.page - 1) * pagination.limit + 1}</span>
-            –<span className="font-medium text-foreground">{Math.min(pagination.page * pagination.limit, pagination.total)}</span>
-            {" "}of <span className="font-medium text-foreground">{pagination.total}</span>
+            {t("showingRange", {
+              from: String((pagination.page - 1) * pagination.limit + 1),
+              to: String(Math.min(pagination.page * pagination.limit, pagination.total)),
+              total: String(pagination.total),
+            })}
           </p>
 
           <div className="flex items-center gap-1.5">

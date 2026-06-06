@@ -5,6 +5,9 @@ import { Calendar, Search, Users, Clock, Send, CheckCircle, Loader2, X } from "l
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
 import { useShortlistedCandidates, useBulkScheduleInterviews } from "@/hooks/useInterviews";
 
 interface Candidate {
@@ -181,23 +184,31 @@ export default function EmployerBulkInterviewPage() {
               />
               <div>
                 <label className="text-xs text-muted-foreground">{t("duration")}</label>
-                <select value={slot.duration} onChange={e => setSlot(s => ({ ...s, duration: parseInt(e.target.value) }))}
-                  className="select-field w-full mt-1">
-                  <option value={30}>{t("min30")}</option>
-                  <option value={45}>{t("min45")}</option>
-                  <option value={60}>{t("hour1")}</option>
-                  <option value={90}>{t("hour1_5")}</option>
-                </select>
+                <Select value={String(slot.duration)} onValueChange={v => setSlot(s => ({ ...s, duration: parseInt(v) }))}>
+                  <SelectTrigger className="mt-1 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">{t("min30")}</SelectItem>
+                    <SelectItem value="45">{t("min45")}</SelectItem>
+                    <SelectItem value="60">{t("hour1")}</SelectItem>
+                    <SelectItem value="90">{t("hour1_5")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div>
               <label className="text-xs text-muted-foreground">{t("type")}</label>
-              <select value={slot.type} onChange={e => setSlot(s => ({ ...s, type: e.target.value as InterviewSlot["type"] }))}
-                className="select-field w-full mt-1">
-                <option value="video">{t("videoCall")}</option>
-                <option value="offline">{t("inPerson")}</option>
-                <option value="hybrid">{t("hybrid")}</option>
-              </select>
+              <Select value={slot.type} onValueChange={v => setSlot(s => ({ ...s, type: v as InterviewSlot["type"] }))}>
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="video">{t("videoCall")}</SelectItem>
+                  <SelectItem value="offline">{t("inPerson")}</SelectItem>
+                  <SelectItem value="hybrid">{t("hybrid")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             {slot.type !== "offline" && (
               <div>

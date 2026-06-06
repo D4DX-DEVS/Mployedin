@@ -10,7 +10,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { useConfirm } from "@/hooks/useConfirm";
 import {
   Inbox, Sparkles, CalendarDays, CircleCheckBig, RotateCcw, ArrowRight, Clock3,
   CalendarClock, CheckCircle2, XCircle, AlertTriangle, Forward, FileText,
@@ -65,6 +69,7 @@ export default function EmployerInterviewsPage() {
   const router = useRouter();
   const t = useTranslations("employerInterviews");
   const tc = useTranslations("employerCommon");
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const { can } = usePermissions();
@@ -273,6 +278,7 @@ export default function EmployerInterviewsPage() {
 
   return (
     <div className="page-container employer-legacy-surface space-y-6">
+      {ConfirmDialogNode}
       {aiTarget && (
         <AIInterviewQuestionsPanel
           interviewId={aiTarget.interviewId}
@@ -715,8 +721,14 @@ export default function EmployerInterviewsPage() {
                               </Button>
                               <Button variant="ghost" size="sm"
                                 className="h-7 rounded-lg px-2.5 text-[11px] font-semibold text-red-700 hover:bg-red-50"
-                                onClick={() => {
-                                  if (window.confirm(`${t("cancelConfirm")} ${iv.jobSeekerId?.fullName ?? "this candidate"}?`)) {
+                                onClick={async () => {
+                                  const ok = await confirm({
+                                    title: t("cancelAction"),
+                                    message: `${t("cancelConfirm")} ${iv.jobSeekerId?.fullName ?? t("thisCandidate")}?`,
+                                    confirmLabel: t("cancelAction"),
+                                    variant: "destructive",
+                                  });
+                                  if (ok) {
                                     updateMutation.mutate({ id: iv._id, status: "cancelled" });
                                   }
                                 }}>
@@ -933,7 +945,7 @@ function InterviewActionModal({
     setSubmitError("");
     try {
       if (modal.kind === "complete") {
-        if (!outcome) { setSubmitError("Please select an outcome"); setSubmitting(false); return; }
+        if (!outcome) { setSubmitError(t("selectOutcome")); setSubmitting(false); return; }
         await updateMutation.mutateAsync({
           id: iv._id,
           status: "completed",
@@ -941,7 +953,7 @@ function InterviewActionModal({
           feedback: feedback || undefined,
         });
       } else if (modal.kind === "reschedule") {
-        if (!scheduledAt) { setSubmitError("Please select a new date/time"); setSubmitting(false); return; }
+        if (!scheduledAt) { setSubmitError(t("selectDateTime")); setSubmitting(false); return; }
         // Update interview in-place — no duplicate creation
         await updateMutation.mutateAsync({
           id: iv._id,
@@ -952,7 +964,7 @@ function InterviewActionModal({
           meetLink: type !== "offline" ? (meetLink || undefined) : undefined,
         });
       } else if (modal.kind === "next-round") {
-        if (!scheduledAt) { setSubmitError("Please select a date/time"); setSubmitting(false); return; }
+        if (!scheduledAt) { setSubmitError(t("selectDateTime")); setSubmitting(false); return; }
         await nextRoundMutation.mutateAsync({
           interviewId: iv._id,
           scheduledAt: new Date(scheduledAt).toISOString(),
@@ -962,7 +974,7 @@ function InterviewActionModal({
           meetLink: type !== "offline" ? (meetLink || undefined) : undefined,
         });
       } else if (modal.kind === "offer") {
-        if (!salaryAmount || !startDate) { setSubmitError("Salary and start date are required"); setSubmitting(false); return; }
+        if (!salaryAmount || !startDate) { setSubmitError(t("salaryStartRequired")); setSubmitting(false); return; }
         await createOfferMutation.mutateAsync({
           applicationId: iv.applicationId!,
           salary: { amount: Number(salaryAmount), currency: salaryCurrency, period: salaryPeriod },
@@ -976,7 +988,7 @@ function InterviewActionModal({
       }
       onClose();
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : "Something went wrong");
+      setSubmitError(e instanceof Error ? e.message : tc("somethingWentWrong"));
     } finally {
       setSubmitting(false);
     }
@@ -1000,7 +1012,7 @@ function InterviewActionModal({
         <div className="mb-5">
           <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {iv.jobSeekerId?.fullName ?? "Candidate"} · {iv.jobId?.title ?? "Role"} · Round {iv.interviewRound ?? 1}
+            {iv.jobSeekerId?.fullName ?? t("candidate")} · {iv.jobId?.title ?? t("role")} · {t("round")} {iv.interviewRound ?? 1}
           </p>
         </div>
 
@@ -1045,38 +1057,48 @@ function InterviewActionModal({
           {isScheduleForm && (
             <>
               <DateTimePicker
-                label="Date & Time"
+                label={t("dateTime")}
                 value={scheduledAt}
                 onChange={setScheduledAt}
                 minDate={new Date()}
-                placeholder="Pick date & time"
+                placeholder={t("pickDateTime")}
               />
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Duration (min)</label>
-                  <select value={duration} onChange={(e) => setDuration(Number(e.target.value))}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none">
-                    {[15, 30, 45, 60, 90, 120].map((d) => <option key={d} value={d}>{d} min</option>)}
-                  </select>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("durationMin")}</label>
+                  <Select value={String(duration)} onValueChange={(v) => setDuration(Number(v))}>
+                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[15, 30, 45, 60, 90, 120].map((d) => (
+                        <SelectItem key={d} value={String(d)}>{d} {t("min")}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Type</label>
-                  <select value={type} onChange={(e) => setType(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none">
-                    <option value="video">Video</option>
-                    <option value="offline">In-Person</option>
-                    <option value="hybrid">Hybrid</option>
-                  </select>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("typeLabel")}</label>
+                  <Select value={type} onValueChange={setType}>
+                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="video">{t("video")}</SelectItem>
+                      <SelectItem value="offline">{t("inPerson")}</SelectItem>
+                      <SelectItem value="hybrid">{t("hybrid")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Location / Meet Link</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("locationMeetLink")}</label>
                 <input
                   type="text"
                   value={type === "video" ? meetLink : location}
                   onChange={(e) => type === "video" ? setMeetLink(e.target.value) : setLocation(e.target.value)}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder={type === "video" ? "https://meet.google.com/..." : "Office address or room"}
+                  placeholder={type === "video" ? t("meetLinkPlaceholder") : t("officePlaceholder")}
                 />
               </div>
             </>
@@ -1087,50 +1109,54 @@ function InterviewActionModal({
             <>
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-1">
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Salary</label>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("salary")}</label>
                   <input type="number" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)}
                     className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                    placeholder="5000" min="0" />
+                    placeholder={t("salaryPlaceholder")} min="0" />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Currency</label>
-                  <select value={salaryCurrency} onChange={(e) => setSalaryCurrency(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none">
-                    <option value="AED">AED</option>
-                    <option value="USD">USD</option>
-                    <option value="INR">INR</option>
-                    <option value="SAR">SAR</option>
-                    <option value="QAR">QAR</option>
-                    <option value="EUR">EUR</option>
-                    <option value="GBP">GBP</option>
-                  </select>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("currency")}</label>
+                  <Select value={salaryCurrency} onValueChange={setSalaryCurrency}>
+                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["AED", "USD", "INR", "SAR", "QAR", "EUR", "GBP"].map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Period</label>
-                  <select value={salaryPeriod} onChange={(e) => setSalaryPeriod(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none">
-                    <option value="monthly">Monthly</option>
-                    <option value="annually">Annually</option>
-                  </select>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("period")}</label>
+                  <Select value={salaryPeriod} onValueChange={setSalaryPeriod}>
+                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">{t("monthly")}</SelectItem>
+                      <SelectItem value="annually">{t("annually")}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Start Date</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("startDate")}</label>
                 <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                   min={new Date().toISOString().slice(0, 10)}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none" />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Benefits (optional)</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("benefitsOptional")}</label>
                 <textarea value={benefits} onChange={(e) => setBenefits(e.target.value)} rows={2} maxLength={2000}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Health insurance, housing allowance, transport..." />
+                  placeholder={t("benefitsPlaceholder")} />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notes (optional)</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("notesOptional")}</label>
                 <textarea value={offerNotes} onChange={(e) => setOfferNotes(e.target.value)} rows={2} maxLength={1000}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Additional notes for the candidate..." />
+                  placeholder={t("notesPlaceholder")} />
               </div>
             </>
           )}

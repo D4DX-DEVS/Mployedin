@@ -17,11 +17,11 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useTraining, useCreateTraining, useUpdateTrainingStatus, type TrainingItem } from "@/hooks/useTraining";
 
 const SUGGESTED_TRAININGS = [
-  { title: "Gulf Labour Law Essentials", provider: "MPLOYEDIN Academy", url: "#" },
-  { title: "Professional HR Certificate (Gulf)", provider: "CIPD", url: "https://cipd.org" },
-  { title: "Advanced Excel for HR", provider: "LinkedIn Learning", url: "https://linkedin.com/learning" },
-  { title: "Interviewing Skills Masterclass", provider: "Coursera", url: "https://coursera.org" },
-  { title: "Corporate Communication in Arabic", provider: "AUB Online", url: "#" },
+  { titleKey: "suggestGulfLaborTitle", provider: "MPLOYEDIN Academy", url: "" },
+  { titleKey: "suggestHrCertTitle", provider: "CIPD", url: "https://cipd.org" },
+  { titleKey: "suggestExcelTitle", provider: "LinkedIn Learning", url: "https://linkedin.com/learning" },
+  { titleKey: "suggestInterviewTitle", provider: "Coursera", url: "https://coursera.org" },
+  { titleKey: "suggestArabicCommTitle", provider: "AUB Online", url: "" },
 ];
 
 export default function EmployerTrainingTrackerPage() {
@@ -299,12 +299,12 @@ export default function EmployerTrainingTrackerPage() {
           <div className="mt-4 space-y-2.5">
             {SUGGESTED_TRAININGS.map((training, index) => (
               <div
-                key={`${training.title}-${index}`}
+                key={`${training.titleKey}-${index}`}
                 className="rounded-[22px] border border-border bg-background/80 p-3.5 transition-all hover:-translate-y-0.5 hover:border-sky-500/25"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{training.title}</p>
+                    <p className="text-sm font-semibold text-foreground">{t(training.titleKey)}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{training.provider}</p>
                   </div>
                   <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -313,7 +313,7 @@ export default function EmployerTrainingTrackerPage() {
                 <button
                   onClick={() => {
                     setForm({
-                      title: training.title,
+                      title: t(training.titleKey),
                       provider: training.provider,
                       url: training.url,
                       targetRole: "",

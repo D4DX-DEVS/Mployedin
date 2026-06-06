@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { BarChart3, FileQuestion, Hash, MessageSquare, PieChart } from "lucide-react";
 
 interface QuestionAnalytic {
@@ -39,10 +41,14 @@ export default function ScreeningAnalyticsPage() {
             .filter((j: Record<string, unknown>) => (j.screeningQuestions as unknown[])?.length > 0)
             .map((j: Record<string, unknown>) => ({ _id: String(j._id), title: j.title as string }));
           setJobs(jobList);
+        } else {
+          toast.error(t("loadJobsFailed"));
         }
-      } catch { /* ignore */ }
+      } catch {
+        toast.error(t("loadJobsFailed"));
+      }
     })();
-  }, []);
+  }, [t]);
 
   const fetchAnalytics = useCallback(async (jobId: string) => {
     if (!jobId) return;
@@ -50,10 +56,13 @@ export default function ScreeningAnalyticsPage() {
     try {
       const res = await fetch(`/api/employers/screening-analytics?jobId=${jobId}`);
       if (res.ok) setData(await res.json());
-    } catch { /* ignore */ } finally {
+      else toast.error(t("loadFailed"));
+    } catch {
+      toast.error(t("loadFailed"));
+    } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (selectedJobId) fetchAnalytics(selectedJobId);
@@ -72,16 +81,14 @@ export default function ScreeningAnalyticsPage() {
       {/* Job Selector */}
       <div className="bg-card border border-border rounded-xl p-4">
         <label className="text-sm font-medium text-foreground mb-2 block">{t("selectJob")}</label>
-        <select
-          value={selectedJobId}
-          onChange={(e) => setSelectedJobId(e.target.value)}
-          className="w-full max-w-md px-3 py-2 border border-border rounded-lg bg-background text-sm"
-        >
-          <option value="">{t("chooseJob")}</option>
-          {jobs.map((j) => (
-            <option key={j._id} value={j._id}>{j.title}</option>
-          ))}
-        </select>
+        <div className="max-w-md">
+          <SearchableSelect
+            value={selectedJobId}
+            onValueChange={setSelectedJobId}
+            placeholder={t("chooseJob")}
+            options={jobs.map((j) => ({ value: j._id, label: j.title }))}
+          />
+        </div>
       </div>
 
       {loading && (
@@ -107,7 +114,7 @@ export default function ScreeningAnalyticsPage() {
           {data.questions.map((q, idx) => (
             <div key={q.questionId} className="bg-card border border-border rounded-xl p-5">
               <div className="flex items-start gap-3 mb-4">
-                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">Q{idx + 1}</span>
+                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">{t("questionNumber", { number: idx + 1 })}</span>
                 <div>
                   <p className="font-medium text-foreground">{q.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{q.type.replace("_", " ")} • {t("responses", { count: q.totalResponses })}</p>

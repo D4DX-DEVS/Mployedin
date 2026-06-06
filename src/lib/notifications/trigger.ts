@@ -59,10 +59,22 @@ interface NotifyPayload {
   sendEmail?: boolean;
   sendWhatsApp?: boolean;
   metadata?: Record<string, unknown>;
+  /** Translation key (notificationContent namespace) for localized title. */
+  titleKey?: string;
+  /** Translation key (notificationContent namespace) for localized body. */
+  bodyKey?: string;
+  /** ICU params for the localized title/body keys. */
+  params?: Record<string, unknown>;
 }
 
 export async function notify(payload: NotifyPayload): Promise<void> {
   await connectDB();
+
+  // Merge localization keys into meta so the client can render bilingual text.
+  const meta: Record<string, unknown> = { ...payload.metadata };
+  if (payload.titleKey) meta.titleKey = payload.titleKey;
+  if (payload.bodyKey) meta.bodyKey = payload.bodyKey;
+  if (payload.params) meta.params = payload.params;
 
   // Always create an in-app notification synchronously (fast, no queue needed)
   await Notification.create({
@@ -71,7 +83,7 @@ export async function notify(payload: NotifyPayload): Promise<void> {
     title: payload.title,
     body: payload.message,
     actionUrl: payload.link,
-    meta: payload.metadata,
+    meta,
     channels: ["in_app"],
     isRead: false,
   });
@@ -116,6 +128,9 @@ export async function notifyApplicationReceived(
     link: `/en/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, companyName, applicationId },
+    titleKey: "applicationReceivedTitle",
+    bodyKey: "applicationReceivedBody",
+    params: { jobTitle, companyName },
   });
 }
 
@@ -133,6 +148,9 @@ export async function notifyStatusChange(
     link: `/en/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, status, applicationId },
+    titleKey: "statusUpdatedTitle",
+    bodyKey: "statusUpdatedBody",
+    params: { jobTitle, status },
   });
 }
 
@@ -152,6 +170,9 @@ export async function notifyInterviewScheduled(
     link: `/en/job-seeker/interviews`,
     sendEmail: true,
     metadata: { jobTitle, scheduledAt, location, interviewId },
+    titleKey: "interviewScheduledTitle",
+    bodyKey: "interviewScheduledBody",
+    params: { jobTitle, location, dateIso: scheduledAt.toISOString(), date: dateStr },
   });
 }
 
@@ -169,6 +190,9 @@ export async function notifyInterviewSelected(
     link: `/en/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, companyName, applicationId },
+    titleKey: "interviewSelectedTitle",
+    bodyKey: "interviewSelectedBody",
+    params: { jobTitle, companyName },
   });
 }
 
@@ -186,6 +210,9 @@ export async function notifyOfferMade(
     link: `/en/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, companyName, applicationId },
+    titleKey: "offerMadeTitle",
+    bodyKey: "offerMadeBody",
+    params: { jobTitle, companyName },
   });
 }
 
@@ -202,6 +229,9 @@ export async function notifyRejected(
     link: `/en/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, applicationId },
+    titleKey: "rejectedTitle",
+    bodyKey: "rejectedBody",
+    params: { jobTitle },
   });
 }
 
@@ -219,6 +249,9 @@ export async function notifyMention(
     link: `/en/employer/applications?highlight=${applicationId}`,
     sendEmail: false,
     metadata: { applicationId, authorName },
+    titleKey: "mentionTitle",
+    bodyKey: "mentionBody",
+    params: { authorName, candidateName },
   });
 }
 
@@ -231,6 +264,8 @@ export async function notifyScorecardSubmitted(
 ): Promise<void> {
   const scoreLabel =
     overallScore >= 4 ? "Excellent" : overallScore >= 3 ? "Good" : "Reviewed";
+  const scoreLabelKey =
+    overallScore >= 4 ? "scoreExcellent" : overallScore >= 3 ? "scoreGood" : "scoreReviewed";
   await notify({
     userId: jobSeekerId,
     type: "interview_update",
@@ -239,6 +274,9 @@ export async function notifyScorecardSubmitted(
     link: `/en/job-seeker/applications`,
     sendEmail: true,
     metadata: { jobTitle, companyName, overallScore, applicationId },
+    titleKey: "scorecardTitle",
+    bodyKey: "scorecardBody",
+    params: { jobTitle, companyName, score: overallScore.toFixed(1), scoreLabelKey },
   });
 }
 
@@ -257,6 +295,9 @@ export async function notifyTargetAssigned(
     link: getTargetManagementLink(assigneeRole, locale),
     sendEmail: false,
     metadata: { profileId, year, assigneeRole },
+    titleKey: "targetAssignedTitle",
+    bodyKey: "targetAssignedBody",
+    params: { year: String(year) },
   });
 }
 
@@ -275,6 +316,9 @@ export async function notifyTargetUpdated(
     link: getTargetManagementLink(assigneeRole, locale),
     sendEmail: false,
     metadata: { profileId, year, assigneeRole },
+    titleKey: "targetUpdatedTitle",
+    bodyKey: "targetUpdatedBody",
+    params: { year: String(year) },
   });
 }
 
@@ -294,6 +338,9 @@ export async function notifyTargetAtRisk(
     link: getTargetManagementLink(assigneeRole, locale),
     sendEmail: true,
     metadata: { profileId, overallProgress, expectedProgress, assigneeRole },
+    titleKey: "targetAtRiskTitle",
+    bodyKey: "targetAtRiskBody",
+    params: { overallProgress: String(overallProgress), expectedProgress: String(expectedProgress) },
   });
 }
 
@@ -313,6 +360,9 @@ export async function notifyTargetMilestone(
     link: getTargetManagementLink(assigneeRole, locale),
     sendEmail: false,
     metadata: { profileId, tier, overallProgress, assigneeRole },
+    titleKey: "targetMilestoneTitle",
+    bodyKey: "targetMilestoneBody",
+    params: { tier, overallProgress: String(overallProgress) },
   });
 }
 
@@ -331,6 +381,9 @@ export async function notifyCommissionApproved(
     link: getCommissionLink(role, locale),
     sendEmail: true,
     metadata: { amount, currency, role, status: "approved" },
+    titleKey: "commissionApprovedTitle",
+    bodyKey: "commissionApprovedBody",
+    params: { currency, amount: amount.toLocaleString() },
   });
 }
 
@@ -350,6 +403,9 @@ export async function notifyCommissionPaid(
     link: getCommissionLink(role, locale),
     sendEmail: true,
     metadata: { amount, currency, paymentRef, role, status: "paid" },
+    titleKey: "commissionPaidTitle",
+    bodyKey: "commissionPaidBody",
+    params: { currency, amount: amount.toLocaleString(), paymentRef },
   });
 }
 
@@ -380,6 +436,9 @@ export async function notifySuperAgentNewJob(
     link: `/${locale}/super-agent/jobs`,
     sendEmail: false,
     metadata: { jobId, employerName, jobTitle },
+    titleKey: "saNewJobTitle",
+    bodyKey: "saNewJobBody",
+    params: { employerName, jobTitle },
   });
 }
 
@@ -397,6 +456,9 @@ export async function notifySuperAgentAgentJoined(
     link: `/${locale}/super-agent/agents`,
     sendEmail: true,
     metadata: { agentUserId },
+    titleKey: "saAgentJoinedTitle",
+    bodyKey: "saAgentJoinedBody",
+    params: { agentName },
   });
 }
 
@@ -415,6 +477,9 @@ export async function notifySuperAgentEmployerRegistered(
     link: `/${locale}/super-agent/employers`,
     sendEmail: true,
     metadata: { companyName, employerId },
+    titleKey: "saEmployerRegisteredTitle",
+    bodyKey: "saEmployerRegisteredBody",
+    params: { companyName, agentName },
   });
 }
 
@@ -434,5 +499,8 @@ export async function notifySuperAgentPlacement(
     link: `/${locale}/super-agent/placements`,
     sendEmail: true,
     metadata: { placementId, candidateName, jobTitle, companyName },
+    titleKey: "saPlacementTitle",
+    bodyKey: "saPlacementBody",
+    params: { candidateName, jobTitle, companyName },
   });
 }

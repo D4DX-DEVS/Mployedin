@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
+import {
   ClipboardCheck, Plus, Trash2, Edit, Users, BarChart3,
   Clock, CheckCircle2, XCircle, ChevronDown, ChevronUp,
 } from "lucide-react";
@@ -38,11 +41,15 @@ export default function EmployerAssessmentsPage() {
       if (res.ok) {
         const data = await res.json();
         setAssessments(data.assessments ?? []);
+      } else {
+        toast.error(t("toastLoadFailed"));
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      toast.error(t("toastLoadFailed"));
+    } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { fetchAssessments(); }, [fetchAssessments]);
 
@@ -288,15 +295,20 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
               {questions.map((q, idx) => (
                 <div key={q.id} className="p-3 border border-border rounded-lg bg-muted/30">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground">Q{idx + 1}</span>
-                    <select value={q.type} onChange={e => updateQuestion(idx, { type: e.target.value })} className="text-xs px-2 py-1 border border-border rounded bg-background">
-                      <option value="multiple_choice">{t("multipleChoice")}</option>
-                      <option value="true_false">{t("trueFalse")}</option>
-                      <option value="short_answer">{t("shortAnswer")}</option>
-                    </select>
+                    <span className="text-xs font-medium text-muted-foreground">{t("questionNumber", { number: idx + 1 })}</span>
+                    <Select value={q.type} onValueChange={v => updateQuestion(idx, { type: v })}>
+                      <SelectTrigger aria-label={t("questionType")} className="h-7 w-auto gap-1 rounded px-2 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="multiple_choice">{t("multipleChoice")}</SelectItem>
+                        <SelectItem value="true_false">{t("trueFalse")}</SelectItem>
+                        <SelectItem value="short_answer">{t("shortAnswer")}</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <input type="number" value={q.points} onChange={e => updateQuestion(idx, { points: +e.target.value })} className="w-16 text-xs px-2 py-1 border border-border rounded bg-background" min={1} />
                     <span className="text-xs text-muted-foreground">{t("pts")}</span>
-                    <button type="button" onClick={() => removeQuestion(idx)} className="ml-auto text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button type="button" onClick={() => removeQuestion(idx)} aria-label={t("removeQuestion")} className="ms-auto text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                   <input type="text" value={q.question} onChange={e => updateQuestion(idx, { question: e.target.value })} className="w-full px-2 py-1.5 text-sm border border-border rounded bg-background mb-2" placeholder={t("questionPlaceholder")} />
                   {q.type === "multiple_choice" && (
@@ -304,7 +316,7 @@ function CreateAssessmentModal({ onClose, onCreated }: { onClose: () => void; on
                       {q.options.map((opt, oi) => (
                         <input key={oi} type="text" value={opt} onChange={e => {
                           const opts = [...q.options]; opts[oi] = e.target.value; updateQuestion(idx, { options: opts });
-                        }} className="px-2 py-1 text-xs border border-border rounded bg-background" placeholder={`Option ${oi + 1}`} />
+                        }} className="px-2 py-1 text-xs border border-border rounded bg-background" placeholder={t("optionPlaceholder", { number: oi + 1 })} />
                       ))}
                     </div>
                   )}

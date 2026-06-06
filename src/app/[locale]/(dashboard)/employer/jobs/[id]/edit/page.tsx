@@ -12,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useJobDetail, useUpdateJob } from "@/hooks/useJobs";
@@ -610,7 +613,7 @@ export default function EditJobPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label={t("category")}>
                 <SearchableSelect
-                  options={JOB_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                  options={JOB_CATEGORIES.map((c) => ({ value: c, label: t(`categories.${c}`) }))}
                   value={form.category}
                   onValueChange={(v) => setField("category", v)}
                   placeholder={t("placeholderCategory")}
@@ -668,7 +671,7 @@ export default function EditJobPage() {
                     <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-xl overflow-hidden max-h-52 overflow-y-auto">
                       {countryLoading ? (
                         <div className="px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
-                          <Loader2 className="w-3 h-3 animate-spin" /> Searching…
+                          <Loader2 className="w-3 h-3 animate-spin" /> {t("searching")}
                         </div>
                       ) : (
                         countryResults.map((c) => (
@@ -689,7 +692,7 @@ export default function EditJobPage() {
                   onChange={(e) => setField("location", { ...form.location, city: e.target.value })} />
               </Field>
             </div>
-            <Field label="Work Mode" hint="On-site, hybrid, or fully remote">
+            <Field label={t("workMode")} hint={t("workModeHint")}>
               <div className="flex gap-1.5">
                 {WORK_MODE_OPTIONS.map((mode) => (
                   <button
@@ -973,27 +976,31 @@ export default function EditJobPage() {
                       </button>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                      <select
+                      <Select
                         value={q.type}
-                        onChange={(e) => {
+                        onValueChange={(value) => {
                           const updated = [...form.screeningQuestions];
-                          updated[qIdx] = { ...updated[qIdx], type: e.target.value as ScreeningQuestion["type"], options: NEEDS_OPTIONS.has(e.target.value) ? (updated[qIdx].options.length ? updated[qIdx].options : [""]) : [] };
+                          updated[qIdx] = { ...updated[qIdx], type: value as ScreeningQuestion["type"], options: NEEDS_OPTIONS.has(value) ? (updated[qIdx].options.length ? updated[qIdx].options : [""]) : [] };
                           setField("screeningQuestions", updated);
                         }}
-                        className="text-xs border border-border rounded-md px-2 py-1.5 bg-background"
                       >
-                        {[
-                          { value: "text", label: t("shortText") },
-                          { value: "textarea", label: t("longText") },
-                          { value: "select", label: t("dropdown") },
-                          { value: "checkbox", label: t("checkbox") },
-                          { value: "radio", label: t("multipleChoice") },
-                          { value: "number", label: t("number") },
-                          { value: "date", label: t("dateType") },
-                        ].map((qt) => (
-                          <option key={qt.value} value={qt.value}>{qt.label}</option>
-                        ))}
-                      </select>
+                        <SelectTrigger aria-label={t("questionTypeLabel")} className="h-8 w-auto gap-1 px-2 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[
+                            { value: "text", label: t("shortText") },
+                            { value: "textarea", label: t("longText") },
+                            { value: "select", label: t("dropdown") },
+                            { value: "checkbox", label: t("checkbox") },
+                            { value: "radio", label: t("multipleChoice") },
+                            { value: "number", label: t("number") },
+                            { value: "date", label: t("dateType") },
+                          ].map((qt) => (
+                            <SelectItem key={qt.value} value={qt.value}>{qt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                         <input
                           type="checkbox"

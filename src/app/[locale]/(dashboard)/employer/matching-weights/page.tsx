@@ -238,7 +238,7 @@ export default function EmployerMatchingWeightsPage() {
       {templateSaved && (
         <div className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
           <CheckCircle className="h-4 w-4" />
-          Matching weights saved as template successfully!
+          {t("templateSavedSuccess")}
         </div>
       )}
 
@@ -309,12 +309,12 @@ export default function EmployerMatchingWeightsPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("weightBuilder")}</p>
               <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-foreground">
-                <Sliders className="h-4 w-4 text-sky-600" /> Weight configuration
+                <Sliders className="h-4 w-4 text-sky-600" /> {t("weightConfig")}
               </h3>
-              <p className="mt-1 text-sm text-muted-foreground">Adjust percentages for each scoring signal. The total must stay at 100%.</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("adjustPercentages")}</p>
             </div>
             <span className={`rounded-full px-3 py-1 text-sm font-semibold ${isTotalValid ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-600 dark:text-red-300"}`}>
-              Total: {total}% {isTotalValid ? "✓" : "Need 100%"}
+              {t("totalLabel")} {total}% {isTotalValid ? "✓" : t("need100")}
             </span>
           </div>
 
@@ -365,7 +365,7 @@ export default function EmployerMatchingWeightsPage() {
             >
               <RotateCcw className="h-4 w-4" /> {t("resetDefaults")}
             </Button>
-            <p className="text-sm text-muted-foreground">Keep the strongest weights for the signals recruiters trust most.</p>
+            <p className="text-sm text-muted-foreground">{t("keepStrongest")}</p>
           </div>
         </section>
 
@@ -373,8 +373,8 @@ export default function EmployerMatchingWeightsPage() {
         <div className="space-y-5">
           <section className="workspace-panel-surface space-y-4 rounded-[28px] p-6">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Distribution</p>
-              <h3 className="mt-2 text-lg font-semibold text-foreground">Weight overview</h3>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("distribution")}</p>
+              <h3 className="mt-2 text-lg font-semibold text-foreground">{t("weightOverview")}</h3>
             </div>
             <div className="space-y-3">
               {weightKeys.map((key) => (
@@ -398,16 +398,16 @@ export default function EmployerMatchingWeightsPage() {
               : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
             }`}>
               {isTotalValid
-                ? "✓ Weights are balanced correctly. Candidates will be ranked by these priorities."
-                : `⚠ Total is ${total}%. Adjust weights to equal exactly 100%.`}
+                ? `✓ ${t("balancedCorrectly")}`
+                : `⚠ ${t("totalAdjustHint", { total })}`}
             </div>
           </section>
 
           <section className="rounded-[28px] border border-border bg-background/60 p-6 shadow-[0_24px_60px_-46px_rgba(15,23,42,0.28)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tuning guidance</p>
-            <h3 className="mt-2 text-lg font-semibold text-foreground">Start with recruiter intent, not a perfect formula.</h3>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("tuningGuidance")}</p>
+            <h3 className="mt-2 text-lg font-semibold text-foreground">{t("tuningTitle")}</h3>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Increase skills and experience for technical hiring, raise behavior signals for client-facing roles, and keep salary or location lighter unless they are strict filters.
+              {t("tuningBody")}
             </p>
           </section>
         </div>

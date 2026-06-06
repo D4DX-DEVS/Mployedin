@@ -214,13 +214,13 @@ export default function TeamManagementPage() {
           <div className="flex items-center gap-2">
             <Link href={`/${locale}/employer/team/activity-logs`}>
               <Button variant="outline" size="sm">
-                <Activity className="h-4 w-4 mr-2" />
+                <Activity className="h-4 w-4 me-2" />
                 <span className="hidden sm:inline">{t("activityLogs")}</span>
                 <span className="sm:hidden">{t("activityLogs")}</span>
               </Button>
             </Link>
             <Button onClick={() => setShowInviteModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 me-2" />
               <span className="hidden sm:inline">{t("inviteMember")}</span>
               <span className="sm:hidden">{t("inviteMember")}</span>
             </Button>
@@ -264,7 +264,7 @@ export default function TeamManagementPage() {
             </p>
           </div>
           <Button onClick={() => setShowInviteModal(true)} className="mt-1">
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 me-2" />
             {t("empty.cta")}
           </Button>
         </div>
@@ -446,7 +446,7 @@ export default function TeamManagementPage() {
                       </Button>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground ml-auto">
+                  <span className="text-xs text-muted-foreground ms-auto">
                     {member.acceptedAt
                       ? new Date(member.acceptedAt).toLocaleDateString(locale)
                       : member.invitedAt

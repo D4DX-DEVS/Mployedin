@@ -196,6 +196,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         message: `An application for "${jobTitle}" moved to ${effectiveStatus.replace(/_/g, " ")}.`,
         link: `/employer/applications`,
         sendEmail: false,
+        titleKey: "stageChangedTitle",
+        bodyKey: "stageChangedBody",
+        params: { jobTitle, status: effectiveStatus },
       }).catch(() => { /* non-blocking */ });
     }
 
