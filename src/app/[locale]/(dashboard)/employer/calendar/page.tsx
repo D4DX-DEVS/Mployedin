@@ -9,6 +9,7 @@ import GoogleCalendar, {
   type CalendarEvent,
   type BookingPayload,
   type BookingCandidate,
+  type JobOption,
 } from "@/components/shared/GoogleCalendar";
 import { Briefcase } from "lucide-react";
 
@@ -71,12 +72,14 @@ export default function EmployerCalendarPage() {
   );
 
   const fetchCandidates = useCallback(
-    async (search: string): Promise<BookingCandidate[]> => {
+    async (search: string, filters?: { jobId?: string; scoreMin?: number }): Promise<BookingCandidate[]> => {
       const params = new URLSearchParams({
-        limit: "20",
+        limit: "50",
         status: "shortlisted",
       });
       if (search.trim()) params.set("search", search.trim());
+      if (filters?.jobId) params.set("jobId", filters.jobId);
+      if (filters?.scoreMin) params.set("scoreMin", String(filters.scoreMin));
       const res = await fetch(`/api/applications?${params}`);
       if (!res.ok) return [];
       const data = await res.json();
@@ -91,6 +94,7 @@ export default function EmployerCalendarPage() {
               seeker?.fullName ?? seeker?.name ?? "Candidate",
             ),
             jobTitle: String(job?.title ?? ""),
+            jobId: job?._id ? String(job._id) : undefined,
             status: String(a.status ?? "shortlisted"),
             matchScore:
               typeof a.aiMatchScore === "number"
@@ -107,6 +111,18 @@ export default function EmployerCalendarPage() {
     },
     [],
   );
+
+  const fetchJobs = useCallback(async (): Promise<JobOption[]> => {
+    const res = await fetch("/api/jobs?myJobs=true&limit=50");
+    if (!res.ok) return [];
+    const data = await res.json();
+    const jobsList = data.jobs ?? data.items ?? [];
+    return jobsList.map((j: Record<string, unknown>) => ({
+      id: String(j._id),
+      title: String(j.title ?? ""),
+      applicantCount: typeof j.applicationCount === "number" ? j.applicationCount : undefined,
+    }));
+  }, []);
 
   const handleBookInterview = useCallback(
     async (payload: BookingPayload) => {
@@ -177,6 +193,7 @@ export default function EmployerCalendarPage() {
         bookingEnabled
         onBookInterview={handleBookInterview}
         fetchCandidates={fetchCandidates}
+        fetchJobs={fetchJobs}
         renderEventExtra={(e) => (
           <>
             {e.subtitle && (

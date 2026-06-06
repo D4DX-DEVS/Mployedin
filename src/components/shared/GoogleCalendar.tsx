@@ -15,12 +15,8 @@ import {
   List,
   CalendarDays,
   Plus,
-  AlertCircle,
-  Search,
-  User,
-  ArrowLeft,
-  Briefcase,
 } from "lucide-react";
+import { InterviewBookingModal } from "./InterviewBookingModal";
 
 /* ================================================================== */
 /*  Types                                                              */
@@ -45,9 +41,12 @@ export interface BookingCandidate {
   applicationId: string;
   candidateName: string;
   jobTitle: string;
+  jobId?: string;
   status: string;
   matchScore?: number;
   matchStrengths?: string[];
+  appliedAt?: string;
+  experience?: number;
 }
 
 export interface BookingPayload {
@@ -59,6 +58,12 @@ export interface BookingPayload {
   notes?: string;
 }
 
+export interface JobOption {
+  id: string;
+  title: string;
+  applicantCount?: number;
+}
+
 interface GoogleCalendarProps {
   events: CalendarEvent[];
   loading?: boolean;
@@ -67,10 +72,12 @@ interface GoogleCalendarProps {
   renderEventExtra?: (event: CalendarEvent) => React.ReactNode;
   /** Enable booking mode — shows "Book Interview" button on future dates */
   bookingEnabled?: boolean;
-  /** Callback when user submits a booking */
+  /** Callback when user submits a booking (single or bulk) */
   onBookInterview?: (payload: BookingPayload) => Promise<void>;
   /** Fetch eligible candidates for booking (applications with interview-ready status) */
-  fetchCandidates?: (search: string) => Promise<BookingCandidate[]>;
+  fetchCandidates?: (search: string, filters?: { jobId?: string; scoreMin?: number }) => Promise<BookingCandidate[]>;
+  /** Fetch employer's jobs for the job filter */
+  fetchJobs?: () => Promise<JobOption[]>;
   /** Pre-fill with a specific application — skips candidate selection step */
   prefilledApplicationId?: string;
   /** Pre-filled candidate data (required when prefilledApplicationId is set) */
@@ -846,618 +853,6 @@ function UpcomingList({
 }
 
 /* ================================================================== */
-/*  Booking Modal                                                      */
-/* ================================================================== */
-
-function BookingModal({
-  date,
-  events,
-  onClose,
-  onSubmit,
-  fetchCandidates,
-  prefilledCandidate,
-}: {
-  date: Date;
-  events: CalendarEvent[];
-  onClose: () => void;
-  onSubmit: (payload: BookingPayload) => Promise<void>;
-  fetchCandidates?: (search: string) => Promise<BookingCandidate[]>;
-  prefilledCandidate?: BookingCandidate;
-}) {
-  const t = useTranslations("calendar");
-  const locale = useLocale();
-  // Step: "candidate" → "details" → "confirmation"
-  const initialStep = prefilledCandidate
-    ? "details"
-    : fetchCandidates
-      ? "candidate"
-      : "details";
-  const [step, setStep] = useState<"candidate" | "details" | "confirmation">(
-    initialStep,
-  );
-  const [selectedCandidate, setSelectedCandidate] =
-    useState<BookingCandidate | null>(prefilledCandidate ?? null);
-
-  // Candidate search state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [candidates, setCandidates] = useState<BookingCandidate[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchDone, setSearchDone] = useState(false);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Details state
-  const [time, setTime] = useState("09:00");
-  const [duration, setDuration] = useState<15 | 30 | 45 | 60>(30);
-  const [type, setType] = useState<"video" | "offline" | "hybrid">("video");
-  const [notes, setNotes] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  const isToday = isSameDay(date, new Date());
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-  // Debounced candidate search
-  useEffect(() => {
-    if (!fetchCandidates || step !== "candidate") return;
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(async () => {
-      setSearchLoading(true);
-      try {
-        const results = await fetchCandidates(searchQuery);
-        setCandidates(results);
-      } catch {
-        setCandidates([]);
-      } finally {
-        setSearchLoading(false);
-        setSearchDone(true);
-      }
-    }, 300);
-    return () => {
-      if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    };
-  }, [searchQuery, fetchCandidates, step]);
-
-  // Generate time slots (30 min intervals)
-  const timeSlots = useMemo(() => {
-    const slots: string[] = [];
-    for (let h = 0; h < 24; h++) {
-      for (const m of [0, 30]) {
-        const totalMin = h * 60 + m;
-        if (isToday && totalMin <= currentMinutes + 30) continue;
-        slots.push(
-          `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
-        );
-      }
-    }
-    return slots;
-  }, [isToday, currentMinutes]);
-
-  // Check for conflicts
-  const conflicts = useMemo(() => {
-    const reqStart = new Date(date);
-    const [h, m] = time.split(":").map(Number);
-    reqStart.setHours(h, m, 0, 0);
-    const reqEnd = new Date(reqStart.getTime() + duration * 60000);
-
-    return events.filter((e) => {
-      const eStart = new Date(e.scheduledAt);
-      const eEnd = new Date(eStart.getTime() + (e.duration ?? 30) * 60000);
-      return eStart < reqEnd && eEnd > reqStart;
-    });
-  }, [date, time, duration, events]);
-
-  // Set default time to first available slot
-  useEffect(() => {
-    if (timeSlots.length > 0 && !timeSlots.includes(time)) {
-      setTime(timeSlots[0]);
-    }
-  }, [timeSlots, time]);
-
-  const handleGoToConfirmation = () => {
-    if (!selectedCandidate && fetchCandidates) {
-      setError(t("selectCandidate"));
-      return;
-    }
-    if (conflicts.length > 0) {
-      setError(t("conflictTitle"));
-      return;
-    }
-    setError("");
-    setStep("confirmation");
-  };
-
-  const handleSubmit = async () => {
-    setError("");
-    setSubmitting(true);
-    try {
-      await onSubmit({
-        applicationId: selectedCandidate?.applicationId ?? "",
-        date: date.toISOString().split("T")[0],
-        time,
-        duration,
-        type,
-        notes: notes.trim() || undefined,
-      });
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("failedBook"));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const selectedTimeLabel = (() => {
-    const [h, m] = time.split(":").map(Number);
-    const d = new Date();
-    d.setHours(h, m);
-    return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
-  })();
-
-  const endTimeLabel = (() => {
-    const [h, m] = time.split(":").map(Number);
-    const d = new Date();
-    d.setHours(h, m + duration);
-    return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: true });
-  })();
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
-      <div
-        className="animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-4 duration-300 w-full max-w-md rounded-2xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl shadow-black/20"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b px-5 py-4">
-          <div className="flex items-center gap-2">
-            {step === "details" && fetchCandidates && !prefilledCandidate && (
-              <button
-                onClick={() => setStep("candidate")}
-                className="rounded-lg p-1 hover:bg-muted"
-              >
-                <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
-            {step === "confirmation" && (
-              <button
-                onClick={() => setStep("details")}
-                className="rounded-lg p-1 hover:bg-muted"
-              >
-                <ArrowLeft className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
-            <h3 className="text-base font-semibold text-foreground">
-              {step === "candidate"
-                ? t("selectCandidate")
-                : step === "details"
-                  ? t("interviewDetails")
-                  : t("confirmBooking")}
-            </h3>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-muted">
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
-
-        {/* ── Step 1: Candidate Selection ── */}
-        {step === "candidate" && (
-          <div className="p-5">
-            {/* Search input */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t("searchCandidates")}
-                className="w-full rounded-lg border bg-background py-2.5 ps-9 pe-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                autoFocus
-              />
-            </div>
-
-            {/* Results */}
-            <div className="mt-3 max-h-[320px] space-y-1.5 overflow-y-auto">
-              {searchLoading && (
-                <div className="flex flex-col items-center justify-center gap-2 py-8">
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-                  <span className="text-[10px] text-muted-foreground">{t("searchCandidates")}...</span>
-                </div>
-              )}
-
-              {!searchLoading && searchDone && candidates.length === 0 && (
-                <p className="py-8 text-center text-xs text-muted-foreground">
-                  {searchQuery
-                    ? t("noCandidatesFound")
-                    : t("noCandidatesEligible")}
-                </p>
-              )}
-
-              {!searchLoading &&
-                candidates.map((c) => (
-                  <button
-                    key={c.applicationId}
-                    onClick={() => {
-                      setSelectedCandidate(c);
-                      setStep("details");
-                    }}
-                    className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors hover:bg-muted/40 ${
-                      selectedCandidate?.applicationId === c.applicationId
-                        ? "border-primary bg-primary/5"
-                        : "border-border/50"
-                    }`}
-                  >
-                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <User className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground">
-                        {c.candidateName}
-                      </p>
-                      <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
-                        <Briefcase className="h-3 w-3 flex-shrink-0" />
-                        {c.jobTitle}
-                      </p>
-                      <div className="mt-1 flex items-center gap-1.5">
-                        <span className="inline-block rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
-                          {c.status.replace(/_/g, " ")}
-                        </span>
-                        {c.matchScore != null && (
-                          <span
-                            className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                              c.matchScore >= 80
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                : c.matchScore >= 50
-                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                                  : "bg-red-500/15 text-red-600 dark:text-red-400"
-                            }`}
-                          >
-                            {t("match", { score: c.matchScore })}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 2: Interview Details ── */}
-        {step === "details" && (
-          <div className="space-y-4 p-5">
-            {/* Selected candidate chip */}
-            {selectedCandidate && (
-              <div className="flex items-center gap-2.5 rounded-xl bg-primary/5 border border-primary/20 p-3">
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <User className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-foreground">
-                    {selectedCandidate.candidateName}
-                  </p>
-                  <p className="truncate text-[10px] text-muted-foreground">
-                    {selectedCandidate.jobTitle}
-                  </p>
-                </div>
-                {fetchCandidates && (
-                  <button
-                    onClick={() => setStep("candidate")}
-                    className="text-[10px] font-medium text-primary hover:underline"
-                  >
-                    {t("change")}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Date display */}
-            <div className="rounded-xl bg-muted/40 p-3">
-              <p className="text-xs font-medium text-muted-foreground">{t("date")}</p>
-              <p className="mt-0.5 text-sm font-semibold text-foreground">
-                {formatDateLocale(date, locale, {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </p>
-            </div>
-
-            {/* Time selection */}
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                {t("timeLabel")}
-              </label>
-              {timeSlots.length === 0 ? (
-                <p className="text-xs text-destructive">
-                  {t("noTimeSlots")}
-                </p>
-              ) : (
-                <div className="grid grid-cols-4 gap-1.5 max-h-[140px] overflow-y-auto rounded-xl border border-border/50 bg-muted/20 p-2">
-                  {timeSlots.map((slot) => {
-                    const [sh, sm] = slot.split(":").map(Number);
-                    const d = new Date();
-                    d.setHours(sh, sm);
-                    const label = d.toLocaleTimeString(locale, {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                    });
-                    const isActive = time === slot;
-                    return (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => setTime(slot)}
-                        className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-all duration-150 ${
-                          isActive
-                            ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                            : "bg-background hover:bg-muted text-foreground"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Duration */}
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                {t("duration")}
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {([15, 30, 45, 60] as const).map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setDuration(d)}
-                    className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
-                      duration === d
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:bg-muted/50"
-                    }`}
-                  >
-                    {t("min", { count: d })}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Type */}
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                {t("type")}
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(["video", "offline", "hybrid"] as const).map((tp) => (
-                  <button
-                    key={tp}
-                    onClick={() => setType(tp)}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
-                      type === tp
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:bg-muted/50"
-                    }`}
-                  >
-                    {tp === "video" ? (
-                      <Video className="h-3 w-3" />
-                    ) : tp === "offline" ? (
-                      <MapPin className="h-3 w-3" />
-                    ) : (
-                      <Phone className="h-3 w-3" />
-                    )}
-                    {tp === "video" ? t("videoCall") : tp === "offline" ? t("inPerson") : t("hybrid")}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                {t("notes")} ({t("optional")})
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                maxLength={500}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder={t("notesPlaceholder")}
-              />
-            </div>
-
-            {/* Summary */}
-            <div className="rounded-xl bg-muted/30 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("summary")}
-              </p>
-              <p className="mt-1 text-xs text-foreground">
-                {selectedCandidate
-                  ? `${selectedCandidate.candidateName} · `
-                  : ""}
-                {selectedTimeLabel} – {endTimeLabel} · {t("min", { count: duration })} · {type === "video" ? t("videoCall") : type === "offline" ? t("inPerson") : t("hybrid")}
-              </p>
-            </div>
-
-            {/* Conflict warning */}
-            {conflicts.length > 0 && (
-              <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
-                <AlertCircle className="h-4 w-4 flex-shrink-0 text-destructive mt-0.5" />
-                <div>
-                  <p className="text-xs font-medium text-destructive">
-                    {t("conflictTitle")}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-destructive/70">
-                    {t("conflictDesc", { titles: conflicts.map((c) => c.title).join(", ") })}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 px-3 py-2">
-                <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
-                <p className="text-xs text-destructive">{error}</p>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 rounded-xl"
-                onClick={onClose}
-              >
-                {t("cancel")}
-              </Button>
-              <Button
-                size="sm"
-                className="flex-1 rounded-xl shadow-sm shadow-primary/20"
-                disabled={
-                  conflicts.length > 0 ||
-                  timeSlots.length === 0 ||
-                  (!!fetchCandidates && !selectedCandidate)
-                }
-                onClick={handleGoToConfirmation}
-              >
-                {t("reviewConfirm")}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 3: Confirmation ── */}
-        {step === "confirmation" && (
-          <div className="space-y-4 p-5">
-            {/* Candidate */}
-            {selectedCandidate && (
-              <div className="flex items-center gap-3 rounded-xl bg-primary/5 border border-primary/20 p-3">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <User className="h-4 w-4 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground">
-                    {selectedCandidate.candidateName}
-                  </p>
-                  <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
-                    <Briefcase className="h-3 w-3 flex-shrink-0" />
-                    {selectedCandidate.jobTitle}
-                  </p>
-                </div>
-                {selectedCandidate.matchScore != null && (
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      selectedCandidate.matchScore >= 80
-                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                        : selectedCandidate.matchScore >= 50
-                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                          : "bg-red-500/15 text-red-600 dark:text-red-400"
-                    }`}
-                  >
-                    {t("match", { score: selectedCandidate.matchScore })}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Details summary */}
-            <div className="space-y-2.5 rounded-xl bg-muted/30 p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{t("date")}</span>
-                <span className="text-xs font-semibold text-foreground">
-                  {formatDateLocale(date, locale, {
-                    weekday: "short",
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              </div>
-              <div className="h-px bg-border/50" />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{t("timeLabel")}</span>
-                <span className="text-xs font-semibold text-foreground">
-                  {selectedTimeLabel} – {endTimeLabel}
-                </span>
-              </div>
-              <div className="h-px bg-border/50" />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{t("duration")}</span>
-                <span className="text-xs font-semibold text-foreground">
-                  {t("minutes", { count: duration })}
-                </span>
-              </div>
-              <div className="h-px bg-border/50" />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{t("type")}</span>
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  {type === "video" ? (
-                    <Video className="h-3 w-3 text-sky-500" />
-                  ) : type === "offline" ? (
-                    <MapPin className="h-3 w-3 text-emerald-500" />
-                  ) : (
-                    <Phone className="h-3 w-3 text-violet-500" />
-                  )}
-                  {type === "video"
-                    ? t("videoCall")
-                    : type === "offline"
-                      ? t("inPerson")
-                      : t("hybrid")}
-                </span>
-              </div>
-              {notes.trim() && (
-                <>
-                  <div className="h-px bg-border/50" />
-                  <div>
-                    <span className="text-xs text-muted-foreground">{t("notes")}</span>
-                    <p className="mt-1 text-xs text-foreground">
-                      {notes.trim()}
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 px-3 py-2">
-                <AlertCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
-                <p className="text-xs text-destructive">{error}</p>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 rounded-xl"
-                onClick={() => setStep("details")}
-              >
-                {t("back")}
-              </Button>
-              <Button
-                size="sm"
-                className="flex-1 rounded-xl shadow-sm shadow-primary/20"
-                disabled={submitting}
-                onClick={handleSubmit}
-              >
-                {submitting ? t("booking") : t("confirmBook")}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ================================================================== */
 /*  Main Component                                                     */
 /* ================================================================== */
 
@@ -1469,6 +864,7 @@ export default function GoogleCalendar({
   bookingEnabled,
   onBookInterview,
   fetchCandidates,
+  fetchJobs,
   prefilledApplicationId,
   prefilledCandidate,
 }: GoogleCalendarProps) {
@@ -1705,12 +1101,13 @@ export default function GoogleCalendar({
 
       {/* ── Booking Modal ── */}
       {showBooking && bookingEnabled && onBookInterview && (
-        <BookingModal
+        <InterviewBookingModal
           date={selectedDate}
           events={events}
           onClose={() => setShowBooking(false)}
           onSubmit={onBookInterview}
           fetchCandidates={prefilledCandidate ? undefined : fetchCandidates}
+          fetchJobs={fetchJobs}
           prefilledCandidate={prefilledCandidate}
         />
       )}

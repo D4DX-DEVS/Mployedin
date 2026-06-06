@@ -235,6 +235,9 @@ export default function EmployerAIJobCreatePage() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [extractedJob, setExtractedJob] = useState<ExtractedJob | null>(null);
+  const [extractedBulkJobs, setExtractedBulkJobs] = useState<ExtractedJob[]>([]);
+  const [creatingBulk, setCreatingBulk] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ created: number; total: number; errors: string[] } | null>(null);
   const [voiceLanguage, setVoiceLanguage] = useState("auto");
   const [showLangPicker, setShowLangPicker] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -316,14 +319,27 @@ export default function EmployerAIJobCreatePage() {
         });
       }
 
-      // Try to extract job data
-      const jobDataMatch = accumulated.match(/<JOB_DATA>([\s\S]*?)<\/JOB_DATA>/);
-      if (jobDataMatch) {
+      // Try to extract job data — check bulk first
+      const bulkMatch = accumulated.match(/<BULK_JOB_DATA>([\s\S]*?)<\/BULK_JOB_DATA>/);
+      if (bulkMatch) {
         try {
-          const jobData = JSON.parse(jobDataMatch[1].trim());
-          setExtractedJob(jobData);
-          toast.success(t("jobCreator.draftReady"));
+          const parsed = JSON.parse(bulkMatch[1].trim());
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setExtractedBulkJobs(parsed.slice(0, 10));
+            setExtractedJob(null);
+            toast.success(t("jobCreator.draftReady"));
+          }
         } catch { /* ignore parse errors */ }
+      } else {
+        const jobDataMatch = accumulated.match(/<JOB_DATA>([\s\S]*?)<\/JOB_DATA>/);
+        if (jobDataMatch) {
+          try {
+            const jobData = JSON.parse(jobDataMatch[1].trim());
+            setExtractedJob(jobData);
+            setExtractedBulkJobs([]);
+            toast.success(t("jobCreator.draftReady"));
+          } catch { /* ignore parse errors */ }
+        }
       }
     } catch {
       setMessages((prev) => {
@@ -343,6 +359,46 @@ export default function EmployerAIJobCreatePage() {
       router.push(`/${locale}/employer/jobs/new?mode=manual&prefill=ai`);
     } catch {
       toast.error(t("jobCreator.failedOpenForm"));
+    }
+  };
+
+  const createBulkJobDrafts = async () => {
+    if (extractedBulkJobs.length === 0) return;
+    setCreatingBulk(true);
+    setBulkProgress({ created: 0, total: extractedBulkJobs.length, errors: [] });
+    const errors: string[] = [];
+    let created = 0;
+
+    for (const job of extractedBulkJobs) {
+      try {
+        const sanitized = buildPrefill(job);
+        const res = await fetch("/api/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...sanitized, status: "draft" }),
+        });
+        if (res.ok) {
+          created++;
+        } else {
+          const err = await res.json().catch(() => ({}));
+          errors.push(`${job.title ?? "Unknown"}: ${(err as { error?: string }).error ?? "Failed"}`);
+        }
+      } catch {
+        errors.push(`${job.title ?? "Unknown"}: Network error`);
+      }
+      setBulkProgress({ created, total: extractedBulkJobs.length, errors });
+    }
+
+    setCreatingBulk(false);
+    if (errors.length === 0) {
+      toast.success(t("bulkSuccess", { count: created }));
+      setExtractedBulkJobs([]);
+      setBulkProgress(null);
+      setTimeout(() => {
+        router.push(`/${locale}/employer/jobs`);
+      }, 1500);
+    } else {
+      toast.error(t("bulkPartial", { created, total: extractedBulkJobs.length, failed: errors.length }));
     }
   };
 
@@ -372,8 +428,8 @@ export default function EmployerAIJobCreatePage() {
                   hasMalayalam(msg.content) && "font-malayalam"
                 )}>
                   {(() => {
-                    const hasJobData = /<JOB_DATA>[\s\S]*?<\/JOB_DATA>/.test(msg.content);
-                    const displayText = msg.content.replace(/<JOB_DATA>[\s\S]*?<\/JOB_DATA>/, "").trim();
+                    const hasJobData = /<JOB_DATA>[\s\S]*?<\/JOB_DATA>/.test(msg.content) || /<BULK_JOB_DATA>[\s\S]*?<\/BULK_JOB_DATA>/.test(msg.content);
+                    const displayText = msg.content.replace(/<JOB_DATA>[\s\S]*?<\/JOB_DATA>/, "").replace(/<BULK_JOB_DATA>[\s\S]*?<\/BULK_JOB_DATA>/, "").trim();
                     if (msg.role === "assistant") {
                       return (
                         <div className="prose-sm prose-p:my-0 prose-li:my-0">
@@ -569,7 +625,7 @@ export default function EmployerAIJobCreatePage() {
               <Sparkles className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">{t("jobCreator.jobPreview")}</h3>
             </div>
-            {!extractedJob ? (
+            {!extractedJob && extractedBulkJobs.length === 0 && (
               <div className="space-y-3 text-xs text-muted-foreground">
                 <p>{t("jobCreator.aiWillAsk")}</p>
                 <div className="grid gap-2">
@@ -579,7 +635,8 @@ export default function EmployerAIJobCreatePage() {
                   <div className="rounded-xl border border-dashed border-border px-3 py-2">{t("jobCreator.optionalSalary")}</div>
                 </div>
               </div>
-            ) : (
+            )}
+            {extractedJob && (
               <div className="space-y-2 text-xs">
                 <p><strong>{t("jobCreator.titleLabel")}</strong> {extractedJob.title ?? "—"}</p>
                 <p><strong>{t("jobCreator.categoryLabel")}</strong> {extractedJob.category ?? "—"}</p>
@@ -628,6 +685,37 @@ export default function EmployerAIJobCreatePage() {
                 <Button onClick={reviewInForm} className="w-full gap-2 text-xs">
                   <WandSparkles className="h-4 w-4" /> {t("jobCreator.reviewInForm")}
                 </Button>
+              </div>
+            )}
+            {extractedBulkJobs.length > 0 && (
+              <div className="space-y-3 text-xs">
+                <p className="font-medium text-sm">{t("bulkPreview", { count: extractedBulkJobs.length })}</p>
+                {extractedBulkJobs.map((job, idx) => (
+                  <div key={idx} className="rounded-lg border border-border/60 p-3 space-y-1">
+                    <p className="font-semibold text-foreground">{job.title ?? "Untitled"}</p>
+                    <p className="text-muted-foreground">{typeof job.location === "string" ? job.location : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || "—"}</p>
+                    <p className="text-muted-foreground">{job.employmentType ? job.employmentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—"} · {job.workMode ? job.workMode.replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
+                    {extractSkills(job.requirements).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {extractSkills(job.requirements).slice(0, 5).map((s, si) => (
+                          <span key={si} className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{s}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {bulkProgress && (
+                  <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs">
+                    <p>{t("bulkPartial", { created: bulkProgress.created, total: bulkProgress.total, failed: bulkProgress.errors.length })}</p>
+                  </div>
+                )}
+                <Button onClick={createBulkJobDrafts} disabled={creatingBulk} className="w-full gap-2 text-xs">
+                  {creatingBulk ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}
+                  {creatingBulk ? `Creating... (${bulkProgress?.created ?? 0}/${extractedBulkJobs.length})` : t("jobCreator.createAllDrafts", { count: extractedBulkJobs.length })}
+                </Button>
+                <p className="rounded-lg bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
+                  {t("jobCreator.nothingSavedYet")}
+                </p>
               </div>
             )}
           </div>
