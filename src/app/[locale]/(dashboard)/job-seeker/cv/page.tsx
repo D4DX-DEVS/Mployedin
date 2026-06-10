@@ -13,12 +13,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Autocomplete, TagAutocomplete } from "@/components/ui/tag-autocomplete";
+import type { TaxonomyType } from "@/lib/taxonomy/seeds";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
@@ -67,7 +68,6 @@ export default function CVBuilderPage() {
   const [importProgress, setImportProgress] = useState(0);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const [skillInput, setSkillInput] = useState("");
   const [certInput, setCertInput] = useState("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
 
@@ -304,9 +304,6 @@ export default function CVBuilderPage() {
   function addLink()    { setForm((f) => ({ ...f, additionalLinks: [...f.additionalLinks, { ...EMPTY_LINK }] })); }
   function updateLink(i: number, field: keyof SocialLink, v: string)  { setForm((f) => ({ ...f, additionalLinks: f.additionalLinks.map((l, j) => j === i ? { ...l, [field]: v } : l) })); }
   function removeLink(i: number)    { setForm((f) => ({ ...f, additionalLinks: f.additionalLinks.filter((_, j) => j !== i) })); }
-
-  function addSkill() { const n = skillInput.trim(); if (!n || form.skills.some((s) => s.toLowerCase() === n.toLowerCase())) return; setForm((f) => ({ ...f, skills: [...f.skills, n] })); setSkillInput(""); }
-  function removeSkill(i: number) { setForm((f) => ({ ...f, skills: f.skills.filter((_, j) => j !== i) })); }
 
   function addCert() { const n = certInput.trim(); if (!n) return; setForm((f) => ({ ...f, certifications: [...f.certifications, n] })); setCertInput(""); }
   function removeCert(i: number) { setForm((f) => ({ ...f, certifications: f.certifications.filter((_, j) => j !== i) })); }
@@ -549,7 +546,7 @@ export default function CVBuilderPage() {
                     <FormField label={t("fields.nationality")} value={form.nationality}
                       onChange={(v) => setForm((f) => ({ ...f, nationality: v }))} placeholder={t("placeholders.nationality")} />
                     <div className="md:col-span-2">
-                      <FormField label={t("fields.currentLocation")} value={form.currentLocation}
+                      <AutoFormField label={t("fields.currentLocation")} value={form.currentLocation} taxonomy="locations"
                         onChange={(v) => setForm((f) => ({ ...f, currentLocation: v }))} placeholder={t("placeholders.location")} />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
@@ -617,7 +614,7 @@ export default function CVBuilderPage() {
                           <FormField label={t("fields.company")} value={exp.company}
                             onChange={(v) => updateExperience(i, "company", v)} placeholder={t("placeholders.company")} />
                           <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <FormField label={t("fields.location")} value={exp.country}
+                            <AutoFormField label={t("fields.location")} value={exp.country} taxonomy="locations"
                               onChange={(v) => updateExperience(i, "country", v)} placeholder={t("placeholders.location")} />
                             <FormField label={t("fields.from")} value={exp.startDate} type="month"
                               onChange={(v) => updateExperience(i, "startDate", v)} />
@@ -678,7 +675,7 @@ export default function CVBuilderPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <FormField label={t("fields.degree")} value={edu.degree}
                             onChange={(v) => updateEducation(i, "degree", v)} placeholder={t("placeholders.degree")} />
-                          <FormField label={t("fields.fieldOfStudy")} value={edu.field}
+                          <AutoFormField label={t("fields.fieldOfStudy")} value={edu.field} taxonomy="specializations"
                             onChange={(v) => updateEducation(i, "field", v)} placeholder={t("placeholders.fieldOfStudy")} />
                           <FormField label={t("fields.institution")} value={edu.institution}
                             onChange={(v) => updateEducation(i, "institution", v)} placeholder={t("placeholders.institution")} />
@@ -696,25 +693,13 @@ export default function CVBuilderPage() {
                 <SectionCard title={t("sections.skills", { count: form.skills.length })} icon={<Award className="w-4 h-4" />}
                   sectionKey="skills" hidden={hiddenSections.has("skills")} onToggle={() => toggleSection("skills")}
                 >
-                  <div className="flex flex-wrap gap-2 min-h-[2rem]">
-                    {form.skills.map((s, i) => (
-                      <Badge key={i} variant="secondary" className="text-xs gap-1 pe-1 py-1">
-                        {s}
-                        <button onClick={() => removeSkill(i)} className="ms-1.5 rounded-full p-0.5 hover:bg-destructive/20 transition-colors">
-                          <X className="w-3 h-3 text-muted-foreground hover:text-destructive" />
-                        </button>
-                      </Badge>
-                    ))}
-                    {form.skills.length === 0 && <p className="text-xs text-muted-foreground">{t("empty.skills")}</p>}
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    <Input value={skillInput} onChange={(e) => setSkillInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
-                      placeholder={t("placeholders.skill")} className="h-8 text-sm" />
-                    <Button size="sm" variant="outline" onClick={addSkill} className="h-8 gap-1 shrink-0">
-                      <Plus className="w-3.5 h-3.5" /> {t("actions.add")}
-                    </Button>
-                  </div>
+                  <TagAutocomplete
+                    type="skills"
+                    value={form.skills}
+                    onChange={(next) => setForm((f) => ({ ...f, skills: next }))}
+                    placeholder={t("placeholders.skill")}
+                    max={50}
+                  />
                 </SectionCard>
 
                 {/* Projects */}
@@ -1001,6 +986,30 @@ function FormField({
         placeholder={placeholder}
         readOnly={readOnly}
         className={readOnly ? "bg-muted/40 cursor-not-allowed opacity-70" : ""}
+      />
+    </div>
+  );
+}
+
+/* Label + taxonomy-backed single-value autocomplete (mirrors FormField styling). */
+function AutoFormField({
+  label, value, onChange, placeholder, taxonomy,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  taxonomy: TaxonomyType;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Autocomplete
+        type={taxonomy}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        inputClassName="h-10"
       />
     </div>
   );

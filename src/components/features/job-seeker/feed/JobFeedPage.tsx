@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { JobFeedCard, type FeedJob } from "./JobFeedCard";
 import { JobFeedSidebar, type FeedFilters } from "./JobFeedSidebar";
+import { ApplyWithCvDialog } from "./ApplyWithCvDialog";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -175,6 +176,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+  const [cvApplyJob, setCvApplyJob] = useState<FeedJob | null>(null);
   const [poolPage, setPoolPage] = useState(1);
   const [filters, setFilters] = useState<FeedFilters>({
     workTypes: [],
@@ -316,6 +318,20 @@ export function JobFeedPage({ locale }: { locale: string }) {
   });
 
   // ── Handlers ────────────────────────────────────────────────────────────────
+
+  function handleApplyWithCv(job: FeedJob) {
+    if (!applyAllowed) {
+      toast.error(t("toast.applicationLimitReached"));
+      return;
+    }
+    setCvApplyJob(job);
+  }
+
+  function handleCvApplied(jobId: string) {
+    setAppliedIds((s) => new Set([...s, jobId]));
+    toast.success(t("toast.applicationSubmitted"));
+    qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+  }
 
   function toggleSelect(jobId: string) {
     setSelected((prev) => {
@@ -615,6 +631,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       onToggleSelect={() => toggleSelect(job._id)}
                       onSave={() => saveMutation.mutate(job._id)}
                       onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("toast.applicationLimitReached"))}
+                      onApplyWithCv={() => handleApplyWithCv(job)}
                       onHide={() => {
                         setHidden((s) => new Set([...s, job._id]));
                         toast.success(t("toast.jobHidden"));
@@ -725,6 +742,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   onToggleSelect={() => toggleSelect(job._id)}
                   onSave={() => saveMutation.mutate(job._id)}
                   onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("toast.applicationLimitReached"))}
+                  onApplyWithCv={() => handleApplyWithCv(job)}
                   onHide={() => {
                     setHidden((s) => new Set([...s, job._id]));
                     toast.success(t("toast.jobHidden"));
@@ -809,6 +827,16 @@ export function JobFeedPage({ locale }: { locale: string }) {
           />
         </div>
       </div>
+
+      {cvApplyJob && (
+        <ApplyWithCvDialog
+          jobId={cvApplyJob._id}
+          jobTitle={cvApplyJob.title}
+          open={!!cvApplyJob}
+          onOpenChange={(o) => !o && setCvApplyJob(null)}
+          onApplied={handleCvApplied}
+        />
+      )}
     </div>
   );
 }

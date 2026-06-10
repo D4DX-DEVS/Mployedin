@@ -71,9 +71,6 @@ export function educationRank(text: string | undefined | null): number {
 }
 
 /**
- * Returns the list of seeker skills that match job requirements (case-insensitive).
- */
-/**
  * Groups of related/interchangeable skills.
  * If a seeker knows one skill in a group, they get partial credit (0.5)
  * for any other skill in the same group that a job requires.
@@ -109,11 +106,23 @@ const SKILL_GROUPS: string[][] = [
   ["c#", "csharp", ".net", "dotnet", "asp.net"],
 ];
 
-/** Pre-built lookup: skill → set of related skills */
+/**
+ * Normalizes a skill for comparison: lowercases, trims, and strips a trailing
+ * "js" suffix variant so "React.js", "ReactJS", "react js" and "React" all
+ * compare equal. Keeps the original when stripping would destroy the name
+ * (e.g. "JS" itself).
+ */
+export function normalizeSkill(s: string): string {
+  const lower = s.toLowerCase().trim();
+  const stripped = lower.replace(/[\s.\-_]*js$/, "");
+  return stripped.length >= 2 ? stripped : lower;
+}
+
+/** Pre-built lookup: normalized skill → set of related normalized skills */
 const RELATED_SKILLS_MAP: Map<string, Set<string>> = (() => {
   const map = new Map<string, Set<string>>();
   for (const group of SKILL_GROUPS) {
-    const lower = group.map((s) => s.toLowerCase());
+    const lower = group.map(normalizeSkill);
     for (const skill of lower) {
       const existing = map.get(skill) ?? new Set<string>();
       for (const other of lower) {
@@ -126,14 +135,34 @@ const RELATED_SKILLS_MAP: Map<string, Set<string>> = (() => {
 })();
 
 export function getMatchedSkills(seekerSkills: string[], jobSkills: string[]): string[] {
-  const jobSet = new Set(jobSkills.map((s) => s.toLowerCase()));
-  return seekerSkills.filter((s) => jobSet.has(s.toLowerCase()));
+  const jobSet = new Set(jobSkills.map(normalizeSkill));
+  return seekerSkills.filter((s) => jobSet.has(normalizeSkill(s)));
+}
+
+/**
+ * True when the seeker shares at least one skill (exact after normalization,
+ * or via a related-skill group) with the job's required skills.
+ */
+export function skillsOverlap(seekerSkills: string[], jobSkills: string[]): boolean {
+  if (seekerSkills.length === 0 || jobSkills.length === 0) return false;
+  const seekerSet = new Set(seekerSkills.map(normalizeSkill));
+  for (const raw of jobSkills) {
+    const jSkill = normalizeSkill(raw);
+    if (seekerSet.has(jSkill)) return true;
+    const related = RELATED_SKILLS_MAP.get(jSkill);
+    if (related) {
+      for (const s of seekerSet) {
+        if (related.has(s)) return true;
+      }
+    }
+  }
+  return false;
 }
 
 export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): number {
   // ── Skills (40%) ────────────────────────────────────────────────────
-  const jobSkills = job.skills.map((s) => s.toLowerCase());
-  const seekerSkills = seeker.skills.map((s) => s.toLowerCase());
+  const jobSkills = job.skills.map(normalizeSkill);
+  const seekerSkills = seeker.skills.map(normalizeSkill);
 
   let skillsScore: number;
   if (jobSkills.length === 0) {

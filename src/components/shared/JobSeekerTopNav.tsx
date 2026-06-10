@@ -49,6 +49,7 @@ export function JobSeekerTopNav({ locale }: JobSeekerTopNavProps) {
             <motion.span
               layoutId="desktop-nav-pill"
               className="absolute inset-0 rounded-full bg-primary"
+              initial={false}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
             />
           )}
@@ -89,6 +90,7 @@ export function JobSeekerTopNavMobile({ locale }: JobSeekerTopNavProps) {
                 <motion.span
                   layoutId="mobile-nav-pill"
                   className="absolute inset-0 rounded-full bg-primary"
+                  initial={false}
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
@@ -141,6 +143,7 @@ export function JobSeekerBottomNav({ locale }: JobSeekerTopNavProps) {
                 <motion.span
                   layoutId="bottom-nav-indicator"
                   className="absolute top-0 inset-x-[20%] h-0.5 rounded-b-full bg-primary"
+                  initial={false}
                   transition={{ type: "spring", stiffness: 500, damping: 35 }}
                 />
               )}

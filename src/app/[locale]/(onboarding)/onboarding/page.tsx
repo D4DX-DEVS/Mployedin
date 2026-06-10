@@ -1049,11 +1049,12 @@ export default function JobSeekerOnboardingPage() {
                           </span>
                         )}
                       </div>
-                      <Input
+                      <Autocomplete
+                        type="locations"
                         value={step1.currentCity}
-                        onChange={(e) => setStep1((p) => ({ ...p, currentCity: e.target.value }))}
+                        onChange={(v) => setStep1((p) => ({ ...p, currentCity: v }))}
                         placeholder="Eg. Dubai, Mumbai"
-                        className="h-11 border-gray-300 focus:border-blue-500"
+                        inputClassName="h-11 border-gray-300 focus:border-blue-500"
                       />
                       <p className="text-xs text-gray-500">This helps recruiters know your location preferences</p>
                     </div>

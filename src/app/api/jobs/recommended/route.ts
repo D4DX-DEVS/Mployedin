@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
-import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, getMatchedSkills } from "@/lib/matchScore";
+import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, getMatchedSkills, skillsOverlap, educationRank } from "@/lib/matchScore";
 import SkillConfirmation from "@/models/SkillConfirmation";
 
 /**
@@ -113,32 +113,38 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   // Relevance filter: drop jobs completely unrelated to the seeker — no skill
   // overlap AND no role-title relevance (e.g. "Sales support staff" for a
-  // MERN/UI-UX profile). Only applied when the seeker has both skills and
-  // preferred roles to compare against.
-  const seekerSkillSet = new Set(seekerProfile.skills.map((s) => s.toLowerCase()));
+  // MERN/UI-UX profile). Applied when the seeker has at least one signal
+  // (skills or preferred roles) to compare against. Jobs requiring a
+  // qualification two or more levels above the seeker's are also dropped.
   const seekerRoleList = (seekerProfile.preferredRoles ?? []).map((r) => r.toLowerCase());
-  const hasRelevanceSignal = seekerSkillSet.size > 0 && seekerRoleList.length > 0;
+  const hasSkillSignal = seekerProfile.skills.length > 0;
+  const hasRoleSignal = seekerRoleList.length > 0;
+  const seekerEduLevel = seekerProfile.educationLevel ?? 0;
 
   const isRelevant = (job: (typeof scoredAll)[number]): boolean => {
-    if (!hasRelevanceSignal) return true;
-    const jobSkills = (job.requirements?.skills ?? []).map((s: string) => s.toLowerCase());
-    const skillOverlap = jobSkills.some((s: string) => seekerSkillSet.has(s));
+    // Hard qualification gate: e.g. job demands a master's, seeker has high school.
+    const reqLevel = educationRank(job.requirements?.education);
+    if (reqLevel > 0 && seekerEduLevel > 0 && reqLevel - seekerEduLevel >= 2) {
+      return false;
+    }
+    if (!hasSkillSignal && !hasRoleSignal) return true;
+    const jobSkills = job.requirements?.skills ?? [];
+    const overlap = hasSkillSignal && skillsOverlap(seekerProfile.skills, jobSkills);
     const titleLower = (job.title ?? "").toLowerCase();
-    const roleMatch = seekerRoleList.some(
-      (role) => titleLower.includes(role) || role.includes(titleLower),
-    );
-    return skillOverlap || roleMatch;
+    const roleMatch =
+      hasRoleSignal &&
+      seekerRoleList.some((role) => titleLower.includes(role) || role.includes(titleLower));
+    return overlap || roleMatch;
   };
 
   const relevantJobs = scoredAll.filter(isRelevant);
 
-  // Apply the minimum-score filter over the relevant set. Fallback chain keeps
-  // the feed from ever appearing empty/broken for sparse profiles.
+  // Apply the minimum-score filter over the relevant set. If nothing clears the
+  // bar, fall back to the best-scoring relevant jobs — but never pad the feed
+  // with unrelated jobs, which made suggestions look broken for sparse profiles.
   let scored = relevantJobs.filter((j) => j.matchScore >= minScore);
   if (scored.length === 0 && relevantJobs.length > 0) {
     scored = [...relevantJobs].sort((a, b) => b.matchScore - a.matchScore).slice(0, limit);
-  } else if (scored.length === 0 && scoredAll.length > 0) {
-    scored = [...scoredAll].sort((a, b) => b.matchScore - a.matchScore).slice(0, limit);
   }
 
   // Sort within pool

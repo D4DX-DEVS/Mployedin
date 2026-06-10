@@ -498,6 +498,7 @@
       "saved": "محفوظة",
       "applied": "تم التقديم",
       "easyApply": "تقديم سريع",
+      "applyWithCv": "التقديم بسيرة ذاتية",
       "time": {
         "justNow": "الآن",
         "hoursAgo": "منذ {value} س",
@@ -505,6 +506,21 @@
         "weeksAgo": "منذ {value} أ",
         "monthsAgo": "منذ {value} ش"
       }
+    },
+    "cvApply": {
+      "title": "التقديم بسيرة ذاتية",
+      "chooseCv": "اختر سيرتك الذاتية",
+      "profileCv": "السيرة الذاتية للملف الشخصي",
+      "noCvOnFile": "لا توجد سيرة ذاتية بعد — قم برفع واحدة أدناه.",
+      "uploadUpdatedCv": "رفع سيرة ذاتية محدّثة",
+      "uploading": "جارٍ الرفع…",
+      "selectCvFirst": "يرجى اختيار أو رفع سيرة ذاتية أولاً.",
+      "loadFailed": "تعذر تحميل سيرك الذاتية. حاول مرة أخرى.",
+      "uploadFailed": "فشل الرفع. حاول مرة أخرى.",
+      "applyFailed": "فشل التقديم. حاول مرة أخرى.",
+      "cancel": "إلغاء",
+      "apply": "إرسال الطلب",
+      "applying": "جارٍ التقديم…"
     }
   },
   "agentOffers": {

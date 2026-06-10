@@ -101,8 +101,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     }
   } else if (!myJobs) {
     query.status = "active";
-    query["poster.approvalStatus"] = "approved";
-    query.$or = [{ expiresAt: { $exists: false } }, { expiresAt: { $gte: new Date() } }];
+    query.$or = [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }];
   }
 
   const canFilterManagedJobs = myJobs || ctx.role === "agent" || ctx.role === "admin" || ctx.role === "super_agent";

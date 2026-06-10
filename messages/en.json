@@ -498,6 +498,7 @@
       "saved": "Saved",
       "applied": "Applied",
       "easyApply": "Easy Apply",
+      "applyWithCv": "Apply with CV",
       "time": {
         "justNow": "Just now",
         "hoursAgo": "{value}h ago",
@@ -505,6 +506,21 @@
         "weeksAgo": "{value}w ago",
         "monthsAgo": "{value}mo ago"
       }
+    },
+    "cvApply": {
+      "title": "Apply with CV",
+      "chooseCv": "Choose your CV",
+      "profileCv": "Profile CV",
+      "noCvOnFile": "No CV on file yet — upload one below.",
+      "uploadUpdatedCv": "Upload an updated CV",
+      "uploading": "Uploading…",
+      "selectCvFirst": "Please select or upload a CV first.",
+      "loadFailed": "Could not load your CVs. Please try again.",
+      "uploadFailed": "Upload failed. Please try again.",
+      "applyFailed": "Failed to apply. Please try again.",
+      "cancel": "Cancel",
+      "apply": "Submit Application",
+      "applying": "Applying…"
     }
   },
   "agentOffers": {

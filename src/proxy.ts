@@ -139,7 +139,12 @@ export default auth(async function middleware(req: NextRequest) {
     const dashboardSections = ["/admin", "/super-agent", "/agent", "/employer", "/job-seeker"];
     const inDashboard = dashboardSections.some((s) => stripped === s || stripped.startsWith(s + "/"));
     const isVerifyPage = stripped.startsWith("/verify-email");
-    if (inDashboard && !isVerifyPage && session.user.isEmailVerified === false) {
+    // Onboarding requires a verified email too. Otherwise an unverified job
+    // seeker could reach /onboarding, click "Complete later", and get bounced
+    // to /verify-email from /job-seeker — looking like they can't access the
+    // account they just "completed". Force verification before onboarding.
+    const isOnboardingGate = stripped.startsWith("/onboarding");
+    if ((inDashboard || isOnboardingGate) && !isVerifyPage && session.user.isEmailVerified === false) {
       const urlLocale = pathname.split("/")[1] || defaultLocale;
       const verifyUrl = new URL(`/${urlLocale}/verify-email`, req.url);
       if (session.user.email) {
