@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { calculateMatchScore } from "@/lib/matchScore";
+import { calculateMatchScore, educationRank } from "@/lib/matchScore";
 
 describe("calculateMatchScore", () => {
   const baseSeeker = {
@@ -56,13 +56,13 @@ describe("calculateMatchScore", () => {
     expect(result).toBe(80);
   });
 
-  it("job with 0 required skills gives full skill score", () => {
+  it("job with 0 required skills gives a neutral skill score", () => {
     const result = calculateMatchScore(
       { ...baseSeeker },
       { ...baseJob, skills: [] }
     );
-    // skills: 1×40=40, location: 20, experience: 20, salary: 20 = 100
-    expect(result).toBe(100);
+    // skills: 0.5×40=20, location: 20, experience: 20, salary: 20 = 80
+    expect(result).toBe(80);
   });
 
   it("no seeker salary expectation returns full salary score", () => {
@@ -110,4 +110,83 @@ describe("calculateMatchScore", () => {
     // salary mismatch: base = 80, + bonus 15 = 95
     expect(result).toBe(95);
   });
+
+  it("matches a job in a non-primary preferred country via locations[]", () => {
+    const result = calculateMatchScore(
+      { ...baseSeeker, location: "uae", locations: ["uae", "india"] },
+      { ...baseJob, location: "india" }
+    );
+    // India is the seeker's 2nd preferred country → location full credit
+    // skills: 40, location: 20, experience: 20, salary: 20 = 100
+    expect(result).toBe(100);
+  });
+
+  it("normalizes yearly/LPA job salary to monthly before comparing", () => {
+    const result = calculateMatchScore(
+      { ...baseSeeker, salaryExpectation: 100000 }, // 100k/month
+      { ...baseJob, salaryMin: 1200000, salaryMax: 1200000, salaryPeriod: "lpa" }
+    );
+    // 12 LPA = 1.2M/year → 100k/month, matches expectation exactly → salary = 1.0
+    // skills: 40, location: 20, experience: 20, salary: 20 = 100
+    expect(result).toBe(100);
+  });
+
+  it("penalizes a job requiring one level above the seeker's qualification", () => {
+    const result = calculateMatchScore(
+      { ...baseSeeker, educationLevel: 3 }, // bachelor
+      { ...baseJob, requiredEducationLevel: 4 } // master
+    );
+    // base 100, under-qualified by 1 level → -8
+    expect(result).toBe(92);
+  });
+
+  it("penalizes harder when the seeker is two or more levels below", () => {
+    const result = calculateMatchScore(
+      { ...baseSeeker, educationLevel: 1 }, // school
+      { ...baseJob, requiredEducationLevel: 4 } // master
+    );
+    // base 100, gap 3 → -18
+    expect(result).toBe(82);
+  });
+
+  it("does not penalize when the seeker meets or exceeds the requirement", () => {
+    const result = calculateMatchScore(
+      { ...baseSeeker, educationLevel: 4 }, // master
+      { ...baseJob, requiredEducationLevel: 3 } // bachelor
+    );
+    expect(result).toBe(100);
+  });
+
+  it("does not penalize when job or seeker education level is unknown", () => {
+    expect(
+      calculateMatchScore({ ...baseSeeker, educationLevel: 0 }, { ...baseJob, requiredEducationLevel: 4 })
+    ).toBe(100);
+    expect(
+      calculateMatchScore({ ...baseSeeker, educationLevel: 3 }, { ...baseJob, requiredEducationLevel: 0 })
+    ).toBe(100);
+  });
 });
+
+describe("educationRank", () => {
+  it("maps qualifications to ascending numeric levels", () => {
+    expect(educationRank("High School")).toBe(1);
+    expect(educationRank("Diploma in IT")).toBe(2);
+    expect(educationRank("B.Tech")).toBe(3);
+    expect(educationRank("Bachelor's degree")).toBe(3);
+    expect(educationRank("Master of Science")).toBe(4);
+    expect(educationRank("MBA")).toBe(4);
+    expect(educationRank("PhD")).toBe(5);
+  });
+
+  it("ranks postgraduate above the generic graduate keyword", () => {
+    expect(educationRank("Postgraduate")).toBe(4);
+    expect(educationRank("Undergraduate")).toBe(3);
+  });
+
+  it("returns 0 for empty or unrecognised text", () => {
+    expect(educationRank("")).toBe(0);
+    expect(educationRank(undefined)).toBe(0);
+    expect(educationRank("astronaut")).toBe(0);
+  });
+});
+

@@ -78,7 +78,10 @@
       "Bash(grep -v \"^$\")",
       "Bash(mkdir -p \"D:/Mployedin/mployedin/src/app/[locale]/\\(dashboard\\)/admin/commissions-report\")",
       "Bash(mkdir -p \"D:/Mployedin/mployedin/src/app/[locale]/\\(dashboard\\)/super-agent/commissions-report\")",
-      "Bash(mkdir -p \"D:/Mployedin/mployedin/src/app/[locale]/\\(dashboard\\)/agent/commissions-report\")"
+      "Bash(mkdir -p \"D:/Mployedin/mployedin/src/app/[locale]/\\(dashboard\\)/agent/commissions-report\")",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/en\" -UseBasicParsing -TimeoutSec 5 -MaximumRedirection 2; \"UP $\\($r.StatusCode\\)\" } catch { \"DOWN: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(Get-CimInstance *)",
+      "PowerShell(cd D:\\\\Mployedin\\\\mployedin; npx tsc --noEmit 2>&1 | Select-Object -First 40; \"EXIT=$LASTEXITCODE\")"
     ]
   },
   "enableAllProjectMcpServers": true,

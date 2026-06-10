@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Loader2, Zap, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,13 +25,26 @@ interface EasyApplyProps {
   screeningQuestions?: EasyApplyScreeningQuestion[];
 }
 
+interface ProfileDocument {
+  id: string;
+  name: string;
+  category: string;
+  url: string;
+}
+
 interface JobSeekerProfile {
   name?: string;
   email?: string;
   phone?: string;
   skills?: string[];
-  documents?: { name: string; url: string; type: string }[];
+  documents?: ProfileDocument[];
+  cvUrl?: string | null;
+  socialLinks?: { label: string; url: string }[];
 }
+
+// Sentinel keys for the CV selector
+const PROFILE_CV_KEY = "__profile_cv__";
+const NO_CV_KEY = "__none__";
 
 export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions = [] }: EasyApplyProps) {
   const { data: session, status } = useSession();
@@ -42,15 +55,55 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
   const [showCoverLetter, setShowCoverLetter] = useState(false);
   const [loading, setLoading] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [checkingApplied, setCheckingApplied] = useState(true);
   const [error, setError] = useState("");
   const [fetchingProfile, setFetchingProfile] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | string[] | boolean>>({});
+
+  // C1 / C3 state
+  const [documents, setDocuments] = useState<ProfileDocument[]>([]);
+  const [selectedCvKey, setSelectedCvKey] = useState<string>(NO_CV_KEY);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [portfolioUrl, setPortfolioUrl] = useState("");
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const cvInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   const role = (session?.user as { role?: string })?.role;
   const isJobSeeker = role === "job_seeker";
 
   const sortedQuestions = [...screeningQuestions].sort((a, b) => a.order - b.order);
   const hasQuestions = sortedQuestions.length > 0;
+
+  // Check for an existing application on mount so the panel shows the
+  // "already applied" state instead of the form (the POST endpoint 409s on
+  // any existing application for this job, including withdrawn ones).
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!isJobSeeker) {
+      setCheckingApplied(false);
+      return;
+    }
+    let cancelled = false;
+    setCheckingApplied(true);
+    fetch(`/api/applications?jobId=${encodeURIComponent(jobId)}&limit=5`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        // Withdrawn applications don't count — the server allows re-applying.
+        const apps = Array.isArray(data?.applications) ? data.applications : [];
+        if (!cancelled && apps.some((a: { status?: string }) => a.status !== "withdrawn")) {
+          setApplied(true);
+        }
+      })
+      .catch(() => {/* fail open — server still rejects duplicates with 409 */})
+      .finally(() => {
+        if (!cancelled) setCheckingApplied(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [status, isJobSeeker, jobId]);
 
   // Load profile to auto-fill
   useEffect(() => {
@@ -61,20 +114,34 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       .then((data) => {
         if (data?.jobSeeker) {
           const js = data.jobSeeker;
+          const docs: ProfileDocument[] = Array.isArray(js.documents) ? js.documents : [];
           setProfile({
             name: js.name ?? session?.user?.name ?? "",
             email: session?.user?.email ?? "",
             phone: js.phone ?? "",
             skills: js.skills ?? [],
-            documents: js.documents ?? [],
+            documents: docs,
+            cvUrl: js.cvUrl ?? null,
+            socialLinks: js.socialLinks ?? [],
           });
+          setDocuments(docs);
+          // Default-select a CV: parsed profile CV first, else a resume document
+          const resumeDoc = docs.find((d) => d.category === "resume");
+          if (js.cvUrl) setSelectedCvKey(PROFILE_CV_KEY);
+          else if (resumeDoc) setSelectedCvKey(resumeDoc.id);
+          else setSelectedCvKey(NO_CV_KEY);
+          // Pre-fill portfolio from social links if present
+          const portfolio = (js.socialLinks ?? []).find((l: { label: string; url: string }) =>
+            /portfolio|website|behance|dribbble|github/i.test(l.label)
+          );
+          if (portfolio?.url) setPortfolioUrl(portfolio.url);
         }
       })
       .catch(() => {/* silently ignore */})
       .finally(() => setFetchingProfile(false));
   }, [isJobSeeker, profile, session?.user?.email, session?.user?.name]);
 
-  if (status === "loading" || fetchingProfile) {
+  if (status === "loading" || fetchingProfile || (isJobSeeker && checkingApplied && !applied)) {
     return (
       <Button disabled className="h-12 w-full rounded-2xl text-base">
         <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -141,6 +208,60 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
     return true;
   }
 
+  function toggleDocument(id: string) {
+    setSelectedDocIds((prev) =>
+      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
+    );
+  }
+
+  async function uploadDocument(file: File, category: "resume" | "other"): Promise<ProfileDocument | null> {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("category", category);
+    const res = await fetch("/api/job-seeker/documents", { method: "POST", body: fd });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.document) {
+      setError(data?.error ?? "Upload failed. Please try again.");
+      return null;
+    }
+    const doc: ProfileDocument = {
+      id: data.document.id,
+      name: data.document.name,
+      category: data.document.category,
+      url: data.document.url,
+    };
+    setDocuments((prev) => [...prev, doc]);
+    return doc;
+  }
+
+  async function handleCvUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setError("");
+    setUploadingCv(true);
+    try {
+      const doc = await uploadDocument(file, "resume");
+      if (doc) setSelectedCvKey(doc.id);
+    } finally {
+      setUploadingCv(false);
+    }
+  }
+
+  async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setError("");
+    setUploadingDoc(true);
+    try {
+      const doc = await uploadDocument(file, "other");
+      if (doc) setSelectedDocIds((prev) => [...prev, doc.id]);
+    } finally {
+      setUploadingDoc(false);
+    }
+  }
+
   async function handleApply() {
     setError("");
 
@@ -154,6 +275,15 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
         answer: answers[q.id] ?? (q.type === "checkbox" ? [] : ""),
       }));
 
+      // Collect document ids: any selected additional docs + a selected CV document
+      const docIdSet = new Set(selectedDocIds);
+      if (selectedCvKey !== PROFILE_CV_KEY && selectedCvKey !== NO_CV_KEY) {
+        docIdSet.add(selectedCvKey);
+      }
+      const documentIds = Array.from(docIdSet);
+      const includeProfileCv = selectedCvKey === PROFILE_CV_KEY;
+      const trimmedPortfolio = portfolioUrl.trim();
+
       const res = await fetch("/api/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -162,6 +292,9 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           easyApply: true,
           coverLetter: coverLetter.trim() || undefined,
           screeningAnswers: hasQuestions ? screeningAnswerPayload : undefined,
+          documentIds: documentIds.length > 0 ? documentIds : undefined,
+          includeProfileCv: includeProfileCv || undefined,
+          portfolioUrl: trimmedPortfolio || undefined,
         }),
       });
       const data = await res.json();
@@ -181,10 +314,10 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
     }
   }
 
-  // CV to auto-attach
-  const cvDocument = profile?.documents?.find(
-    (d) => d.type === "CV" || d.type === "cv" || d.name?.toLowerCase().includes("cv") || d.name?.toLowerCase().includes("resume")
-  );
+  // CV options: parsed profile CV + any resume-category documents
+  const resumeDocs = documents.filter((d) => d.category === "resume");
+  const otherDocs = documents.filter((d) => d.category !== "resume");
+  const hasProfileCv = !!profile?.cvUrl;
 
   return (
     <div className="space-y-4">
@@ -198,15 +331,6 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           )}
           {profile.email && (
             <p className="text-xs text-muted-foreground">{profile.email}</p>
-          )}
-          {cvDocument ? (
-            <p className="flex items-center gap-1 text-xs text-green-600">
-              <FileText className="h-3 w-3" /> {cvDocument.name} attached
-            </p>
-          ) : (
-            <p className="flex items-center gap-1 text-xs text-muted-foreground/70">
-              <FileText className="h-3 w-3" /> No CV on file — profile only
-            </p>
           )}
           {profile.skills && profile.skills.length > 0 && (
             <div className="flex flex-wrap gap-1.5 pt-1">
@@ -225,6 +349,130 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* CV / Resume — choose saved or upload a modified version */}
+      {profile && (
+        <div className="space-y-2 rounded-[22px] border border-border/70 bg-muted/10 px-4 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            CV / Resume
+          </p>
+          <div className="space-y-1.5">
+            {hasProfileCv && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="cv-choice"
+                  checked={selectedCvKey === PROFILE_CV_KEY}
+                  onChange={() => setSelectedCvKey(PROFILE_CV_KEY)}
+                  className="accent-primary"
+                />
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                Profile CV
+              </label>
+            )}
+            {resumeDocs.map((d) => (
+              <label key={d.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="cv-choice"
+                  checked={selectedCvKey === d.id}
+                  onChange={() => setSelectedCvKey(d.id)}
+                  className="accent-primary"
+                />
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="truncate">{d.name}</span>
+              </label>
+            ))}
+            {!hasProfileCv && resumeDocs.length === 0 && (
+              <p className="flex items-center gap-1 text-xs text-muted-foreground/70">
+                <FileText className="h-3 w-3" /> No CV on file yet — upload one below.
+              </p>
+            )}
+          </div>
+          <input
+            ref={cvInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            className="hidden"
+            onChange={handleCvUpload}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={uploadingCv}
+            onClick={() => cvInputRef.current?.click()}
+            className="h-8 gap-1.5 rounded-xl text-xs"
+          >
+            {uploadingCv ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+            {uploadingCv ? "Uploading…" : "Upload a different CV"}
+          </Button>
+        </div>
+      )}
+
+      {/* Additional documents (certificates, portfolio files, etc.) */}
+      {profile && (
+        <div className="space-y-2 rounded-[22px] border border-border/70 bg-muted/10 px-4 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Additional Documents
+          </p>
+          {otherDocs.length > 0 ? (
+            <div className="space-y-1.5">
+              {otherDocs.map((d) => (
+                <label key={d.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={selectedDocIds.includes(d.id)}
+                    onChange={() => toggleDocument(d.id)}
+                    className="accent-primary"
+                  />
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="truncate">{d.name}</span>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground/70">
+              Attach certificates, references or portfolio files (optional).
+            </p>
+          )}
+          <input
+            ref={docInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+            className="hidden"
+            onChange={handleDocUpload}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={uploadingDoc}
+            onClick={() => docInputRef.current?.click()}
+            className="h-8 gap-1.5 rounded-xl text-xs"
+          >
+            {uploadingDoc ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            {uploadingDoc ? "Uploading…" : "Add a document"}
+          </Button>
+
+          <div className="space-y-1.5 pt-1">
+            <Label htmlFor="portfolio-url" className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+              <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+              Portfolio link (optional)
+            </Label>
+            <Input
+              id="portfolio-url"
+              type="url"
+              inputMode="url"
+              placeholder="https://your-portfolio.com"
+              value={portfolioUrl}
+              onChange={(e) => setPortfolioUrl(e.target.value)}
+              className="rounded-xl"
+              maxLength={500}
+            />
+          </div>
         </div>
       )}
 

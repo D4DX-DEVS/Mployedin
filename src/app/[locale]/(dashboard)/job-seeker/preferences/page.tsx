@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { TagAutocomplete } from "@/components/ui/tag-autocomplete";
 import {
   Target,
   MapPin,
@@ -15,8 +15,6 @@ import {
   Clock,
   Loader2,
   CheckCircle2,
-  Plus,
-  X,
   Sparkles,
   TrendingUp,
   Zap,
@@ -39,31 +37,6 @@ const AVAILABILITY_OPTIONS = [
   { value: "within_month", label: "Within 1 Month" },
   { value: "within_3_months", label: "Within 3 Months" },
   { value: "not_available", label: "Not Available" },
-];
-
-const POPULAR_ROLES = [
-  "Frontend Developer",
-  "Backend Developer",
-  "Full Stack Developer",
-  "Product Manager",
-  "UI/UX Designer",
-  "Data Analyst",
-  "DevOps Engineer",
-  "React Developer",
-  "Mobile Developer",
-  "Software Engineer",
-];
-
-const POPULAR_LOCATIONS = [
-  "UAE",
-  "Saudi Arabia",
-  "India",
-  "Qatar",
-  "Kuwait",
-  "Bahrain",
-  "Oman",
-  "Egypt",
-  "Remote",
 ];
 
 const SALARY_PRESETS_BY_CURRENCY: Record<
@@ -228,102 +201,6 @@ function Section({
 }
 
 // ─── Smart Tag Input ──────────────────────────────────────────────────────────
-
-function SmartTagInput({
-  tags,
-  onAdd,
-  onRemove,
-  placeholder,
-  suggestions,
-}: {
-  tags: string[];
-  onAdd: (tag: string) => void;
-  onRemove: (tag: string) => void;
-  placeholder: string;
-  suggestions: string[];
-}) {
-  const t = useTranslations("jobSeekerExtra.preferences");
-  const [input, setInput] = useState("");
-  const availableSuggestions = suggestions.filter((s) => !tags.includes(s));
-
-  const handleAdd = (value?: string) => {
-    const trimmed = (value ?? input).trim();
-    if (trimmed && !tags.includes(trimmed) && tags.length < 10) {
-      onAdd(trimmed);
-      setInput("");
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      {/* Existing tags */}
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-            >
-              {tag}
-              <button
-                onClick={() => onRemove(tag)}
-                className="hover:text-destructive transition-colors"
-                aria-label={t("removeTag", { tag })}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Input row */}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleAdd();
-            }
-          }}
-          placeholder={placeholder}
-          className="h-9 text-sm"
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => handleAdd()}
-          className="h-9 px-3 shrink-0"
-          disabled={!input.trim() || tags.includes(input.trim())}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Suggestions */}
-      {availableSuggestions.length > 0 && (
-        <div>
-          <p className="text-xs text-muted-foreground mb-1.5">{t("popular")}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {availableSuggestions.slice(0, 6).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => handleAdd(s)}
-                className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-              >
-                + {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Match Score Card ─────────────────────────────────────────────────────────
 
@@ -610,19 +487,12 @@ export default function JobPreferencesPage() {
           title={t("preferredRoles")}
           description={t("preferredRolesDescription")}
         >
-          <SmartTagInput
-            tags={prefs.preferredRoles}
-            onAdd={(tag) =>
-              setPrefs((p) => ({ ...p, preferredRoles: [...p.preferredRoles, tag] }))
-            }
-            onRemove={(tag) =>
-              setPrefs((p) => ({
-                ...p,
-                preferredRoles: p.preferredRoles.filter((r) => r !== tag),
-              }))
-            }
+          <TagAutocomplete
+            type="roles"
+            value={prefs.preferredRoles}
+            onChange={(next) => setPrefs((p) => ({ ...p, preferredRoles: next }))}
             placeholder={t("rolesPlaceholder")}
-            suggestions={POPULAR_ROLES}
+            max={10}
           />
         </Section>
 
@@ -632,22 +502,12 @@ export default function JobPreferencesPage() {
           title={t("preferredLocations")}
           description={t("preferredLocationsDescription")}
         >
-          <SmartTagInput
-            tags={prefs.preferredCountries}
-            onAdd={(tag) =>
-              setPrefs((p) => ({
-                ...p,
-                preferredCountries: [...p.preferredCountries, tag],
-              }))
-            }
-            onRemove={(tag) =>
-              setPrefs((p) => ({
-                ...p,
-                preferredCountries: p.preferredCountries.filter((c) => c !== tag),
-              }))
-            }
+          <TagAutocomplete
+            type="countries"
+            value={prefs.preferredCountries}
+            onChange={(next) => setPrefs((p) => ({ ...p, preferredCountries: next }))}
             placeholder={t("locationsPlaceholder")}
-            suggestions={POPULAR_LOCATIONS}
+            max={10}
           />
         </Section>
 

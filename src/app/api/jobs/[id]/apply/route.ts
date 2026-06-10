@@ -60,8 +60,12 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });
   }
 
-  // Duplicate check
-  const existing = await Application.findOne({ jobSeekerId: seeker._id, jobId }).lean();
+  // Duplicate check — withdrawn applications do not block re-applying.
+  const existing = await Application.findOne({
+    jobSeekerId: seeker._id,
+    jobId,
+    status: { $ne: "withdrawn" },
+  }).lean();
   if (existing) {
     return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
   }

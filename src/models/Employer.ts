@@ -80,6 +80,14 @@ export interface IEmployer extends Document {
   // Payment
   paymentStatus: "active" | "pending" | "overdue";
   subscriptionType?: "basic" | "premium";
+  // Payment gateway setup (processing not wired yet)
+  paymentConfig?: {
+    gateway?: "stripe" | "tap";
+    publicKey?: string;
+    secretKeyEnc?: string;
+    isConfigured?: boolean;
+    configuredAt?: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -155,6 +163,13 @@ const EmployerSchema = new Schema<IEmployer>(
       default: "pending",
     },
     subscriptionType: { type: String, enum: ["basic", "premium"] },
+    paymentConfig: {
+      gateway: { type: String, enum: ["stripe", "tap"] },
+      publicKey: { type: String },
+      secretKeyEnc: { type: String, select: false },
+      isConfigured: { type: Boolean, default: false },
+      configuredAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

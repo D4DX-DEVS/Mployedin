@@ -43,6 +43,8 @@ export default function LoginPage() {
   const [appleLoading, setAppleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const [requires2fa, setRequires2fa] = useState(false);
 
   useEffect(() => {
     const savedEmail = localStorage.getItem(REMEMBER_ME_KEY);
@@ -104,10 +106,25 @@ export default function LoginPage() {
         email,
         password,
         rememberMe: rememberMe ? "true" : "false",
+        ...(totpCode ? { totpCode } : {}),
         redirect: false,
       });
 
       if (result?.error) {
+        const code = (result as { code?: string }).code;
+        if (code === "2fa_required") {
+          setRequires2fa(true);
+          return;
+        }
+        if (code === "2fa_invalid") {
+          setRequires2fa(true);
+          setError(t("invalidTwoFactorCode"));
+          return;
+        }
+        if (code === "account_locked") {
+          setError(t("accountLocked"));
+          return;
+        }
         setError(t("invalidCredentials"));
         return;
       }
@@ -189,6 +206,25 @@ export default function LoginPage() {
             </button>
           </div>
         </div>
+
+        {requires2fa && (
+          <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/[0.04] p-4">
+            <Label htmlFor="totp-code" className="text-sm font-medium">{t("twoFactorCode")}</Label>
+            <p className="text-xs text-muted-foreground">{t("twoFactorPrompt")}</p>
+            <Input
+              id="totp-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123456"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+              autoFocus
+              required
+              className="h-12 rounded-xl border-border/70 bg-background/70 px-4 text-center text-lg tracking-[0.4em] transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/15"
+            />
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <Checkbox

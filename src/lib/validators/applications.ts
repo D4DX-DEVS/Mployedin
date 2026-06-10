@@ -12,6 +12,18 @@ export const applicationCreateSchema = z.object({
       answer: z.union([z.string().max(2000), z.array(z.string().max(200)), z.boolean()]),
     })
   ).max(20).optional(),
+  // Attach specific profile documents (by their id) to this application.
+  documentIds: z.array(z.string().max(64)).max(10).optional(),
+  // Attach the profile's parsed CV (cv.originalUrl) to this application.
+  includeProfileCv: z.boolean().optional(),
+  // Optional portfolio link for this application (must be http/https).
+  portfolioUrl: z
+    .string()
+    .trim()
+    .max(500)
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), { message: "Portfolio link must start with http:// or https://" })
+    .optional(),
 });
 
 export const applicationUpdateSchema = z

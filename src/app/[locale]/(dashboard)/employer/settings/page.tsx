@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { LogoUpload } from "@/components/features/employer/LogoUpload";
+import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument } from "@/hooks/useEmployerProfile";
 import type { CompanyData } from "@/hooks/useEmployerProfile";
@@ -984,6 +985,9 @@ function CompanySettingsPage() {
 
                 {/* SMTP Override (Premium) */}
                 <EmployerSmtpOverride isPremium={company?.subscriptionType === "premium"} />
+
+                {/* Email change */}
+                <ChangeEmailCard />
 
                 {/* Danger Zone */}
                 <div className="rounded-xl border-2 border-dashed border-destructive/25 bg-destructive/[0.02] p-6 space-y-4">

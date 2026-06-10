@@ -11,6 +11,7 @@ import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import type { UserRole } from "@/models/User";
 import { generateEmbedding, cosineSimilarity, buildProfileText } from "@/lib/ai/embeddings";
+import { atlasVectorSearch } from "@/lib/ai/atlasVectorSearch";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 
 const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent"];
@@ -69,25 +70,35 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
   }
 
-  // Phase 1 — light scan: pull only _id + searchEmbedding for candidates that
-  // already have an embedding. Each row is a vector instead of a full profile,
-  // and the count is capped, so memory usage stays bounded.
-  const preEmbedded = await JobSeeker.find({
-    status: { $ne: "deleted" },
-    "searchEmbedding.0": { $exists: true },
-  })
-    .select({ _id: 1, searchEmbedding: 1 })
-    .limit(SCAN_LIMIT)
-    .lean();
+  // Phase 1 — Atlas $vectorSearch (index-backed ANN, preferred). Falls back to
+  // a bounded in-memory cosine scan when the vector index is unavailable.
+  let mode: "atlas-vector" | "vector" = "atlas-vector";
+  let scored: { id: unknown; score: number }[] | null = await atlasVectorSearch(queryEmbedding, {
+    limit: Math.min(MAX_RESULTS * 4, 200),
+    minCosine: MIN_SIMILARITY,
+  });
 
-  const scored: { id: unknown; score: number }[] = [];
+  if (scored === null) {
+    mode = "vector";
+    scored = [];
+    // Fallback — light scan: pull only _id + searchEmbedding for candidates that
+    // already have an embedding. Each row is a vector instead of a full profile,
+    // and the count is capped, so memory usage stays bounded.
+    const preEmbedded = await JobSeeker.find({
+      status: { $ne: "deleted" },
+      "searchEmbedding.0": { $exists: true },
+    })
+      .select({ _id: 1, searchEmbedding: 1 })
+      .limit(SCAN_LIMIT)
+      .lean();
 
-  for (const js of preEmbedded) {
-    const embedding = (js as Record<string, unknown>).searchEmbedding as number[] | undefined;
-    if (!embedding || embedding.length === 0) continue;
-    const score = cosineSimilarity(queryEmbedding, embedding);
-    if (score >= MIN_SIMILARITY) {
-      scored.push({ id: js._id, score });
+    for (const js of preEmbedded) {
+      const embedding = (js as Record<string, unknown>).searchEmbedding as number[] | undefined;
+      if (!embedding || embedding.length === 0) continue;
+      const score = cosineSimilarity(queryEmbedding, embedding);
+      if (score >= MIN_SIMILARITY) {
+        scored.push({ id: js._id, score });
+      }
     }
   }
 
@@ -149,6 +160,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     total,
     page,
     totalPages: Math.ceil(total / limit),
-    mode: "vector",
+    mode,
   });
 }, { resource: "job_seekers", action: "read" });

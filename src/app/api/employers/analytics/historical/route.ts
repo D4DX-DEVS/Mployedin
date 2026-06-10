@@ -148,35 +148,49 @@ async function getHandler(
     })
   );
 
-  // 2. DROP-OFF rates: % of candidates who leave at each stage
-  const allApps = await Application.aggregate([
+  // 2. DROP-OFF rates: % of candidates who leave at each stage.
+  // Uses cumulative "reached stage" counts (current status + statusHistory)
+  // so a candidate at a later stage still counts toward earlier stages.
+  const maxRankData = await Application.aggregate([
     { $match: { jobId: { $in: jobIds }, appliedAt: dateFilter } },
-    { $group: { _id: "$status", count: { $sum: 1 } } },
+    {
+      $project: {
+        statuses: {
+          $setUnion: [["$status"], { $ifNull: ["$statusHistory.status", []] }],
+        },
+      },
+    },
+    {
+      $project: {
+        maxRank: {
+          $max: {
+            $map: {
+              input: "$statuses",
+              as: "s",
+              in: { $indexOfArray: [ORDERED_STAGES, "$$s"] },
+            },
+          },
+        },
+      },
+    },
+    { $group: { _id: "$maxRank", count: { $sum: 1 } } },
   ]);
 
-  const statusCounts: Record<string, number> = {};
-  for (const s of allApps) statusCounts[s._id] = s.count;
+  // reached[rank] = applications whose highest-ever stage >= rank.
+  // Rejected/withdrawn-only applications still count toward "applied".
+  const reachedAtLeast = (rank: number): number =>
+    maxRankData.reduce(
+      (sum, g) => sum + (Math.max(g._id ?? 0, 0) >= rank ? g.count : 0),
+      0
+    );
 
-  const totalApps = Object.values(statusCounts).reduce((a, b) => a + b, 0);
-  const rejectedCount = statusCounts["rejected"] || 0;
-  const withdrawnCount = statusCounts["withdrawn"] || 0;
+  const totalApps = reachedAtLeast(0);
 
-  // Calculate how many entered each stage (cumulative forward flow)
-  const enteredStage: Record<string, number> = {};
-  let remaining = totalApps - rejectedCount - withdrawnCount;
-
-  for (const stage of ORDERED_STAGES) {
-    const atStage = statusCounts[stage] || 0;
-    enteredStage[stage] = stage === "applied" ? totalApps : remaining;
-    remaining = remaining - (stage === "applied" ? 0 : 0); // simplified
-  }
-
-  // Drop-off = those who were at stage X but didn't reach stage X+1
+  // Drop-off = those who reached stage X but never reached stage X+1
   const dropOff = ORDERED_STAGES.slice(0, -1).map((stage, i) => {
     const nextStage = ORDERED_STAGES[i + 1];
-    const atCurrent = statusCounts[stage] || 0;
-    const atNext = statusCounts[nextStage] || 0;
-    const passedThrough = atCurrent > 0 ? atCurrent : 0;
+    const atCurrent = reachedAtLeast(i);
+    const atNext = reachedAtLeast(i + 1);
 
     return {
       stage,
@@ -187,7 +201,7 @@ async function getHandler(
       nextCount: atNext,
       dropOffPct:
         totalApps > 0
-          ? Math.round(((passedThrough - atNext) / Math.max(passedThrough, 1)) * 100)
+          ? Math.round(((atCurrent - atNext) / Math.max(atCurrent, 1)) * 100)
           : 0,
     };
   });

@@ -13,12 +13,16 @@ export interface SeekerProfile {
   skills: string[];
   /** Primary preferred country (lower-cased). Pass "" if unknown. */
   location: string;
+  /** All preferred countries (lower-cased). Falls back to [location] when omitted. */
+  locations?: string[];
   experienceYears: number;
   salaryExpectation: number; // mid-point of preferred salary range, 0 disables salary component
   /** Preferred job type: "remote" | "hybrid" | "onsite" | "any" */
   jobType?: string;
   /** Preferred role keywords (lower-cased). Used for bonus only. */
   preferredRoles?: string[];
+  /** Highest attained education level (1-5, 0 = unknown). See educationRank(). */
+  educationLevel?: number;
 }
 
 export interface JobProfile {
@@ -28,12 +32,42 @@ export interface JobProfile {
   remote: boolean;
   salaryMin: number;
   salaryMax: number;
+  /** Pay period for salaryMin/Max. Used to normalize to monthly. Defaults to "monthly". */
+  salaryPeriod?: "monthly" | "yearly" | "lpa";
   /** 0 = no minimum */
   minExp: number;
   /** 30 = no cap */
   maxExp: number;
   /** Job title (lower-cased). Used for bonus. */
   title?: string;
+  /** Required education level (1-5, 0 = none/unspecified). See educationRank(). */
+  requiredEducationLevel?: number;
+}
+
+/**
+ * Ordered education levels — higher keyword groups are checked first so that
+ * e.g. "postgraduate" ranks above the generic "graduate".
+ *   5 doctorate · 4 master/PG · 3 bachelor/UG · 2 diploma · 1 school
+ */
+const EDUCATION_LEVELS: Array<{ level: number; keywords: string[] }> = [
+  { level: 5, keywords: ["phd", "ph.d", "doctorate", "doctoral", "dphil"] },
+  { level: 4, keywords: ["master", "m.tech", "mtech", "m.sc", "msc", "m.a", "mba", "mca", "m.com", "mcom", "postgraduate", "post graduate", "post-graduate"] },
+  { level: 3, keywords: ["bachelor", "b.tech", "btech", "b.e", "b.sc", "bsc", "b.a", "b.com", "bcom", "bca", "bba", "undergraduate", "graduate", "degree"] },
+  { level: 2, keywords: ["diploma", "associate", "certificate", "iti", "vocational", "polytechnic"] },
+  { level: 1, keywords: ["high school", "higher secondary", "secondary", "ssc", "hsc", "10th", "12th", "matriculation"] },
+];
+
+/**
+ * Maps a free-text qualification ("B.Tech", "Master of Science", "Diploma") to a
+ * numeric level 1-5. Returns 0 when the text is empty or unrecognised.
+ */
+export function educationRank(text: string | undefined | null): number {
+  if (!text) return 0;
+  const lower = text.toLowerCase();
+  for (const { level, keywords } of EDUCATION_LEVELS) {
+    if (keywords.some((k) => lower.includes(k))) return level;
+  }
+  return 0;
 }
 
 /**
@@ -103,7 +137,10 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
 
   let skillsScore: number;
   if (jobSkills.length === 0) {
-    skillsScore = 1;
+    // Job lists no structured skill requirements — the seeker's skills cannot be
+    // matched against anything, so award a neutral score rather than full credit.
+    // (Full credit here previously inflated requirement-less jobs to the top.)
+    skillsScore = 0.5;
   } else {
     let totalCredit = 0;
     for (const jSkill of jobSkills) {
@@ -123,8 +160,13 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
   // ── Location (20%) ───────────────────────────────────────────────────
   const locationScore = (() => {
     if (job.remote) return 1;
-    if (!seeker.location || seeker.location === "") return 0.5; // partial when unknown
-    return seeker.location.toLowerCase() === job.location.toLowerCase() ? 1 : 0;
+    // Consider every preferred country, not just the first.
+    const seekerLocations = (seeker.locations?.length ? seeker.locations : [seeker.location])
+      .map((l) => l.toLowerCase().trim())
+      .filter(Boolean);
+    if (seekerLocations.length === 0) return 0.5; // partial when unknown
+    const jobLocation = job.location.toLowerCase().trim();
+    return seekerLocations.includes(jobLocation) ? 1 : 0;
   })();
 
   // ── Experience (20%) ─────────────────────────────────────────────────
@@ -142,7 +184,10 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
   // ── Salary (20%) ─────────────────────────────────────────────────────
   const salaryScore = (() => {
     if (seeker.salaryExpectation <= 0) return 1; // no expectation → full score
-    const jobMid = (job.salaryMin + job.salaryMax) / 2;
+    // Normalize job pay to a monthly figure so monthly vs yearly/LPA jobs are
+    // compared against the seeker's (monthly) expectation on the same basis.
+    const periodDivisor = job.salaryPeriod === "yearly" || job.salaryPeriod === "lpa" ? 12 : 1;
+    const jobMid = ((job.salaryMin + job.salaryMax) / 2) / periodDivisor;
     if (jobMid <= 0) return 0.5;
     const diff = Math.abs(seeker.salaryExpectation - jobMid) / jobMid;
     if (diff <= 0.1) return 1;
@@ -164,6 +209,17 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
     if (seeker.preferredRoles.some((r) => titleLower.includes(r.toLowerCase()) || r.toLowerCase().includes(titleLower))) {
       score = Math.min(100, score + 15);
     }
+  }
+
+  // ── Qualification penalty ─────────────────────────────────────────────
+  // Push down jobs that demand a higher qualification than the seeker holds so
+  // they don't surface as "suggested". Only applied when BOTH the job's required
+  // level and the seeker's level are known — otherwise the score is unchanged.
+  const reqLevel = job.requiredEducationLevel ?? 0;
+  const seekerLevel = seeker.educationLevel ?? 0;
+  if (reqLevel > 0 && seekerLevel > 0 && seekerLevel < reqLevel) {
+    const gap = reqLevel - seekerLevel;
+    score = Math.max(0, score - (gap === 1 ? 8 : 18));
   }
 
   return score;
@@ -199,6 +255,7 @@ export function seekerProfileFromDoc(seeker: {
     endDate?: Date | string;
     isCurrent?: boolean;
   }>;
+  education?: Array<{ degree?: string; field?: string }>;
 }): SeekerProfile {
   const now = Date.now();
 
@@ -217,13 +274,21 @@ export function seekerProfileFromDoc(seeker: {
   const salaryExpectation =
     salMin > 0 && salMax > 0 ? (salMin + salMax) / 2 : salMin + salMax;
 
+  // Highest qualification the seeker holds across all education entries.
+  const educationLevel = (seeker.education ?? []).reduce(
+    (max, e) => Math.max(max, educationRank(e.degree), educationRank(e.field)),
+    0,
+  );
+
   return {
     skills: seeker.skills ?? [],
     location: (seeker.preferredCountries ?? [])[0]?.toLowerCase() ?? "",
+    locations: (seeker.preferredCountries ?? []).map((c) => c.toLowerCase()),
     experienceYears: Math.round(experienceYears * 10) / 10,
     salaryExpectation,
     jobType: seeker.preferredJobType ?? "any",
     preferredRoles: (seeker.preferredRoles ?? []).map((r) => r.toLowerCase()),
+    educationLevel,
   };
 }
 
@@ -231,8 +296,8 @@ export function seekerProfileFromDoc(seeker: {
  * Build a JobProfile from a Mongoose Job lean document.
  */
 export function jobProfileFromDoc(job: {
-  requirements?: { skills?: string[]; experienceMin?: number; experienceMax?: number };
-  salary?: { min?: number; max?: number };
+  requirements?: { skills?: string[]; experienceMin?: number; experienceMax?: number; education?: string };
+  salary?: { min?: number; max?: number; period?: "monthly" | "yearly" | "lpa" };
   location?: { country?: string; isRemote?: boolean };
   title?: string;
 }): JobProfile {
@@ -242,8 +307,10 @@ export function jobProfileFromDoc(job: {
     remote: job.location?.isRemote ?? false,
     salaryMin: job.salary?.min ?? 0,
     salaryMax: job.salary?.max ?? 0,
+    salaryPeriod: job.salary?.period ?? "monthly",
     minExp: job.requirements?.experienceMin ?? 0,
     maxExp: job.requirements?.experienceMax ?? 30,
     title: job.title?.toLowerCase() ?? "",
+    requiredEducationLevel: educationRank(job.requirements?.education),
   };
 }

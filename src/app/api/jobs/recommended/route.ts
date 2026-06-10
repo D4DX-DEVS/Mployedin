@@ -40,7 +40,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const poolPage = Number.isFinite(poolPageParam) ? Math.max(1, Math.round(poolPageParam)) : 1;
 
   const seeker = await JobSeeker.findOne({ userId: ctx.userId })
-    .select("skills preferredCountries preferredRoles preferredSalary preferredJobType experience")
+    .select("skills preferredCountries preferredRoles preferredSalary preferredJobType experience education")
     .lean();
 
   if (!seeker) {
@@ -105,13 +105,41 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     .lean();
 
   // Score all candidates in this pool
-  const scored = candidateJobs
-    .map((job) => ({
-      ...job,
-      matchScore: calculateMatchScore(seekerProfile, jobProfileFromDoc(job)),
-      matchedSkills: getMatchedSkills(seekerProfile.skills, job.requirements?.skills ?? []),
-    }))
-    .filter((j) => j.matchScore >= minScore);
+  const scoredAll = candidateJobs.map((job) => ({
+    ...job,
+    matchScore: calculateMatchScore(seekerProfile, jobProfileFromDoc(job)),
+    matchedSkills: getMatchedSkills(seekerProfile.skills, job.requirements?.skills ?? []),
+  }));
+
+  // Relevance filter: drop jobs completely unrelated to the seeker — no skill
+  // overlap AND no role-title relevance (e.g. "Sales support staff" for a
+  // MERN/UI-UX profile). Only applied when the seeker has both skills and
+  // preferred roles to compare against.
+  const seekerSkillSet = new Set(seekerProfile.skills.map((s) => s.toLowerCase()));
+  const seekerRoleList = (seekerProfile.preferredRoles ?? []).map((r) => r.toLowerCase());
+  const hasRelevanceSignal = seekerSkillSet.size > 0 && seekerRoleList.length > 0;
+
+  const isRelevant = (job: (typeof scoredAll)[number]): boolean => {
+    if (!hasRelevanceSignal) return true;
+    const jobSkills = (job.requirements?.skills ?? []).map((s: string) => s.toLowerCase());
+    const skillOverlap = jobSkills.some((s: string) => seekerSkillSet.has(s));
+    const titleLower = (job.title ?? "").toLowerCase();
+    const roleMatch = seekerRoleList.some(
+      (role) => titleLower.includes(role) || role.includes(titleLower),
+    );
+    return skillOverlap || roleMatch;
+  };
+
+  const relevantJobs = scoredAll.filter(isRelevant);
+
+  // Apply the minimum-score filter over the relevant set. Fallback chain keeps
+  // the feed from ever appearing empty/broken for sparse profiles.
+  let scored = relevantJobs.filter((j) => j.matchScore >= minScore);
+  if (scored.length === 0 && relevantJobs.length > 0) {
+    scored = [...relevantJobs].sort((a, b) => b.matchScore - a.matchScore).slice(0, limit);
+  } else if (scored.length === 0 && scoredAll.length > 0) {
+    scored = [...scoredAll].sort((a, b) => b.matchScore - a.matchScore).slice(0, limit);
+  }
 
   // Sort within pool
   if (sort === "latest") {

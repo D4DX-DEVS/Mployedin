@@ -1,16 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
+import { escapeRegex } from "@/lib/security/sanitize";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 /**
  * GET /api/salary-explorer — Public salary insights by role/location/industry
  */
 export async function GET(req: NextRequest) {
+  // SECURITY: public + aggregation-heavy route — throttle per IP.
+  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const rl = checkRateLimit(ip, { limit: 30, windowSec: 60, prefix: "salary-explorer" });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
   await connectDB();
   const { searchParams } = new URL(req.url);
-  const role = searchParams.get("role") ?? "";
-  const country = searchParams.get("country") ?? "";
-  const industry = searchParams.get("industry") ?? "";
+  // SECURITY: escape regex metacharacters in user input ($regex injection / ReDoS).
+  const role = escapeRegex((searchParams.get("role") ?? "").slice(0, 100));
+  const country = escapeRegex((searchParams.get("country") ?? "").slice(0, 100));
+  const industry = escapeRegex((searchParams.get("industry") ?? "").slice(0, 100));
 
   const match: Record<string, unknown> = {
     status: "active",

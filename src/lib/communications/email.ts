@@ -297,6 +297,83 @@ export const EmailTemplates = {
     `,
   }),
 
+  emailChangeVerify: (userName: string, confirmUrl: string, newEmail: string) => ({
+    subject: "Confirm Your New Email Address – MPLOYEDIN",
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #0D6FD8 0%, #0A5BB8 100%); padding: 32px 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">MPLOYEDIN</h1>
+        </div>
+        <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">A request was made to change your MPLOYEDIN account email to <strong>${newEmail}</strong>. Click the button below to confirm this change.</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${confirmUrl}" style="background: #0D6FD8; color: white; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">Confirm Email Change</a>
+          </div>
+          <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin: 24px 0;">
+            <p style="margin: 0; font-size: 13px; color: #6b7280;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="margin: 8px 0 0; font-size: 13px; word-break: break-all;"><a href="${confirmUrl}" style="color: #0D6FD8;">${confirmUrl}</a></p>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px; margin-top: 24px;">This link expires in 1 hour. If you didn't request this change, you can safely ignore this email — your account email will not change.</p>
+        </div>
+      </div>
+    `,
+  }),
+
+  emailChangeNotice: (userName: string, newEmail: string) => ({
+    subject: "Security Alert: Email Change Requested – MPLOYEDIN",
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #b91c1c; padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">MPLOYEDIN Security</h1>
+        </div>
+        <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">A request was just made to change your account email address to <strong>${newEmail}</strong>. The change will only take effect once it is confirmed from the new address.</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;"><strong>If this was you</strong>, no action is needed.</p>
+          <p style="font-size: 15px; color: #b91c1c; line-height: 1.6;"><strong>If this wasn't you</strong>, your password may be compromised. Change your password immediately and contact support@mployedin.com.</p>
+        </div>
+      </div>
+    `,
+  }),
+
+  emailChangeCompleted: (userName: string, newEmail: string) => ({
+    subject: "Your Account Email Was Changed – MPLOYEDIN",
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #b91c1c; padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">MPLOYEDIN Security</h1>
+        </div>
+        <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Your MPLOYEDIN account email has been changed to <strong>${newEmail}</strong>. This address will no longer receive account notifications.</p>
+          <p style="font-size: 15px; color: #b91c1c; line-height: 1.6;"><strong>If you did not make this change</strong>, contact support@mployedin.com immediately.</p>
+        </div>
+      </div>
+    `,
+  }),
+
+  accountLocked: (userName: string, lockMinutes: number, resetUrl: string) => ({
+    subject: "Security Alert: Your Account Has Been Locked – MPLOYEDIN",
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: #b91c1c; padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">MPLOYEDIN Security</h1>
+        </div>
+        <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Your MPLOYEDIN account has been temporarily locked for <strong>${lockMinutes} minutes</strong> after several failed sign-in attempts.</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;"><strong>If this was you</strong>, simply wait and try again — or reset your password now to unlock immediately.</p>
+          <p style="font-size: 15px; color: #b91c1c; line-height: 1.6;"><strong>If this wasn't you</strong>, someone may be trying to access your account. We strongly recommend resetting your password.</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${resetUrl}" style="background: #b91c1c; color: white; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">Reset Password</a>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px; margin-top: 24px;">Need help? Contact support@mployedin.com.</p>
+        </div>
+      </div>
+    `,
+  }),
+
   employerWelcome: (contactName: string, email: string, password: string, agentName: string, loginUrl: string) => ({
     subject: "Welcome to MPLOYEDIN – Your Account is Ready",
     html: `

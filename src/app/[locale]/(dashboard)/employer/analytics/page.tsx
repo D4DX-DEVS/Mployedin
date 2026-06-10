@@ -29,6 +29,9 @@ import {
   Eye,
   Zap,
   Sparkles,
+  Search,
+  ChevronLeft,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -47,11 +50,14 @@ import {
   Legend,
 } from "recharts";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import Link from "next/link";
 
 type DateRange = "7d" | "30d" | "90d" | "180d" | "custom";
 
 const AUTO_REFRESH_MS = 30000;
+
+const PER_JOB_PAGE_SIZE = 10;
 
 const ANALYTICS_TABS = [
   { key: "pipeline" as const, icon: BarChart3 },
@@ -61,6 +67,15 @@ const ANALYTICS_TABS = [
 ];
 
 const FUNNEL_STAGES = ["applied", "shortlisted", "interview", "offer", "hired"];
+
+// UI stage keys → Application status values stored in the database
+const STATUS_BY_STAGE: Record<string, string> = {
+  applied: "applied",
+  shortlisted: "shortlisted",
+  interview: "interview_scheduled",
+  offer: "offer",
+  hired: "hired",
+};
 
 const STAGE_NAMES: Record<string, string> = {
   applied: "Applied",
@@ -95,11 +110,27 @@ export default function EmployerAnalyticsPage() {
   const [customEnd, setCustomEnd] = useState("");
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
+  const [perJobPage, setPerJobPage] = useState(1);
+  const [perJobSearchInput, setPerJobSearchInput] = useState("");
+  const [perJobSearch, setPerJobSearch] = useState("");
   const t = useTranslations("employerAnalytics");
   const tc = useTranslations("employerCommon");
 
+  // Debounce per-job search so we don't refetch on every keystroke
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setPerJobSearch(perJobSearchInput.trim());
+      setPerJobPage(1);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [perJobSearchInput]);
+
   const { data, error, isLoading, refetch: refetchOverview } = useAnalyticsOverview();
-  const { data: pipeline, refetch: refetchPipeline } = useAnalyticsPipeline(selectedJobId);
+  const { data: pipeline, refetch: refetchPipeline } = useAnalyticsPipeline(selectedJobId, {
+    page: perJobPage,
+    pageSize: PER_JOB_PAGE_SIZE,
+    q: perJobSearch,
+  });
   const { data: historical, refetch: refetchHistorical } = useAnalyticsHistorical(
     { range: dateRange, customStart, customEnd },
     activeTab === "historical"
@@ -411,6 +442,10 @@ export default function EmployerAnalyticsPage() {
           pipeline={pipeline}
           selectedJobId={selectedJobId}
           setSelectedJobId={setSelectedJobId}
+          perJobSearchInput={perJobSearchInput}
+          setPerJobSearchInput={setPerJobSearchInput}
+          perJobPage={perJobPage}
+          setPerJobPage={setPerJobPage}
         />
       )}
 
@@ -479,14 +514,23 @@ function PipelineTab({
   pipeline,
   selectedJobId,
   setSelectedJobId,
+  perJobSearchInput,
+  setPerJobSearchInput,
+  perJobPage,
+  setPerJobPage,
 }: {
   data: AnalyticsData;
   pipeline: PipelineData;
   selectedJobId: string;
   setSelectedJobId: (id: string) => void;
+  perJobSearchInput: string;
+  setPerJobSearchInput: (q: string) => void;
+  perJobPage: number;
+  setPerJobPage: (page: number) => void;
 }) {
   const t = useTranslations("employerAnalytics");
   const tc = useTranslations("employerCommon");
+  const locale = useLocale();
   const conversionRates = {
     appliedToShortlisted:
       data.conversion.applied > 0
@@ -511,7 +555,8 @@ function PipelineTab({
   };
 
   const funnelChartData = FUNNEL_STAGES.map((stage) => {
-    const found = pipeline.stageDistribution.find((s) => s.stage === stage);
+    const status = STATUS_BY_STAGE[stage] ?? stage;
+    const found = (pipeline.funnel ?? []).find((s) => s.stage === status);
     return {
       stage: t(stage),
       count: found?.count ?? 0,
@@ -528,7 +573,8 @@ function PipelineTab({
     };
   });
 
-  const jobOptions = pipeline.perJob;
+  const jobOptions = pipeline.jobOptions ?? [];
+  const perJobMeta = pipeline.perJobMeta ?? { total: pipeline.perJob.length, page: 1, pageSize: PER_JOB_PAGE_SIZE, totalPages: 1 };
   const totalApplications = data.conversion.applied;
 
   return (
@@ -645,9 +691,9 @@ function PipelineTab({
         </ResponsiveContainer>
       </AnalyticsPanel>
 
-      {pipeline.perJob.length > 0 && (
+      {jobOptions.length > 0 && (
         <AnalyticsPanel className="overflow-hidden p-0">
-          <div className="border-b border-border/60 px-5 py-5 sm:px-6">
+          <div className="flex flex-col gap-4 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <AnalyticsSectionHeader
               title={t("perJobBreakdown")}
               description={t("perJobBreakdownDesc")}
@@ -655,6 +701,16 @@ function PipelineTab({
               eyebrow={t("jobDetail")}
               compact
             />
+            <div className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                value={perJobSearchInput}
+                onChange={(e) => setPerJobSearchInput(e.target.value)}
+                placeholder={t("searchJobs")}
+                className="w-full rounded-xl border border-border bg-background/80 py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted-foreground focus:border-sky-500/40 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+              />
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -670,12 +726,27 @@ function PipelineTab({
                 </tr>
               </thead>
               <tbody>
+                {pipeline.perJob.length === 0 && (
+                  <tr>
+                    <td colSpan={FUNNEL_STAGES.length + 3} className="px-4 py-10 text-center text-muted-foreground">
+                      {t("noJobMatches")}
+                    </td>
+                  </tr>
+                )}
                 {pipeline.perJob.map((job) => (
                   <tr key={job.jobId} className="border-b border-border/40 transition hover:bg-background/60">
-                    <td className="max-w-[240px] truncate px-4 py-3 font-medium text-foreground">{job.title}</td>
+                    <td className="max-w-[240px] truncate px-4 py-3 font-medium text-foreground">
+                      <Link
+                        href={`/${locale}/employer/applications?jobId=${job.jobId}`}
+                        title={t("viewApplications", { title: job.title })}
+                        className="hover:text-sky-700 hover:underline dark:hover:text-sky-300"
+                      >
+                        {job.title}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-center text-base font-bold text-foreground">{job.total}</td>
                     {FUNNEL_STAGES.map((stage) => {
-                      const stageCount = job.stages.find((s) => s.status === stage)?.count ?? 0;
+                      const stageCount = job.stages.find((s) => s.status === (STATUS_BY_STAGE[stage] ?? stage))?.count ?? 0;
                       return (
                         <td key={stage} className="px-4 py-3 text-center text-muted-foreground">
                           {stageCount > 0 ? (
@@ -705,6 +776,39 @@ function PipelineTab({
               </tbody>
             </table>
           </div>
+
+          {perJobMeta.totalPages > 1 && (
+            <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <p className="text-xs text-muted-foreground">
+                {t("perJobShowing", {
+                  from: (perJobMeta.page - 1) * perJobMeta.pageSize + 1,
+                  to: Math.min(perJobMeta.page * perJobMeta.pageSize, perJobMeta.total),
+                  total: perJobMeta.total,
+                })}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPerJobPage(Math.max(1, perJobPage - 1))}
+                  disabled={perJobMeta.page <= 1}
+                  className="inline-flex items-center gap-1 rounded-xl border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-sky-500/25 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" />
+                  {t("previousPage")}
+                </button>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t("pageOf", { page: perJobMeta.page, totalPages: perJobMeta.totalPages })}
+                </span>
+                <button
+                  onClick={() => setPerJobPage(Math.min(perJobMeta.totalPages, perJobPage + 1))}
+                  disabled={perJobMeta.page >= perJobMeta.totalPages}
+                  className="inline-flex items-center gap-1 rounded-xl border border-border bg-background/80 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-sky-500/25 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-sky-300"
+                >
+                  {t("nextPage")}
+                  <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" />
+                </button>
+              </div>
+            </div>
+          )}
         </AnalyticsPanel>
       )}
 

@@ -450,7 +450,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
   const body = await validateBody(req, applicationCreateSchema);
-  const { jobId, coverLetter, screeningAnswers } = body;
+  const { jobId, coverLetter, screeningAnswers, documentIds, includeProfileCv, portfolioUrl } = body;
 
   const job = await Job.findById(jobId).lean();
   if (!job || job.status !== "active") {
@@ -462,7 +462,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });
   }
 
-  const existing = await Application.findOne({ jobSeekerId: seeker._id, jobId }).lean();
+  // Withdrawn applications do not block re-applying.
+  const existing = await Application.findOne({
+    jobSeekerId: seeker._id,
+    jobId,
+    status: { $ne: "withdrawn" },
+  }).lean();
   if (existing) {
     return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
   }
@@ -492,11 +497,53 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const autoRejectBelow = empRecord?.workflow?.settings?.autoRejectBelow;
   const aiAutoScreen = empRecord?.workflow?.settings?.aiAutoScreen ?? false;
 
-  const seekerDoc = seeker as { _id: unknown; profileCompleteness?: number; updatedAt?: Date; documents?: { name: string; url: string; type: string }[] };
+  const seekerDoc = seeker as {
+    _id: unknown;
+    profileCompleteness?: number;
+    updatedAt?: Date;
+    documents?: { id?: string; name: string; category?: string; url: string; type?: string }[];
+    cv?: { originalUrl?: string };
+  };
   const isEasyApply = !!body.easyApply;
+
+  // Build the documents attached to THIS application.
+  // Only the seeker's own profile documents (by id) and parsed CV can be attached,
+  // preventing arbitrary client-supplied file URLs.
+  const profileDocs = seekerDoc.documents ?? [];
+  const selectedIds = new Set(documentIds ?? []);
+  const appDocuments: { name: string; url: string; type: string }[] = [];
+
+  for (const d of profileDocs) {
+    if (d.id && selectedIds.has(d.id)) {
+      appDocuments.push({ name: d.name, url: d.url, type: d.category ?? d.type ?? "other" });
+    }
+  }
+
+  const profileCvUrl = seekerDoc.cv?.originalUrl;
+  if (includeProfileCv && profileCvUrl) {
+    appDocuments.push({ name: "CV", url: profileCvUrl, type: "resume" });
+  }
+
+  if (portfolioUrl) {
+    appDocuments.push({ name: "Portfolio", url: portfolioUrl, type: "portfolio" });
+  }
+
+  // Fallback: if the seeker selected nothing, attach their resume documents and/or
+  // parsed CV so the employer always receives a CV.
+  if (appDocuments.length === 0) {
+    for (const d of profileDocs) {
+      if ((d.category ?? d.type) === "resume") {
+        appDocuments.push({ name: d.name, url: d.url, type: "resume" });
+      }
+    }
+    if (appDocuments.length === 0 && profileCvUrl) {
+      appDocuments.push({ name: "CV", url: profileCvUrl, type: "resume" });
+    }
+  }
+
   const { signals, score: bScore } = computeBehaviorSignals({
     profileCompleteness: seekerDoc.profileCompleteness ?? 0,
-    documents: seekerDoc.documents ?? [],
+    documents: appDocuments,
     coverLetter,
     source: isEasyApply ? "easy_apply" : "full_form",
     autoApplied: false,
@@ -508,6 +555,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     jobId,
     employerId: job.employerId,
     coverLetter,
+    documents: appDocuments,
     source: isEasyApply ? 'easy_apply' : 'full_form',
     status: "applied",
     appliedAt: new Date(),

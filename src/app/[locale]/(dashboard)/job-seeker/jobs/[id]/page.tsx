@@ -167,7 +167,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
         <div className="mx-auto max-w-6xl px-4 py-8">
           <section className="overflow-hidden rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-6 py-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-8 sm:py-7">
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_320px] xl:items-start">
+            <div>
               <div>
                 <div className="inline-flex rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
                   Job detail
@@ -245,29 +245,6 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   {renderJobDescription(job.description ?? "")}
                 </div>
               </div>
-
-              <aside className="rounded-[26px] border border-border/70 bg-background/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Quick apply</div>
-                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Apply with the profile you already built.</h2>
-                </div>
-                <div className="mt-4 space-y-2 rounded-[22px] border border-border/60 bg-card px-4 py-4 text-sm text-muted-foreground">
-                  <p>Use your saved profile details and attach your CV automatically when available.</p>
-                  {responseTimeDays ? (
-                    <p className="font-medium text-green-600">
-                      Typically responds within {responseTimeDays} day{responseTimeDays > 1 ? "s" : ""}.
-                    </p>
-                  ) : null}
-                </div>
-                <div className="mt-4">
-                  <EasyApply
-                    jobId={String(job._id)}
-                    jobTitle={job.title}
-                    locale={locale}
-                    screeningQuestions={(job as Record<string, unknown>).screeningQuestions as EasyApplyScreeningQuestion[] | undefined}
-                  />
-                </div>
-              </aside>
             </div>
           </section>
 
@@ -367,10 +344,30 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                       </div>
                     )}
 
+                    <div>
+                      <p className="mb-1 text-sm font-medium text-foreground">Experience</p>
+                      <p className="text-sm text-muted-foreground">
+                        {job.requirements.experienceMin != null
+                          ? `${job.requirements.experienceMin}${
+                              job.requirements.experienceMax != null
+                                ? `–${job.requirements.experienceMax}`
+                                : "+"
+                            } years`
+                          : "Not specified"}
+                      </p>
+                    </div>
+
                     {job.requirements.education && (
                       <div>
                         <p className="mb-1 text-sm font-medium text-foreground">Education</p>
                         <p className="text-sm text-muted-foreground">{job.requirements.education}</p>
+                      </div>
+                    )}
+
+                    {employer?.industry && (
+                      <div>
+                        <p className="mb-1 text-sm font-medium text-foreground">Industry</p>
+                        <p className="text-sm text-muted-foreground">{employer.industry}</p>
                       </div>
                     )}
 
@@ -413,6 +410,29 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
+              <aside className="rounded-[26px] border border-border/70 bg-background/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Quick apply</div>
+                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Apply with the profile you already built.</h2>
+                </div>
+                <div className="mt-4 space-y-2 rounded-[22px] border border-border/60 bg-card px-4 py-4 text-sm text-muted-foreground">
+                  <p>Use your saved profile details and attach your CV automatically when available.</p>
+                  {responseTimeDays ? (
+                    <p className="font-medium text-green-600">
+                      Typically responds within {responseTimeDays} day{responseTimeDays > 1 ? "s" : ""}.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="mt-4">
+                  <EasyApply
+                    jobId={String(job._id)}
+                    jobTitle={job.title}
+                    locale={locale}
+                    screeningQuestions={(job as Record<string, unknown>).screeningQuestions as EasyApplyScreeningQuestion[] | undefined}
+                  />
+                </div>
+              </aside>
+
               <section className="card-base rounded-[28px] p-5">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Employer profile</div>
                 <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">About the employer</h3>

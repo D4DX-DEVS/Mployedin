@@ -78,6 +78,17 @@ export interface IApplication extends Document {
   updatedAt: Date;
 }
 
+// Explicit sub-schema so the field literally named `type` is treated as a path
+// rather than a SchemaType declaration (a known Mongoose inline-definition pitfall).
+const ApplicationDocumentSchema = new Schema(
+  {
+    name: String,
+    url: String,
+    type: String,
+  },
+  { _id: false }
+);
+
 const ApplicationSchema = new Schema<IApplication>(
   {
     jobSeekerId: { type: Schema.Types.ObjectId, ref: "JobSeeker", required: true },
@@ -98,14 +109,7 @@ const ApplicationSchema = new Schema<IApplication>(
       ],
       default: "applied",
     },
-    documents: [
-      {
-        name: String,
-        url: String,
-        type: String,
-        _id: false,
-      },
-    ],
+    documents: [ApplicationDocumentSchema],
     aiMatchScore: Number,
     matchBreakdown: {
       skills: Number,

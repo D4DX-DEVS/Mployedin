@@ -167,29 +167,50 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx): Promise<NextResponse
     count: tj.count,
   }));
 
-  // 4. CONVERSION METRICS
-  const conversionStages = await Application.aggregate([
+  // 4. CONVERSION METRICS — cumulative "reached stage" counts.
+  // A candidate currently at a later stage has implicitly passed earlier ones,
+  // so counts use current status + statusHistory (never snapshot-only, which
+  // made "applied" shrink as candidates advanced and rates exceed 100%).
+  const FUNNEL_ORDER = ["applied", "shortlisted", "interview_scheduled", "selected", "offer", "hired"];
+  const maxRankData = await Application.aggregate([
     { $match: { jobId: { $in: jobIds } } },
     {
-      $facet: {
-        applied: [{ $match: { status: "applied" } }, { $count: "count" }],
-        shortlisted: [{ $match: { status: "shortlisted" } }, { $count: "count" }],
-        interview: [{ $match: { status: "interview_scheduled" } }, { $count: "count" }],
-        selected: [{ $match: { status: "selected" } }, { $count: "count" }],
+      $project: {
+        statuses: {
+          $setUnion: [["$status"], { $ifNull: ["$statusHistory.status", []] }],
+        },
       },
     },
+    {
+      $project: {
+        maxRank: {
+          $max: {
+            $map: {
+              input: "$statuses",
+              as: "s",
+              in: { $indexOfArray: [FUNNEL_ORDER, "$$s"] },
+            },
+          },
+        },
+      },
+    },
+    { $group: { _id: "$maxRank", count: { $sum: 1 } } },
   ]);
 
-  const conversionData = conversionStages[0];
+  const reachedAtLeast = (rank: number): number =>
+    maxRankData.reduce(
+      (sum, g) => sum + (Math.max(g._id ?? 0, 0) >= rank ? g.count : 0),
+      0
+    );
 
   // Count placements for "hired"
   const hiredCount = await Placement.countDocuments({ employerId });
 
   const conversion: ConversionMetrics = {
-    applied: conversionData.applied[0]?.count || 0,
-    shortlisted: conversionData.shortlisted[0]?.count || 0,
-    interview: conversionData.interview[0]?.count || 0,
-    selected: conversionData.selected[0]?.count || 0,
+    applied: reachedAtLeast(0),
+    shortlisted: reachedAtLeast(1),
+    interview: reachedAtLeast(2),
+    selected: reachedAtLeast(3),
     hired: hiredCount,
   };
 

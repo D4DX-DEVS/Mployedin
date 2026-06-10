@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 // Types
 export interface FunnelStage {
@@ -32,14 +32,23 @@ export interface AnalyticsData {
   conversion: ConversionMetrics;
 }
 
+export interface PerJobPageParams {
+  page: number;
+  pageSize: number;
+  q: string;
+}
+
 export interface PipelineData {
   stageDistribution: { stage: string; count: number }[];
+  funnel: { stage: string; count: number }[];
   perJob: {
     jobId: string;
     title: string;
     total: number;
     stages: { status: string; count: number }[];
   }[];
+  perJobMeta: { total: number; page: number; pageSize: number; totalPages: number };
+  jobOptions: { jobId: string; title: string; total: number }[];
   conversionRates: {
     appliedToShortlisted: number;
     shortlistedToInterview: number;
@@ -126,7 +135,8 @@ export interface ResponseTimeData {
 export const analyticsKeys = {
   all: ["analytics"] as const,
   overview: () => [...analyticsKeys.all, "overview"] as const,
-  pipeline: (jobId: string) => [...analyticsKeys.all, "pipeline", jobId] as const,
+  pipeline: (jobId: string, pageParams?: PerJobPageParams) =>
+    [...analyticsKeys.all, "pipeline", jobId, pageParams ?? null] as const,
   historical: (params: {
     range: string;
     customStart?: string;
@@ -143,9 +153,19 @@ async function fetchAnalyticsOverview(): Promise<AnalyticsData> {
   return res.json();
 }
 
-async function fetchAnalyticsPipeline(jobId: string): Promise<PipelineData> {
-  const url = `/api/employers/analytics/pipeline${jobId ? `?jobId=${jobId}` : ""}`;
-  const res = await fetch(url);
+async function fetchAnalyticsPipeline(
+  jobId: string,
+  pageParams?: PerJobPageParams
+): Promise<PipelineData> {
+  const params = new URLSearchParams();
+  if (jobId) params.set("jobId", jobId);
+  if (pageParams) {
+    params.set("page", String(pageParams.page));
+    params.set("pageSize", String(pageParams.pageSize));
+    if (pageParams.q) params.set("q", pageParams.q);
+  }
+  const qs = params.toString();
+  const res = await fetch(`/api/employers/analytics/pipeline${qs ? `?${qs}` : ""}`);
   if (!res.ok) throw new Error("Failed to fetch pipeline data");
   return res.json();
 }
@@ -188,11 +208,16 @@ export function useAnalyticsOverview(enabled = true) {
   });
 }
 
-export function useAnalyticsPipeline(jobId: string, enabled = true) {
+export function useAnalyticsPipeline(
+  jobId: string,
+  pageParams?: PerJobPageParams,
+  enabled = true
+) {
   return useQuery({
-    queryKey: analyticsKeys.pipeline(jobId),
-    queryFn: () => fetchAnalyticsPipeline(jobId),
+    queryKey: analyticsKeys.pipeline(jobId, pageParams),
+    queryFn: () => fetchAnalyticsPipeline(jobId, pageParams),
     staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
     enabled,
   });
 }

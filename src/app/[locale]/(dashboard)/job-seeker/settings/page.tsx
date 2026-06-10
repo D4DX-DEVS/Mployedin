@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailabilityCalendar, type DayAvailability } from "@/components/features/job-seeker/settings/AvailabilityCalendar";
+import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -869,6 +870,8 @@ export default function JobSeekerSettingsPage() {
                 )}
               </SettingCard>
             )}
+
+            <ChangeEmailCard />
           </TabsContent>
 
           {/* ════════════════════ RESUME & AI TAB ════════════════════ */}

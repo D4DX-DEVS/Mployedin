@@ -418,7 +418,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
               <div className="relative">
-                <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-[60%] text-muted-foreground" />
+                <Search className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -429,7 +429,8 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   onKeyDown={(e) => e.key === "Escape" && setSearchQuery("")}
                   placeholder={t("search.placeholder")}
                   aria-label={t("search.ariaLabel")}
-                  className="input-field h-12 w-full rounded-2xl border-border/70 bg-background/95 pe-12 ps-9 text-sm shadow-none"
+                  style={{ paddingInlineStart: "2.75rem", paddingInlineEnd: "3rem" }}
+                  className="input-field h-12 w-full rounded-2xl border-border/70 bg-background/95 text-sm shadow-none"
                 />
                 {searchQuery && (
                   <button

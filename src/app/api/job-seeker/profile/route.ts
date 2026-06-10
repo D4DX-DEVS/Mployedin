@@ -18,7 +18,15 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   const profile = await JobSeeker.findOne({ userId: ctx.userId }).lean();
 
   if (!profile) {
-    return NextResponse.json(null, { status: 204 });
+    // No profile yet (e.g. brand-new seeker). Return an empty object with 200
+    // rather than a 204 — a 204 response must not carry a body, so
+    // NextResponse.json(null, { status: 204 }) throws in the Response
+    // constructor and surfaces as a 500. An empty object is safely consumed
+    // by callers (preferences/skills pages) without throwing.
+    return NextResponse.json(
+      {},
+      { headers: { "Cache-Control": "no-store, max-age=0" } },
+    );
   }
 
   return NextResponse.json(profile, {

@@ -88,8 +88,28 @@ export default async function JobSeekerPage({
   // Score and rank recommended jobs server-side, excluding already-applied ones
   // Fully serialize to plain primitives — populated subdocs still carry Mongoose ObjectIds
   const seekerProfile = seekerProfileFromDoc(seeker);
+
+  // Relevance signal: drop jobs completely unrelated to the seeker — no skill
+  // overlap AND no role-title match (e.g. "Sales support staff" for a MERN/UI-UX
+  // profile). Only applied when the seeker has both skills and preferred roles.
+  const seekerSkillSet = new Set(seekerProfile.skills.map((s) => s.toLowerCase()));
+  const seekerRoleList = (seekerProfile.preferredRoles ?? []).map((r) => r.toLowerCase());
+  const hasRelevanceSignal = seekerSkillSet.size > 0 && seekerRoleList.length > 0;
+  const isRelevantJob = (job: Record<string, unknown>): boolean => {
+    if (!hasRelevanceSignal) return true;
+    const reqs = job.requirements as { skills?: string[] } | null;
+    const jobSkills = (reqs?.skills ?? []).map((s) => s.toLowerCase());
+    const skillOverlap = jobSkills.some((s) => seekerSkillSet.has(s));
+    const titleLower = String(job.title ?? "").toLowerCase();
+    const roleMatch = seekerRoleList.some(
+      (role) => titleLower.includes(role) || role.includes(titleLower),
+    );
+    return skillOverlap || roleMatch;
+  };
+
   const scoredJobs = (recentJobs as Array<Record<string, unknown>>)
     .filter((job) => !appliedJobIdSet.has(String(job._id)))
+    .filter(isRelevantJob)
     .map((job) => {
       const emp = job.employerId as { companyName?: string; logo?: string } | null;
       const loc = job.location as { city?: string; country?: string; isRemote?: boolean } | null;

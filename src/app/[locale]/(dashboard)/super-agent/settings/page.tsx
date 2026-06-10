@@ -18,6 +18,8 @@ import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
+import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
+import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import {
   COUNTRY_CURRENCIES,
   SUPPORTED_CURRENCIES,
@@ -1373,19 +1375,12 @@ function SecurityTab() {
             </div>
             <Switch defaultChecked />
           </div>
-
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-muted/20">
-            <div className="flex items-start gap-3">
-              <Shield className="w-4 h-4 text-muted-foreground mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Two-Factor Authentication</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Add an extra layer of security to your account</p>
-              </div>
-            </div>
-            <Badge variant="outline" className="text-xs">Coming Soon</Badge>
-          </div>
         </div>
       </SectionCard>
+
+      <TwoFactorCard />
+
+      <ChangeEmailCard />
 
       <SectionCard>
         <SectionHeader icon={AlertTriangle} title="Danger Zone" description="Irreversible account actions" />

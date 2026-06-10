@@ -1,4 +1,4 @@
-import NextAuth, { type NextAuthConfig } from "next-auth";
+import NextAuth, { CredentialsSignin, type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import LinkedIn from "next-auth/providers/linkedin";
 import Apple from "next-auth/providers/apple";
@@ -14,7 +14,8 @@ import { getFirebaseAdminAuth } from "@/lib/firebase/admin";
 import type { CompanyRole } from "@/models/CompanyUser";
 import logger from "@/lib/logger";
 import { fetchLinkedInExtras } from "@/lib/auth/linkedin-profile";
-import { encrypt } from "@/lib/security/encryption";
+import { encrypt, decrypt } from "@/lib/security/encryption";
+import { verifyTotp, hashRecoveryCode } from "@/lib/security/totp";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { ensureEmployerOwnerMembership } from "@/lib/employers/company-membership";
 
@@ -22,10 +23,24 @@ const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   rememberMe: z.string().optional(),
+  totpCode: z.string().optional(),
 });
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
+/** Thrown when a 2FA-enabled account signs in without a TOTP code. */
+class TwoFactorRequiredError extends CredentialsSignin {
+  code = "2fa_required";
+}
+/** Thrown when the provided TOTP / recovery code is wrong. */
+class TwoFactorInvalidError extends CredentialsSignin {
+  code = "2fa_invalid";
+}
+/** Thrown when the account is temporarily locked from failed attempts. */
+class AccountLockedError extends CredentialsSignin {
+  code = "account_locked";
+}
 
 export const authConfig: NextAuthConfig = {
   providers: [
@@ -55,7 +70,7 @@ export const authConfig: NextAuthConfig = {
         await connectDB();
         const user = await User.findOne({
           email: parsed.data.email.toLowerCase(),
-        }).select("+passwordHash +failedLoginAttempts +lockUntil");
+        }).select("+passwordHash +failedLoginAttempts +lockUntil +twoFactorSecretEnc +twoFactorRecoveryCodes");
 
         if (!user || !user.passwordHash) {
           logActivity({
@@ -75,7 +90,7 @@ export const authConfig: NextAuthConfig = {
             resource: "auth",
             meta: { email: parsed.data.email, reason: "account_locked" },
           });
-          return null;
+          throw new AccountLockedError();
         }
 
         // Check if account is active
@@ -94,11 +109,35 @@ export const authConfig: NextAuthConfig = {
         if (!valid) {
           // Increment failed attempts
           const attempts = (user.failedLoginAttempts || 0) + 1;
+          const nowLocked = attempts >= MAX_FAILED_ATTEMPTS;
           const update: Record<string, unknown> = { failedLoginAttempts: attempts };
-          if (attempts >= MAX_FAILED_ATTEMPTS) {
+          if (nowLocked) {
             update.lockUntil = new Date(Date.now() + LOCK_DURATION_MS);
           }
           await User.findByIdAndUpdate(user._id, update);
+
+          if (nowLocked) {
+            // Distinct audit event + best-effort notification to the account owner.
+            logActivity({
+              actorId: user._id.toString(),
+              actorRole: user.role,
+              action: "account.locked",
+              resource: "auth",
+              meta: { email: user.email, ip, failedAttempts: attempts, lockMinutes: LOCK_DURATION_MS / 60000 },
+            });
+            const appUrl =
+              process.env.NEXT_PUBLIC_BASE_URL ??
+              process.env.NEXTAUTH_URL ??
+              process.env.NEXT_PUBLIC_APP_URL ??
+              "http://localhost:3000";
+            sendEmail({
+              to: user.email,
+              ...EmailTemplates.accountLocked(user.name || "there", LOCK_DURATION_MS / 60000, `${appUrl}/en/forgot-password`),
+              userId: user._id.toString(),
+              source: "auth",
+              category: "security",
+            }).catch((err) => logger.warn({ err, userId: user._id.toString() }, "Failed to send account-locked email"));
+          }
 
           logActivity({
             actorId: user._id.toString(),
@@ -107,11 +146,67 @@ export const authConfig: NextAuthConfig = {
             resource: "auth",
             meta: {
               email: parsed.data.email,
-              reason: attempts >= MAX_FAILED_ATTEMPTS ? "account_locked" : "invalid_password",
+              reason: nowLocked ? "account_locked" : "invalid_password",
               failedAttempts: attempts,
             },
           });
+          if (nowLocked) throw new AccountLockedError();
           return null;
+        }
+
+        // ── Two-factor authentication (TOTP) ─────────────────────────────
+        // Enforced after password validation for enrolled accounts
+        // (admin / super_agent enroll via /api/user/2fa).
+        if (user.twoFactorEnabled && user.twoFactorSecretEnc) {
+          const totpCode = (parsed.data.totpCode ?? "").trim();
+          if (!totpCode) {
+            throw new TwoFactorRequiredError();
+          }
+
+          // Throttle code guesses per account (6-digit codes must not be brute-forceable).
+          const totpRl = checkRateLimit(`2fa-login:${user._id}`, { limit: 8, windowSec: 300, prefix: "2fa-login" });
+          if (!totpRl.allowed) {
+            logActivity({
+              actorId: user._id.toString(),
+              actorRole: user.role,
+              action: "login.failed",
+              resource: "auth",
+              meta: { email: user.email, reason: "2fa_rate_limited" },
+            });
+            throw new TwoFactorInvalidError();
+          }
+
+          const secret = decrypt(user.twoFactorSecretEnc);
+          let twoFaOk = verifyTotp(secret, totpCode);
+
+          // Fall back to single-use recovery codes.
+          if (!twoFaOk) {
+            const codeHash = hashRecoveryCode(totpCode);
+            if ((user.twoFactorRecoveryCodes ?? []).includes(codeHash)) {
+              await User.findByIdAndUpdate(user._id, {
+                $pull: { twoFactorRecoveryCodes: codeHash },
+              });
+              twoFaOk = true;
+              logActivity({
+                actorId: user._id.toString(),
+                actorRole: user.role,
+                action: "2fa.recovery_code_used",
+                resource: "auth",
+                meta: { email: user.email },
+              });
+            }
+          }
+
+          if (!twoFaOk) {
+            logActivity({
+              actorId: user._id.toString(),
+              actorRole: user.role,
+              action: "login.failed",
+              resource: "auth",
+              meta: { email: user.email, reason: "2fa_invalid" },
+            });
+            throw new TwoFactorInvalidError();
+          }
         }
 
         // Reset failed attempts + look up onboarding status in parallel
@@ -144,6 +239,8 @@ export const authConfig: NextAuthConfig = {
           rememberMe: parsed.data.rememberMe === "true",
         };
         } catch (err) {
+          // Propagate typed 2FA signals to the client (surfaced as result.code).
+          if (err instanceof CredentialsSignin) throw err;
           logger.error({ err }, "Credentials authorize error");
           return null;
         }

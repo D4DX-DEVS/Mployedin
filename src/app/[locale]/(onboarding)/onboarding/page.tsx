@@ -8,6 +8,7 @@ import { Check, ChevronRight, Loader2, X, Upload, Briefcase, GraduationCap, Spar
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TagAutocomplete, Autocomplete } from "@/components/ui/tag-autocomplete";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
@@ -80,12 +81,6 @@ const COUNTRY_CODES = [
 
 const NOTICE_PERIODS = ["15 Days", "1 Month", "2 Months", "3 Months", "More than 3 Months", "Serving Notice Period"];
 
-const SKILL_SUGGESTIONS = [
-  "JavaScript", "React", "Node.js", "Python", "Java", "SQL", "Excel",
-  "Project Management", "AutoCAD", "Accounting", "Customer Service", "Sales",
-  "HR", "Logistics", "Data Analysis", "Power BI", "Laravel", "PHP",
-];
-
 const INDUSTRY_OPTIONS = [
   "IT Services & Consulting", "Analytics / KPO / Research", "BPM / BPO",
   "Banking / Financial Services", "Healthcare / Pharma", "E-commerce",
@@ -109,19 +104,6 @@ const COURSE_SUGGESTIONS: Record<string, string[]> = {
 };
 
 const COURSE_TYPES = ["Full Time", "Part Time", "Distance Learning"];
-
-const SPEC_SUGGESTIONS = [
-  "Computer Science and Engineering (CSE)", "Electronics and Communication",
-  "Mechanical Engineering", "Civil Engineering", "Information Technology",
-  "Electrical Engineering", "Chemical Engineering", "Data Science",
-  "Finance", "Marketing", "Human Resources",
-];
-
-const LOCATION_SUGGESTIONS = [
-  "Dubai", "Abu Dhabi", "Riyadh", "Jeddah", "Doha", "Kuwait City",
-  "Muscat", "Manama", "Mumbai", "Bengaluru", "Delhi / NCR", "Hyderabad",
-  "Chennai", "Pune", "Kolkata", "Ahmedabad", "Remote",
-];
 
 const GENDERS = ["Male", "Female", "Transgender"];
 
@@ -674,20 +656,6 @@ export default function JobSeekerOnboardingPage() {
     }
   };
 
-  const addSkill = (skill: string) => {
-    const s = skill.trim();
-    if (s && !step1.skills.includes(s) && step1.skills.length < 30) {
-      setStep1((p) => ({ ...p, skills: [...p.skills, s], skillInput: "" }));
-    }
-  };
-
-  const addLocation = (loc: string) => {
-    const l = loc.trim();
-    if (l && !step3.preferredLocations.includes(l) && step3.preferredLocations.length < 10) {
-      setStep3((p) => ({ ...p, preferredLocations: [...p.preferredLocations, l], locationInput: "" }));
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#f1f2f4] flex flex-col">
       {/* Top bar */}
@@ -1166,30 +1134,14 @@ export default function JobSeekerOnboardingPage() {
                     {/* Key skills */}
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-800">Key skills <span className="text-red-500">*</span></Label>
-                      <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-blue-400 bg-blue-50/30 min-h-[44px]">
-                        {step1.skills.map((s) => (
-                          <TagChip key={s} label={s} onRemove={() => setStep1((p) => ({ ...p, skills: p.skills.filter((x) => x !== s) }))} />
-                        ))}
-                        <input
-                          value={step1.skillInput}
-                          onChange={(e) => setStep1((p) => ({ ...p, skillInput: e.target.value }))}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === ",") {
-                              e.preventDefault();
-                              addSkill(step1.skillInput);
-                            }
-                          }}
-                          placeholder={step1.skills.length === 0 ? "Type a skill and press Enter" : "Add more…"}
-                          className="outline-none text-sm flex-1 min-w-[150px] bg-transparent"
-                        />
-                      </div>
+                      <TagAutocomplete
+                        type="skills"
+                        value={step1.skills}
+                        onChange={(next) => setStep1((p) => ({ ...p, skills: next }))}
+                        placeholder={step1.skills.length === 0 ? "Type a skill and press Enter" : "Add more…"}
+                        max={30}
+                      />
                       <p className="text-xs text-gray-500">Recruiters look for candidates with specific key skills</p>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="text-xs text-gray-500">Suggestions:</span>
-                        {SKILL_SUGGESTIONS.filter((s) => !step1.skills.includes(s)).slice(0, 8).map((s) => (
-                          <SuggestionChip key={s} label={s} onClick={() => addSkill(s)} />
-                        ))}
-                      </div>
                     </div>
 
                     {/* Industry */}
@@ -1366,33 +1318,13 @@ export default function JobSeekerOnboardingPage() {
                             <TagChip label={step2.specialization} onRemove={() => { setStep2((p) => ({ ...p, specialization: "" })); setSpecConfirmed(false); }} />
                           </div>
                         ) : (
-                          <div className="space-y-2">
-                            <div className="relative">
-                              <Input
-                                value={step2.specialization}
-                                onChange={(e) => setStep2((p) => ({ ...p, specialization: e.target.value }))}
-                                onKeyDown={(e) => { if (e.key === "Enter" && step2.specialization.trim()) { e.preventDefault(); setSpecConfirmed(true); } }}
-                                placeholder="Eg. Computer Science (type and press Enter or pick below)"
-                                autoComplete="off"
-                                className="h-11 border-gray-300 focus:border-blue-500 pr-20"
-                              />
-                              {step2.specialization.trim() && !specConfirmed && (
-                                <button
-                                  type="button"
-                                  onClick={() => setSpecConfirmed(true)}
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-2 py-1 rounded"
-                                >
-                                  ✓ Confirm
-                                </button>
-                              )}
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <span className="text-xs text-gray-500">Suggestions</span>
-                              {SPEC_SUGGESTIONS.filter((s) => !step2.specialization || s.toLowerCase().includes(step2.specialization.toLowerCase())).map((s) => (
-                                <SuggestionChip key={s} label={s} onClick={() => { setStep2((p) => ({ ...p, specialization: s })); setSpecConfirmed(true); }} />
-                              ))}
-                            </div>
-                          </div>
+                          <Autocomplete
+                            type="specializations"
+                            value={step2.specialization}
+                            onChange={(v) => { setStep2((p) => ({ ...p, specialization: v })); setSpecConfirmed(true); }}
+                            placeholder="Eg. Computer Science"
+                            inputClassName="h-11 border-gray-300 focus:border-blue-500"
+                          />
                         )}
                       </div>
                     )}
@@ -1502,31 +1434,13 @@ export default function JobSeekerOnboardingPage() {
                 {/* Preferred work locations */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-800">Preferred work locations <span className="text-gray-400 font-normal">(Maximum 10)</span></Label>
-                  <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-gray-300 min-h-[44px] focus-within:border-blue-500">
-                    {step3.preferredLocations.map((l) => (
-                      <TagChip key={l} label={l} onRemove={() => setStep3((p) => ({ ...p, preferredLocations: p.preferredLocations.filter((x) => x !== l) }))} />
-                    ))}
-                    {step3.preferredLocations.length < 10 && (
-                      <input
-                        value={step3.locationInput}
-                        onChange={(e) => setStep3((p) => ({ ...p, locationInput: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === ",") {
-                            e.preventDefault();
-                            addLocation(step3.locationInput);
-                          }
-                        }}
-                        placeholder="Eg. Dubai, Riyadh, Mumbai"
-                        className="outline-none text-sm flex-1 min-w-[150px] bg-transparent"
-                      />
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs text-gray-500">Suggestions:</span>
-                    {LOCATION_SUGGESTIONS.filter((l) => !step3.preferredLocations.includes(l)).slice(0, 8).map((l) => (
-                      <SuggestionChip key={l} label={l} onClick={() => addLocation(l)} />
-                    ))}
-                  </div>
+                  <TagAutocomplete
+                    type="locations"
+                    value={step3.preferredLocations}
+                    onChange={(next) => setStep3((p) => ({ ...p, preferredLocations: next }))}
+                    placeholder="Eg. Dubai, Riyadh, Mumbai"
+                    max={10}
+                  />
                 </div>
 
                 {/* Preferred salary */}

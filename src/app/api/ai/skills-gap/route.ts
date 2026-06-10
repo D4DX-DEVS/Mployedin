@@ -41,6 +41,42 @@ function parsePriority(value: unknown): GapPriority {
   return "medium";
 }
 
+const SKILL_STOPWORDS = new Set(["and", "or", "the", "of", "for", "with", "a", "an"]);
+
+/** Tokenize a skill label into meaningful lowercase tokens (keeps tech tokens like aws/azure). */
+function skillTokens(skill: string): Set<string> {
+  return new Set(
+    skill
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .split(" ")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 1 && !SKILL_STOPWORDS.has(t)),
+  );
+}
+
+/**
+ * Whether two skill labels refer to roughly the same skill, tolerant of phrasing
+ * differences such as "Cloud Computing (AWS/Azure)" vs "Cloud Platforms (AWS/Azure)".
+ */
+function skillsRoughlyMatch(a: string, b: string): boolean {
+  const na = a.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  const nb = b.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  if (na.includes(nb) || nb.includes(na)) return true;
+
+  const ta = skillTokens(a);
+  const tb = skillTokens(b);
+  if (ta.size === 0 || tb.size === 0) return false;
+  let shared = 0;
+  for (const t of ta) {
+    if (tb.has(t)) shared++;
+  }
+  // Treat as the same skill when most tokens of the smaller label overlap.
+  return shared / Math.min(ta.size, tb.size) >= 0.6;
+}
+
 function normalizeAnalysis(payload: unknown): NormalizedSkillsGapAnalysis {
   const raw = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
 
@@ -273,6 +309,22 @@ Analyse the skill gap. Return ONLY a JSON object (no markdown):
   const text = await routeGenerate(prompt, "skills_gap");
   const rawAnalysis = parseAIJson(redactPII(text));
   const analysis = normalizeAnalysis(rawAnalysis);
+
+  // The model occasionally lists a "gap" the candidate already has under slightly
+  // different phrasing (e.g. "Cloud Computing (AWS/Azure)" when they hold
+  // "Cloud Platforms (AWS/Azure)"). Drop those so owned skills never show as gaps.
+  const removedGapSkills: string[] = [];
+  analysis.criticalGaps = analysis.criticalGaps.filter((gap) => {
+    const owned = dedupedCurrentSkills.some((skill) => skillsRoughlyMatch(skill, gap.skill));
+    if (owned) removedGapSkills.push(gap.skill);
+    return !owned;
+  });
+  // Promote any wrongly-flagged owned skill into strengths if not already present.
+  for (const removed of removedGapSkills) {
+    if (!analysis.existingStrengths.some((s) => skillsRoughlyMatch(s, removed))) {
+      analysis.existingStrengths.push(removed);
+    }
+  }
 
   const previousScore = Number(seeker.skillsCoachProgress?.lastOverallScore ?? 0);
   const normalizedRole = safeTargetRole ?? targetDesc;

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import {
   COUNTRY_CURRENCIES,
   SUPPORTED_CURRENCIES,
@@ -1384,6 +1385,8 @@ function SecurityTab() {
           </div>
         </div>
       </SectionCard>
+
+      <ChangeEmailCard />
 
       <SectionCard>
         <SectionHeader icon={AlertTriangle} title={t("security.dangerTitle")} description={t("security.dangerDescription")} />

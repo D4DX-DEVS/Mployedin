@@ -15,6 +15,10 @@ export interface IUser extends Document {
   isActive: boolean;
   isEmailVerified: boolean;
   emailVerificationToken?: string;
+  // Verified email-change flow
+  pendingEmail?: string;
+  emailChangeToken?: string;
+  emailChangeExpires?: Date;
   passwordResetToken?: string;
   passwordResetExpiry?: Date;
   passwordResetAttempts?: number;
@@ -25,6 +29,12 @@ export interface IUser extends Document {
   linkedinSub?: string;
   linkedinAccessToken?: string;
   appleSub?: string;
+  // Two-factor authentication (TOTP) — admin & super_agent
+  twoFactorEnabled: boolean;
+  twoFactorSecretEnc?: string;
+  twoFactorPendingSecretEnc?: string;
+  twoFactorRecoveryCodes?: string[];
+  twoFactorEnabledAt?: Date;
   avatar?: string;
   phone?: string;
   lastLogin?: Date;
@@ -63,6 +73,9 @@ const UserSchema = new Schema<IUser>(
     isActive: { type: Boolean, default: true },
     isEmailVerified: { type: Boolean, default: false },
     emailVerificationToken: { type: String, select: false },
+    pendingEmail: { type: String, select: false, lowercase: true, trim: true },
+    emailChangeToken: { type: String, select: false, index: true },
+    emailChangeExpires: { type: Date, select: false },
     passwordResetToken: { type: String, select: false, index: true },
     passwordResetExpiry: { type: Date, select: false },
     passwordResetAttempts: { type: Number, default: 0 },
@@ -77,6 +90,11 @@ const UserSchema = new Schema<IUser>(
     linkedinSub: { type: String, sparse: true },
     linkedinAccessToken: { type: String, select: false },
     appleSub: { type: String, sparse: true },
+    twoFactorEnabled: { type: Boolean, default: false },
+    twoFactorSecretEnc: { type: String, select: false },
+    twoFactorPendingSecretEnc: { type: String, select: false },
+    twoFactorRecoveryCodes: { type: [String], select: false },
+    twoFactorEnabledAt: { type: Date },
     avatar: { type: String },
     phone: { type: String },
     lastLogin: { type: Date },
@@ -87,10 +105,16 @@ const UserSchema = new Schema<IUser>(
       transform(_, ret: Record<string, unknown>) {
         delete ret.passwordHash;
         delete ret.emailVerificationToken;
+        delete ret.pendingEmail;
+        delete ret.emailChangeToken;
+        delete ret.emailChangeExpires;
         delete ret.passwordResetToken;
         delete ret.linkedinAccessToken;
         delete ret.failedLoginAttempts;
         delete ret.lockUntil;
+        delete ret.twoFactorSecretEnc;
+        delete ret.twoFactorPendingSecretEnc;
+        delete ret.twoFactorRecoveryCodes;
         return ret;
       },
     },

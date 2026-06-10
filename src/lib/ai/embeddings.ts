@@ -6,7 +6,10 @@
 import logger from "@/lib/logger";
 
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
-const EMBEDDING_MODEL = "google/gemini-embedding-exp";
+const EMBEDDING_MODEL = "google/gemini-embedding-001";
+
+/** Dimensionality of vectors produced by EMBEDDING_MODEL (Atlas index must match). */
+export const EMBEDDING_DIMENSIONS = 3072;
 
 function getApiKey(): string {
   const key = process.env.OPENROUTER_API_KEY;
@@ -16,7 +19,7 @@ function getApiKey(): string {
 
 /**
  * Generate embedding vector for a text string.
- * Returns a float array (768 dimensions for Gemini embedding).
+ * Returns a float array (EMBEDDING_DIMENSIONS, currently 3072 for gemini-embedding-001).
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   const trimmed = text.slice(0, 8000); // Limit input size

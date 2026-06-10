@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencySelect } from "@/components/ui/currency-select";
+import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
+import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 
 interface SmtpConfig {
   smtpEmail: string;
@@ -376,6 +378,10 @@ export default function AdminSettingsPage() {
           </div>
         </div>
       </div>
+
+      <TwoFactorCard />
+
+      <ChangeEmailCard />
 
       <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={saving}>

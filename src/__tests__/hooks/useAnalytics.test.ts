@@ -152,7 +152,7 @@ describe("useAnalyticsPipeline", () => {
 
   it("does not fetch when enabled is false", () => {
     const { result } = renderHook(
-      () => useAnalyticsPipeline("j1", false),
+      () => useAnalyticsPipeline("j1", undefined, false),
       { wrapper: createWrapper() },
     );
 

@@ -35,12 +35,15 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       // inline style= attributes (style-src-attr only accepts 'unsafe-inline',
       // never a nonce) and Next.js injects non-nonced inline <style> tags.
       // TODO: drop 'unsafe-inline' once all inline styles are extracted to CSS.
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com",
       "media-src 'self' data:",
-      "connect-src 'self' https://generativelanguage.googleapis.com https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com",
-      "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
+      "connect-src 'self' https://generativelanguage.googleapis.com https://openrouter.ai https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com https://*.pusher.com wss://*.pusher.com",
+      "worker-src 'self' blob:",
+      "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://www.youtube.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
+      "base-uri 'self'",
+      "form-action 'self'",
       "frame-ancestors 'none'",
     ].join("; "),
     ...SHARED_HEADERS,
@@ -50,7 +53,7 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
 /** Static headers for API routes (no inline scripts, no nonce needed). */
 export const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com https://openrouter.ai https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com https://*.pusher.com wss://*.pusher.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   ...SHARED_HEADERS,
 };
 

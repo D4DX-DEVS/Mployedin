@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
+import { encrypt } from "@/lib/security/encryption";
 
 /**
  * POST /api/employer/payment-config
@@ -25,15 +26,18 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     return NextResponse.json({ error: "Public key is required" }, { status: 400 });
   }
 
-  // Store config on employer document (paymentConfig sub-doc)
-  // Secret key should be encrypted in production — storing placeholder for now
+  if (secretKey !== undefined && typeof secretKey !== "string") {
+    return NextResponse.json({ error: "Invalid secret key" }, { status: 400 });
+  }
+
+  // Store config on employer document (paymentConfig sub-doc).
+  // SECURITY: secret key is encrypted at rest with AES-256-GCM (lib/security/encryption).
   const update = {
     "paymentConfig.gateway": gateway,
     "paymentConfig.publicKey": publicKey.trim(),
     "paymentConfig.isConfigured": true,
     "paymentConfig.configuredAt": new Date(),
-    // NOTE: In production, encrypt secretKey with AES-256 before storing
-    ...(secretKey ? { "paymentConfig.secretKeyHash": `encrypted:${Buffer.from(secretKey).toString("base64")}` } : {}),
+    ...(secretKey ? { "paymentConfig.secretKeyEnc": encrypt(secretKey) } : {}),
   };
 
   const employer = await Employer.findOneAndUpdate(
