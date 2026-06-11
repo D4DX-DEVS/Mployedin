@@ -233,7 +233,9 @@ export function JobFeedPage({ locale }: { locale: string }) {
             fetchNextPage();
           }
         },
-        { rootMargin: "0px 0px 300px 0px" },
+        // Prefetch the next batch ~1200px before the sentinel enters view so the
+        // feed loads ahead of the scroll position and never feels stuck.
+        { rootMargin: "0px 0px 1200px 0px" },
       );
       observerRef.current.observe(node);
     },
@@ -732,24 +734,44 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 </div>
               )}
 
-              {visibleJobs.map((job) => (
-                <JobFeedCard
-                  key={job._id}
-                  job={job}
-                  isSelected={selected.has(job._id)}
-                  isSaved={savedIds.has(job._id)}
-                  isApplied={appliedIds.has(job._id)}
-                  onToggleSelect={() => toggleSelect(job._id)}
-                  onSave={() => saveMutation.mutate(job._id)}
-                  onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("toast.applicationLimitReached"))}
-                  onApplyWithCv={() => handleApplyWithCv(job)}
-                  onHide={() => {
-                    setHidden((s) => new Set([...s, job._id]));
-                    toast.success(t("toast.jobHidden"));
-                  }}
-                  locale={locale}
-                />
-              ))}
+              {(() => {
+                const HIGH_MATCH_THRESHOLD = 60;
+                const highMatch = visibleJobs.filter((j) => j.matchScore >= HIGH_MATCH_THRESHOLD);
+                const otherJobs = visibleJobs.filter((j) => j.matchScore < HIGH_MATCH_THRESHOLD);
+                const renderCard = (job: FeedJob) => (
+                  <JobFeedCard
+                    key={job._id}
+                    job={job}
+                    isSelected={selected.has(job._id)}
+                    isSaved={savedIds.has(job._id)}
+                    isApplied={appliedIds.has(job._id)}
+                    onToggleSelect={() => toggleSelect(job._id)}
+                    onSave={() => saveMutation.mutate(job._id)}
+                    onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("toast.applicationLimitReached"))}
+                    onApplyWithCv={() => handleApplyWithCv(job)}
+                    onHide={() => {
+                      setHidden((s) => new Set([...s, job._id]));
+                      toast.success(t("toast.jobHidden"));
+                    }}
+                    locale={locale}
+                  />
+                );
+                return (
+                  <>
+                    {highMatch.map(renderCard)}
+                    {highMatch.length > 0 && otherJobs.length > 0 && (
+                      <div className="flex items-center gap-3 py-2">
+                        <div className="h-px flex-1 bg-border/60" />
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                          {t("divider.moreJobs")}
+                        </span>
+                        <div className="h-px flex-1 bg-border/60" />
+                      </div>
+                    )}
+                    {otherJobs.map(renderCard)}
+                  </>
+                );
+              })()}
 
               <div ref={sentinelRef} className="h-1" />
               {isFetchingNextPage && (

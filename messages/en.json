@@ -450,6 +450,9 @@
       "applicationLimitReached": "Application limit reached - upgrade your plan",
       "jobHidden": "Job hidden"
     },
+    "divider": {
+      "moreJobs": "More available jobs"
+    },
     "sidebar": {
       "profileSignal": "Profile signal",
       "preferencesTitle": "Your preferences",

@@ -35,7 +35,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const limitParam = Number(sp.get("limit") ?? "10");
   const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(20, Math.round(limitParam))) : 10;
   const sort = sp.get("sort") ?? "match";
-  const minScore = Number(sp.get("min_score") ?? "30");
+  const minScore = Number(sp.get("min_score") ?? "0");
   const poolPageParam = Number(sp.get("pool_page") ?? "1");
   const poolPage = Number.isFinite(poolPageParam) ? Math.max(1, Math.round(poolPageParam)) : 1;
 
@@ -137,14 +137,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return overlap || roleMatch;
   };
 
-  const relevantJobs = scoredAll.filter(isRelevant);
+  // Apply relevance as a soft score boost (not a hard gate) — irrelevant jobs
+  // get a -20 point penalty so they sink below high-match jobs but remain
+  // visible. This mirrors LinkedIn / Indeed behaviour: all active jobs show,
+  // best matches appear first.
+  const scoredWithBoost = scoredAll.map((job) => ({
+    ...job,
+    matchScore: isRelevant(job) ? job.matchScore : Math.max(0, job.matchScore - 20),
+  }));
 
-  // Apply the minimum-score filter over the relevant set. If nothing clears the
-  // bar, fall back to the best-scoring relevant jobs — but never pad the feed
-  // with unrelated jobs, which made suggestions look broken for sparse profiles.
-  let scored = relevantJobs.filter((j) => j.matchScore >= minScore);
-  if (scored.length === 0 && relevantJobs.length > 0) {
-    scored = [...relevantJobs].sort((a, b) => b.matchScore - a.matchScore).slice(0, limit);
+  // Apply the minimum-score filter (defaults to 0, meaning all jobs show).
+  let scored = scoredWithBoost.filter((j) => j.matchScore >= minScore);
+  if (scored.length === 0 && scoredWithBoost.length > 0) {
+    scored = [...scoredWithBoost].sort((a, b) => b.matchScore - a.matchScore);
   }
 
   // Sort within pool

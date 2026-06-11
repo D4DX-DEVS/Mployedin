@@ -450,6 +450,9 @@
       "applicationLimitReached": "تم بلوغ حد التقديم - قم بترقية خطتك",
       "jobHidden": "تم إخفاء الوظيفة"
     },
+    "divider": {
+      "moreJobs": "وظائف أخرى متاحة"
+    },
     "sidebar": {
       "profileSignal": "إشارات الملف",
       "preferencesTitle": "تفضيلاتك",
