@@ -1,7 +1,12 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export type SkillConfirmationStatus = "confirmed" | "denied" | "skipped";
-export type SkillConfirmationSource = "job_view" | "feed" | "recommendation" | "skills_coach";
+export type SkillConfirmationSource =
+  | "job_view"
+  | "feed"
+  | "recommendation"
+  | "skills_coach"
+  | "apply_flow";
 
 export interface ISkillConfirmation extends Document {
   _id: mongoose.Types.ObjectId;
@@ -25,7 +30,7 @@ const SkillConfirmationSchema = new Schema<ISkillConfirmation>(
     },
     source: {
       type: String,
-      enum: ["job_view", "feed", "recommendation", "skills_coach"],
+      enum: ["job_view", "feed", "recommendation", "skills_coach", "apply_flow"],
       default: "job_view",
     },
     jobId: { type: Schema.Types.ObjectId, ref: "Job" },

@@ -1,0 +1,235 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - banner [ref=e5]:
+        - generic [ref=e6]:
+          - link "Mployedin home" [ref=e7] [cursor=pointer]:
+            - /url: /en/job-seeker
+            - img "Mployedin" [ref=e8]
+          - navigation [ref=e9]:
+            - link "Home" [ref=e10] [cursor=pointer]:
+              - /url: /en/job-seeker
+            - link "AI Matches" [ref=e11] [cursor=pointer]:
+              - /url: /en/job-seeker/jobs
+            - link "Applications" [ref=e12] [cursor=pointer]:
+              - /url: /en/job-seeker/applications
+            - link "Support" [ref=e13] [cursor=pointer]:
+              - /url: /en/job-seeker/messages
+            - link "Profile" [ref=e14] [cursor=pointer]:
+              - /url: /en/job-seeker/profile
+          - button "Search... ⌘ K" [ref=e17]:
+            - img [ref=e18]
+            - generic [ref=e21]: Search...
+            - generic:
+              - generic: ⌘
+              - text: K
+      - main [ref=e22]:
+        - generic [ref=e25]:
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - generic [ref=e29]:
+                - generic [ref=e30]:
+                  - img [ref=e31]
+                  - text: AI Job Matching
+                - generic [ref=e34]:
+                  - heading "Browse AI-matched jobs faster." [level=1] [ref=e35]
+                  - paragraph [ref=e36]: AI scores every role against your profile. Switch to discovery mode to surface fresh openings without leaving the dashboard.
+              - generic [ref=e37]:
+                - generic [ref=e38]:
+                  - generic [ref=e39]: Live matches
+                  - generic [ref=e40]: "0"
+                  - paragraph [ref=e41]: Jobs aligned to your profile
+                - generic [ref=e42]:
+                  - generic [ref=e43]: Strong matches
+                  - generic [ref=e44]: "0"
+                  - paragraph [ref=e45]: Roles scoring 80% or higher
+                - generic [ref=e46]:
+                  - generic [ref=e47]: New this week
+                  - generic [ref=e48]: "0"
+                  - paragraph [ref=e49]: Matched roles posted in the last 7 days
+              - generic [ref=e50]:
+                - generic [ref=e51]:
+                  - img
+                  - textbox "Search jobs" [ref=e52]:
+                    - /placeholder: Search jobs by title, skills, or keyword...
+                - link "Refine preferences" [ref=e54] [cursor=pointer]:
+                  - /url: /en/job-seeker/preferences
+            - complementary [ref=e55]:
+              - generic [ref=e56]:
+                - generic [ref=e57]:
+                  - generic [ref=e58]: AI-powered search
+                  - heading "Keep the list relevant." [level=2] [ref=e59]
+                - img [ref=e61]
+              - generic [ref=e64]:
+                - generic [ref=e65]:
+                  - generic [ref=e66]: Best for
+                  - paragraph [ref=e67]: Profile match for strong-fit roles, discovery for fresh openings.
+                - generic [ref=e68]:
+                  - generic [ref=e69]: Quick control
+                  - paragraph [ref=e70]: Press Escape to clear the search box instantly.
+                - generic [ref=e71]:
+                  - generic [ref=e72]: Focus mode
+                  - paragraph [ref=e73]: Add work type, match score, or date filters for a tighter shortlist.
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - generic [ref=e77]: AI Matching
+              - tablist [ref=e78]:
+                - tab "AI Profile Match" [selected] [ref=e79]
+                - tab "You might like" [ref=e80]
+            - link "Edit preferences" [ref=e81] [cursor=pointer]:
+              - /url: /en/job-seeker/preferences
+              - text: Edit preferences
+              - img [ref=e82]
+          - generic [ref=e84]:
+            - generic [ref=e87]:
+              - generic [ref=e88]:
+                - generic [ref=e89]: Sort
+                - generic [ref=e90]:
+                  - button "Best match" [ref=e91]
+                  - button "Latest" [ref=e92]
+                  - button "Salary" [ref=e93]
+              - generic [ref=e94]: 0 of 0 jobs
+            - generic [ref=e164]:
+              - generic [ref=e165]:
+                - generic [ref=e166]:
+                  - generic [ref=e167]: Profile signal
+                  - heading "Your preferences" [level=3] [ref=e168]
+                  - paragraph [ref=e169]: These guide what stays high in the feed.
+                - generic [ref=e170]:
+                  - generic [ref=e171]: Preferred role
+                  - link "+ Set preferred role" [ref=e172] [cursor=pointer]:
+                    - /url: /en/job-seeker/preferences
+                    - generic [ref=e173]: + Set preferred role
+                    - img [ref=e174]
+                - generic [ref=e176]:
+                  - generic [ref=e177]: Location
+                  - link "+ Set location" [ref=e178] [cursor=pointer]:
+                    - /url: /en/job-seeker/preferences
+                    - generic [ref=e179]: + Set location
+                    - img [ref=e180]
+                - generic [ref=e182]:
+                  - generic [ref=e183]: Salary
+                  - link "+ Set salary" [ref=e184] [cursor=pointer]:
+                    - /url: /en/job-seeker/preferences
+                    - generic [ref=e185]: + Set salary
+                    - img [ref=e186]
+              - generic [ref=e188]:
+                - generic [ref=e190]:
+                  - generic [ref=e191]: Refine results
+                  - heading "Filters" [level=3] [ref=e192]
+                - generic [ref=e193]:
+                  - generic [ref=e194]: Work type
+                  - generic [ref=e195] [cursor=pointer]:
+                    - checkbox "Remote" [ref=e196]
+                    - checkbox
+                    - generic [ref=e197]: Remote
+                  - generic [ref=e198] [cursor=pointer]:
+                    - checkbox "On-site" [ref=e199]
+                    - checkbox
+                    - generic [ref=e200]: On-site
+                - generic [ref=e201]:
+                  - generic [ref=e202]: Match score
+                  - generic [ref=e203] [cursor=pointer]:
+                    - checkbox "80%+ match" [ref=e204]
+                    - checkbox
+                    - generic [ref=e205]: 80%+ match
+                  - generic [ref=e206] [cursor=pointer]:
+                    - checkbox "60-79% match" [ref=e207]
+                    - checkbox
+                    - generic [ref=e208]: 60-79% match
+                  - generic [ref=e209] [cursor=pointer]:
+                    - checkbox "Below 60%" [ref=e210]
+                    - checkbox
+                    - generic [ref=e211]: Below 60%
+                - generic [ref=e213]: Date posted
+                - generic [ref=e214] [cursor=pointer]:
+                  - checkbox "Last 3 days" [ref=e215]
+                  - checkbox
+                  - generic [ref=e216]: Last 3 days
+                - generic [ref=e217] [cursor=pointer]:
+                  - checkbox "Last week" [ref=e218]
+                  - checkbox
+                  - generic [ref=e219]: Last week
+                - generic [ref=e220] [cursor=pointer]:
+                  - checkbox "Last month" [ref=e221]
+                  - checkbox
+                  - generic [ref=e222]: Last month
+      - contentinfo [ref=e224]:
+        - generic [ref=e225]:
+          - generic [ref=e226]:
+            - generic [ref=e227]:
+              - generic [ref=e228]:
+                - paragraph [ref=e229]: Digital hiring platform
+                - img "Mployedin" [ref=e230]
+                - paragraph [ref=e231]: MPLOYEDIN brings job discovery, AI matching, and employer workflows into one cleaner hiring experience for Gulf markets.
+              - link "Browse jobs" [ref=e233] [cursor=pointer]:
+                - /url: /en/jobs
+                - text: Browse jobs
+                - img [ref=e234]
+              - generic [ref=e236]:
+                - generic [ref=e237]:
+                  - img [ref=e238]
+                  - paragraph [ref=e241]: MPLOYEDIN UK LTD, X2 Greenleaf Walk, Southall, UB1 1FR
+                - generic [ref=e242]:
+                  - img [ref=e243]
+                  - link "support@mployedin.com" [ref=e246] [cursor=pointer]:
+                    - /url: mailto:support@mployedin.com
+              - generic [ref=e247]:
+                - generic [ref=e248]: Follow us
+                - navigation "Follow us" [ref=e249]:
+                  - link "WhatsApp" [ref=e250] [cursor=pointer]:
+                    - /url: https://whatsapp.com/channel/0029VaiIpxg2ER6cM4IX4D41
+                    - img [ref=e251]
+                  - link "Instagram" [ref=e253] [cursor=pointer]:
+                    - /url: https://www.instagram.com/mployedin_jobs?igsh=MTE1MzJob3p5ZDFhMA==
+                    - img [ref=e254]
+            - generic [ref=e258]:
+              - generic [ref=e259]:
+                - heading "Platform" [level=3] [ref=e260]
+                - list [ref=e261]:
+                  - listitem [ref=e262]:
+                    - link "Discover jobs" [ref=e263] [cursor=pointer]:
+                      - /url: /en/jobs
+                  - listitem [ref=e264]:
+                    - link "Build your profile" [ref=e265] [cursor=pointer]:
+                      - /url: /en/register
+                  - listitem [ref=e266]:
+                    - link "Hiring solutions" [ref=e267] [cursor=pointer]:
+                      - /url: /en/employer-register
+                  - listitem [ref=e268]:
+                    - link "Workspace login" [ref=e269] [cursor=pointer]:
+                      - /url: /en/login
+              - generic [ref=e270]:
+                - heading "Company" [level=3] [ref=e271]
+                - list [ref=e272]:
+                  - listitem [ref=e273]:
+                    - link "Privacy" [ref=e274] [cursor=pointer]:
+                      - /url: /en/privacy
+                  - listitem [ref=e275]:
+                    - link "Terms" [ref=e276] [cursor=pointer]:
+                      - /url: /en/terms
+                  - listitem [ref=e277]:
+                    - link "Cookies" [ref=e278] [cursor=pointer]:
+                      - /url: /en/cookies
+                  - listitem [ref=e279]:
+                    - link "GDPR" [ref=e280] [cursor=pointer]:
+                      - /url: /en/gdpr
+                  - listitem [ref=e281]:
+                    - link "Support" [ref=e282] [cursor=pointer]:
+                      - /url: /en/contact
+          - generic [ref=e283]:
+            - paragraph [ref=e284]: © 2026 MPLOYEDIN. All rights reserved.
+            - generic [ref=e285]:
+              - link "Privacy" [ref=e286] [cursor=pointer]:
+                - /url: /en/privacy
+              - link "Terms" [ref=e287] [cursor=pointer]:
+                - /url: /en/terms
+              - link "Cookies" [ref=e288] [cursor=pointer]:
+                - /url: /en/cookies
+              - link "GDPR" [ref=e289] [cursor=pointer]:
+                - /url: /en/gdpr
+              - link "Support" [ref=e290] [cursor=pointer]:
+                - /url: /en/contact
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e296] [cursor=pointer]:
+    - img [ref=e297]

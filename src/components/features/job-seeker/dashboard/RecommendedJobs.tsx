@@ -16,10 +16,12 @@ import {
   BookmarkCheck,
   CheckCircle,
   ArrowUpDown,
+  FileText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { ApplyWithCvDialog } from "@/components/features/job-seeker/feed/ApplyWithCvDialog";
 
 interface JobPage {
   jobs: RecommendedJob[];
@@ -111,6 +113,7 @@ export function RecommendedJobs({ locale }: { locale: string }) {
   );
 
   const { allowed: applyAllowed } = useFeatureGate("applicationsSubmitted");
+  const [cvApplyJob, setCvApplyJob] = useState<RecommendedJob | null>(null);
 
   const applyMutation = useMutation({
     mutationFn: (jobId: string) =>
@@ -294,21 +297,36 @@ export function RecommendedJobs({ locale }: { locale: string }) {
                     <Bookmark className="h-4 w-4" />
                   )}
                 </Button>
-                <Button
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error("Application limit reached — upgrade your plan")}
-                  disabled={!applyAllowed || isApplied || (applyMutation.isPending && applyMutation.variables === job._id)}
-                >
-                  {isApplied ? (
-                    <>
-                      <CheckCircle className="mr-1 h-3 w-3" />
-                      Applied
-                    </>
-                  ) : (
-                    "Apply"
+                <div className="flex items-center gap-1.5">
+                  {!isApplied && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => applyAllowed ? setCvApplyJob(job) : toast.error("Application limit reached — upgrade your plan")}
+                      disabled={!applyAllowed}
+                      title="Apply with a chosen or updated CV"
+                    >
+                      <FileText className="mr-1 h-3 w-3" />
+                      With CV
+                    </Button>
                   )}
-                </Button>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error("Application limit reached — upgrade your plan")}
+                    disabled={!applyAllowed || isApplied || (applyMutation.isPending && applyMutation.variables === job._id)}
+                  >
+                    {isApplied ? (
+                      <>
+                        <CheckCircle className="mr-1 h-3 w-3" />
+                        Applied
+                      </>
+                    ) : (
+                      "Apply"
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           );
@@ -322,6 +340,21 @@ export function RecommendedJobs({ locale }: { locale: string }) {
           <JobCardSkeleton />
           <JobCardSkeleton />
         </div>
+      )}
+
+      {cvApplyJob && (
+        <ApplyWithCvDialog
+          jobId={cvApplyJob._id}
+          jobTitle={cvApplyJob.title}
+          open={!!cvApplyJob}
+          onOpenChange={(o) => { if (!o) setCvApplyJob(null); }}
+          onApplied={(jobId) => {
+            setAppliedIds((s) => new Set([...s, jobId]));
+            toast.success("Application submitted!");
+            qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+            qc.invalidateQueries({ queryKey: ["recommended-jobs"] });
+          }}
+        />
       )}
     </div>
   );

@@ -1,0 +1,478 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e132]:
+      - banner [ref=e133]:
+        - generic [ref=e134]:
+          - link "Mployedin home" [ref=e135] [cursor=pointer]:
+            - /url: /en/job-seeker
+            - img "Mployedin" [ref=e136]
+          - navigation [ref=e137]:
+            - link "Home" [ref=e139] [cursor=pointer]:
+              - /url: /en/job-seeker
+            - link "AI Matches" [ref=e140] [cursor=pointer]:
+              - /url: /en/job-seeker/jobs
+            - link "Applications" [ref=e141] [cursor=pointer]:
+              - /url: /en/job-seeker/applications
+            - link "Support" [ref=e142] [cursor=pointer]:
+              - /url: /en/job-seeker/messages
+            - link "Profile" [ref=e143] [cursor=pointer]:
+              - /url: /en/job-seeker/profile
+          - button "Search... ⌘ K" [ref=e146]:
+            - img [ref=e147]
+            - generic [ref=e611]: Search...
+            - generic:
+              - generic: ⌘
+              - text: K
+          - generic [ref=e150]:
+            - button "Switch to dark mode" [ref=e151]:
+              - img
+            - generic [ref=e152]:
+              - button "Switch to English" [ref=e154] [cursor=pointer]:
+                - generic [ref=e155]: EN
+              - button "Switch to Arabic" [ref=e156] [cursor=pointer]:
+                - generic [ref=e157]: AR
+            - button "1" [ref=e158]:
+              - img
+              - generic [ref=e159]: "1"
+            - button "Muhammed Ilyas MK" [ref=e160] [cursor=pointer]:
+              - img "Muhammed Ilyas MK" [ref=e161]
+      - main [ref=e162]:
+        - generic [ref=e165]:
+          - generic [ref=e167]:
+            - generic [ref=e168]:
+              - generic [ref=e169]:
+                - heading "React Developer" [level=1] [ref=e170]
+                - paragraph [ref=e171]: Also exploring UI/UX Designer, Full Stack Developer
+                - generic [ref=e172]:
+                  - generic [ref=e173]: United Arab Emirates, India
+                  - generic [ref=e174]: •
+                  - generic [ref=e175]: 50,000-200,000 INR
+              - generic [ref=e176]:
+                - link "Browse AI Matches" [ref=e177] [cursor=pointer]:
+                  - /url: /en/job-seeker/jobs
+                  - img
+                  - text: Browse AI Matches
+                - link "Refine" [ref=e178] [cursor=pointer]:
+                  - /url: /en/job-seeker/preferences
+                  - img
+                  - text: Refine
+                - button "AI suggestions" [ref=e179]:
+                  - img [ref=e180]
+                  - text: AI suggestions
+            - generic [ref=e183]:
+              - generic [ref=e184]: 6 active matches
+              - generic [ref=e185]: 12 applications
+              - generic [ref=e186]: 0 saved jobs
+              - generic [ref=e187]: 0 interviews
+              - generic [ref=e188]: 0 profile views
+          - generic [ref=e189]:
+            - generic [ref=e190]:
+              - generic [ref=e191]:
+                - generic [ref=e192]:
+                  - generic [ref=e193]:
+                    - generic [ref=e194]: Recommended jobs
+                    - heading "Best-fit roles from your live profile signal" [level=2] [ref=e195]
+                  - link "View all jobs" [ref=e196] [cursor=pointer]:
+                    - /url: /en/job-seeker/jobs
+                    - text: View all jobs
+                    - img [ref=e197]
+                - generic [ref=e199]:
+                  - 'link "d4dx New Posted Just now React Developer d4dx Bengaluru, India 100,000-120,000 INR Suggested for your profile Match score: 80 percent View details" [ref=e200] [cursor=pointer]':
+                    - /url: /en/job-seeker/jobs/6a2a7dc85b12d27e174bbaf7
+                    - generic [ref=e201]:
+                      - generic [ref=e202]:
+                        - img "d4dx" [ref=e204]
+                        - generic [ref=e205]:
+                          - generic [ref=e206]:
+                            - generic [ref=e207]: New
+                            - generic [ref=e208]: Posted Just now
+                          - generic [ref=e209]:
+                            - heading "React Developer" [level=3] [ref=e210]
+                            - paragraph [ref=e211]: d4dx
+                          - generic [ref=e212]:
+                            - generic [ref=e213]:
+                              - img [ref=e214]
+                              - text: Bengaluru, India
+                            - generic [ref=e217]:
+                              - img [ref=e218]
+                              - text: 100,000-120,000 INR
+                            - generic [ref=e221]:
+                              - img [ref=e222]
+                              - text: Suggested for your profile
+                      - generic [ref=e225]:
+                        - 'generic "Match score: 80 percent" [ref=e226]':
+                          - generic [ref=e227]: Match score
+                          - generic [ref=e228]: 80%
+                        - generic [ref=e229]:
+                          - text: View details
+                          - img [ref=e230]
+                  - 'link "TS Posted 4w ago Senior React Developer TechCorp Solutions Dubai, United Arab Emirates 20,000-30,000 AED Suggested for your profile Match score: 79 percent View details" [ref=e232] [cursor=pointer]':
+                    - /url: /en/job-seeker/jobs/69fc96f5d1fdd19f81bdf31e
+                    - generic [ref=e233]:
+                      - generic [ref=e234]:
+                        - generic [ref=e236]: TS
+                        - generic [ref=e237]:
+                          - generic [ref=e239]: Posted 4w ago
+                          - generic [ref=e240]:
+                            - heading "Senior React Developer" [level=3] [ref=e241]
+                            - paragraph [ref=e242]: TechCorp Solutions
+                          - generic [ref=e243]:
+                            - generic [ref=e244]:
+                              - img [ref=e245]
+                              - text: Dubai, United Arab Emirates
+                            - generic [ref=e248]:
+                              - img [ref=e249]
+                              - text: 20,000-30,000 AED
+                            - generic [ref=e252]:
+                              - img [ref=e253]
+                              - text: Suggested for your profile
+                      - generic [ref=e256]:
+                        - 'generic "Match score: 79 percent" [ref=e257]':
+                          - generic [ref=e258]: Match score
+                          - generic [ref=e259]: 79%
+                        - generic [ref=e260]:
+                          - text: View details
+                          - img [ref=e261]
+                  - 'link "d4dx Posted 9w ago Full Stack Developer (React & Backend) d4dx Kochi, India 1,200,000-1,200,000 INR Suggested for your profile Match score: 73 percent View details" [ref=e263] [cursor=pointer]':
+                    - /url: /en/job-seeker/jobs/69d51382334c31b94cc87c06
+                    - generic [ref=e264]:
+                      - generic [ref=e265]:
+                        - img "d4dx" [ref=e267]
+                        - generic [ref=e268]:
+                          - generic [ref=e270]: Posted 9w ago
+                          - generic [ref=e271]:
+                            - heading "Full Stack Developer (React & Backend)" [level=3] [ref=e272]
+                            - paragraph [ref=e273]: d4dx
+                          - generic [ref=e274]:
+                            - generic [ref=e275]:
+                              - img [ref=e276]
+                              - text: Kochi, India
+                            - generic [ref=e279]:
+                              - img [ref=e280]
+                              - text: 1,200,000-1,200,000 INR
+                            - generic [ref=e283]:
+                              - img [ref=e284]
+                              - text: Suggested for your profile
+                      - generic [ref=e287]:
+                        - 'generic "Match score: 73 percent" [ref=e288]':
+                          - generic [ref=e289]: Match score
+                          - generic [ref=e290]: 73%
+                        - generic [ref=e291]:
+                          - text: View details
+                          - img [ref=e292]
+                  - 'link "d4dx New Posted Just now Frontend Developer d4dx Kozhikode, India 80,000-100,000 INR Suggested for your profile Match score: 72 percent View details" [ref=e294] [cursor=pointer]':
+                    - /url: /en/job-seeker/jobs/6a2a7dc85b12d27e174bbaf9
+                    - generic [ref=e295]:
+                      - generic [ref=e296]:
+                        - img "d4dx" [ref=e298]
+                        - generic [ref=e299]:
+                          - generic [ref=e300]:
+                            - generic [ref=e301]: New
+                            - generic [ref=e302]: Posted Just now
+                          - generic [ref=e303]:
+                            - heading "Frontend Developer" [level=3] [ref=e304]
+                            - paragraph [ref=e305]: d4dx
+                          - generic [ref=e306]:
+                            - generic [ref=e307]:
+                              - img [ref=e308]
+                              - text: Kozhikode, India
+                            - generic [ref=e311]:
+                              - img [ref=e312]
+                              - text: 80,000-100,000 INR
+                            - generic [ref=e315]:
+                              - img [ref=e316]
+                              - text: Suggested for your profile
+                      - generic [ref=e319]:
+                        - 'generic "Match score: 72 percent" [ref=e320]':
+                          - generic [ref=e321]: Match score
+                          - generic [ref=e322]: 72%
+                        - generic [ref=e323]:
+                          - text: View details
+                          - img [ref=e324]
+                  - 'link "d4dx New Posted Just now UI/UX Designer d4dx Kochi, India 95,000-115,000 INR Suggested for your profile Match score: 71 percent View details" [ref=e326] [cursor=pointer]':
+                    - /url: /en/job-seeker/jobs/6a2a7dc85b12d27e174bbaf6
+                    - generic [ref=e327]:
+                      - generic [ref=e328]:
+                        - img "d4dx" [ref=e330]
+                        - generic [ref=e331]:
+                          - generic [ref=e332]:
+                            - generic [ref=e333]: New
+                            - generic [ref=e334]: Posted Just now
+                          - generic [ref=e335]:
+                            - heading "UI/UX Designer" [level=3] [ref=e336]
+                            - paragraph [ref=e337]: d4dx
+                          - generic [ref=e338]:
+                            - generic [ref=e339]:
+                              - img [ref=e340]
+                              - text: Kochi, India
+                            - generic [ref=e343]:
+                              - img [ref=e344]
+                              - text: 95,000-115,000 INR
+                            - generic [ref=e347]:
+                              - img [ref=e348]
+                              - text: Suggested for your profile
+                      - generic [ref=e351]:
+                        - 'generic "Match score: 71 percent" [ref=e352]':
+                          - generic [ref=e353]: Match score
+                          - generic [ref=e354]: 71%
+                        - generic [ref=e355]:
+                          - text: View details
+                          - img [ref=e356]
+                  - 'link "d4dx New Remote Posted Just now Full Stack Developer d4dx Remote 150,000-180,000 INR Suggested for your profile Match score: 70 percent View details" [ref=e358] [cursor=pointer]':
+                    - /url: /en/job-seeker/jobs/6a2a7dc85b12d27e174bbaf8
+                    - generic [ref=e359]:
+                      - generic [ref=e360]:
+                        - img "d4dx" [ref=e362]
+                        - generic [ref=e363]:
+                          - generic [ref=e364]:
+                            - generic [ref=e365]: New
+                            - generic [ref=e366]: Remote
+                            - generic [ref=e367]: Posted Just now
+                          - generic [ref=e368]:
+                            - heading "Full Stack Developer" [level=3] [ref=e369]
+                            - paragraph [ref=e370]: d4dx
+                          - generic [ref=e371]:
+                            - generic [ref=e372]:
+                              - img [ref=e373]
+                              - text: Remote
+                            - generic [ref=e376]:
+                              - img [ref=e377]
+                              - text: 150,000-180,000 INR
+                            - generic [ref=e380]:
+                              - img [ref=e381]
+                              - text: Suggested for your profile
+                      - generic [ref=e384]:
+                        - 'generic "Match score: 70 percent" [ref=e385]':
+                          - generic [ref=e386]: Match score
+                          - generic [ref=e387]: 70%
+                        - generic [ref=e388]:
+                          - text: View details
+                          - img [ref=e389]
+                - generic [ref=e391]:
+                  - generic [ref=e392]:
+                    - generic [ref=e393]:
+                      - img [ref=e394]
+                      - text: Already applied
+                    - link "View all →" [ref=e397] [cursor=pointer]:
+                      - /url: /en/job-seeker/applications
+                  - generic [ref=e398]:
+                    - link "d4dx UI/UX Designer d4dx Applied" [ref=e399] [cursor=pointer]:
+                      - /url: /en/job-seeker/jobs/6a23a9a06b4777ff0ec3c93e
+                      - img "d4dx" [ref=e401]
+                      - generic [ref=e402]:
+                        - paragraph [ref=e403]: UI/UX Designer
+                        - paragraph [ref=e404]: d4dx
+                      - generic [ref=e405]: Applied
+                    - link "TS Full Stack Developer TechPark Solutions Applied" [ref=e406] [cursor=pointer]:
+                      - /url: /en/job-seeker/jobs/6a06c5e7fd02c160da6f8444
+                      - generic [ref=e408]: TS
+                      - generic [ref=e409]:
+                        - paragraph [ref=e410]: Full Stack Developer
+                        - paragraph [ref=e411]: TechPark Solutions
+                      - generic [ref=e412]: Applied
+                    - link "TS UI/UX Designer TechPark Solutions Applied" [ref=e413] [cursor=pointer]:
+                      - /url: /en/job-seeker/jobs/6a06c5e7fd02c160da6f8445
+                      - generic [ref=e415]: TS
+                      - generic [ref=e416]:
+                        - paragraph [ref=e417]: UI/UX Designer
+                        - paragraph [ref=e418]: TechPark Solutions
+                      - generic [ref=e419]: Applied
+                    - link "TS Product Manager TechCorp Solutions Applied" [ref=e420] [cursor=pointer]:
+                      - /url: /en/job-seeker/jobs/69fc96f5d1fdd19f81bdf320
+                      - generic [ref=e422]: TS
+                      - generic [ref=e423]:
+                        - paragraph [ref=e424]: Product Manager
+                        - paragraph [ref=e425]: TechCorp Solutions
+                      - generic [ref=e426]: Applied
+                    - link "MJ Junior Accountant Muneer Jeddah Applied" [ref=e427] [cursor=pointer]:
+                      - /url: /en/job-seeker/jobs/6a1ece073c1286dce6971e60
+                      - generic [ref=e429]: MJ
+                      - generic [ref=e430]:
+                        - paragraph [ref=e431]: Junior Accountant
+                        - paragraph [ref=e432]: Muneer Jeddah
+                      - generic [ref=e433]: Applied
+              - generic [ref=e434]:
+                - generic [ref=e435]:
+                  - generic [ref=e436]:
+                    - generic [ref=e437]: Priority actions
+                    - heading "Improve your profile-to-job fit in the next few minutes" [level=2] [ref=e438]
+                    - paragraph [ref=e439]: Clear, ranked updates that help you improve visibility and match quality without turning the page into a checklist wall.
+                  - button "Open AI suggestions" [ref=e440]:
+                    - img
+                    - text: Open AI suggestions
+                - generic [ref=e442]:
+                  - img [ref=e443]
+                  - generic [ref=e446]:
+                    - generic [ref=e447]: Your home setup already looks strong.
+                    - paragraph [ref=e448]: Browse fresh roles now, or keep refining your profile if you want even tighter recommendations.
+            - complementary [ref=e449]:
+              - generic [ref=e450]:
+                - generic [ref=e451]:
+                  - img "Muhammed Ilyas MK" [ref=e453]
+                  - generic [ref=e454]:
+                    - generic [ref=e455]:
+                      - heading "Muhammed Ilyas MK" [level=2] [ref=e456]
+                      - img [ref=e457]
+                    - paragraph [ref=e460]: As a dedicated MERN Stack Developer with a B-Tech in Computer Science, I specialize in building scalable, high-perform
+                - generic [ref=e461]:
+                  - generic [ref=e462]:
+                    - generic [ref=e463]: Profile completeness
+                    - generic [ref=e464]: 95%
+                  - 'progressbar "Profile completeness: 95 percent" [ref=e465]'
+                - generic [ref=e467]:
+                  - generic [ref=e468]: Top skills in your profile
+                  - generic [ref=e469]:
+                    - generic [ref=e470]: HTML
+                    - generic [ref=e471]: CSS
+                    - generic [ref=e472]: JavaScript
+                    - generic [ref=e473]: React.js
+                    - generic [ref=e474]: Node.js
+                    - generic [ref=e475]: Express.js
+                - generic [ref=e476]:
+                  - link "Update profile" [ref=e477] [cursor=pointer]:
+                    - /url: /en/job-seeker/profile
+                    - generic [ref=e478]:
+                      - img [ref=e479]
+                      - text: Update profile
+                    - img [ref=e483]
+                  - link "Update preferences" [ref=e485] [cursor=pointer]:
+                    - /url: /en/job-seeker/preferences
+                    - generic [ref=e486]:
+                      - img [ref=e487]
+                      - text: Update preferences
+                    - img [ref=e491]
+              - generic [ref=e493]:
+                - generic [ref=e494]:
+                  - generic [ref=e495]:
+                    - generic [ref=e496]: Quick access
+                    - heading "Stay close to your pipeline" [level=3] [ref=e497]
+                  - img [ref=e498]
+                - generic [ref=e500]:
+                  - link "Applications 12" [ref=e501] [cursor=pointer]:
+                    - /url: /en/job-seeker/applications
+                    - generic [ref=e502]:
+                      - img [ref=e503]
+                      - text: Applications
+                    - generic [ref=e506]: "12"
+                  - link "Interviews 0" [ref=e507] [cursor=pointer]:
+                    - /url: /en/job-seeker/interviews
+                    - generic [ref=e508]:
+                      - img [ref=e509]
+                      - text: Interviews
+                    - generic [ref=e511]: "0"
+                  - link "Preferences Edit" [ref=e512] [cursor=pointer]:
+                    - /url: /en/job-seeker/preferences
+                    - generic [ref=e513]:
+                      - img [ref=e514]
+                      - text: Preferences
+                    - generic [ref=e518]: Edit
+              - generic [ref=e519]:
+                - generic [ref=e520]:
+                  - generic [ref=e521]:
+                    - generic [ref=e522]:
+                      - img [ref=e523]
+                      - generic [ref=e526]: AI Daily Insights
+                    - paragraph [ref=e527]: Short, high-signal nudges based on your profile quality and job-market activity.
+                  - button "Refresh insights" [ref=e528]:
+                    - img [ref=e529]
+                - list [ref=e612]:
+                  - listitem [ref=e613]:
+                    - generic [ref=e614]: Full-Stack Development Demand
+                    - paragraph [ref=e615]: Today's market data for the Gulf region shows a 15% increase in demand for MERN stack developers. Your technical profile aligns perfectly with these trending roles.
+                  - listitem [ref=e616]:
+                    - generic [ref=e617]: Profile Visibility Boost
+                    - paragraph [ref=e618]: Your profile is at 95% completion. Adding a professional summary focusing on your React.js and Node.js projects will push you to 100%, significantly increasing your visibility to recruiters.
+                  - listitem [ref=e619]:
+                    - generic [ref=e620]: Optimize for ATS Filters
+                    - paragraph [ref=e621]: Many recruiters in the UAE and Saudi Arabia are currently filtering for candidates who demonstrate proficiency in modern state management tools alongside React.js.
+      - contentinfo [ref=e540]:
+        - generic [ref=e541]:
+          - generic [ref=e542]:
+            - generic [ref=e543]:
+              - generic [ref=e544]:
+                - paragraph [ref=e545]: Digital hiring platform
+                - img "Mployedin" [ref=e546]
+                - paragraph [ref=e547]: MPLOYEDIN brings job discovery, AI matching, and employer workflows into one cleaner hiring experience for Gulf markets.
+              - link "Browse jobs" [ref=e549] [cursor=pointer]:
+                - /url: /en/jobs
+                - text: Browse jobs
+                - img [ref=e550]
+              - generic [ref=e552]:
+                - generic [ref=e553]:
+                  - img [ref=e554]
+                  - paragraph [ref=e557]: MPLOYEDIN UK LTD, X2 Greenleaf Walk, Southall, UB1 1FR
+                - generic [ref=e558]:
+                  - img [ref=e559]
+                  - link "support@mployedin.com" [ref=e562] [cursor=pointer]:
+                    - /url: mailto:support@mployedin.com
+              - generic [ref=e563]:
+                - generic [ref=e564]: Follow us
+                - navigation "Follow us" [ref=e565]:
+                  - link "WhatsApp" [ref=e566] [cursor=pointer]:
+                    - /url: https://whatsapp.com/channel/0029VaiIpxg2ER6cM4IX4D41
+                    - img [ref=e567]
+                  - link "Instagram" [ref=e569] [cursor=pointer]:
+                    - /url: https://www.instagram.com/mployedin_jobs?igsh=MTE1MzJob3p5ZDFhMA==
+                    - img [ref=e570]
+            - generic [ref=e574]:
+              - generic [ref=e575]:
+                - heading "Platform" [level=3] [ref=e576]
+                - list [ref=e577]:
+                  - listitem [ref=e578]:
+                    - link "Discover jobs" [ref=e579] [cursor=pointer]:
+                      - /url: /en/jobs
+                  - listitem [ref=e580]:
+                    - link "Build your profile" [ref=e581] [cursor=pointer]:
+                      - /url: /en/register
+                  - listitem [ref=e582]:
+                    - link "Hiring solutions" [ref=e583] [cursor=pointer]:
+                      - /url: /en/employer-register
+                  - listitem [ref=e584]:
+                    - link "Workspace login" [ref=e585] [cursor=pointer]:
+                      - /url: /en/login
+              - generic [ref=e586]:
+                - heading "Company" [level=3] [ref=e587]
+                - list [ref=e588]:
+                  - listitem [ref=e589]:
+                    - link "Privacy" [ref=e590] [cursor=pointer]:
+                      - /url: /en/privacy
+                  - listitem [ref=e591]:
+                    - link "Terms" [ref=e592] [cursor=pointer]:
+                      - /url: /en/terms
+                  - listitem [ref=e593]:
+                    - link "Cookies" [ref=e594] [cursor=pointer]:
+                      - /url: /en/cookies
+                  - listitem [ref=e595]:
+                    - link "GDPR" [ref=e596] [cursor=pointer]:
+                      - /url: /en/gdpr
+                  - listitem [ref=e597]:
+                    - link "Support" [ref=e598] [cursor=pointer]:
+                      - /url: /en/contact
+          - generic [ref=e599]:
+            - paragraph [ref=e600]: © 2026 MPLOYEDIN. All rights reserved.
+            - generic [ref=e601]:
+              - link "Privacy" [ref=e602] [cursor=pointer]:
+                - /url: /en/privacy
+              - link "Terms" [ref=e603] [cursor=pointer]:
+                - /url: /en/terms
+              - link "Cookies" [ref=e604] [cursor=pointer]:
+                - /url: /en/cookies
+              - link "GDPR" [ref=e605] [cursor=pointer]:
+                - /url: /en/gdpr
+              - link "Support" [ref=e606] [cursor=pointer]:
+                - /url: /en/contact
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e61] [cursor=pointer]:
+    - img [ref=e62]
+  - alert [ref=e118]: MPLOYEDIN — AI-Powered Recruitment
+  - generic [ref=e120]:
+    - generic [ref=e121]:
+      - img "MPLOYEDIN" [ref=e122]
+      - generic [ref=e123]:
+        - paragraph [ref=e124]: Install MPLOYEDIN
+        - paragraph [ref=e125]: Add to your home screen for quick access and an app-like experience.
+      - button "Dismiss" [ref=e126]:
+        - img [ref=e127]
+    - button "Install App" [ref=e130]
+  - button "Open AI Assistant" [ref=e607]:
+    - img [ref=e608]

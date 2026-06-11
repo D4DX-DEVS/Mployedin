@@ -338,7 +338,7 @@ function calculateCompleteness(seeker: Record<string, unknown>, extracted: Recor
     { key: "experience", weight: 20, isArray: true },
     { key: "education", weight: 15, isArray: true },
     { key: "languages", weight: 5, isArray: true },
-    { key: "linkedin", weight: 5 },
+    { key: "socialLinks", weight: 5, isArray: true },
   ];
 
   for (const f of fields) {

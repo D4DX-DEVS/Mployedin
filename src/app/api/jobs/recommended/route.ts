@@ -4,8 +4,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
-import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc, getMatchedSkills, skillsOverlap, educationRank } from "@/lib/matchScore";
-import SkillConfirmation from "@/models/SkillConfirmation";
+import { calculateMatchScore, jobProfileFromDoc, getMatchedSkills, skillsOverlap, educationRank } from "@/lib/matchScore";
+import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 
 /**
  * GET /api/jobs/recommended
@@ -17,7 +17,7 @@ import SkillConfirmation from "@/models/SkillConfirmation";
  *   cursor     — last job _id from previous page (within current pool)
  *   limit      — items per infinite-scroll batch, default 10, max 20
  *   sort       — "match" (default) | "latest" | "salary"
- *   min_score  — minimum match score filter (default 30)
+ *   min_score  — minimum match score filter (default 0 = all jobs)
  *   pool_page  — macro page number (1-based), each pool holds up to POOL_SIZE jobs
  */
 
@@ -47,25 +47,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ jobs: [], nextCursor: null, total: 0 });
   }
 
-  const seekerProfile = seekerProfileFromDoc(seeker);
+  // Effective profile (base + confirmed skills) — shared with the dashboard
+  // surfaces so every page shows the same percentage for the same job.
+  const seekerProfile = await effectiveSeekerProfile(ctx.userId, seeker);
 
-  // Merge confirmed skills from SkillConfirmation into effective skills list
-  const confirmedSkills = await SkillConfirmation.find({
-    userId: ctx.userId,
-    status: "confirmed",
-  }).select("skill").lean();
-
-  const confirmedSet = new Set(confirmedSkills.map((c) => c.skill));
-  const existingLower = new Set(seekerProfile.skills.map((s) => s.toLowerCase()));
-  for (const cs of confirmedSet) {
-    if (!existingLower.has(cs.toLowerCase())) {
-      seekerProfile.skills.push(cs);
-    }
-  }
-
-  // Exclude already-applied jobs
+  // Exclude already-applied jobs — withdrawn applications don't count, since
+  // the apply endpoints allow re-applying after a withdrawal.
   const seekerId = (seeker as unknown as { _id: unknown })._id;
-  const appliedJobIds = await Application.find({ jobSeekerId: seekerId })
+  const appliedJobIds = await Application.find({ jobSeekerId: seekerId, status: { $ne: "withdrawn" } })
     .select("jobId")
     .lean()
     .then((apps) => apps.map((a) => a.jobId));
@@ -137,19 +126,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return overlap || roleMatch;
   };
 
-  // Apply relevance as a soft score boost (not a hard gate) — irrelevant jobs
-  // get a -20 point penalty so they sink below high-match jobs but remain
-  // visible. This mirrors LinkedIn / Indeed behaviour: all active jobs show,
-  // best matches appear first.
+  // Apply relevance as a soft RANKING penalty only — irrelevant jobs get a
+  // -20 point sortScore so they sink below high-match jobs but stay visible
+  // (LinkedIn / Indeed behaviour). The displayed matchScore is NOT altered so
+  // the feed shows the same percentage as the dashboard and other surfaces.
   const scoredWithBoost = scoredAll.map((job) => ({
     ...job,
-    matchScore: isRelevant(job) ? job.matchScore : Math.max(0, job.matchScore - 20),
+    sortScore: isRelevant(job) ? job.matchScore : Math.max(0, job.matchScore - 20),
   }));
 
   // Apply the minimum-score filter (defaults to 0, meaning all jobs show).
-  let scored = scoredWithBoost.filter((j) => j.matchScore >= minScore);
+  let scored = scoredWithBoost.filter((j) => j.sortScore >= minScore);
   if (scored.length === 0 && scoredWithBoost.length > 0) {
-    scored = [...scoredWithBoost].sort((a, b) => b.matchScore - a.matchScore);
+    scored = [...scoredWithBoost].sort((a, b) => b.sortScore - a.sortScore);
   }
 
   // Sort within pool
@@ -158,7 +147,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   } else if (sort === "salary") {
     scored.sort((a, b) => (b.salary?.max ?? 0) - (a.salary?.max ?? 0));
   } else {
-    scored.sort((a, b) => b.matchScore - a.matchScore);
+    scored.sort((a, b) => b.sortScore - a.sortScore);
   }
 
   const poolTotal = scored.length;

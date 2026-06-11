@@ -6,7 +6,7 @@
   "nav": {
     "home": "Home",
     "dashboard": "Dashboard",
-    "jobs": "AI Matches",
+    "jobs": "Jobs",
     "applications": "Applications",
     "messages": "Messages",
     "interviews": "Interviews",
@@ -392,17 +392,6 @@
       "editPreferences": "Edit preferences",
       "setPreferences": "Set Preferences"
     },
-    "aside": {
-      "eyebrow": "AI-powered search",
-      "title": "Keep the list relevant.",
-      "bestFor": "Best for",
-      "bestForText": "Profile match for strong-fit roles, discovery for fresh openings.",
-      "quickControl": "Quick control",
-      "quickControlText": "Press Escape to clear the search box instantly.",
-      "focusMode": "Focus mode",
-      "activeFilters": "{count} active filters are tightening the feed right now.",
-      "noFilters": "Add work type, match score, or date filters for a tighter shortlist."
-    },
     "tabs": {
       "eyebrow": "AI Matching",
       "profile": "AI Profile Match",
@@ -473,6 +462,10 @@
       "workType": "Work type",
       "remote": "Remote",
       "onsite": "On-site",
+      "experienceLevel": "Experience level",
+      "entryLevel": "Entry level (0-2 yrs)",
+      "midLevel": "Mid level (3-5 yrs)",
+      "seniorLevel": "Senior (6+ yrs)",
       "matchScore": "Match score",
       "match80": "80%+ match",
       "match60": "60-79% match",
@@ -535,6 +528,61 @@
       "cancel": "Cancel",
       "confirm": "Confirm & Apply",
       "applying": "Applying…"
+    },
+    "applyFlow": {
+      "title": "Apply to {company}",
+      "theEmployer": "the employer",
+      "profileCv": "Profile CV",
+      "back": "Back",
+      "next": "Next",
+      "submit": "Submit application",
+      "submitting": "Submitting…",
+      "cv": {
+        "heading": "Resume",
+        "subtitle": "Choose the CV to send with this application.",
+        "uploadCv": "Upload a different CV",
+        "uploading": "Uploading…",
+        "noCv": "No CV on file yet — upload one to continue."
+      },
+      "skills": {
+        "heading": "Confirm your skills",
+        "subtitle": "Tap the skills you have — we'll add them to your profile and improve your matches.",
+        "tapPrompt": "Do you have these skills?",
+        "alreadyHave": "Already on your profile",
+        "optionalNote": "Optional — confirming skills never affects this application, only your profile."
+      },
+      "questions": {
+        "heading": "A few questions",
+        "subtitle": "The employer asks applicants to answer these.",
+        "selectOption": "Select an option",
+        "yes": "Yes"
+      },
+      "review": {
+        "heading": "Review & submit",
+        "matchSummary": "You're a {score}% match for this role.",
+        "position": "Position",
+        "company": "Company",
+        "cv": "CV",
+        "noCv": "No CV selected",
+        "skills": "Skills",
+        "skillsValue": "{count} confirmed",
+        "questions": "Questions",
+        "questionsValue": "{count} answered",
+        "dataNotice": "Your profile and selected CV will be shared with {company}."
+      },
+      "success": {
+        "title": "Application sent!",
+        "subtitle": "Your application for {jobTitle} is on its way to {company}.",
+        "matchBadge": "{score}% match",
+        "done": "Done"
+      },
+      "errors": {
+        "loadFailed": "Could not load your details. Please try again.",
+        "uploadFailed": "Upload failed. Please try again.",
+        "applyFailed": "Failed to apply. Please try again.",
+        "selectCv": "Please select or upload a CV first.",
+        "requiredQuestion": "Please answer: {label}"
+      }
     }
   },
   "agentOffers": {

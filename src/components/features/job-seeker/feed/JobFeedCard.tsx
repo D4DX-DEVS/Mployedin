@@ -15,7 +15,6 @@ import {
   Users,
   Check,
   Zap,
-  FileText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ShareJob } from "@/components/shared/ShareJob";
@@ -50,7 +49,6 @@ interface JobCardProps {
   isApplied: boolean;
   onSave: () => void;
   onApply: () => void;
-  onApplyWithCv: () => void;
   onHide: () => void;
   locale: string;
   showMatchScore?: boolean;
@@ -164,7 +162,6 @@ export const JobFeedCard = memo(function JobFeedCard({
   isApplied,
   onSave,
   onApply,
-  onApplyWithCv,
   onHide,
   locale,
   showMatchScore = true,
@@ -384,15 +381,6 @@ export const JobFeedCard = memo(function JobFeedCard({
                 {isSaved ? <BookmarkCheck className="h-3 w-3" /> : <Bookmark className="h-3 w-3" />}
                 <span className="hidden sm:inline">{isSaved ? t("saved") : t("save")}</span>
               </button>
-              {!isApplied && (
-                <button
-                  onClick={onApplyWithCv}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-primary/40 bg-primary/[0.06] px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  <span>{t("applyWithCv")}</span>
-                </button>
-              )}
               <button
                 onClick={onApply}
                 disabled={isApplied}

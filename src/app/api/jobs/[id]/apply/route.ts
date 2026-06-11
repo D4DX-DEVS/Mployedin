@@ -14,6 +14,7 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { inngest } from "@/lib/inngest/client";
 import { logActivity } from "@/lib/audit/log";
+import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -46,7 +47,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const [job, seeker, seekerUser] = await Promise.all([
     Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status screeningQuestions").lean(),
-    JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt").lean(),
+    JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl").lean(),
     User.findById(ctx.userId).select("email name").lean(),
   ]);
 
@@ -85,9 +86,26 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const employer = await Employer.findById(job.employerId).select("companyName userId notificationPrefs").lean();
   const company = employer?.companyName ?? "";
 
+  // Attach the seeker's CV so the employer always receives one — parity with
+  // POST /api/applications: resume-category profile documents first, then the
+  // parsed profile CV as fallback.
+  const seekerDocs = (seeker as {
+    documents?: { name: string; category?: string; type?: string; url: string }[];
+    cv?: { originalUrl?: string };
+  });
+  const appDocuments: { name: string; url: string; type: string }[] = [];
+  for (const d of seekerDocs.documents ?? []) {
+    if ((d.category ?? d.type) === "resume") {
+      appDocuments.push({ name: d.name, url: d.url, type: "resume" });
+    }
+  }
+  if (appDocuments.length === 0 && seekerDocs.cv?.originalUrl) {
+    appDocuments.push({ name: "CV", url: seekerDocs.cv.originalUrl, type: "resume" });
+  }
+
   const { signals, score: bScore } = computeBehaviorSignals({
     profileCompleteness: (seeker as { profileCompleteness?: number }).profileCompleteness ?? 0,
-    documents: [],
+    documents: appDocuments,
     source: "easy_apply",
     autoApplied: false,
     lastActiveAt: (seeker as { updatedAt?: Date }).updatedAt,
@@ -101,6 +119,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     source: "easy_apply",
     autoApplied: false,
     appliedAt: new Date(),
+    documents: appDocuments,
     statusHistory: [{ status: "applied", changedAt: new Date() }],
     behaviorSignals: signals,
     behaviorScore: bScore,
@@ -151,6 +170,15 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       }).catch(() => {});
     }
   }
+
+  // In-app notification to the candidate (parity with POST /api/applications)
+  notifyApplicationReceived(
+    ctx.userId,
+    "",
+    String(job.title ?? "the position"),
+    company || "the employer",
+    String(application._id)
+  ).catch(() => { /* non-blocking */ });
 
   // Fire ActivityEvent (non-blocking — don't fail the response if this errors)
   ActivityEvent.create({

@@ -142,6 +142,33 @@ describe("calculateMatchScore", () => {
     expect(result).toBe(100);
   });
 
+  it("treats salary as neutral when seeker and job currencies differ", () => {
+    const result = calculateMatchScore(
+      { ...baseSeeker, salaryExpectation: 100000, salaryCurrency: "INR" },
+      { ...baseJob, salaryMin: 5000, salaryMax: 7000, salaryCurrency: "AED" }
+    );
+    // currencies differ → salary neutral 0.5 → 0.5×20 = 10
+    // skills: 40, location: 20, experience: 20, salary: 10 = 90
+    expect(result).toBe(90);
+  });
+
+  it("compares salary normally when currencies match", () => {
+    const result = calculateMatchScore(
+      { ...baseSeeker, salaryCurrency: "USD" },
+      { ...baseJob, salaryCurrency: "usd" }
+    );
+    expect(result).toBe(100);
+  });
+
+  it("converts lakh-denominated LPA amounts to rupees before comparing", () => {
+    const result = calculateMatchScore(
+      { ...baseSeeker, salaryExpectation: 100000 }, // 100k/month
+      { ...baseJob, salaryMin: 12, salaryMax: 12, salaryPeriod: "lpa" }
+    );
+    // 12 (lakhs) → 1.2M/year → 100k/month → salary = 1.0
+    expect(result).toBe(100);
+  });
+
   it("penalizes a job requiring one level above the seeker's qualification", () => {
     const result = calculateMatchScore(
       { ...baseSeeker, educationLevel: 3 }, // bachelor

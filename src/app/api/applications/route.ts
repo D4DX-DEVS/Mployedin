@@ -16,22 +16,12 @@ import { validateBody } from "@/lib/validators";
 import { applicationCreateSchema } from "@/lib/validators/applications";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
-import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
-import { AI_TOKEN_LIMITS, redactPII, sanitizeAIInput } from "@/lib/ai/sanitize";
+import { inngest } from "@/lib/inngest/client";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AuthCtx = any;
-
-function sanitizeAiList(values: string[] | undefined, maxItems = 20, maxLength = 80): string {
-  const cleaned = (values ?? [])
-    .map((value) => sanitizeAIInput(value, maxLength))
-    .filter(Boolean)
-    .slice(0, maxItems);
-
-  return cleaned.length > 0 ? cleaned.join(", ") : "Not specified";
-}
 
 // GET /api/applications — paginated list (filtered by role)
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
@@ -472,16 +462,32 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
   }
 
-  // Validate required screening questions are answered
-  const jobScreeningQuestions = (job as Record<string, unknown>).screeningQuestions as Array<{ id: string; label: string; required: boolean }> | undefined;
+  // Validate required screening questions are answered, and that typed
+  // questions (number/date) received parseable values.
+  const jobScreeningQuestions = (job as Record<string, unknown>).screeningQuestions as Array<{ id: string; label: string; required: boolean; type?: string }> | undefined;
   if (jobScreeningQuestions && jobScreeningQuestions.length > 0) {
     const answerMap = new Map((screeningAnswers ?? []).map((a: { questionId: string }) => [a.questionId, a]));
     for (const q of jobScreeningQuestions) {
-      if (q.required) {
-        const answer = answerMap.get(q.id) as { answer?: string | string[] | boolean } | undefined;
-        if (!answer || answer.answer === "" || answer.answer === undefined || (Array.isArray(answer.answer) && answer.answer.length === 0)) {
+      const answer = answerMap.get(q.id) as { answer?: string | string[] | boolean } | undefined;
+      const isEmpty =
+        !answer || answer.answer === "" || answer.answer === undefined ||
+        (Array.isArray(answer.answer) && answer.answer.length === 0);
+      if (q.required && isEmpty) {
+        return NextResponse.json(
+          { error: `Required screening question "${q.label}" must be answered` },
+          { status: 400 }
+        );
+      }
+      if (!isEmpty && typeof answer?.answer === "string") {
+        if (q.type === "number" && !Number.isFinite(Number(answer.answer))) {
           return NextResponse.json(
-            { error: `Required screening question "${q.label}" must be answered` },
+            { error: `Answer to "${q.label}" must be a number` },
+            { status: 400 }
+          );
+        }
+        if (q.type === "date" && isNaN(new Date(answer.answer).getTime())) {
+          return NextResponse.json(
+            { error: `Answer to "${q.label}" must be a valid date` },
             { status: 400 }
           );
         }
@@ -571,71 +577,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     { $addToSet: { applicantIds: seeker._id } }
   );
 
-  // aiAutoScreen: if enabled, compute AI match score immediately and apply auto-reject if threshold set
+  // aiAutoScreen: scoring + auto-reject runs asynchronously via Inngest so the
+  // seeker's apply request never blocks on an LLM round-trip.
   if (aiAutoScreen) {
-    try {
-      const seekerDoc = seeker as Record<string, unknown>;
-      const jobDoc = job as Record<string, unknown>;
-      const jobReqs = jobDoc.requirements as { skills?: string[]; experienceMin?: number; experienceMax?: number } | undefined;
-      const jobLoc = jobDoc.location as { city?: string; country?: string; isRemote?: boolean } | undefined;
-      const locationStr = sanitizeAIInput(
-        jobLoc?.isRemote ? "Remote" : [jobLoc?.city, jobLoc?.country].filter(Boolean).join(", ") || "N/A",
-        120
-      );
-      const requiredSkills = sanitizeAiList(jobReqs?.skills, 20, 60);
-      const expRange = sanitizeAIInput(jobReqs ? `${jobReqs.experienceMin ?? 0}–${jobReqs.experienceMax ?? 10}+ years` : "N/A", 40);
-      const seekerExperience = seekerDoc.experience as Array<{ jobTitle?: string; isCurrent?: boolean }> | undefined;
-      const currentTitle = sanitizeAIInput(seekerExperience?.find((e) => e.isCurrent)?.jobTitle ?? "N/A", 120);
-      const seekerSkills = sanitizeAiList(seekerDoc.skills as string[] | undefined, 25, 60);
-      const seekerLangs = (seekerDoc.languages as Array<{ language: string; proficiency: string }> | undefined ?? [])
-        .map((language) => sanitizeAIInput(`${language.language} (${language.proficiency})`, 60))
-        .filter(Boolean)
-        .join(", ") || "N/A";
-      const jobTitle = sanitizeAIInput(String(jobDoc.title ?? "N/A"), 120);
-      const jobDescription = sanitizeAIInput(String(jobDoc.description ?? ""), 500);
-
-      const prompt = `You are a recruitment AI. Score the match between this job seeker and job posting.
-
-JOB:
-Title: ${jobTitle}
-Location: ${locationStr}
-Required Skills: ${requiredSkills}
-Experience Required: ${expRange}
-Description: ${jobDescription}
-
-JOB SEEKER:
-Current Title: ${currentTitle}
-Skills: ${seekerSkills}
-Years of Experience: ${sanitizeAIInput(String(seekerDoc.totalExperienceYears ?? "N/A"), 20)}
-Languages: ${seekerLangs}
-
-Return JSON only: {"score":<0-100>,"breakdown":{"skills":<0-100>,"experience":<0-100>,"location":<0-100>},"strengths":[],"gaps":[]}`;
-
-      const raw = redactPII(
-        await generateText(prompt, GEMINI_MODELS.flash, AI_TOKEN_LIMITS.match)
-      ).replace(/```json\n?|```/g, "").trim();
-
-      const matchData = JSON.parse(raw);
-      application.aiMatchScore = matchData.score;
-      application.matchBreakdown = {
-        skills: matchData.breakdown?.skills ?? 0,
-        experience: matchData.breakdown?.experience ?? 0,
-        overall: matchData.score,
-      };
-      application.matchStrengths = matchData.strengths ?? [];
-      application.matchGaps = matchData.gaps ?? [];
-
-      // Apply auto-reject with the freshly computed score
-      if (autoRejectBelow !== undefined && application.aiMatchScore < autoRejectBelow) {
-        application.status = "rejected";
-        application.rejectionReason = `AI match score (${application.aiMatchScore}) below threshold (${autoRejectBelow})`;
-        application.statusHistory.push({ status: "rejected", changedAt: new Date(), note: "Auto-rejected by AI screening" });
-      }
-
-      await application.save();
-    } catch {
-      // Non-blocking: scoring failure never fails the job seeker's submission
-    }
+    inngest.send({
+      name: "application/ai-screen",
+      data: {
+        applicationId: String(application._id),
+        ...(autoRejectBelow !== undefined ? { autoRejectBelow } : {}),
+      },
+    }).catch(() => { /* non-blocking */ });
   }
 
   await logActivity({

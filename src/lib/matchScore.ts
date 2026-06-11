@@ -17,6 +17,8 @@ export interface SeekerProfile {
   locations?: string[];
   experienceYears: number;
   salaryExpectation: number; // mid-point of preferred salary range, 0 disables salary component
+  /** ISO currency code of salaryExpectation (e.g. "USD", "INR"). "" if unknown. */
+  salaryCurrency?: string;
   /** Preferred job type: "remote" | "hybrid" | "onsite" | "any" */
   jobType?: string;
   /** Preferred role keywords (lower-cased). Used for bonus only. */
@@ -34,6 +36,8 @@ export interface JobProfile {
   salaryMax: number;
   /** Pay period for salaryMin/Max. Used to normalize to monthly. Defaults to "monthly". */
   salaryPeriod?: "monthly" | "yearly" | "lpa";
+  /** ISO currency code of salaryMin/Max. "" if unknown. */
+  salaryCurrency?: string;
   /** 0 = no minimum */
   minExp: number;
   /** 30 = no cap */
@@ -233,10 +237,22 @@ export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): num
   // ── Salary (20%) ─────────────────────────────────────────────────────
   const salaryScore = (() => {
     if (seeker.salaryExpectation <= 0) return 1; // no expectation → full score
+    // Different currencies can't be compared numerically — treat salary as
+    // neutral rather than producing a garbage 0/1 score.
+    const seekerCur = (seeker.salaryCurrency ?? "").toUpperCase().trim();
+    const jobCur = (job.salaryCurrency ?? "").toUpperCase().trim();
+    if (seekerCur && jobCur && seekerCur !== jobCur) return 0.5;
     // Normalize job pay to a monthly figure so monthly vs yearly/LPA jobs are
     // compared against the seeker's (monthly) expectation on the same basis.
     const periodDivisor = job.salaryPeriod === "yearly" || job.salaryPeriod === "lpa" ? 12 : 1;
-    const jobMid = ((job.salaryMin + job.salaryMax) / 2) / periodDivisor;
+    let annualizedMid = (job.salaryMin + job.salaryMax) / 2;
+    // Defensive: "lpa" amounts are stored as full rupees (12 LPA = 1,200,000),
+    // but if an employer entered the figure in lakhs (e.g. 12), convert it —
+    // no real annual salary in rupees is below 1,000.
+    if (job.salaryPeriod === "lpa" && annualizedMid > 0 && annualizedMid < 1000) {
+      annualizedMid *= 100_000;
+    }
+    const jobMid = annualizedMid / periodDivisor;
     if (jobMid <= 0) return 0.5;
     const diff = Math.abs(seeker.salaryExpectation - jobMid) / jobMid;
     if (diff <= 0.1) return 1;
@@ -296,7 +312,7 @@ export function blendBehaviorScore(
 export function seekerProfileFromDoc(seeker: {
   skills?: string[];
   preferredCountries?: string[];
-  preferredSalary?: { min?: number; max?: number };
+  preferredSalary?: { min?: number; max?: number; currency?: string };
   preferredJobType?: string;
   preferredRoles?: string[];
   experience?: Array<{
@@ -335,6 +351,7 @@ export function seekerProfileFromDoc(seeker: {
     locations: (seeker.preferredCountries ?? []).map((c) => c.toLowerCase()),
     experienceYears: Math.round(experienceYears * 10) / 10,
     salaryExpectation,
+    salaryCurrency: seeker.preferredSalary?.currency ?? "",
     jobType: seeker.preferredJobType ?? "any",
     preferredRoles: (seeker.preferredRoles ?? []).map((r) => r.toLowerCase()),
     educationLevel,
@@ -346,7 +363,7 @@ export function seekerProfileFromDoc(seeker: {
  */
 export function jobProfileFromDoc(job: {
   requirements?: { skills?: string[]; experienceMin?: number; experienceMax?: number; education?: string };
-  salary?: { min?: number; max?: number; period?: "monthly" | "yearly" | "lpa" };
+  salary?: { min?: number; max?: number; period?: "monthly" | "yearly" | "lpa"; currency?: string };
   location?: { country?: string; isRemote?: boolean };
   title?: string;
 }): JobProfile {
@@ -357,6 +374,7 @@ export function jobProfileFromDoc(job: {
     salaryMin: job.salary?.min ?? 0,
     salaryMax: job.salary?.max ?? 0,
     salaryPeriod: job.salary?.period ?? "monthly",
+    salaryCurrency: job.salary?.currency ?? "",
     minExp: job.requirements?.experienceMin ?? 0,
     maxExp: job.requirements?.experienceMax ?? 30,
     title: job.title?.toLowerCase() ?? "",

@@ -7,6 +7,7 @@ import { reEngagementCron, profileCompletionCron } from "@/lib/inngest/reEngagem
 import { weeklyDigestCron } from "@/lib/inngest/weeklyDigest";
 import { jobExpiryAlertsCron } from "@/lib/inngest/jobExpiryAlerts";
 import { similarJobsAfterApply } from "@/lib/inngest/similarJobsEmail";
+import { aiScreenApplication } from "@/lib/inngest/aiScreenApplication";
 // TODO: Re-add autoApplyFunction & autoApplyDailyReset when auto-apply feature is ready
 // import { autoApplyFunction, autoApplyDailyReset } from "@/lib/inngest/autoApply";
 
@@ -21,5 +22,6 @@ export const { GET, POST, PUT } = serve({
     weeklyDigestCron,
     jobExpiryAlertsCron,
     similarJobsAfterApply,
+    aiScreenApplication,
   ],
 });

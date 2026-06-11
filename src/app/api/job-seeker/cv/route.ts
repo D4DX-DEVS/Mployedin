@@ -4,13 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
 import { uploadFile, deleteFile } from "@/lib/storage/spaces";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-
-const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
+import { validateUploadedFile } from "@/lib/security/file-validation";
 
 // POST /api/job-seeker/cv — upload resume/CV file
 async function postHandler(req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
@@ -26,14 +20,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
-  if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: "File too large. Maximum 10MB." }, { status: 400 });
-  }
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return NextResponse.json(
-      { error: "Invalid file type. Allowed: PDF, DOC, DOCX." },
-      { status: 400 }
-    );
+  // Size + MIME whitelist + magic-byte check (same validation as cv-extract)
+  const bytes = await file.arrayBuffer();
+  const validationError = validateUploadedFile(file, "cv", bytes);
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
   const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("cv");

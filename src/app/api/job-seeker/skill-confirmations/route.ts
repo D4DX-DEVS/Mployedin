@@ -12,7 +12,7 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
 const confirmationSchema = z.object({
   skill: z.string().min(1).max(100).trim(),
   status: z.enum(["confirmed", "denied", "skipped"]),
-  source: z.enum(["job_view", "feed", "recommendation", "skills_coach"]).optional().default("job_view"),
+  source: z.enum(["job_view", "feed", "recommendation", "skills_coach", "apply_flow"]).optional().default("job_view"),
   jobId: z.string().max(50).optional(),
 });
 

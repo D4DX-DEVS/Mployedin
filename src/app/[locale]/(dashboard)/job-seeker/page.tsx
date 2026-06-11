@@ -7,7 +7,8 @@ import Interview from "@/models/Interview";
 import SavedJob from "@/models/SavedJob";
 import ProfileView from "@/models/ProfileView";
 import Job from "@/models/Job";
-import { calculateMatchScore, seekerProfileFromDoc, jobProfileFromDoc } from "@/lib/matchScore";
+import { calculateMatchScore, jobProfileFromDoc } from "@/lib/matchScore";
+import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import { JobSeekerHomePage } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import type { InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 
@@ -48,7 +49,7 @@ export default async function JobSeekerPage({
   const now = new Date();
 
   // Fetch applied job IDs and snippets in parallel with other counts
-  const [appCount, interviewCount, savedCount, viewCount, recentJobs, appliedApps] = await Promise.all([
+  const [appCount, interviewCount, savedCount, viewCount, recentJobs, appliedApps, allActiveApps] = await Promise.all([
     Application.countDocuments({ jobSeekerId: seekerId }),
     Interview.countDocuments({
       jobSeekerId: seekerId,
@@ -75,19 +76,22 @@ export default async function JobSeekerPage({
       .sort({ createdAt: -1 })
       .limit(5)
       .lean(),
+    // ALL non-withdrawn applications — the exclusion set must cover every
+    // applied job (the 5-item list above is for display only), and withdrawn
+    // jobs must stay recommendable (parity with /api/jobs/recommended).
+    Application.find({ jobSeekerId: seekerId, status: { $ne: "withdrawn" } })
+      .select("jobId")
+      .lean(),
   ]);
 
   // Build a Set of applied job IDs for fast exclusion
   const appliedJobIdSet = new Set(
-    (appliedApps as Array<{ jobId?: { _id?: unknown } | unknown }>).map((a) => {
-      const jid = (a.jobId as { _id?: unknown } | null)?._id ?? a.jobId;
-      return String(jid);
-    })
+    (allActiveApps as Array<{ jobId?: unknown }>).map((a) => String(a.jobId))
   );
 
   // Score and rank recommended jobs server-side, excluding already-applied ones
   // Fully serialize to plain primitives — populated subdocs still carry Mongoose ObjectIds
-  const seekerProfile = seekerProfileFromDoc(seeker);
+  const seekerProfile = await effectiveSeekerProfile(userId, seeker);
 
   // Relevance signal: drop jobs completely unrelated to the seeker — no skill
   // overlap AND no role-title match (e.g. "Sales support staff" for a MERN/UI-UX

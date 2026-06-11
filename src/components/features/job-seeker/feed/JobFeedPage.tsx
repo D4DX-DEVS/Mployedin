@@ -16,12 +16,9 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { JobFeedCard, type FeedJob } from "./JobFeedCard";
 import { JobFeedSidebar, type FeedFilters } from "./JobFeedSidebar";
-import { ApplyWithCvDialog } from "./ApplyWithCvDialog";
-import { EasyApplyConfirmDialog } from "./EasyApplyConfirmDialog";
+import { EasyApplyFlowDialog } from "./EasyApplyFlowDialog";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -64,6 +61,14 @@ function passesFilters(job: FeedJob, filters: FeedFilters): boolean {
     const inWeek = filters.dateRanges.includes("week") && age <= 7 * DAY;
     const inMonth = filters.dateRanges.includes("month") && age <= 30 * DAY;
     if (!in3d && !inWeek && !inMonth) return false;
+  }
+
+  if (filters.experienceLevels.length > 0) {
+    const min = job.requirements.experienceMin ?? 0;
+    const entry = filters.experienceLevels.includes("entry") && min < 3;
+    const mid = filters.experienceLevels.includes("mid") && min >= 3 && min < 6;
+    const senior = filters.experienceLevels.includes("senior") && min >= 6;
+    if (!entry && !mid && !senior) return false;
   }
 
   return true;
@@ -172,18 +177,17 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const employerIdParam = searchParams.get("employerId")?.trim() ?? "";
   const employerIdFilter = OBJECT_ID_PATTERN.test(employerIdParam) ? employerIdParam : "";
 
-  const [tab, setTab] = useState<"profile" | "like">("profile");
   const [sortMode, setSortMode] = useState<SortMode>("match");
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
-  const [cvApplyJob, setCvApplyJob] = useState<FeedJob | null>(null);
-  const [easyApplyJob, setEasyApplyJob] = useState<FeedJob | null>(null);
+  const [applyJob, setApplyJob] = useState<FeedJob | null>(null);
   const [poolPage, setPoolPage] = useState(1);
   const [filters, setFilters] = useState<FeedFilters>({
     workTypes: [],
     matchRanges: [],
     dateRanges: [],
+    experienceLevels: [],
   });
 
   // ── Search state ────────────────────────────────────────────────────────────
@@ -203,8 +207,8 @@ export function JobFeedPage({ locale }: { locale: string }) {
     staleTime: 2 * 60_000,
   });
 
-  const effectiveSort: SortMode = tab === "like" ? "latest" : sortMode;
-  const effectiveMinScore = tab === "like" ? 0 : undefined;
+  const effectiveSort: SortMode = sortMode;
+  const effectiveMinScore = undefined;
 
   // ── Data fetching ───────────────────────────────────────────────────────────
 
@@ -254,28 +258,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   // ── Mutations ───────────────────────────────────────────────────────────────
 
-  const applyMutation = useMutation({
-    mutationFn: (jobId: string) =>
-      csrfFetch(`/api/jobs/${jobId}/apply`, { method: "POST" }).then((r) => {
-        if (!r.ok)
-          return r.json().then((d: { error?: string }) => Promise.reject(d.error ?? t("errors.failed")));
-        return r.json();
-      }),
-    onMutate: (jobId) => setAppliedIds((s) => new Set([...s, jobId])),
-    onSuccess: () => {
-      toast.success(t("toast.applicationSubmitted"));
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-    },
-    onError: (err: unknown, jobId) => {
-      setAppliedIds((s) => {
-        const n = new Set(s);
-        n.delete(jobId);
-        return n;
-      });
-      toast.error(typeof err === "string" ? err : t("toast.applyFailed"));
-    },
-  });
-
   const saveMutation = useMutation({
     mutationFn: (jobId: string) =>
       csrfFetch(`/api/jobs/${jobId}/save`, { method: "POST" }).then((r) => r.json()),
@@ -301,31 +283,16 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
-  function handleApplyWithCv(job: FeedJob) {
+  function handleApply(job: FeedJob) {
     if (!applyAllowed) {
       toast.error(t("toast.applicationLimitReached"));
       return;
     }
-    setCvApplyJob(job);
+    setApplyJob(job);
   }
 
-  function handleEasyApply(job: FeedJob) {
-    if (!applyAllowed) {
-      toast.error(t("toast.applicationLimitReached"));
-      return;
-    }
-    setEasyApplyJob(job);
-  }
-
-  function handleEasyApplyConfirm() {
-    if (!easyApplyJob) return;
-    applyMutation.mutate(easyApplyJob._id);
-    setEasyApplyJob(null);
-  }
-
-  function handleCvApplied(jobId: string) {
+  function handleApplied(jobId: string) {
     setAppliedIds((s) => new Set([...s, jobId]));
-    toast.success(t("toast.applicationSubmitted"));
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   }
 
@@ -339,8 +306,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const strongMatches = data?.pages[0]?.strongMatches ?? 0;
   const newThisWeek = data?.pages[0]?.newThisWeek ?? 0;
   const hasMorePoolPages = poolPage < totalPoolPages;
-  const activeFilterCount =
-    filters.workTypes.length + filters.matchRanges.length + filters.dateRanges.length;
 
   const visibleJobs = allJobs
     .filter((j) => !hidden.has(j._id))
@@ -351,8 +316,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
   return (
     <div className="space-y-5">
       <section className="overflow-hidden rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-5 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-6 sm:py-6">
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_300px] xl:items-start">
-          <div className="space-y-5">
+        <div className="space-y-5">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
@@ -444,94 +408,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
               </div>
             </div>
           </div>
-
-          <aside className="rounded-[26px] border border-border/70 bg-background/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                  {t("aside.eyebrow")}
-                </div>
-                <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
-                  {t("aside.title")}
-                </h2>
-              </div>
-              <div className="rounded-2xl bg-primary/[0.08] p-2 text-primary">
-                <Search className="h-4 w-4" />
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("aside.bestFor")}
-                </div>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  {t("aside.bestForText")}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("aside.quickControl")}
-                </div>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  {t("aside.quickControlText")}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border/60 bg-card px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("aside.focusMode")}
-                </div>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  {activeFilterCount > 0
-                    ? t("aside.activeFilters", { count: activeFilterCount })
-                    : t("aside.noFilters")}
-                </p>
-              </div>
-            </div>
-          </aside>
-        </div>
       </section>
-
-      {!isSearchMode && (
-        <Tabs
-          value={tab}
-          onValueChange={(v) => {
-            const t = v as "profile" | "like";
-            setTab(t);
-            setSortMode(t === "like" ? "latest" : "match");
-            setPoolPage(1);
-          }}
-        >
-          <div className="flex flex-col gap-3 rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-                {t("tabs.eyebrow")}
-              </div>
-              <TabsList className="mt-3 h-auto rounded-full border border-border/60 bg-muted/30 p-1">
-                <TabsTrigger value="profile" className="rounded-full px-4 py-2 text-xs sm:text-sm">
-                  {t("tabs.profile")}
-                  {total > 0 && (
-                    <Badge variant="secondary" className="ms-1.5 rounded-full px-1.5 py-0 text-[10px]">
-                      {total}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="like" className="rounded-full px-4 py-2 text-xs sm:text-sm">
-                  {t("tabs.like")}
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <Link
-              href={`/${locale}/job-seeker/preferences`}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
-            >
-              {t("actions.editPreferences")}
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </Tabs>
-      )}
 
       <div className="grid grid-cols-1 gap-5 items-start lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_300px]">
         <div className="space-y-4">
@@ -600,8 +477,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       isSaved={savedIds.has(job._id)}
                       isApplied={appliedIds.has(job._id)}
                       onSave={() => saveMutation.mutate(job._id)}
-                      onApply={() => handleEasyApply(job)}
-                      onApplyWithCv={() => handleApplyWithCv(job)}
+                      onApply={() => handleApply(job)}
                       onHide={() => {
                         setHidden((s) => new Set([...s, job._id]));
                         toast.success(t("toast.jobHidden"));
@@ -713,8 +589,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     isSaved={savedIds.has(job._id)}
                     isApplied={appliedIds.has(job._id)}
                     onSave={() => saveMutation.mutate(job._id)}
-                    onApply={() => handleEasyApply(job)}
-                    onApplyWithCv={() => handleApplyWithCv(job)}
+                    onApply={() => handleApply(job)}
                     onHide={() => {
                       setHidden((s) => new Set([...s, job._id]));
                       toast.success(t("toast.jobHidden"));
@@ -816,26 +691,16 @@ export function JobFeedPage({ locale }: { locale: string }) {
         </div>
       </div>
 
-      {cvApplyJob && (
-        <ApplyWithCvDialog
-          jobId={cvApplyJob._id}
-          jobTitle={cvApplyJob.title}
-          open={!!cvApplyJob}
-          onOpenChange={(o) => !o && setCvApplyJob(null)}
-          onApplied={handleCvApplied}
-        />
-      )}
-
-      {easyApplyJob && (
-        <EasyApplyConfirmDialog
-          jobTitle={easyApplyJob.title}
-          skills={easyApplyJob.requirements?.skills ?? []}
-          matchedSkills={easyApplyJob.matchedSkills}
-          matchScore={easyApplyJob.matchScore}
-          open={!!easyApplyJob}
-          submitting={applyMutation.isPending}
-          onOpenChange={(o) => !o && setEasyApplyJob(null)}
-          onConfirm={handleEasyApplyConfirm}
+      {applyJob && (
+        <EasyApplyFlowDialog
+          jobId={applyJob._id}
+          jobTitle={applyJob.title}
+          companyName={applyJob.employerId?.companyName}
+          skills={applyJob.requirements?.skills ?? []}
+          matchScore={applyJob.matchScore}
+          open={!!applyJob}
+          onOpenChange={(o) => !o && setApplyJob(null)}
+          onApplied={handleApplied}
         />
       )}
     </div>

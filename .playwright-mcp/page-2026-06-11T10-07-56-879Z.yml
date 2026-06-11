@@ -1,0 +1,121 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - banner [ref=e5]:
+        - generic [ref=e6]:
+          - link "Mployedin home" [ref=e7] [cursor=pointer]:
+            - /url: /en/job-seeker
+            - img "Mployedin" [ref=e8]
+          - navigation [ref=e9]:
+            - link "Home" [ref=e11] [cursor=pointer]:
+              - /url: /en/job-seeker
+            - link "AI Matches" [ref=e12] [cursor=pointer]:
+              - /url: /en/job-seeker/jobs
+            - link "Applications" [ref=e13] [cursor=pointer]:
+              - /url: /en/job-seeker/applications
+            - link "Support" [ref=e14] [cursor=pointer]:
+              - /url: /en/job-seeker/messages
+            - link "Profile" [ref=e15] [cursor=pointer]:
+              - /url: /en/job-seeker/profile
+          - button "Search... ⌘ K" [ref=e18]:
+            - img [ref=e19]
+            - generic: Search...
+            - generic:
+              - generic: ⌘
+              - text: K
+          - generic [ref=e22]:
+            - button "Switch to dark mode" [ref=e23]:
+              - img
+            - generic [ref=e24]:
+              - button "Switch to English" [ref=e26] [cursor=pointer]:
+                - generic [ref=e27]: EN
+              - button "Switch to Arabic" [ref=e28] [cursor=pointer]:
+                - generic [ref=e29]: AR
+            - button "1" [ref=e30]:
+              - img
+              - generic [ref=e31]: "1"
+            - button "Muhammed Ilyas MK" [ref=e32] [cursor=pointer]:
+              - img "Muhammed Ilyas MK" [ref=e33]
+      - main [ref=e34]
+      - contentinfo [ref=e63]:
+        - generic [ref=e64]:
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]:
+                - paragraph [ref=e68]: Digital hiring platform
+                - img "Mployedin" [ref=e69]
+                - paragraph [ref=e70]: MPLOYEDIN brings job discovery, AI matching, and employer workflows into one cleaner hiring experience for Gulf markets.
+              - link "Browse jobs" [ref=e72] [cursor=pointer]:
+                - /url: /en/jobs
+                - text: Browse jobs
+                - img [ref=e73]
+              - generic [ref=e75]:
+                - generic [ref=e76]:
+                  - img [ref=e77]
+                  - paragraph [ref=e80]: MPLOYEDIN UK LTD, X2 Greenleaf Walk, Southall, UB1 1FR
+                - generic [ref=e81]:
+                  - img [ref=e82]
+                  - link "support@mployedin.com" [ref=e85] [cursor=pointer]:
+                    - /url: mailto:support@mployedin.com
+              - generic [ref=e86]:
+                - generic [ref=e87]: Follow us
+                - navigation "Follow us" [ref=e88]:
+                  - link "WhatsApp" [ref=e89] [cursor=pointer]:
+                    - /url: https://whatsapp.com/channel/0029VaiIpxg2ER6cM4IX4D41
+                    - img [ref=e90]
+                  - link "Instagram" [ref=e92] [cursor=pointer]:
+                    - /url: https://www.instagram.com/mployedin_jobs?igsh=MTE1MzJob3p5ZDFhMA==
+                    - img [ref=e93]
+            - generic [ref=e97]:
+              - generic [ref=e98]:
+                - heading "Platform" [level=3] [ref=e99]
+                - list [ref=e100]:
+                  - listitem [ref=e101]:
+                    - link "Discover jobs" [ref=e102] [cursor=pointer]:
+                      - /url: /en/jobs
+                  - listitem [ref=e103]:
+                    - link "Build your profile" [ref=e104] [cursor=pointer]:
+                      - /url: /en/register
+                  - listitem [ref=e105]:
+                    - link "Hiring solutions" [ref=e106] [cursor=pointer]:
+                      - /url: /en/employer-register
+                  - listitem [ref=e107]:
+                    - link "Workspace login" [ref=e108] [cursor=pointer]:
+                      - /url: /en/login
+              - generic [ref=e109]:
+                - heading "Company" [level=3] [ref=e110]
+                - list [ref=e111]:
+                  - listitem [ref=e112]:
+                    - link "Privacy" [ref=e113] [cursor=pointer]:
+                      - /url: /en/privacy
+                  - listitem [ref=e114]:
+                    - link "Terms" [ref=e115] [cursor=pointer]:
+                      - /url: /en/terms
+                  - listitem [ref=e116]:
+                    - link "Cookies" [ref=e117] [cursor=pointer]:
+                      - /url: /en/cookies
+                  - listitem [ref=e118]:
+                    - link "GDPR" [ref=e119] [cursor=pointer]:
+                      - /url: /en/gdpr
+                  - listitem [ref=e120]:
+                    - link "Support" [ref=e121] [cursor=pointer]:
+                      - /url: /en/contact
+          - generic [ref=e122]:
+            - paragraph [ref=e123]: © 2026 MPLOYEDIN. All rights reserved.
+            - generic [ref=e124]:
+              - link "Privacy" [ref=e125] [cursor=pointer]:
+                - /url: /en/privacy
+              - link "Terms" [ref=e126] [cursor=pointer]:
+                - /url: /en/terms
+              - link "Cookies" [ref=e127] [cursor=pointer]:
+                - /url: /en/cookies
+              - link "GDPR" [ref=e128] [cursor=pointer]:
+                - /url: /en/gdpr
+              - link "Support" [ref=e129] [cursor=pointer]:
+                - /url: /en/contact
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e135] [cursor=pointer]:
+    - img [ref=e136]
+  - alert [ref=e139]
+  - button "Open AI Assistant" [ref=e140]:
+    - img [ref=e141]

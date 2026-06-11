@@ -6,10 +6,10 @@ import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
 import {
   calculateMatchScore,
-  seekerProfileFromDoc,
   jobProfileFromDoc,
   getMatchedSkills,
 } from "@/lib/matchScore";
+import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 
 /**
  * GET /api/job-seeker/recommended-jobs
@@ -36,7 +36,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 
   // Get IDs of jobs already applied to
-  const appliedJobIds = await Application.find({ jobSeekerId: seeker._id })
+  const appliedJobIds = await Application.find({ jobSeekerId: seeker._id, status: { $ne: "withdrawn" } })
     .select("jobId")
     .lean()
     .then((apps) => apps.map((a) => a.jobId));
@@ -60,8 +60,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     .populate("employerId", "companyName logo")
     .lean();
 
-  // Score each job using the shared match algorithm (single source of truth)
-  const seekerProfile = seekerProfileFromDoc(seeker);
+  // Score each job using the shared match algorithm (single source of truth),
+  // including confirmed skills so the % matches the AI Matches feed.
+  const seekerProfile = await effectiveSeekerProfile(ctx.userId, seeker);
   const seekerSkillSet = new Set(seekerProfile.skills.map((s) => s.toLowerCase()));
   const seekerRoles = new Set<string>(seekerProfile.preferredRoles ?? []);
 
