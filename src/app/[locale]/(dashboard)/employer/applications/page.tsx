@@ -14,12 +14,14 @@ import {
   CheckSquare,
   Clock,
   DollarSign,
+  ExternalLink,
   FileText,
   Filter,
   History,
   Inbox,
   Mail,
   MapPin,
+  Paperclip,
   Plus,
   Search,
   Send,
@@ -82,6 +84,7 @@ interface Applicant {
   matchGaps?: string[];
   otherApplicationsCount?: number;
   screeningAnswers?: { questionId: string; questionLabel: string; answer: string | string[] | boolean }[];
+  documents?: { name: string; url: string; type: string }[];
 }
 
 interface TimelineEntry {
@@ -467,11 +470,11 @@ export default function EmployerApplicationsPage() {
     return `Candidate #${app._id.slice(-4)}`;
   }
 
-  function buildViewingCv(app: Applicant): NonNullable<typeof viewingCv> {
+  function buildViewingCv(app: Applicant, urlOverride?: string): NonNullable<typeof viewingCv> {
     const js = app.jobSeekerId;
     const currentRole = js?.experience?.find((e) => e.isCurrent)?.jobTitle;
     return {
-      url: js!.cv!.originalUrl!,
+      url: urlOverride ?? js?.cv?.originalUrl ?? "",
       name: getCandidateName(app),
       applicationId: app._id,
       status: app.status,
@@ -1264,6 +1267,7 @@ export default function EmployerApplicationsPage() {
           onOpenTimeline={openTimeline}
           onScheduleInterview={canUpdate ? openInterviewModal : undefined}
           onViewCv={(app) => setViewingCv(buildViewingCv(app))}
+          onViewDocument={(app, url) => setViewingCv(buildViewingCv(app, url))}
           onCreateOffer={canUpdate ? (app) => setOfferModal({ appId: app._id }) : undefined}
           onChangeStatus={canUpdate ? handleStageChange : undefined}
           getCandidateName={getCandidateName}
@@ -1510,6 +1514,7 @@ function ApplicationDetailsPanel({
   onOpenTimeline,
   onScheduleInterview,
   onViewCv,
+  onViewDocument,
   onCreateOffer,
   onChangeStatus,
   getCandidateName,
@@ -1524,6 +1529,7 @@ function ApplicationDetailsPanel({
   onOpenTimeline?: (appId: string, candidateName?: string) => void;
   onScheduleInterview?: (app: Applicant) => void;
   onViewCv?: (app: Applicant) => void;
+  onViewDocument?: (app: Applicant, url: string) => void;
   onCreateOffer?: (app: Applicant) => void;
   onChangeStatus?: (app: Applicant, nextStatus: string, reason?: string) => Promise<void>;
   getCandidateName: (app: Applicant) => string;
@@ -1806,6 +1812,52 @@ function ApplicationDetailsPanel({
                         </p>
                       </div>
                     ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {app.documents && app.documents.length > 0 ? (
+                <div className="workspace-glass-panel rounded-[24px] p-5">
+                  <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    <Paperclip className="h-3.5 w-3.5" /> {t("attachments")}
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {app.documents.map((doc, i) => {
+                      const isPortfolio = doc.type === "portfolio";
+                      const isResume = doc.type === "resume";
+                      const Icon = isPortfolio ? ExternalLink : FileText;
+                      const typeLabel = isPortfolio ? t("docPortfolio") : isResume ? t("docResume") : t("docOther");
+                      return (
+                        <div key={`${doc.url}-${i}`} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background/70 px-3.5 py-2.5">
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">{doc.name}</p>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{typeLabel}</p>
+                            </div>
+                          </div>
+                          {isResume && onViewDocument && doc.url ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 shrink-0 rounded-xl border-border bg-background/80 px-3 text-xs"
+                              onClick={() => onViewDocument(app, doc.url)}
+                            >
+                              <FileText className="mr-1.5 h-3.5 w-3.5" /> {t("viewResume")}
+                            </Button>
+                          ) : (
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-background/80 px-3 text-xs font-medium text-foreground hover:bg-background"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" /> {t("openDocument")}
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}

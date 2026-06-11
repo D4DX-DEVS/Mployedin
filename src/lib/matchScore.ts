@@ -63,7 +63,9 @@ const EDUCATION_LEVELS: Array<{ level: number; keywords: string[] }> = [
  */
 export function educationRank(text: string | undefined | null): number {
   if (!text) return 0;
-  const lower = text.toLowerCase();
+  // Normalize separators so hyphenated/underscored abbreviations like "B-Tech"
+  // or "M_Tech" match the dotted keywords ("b.tech", "m.tech").
+  const lower = text.toLowerCase().replace(/[-_]/g, ".");
   for (const { level, keywords } of EDUCATION_LEVELS) {
     if (keywords.some((k) => lower.includes(k))) return level;
   }
@@ -118,6 +120,23 @@ export function normalizeSkill(s: string): string {
   return stripped.length >= 2 ? stripped : lower;
 }
 
+/**
+ * Splits a possibly-compound skill string into individual normalized skill
+ * tokens, e.g. "Cloud Platforms (AWS/Azure)" → ["cloud platforms", "aws",
+ * "azure"]. The normalized full string is always included so multi-word skills
+ * keep matching too. Tokens shorter than 2 chars are dropped.
+ */
+export function tokenizeSkill(s: string): string[] {
+  const tokens = new Set<string>();
+  const full = normalizeSkill(s);
+  if (full.length >= 2) tokens.add(full);
+  for (const part of s.split(/[()/,&+|]|\band\b/i)) {
+    const norm = normalizeSkill(part);
+    if (norm.length >= 2) tokens.add(norm);
+  }
+  return [...tokens];
+}
+
 /** Pre-built lookup: normalized skill → set of related normalized skills */
 const RELATED_SKILLS_MAP: Map<string, Set<string>> = (() => {
   const map = new Map<string, Set<string>>();
@@ -135,8 +154,8 @@ const RELATED_SKILLS_MAP: Map<string, Set<string>> = (() => {
 })();
 
 export function getMatchedSkills(seekerSkills: string[], jobSkills: string[]): string[] {
-  const jobSet = new Set(jobSkills.map(normalizeSkill));
-  return seekerSkills.filter((s) => jobSet.has(normalizeSkill(s)));
+  const jobSet = new Set(jobSkills.flatMap(tokenizeSkill));
+  return seekerSkills.filter((s) => tokenizeSkill(s).some((t) => jobSet.has(t)));
 }
 
 /**
@@ -145,14 +164,15 @@ export function getMatchedSkills(seekerSkills: string[], jobSkills: string[]): s
  */
 export function skillsOverlap(seekerSkills: string[], jobSkills: string[]): boolean {
   if (seekerSkills.length === 0 || jobSkills.length === 0) return false;
-  const seekerSet = new Set(seekerSkills.map(normalizeSkill));
-  for (const raw of jobSkills) {
-    const jSkill = normalizeSkill(raw);
-    if (seekerSet.has(jSkill)) return true;
-    const related = RELATED_SKILLS_MAP.get(jSkill);
-    if (related) {
-      for (const s of seekerSet) {
-        if (related.has(s)) return true;
+  const seekerSet = new Set(seekerSkills.flatMap(tokenizeSkill));
+  for (const rawJob of jobSkills) {
+    for (const jSkill of tokenizeSkill(rawJob)) {
+      if (seekerSet.has(jSkill)) return true;
+      const related = RELATED_SKILLS_MAP.get(jSkill);
+      if (related) {
+        for (const s of seekerSet) {
+          if (related.has(s)) return true;
+        }
       }
     }
   }
@@ -162,14 +182,14 @@ export function skillsOverlap(seekerSkills: string[], jobSkills: string[]): bool
 export function calculateMatchScore(seeker: SeekerProfile, job: JobProfile): number {
   // ── Skills (40%) ────────────────────────────────────────────────────
   const jobSkills = job.skills.map(normalizeSkill);
-  const seekerSkills = seeker.skills.map(normalizeSkill);
+  const seekerSkills = seeker.skills.flatMap(tokenizeSkill);
 
   let skillsScore: number;
   if (jobSkills.length === 0) {
-    // Job lists no structured skill requirements — the seeker's skills cannot be
-    // matched against anything, so award a neutral score rather than full credit.
-    // (Full credit here previously inflated requirement-less jobs to the top.)
-    skillsScore = 0.5;
+    // Job lists no structured skill requirements — there is no evidence of skill
+    // fit, so award only a small floor. (A higher neutral value previously let
+    // skill-less, off-target jobs outrank genuine matches with partial overlap.)
+    skillsScore = 0.15;
   } else {
     let totalCredit = 0;
     for (const jSkill of jobSkills) {

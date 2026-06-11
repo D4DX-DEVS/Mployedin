@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import type { CVForm, FormattingOptions } from "./types";
 import { getTheme, getFontScale, getSectionGap, FONT_OPTIONS } from "./types";
 
@@ -23,6 +23,12 @@ function companyPhrase(labels: CVPDFLabels, company: string): string {
 
 function languageLevel(labels: CVPDFLabels, proficiency: string): string {
   return labels.proficiency[proficiency] ?? proficiency;
+}
+
+/** Only allow http(s) or data-URI images so a bad value can't break PDF rendering. */
+function safePhoto(src: string | undefined): string | null {
+  if (!src) return null;
+  return /^(https?:|data:image\/)/i.test(src) ? src : null;
 }
 
 /* ── Helper to resolve PDF font ── */
@@ -95,6 +101,9 @@ function makeStyles(primary: string, scale: number, gap: string, font: string, b
     // Elegant
     diamond:    { width: 6, height: 6, backgroundColor: primary, transform: "rotate(45deg)" },
     centerText: { textAlign: "center" },
+    // Profile photo
+    photoSidebar: { width: 56 * scale, height: 56 * scale, borderRadius: 28 * scale, marginBottom: 8, alignSelf: "center", objectFit: "cover" as const, border: "1.5pt solid rgba(255,255,255,0.6)" },
+    photoHeader:  { width: 50 * scale, height: 50 * scale, borderRadius: 25 * scale, objectFit: "cover" as const, border: "1.5pt solid rgba(255,255,255,0.6)" },
   });
 }
 
@@ -213,6 +222,7 @@ function ModernPDF({ data, styles: s, labels }: { data: CVForm; styles: ReturnTy
     <Page size="A4" style={{ flexDirection: "row", fontFamily: s.page.fontFamily, fontSize: s.page.fontSize, color: "#1a1a1a" }}>
       {/* Sidebar */}
       <View style={s.sidebar}>
+        {safePhoto(data.photo) ? <Image src={safePhoto(data.photo) as string} style={s.photoSidebar} /> : null}
         <Text style={s.sidebarName}>{data.fullName || labels.yourName}</Text>
         {data.headline ? <Text style={{ ...s.sidebarText, marginBottom: 8, opacity: 0.8 }}>{data.headline}</Text> : null}
         {data.email ? <Text style={s.sidebarText}>✉ {data.email}</Text> : null}
@@ -359,6 +369,105 @@ function MinimalPDF({ data, styles: s, primary, labels }: { data: CVForm; styles
 }
 
 /* ═══════════════════════════════════════
+   PROFESSIONAL PDF — photo header + body
+   ═══════════════════════════════════════ */
+
+function ProfessionalPDF({ data, styles: s, primary, labels }: { data: CVForm; styles: ReturnType<typeof makeStyles>; primary: string; labels: CVPDFLabels }) {
+  const photo = safePhoto(data.photo);
+  return (
+    <Page size="A4" style={{ ...s.page, padding: 0 }}>
+      {/* Photo header band */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 24, backgroundColor: primary }}>
+        {photo ? <Image src={photo} style={s.photoHeader} /> : null}
+        <View>
+          <Text style={{ ...s.name, color: "white", marginBottom: 2 }}>{data.fullName || labels.yourName}</Text>
+          {data.headline ? <Text style={{ fontSize: s.headline.fontSize, color: "rgba(255,255,255,0.85)" }}>{data.headline}</Text> : null}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
+            {data.email ? <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{data.email}</Text> : null}
+            {data.phone ? <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{data.phone}</Text> : null}
+            {data.currentLocation ? <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{data.currentLocation}</Text> : null}
+          </View>
+        </View>
+      </View>
+
+      <View style={{ padding: 32 }}>
+        {data.experience.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>{labels.experience}</Text>
+            {data.experience.map((exp, i) => (
+              <View key={i} style={s.expItem}>
+                <View style={s.expHeader}>
+                  <View>
+                    <Text style={s.expTitle}>{exp.jobTitle}</Text>
+                    <Text style={{ ...s.expCompany, color: primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</Text>
+                  </View>
+                  <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? labels.present : exp.endDate}</Text>
+                </View>
+                {exp.description ? <Text style={s.expDesc}>{exp.description}</Text> : null}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {data.education.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>{labels.education}</Text>
+            {data.education.map((edu, i) => (
+              <View key={i} style={s.eduItem}>
+                <View>
+                  <Text style={s.eduDegree}>{edu.degree}{edu.field ? `, ${edu.field}` : ""}</Text>
+                  <Text style={s.eduInst}>{edu.institution}</Text>
+                </View>
+                {edu.graduationDate ? <Text style={s.expDate}>{edu.graduationDate}</Text> : null}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {data.skills.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>{labels.skills}</Text>
+            <View style={s.skillsRow}>
+              {data.skills.map((sk, i) => <Text key={i} style={s.skillBadge}>{sk}</Text>)}
+            </View>
+          </View>
+        )}
+
+        {data.projects?.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>{labels.projects}</Text>
+            {data.projects.map((proj, i) => (
+              <View key={i} style={s.projItem}>
+                <Text style={s.projTitle}>{proj.title}</Text>
+                {proj.description ? <Text style={s.projDesc}>{proj.description}</Text> : null}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {data.languages.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>{labels.languages}</Text>
+            <View style={s.langRow}>
+              {data.languages.map((l, i) => (
+                <Text key={i} style={s.langItem}>{l.language} <Text style={s.langLevel}>({languageLevel(labels, l.proficiency)})</Text></Text>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {data.certifications.length > 0 && (
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>{labels.certifications}</Text>
+            {data.certifications.map((c, i) => <Text key={i} style={s.certItem}>• {c}</Text>)}
+          </View>
+        )}
+      </View>
+    </Page>
+  );
+}
+
+/* ═══════════════════════════════════════
    DOCUMENT WRAPPER — selects template
    ═══════════════════════════════════════ */
 
@@ -384,11 +493,13 @@ export function CVPDFDocument({
     <Document>
       {templateId === "modern" ? (
         <ModernPDF data={data} styles={s} labels={labels} />
-      ) : templateId === "minimal" ? (
+      ) : templateId === "minimal" || templateId === "compact" ? (
         <MinimalPDF data={data} styles={s} primary={theme.primary} labels={labels} />
+      ) : templateId === "professional" ? (
+        <ProfessionalPDF data={data} styles={s} primary={theme.primary} labels={labels} />
       ) : (
-        /* classic, executive, creative, elegant all use Classic layout for PDF
-           (full per-template PDF is a future enhancement) */
+        /* classic, executive, creative, elegant use the Classic layout for PDF.
+           A profile photo (when set) is rendered in Modern and Professional. */
         <ClassicPDF data={data} styles={s} labels={labels} />
       )}
     </Document>

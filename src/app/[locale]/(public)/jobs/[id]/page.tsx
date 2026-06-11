@@ -10,6 +10,7 @@ import TrackJobView from "@/components/features/public/TrackJobView";
 import SocialShare from "@/components/features/public/SocialShare";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import RelativeDate from "@/components/shared/RelativeDate";
+import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -77,25 +78,6 @@ function salaryLabel(salary: { min?: number; max?: number; currency?: string; is
     return `${salary.currency ?? "AED"} ${salary.min.toLocaleString()} – ${salary.max.toLocaleString()} / month`;
   if (salary.min) return `From ${salary.currency ?? "AED"} ${salary.min.toLocaleString()} / month`;
   return null;
-}
-
-function renderJobDescription(text: string) {
-  const parts = text.split(/(?=^## )/m);
-  return parts.map((part, i) => {
-    const headerMatch = part.match(/^## (.+?)\n?([\s\S]*)/);
-    if (headerMatch) {
-      return (
-        <div key={i} className={i > 0 ? "mt-4" : undefined}>
-          <h3 className="text-sm font-semibold text-foreground mb-1.5">{headerMatch[1].trim()}</h3>
-          {headerMatch[2].trim() && (
-            <p className="text-sm leading-relaxed text-muted-foreground text-justify">{headerMatch[2].trim()}</p>
-          )}
-        </div>
-      );
-    }
-    const trimmed = part.trim();
-    return trimmed ? <p key={i} className="text-sm leading-relaxed text-muted-foreground text-justify">{trimmed}</p> : null;
-  });
 }
 
 export default async function JobDetailPage({ params }: PageProps) {
@@ -262,9 +244,7 @@ export default async function JobDetailPage({ params }: PageProps) {
               {/* Description */}
               <div>
                 <h2 className="text-base font-semibold text-foreground mb-3">Job Description</h2>
-                <div className="space-y-2">
-                  {renderJobDescription(job.description ?? "")}
-                </div>
+                <MarkdownRenderer content={job.description ?? ""} />
               </div>
 
               {/* Requirements */}

@@ -6,9 +6,16 @@ import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
 
+/** Maps a CV section to a human-readable context string for the AI prompt. */
+const SECTION_CONTEXT: Record<string, string> = {
+  summary: "professional summary for a resume",
+  experience_description: "work experience description for a professional resume",
+  project_description: "project description for a professional resume",
+};
+
 /**
- * Inline "Write with AI" button that calls /api/ai/profile-fill
- * to generate or improve a specific CV section.
+ * Inline "Write with AI" button that calls /api/ai/enhance-text
+ * to generate or improve the text of a specific CV field.
  */
 export function AIWriteButton({
   section,
@@ -17,7 +24,7 @@ export function AIWriteButton({
   disabled,
   label,
 }: {
-  /** Which section to generate: "summary" | "experience_description" | "skills" | "project_description" */
+  /** Which section to generate: "summary" | "experience_description" | "project_description" */
   section: string;
   /** Additional context — e.g. job title, current text, skills list */
   context: Record<string, string>;
@@ -33,17 +40,34 @@ export function AIWriteButton({
   async function handleClick() {
     setLoading(true);
     try {
-      const res = await csrfFetch("/api/ai/profile-fill", {
+      // Build the seed text the AI should enhance from the provided context.
+      const seedText =
+        context.currentText?.trim() ||
+        [context.jobTitle, context.company].filter(Boolean).join(" at ").trim() ||
+        context.projectTitle?.trim() ||
+        context.skills?.trim() ||
+        context.techStack?.trim() ||
+        "";
+
+      if (!seedText) {
+        toast.error(t("empty"));
+        return;
+      }
+
+      const res = await csrfFetch("/api/ai/enhance-text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section, ...context }),
+        body: JSON.stringify({
+          text: seedText,
+          context: SECTION_CONTEXT[section] ?? "text for a professional resume",
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
         throw new Error(err?.error ?? t("generationFailed"));
       }
       const data = await res.json();
-      const text = data.result ?? data.text ?? data.content ?? "";
+      const text = data.enhanced ?? "";
       if (text) {
         onResult(text);
         toast.success(t("generated"));

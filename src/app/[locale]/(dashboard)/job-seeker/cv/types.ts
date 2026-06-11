@@ -43,6 +43,7 @@ export interface CVForm {
   nationality: string;
   currentLocation: string;
   headline: string;
+  photo: string;
   linkedin: string;
   portfolio: string;
   additionalLinks: SocialLink[];
@@ -85,7 +86,10 @@ export interface TemplateDefinition {
   id: string;
   name: string;
   description: string;
+  /** Retained for backwards-compatibility; all templates are now free. */
   tier: TemplateTier;
+  /** Whether this template renders a profile photo when one is provided. */
+  supportsPhoto?: boolean;
 }
 
 /* ── Constants ── */
@@ -107,12 +111,14 @@ export const FONT_OPTIONS: { value: FontFamily; label: string; stack: string }[]
 ];
 
 export const TEMPLATES: TemplateDefinition[] = [
-  { id: "classic",    name: "Classic",    description: "Clean professional layout with blue accents",     tier: "free" },
-  { id: "modern",     name: "Modern",     description: "Contemporary design with sidebar layout",         tier: "free" },
-  { id: "minimal",    name: "Minimal",    description: "Simple, ATS-friendly single-column design",       tier: "free" },
-  { id: "executive",  name: "Executive",  description: "Premium two-column layout for senior roles",      tier: "free" },
-  { id: "creative",   name: "Creative",   description: "Bold design with colored header and skill bars",  tier: "free" },
-  { id: "elegant",    name: "Elegant",    description: "Refined serif typography with gold accents",      tier: "free" },
+  { id: "classic",      name: "Classic",      description: "Clean professional layout with blue accents",     tier: "free" },
+  { id: "modern",       name: "Modern",       description: "Contemporary design with sidebar layout",         tier: "free", supportsPhoto: true },
+  { id: "minimal",      name: "Minimal",      description: "Simple, ATS-friendly single-column design",       tier: "free" },
+  { id: "executive",    name: "Executive",    description: "Premium two-column layout for senior roles",      tier: "free", supportsPhoto: true },
+  { id: "creative",     name: "Creative",     description: "Bold design with colored header and skill bars",  tier: "free", supportsPhoto: true },
+  { id: "elegant",      name: "Elegant",      description: "Refined serif typography with gold accents",      tier: "free" },
+  { id: "professional", name: "Professional", description: "Photo header with two-column body for impact",    tier: "free", supportsPhoto: true },
+  { id: "compact",      name: "Compact",      description: "Dense single-column layout that fits more on a page", tier: "free" },
 ];
 
 export const DEFAULT_FORMATTING: FormattingOptions = {

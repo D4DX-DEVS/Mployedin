@@ -72,9 +72,9 @@ export async function invalidateRedisCacheByPattern(
   pattern: string
 ): Promise<void> {
   const client = getRedis();
-  let cursor: string | number = 0;
+  let cursor: string = "0";
   do {
-    const [nextCursor, keys] = await client.scan(cursor, {
+    const [nextCursor, keys]: [string, string[]] = await client.scan(cursor, {
       match: pattern,
       count: 100,
     });
@@ -82,7 +82,7 @@ export async function invalidateRedisCacheByPattern(
     if (keys.length > 0) {
       await client.del(...keys);
     }
-  } while (cursor !== 0 && cursor !== "0");
+  } while (cursor !== "0");
 }
 
 // ─── Rate Limiting ──────────────────────────────────────────────────────────

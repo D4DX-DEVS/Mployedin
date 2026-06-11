@@ -37,6 +37,7 @@ import {
 import { TemplateRenderer } from "./templates";
 import { TemplatePicker, FormattingPanel } from "./template-picker";
 import { AIWriteButton } from "./ai-write-button";
+import { MonthYearPicker } from "./month-picker";
 
 /* ── Filter out hidden sections for preview/PDF ── */
 function getVisibleForm(form: CVForm, hidden: Set<string>): CVForm {
@@ -70,6 +71,8 @@ export default function CVBuilderPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [certInput, setCertInput] = useState("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   /* Section visibility — controls which sections appear in preview & PDF */
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
@@ -82,12 +85,10 @@ export default function CVBuilderPage() {
   /* Template & formatting */
   const [selectedTemplate, setSelectedTemplate] = useState("classic");
   const [formatting, setFormatting] = useState<FormattingOptions>(DEFAULT_FORMATTING);
-  const [templateFilter, setTemplateFilter] = useState<"all" | "free" | "pro">("all");
-  const [hasProAccess, setHasProAccess] = useState(false);
 
   const [form, setForm] = useState<CVForm>({
     fullName: "", email: "", phone: "", nationality: "", currentLocation: "",
-    headline: "", linkedin: "", portfolio: "", additionalLinks: [],
+    headline: "", photo: "", linkedin: "", portfolio: "", additionalLinks: [],
     skills: [], experience: [], education: [], languages: [], certifications: [], projects: [],
   });
 
@@ -108,6 +109,7 @@ export default function CVBuilderPage() {
           nationality: profile.nationality ?? prev.nationality,
           currentLocation: profile.currentLocation ?? prev.currentLocation,
           headline: profile.summary ?? prev.headline,
+          photo: profile.avatar ?? prev.photo,
           linkedin: (() => {
             const linked = profile.socialLinks?.find((l: Record<string, unknown>) =>
               ((l.label as string) ?? "").toLowerCase() === "linkedin"
@@ -169,10 +171,6 @@ export default function CVBuilderPage() {
             : prev.projects,
         }));
 
-        // Check pro access
-        if (profile.subscription?.resumeBuilderAccess) {
-          setHasProAccess(true);
-        }
       }
       const session = await getSession();
       if (session?.user) {
@@ -180,6 +178,7 @@ export default function CVBuilderPage() {
           ...prev,
           fullName: prev.fullName || session.user?.name || "",
           email: prev.email || session.user?.email || "",
+          photo: prev.photo || session.user?.image || "",
         }));
       }
     } catch {
@@ -331,6 +330,41 @@ export default function CVBuilderPage() {
     setForm((f) => ({ ...f, languages: f.languages.map((l, j) => j === i ? { ...l, [field]: v } : l) }));
   }
   function removeLanguage(i: number) { setForm((f) => ({ ...f, languages: f.languages.filter((_, j) => j !== i) })); }
+
+  /* ── Photo upload ── */
+  async function handlePhotoUpload(file: File) {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      toast.error(t("errors.supportedFormats"));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(t("errors.fileSize"));
+      return;
+    }
+    // Optimistic local preview
+    const reader = new FileReader();
+    reader.onload = () => setForm((f) => ({ ...f, photo: reader.result as string }));
+    reader.readAsDataURL(file);
+
+    setPhotoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("avatar", file);
+      const res = await csrfFetch("/api/job-seekers/avatar", { method: "POST", body: fd });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? t("errors.saveFailed"));
+      }
+      const data = await res.json();
+      setForm((f) => ({ ...f, photo: data.url }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("errors.saveFailed"));
+    } finally {
+      setPhotoUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  }
 
   /* ── Save to Profile ── */
   async function handleSaveToProfile() {
@@ -537,6 +571,44 @@ export default function CVBuilderPage() {
                 {/* Personal Information */}
                 <SectionCard title={t("sections.personalDetails")} icon={<UserIcon className="w-4 h-4" />}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Profile photo */}
+                    <div className="md:col-span-2 flex items-center gap-4">
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                        {form.photo ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={form.photo} alt={form.fullName || "Profile photo"} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                            <UserIcon className="h-6 w-6" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">{t("fields.photo")}</Label>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button" variant="outline" size="sm" disabled={photoUploading}
+                            onClick={() => photoInputRef.current?.click()} className="h-8 gap-1.5 text-xs"
+                          >
+                            {photoUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                            {form.photo ? t("actions.changePhoto") : t("actions.uploadPhoto")}
+                          </Button>
+                          {form.photo && (
+                            <Button
+                              type="button" variant="ghost" size="sm"
+                              onClick={() => setForm((f) => ({ ...f, photo: "" }))} className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> {t("actions.removePhoto")}
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-[0.65rem] text-muted-foreground">{t("hints.photo")}</p>
+                        <input
+                          ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }}
+                        />
+                      </div>
+                    </div>
                     <FormField label={t("fields.fullName")} value={form.fullName}
                       onChange={(v) => setForm((f) => ({ ...f, fullName: v }))} placeholder={t("placeholders.fullName")} />
                     <FormField label={t("fields.email")} value={form.email}
@@ -616,10 +688,10 @@ export default function CVBuilderPage() {
                           <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <AutoFormField label={t("fields.location")} value={exp.country} taxonomy="locations"
                               onChange={(v) => updateExperience(i, "country", v)} placeholder={t("placeholders.location")} />
-                            <FormField label={t("fields.from")} value={exp.startDate} type="month"
+                            <MonthYearPicker label={t("fields.from")} value={exp.startDate}
                               onChange={(v) => updateExperience(i, "startDate", v)} />
                             {!exp.isCurrent ? (
-                              <FormField label={t("fields.to")} value={exp.endDate} type="month"
+                              <MonthYearPicker label={t("fields.to")} value={exp.endDate}
                                 onChange={(v) => updateExperience(i, "endDate", v)} />
                             ) : (
                               <div className="space-y-1.5">
@@ -679,7 +751,7 @@ export default function CVBuilderPage() {
                             onChange={(v) => updateEducation(i, "field", v)} placeholder={t("placeholders.fieldOfStudy")} />
                           <FormField label={t("fields.institution")} value={edu.institution}
                             onChange={(v) => updateEducation(i, "institution", v)} placeholder={t("placeholders.institution")} />
-                          <FormField label={t("fields.graduationDate")} value={edu.graduationDate} type="month"
+                          <MonthYearPicker label={t("fields.graduationDate")} value={edu.graduationDate}
                             onChange={(v) => updateEducation(i, "graduationDate", v)} />
                           <FormField label={t("fields.grade")} value={edu.grade}
                             onChange={(v) => updateEducation(i, "grade", v)} placeholder={t("placeholders.grade")} />
@@ -812,9 +884,6 @@ export default function CVBuilderPage() {
                   selected={selectedTemplate}
                   onSelect={setSelectedTemplate}
                   themeColor={formatting.themeColor}
-                  filter={templateFilter}
-                  onFilterChange={setTemplateFilter}
-                  hasProAccess={hasProAccess}
                 />
               </div>
             </TabsContent>

@@ -18,7 +18,6 @@ import {
   FileText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ShareJob } from "@/components/shared/ShareJob";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 
@@ -47,10 +46,8 @@ export interface FeedJob {
 
 interface JobCardProps {
   job: FeedJob;
-  isSelected: boolean;
   isSaved: boolean;
   isApplied: boolean;
-  onToggleSelect: () => void;
   onSave: () => void;
   onApply: () => void;
   onApplyWithCv: () => void;
@@ -138,14 +135,33 @@ function fmtCount(n: number, numberLocale: string) {
   return n.toLocaleString(numberLocale);
 }
 
+/**
+ * Strips markdown syntax to clean plain text for the compact 2-line preview.
+ * AI-generated descriptions contain markdown (**bold**, ### headers, ---, lists)
+ * which would otherwise render as raw symbols in the clamped card.
+ */
+function stripMarkdown(text: string) {
+  return text
+    .replace(/```[\s\S]*?```/g, " ") // fenced code blocks
+    .replace(/`([^`]+)`/g, "$1") // inline code
+    .replace(/^\s*#{1,6}\s+/gm, "") // headers
+    .replace(/^\s*(?:[-*+]|\d+\.)\s+/gm, "") // list markers
+    .replace(/^\s*(?:---+|\*\*\*+|___+)\s*$/gm, " ") // horizontal rules
+    .replace(/\*\*([^*]+)\*\*/g, "$1") // bold
+    .replace(/\*([^*]+)\*/g, "$1") // italic
+    .replace(/__([^_]+)__/g, "$1") // bold (underscore)
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links → text
+    .replace(/^\s*>\s?/gm, "") // blockquotes
+    .replace(/\s+/g, " ") // collapse whitespace
+    .trim();
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const JobFeedCard = memo(function JobFeedCard({
   job,
-  isSelected,
   isSaved,
   isApplied,
-  onToggleSelect,
   onSave,
   onApply,
   onApplyWithCv,
@@ -173,22 +189,9 @@ export const JobFeedCard = memo(function JobFeedCard({
 
   return (
     <div
-      className={`card-base group relative overflow-hidden rounded-[26px] border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all duration-200 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.35)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_60px_-38px_rgba(37,99,235,0.18)] ${
-        isSelected
-          ? "border-primary/60 bg-primary/[0.04] ring-1 ring-primary/20"
-          : ""
-      }`}
+      className="card-base group relative overflow-hidden rounded-[26px] border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all duration-200 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.35)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_60px_-38px_rgba(37,99,235,0.18)]"
     >
       <div className="flex gap-2 sm:gap-3.5">
-        {/* Bulk-select checkbox */}
-        <div className="pt-0.5">
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={() => onToggleSelect()}
-            aria-label={isSelected ? t("deselectJob") : t("selectJob")}
-          />
-        </div>
-
         {/* Card body */}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-4">
@@ -307,7 +310,7 @@ export const JobFeedCard = memo(function JobFeedCard({
           {/* Description */}
           {job.description && (
             <p className="mt-2 text-xs text-muted-foreground leading-relaxed line-clamp-2">
-              {job.description}
+              {stripMarkdown(job.description)}
             </p>
           )}
 

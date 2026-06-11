@@ -592,6 +592,9 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
         </div>
       )}
 
+      {/* Skill confirmation — asked before applying, saved to the profile */}
+      <EasyApplySkillConfirm jobId={jobId} />
+
       <div>
         <button
           type="button"
@@ -643,6 +646,116 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       <p className="text-center text-xs text-muted-foreground">
         Your profile is auto-attached to the application.
       </p>
+    </div>
+  );
+}
+
+// ── Inline skill confirmation ─────────────────────────────────────────────────
+// Asks the seeker to confirm the job's required skills before applying and saves
+// the answers to their profile. EasyApply can render on public pages that have no
+// react-query provider, so this uses plain fetch instead of the
+// useSkillConfirmations hooks.
+function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
+  const [skills, setSkills] = useState<string[] | null>(null);
+  const [index, setIndex] = useState(0);
+  const [answeredCount, setAnsweredCount] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/job-seeker/skill-gaps?jobId=${encodeURIComponent(jobId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled) {
+          setSkills(Array.isArray(data?.unansweredSkills) ? data.unansweredSkills : []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSkills([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [jobId]);
+
+  const currentSkill = skills?.[index];
+
+  async function answer(status: "confirmed" | "denied" | "skipped") {
+    if (!currentSkill || saving) return;
+    setSaving(true);
+    try {
+      await fetch("/api/job-seeker/skill-confirmations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skill: currentSkill, status, source: "job_view", jobId }),
+      });
+    } catch {
+      /* best-effort — answering skills must never block the application */
+    } finally {
+      setAnsweredCount((c) => c + 1);
+      setIndex((i) => i + 1);
+      setSaving(false);
+    }
+  }
+
+  // Still loading or no skills to confirm.
+  if (!skills || skills.length === 0) return null;
+
+  // All questions answered.
+  if (!currentSkill || index >= skills.length) {
+    if (answeredCount === 0) return null;
+    return (
+      <div className="rounded-[22px] border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+        <p className="text-xs font-semibold text-emerald-600">
+          ✓ Thanks! Your profile has been updated with {answeredCount} skill
+          {answeredCount !== 1 ? "s" : ""}.
+        </p>
+      </div>
+    );
+  }
+
+  const remaining = skills.length - index;
+
+  return (
+    <div className="space-y-3 rounded-[22px] border border-border/70 bg-muted/20 px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        Confirm your skills
+      </p>
+      <p className="text-sm text-muted-foreground">
+        Do you have experience in{" "}
+        <span className="font-semibold text-foreground">{currentSkill}</span>?
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => answer("confirmed")}
+          disabled={saving}
+          className="inline-flex items-center rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40"
+        >
+          Yes
+        </button>
+        <button
+          type="button"
+          onClick={() => answer("denied")}
+          disabled={saving}
+          className="inline-flex items-center rounded-xl border border-border bg-secondary/80 px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+        >
+          No
+        </button>
+        <button
+          type="button"
+          onClick={() => answer("skipped")}
+          disabled={saving}
+          className="inline-flex items-center rounded-xl border border-border bg-secondary/80 px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+        >
+          Skip
+        </button>
+      </div>
+      {remaining > 1 && (
+        <p className="text-[11px] text-muted-foreground/70">
+          {remaining - 1} more skill question{remaining - 1 !== 1 ? "s" : ""}
+        </p>
+      )}
     </div>
   );
 }

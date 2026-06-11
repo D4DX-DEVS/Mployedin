@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { JobFeedCard, type FeedJob } from "./JobFeedCard";
 import { JobFeedSidebar, type FeedFilters } from "./JobFeedSidebar";
 import { ApplyWithCvDialog } from "./ApplyWithCvDialog";
+import { EasyApplyConfirmDialog } from "./EasyApplyConfirmDialog";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,9 +34,10 @@ interface JobPage {
   poolPage: number;
   totalPoolPages: number;
   totalJobs: number;
+  matchedCount: number;
+  strongMatches: number;
+  newThisWeek: number;
 }
-
-const MAX_BULK = 5;
 
 // ── Filter logic ──────────────────────────────────────────────────────────────
 
@@ -172,11 +174,11 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   const [tab, setTab] = useState<"profile" | "like">("profile");
   const [sortMode, setSortMode] = useState<SortMode>("match");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
   const [cvApplyJob, setCvApplyJob] = useState<FeedJob | null>(null);
+  const [easyApplyJob, setEasyApplyJob] = useState<FeedJob | null>(null);
   const [poolPage, setPoolPage] = useState(1);
   const [filters, setFilters] = useState<FeedFilters>({
     workTypes: [],
@@ -297,28 +299,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
     onError: () => toast.error(t("toast.savedUpdateFailed")),
   });
 
-  const bulkApplyMutation = useMutation({
-    mutationFn: async (jobIds: string[]) => {
-      const results = await Promise.allSettled(
-        jobIds.map((id) =>
-          csrfFetch(`/api/jobs/${id}/apply`, { method: "POST" }).then((r) => {
-            if (!r.ok) throw new Error("fail");
-            return r.json();
-          }),
-        ),
-      );
-      return results;
-    },
-    onSuccess: (results) => {
-      const ok = results.filter((r) => r.status === "fulfilled").length;
-      if (ok > 0) toast.success(t("toast.bulkApplied", { count: ok }));
-      setSelected(new Set());
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      qc.invalidateQueries({ queryKey: ["recommended-jobs"] });
-    },
-    onError: () => toast.error(t("toast.bulkApplyFailed")),
-  });
-
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   function handleApplyWithCv(job: FeedJob) {
@@ -329,37 +309,24 @@ export function JobFeedPage({ locale }: { locale: string }) {
     setCvApplyJob(job);
   }
 
+  function handleEasyApply(job: FeedJob) {
+    if (!applyAllowed) {
+      toast.error(t("toast.applicationLimitReached"));
+      return;
+    }
+    setEasyApplyJob(job);
+  }
+
+  function handleEasyApplyConfirm() {
+    if (!easyApplyJob) return;
+    applyMutation.mutate(easyApplyJob._id);
+    setEasyApplyJob(null);
+  }
+
   function handleCvApplied(jobId: string) {
     setAppliedIds((s) => new Set([...s, jobId]));
     toast.success(t("toast.applicationSubmitted"));
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-  }
-
-  function toggleSelect(jobId: string) {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      if (n.has(jobId)) {
-        n.delete(jobId);
-      } else {
-        if (n.size >= MAX_BULK) {
-          toast.error(t("toast.maxBulk", { count: MAX_BULK }));
-          return prev;
-        }
-        n.add(jobId);
-      }
-      return n;
-    });
-  }
-
-  function handleBulkApply() {
-    if (selected.size === 0) return;
-    const ids = [...selected].filter((id) => !appliedIds.has(id));
-    if (ids.length === 0) {
-      toast.error(t("toast.allAlreadyApplied"));
-      return;
-    }
-    setAppliedIds((s) => new Set([...s, ...ids]));
-    bulkApplyMutation.mutate(ids);
   }
 
   // ── Derived data ────────────────────────────────────────────────────────────
@@ -368,6 +335,9 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const total = data?.pages[0]?.total ?? 0;
   const totalPoolPages = data?.pages[0]?.totalPoolPages ?? 1;
   const totalJobs = data?.pages[0]?.totalJobs ?? 0;
+  const matchedCount = data?.pages[0]?.matchedCount ?? 0;
+  const strongMatches = data?.pages[0]?.strongMatches ?? 0;
+  const newThisWeek = data?.pages[0]?.newThisWeek ?? 0;
   const hasMorePoolPages = poolPage < totalPoolPages;
   const activeFilterCount =
     filters.workTypes.length + filters.matchRanges.length + filters.dateRanges.length;
@@ -404,7 +374,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   {t("stats.liveMatches")}
                 </div>
                 <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                  {isSearchMode ? searchData?.total ?? 0 : totalJobs}
+                  {isSearchMode ? searchData?.total ?? 0 : matchedCount}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {isSearchMode ? t("stats.searchReturned") : t("stats.profileAligned")}
@@ -412,24 +382,24 @@ export function JobFeedPage({ locale }: { locale: string }) {
               </div>
               <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {t("stats.readyToApply")}
+                  {t("stats.strongMatches")}
                 </div>
                 <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                  {selected.size}
+                  {strongMatches}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {t("stats.bulkTray")}
+                  {t("stats.strongMatchesHint")}
                 </p>
               </div>
               <div className="rounded-2xl border border-border/60 bg-background/90 px-4 py-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {t("stats.filterSignal")}
+                  {t("stats.newThisWeek")}
                 </div>
                 <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
-                  {activeFilterCount}
+                  {newThisWeek}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {t("stats.activeFilters", { count: activeFilterCount })}
+                  {t("stats.newThisWeekHint")}
                 </p>
               </div>
             </div>
@@ -627,12 +597,10 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     <JobFeedCard
                       key={job._id}
                       job={job}
-                      isSelected={selected.has(job._id)}
                       isSaved={savedIds.has(job._id)}
                       isApplied={appliedIds.has(job._id)}
-                      onToggleSelect={() => toggleSelect(job._id)}
                       onSave={() => saveMutation.mutate(job._id)}
-                      onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("toast.applicationLimitReached"))}
+                      onApply={() => handleEasyApply(job)}
                       onApplyWithCv={() => handleApplyWithCv(job)}
                       onHide={() => {
                         setHidden((s) => new Set([...s, job._id]));
@@ -742,12 +710,10 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   <JobFeedCard
                     key={job._id}
                     job={job}
-                    isSelected={selected.has(job._id)}
                     isSaved={savedIds.has(job._id)}
                     isApplied={appliedIds.has(job._id)}
-                    onToggleSelect={() => toggleSelect(job._id)}
                     onSave={() => saveMutation.mutate(job._id)}
-                    onApply={() => applyAllowed ? applyMutation.mutate(job._id) : toast.error(t("toast.applicationLimitReached"))}
+                    onApply={() => handleEasyApply(job)}
                     onApplyWithCv={() => handleApplyWithCv(job)}
                     onHide={() => {
                       setHidden((s) => new Set([...s, job._id]));
@@ -857,6 +823,19 @@ export function JobFeedPage({ locale }: { locale: string }) {
           open={!!cvApplyJob}
           onOpenChange={(o) => !o && setCvApplyJob(null)}
           onApplied={handleCvApplied}
+        />
+      )}
+
+      {easyApplyJob && (
+        <EasyApplyConfirmDialog
+          jobTitle={easyApplyJob.title}
+          skills={easyApplyJob.requirements?.skills ?? []}
+          matchedSkills={easyApplyJob.matchedSkills}
+          matchScore={easyApplyJob.matchScore}
+          open={!!easyApplyJob}
+          submitting={applyMutation.isPending}
+          onOpenChange={(o) => !o && setEasyApplyJob(null)}
+          onConfirm={handleEasyApplyConfirm}
         />
       )}
     </div>

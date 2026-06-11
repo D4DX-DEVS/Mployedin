@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { calculateMatchScore, educationRank } from "@/lib/matchScore";
+import { calculateMatchScore, educationRank, skillsOverlap, getMatchedSkills } from "@/lib/matchScore";
 
 describe("calculateMatchScore", () => {
   const baseSeeker = {
@@ -56,13 +56,24 @@ describe("calculateMatchScore", () => {
     expect(result).toBe(80);
   });
 
-  it("job with 0 required skills gives a neutral skill score", () => {
+  it("job with 0 required skills gives only a small skill floor", () => {
     const result = calculateMatchScore(
       { ...baseSeeker },
       { ...baseJob, skills: [] }
     );
-    // skills: 0.5×40=20, location: 20, experience: 20, salary: 20 = 80
-    expect(result).toBe(80);
+    // skills: 0.15×40=6, location: 20, experience: 20, salary: 20 = 66
+    // Skill-less jobs must not outrank genuine matches with partial overlap.
+    expect(result).toBe(66);
+  });
+
+  it("matches compound skill strings via embedded tokens (AWS/Azure)", () => {
+    const seeker = { ...baseSeeker, skills: ["Cloud Platforms (AWS/Azure)", "React"] };
+    // Without tokenizing, "Cloud Platforms (AWS/Azure)" would never match "AWS".
+    expect(skillsOverlap(seeker.skills, ["AWS", "Docker"])).toBe(true);
+    expect(getMatchedSkills(seeker.skills, ["AWS"])).toContain("Cloud Platforms (AWS/Azure)");
+    const result = calculateMatchScore(seeker, { ...baseJob, skills: ["AWS", "Azure"] });
+    // Both job skills now matched via the compound seeker skill.
+    expect(result).toBeGreaterThanOrEqual(80);
   });
 
   it("no seeker salary expectation returns full salary score", () => {
@@ -176,6 +187,12 @@ describe("educationRank", () => {
     expect(educationRank("Master of Science")).toBe(4);
     expect(educationRank("MBA")).toBe(4);
     expect(educationRank("PhD")).toBe(5);
+  });
+
+  it("recognises hyphenated degree abbreviations", () => {
+    expect(educationRank("B-Tech")).toBe(3);
+    expect(educationRank("M-Tech")).toBe(4);
+    expect(educationRank("B-E")).toBe(3);
   });
 
   it("ranks postgraduate above the generic graduate keyword", () => {

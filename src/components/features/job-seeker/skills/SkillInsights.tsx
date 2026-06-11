@@ -3,14 +3,13 @@
 import { useMemo } from "react";
 import { Check, Lightbulb, ChevronDown } from "lucide-react";
 import { useSkillGaps } from "@/hooks/useSkillConfirmations";
-import { SkillQuestion } from "./SkillQuestion";
 
 interface SkillInsightsProps {
   jobId: string;
   source?: "job_view" | "feed" | "recommendation";
 }
 
-export function SkillInsights({ jobId, source = "job_view" }: SkillInsightsProps) {
+export function SkillInsights({ jobId }: SkillInsightsProps) {
   const { data, isLoading } = useSkillGaps(jobId);
 
   const allDisplaySkills = useMemo(() => {
@@ -38,7 +37,6 @@ export function SkillInsights({ jobId, source = "job_view" }: SkillInsightsProps
 
   if (!data || data.totalJobSkills === 0) return null;
 
-  const hasUnanswered = data.unansweredSkills.length > 0;
   const matchCount = data.matchedSkills.length + data.confirmedSkills.length;
 
   return (
@@ -87,17 +85,6 @@ export function SkillInsights({ jobId, source = "job_view" }: SkillInsightsProps
           )}
         </div>
       </div>
-
-      {/* Micro question for the first unanswered skill */}
-      {hasUnanswered && (
-        <div className="mt-4 border-t border-border/40 pt-4">
-          <SkillQuestion
-            jobId={jobId}
-            unansweredSkills={data.unansweredSkills}
-            source={source}
-          />
-        </div>
-      )}
     </section>
   );
 }

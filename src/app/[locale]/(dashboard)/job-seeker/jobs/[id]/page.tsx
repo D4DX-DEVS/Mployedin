@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { MapPin, Briefcase, Clock, Users, Globe } from "lucide-react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/features/public/EasyApply";
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
@@ -66,22 +68,35 @@ function salaryLabel(salary: { min?: number; max?: number; currency?: string; is
 }
 
 function renderJobDescription(text: string) {
-  const parts = text.split(/(?=^## )/m);
-  return parts.map((part, i) => {
-    const headerMatch = part.match(/^## (.+?)\n?([\s\S]*)/);
-    if (headerMatch) {
-      return (
-        <div key={i} className={i > 0 ? "mt-4" : undefined}>
-          <h3 className="text-sm font-semibold text-foreground mb-1.5">{headerMatch[1].trim()}</h3>
-          {headerMatch[2].trim() && (
-            <p className="text-sm leading-relaxed text-muted-foreground text-justify">{headerMatch[2].trim()}</p>
-          )}
-        </div>
-      );
-    }
-    const trimmed = part.trim();
-    return trimmed ? <p key={i} className="text-sm leading-relaxed text-muted-foreground text-justify">{trimmed}</p> : null;
-  });
+  return (
+    <div className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ ...props }) => <h3 className="mt-4 mb-1.5 text-base font-semibold text-foreground" {...props} />,
+          h2: ({ ...props }) => <h3 className="mt-4 mb-1.5 text-sm font-semibold text-foreground" {...props} />,
+          h3: ({ ...props }) => <h3 className="mt-4 mb-1.5 text-sm font-semibold text-foreground" {...props} />,
+          p: ({ ...props }) => <p className="leading-relaxed text-justify" {...props} />,
+          ul: ({ ...props }) => <ul className="list-disc space-y-1 ps-5" {...props} />,
+          ol: ({ ...props }) => <ol className="list-decimal space-y-1 ps-5" {...props} />,
+          li: ({ ...props }) => <li className="leading-relaxed" {...props} />,
+          strong: ({ ...props }) => <strong className="font-semibold text-foreground" {...props} />,
+          em: ({ ...props }) => <em className="italic" {...props} />,
+          a: ({ ...props }) => (
+            <a
+              className="text-primary underline underline-offset-2 hover:text-primary/80"
+              target="_blank"
+              rel="noopener noreferrer"
+              {...props}
+            />
+          ),
+          hr: () => <hr className="my-4 border-border/60" />,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 export default async function DashboardJobDetailPage({ params }: PageProps) {
@@ -239,10 +254,6 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                       Closes in {daysLeft} day{daysLeft === 1 ? "" : "s"}
                     </span>
                   )}
-                </div>
-
-                <div className="mt-5 max-w-3xl space-y-2">
-                  {renderJobDescription(job.description ?? "")}
                 </div>
               </div>
             </div>

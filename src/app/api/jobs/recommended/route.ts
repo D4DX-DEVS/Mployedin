@@ -164,6 +164,16 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const poolTotal = scored.length;
   const totalPoolPages = Math.max(1, Math.ceil(totalMatchingJobs / POOL_SIZE));
 
+  // Aggregate signals for the dashboard stat cards (computed over the scored
+  // pool so they reflect genuine profile fit, not the raw active-job count).
+  const WEEK_MS = 7 * 24 * 3600_000;
+  const now = Date.now();
+  const matchedCount = scoredAll.filter(isRelevant).length;
+  const strongMatches = scoredWithBoost.filter((j) => j.matchScore >= 80).length;
+  const newThisWeek = scoredAll.filter(
+    (j) => now - new Date(j.createdAt).getTime() <= WEEK_MS,
+  ).length;
+
   // Cursor-based pagination within the pool
   let startIndex = 0;
   if (cursor) {
@@ -182,5 +192,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     poolPage,
     totalPoolPages,
     totalJobs: totalMatchingJobs,
+    matchedCount,
+    strongMatches,
+    newThisWeek,
   });
 });

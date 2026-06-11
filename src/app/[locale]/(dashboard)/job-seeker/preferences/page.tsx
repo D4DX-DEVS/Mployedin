@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -361,20 +362,6 @@ export default function JobPreferencesPage() {
     }
   }, [prefs, loading]);
 
-  // Auto-save debounced — save 800ms after last change
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (loading || !isDirty) return;
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      handleSave();
-    }, 800);
-    return () => {
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefs, loading, isDirty]);
-
   const loadPreferences = useCallback(async () => {
     try {
       const res = await fetch("/api/job-seeker/profile");
@@ -713,15 +700,15 @@ export default function JobPreferencesPage() {
           )}
         </Section>
 
-        {/* ── Auto-save status ────────────────────────────────────────── */}
-        <div className="flex items-center gap-2 h-8">
+        {/* ── Save controls ───────────────────────────────────────────── */}
+        <div className="flex items-center justify-end gap-3 h-9">
           {saving && (
             <span className="text-sm text-muted-foreground flex items-center gap-1.5">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               {t("saving")}
             </span>
           )}
-          {saveState === "saved" && !saving && (
+          {saveState === "saved" && !saving && !isDirty && (
             <span className="text-sm font-medium text-green-600 flex items-center gap-1.5">
               <CheckCircle2 className="h-3.5 w-3.5" />
               {t("saved")}
@@ -730,11 +717,27 @@ export default function JobPreferencesPage() {
           {saveState === "error" && !saving && (
             <span className="text-sm text-destructive flex items-center gap-1.5">
               {t("failed")}
-              <button onClick={handleSave} className="underline hover:no-underline">
-                {t("retry")}
-              </button>
             </span>
           )}
+          {isDirty && saveState !== "error" && !saving && (
+            <span className="text-sm text-amber-600 flex items-center gap-1.5">
+              {t("unsavedChanges")}
+            </span>
+          )}
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !isDirty}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("saving")}
+              </>
+            ) : (
+              t("saveChanges")
+            )}
+          </Button>
         </div>
 
         {/* ── Recommended Jobs Preview ──────────────────────────────────── */}

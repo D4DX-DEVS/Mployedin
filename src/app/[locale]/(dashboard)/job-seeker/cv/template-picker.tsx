@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Check, Crown } from "lucide-react";
+import { Check, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -95,6 +95,34 @@ function TemplateThumbnail({ template, themeColor }: { template: TemplateDefinit
         <rect x="8" y="30" width="44" height="1" rx="0.5" fill="#e5e7eb" />
       </>
     ),
+    professional: (
+      <>
+        <rect x="0" y="0" width="60" height="15" fill={c} />
+        <circle cx="9" cy="7.5" r="4.5" fill="white" opacity="0.85" />
+        <rect x="17" y="5" width="28" height="2.5" rx="0.5" fill="white" />
+        <rect x="17" y="9" width="22" height="1" rx="0.5" fill="white" opacity="0.6" />
+        <rect x="4" y="19" width="34" height="1" rx="0.5" fill="#e5e7eb" />
+        <rect x="4" y="22" width="34" height="1" rx="0.5" fill="#e5e7eb" />
+        <rect x="4" y="25" width="30" height="1" rx="0.5" fill="#e5e7eb" />
+        <rect x="42" y="19" width="14" height="1.5" rx="0.5" fill={c} opacity="0.5" />
+        <rect x="42" y="23" width="14" height="1" rx="0.5" fill="#e5e7eb" />
+        <rect x="42" y="26" width="14" height="1" rx="0.5" fill="#e5e7eb" />
+      </>
+    ),
+    compact: (
+      <>
+        <rect x="6" y="5" width="34" height="2.5" rx="0.5" fill={c} />
+        <rect x="6" y="9" width="24" height="1" rx="0.5" fill="#d1d5db" />
+        <rect x="6" y="13" width="16" height="1.5" rx="0.5" fill={c} opacity="0.5" />
+        <rect x="6" y="16" width="48" height="0.8" rx="0.4" fill="#e5e7eb" />
+        <rect x="6" y="18" width="48" height="0.8" rx="0.4" fill="#e5e7eb" />
+        <rect x="6" y="20" width="44" height="0.8" rx="0.4" fill="#e5e7eb" />
+        <rect x="6" y="24" width="16" height="1.5" rx="0.5" fill={c} opacity="0.5" />
+        <rect x="6" y="27" width="48" height="0.8" rx="0.4" fill="#e5e7eb" />
+        <rect x="6" y="29" width="48" height="0.8" rx="0.4" fill="#e5e7eb" />
+        <rect x="6" y="31" width="40" height="0.8" rx="0.4" fill="#e5e7eb" />
+      </>
+    ),
   };
 
   return (
@@ -108,73 +136,34 @@ export function TemplatePicker({
   selected,
   onSelect,
   themeColor,
-  filter,
-  onFilterChange,
-  hasProAccess,
 }: {
   selected: string;
   onSelect: (id: string) => void;
   themeColor: string;
-  filter: "all" | "free" | "pro";
-  onFilterChange: (f: "all" | "free" | "pro") => void;
-  hasProAccess: boolean;
 }) {
   const t = useTranslations("cvBuilderPage.templatePicker");
-  const filtered = TEMPLATES.filter((template) => filter === "all" ? true : template.tier === filter);
 
   return (
     <div className="space-y-4">
-      {/* Filter pills */}
-      <div className="flex gap-2">
-        {(["all", "free", "pro"] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => onFilterChange(f)}
-            className={cn(
-              "px-3 py-1 rounded-full text-xs font-medium transition-all capitalize",
-              filter === f
-                ? f === "pro"
-                  ? "bg-orange-500 text-white"
-                  : "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            )}
-          >
-            {f === "pro" ? t("filters.pro") : f === "all" ? t("filters.all") : t("filters.free")}
-          </button>
-        ))}
-      </div>
-
-      {/* Template grid */}
+      {/* Template grid — all templates available, no tiers */}
       <div className="grid grid-cols-2 gap-3">
-        {filtered.map((template) => {
+        {TEMPLATES.map((template) => {
           const isSelected = selected === template.id;
-          const locked = template.tier === "pro" && !hasProAccess;
 
           return (
             <button
               key={template.id}
-              onClick={() => !locked && onSelect(template.id)}
+              onClick={() => onSelect(template.id)}
               className={cn(
                 "relative rounded-xl border-2 p-2.5 text-left transition-all",
                 isSelected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-border/80",
-                locked && "opacity-60 cursor-not-allowed",
               )}
             >
-              {/* Badge */}
-              <span
-                className={cn(
-                  "absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[0.6rem] font-bold uppercase",
-                  template.tier === "pro" ? "bg-orange-500 text-white" : "bg-emerald-500 text-white"
-                )}
-              >
-                {template.tier === "pro" ? t("badges.pro") : t("badges.free")}
-              </span>
-
-              {/* Locked overlay */}
-              {locked && (
-                <div className="absolute inset-0 rounded-xl bg-background/50 flex items-center justify-center z-10">
-                  <Crown className="w-5 h-5 text-orange-500" />
-                </div>
+              {/* "Photo" badge for templates that support a profile picture */}
+              {template.supportsPhoto && (
+                <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase text-primary">
+                  <ImageIcon className="h-2.5 w-2.5" /> {t("badges.photo")}
+                </span>
               )}
 
               {/* Thumbnail */}

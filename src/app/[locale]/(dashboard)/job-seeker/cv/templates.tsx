@@ -28,6 +28,28 @@ function DateRange({ start, end, isCurrent }: { start: string; end: string; isCu
   );
 }
 
+/** Circular profile photo for templates that support one. Renders nothing if no photo. */
+function PhotoCircle({
+  src, size, borderColor,
+}: { src?: string; size: number; borderColor?: string }) {
+  if (!src) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        objectFit: "cover",
+        border: borderColor ? `2px solid ${borderColor}` : undefined,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
 /* ═══════════════════════════════════════
    TEMPLATE 1: CLASSIC (Free)
    Clean single-column with colored accents
@@ -184,6 +206,11 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
     <div style={{ fontFamily, fontSize: `${10 * scale}px` }} className="text-gray-900 flex min-h-full">
       {/* Left Sidebar */}
       <div className="w-[35%] p-4 text-white" style={{ backgroundColor: theme.primary }}>
+        {data.photo && (
+          <div className="mb-3 flex justify-center">
+            <PhotoCircle src={data.photo} size={64 * scale} borderColor="rgba(255,255,255,0.6)" />
+          </div>
+        )}
         <h1 className="font-bold mb-0.5" style={{ fontSize: `${16 * scale}px` }}>
           {data.fullName || t("yourName")}
         </h1>
@@ -423,9 +450,13 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
     <div style={{ fontFamily, fontSize: `${10 * scale}px` }} className="text-gray-900">
       {/* Header band */}
       <div className="px-4 py-4 text-white flex items-center gap-4" style={{ backgroundColor: theme.primary }}>
-        <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-white/70 text-xl font-bold flex-shrink-0">
-          {(data.fullName || "U").charAt(0).toUpperCase()}
-        </div>
+        {data.photo ? (
+          <PhotoCircle src={data.photo} size={56 * scale} borderColor="rgba(255,255,255,0.5)" />
+        ) : (
+          <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-white/70 text-xl font-bold flex-shrink-0">
+            {(data.fullName || "U").charAt(0).toUpperCase()}
+          </div>
+        )}
         <div>
           <h1 className="font-bold" style={{ fontSize: `${18 * scale}px` }}>{data.fullName || t("yourName")}</h1>
           {data.headline && <p className="text-white/80" style={{ fontSize: `${9 * scale}px` }}>{data.headline}</p>}
@@ -549,14 +580,19 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
       {/* Bold Header */}
       <div className="p-5 text-white relative" style={{ backgroundColor: theme.primary }}>
         <div className="absolute inset-0 opacity-10" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 60%)" }} />
-        <h1 className="font-bold relative" style={{ fontSize: `${24 * scale}px` }}>
-          {data.fullName || t("yourName")}
-        </h1>
-        {data.headline && <p className="text-white/80 relative mt-0.5" style={{ fontSize: `${10 * scale}px` }}>{data.headline}</p>}
-        <div className="flex flex-wrap gap-x-4 mt-2 relative" style={{ fontSize: `${8 * scale}px`, color: "rgba(255,255,255,0.8)" }}>
-          {data.email && <span>✉ {data.email}</span>}
-          {data.phone && <span>☎ {data.phone}</span>}
-          {data.currentLocation && <span>📍 {data.currentLocation}</span>}
+        <div className="relative flex items-center gap-4">
+          {data.photo && <PhotoCircle src={data.photo} size={70 * scale} borderColor="rgba(255,255,255,0.6)" />}
+          <div>
+            <h1 className="font-bold" style={{ fontSize: `${24 * scale}px` }}>
+              {data.fullName || t("yourName")}
+            </h1>
+            {data.headline && <p className="text-white/80 mt-0.5" style={{ fontSize: `${10 * scale}px` }}>{data.headline}</p>}
+            <div className="flex flex-wrap gap-x-4 mt-2" style={{ fontSize: `${8 * scale}px`, color: "rgba(255,255,255,0.8)" }}>
+              {data.email && <span>✉ {data.email}</span>}
+              {data.phone && <span>☎ {data.phone}</span>}
+              {data.currentLocation && <span>📍 {data.currentLocation}</span>}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -780,6 +816,223 @@ export function ElegantTemplate({ data, formatting }: { data: CVForm; formatting
 }
 
 /* ═══════════════════════════════════════
+   TEMPLATE 7: PROFESSIONAL (photo header)
+   Colored photo header + two-column body
+   ═══════════════════════════════════════ */
+
+export function ProfessionalTemplate({ data, formatting }: { data: CVForm; formatting: FormattingOptions }) {
+  const t = useTranslations("cvBuilderPage.previewSections");
+  const theme = getTheme(formatting);
+  const fontFamily = getFontStack(formatting);
+  const scale = getFontScale(formatting);
+  const gap = getSectionGap(formatting);
+
+  return (
+    <div style={{ fontFamily, fontSize: `${10 * scale}px` }} className="text-gray-900">
+      {/* Photo header */}
+      <div className="flex items-center gap-4 px-5 py-4 text-white" style={{ backgroundColor: theme.primary }}>
+        {data.photo ? (
+          <PhotoCircle src={data.photo} size={68 * scale} borderColor="rgba(255,255,255,0.7)" />
+        ) : (
+          <div className="rounded-full bg-white/20 flex items-center justify-center font-bold flex-shrink-0"
+            style={{ width: 68 * scale, height: 68 * scale, fontSize: `${24 * scale}px` }}>
+            {(data.fullName || "U").charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div>
+          <h1 className="font-bold" style={{ fontSize: `${20 * scale}px` }}>{data.fullName || t("yourName")}</h1>
+          {data.headline && <p className="text-white/85 mt-0.5" style={{ fontSize: `${9.5 * scale}px` }}>{data.headline}</p>}
+          <div className="flex flex-wrap gap-x-3 mt-1.5" style={{ fontSize: `${7.5 * scale}px`, color: "rgba(255,255,255,0.8)" }}>
+            {data.email && <span>{data.email}</span>}
+            {data.phone && <span>{data.phone}</span>}
+            {data.currentLocation && <span>{data.currentLocation}</span>}
+            {data.linkedin && <span className="break-all">{data.linkedin}</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Two columns */}
+      <div className="flex gap-4 px-5" style={{ paddingTop: gap }}>
+        {/* Main column */}
+        <div className="w-[62%]" style={{ display: "flex", flexDirection: "column", gap }}>
+          {data.experience.length > 0 && (
+            <div>
+              <SectionTitle color={theme.primary}>{t("professionalExperience")}</SectionTitle>
+              <div className="space-y-2.5">
+                {data.experience.map((exp, i) => (
+                  <div key={i}>
+                    <div className="flex justify-between items-start">
+                      <p className="font-semibold" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle}</p>
+                      <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} />
+                    </div>
+                    <p style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
+                    {exp.description && <p className="text-gray-600 mt-0.5 whitespace-pre-line" style={{ fontSize: `${8 * scale}px` }}>{exp.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.projects.length > 0 && (
+            <div>
+              <SectionTitle color={theme.primary}>{t("keyProjects")}</SectionTitle>
+              <div className="space-y-2">
+                {data.projects.map((p, i) => (
+                  <div key={i}>
+                    <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{p.title}</p>
+                    {p.description && <p className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }}>{p.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Side column */}
+        <div className="w-[38%]" style={{ display: "flex", flexDirection: "column", gap }}>
+          {data.skills.length > 0 && (
+            <div>
+              <SectionTitle color={theme.primary}>{t("coreCompetencies")}</SectionTitle>
+              <div className="flex flex-wrap gap-1">
+                {data.skills.map((s, i) => (
+                  <span key={i} className="px-1.5 py-0.5 rounded font-medium" style={{ fontSize: `${7.5 * scale}px`, backgroundColor: theme.light, color: theme.primary }}>{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.education.length > 0 && (
+            <div>
+              <SectionTitle color={theme.primary}>{t("education")}</SectionTitle>
+              <div className="space-y-2">
+                {data.education.map((edu, i) => (
+                  <div key={i}>
+                    <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
+                    <p className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }}>{edu.institution}</p>
+                    {edu.graduationDate && <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{edu.graduationDate}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.languages.length > 0 && (
+            <div>
+              <SectionTitle color={theme.primary}>{t("languages")}</SectionTitle>
+              <div className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
+                {data.languages.map((l, i) => (
+                  <p key={i}>{l.language} <span className="text-gray-400 capitalize">({l.proficiency})</span></p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.certifications.length > 0 && (
+            <div>
+              <SectionTitle color={theme.primary}>{t("certifications")}</SectionTitle>
+              <ul className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
+                {data.certifications.map((c, i) => <li key={i}>• {c}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   TEMPLATE 8: COMPACT (dense single column)
+   Fits more content on a single page
+   ═══════════════════════════════════════ */
+
+export function CompactTemplate({ data, formatting }: { data: CVForm; formatting: FormattingOptions }) {
+  const t = useTranslations("cvBuilderPage.previewSections");
+  const theme = getTheme(formatting);
+  const fontFamily = getFontStack(formatting);
+  const scale = getFontScale(formatting);
+
+  return (
+    <div style={{ fontFamily, fontSize: `${9 * scale}px`, lineHeight: 1.4 }} className="text-gray-900 p-4">
+      {/* Header */}
+      <div className="flex items-baseline justify-between flex-wrap gap-x-3" style={{ borderBottom: `1px solid ${theme.primary}`, paddingBottom: 4, marginBottom: 6 }}>
+        <h1 className="font-bold" style={{ fontSize: `${16 * scale}px`, color: theme.primary }}>{data.fullName || t("yourName")}</h1>
+        <div className="flex flex-wrap gap-x-2" style={{ fontSize: `${7 * scale}px`, color: "#6b7280" }}>
+          {data.email && <span>{data.email}</span>}
+          {data.phone && <span>· {data.phone}</span>}
+          {data.currentLocation && <span>· {data.currentLocation}</span>}
+        </div>
+      </div>
+      {data.headline && <p className="text-gray-600 mb-2" style={{ fontSize: `${8 * scale}px` }}>{data.headline}</p>}
+
+      <div className="space-y-2.5">
+        {data.experience.length > 0 && (
+          <div>
+            <h2 className="font-bold uppercase tracking-wide" style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{t("experience")}</h2>
+            {data.experience.map((exp, i) => (
+              <div key={i} className="mt-1">
+                <div className="flex justify-between items-baseline gap-2">
+                  <p className="font-semibold" style={{ fontSize: `${8.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">— {exp.company}</span></p>
+                  <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} />
+                </div>
+                {exp.description && <p className="text-gray-600 whitespace-pre-line" style={{ fontSize: `${7.5 * scale}px` }}>{exp.description}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {data.education.length > 0 && (
+          <div>
+            <h2 className="font-bold uppercase tracking-wide" style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{t("education")}</h2>
+            {data.education.map((edu, i) => (
+              <div key={i} className="flex justify-between items-baseline gap-2 mt-0.5">
+                <p style={{ fontSize: `${8 * scale}px` }}><span className="font-semibold">{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</span> <span className="text-gray-500">— {edu.institution}</span></p>
+                {edu.graduationDate && <span className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{edu.graduationDate}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {data.skills.length > 0 && (
+          <div>
+            <h2 className="font-bold uppercase tracking-wide" style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{t("skills")}</h2>
+            <p className="text-gray-700" style={{ fontSize: `${8 * scale}px` }}>{data.skills.join("  ·  ")}</p>
+          </div>
+        )}
+
+        {data.projects.length > 0 && (
+          <div>
+            <h2 className="font-bold uppercase tracking-wide" style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{t("projects")}</h2>
+            {data.projects.map((p, i) => (
+              <p key={i} className="mt-0.5" style={{ fontSize: `${8 * scale}px` }}>
+                <span className="font-semibold">{p.title}</span>{p.description ? ` — ${p.description}` : ""}
+              </p>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-x-8 gap-y-1">
+          {data.languages.length > 0 && (
+            <div>
+              <h2 className="font-bold uppercase tracking-wide" style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{t("languages")}</h2>
+              <p className="text-gray-700" style={{ fontSize: `${8 * scale}px` }}>
+                {data.languages.map((l) => `${l.language} (${l.proficiency})`).join("  ·  ")}
+              </p>
+            </div>
+          )}
+          {data.certifications.length > 0 && (
+            <div>
+              <h2 className="font-bold uppercase tracking-wide" style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{t("certifications")}</h2>
+              <p className="text-gray-700" style={{ fontSize: `${8 * scale}px` }}>{data.certifications.join("  ·  ")}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
    TEMPLATE RENDERER — dispatches by ID
    ═══════════════════════════════════════ */
 
@@ -791,11 +1044,13 @@ export function TemplateRenderer({
   formatting: FormattingOptions;
 }) {
   switch (templateId) {
-    case "modern":    return <ModernTemplate data={data} formatting={formatting} />;
-    case "minimal":   return <MinimalTemplate data={data} formatting={formatting} />;
-    case "executive": return <ExecutiveTemplate data={data} formatting={formatting} />;
-    case "creative":  return <CreativeTemplate data={data} formatting={formatting} />;
-    case "elegant":   return <ElegantTemplate data={data} formatting={formatting} />;
-    default:          return <ClassicTemplate data={data} formatting={formatting} />;
+    case "modern":       return <ModernTemplate data={data} formatting={formatting} />;
+    case "minimal":      return <MinimalTemplate data={data} formatting={formatting} />;
+    case "executive":    return <ExecutiveTemplate data={data} formatting={formatting} />;
+    case "creative":     return <CreativeTemplate data={data} formatting={formatting} />;
+    case "elegant":      return <ElegantTemplate data={data} formatting={formatting} />;
+    case "professional": return <ProfessionalTemplate data={data} formatting={formatting} />;
+    case "compact":      return <CompactTemplate data={data} formatting={formatting} />;
+    default:             return <ClassicTemplate data={data} formatting={formatting} />;
   }
 }

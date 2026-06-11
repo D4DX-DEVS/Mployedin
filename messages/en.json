@@ -365,16 +365,16 @@
     "hero": {
       "badge": "AI Job Matching",
       "title": "Browse AI-matched jobs faster.",
-      "description": "AI scores every role against your profile. Switch to discovery mode and apply in bulk without leaving the dashboard."
+      "description": "AI scores every role against your profile. Switch to discovery mode to surface fresh openings without leaving the dashboard."
     },
     "stats": {
       "liveMatches": "Live matches",
       "searchReturned": "Jobs returned for this search",
       "profileAligned": "Jobs aligned to your profile",
-      "readyToApply": "Ready to apply",
-      "bulkTray": "Saved in the current bulk-apply tray",
-      "filterSignal": "Filter signal",
-      "activeFilters": "{count} active filters shaping the list"
+      "strongMatches": "Strong matches",
+      "strongMatchesHint": "Roles scoring 80% or higher",
+      "newThisWeek": "New this week",
+      "newThisWeekHint": "Matched roles posted in the last 7 days"
     },
     "search": {
       "placeholder": "Search jobs by title, skills, or keyword...",
@@ -523,6 +523,17 @@
       "applyFailed": "Failed to apply. Please try again.",
       "cancel": "Cancel",
       "apply": "Submit Application",
+      "applying": "Applying…"
+    },
+    "easyApplyConfirm": {
+      "title": "Confirm your application",
+      "matchSummary": "You're a {score}% match for this role.",
+      "skillsNeeded": "Skills needed",
+      "missingHint": "{count} skill(s) you haven't listed yet — you can still apply.",
+      "noSkills": "This role lists no specific skills. You can apply directly.",
+      "profileNote": "Your profile and saved CV will be sent to the employer.",
+      "cancel": "Cancel",
+      "confirm": "Confirm & Apply",
       "applying": "Applying…"
     }
   },
@@ -1058,6 +1069,8 @@
       "saved": "Saved",
       "failed": "Failed to save.",
       "retry": "Retry",
+      "saveChanges": "Save Changes",
+      "unsavedChanges": "Unsaved changes",
       "matchTitle": "AI Match Setup Score",
       "matchDescription": "Complete your preferences for better job matches",
       "optimized": "Profile fully optimized — you're getting the best matches!",
@@ -1262,6 +1275,7 @@
       "phone": "Phone",
       "nationality": "Nationality",
       "currentLocation": "Current Location",
+      "photo": "Profile Photo",
       "profileSummary": "Profile Summary",
       "portfolio": "Portfolio / Website",
       "title": "Title",
@@ -1311,10 +1325,23 @@
       "writeWithAi": "Write with AI",
       "addAnotherLink": "Add another link",
       "add": "Add",
+      "uploadPhoto": "Upload Photo",
+      "changePhoto": "Change Photo",
+      "removePhoto": "Remove",
       "downloadPdf": "Download PDF",
       "download": "Download",
       "saving": "Saving...",
       "addToProfile": "Add to Profile"
+    },
+    "hints": {
+      "photo": "JPG, PNG or WEBP. Max 5 MB. Shown on photo-enabled templates."
+    },
+    "monthPicker": {
+      "placeholder": "Select month",
+      "clear": "Clear",
+      "thisMonth": "This month",
+      "prevYear": "Previous year",
+      "nextYear": "Next year"
     },
     "badges": {
       "aiPowered": "AI-powered"
@@ -1381,7 +1408,8 @@
       },
       "badges": {
         "free": "Free",
-        "pro": "PRO"
+        "pro": "PRO",
+        "photo": "Photo"
       },
       "templates": {
         "classic": { "name": "Classic", "description": "Clean professional layout with blue accents" },
@@ -1389,7 +1417,9 @@
         "minimal": { "name": "Minimal", "description": "Simple, ATS-friendly single-column design" },
         "executive": { "name": "Executive", "description": "Premium two-column layout for senior roles" },
         "creative": { "name": "Creative", "description": "Bold design with colored header and skill bars" },
-        "elegant": { "name": "Elegant", "description": "Refined serif typography with gold accents" }
+        "elegant": { "name": "Elegant", "description": "Refined serif typography with gold accents" },
+        "professional": { "name": "Professional", "description": "Photo header with two-column body for impact" },
+        "compact": { "name": "Compact", "description": "Dense single-column layout that fits more on a page" }
       }
     },
     "formatting": {
@@ -3485,6 +3515,11 @@
     "aiCategoryScoresUnavailable": "Detailed AI category scores are not available for this application yet.",
     "generateAiMatchPrompt": "Generate an AI match score to inspect how this candidate aligns with the role requirements.",
     "screeningAnswers": "Screening answers",
+    "attachments": "Attachments",
+    "docResume": "Resume / CV",
+    "docPortfolio": "Portfolio link",
+    "docOther": "Document",
+    "openDocument": "Open",
     "yes": "Yes",
     "no": "No",
     "strengths": "Strengths",

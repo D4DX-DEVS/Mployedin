@@ -4,8 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type LucideIcon, Home, Briefcase, FileText, Headset, UserCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// useLayoutEffect logs a warning during SSR; fall back to useEffect on the server.
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 interface JobSeekerTopNavProps {
   locale: string;
@@ -24,6 +28,9 @@ const NAV_ITEMS: Array<{ labelKey: NavItemKey; href: string; icon: LucideIcon; a
 export function JobSeekerTopNav({ locale }: JobSeekerTopNavProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
+  const navRef = useRef<HTMLElement>(null);
+  const itemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const [pill, setPill] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
 
   function isActive(href: string) {
     const full = `/${locale}${href}`;
@@ -31,28 +38,65 @@ export function JobSeekerTopNav({ locale }: JobSeekerTopNavProps) {
     return pathname === full || pathname.startsWith(`${full}/`);
   }
 
+  const activeIndex = NAV_ITEMS.findIndex((item) => isActive(item.href));
+
+  // Position the highlight from the active item's live geometry instead of a
+  // Framer shared-layout snapshot (which goes stale after idle/resize/route
+  // changes and causes the pill to fly in from a wrong origin).
+  useIsomorphicLayoutEffect(() => {
+    function measure() {
+      const el = activeIndex >= 0 ? itemRefs.current[activeIndex] : null;
+      if (!el) {
+        setPill(null);
+        return;
+      }
+      setPill({ left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight });
+    }
+
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    if (navRef.current) observer.observe(navRef.current);
+    itemRefs.current.forEach((el) => el && observer.observe(el));
+    window.addEventListener("resize", measure);
+    // Web fonts can change item widths after first paint — re-measure once ready.
+    document.fonts?.ready?.then(measure).catch(() => {});
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [activeIndex, locale]);
+
   return (
-    <nav className="hidden lg:flex items-center gap-1 rounded-full border border-border/70 bg-background/80 p-1">
-      {NAV_ITEMS.map((item) => (
+    <nav
+      ref={navRef}
+      className="relative hidden lg:flex items-center gap-1 rounded-full border border-border/70 bg-background/80 p-1"
+    >
+      {pill && (
+        <motion.span
+          aria-hidden
+          className="absolute z-0 rounded-full bg-primary"
+          initial={false}
+          animate={{ left: pill.left, top: pill.top, width: pill.width, height: pill.height }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        />
+      )}
+      {NAV_ITEMS.map((item, i) => (
         <Link
           key={item.href}
+          ref={(el) => {
+            itemRefs.current[i] = el;
+          }}
           href={`/${locale}${item.href}`}
           prefetch={false}
           className={cn(
-            "relative rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200",
+            "relative z-10 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200",
             isActive(item.href)
               ? "text-primary-foreground"
               : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
           )}
         >
-          {isActive(item.href) && (
-            <motion.span
-              layoutId="desktop-nav-pill"
-              className="absolute inset-0 rounded-full bg-primary"
-              initial={false}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            />
-          )}
           <span className="relative z-10">{t(item.labelKey)}</span>
         </Link>
       ))}
