@@ -25,6 +25,8 @@ import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 interface Commission {
   _id: string;
   agentId?: { fullName?: string; _id?: string };
+  superAgentId?: { fullName?: string; _id?: string };
+  agentName?: string | null;
   amount: number;
   currency?: string;
   status: string;
@@ -266,7 +268,7 @@ export default function AdminCommissionsPage() {
   const hasActiveFilters = Boolean(status || typeFilter || searchTerm || dateFrom || dateTo || currencyFilter);
 
   const exportColumns: ExportColumn<Commission>[] = [
-    { header: "Agent", key: "agentId" as keyof Commission, formatter: (_v, r) => (r as unknown as Commission).agentId?.fullName ?? "—" },
+    { header: "Agent", key: "agentId" as keyof Commission, formatter: (_v, r) => { const c = r as unknown as Commission; return c.agentName ?? c.agentId?.fullName ?? "—"; } },
     { header: "Type", key: "type", formatter: (v) => String(v ?? "—") },
     { header: "Amount", key: "amount", formatter: (v) => String(v ?? 0) },
     { header: "Currency", key: "currency", formatter: (v) => String(v ?? "AED") },
@@ -527,7 +529,7 @@ export default function AdminCommissionsPage() {
                 <TableRow key={c._id} className="border-border/70">
                   <TableCell>
                     <div>
-                      <p className="font-medium text-foreground">{c.agentId?.fullName ?? "—"}</p>
+                      <p className="font-medium text-foreground">{c.agentName ?? c.agentId?.fullName ?? "—"}</p>
                       <p className="mt-1 text-xs text-muted-foreground">Commission record</p>
                     </div>
                   </TableCell>

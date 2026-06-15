@@ -73,6 +73,10 @@ export default function RegisterPage() {
       setError(t("passwordTooShort"));
       return;
     }
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setError(t("passwordTooWeak"));
+      return;
+    }
 
     setLoading(true);
 
@@ -83,14 +87,30 @@ export default function RegisterPage() {
     });
 
     const data = await res.json();
-    setLoading(false);
 
     if (!res.ok) {
+      setLoading(false);
       setError(data.message ?? t("registrationFailed"));
       return;
     }
 
-    router.push(`/${locale}/verify-email?email=${encodeURIComponent(email)}`);
+    // Account is created. Sign the user in straight away so they can complete
+    // onboarding (details / CV parsing) first. Email verification is enforced
+    // afterwards, when they try to reach the dashboard.
+    const signInResult = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+    setLoading(false);
+
+    if (signInResult?.error) {
+      // Fallback: account exists but auto sign-in failed — send to login.
+      router.push(`/${locale}/login?email=${encodeURIComponent(email)}`);
+      return;
+    }
+
+    router.replace(`/${locale}/onboarding`);
   }
 
   return (

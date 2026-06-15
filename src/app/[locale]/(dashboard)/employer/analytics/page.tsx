@@ -646,7 +646,7 @@ function PipelineTab({
         />
 
         {funnelChartData.every((d) => d.count === 0) ? (
-          <p className="py-10 text-center text-slate-500">No application data available</p>
+          <p className="py-10 text-center text-slate-500">{t("noApplicationData")}</p>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={funnelChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -685,7 +685,7 @@ function PipelineTab({
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} interval={Math.floor(trendChartData.length / 8)} />
             <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} allowDecimals={false} />
-            <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} labelFormatter={(label) => `Date: ${label}`} />
+            <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} labelFormatter={(label) => `${t("dateLabel")}: ${label}`} />
             <Area type="monotone" dataKey="count" stroke="#0ea5e9" fill="#38bdf8" fillOpacity={0.18} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
           </AreaChart>
         </ResponsiveContainer>
@@ -900,7 +900,7 @@ function HistoricalTab({
           <div className="rounded-2xl bg-slate-100 p-2 text-slate-600">
             <Calendar className="h-4 w-4" />
           </div>
-          <div className="mr-2">
+          <div className="me-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t("dateRange")}</p>
             <p className="mt-1 text-sm font-medium text-slate-900">{t("dateRangeDesc")}</p>
           </div>
@@ -944,22 +944,22 @@ function HistoricalTab({
               />
             </div>
           )}
-          <span className="ml-auto rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500">
-            {historical.dateRange.start} — {historical.dateRange.end} · {historical.totalApplications} applications
+          <span className="ms-auto rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500">
+            {historical.dateRange.start} — {historical.dateRange.end} · {historical.totalApplications} {t("histApplications")}
           </span>
         </div>
       </AnalyticsPanel>
 
       <AnalyticsPanel>
         <AnalyticsSectionHeader
-          title="Applications Over Time"
-          description="Spot trendlines, surges, and soft periods across the selected date range."
+          title={t("appsOverTime")}
+          description={t("appsOverTimeDesc")}
           icon={TrendingUp}
-          eyebrow="Trend"
+          eyebrow={t("trendEyebrow")}
         />
 
         {trendChartData.length === 0 ? (
-          <p className="text-center text-slate-500 py-8">No data for this period</p>
+          <p className="text-center text-slate-500 py-8">{t("noDataPeriod")}</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={trendChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -975,7 +975,7 @@ function HistoricalTab({
                 contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }}
                 labelFormatter={(_, payload) => {
                   const item = payload?.[0]?.payload as { fullDate?: string } | undefined;
-                  return item?.fullDate ? `Date: ${item.fullDate}` : "";
+                  return item?.fullDate ? `${t("dateLabel")}: ${item.fullDate}` : "";
                 }}
               />
               <Area type="monotone" dataKey="count" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
@@ -987,14 +987,14 @@ function HistoricalTab({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AnalyticsPanel>
           <AnalyticsSectionHeader
-            title="Application Sources"
-            description="See which channels are contributing the most candidates."
+            title={t("appSources")}
+            description={t("appSourcesDesc")}
             icon={Users}
-            eyebrow="Attribution"
+            eyebrow={t("attributionEyebrow")}
           />
 
           {sourceChartData.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">No source data available</p>
+            <p className="text-center text-slate-500 py-8">{t("noSourceData")}</p>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={250}>
@@ -1018,7 +1018,7 @@ function HistoricalTab({
                   </Pie>
                   <Tooltip
                     contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }}
-                    formatter={(value) => [value ?? 0, "Applications"]}
+                    formatter={(value) => [value ?? 0, t("applicationsLabel")]}
                   />
                   <Legend />
                 </PieChart>
@@ -1048,14 +1048,14 @@ function HistoricalTab({
 
         <AnalyticsPanel>
           <AnalyticsSectionHeader
-            title="Stage Drop-off Rates"
-            description="Pinpoint where candidates are slipping out between major transitions."
+            title={t("stageDropOff")}
+            description={t("stageDropOffDesc")}
             icon={ArrowDownRight}
-            eyebrow="Leak points"
+            eyebrow={t("leakPointsEyebrow")}
           />
 
           {historical.dropOff.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">No data available</p>
+            <p className="text-center text-slate-500 py-8">{t("noDataAvailable")}</p>
           ) : (
             <div className="space-y-4">
               {historical.dropOff.map((d) => (
@@ -1073,7 +1073,7 @@ function HistoricalTab({
                           : "text-green-600"
                       }`}
                     >
-                      {d.dropOffPct}% drop-off
+                      {t("dropOffSuffix", { pct: d.dropOffPct })}
                     </span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2.5">
@@ -1089,8 +1089,8 @@ function HistoricalTab({
                     />
                   </div>
                   <div className="flex justify-between text-xs text-slate-400 mt-1">
-                    <span>{d.count} at {d.stageName}</span>
-                    <span>{d.nextCount} reached {d.nextStageName}</span>
+                    <span>{t("atStage", { count: d.count, stage: d.stageName })}</span>
+                    <span>{t("reachedStage", { count: d.nextCount, stage: d.nextStageName })}</span>
                   </div>
                 </div>
               ))}
@@ -1101,15 +1101,15 @@ function HistoricalTab({
 
       <AnalyticsPanel>
         <AnalyticsSectionHeader
-          title="Time-to-Hire by Stage"
-          description="Benchmark average and median time spent between key hiring transitions."
+          title={t("timeToHireStage")}
+          description={t("timeToHireStageDesc")}
           icon={Clock}
-          eyebrow="Speed"
+          eyebrow={t("speedEyebrow")}
         />
 
         {historical.timeToHire.length === 0 ? (
           <p className="text-center text-slate-500 py-8">
-            Not enough status history data to calculate stage durations
+            {t("notEnoughHistory")}
           </p>
         ) : (
           <>
@@ -1127,13 +1127,13 @@ function HistoricalTab({
                 <YAxis
                   tick={{ fontSize: 12, fill: "#64748b" }}
                   axisLine={{ stroke: "#e2e8f0" }}
-                  label={{ value: "Days", angle: -90, position: "insideLeft", style: { fontSize: 12, fill: "#94a3b8" } }}
+                  label={{ value: t("daysAxis"), angle: -90, position: "insideLeft", style: { fontSize: 12, fill: "#94a3b8" } }}
                 />
                 <Tooltip
                   contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }}
                   formatter={(value, name) => {
-                    if (name === "avgDays") return [`${value} days`, "Avg"];
-                    if (name === "medianDays") return [`${value} days`, "Median"];
+                    if (name === "avgDays") return [t("daysValue", { value: String(value) }), t("avgLabel")];
+                    if (name === "medianDays") return [t("daysValue", { value: String(value) }), t("medianLabel")];
                     return [value ?? 0, name ?? ""];
                   }}
                 />
@@ -1146,10 +1146,10 @@ function HistoricalTab({
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80">
-                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Stage Transition</th>
-                    <th className="text-right py-3 px-4 font-semibold text-slate-700">Avg Days</th>
-                    <th className="text-right py-3 px-4 font-semibold text-slate-700">Median Days</th>
-                    <th className="text-right py-3 px-4 font-semibold text-slate-700">Transitions</th>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-700">{t("stageTransitionCol")}</th>
+                    <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("avgDaysCol")}</th>
+                    <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("medianDaysCol")}</th>
+                    <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("transitionsCol")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1172,10 +1172,10 @@ function HistoricalTab({
         <AnalyticsPanel className="overflow-hidden p-0">
           <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
             <AnalyticsSectionHeader
-              title="Time-in-Stage by Job"
-              description="Compare stage timing by role to identify roles that stall more often."
+              title={t("timeInStageByJob")}
+              description={t("timeInStageByJobDesc")}
               icon={Briefcase}
-              eyebrow="Job benchmark"
+              eyebrow={t("jobBenchmarkEyebrow")}
               compact
             />
           </div>
@@ -1184,10 +1184,10 @@ function HistoricalTab({
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Job</th>
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Transition</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Avg Days</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Count</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">{t("jobCol")}</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">{t("transitionCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("avgDaysCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("countCol")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1245,14 +1245,14 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
     <div className="space-y-6">
       <section>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
-          <SummaryCard label="Total Jobs" value={summary.totalJobs} />
-          <SummaryCard label="Active" value={summary.activeJobs} color="green" />
-          <SummaryCard label="Views" value={summary.totalViews} color="blue" />
-          <SummaryCard label="Unique Views" value={summary.totalUniqueViews} color="indigo" />
-          <SummaryCard label="Applications" value={summary.totalApplications} color="purple" />
-          <SummaryCard label="Conversion" value={`${summary.overallConversion}%`} color="amber" />
+          <SummaryCard label={t("totalJobsCard")} value={summary.totalJobs} />
+          <SummaryCard label={t("activeCard")} value={summary.activeJobs} color="green" />
+          <SummaryCard label={t("viewsCard")} value={summary.totalViews} color="blue" />
+          <SummaryCard label={t("uniqueViewsCard")} value={summary.totalUniqueViews} color="indigo" />
+          <SummaryCard label={t("applicationsCard")} value={summary.totalApplications} color="purple" />
+          <SummaryCard label={t("conversionCard")} value={`${summary.overallConversion}%`} color="amber" />
           <SummaryCard
-            label="Underperforming"
+            label={t("underperformingCard")}
             value={summary.underperforming}
             color={summary.underperforming > 0 ? "red" : "green"}
           />
@@ -1262,29 +1262,29 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
       <AnalyticsPanel className="overflow-hidden p-0">
         <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
           <AnalyticsSectionHeader
-            title="Job Performance Breakdown"
-            description="Review visibility, application lift, and conversion quality role by role."
+            title={t("jobPerformanceBreakdown")}
+            description={t("jobPerformanceBreakdownDesc")}
             icon={Eye}
-            eyebrow="Job performance"
+            eyebrow={t("jobPerformanceEyebrow")}
             compact
           />
         </div>
 
         {jobs.length === 0 ? (
-          <p className="px-6 py-12 text-center text-slate-500">No jobs created yet</p>
+          <p className="px-6 py-12 text-center text-slate-500">{t("noJobsCreated")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[920px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Job Title</th>
-                  <th className="text-center py-3 px-4 font-semibold text-slate-700">Status</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Views</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Unique</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Applications</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Conv. Rate</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Avg Match</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Days Active</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">{t("jobTitleCol")}</th>
+                  <th className="text-center py-3 px-4 font-semibold text-slate-700">{t("statusCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("viewsCard")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("uniqueCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("applicationsCard")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("convRateCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("avgMatchCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("daysActiveCol")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1337,10 +1337,10 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
       {jobs.some((j) => j.insight) && (
         <AnalyticsPanel>
           <AnalyticsSectionHeader
-            title="Insights & Recommendations"
-            description="Highlight listings that deserve a title, salary, or positioning adjustment."
+            title={t("insightsRecs")}
+            description={t("insightsRecsDesc")}
             icon={AlertTriangle}
-            eyebrow="Recommendations"
+            eyebrow={t("recommendationsEyebrow")}
           />
           <div className="space-y-3">
             {jobs
@@ -1359,7 +1359,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
                     <p className="text-sm text-slate-600 mt-0.5">{job.insight}</p>
                   </div>
                   <span className="text-xs text-slate-500 shrink-0">
-                    {job.views} views · {job.applications} apps
+                    {t("viewsAppsSummary", { views: job.views, apps: job.applications })}
                   </span>
                 </div>
               ))}
@@ -1383,20 +1383,20 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
     <div className="space-y-6">
       <section>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SummaryCard label="Avg Response Time" value={formatHoursLabel(overall.avgHours)} description={`${overall.avgDays} days average`} color="blue" />
-          <SummaryCard label="Median Response Time" value={formatHoursLabel(overall.medianHours)} description="Typical time to first action" color="indigo" />
-          <SummaryCard label="Applications Measured" value={overall.totalMeasured} description="Rows included in this benchmark" color="purple" />
+          <SummaryCard label={t("avgResponseTime")} value={formatHoursLabel(overall.avgHours, t)} description={t("avgDaysAverage", { days: overall.avgDays })} color="blue" />
+          <SummaryCard label={t("medianResponseTime")} value={formatHoursLabel(overall.medianHours, t)} description={t("typicalFirstAction")} color="indigo" />
+          <SummaryCard label={t("applicationsMeasured")} value={overall.totalMeasured} description={t("rowsInBenchmark")} color="purple" />
           <SummaryCard
-            label="Your Commitment"
+            label={t("yourCommitment")}
             value={
-                 commitment ? `${commitment} day${commitment > 1 ? "s" : ""}` : "Not set"
+                 commitment ? t("commitmentDays", { count: commitment }) : t("commitmentNotSet")
             }
             description={
               commitment && overall.avgDays > commitment
-                ? "Exceeding your public response promise"
+                ? t("exceedingPromise")
                 : commitment && overall.avgDays <= commitment && overall.totalMeasured > 0
-                ? "Meeting your public response promise"
-                : "Set a promise to display on public jobs"
+                ? t("meetingPromise")
+                : t("setPromise")
             }
             color={
               commitment && overall.avgDays > commitment
@@ -1411,14 +1411,14 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
 
       <AnalyticsPanel>
         <AnalyticsSectionHeader
-          title="Response Time Distribution"
-          description="Understand how quickly employer actions happen across measured applications."
+          title={t("responseTimeDistribution")}
+          description={t("responseTimeDistributionDesc")}
           icon={Clock}
-          eyebrow="Distribution"
+          eyebrow={t("distributionEyebrow")}
         />
 
         {distribution.every((d) => d.count === 0) ? (
-          <p className="text-center text-slate-500 py-8">No response time data available yet</p>
+          <p className="text-center text-slate-500 py-8">{t("noResponseTimeData")}</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={distribution} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
@@ -1436,10 +1436,10 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
         <AnalyticsPanel className="overflow-hidden p-0">
           <div className="border-b border-slate-200 px-5 py-5 sm:px-6">
             <AnalyticsSectionHeader
-              title="Response Time by Job"
-              description="Spot which listings are moving quickly and which ones need closer follow-up discipline."
+              title={t("responseTimeByJob")}
+              description={t("responseTimeByJobDesc")}
               icon={Briefcase}
-              eyebrow="Job service level"
+              eyebrow={t("jobServiceLevelEyebrow")}
               compact
             />
           </div>
@@ -1448,10 +1448,10 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80">
-                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Job Title</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Avg Response</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Median</th>
-                  <th className="text-right py-3 px-4 font-semibold text-slate-700">Measured</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">{t("jobTitleCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("avgResponseCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("medianLabel")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-slate-700">{t("measuredCol")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1468,10 +1468,10 @@ function ResponseTimeTab({ data }: { data: ResponseTimeData }) {
                             : "text-green-600"
                         }`}
                       >
-                        {formatHoursLabel(job.avgHours)}
+                        {formatHoursLabel(job.avgHours, t)}
                       </span>
                     </td>
-                    <td className="text-right py-3 px-4 text-slate-600">{formatHoursLabel(job.medianHours)}</td>
+                    <td className="text-right py-3 px-4 text-slate-600">{formatHoursLabel(job.medianHours, t)}</td>
                     <td className="text-right py-3 px-4 text-slate-500">{job.count}</td>
                   </tr>
                 ))}
@@ -1495,11 +1495,14 @@ const COLOR_MAP: Record<string, { text: string; icon: string; surface: string; b
   red: { text: "text-rose-700", icon: "text-rose-600", surface: "bg-rose-50", border: "border-rose-100" },
 };
 
-function formatHoursLabel(hours: number) {
-  if (hours < 1) return "< 1 hour";
-  if (hours < 24) return `${Math.round(hours)} hours`;
+function formatHoursLabel(
+  hours: number,
+  t: (key: string, values?: Record<string, string | number>) => string
+) {
+  if (hours < 1) return t("lessThanHour");
+  if (hours < 24) return t("hoursValue", { count: Math.round(hours) });
   const days = Math.round((hours / 24) * 10) / 10;
-  return `${days} day${days !== 1 ? "s" : ""}`;
+  return t("daysLabelPlural", { count: days });
 }
 
 function AnalyticsPanel({

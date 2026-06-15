@@ -7,7 +7,7 @@ export interface Offer {
   _id: string;
   jobId: { _id: string; title: string; location?: string };
   applicationId: { _id: string; status: string };
-  jobSeekerId: { _id: string; name?: string };
+  jobSeekerId: { _id: string; fullName?: string; userId?: { _id?: string; name?: string; email?: string } };
   salary: { amount: number; currency: string; period: "monthly" | "annually" };
   startDate: string;
   benefits?: string;

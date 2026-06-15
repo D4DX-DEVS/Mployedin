@@ -2,7 +2,7 @@ import { z } from "zod";
 import { commonSchemas } from "./index";
 
 const VALID_ROLES = ["admin", "super_agent", "agent", "employer", "job_seeker"] as const;
-const PERMISSION_MODES = ["default", "custom"] as const;
+const PERMISSION_MODES = ["role_default", "custom"] as const;
 const BULK_ACTIONS = ["setRole", "activate", "deactivate", "delete"] as const;
 
 /** POST /api/admin/users */

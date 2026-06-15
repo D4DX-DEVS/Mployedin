@@ -30,6 +30,7 @@ export const offerRespondSchema = z
   .object({
     status: z.enum(["accepted", "declined"]),
     declineReason: z.string().max(500).optional(),
+    signatureName: z.string().trim().min(2).max(120).optional(),
   })
   .refine(
     (data) => data.status !== "declined" || !!data.declineReason,

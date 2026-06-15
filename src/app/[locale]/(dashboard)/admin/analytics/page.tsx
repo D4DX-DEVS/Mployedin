@@ -116,7 +116,7 @@ export default function AdminAnalyticsPage() {
       const res = await fetch("/api/ai/report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, scope: "admin" }),
+        body: JSON.stringify({ query: q, scope: "platform" }),
         signal: controller.signal,
       });
       if (res.ok) {

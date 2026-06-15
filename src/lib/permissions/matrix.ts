@@ -89,7 +89,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     jobs: ["create", "read", "update", "delete"],
     applications: ["read", "update"],
     interviews: ["create", "read", "update"],
-    placements: ["read"],
+    placements: ["read", "update"],
     employers: ["read", "update"],
     job_seekers: ["read"],
     notifications: ["read"],
@@ -106,7 +106,9 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     ai_cv: ["read"],
     ai_match: ["read"],
     ai_assistant: ["read"],
-    offers: ["read"],
+    // Job seekers respond to (accept/decline) their own offers; the route
+    // handler enforces ownership and only permits status responses.
+    offers: ["read", "update"],
     subscriptions: ["read"],
   },
 };

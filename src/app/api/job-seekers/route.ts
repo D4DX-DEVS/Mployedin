@@ -7,6 +7,14 @@ import User from "@/models/User";
 import mongoose from "mongoose";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
+  // ── Authorization — staff-only route ──────────────────────
+  // This plural route lists/searches all job seekers and exposes candidate PII.
+  // Self-service for a candidate's own profile lives at /api/job-seeker/profile.
+  // Only staff roles may enumerate seekers; job_seeker/employer are denied.
+  if (!["admin", "super_agent", "agent"].includes(ctx.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await connectDB();
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") ?? "1");

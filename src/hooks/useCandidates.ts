@@ -123,13 +123,15 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
     return { candidates, total: data.pagination?.total ?? candidates.length };
   }
 
-  // No job selected — browse all job seekers
+  // No job selected — browse the discoverable talent pool (FG-4).
+  // Uses the employer-accessible talent-search endpoint (visible profiles only),
+  // not the staff-only /api/job-seekers route.
   const params = new URLSearchParams();
   params.set("page", String(filters.page));
   params.set("limit", String(filters.limit));
   if (filters.search) params.set("search", filters.search);
 
-  const res = await fetch(`/api/job-seekers?${params}`);
+  const res = await fetch(`/api/employer/talent-search?${params}`);
   if (!res.ok) throw new Error("Failed to fetch candidates");
   const data: CandidatesResponse = await res.json();
   const items = data.items ?? [];
@@ -175,6 +177,24 @@ export function useStartConversation() {
         body: JSON.stringify({ recipientId }),
       });
       if (!res.ok) throw new Error("Failed to start conversation");
+      return res.json();
+    },
+  });
+}
+
+/** Invite a sourced candidate to apply to one of the employer's jobs (FG-4) */
+export function useInviteToApply() {
+  return useMutation({
+    mutationFn: async ({ jobSeekerId, jobId, message }: { jobSeekerId: string; jobId: string; message?: string }) => {
+      const res = await csrfFetch("/api/employer/talent-search/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobSeekerId, jobId, message }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error ?? "Failed to send invitation");
+      }
       return res.json();
     },
   });

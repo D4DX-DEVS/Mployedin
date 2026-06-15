@@ -521,7 +521,7 @@ export default function JobSeekerDocumentsPage() {
                     <div className="flex items-center gap-1">
                       {doc.url && (
                         <a
-                          href={doc.url}
+                          href={`/api/job-seeker/documents/${doc.id}/download`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"

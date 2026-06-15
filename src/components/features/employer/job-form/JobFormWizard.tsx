@@ -62,15 +62,6 @@ interface JobFormWizardProps {
 
 const AI_PREFILL_STORAGE_KEY = "job-ai-prefill";
 
-function getDraftStorageKey() {
-  const userId =
-    typeof window !== "undefined"
-      ? (document.cookie.match(/session-user-id=([^;]+)/)?.[1] ?? "anon")
-      : "anon";
-
-  return `job-draft-${userId}`;
-}
-
 const DEFAULT_JOB_FORM_VALUES: JobFormValues = {
   title: "",
   category: "",
@@ -148,10 +139,10 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
     defaultValues: DEFAULT_JOB_FORM_VALUES,
   });
 
-  const { watch, trigger, handleSubmit, reset } = methods;
+  const { watch, trigger, handleSubmit, reset, formState } = methods;
   const formValues = watch();
 
-  const { draftId, savedIndicator, saveDraft, loadDraft } = useJobFormDraft(locale);
+  const { draftId, savedIndicator, saveDraft, loadDraft, autosaveLocal, clearDraft } = useJobFormDraft(locale);
 
   // Track whether AI prefill has been applied to prevent localStorage draft from overwriting it
   const aiPrefillApplied = useRef(false);
@@ -182,25 +173,24 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
     }
   }, [loadDraft, reset, useAiPrefill]);
 
-  // Debounced auto-save to localStorage (1500ms)
+  // Debounced auto-save to localStorage (1500ms) — uses the draft hook's shared
+  // storage key so a reload can actually restore what was typed.
   const debouncedAutoSave = useDebounce(
     useCallback(
       (values: JobFormValues) => {
-        // Only persists to localStorage — avoids API call on every keystroke
-        try {
-          localStorage.setItem(getDraftStorageKey(), JSON.stringify({ values, savedAt: Date.now() }));
-        } catch {
-          // ignore storage errors
-        }
+        autosaveLocal(values);
       },
-      []
+      [autosaveLocal]
     ),
     1500
   );
 
   useEffect(() => {
+    // Don't persist the pristine default form — that would clobber a saved draft
+    // before the restore effect has had a chance to populate the form.
+    if (!formState.isDirty) return;
     debouncedAutoSave(formValues);
-  }, [formValues, debouncedAutoSave]);
+  }, [formValues, debouncedAutoSave, formState.isDirty]);
 
   // ─── Navigation ──────────────────────────────────────────────────────────────
 
@@ -267,7 +257,7 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
         const jobId = draftId ?? String(data.job._id);
         // Clear draft
         try {
-          localStorage.removeItem(getDraftStorageKey());
+          clearDraft();
         } catch { /* ignore */ }
         toast.success(t("postSuccess"), {
           description: t("postSuccessDescription"),

@@ -228,7 +228,11 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const application = await Application.findById(params?.id)
-    .populate("jobId", "title location salary employerId agentId")
+    .populate({
+      path: "jobId",
+      select: "title location salary employerId agentId",
+      populate: { path: "employerId", select: "companyName logo" },
+    })
     .populate("jobSeekerId", "name email phone skills")
     .lean();
 
@@ -236,7 +240,13 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
   // Ownership / role check
   const appJobSeeker = String((application as unknown as { jobSeekerId?: { _id?: unknown } }).jobSeekerId?._id ?? (application as unknown as { jobSeekerId?: unknown }).jobSeekerId ?? "");
-  const appEmployer = String((application as unknown as { jobId?: { employerId?: unknown } }).jobId?.employerId ?? "");
+  // employerId may now be a populated object ({ _id, companyName, logo }) — normalize to its id.
+  const rawAppEmployer = (application as unknown as { jobId?: { employerId?: unknown } }).jobId?.employerId;
+  const appEmployer = String(
+    (rawAppEmployer && typeof rawAppEmployer === "object"
+      ? (rawAppEmployer as { _id?: unknown })._id
+      : rawAppEmployer) ?? ""
+  );
   const appAgent = (application as unknown as { jobId?: { agentId?: unknown } }).jobId?.agentId;
 
   if (ctx.role === "job_seeker") {

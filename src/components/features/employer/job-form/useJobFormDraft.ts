@@ -11,6 +11,8 @@ interface UseJobFormDraftReturn {
   savedIndicator: boolean;
   saveDraft: (values: JobFormValues) => Promise<string | null>;
   loadDraft: () => JobFormValues | null;
+  autosaveLocal: (values: JobFormValues) => void;
+  clearDraft: () => void;
 }
 
 export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
@@ -123,6 +125,31 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
     }
   }, [storageKey]);
 
+  // Lightweight local-only autosave that writes to the SAME key loadDraft reads,
+  // preserving any existing draftId so a later API sync can PATCH the right draft.
+  const autosaveLocal = useCallback(
+    (values: JobFormValues) => {
+      try {
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({ draftId, values, savedAt: Date.now() })
+        );
+      } catch {
+        // ignore storage errors
+      }
+    },
+    [storageKey, draftId]
+  );
+
+  // Remove the locally persisted draft (call after a successful publish).
+  const clearDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {
+      // ignore storage errors
+    }
+  }, [storageKey]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -130,7 +157,7 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
     };
   }, []);
 
-  return { draftId, savedIndicator, saveDraft, loadDraft };
+  return { draftId, savedIndicator, saveDraft, loadDraft, autosaveLocal, clearDraft };
 }
 
 /** Debounce a callback — returns stable function */

@@ -23,33 +23,36 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") ?? "12")));
   const search = url.searchParams.get("search") ?? "";
 
-  const filter: Record<string, unknown> = { isActive: true };
+  // Only surface employers that are actively hiring (≥1 active job). This also
+  // scopes the directory to real, vetted companies rather than empty shells.
+  const activeJobCounts = await Job.aggregate([
+    { $match: { status: "active" } },
+    { $group: { _id: "$employerId", count: { $sum: 1 } } },
+  ]);
+  const jobCountMap = new Map<string, number>(
+    activeJobCounts.map((j) => [String(j._id), j.count])
+  );
+  const hiringEmployerIds = activeJobCounts.map((j) => j._id);
+
+  const filter: Record<string, unknown> = { _id: { $in: hiringEmployerIds } };
   if (search) {
     const safe = escapeRegex(search);
     filter.$or = [
       { companyName: { $regex: safe, $options: "i" } },
       { industry: { $regex: safe, $options: "i" } },
-      { "address.city": { $regex: safe, $options: "i" } },
+      { country: { $regex: safe, $options: "i" } },
     ];
   }
 
   const [employers, total] = await Promise.all([
     Employer.find(filter)
-      .select("companyName logo industry companySize city country description website domainVerified")
+      .select("companyName logo industry companySize country description website domainVerified")
       .sort({ companyName: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),
     Employer.countDocuments(filter),
   ]);
-
-  // Get active job counts in batch
-  const employerIds = employers.map((e: Record<string, unknown>) => e._id);
-  const jobCounts = await Job.aggregate([
-    { $match: { employerId: { $in: employerIds }, status: "active" } },
-    { $group: { _id: "$employerId", count: { $sum: 1 } } },
-  ]);
-  const jobCountMap = new Map(jobCounts.map((j) => [String(j._id), j.count]));
 
   return NextResponse.json({
     items: employers.map((e: Record<string, unknown>) => ({
@@ -58,7 +61,6 @@ export async function GET(req: NextRequest) {
       logo: e.logo,
       industry: e.industry,
       companySize: e.companySize,
-      city: e.city,
       country: e.country,
       description: e.description,
       website: e.website,

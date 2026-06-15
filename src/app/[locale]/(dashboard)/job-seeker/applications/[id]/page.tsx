@@ -173,6 +173,24 @@ export default function ApplicationDetailPage() {
             <Calendar className="h-3 w-3" />
             Applied {new Date(app.appliedAt).toLocaleDateString()}
           </span>
+          {(() => {
+            const loc = job?.location?.isRemote
+              ? "Remote"
+              : [job?.location?.city, job?.location?.country].filter(Boolean).join(", ");
+            return loc ? (
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> {loc}
+              </span>
+            ) : null;
+          })()}
+          {job?.salary && (job.salary.min || job.salary.max) && (
+            <span className="flex items-center gap-1">
+              <span aria-hidden="true">💰</span>
+              {job.salary.min && job.salary.max
+                ? `${job.salary.currency ?? "AED"} ${job.salary.min.toLocaleString()} – ${job.salary.max.toLocaleString()}`
+                : `From ${job.salary.currency ?? "AED"} ${(job.salary.min || job.salary.max).toLocaleString()}`}
+            </span>
+          )}
           {app.aiMatchScore != null && app.aiMatchScore > 0 && (
             <span className={cn(
               "font-medium",
@@ -182,6 +200,17 @@ export default function ApplicationDetailPage() {
             </span>
           )}
         </div>
+
+        {job?._id && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => router.push(`/${locale}/job-seeker/jobs/${job._id}`)}
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> View job posting
+          </Button>
+        )}
 
         {/* Status Timeline */}
         {app.statusHistory?.length > 0 && (
@@ -570,15 +599,15 @@ function DocumentsSection({
       {/* Document List */}
       {documents.length > 0 ? (
         <div className="space-y-2">
-          {documents.map((doc) => (
+          {documents.map((doc, i) => (
             <div
-              key={doc.url}
+              key={`${doc.url}-${i}`}
               className="card-base rounded-xl border p-3 flex items-center gap-3"
             >
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <a
-                  href={doc.url}
+                  href={`/api/applications/${applicationId}/documents/download?i=${i}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm font-medium text-primary hover:underline truncate block"

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Users, Briefcase, TrendingUp, Inbox, Sparkles, ArrowRight, CircleCheckBig } from "lucide-react";
+import { Users, Briefcase, TrendingUp, Inbox, Sparkles, ArrowRight, CircleCheckBig, ClipboardList } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
@@ -71,7 +71,7 @@ export default function EmployerPlacementsPage() {
   }
 
   function formatSalary(placement: Placement): string {
-    if (!placement.salary) return t("notDisclosed");
+    if (!placement.salary || placement.salary.amount == null) return t("notDisclosed");
     return `${placement.salary.currency} ${placement.salary.amount.toLocaleString()}`;
   }
 
@@ -240,20 +240,21 @@ export default function EmployerPlacementsPage() {
                 <TableHead>{t("startDate")}</TableHead>
                 <TableHead>{t("salary")}</TableHead>
                 <TableHead>{t("status")}</TableHead>
+                <TableHead className="text-right">{t("onboardingColumn")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 5 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <TableCell key={j}><div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : placements.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-16 text-center">
+                  <TableCell colSpan={6} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-sky-50 text-sky-600">
                         <Inbox className="h-6 w-6" />
@@ -286,6 +287,14 @@ export default function EmployerPlacementsPage() {
                   <TableCell className="text-sm text-muted-foreground">{formatDate(placement.startDate)}</TableCell>
                   <TableCell className="font-medium text-foreground">{formatSalary(placement)}</TableCell>
                   <TableCell><StatusBadge status={placement.status} /></TableCell>
+                  <TableCell className="text-right">
+                    <Button asChild variant="outline" size="sm" className="rounded-xl">
+                      <Link href={`/${locale}/employer/placements/${placement._id}/onboarding`}>
+                        <ClipboardList className="mr-2 h-4 w-4" />
+                        {t("onboardingColumn")}
+                      </Link>
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

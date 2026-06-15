@@ -80,6 +80,8 @@ function getSuperAgentName(job: Job) {
 export default function AdminApprovalsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [approvalCounts, setApprovalCounts] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [approvalStatus, setApprovalStatus] = useState("all");
@@ -146,6 +148,8 @@ export default function AdminApprovalsPage() {
       if (res.ok) {
         const data = await res.json();
         setJobs(data.jobs ?? data.items ?? []);
+        setStatusCounts(data.statusCounts ?? {});
+        setApprovalCounts(data.approvalCounts ?? {});
         updateTotal(data.pagination?.total ?? data.total ?? 0);
       }
     } finally {
@@ -172,8 +176,8 @@ export default function AdminApprovalsPage() {
     title: "Job Approvals",
   });
 
-  const pending = jobs.filter((j) => getApproval(j) === "pending").length;
-  const active = jobs.filter((j) => j.status === "active").length;
+  const pending = approvalCounts.pending ?? jobs.filter((j) => getApproval(j) === "pending").length;
+  const active = statusCounts.active ?? jobs.filter((j) => j.status === "active").length;
 
   return (
     <div className="page-container space-y-6">

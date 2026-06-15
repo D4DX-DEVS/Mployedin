@@ -27,7 +27,11 @@ const serwist = new Serwist({
   fallbacks: {
     entries: [
       {
-        url: "/~offline",
+        // Static HTML in /public — precaches reliably. A dynamic App Router
+        // route (e.g. /~offline) is server-rendered as a streamed/chunked
+        // response because the root layout calls headers(); the Service
+        // Worker's precache of that response hangs and the SW never activates.
+        url: "/offline.html",
         matcher({ request }) {
           return request.destination === "document";
         },

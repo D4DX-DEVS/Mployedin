@@ -1,5 +1,11 @@
 "use client";
 
+// Force static prerendering. The PWA service worker precaches this page, and a
+// dynamically-rendered response carries `Cache-Control: no-store`, which the
+// Cache Storage API refuses to store — that stalls Serwist's install step and
+// the SW never activates. Static rendering keeps the response cacheable.
+export const dynamic = "force-static";
+
 export default function OfflinePage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center">

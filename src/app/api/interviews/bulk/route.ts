@@ -9,6 +9,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { interviewBulkSchema } from "@/lib/validators/interviews";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
 
 /**
  * POST /api/interviews/bulk
@@ -180,7 +181,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         duration: slotDuration,
         type,
         location: location ?? null,
-        meetLink: meetLink ?? null,
+        meetLink: resolveMeetingLink(type, meetLink) ?? null,
         status: "scheduled",
         reminderSent: false,
       });

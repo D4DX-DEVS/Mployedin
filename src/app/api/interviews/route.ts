@@ -10,6 +10,7 @@ void Job;
 import { validateBody } from "@/lib/validators";
 import { interviewCreateSchema } from "@/lib/validators/interviews";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
 import { notifyInterviewScheduled } from "@/lib/notifications/trigger";
 import { addMinutes } from "date-fns";
 import { escapeRegex } from "@/lib/security/sanitize";
@@ -334,7 +335,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     scheduledAt: new Date(scheduledAt),
     duration: duration ?? 30,
     location,
-    meetLink,
+    meetLink: resolveMeetingLink(type, meetLink),
     instructions,
     status: "scheduled",
     reminderSent: false,

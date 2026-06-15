@@ -37,6 +37,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     revenueStats,
     recentActivity,
     monthlyTrend,
+    mrrStats,
   ] = await Promise.all([
     // 1. Count by status
     Subscription.aggregate([
@@ -122,6 +123,35 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
       { $sort: { "_id.year": -1, "_id.month": -1 } },
       { $limit: 6 },
     ]),
+
+    // 8. MRR — normalize each active paid subscription's price to a monthly value
+    //    (monthly ÷1, quarterly ÷3, yearly ÷12). Recognised recurring revenue,
+    //    independent of invoice payment timing.
+    Subscription.aggregate([
+      { $match: { status: "active", "planSnapshot.price": { $gt: 0 } } },
+      {
+        $group: {
+          _id: null,
+          mrr: {
+            $sum: {
+              $divide: [
+                { $ifNull: ["$planSnapshot.price", 0] },
+                {
+                  $switch: {
+                    branches: [
+                      { case: { $eq: ["$planSnapshot.billingCycle", "yearly"] }, then: 12 },
+                      { case: { $eq: ["$planSnapshot.billingCycle", "quarterly"] }, then: 3 },
+                    ],
+                    default: 1,
+                  },
+                },
+              ],
+            },
+          },
+          paidActiveCount: { $sum: 1 },
+        },
+      },
+    ]),
   ]);
 
   // Format status counts into a map
@@ -142,6 +172,10 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     thisMonthRevenue: 0,
     count: 0,
   };
+
+  const mrr = Math.round((mrrStats[0]?.mrr ?? 0) * 100) / 100;
+  const arr = Math.round(mrr * 12 * 100) / 100;
+  const paidActiveCount = mrrStats[0]?.paidActiveCount ?? 0;
 
   return NextResponse.json({
     overview: {
@@ -169,6 +203,9 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
       totalRevenue: revenue.totalRevenue,
       thisMonthRevenue: revenue.thisMonthRevenue,
       paidInvoiceCount: revenue.count,
+      mrr,
+      arr,
+      paidActiveCount,
     },
     recentActivity: recentActivity.map((h) => ({
       _id: h._id,

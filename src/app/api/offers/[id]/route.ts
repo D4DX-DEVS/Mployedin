@@ -62,12 +62,20 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, offerRespondSchema);
-  const { status, declineReason } = body;
+  const { status, declineReason, signatureName } = body;
 
   const prevStatus = offer.status;
   offer.status = status;
   offer.respondedAt = new Date();
   if (declineReason) offer.declineReason = declineReason;
+  // Capture the candidate's e-signature on acceptance (FG-6).
+  if (status === "accepted" && signatureName) {
+    offer.signature = {
+      fullName: signatureName,
+      signedAt: new Date(),
+      ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || undefined,
+    };
+  }
 
   await offer.save();
 

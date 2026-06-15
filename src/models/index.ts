@@ -9,6 +9,8 @@ export { Application } from "./Application";
 export { Interview } from "./Interview";
 export { Placement } from "./Placement";
 export { default as Offer } from "./Offer";
+export { default as BackgroundCheck } from "./BackgroundCheck";
+export { default as OnboardingChecklist } from "./OnboardingChecklist";
 export { CompanyUser } from "./CompanyUser";
 export { Notification } from "./Notification";
 export { Lead } from "./Lead";

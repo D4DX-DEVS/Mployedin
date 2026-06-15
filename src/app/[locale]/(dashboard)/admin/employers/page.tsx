@@ -69,6 +69,8 @@ export default function AdminEmployersPage() {
   const [verifyItem, setVerifyItem] = useState<Employer | null>(null);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifyOverride, setVerifyOverride] = useState(false);
+  const [verifyReason, setVerifyReason] = useState("");
   const [switchingEmployerId, setSwitchingEmployerId] = useState<string | null>(null);
 
   const handleSwitchToEmployerView = async (employerId: string) => {
@@ -161,13 +163,19 @@ export default function AdminEmployersPage() {
     if (!verifyItem) return;
     setVerifyLoading(true);
     setVerifyError(null);
-    const res = await fetch(`/api/employers/${verifyItem._id}/verify`, { method: "POST" });
+    const res = await fetch(`/api/employers/${verifyItem._id}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ override: verifyOverride, reason: verifyReason || undefined }),
+    });
     if (res.ok) {
-      const data = await res.json();
+      await res.json();
       setVerifyItem((prev) => prev ? { ...prev, domainVerified: true, verificationLevel: "company" } : prev);
       setEmployers((prev) => prev.map((e) => e._id === verifyItem._id
         ? { ...e, domainVerified: true, verificationLevel: "company" }
         : e));
+      setVerifyOverride(false);
+      setVerifyReason("");
     } else {
       const data = await res.json();
       setVerifyError(data.error ?? "Verification failed");
@@ -344,7 +352,7 @@ export default function AdminEmployersPage() {
         onSubmit={handleEdit} />
 
       {/* Verification Modal */}
-      <Dialog open={!!verifyItem} onOpenChange={(open) => { if (!open) { setVerifyItem(null); setVerifyError(null); } }}>
+      <Dialog open={!!verifyItem} onOpenChange={(open) => { if (!open) { setVerifyItem(null); setVerifyError(null); setVerifyOverride(false); setVerifyReason(""); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Employer Verification</DialogTitle>
@@ -405,6 +413,32 @@ export default function AdminEmployersPage() {
               </div>
             )}
 
+            {/* KYC override (only when no documents and not yet verified) */}
+            {!verifyItem?.domainVerified && (verifyItem?.verificationDocs?.length ?? 0) === 0 && (
+              <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                <label className="flex items-start gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={verifyOverride}
+                    onChange={(e) => setVerifyOverride(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    No documents on file. I confirm verification based on out-of-band evidence
+                    <span className="text-muted-foreground"> (override is recorded in the audit log).</span>
+                  </span>
+                </label>
+                {verifyOverride && (
+                  <Input
+                    value={verifyReason}
+                    onChange={(e) => setVerifyReason(e.target.value)}
+                    placeholder="Reason for override (e.g. verified via phone call / business registry)"
+                    className="h-9 text-sm"
+                  />
+                )}
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex gap-2 pt-2">
               {verifyItem?.domainVerified ? (
@@ -421,7 +455,7 @@ export default function AdminEmployersPage() {
               ) : (
                 <Button
                   size="sm"
-                  disabled={verifyLoading}
+                  disabled={verifyLoading || ((verifyItem?.verificationDocs?.length ?? 0) === 0 && !verifyOverride)}
                   onClick={handleVerify}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                 >

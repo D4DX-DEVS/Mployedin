@@ -12,6 +12,7 @@ import { validateBody } from "@/lib/validators";
 import { interviewUpdateSchema } from "@/lib/validators/interviews";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { generateMeetingLink } from "@/lib/interviews/meetingLink";
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
@@ -114,6 +115,14 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (interview.status === "confirmed") {
       update.status = "scheduled";
     }
+  }
+
+  // Auto-provision a video room for video/hybrid interviews that have none
+  // (e.g. when the type is switched to video or a reschedule drops the link).
+  const effectiveType = (body.type ?? interview.type) as string;
+  const effectiveLink = (body.meetLink ?? interview.meetLink) as string | undefined;
+  if ((effectiveType === "video" || effectiveType === "hybrid") && !effectiveLink?.trim()) {
+    update.meetLink = generateMeetingLink();
   }
 
   Object.assign(interview, update);

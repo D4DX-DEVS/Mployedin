@@ -162,6 +162,16 @@ export default function UnifiedCandidatePage() {
   const name = candidate.userId?.name ?? "Unknown Candidate";
   const currentRole = candidate.experience?.find((e: { isCurrent?: boolean }) => e.isCurrent);
 
+  // CVs are private; serve them only through the authorized application download
+  // route, which enforces the tiered access policy. The candidate page is only
+  // reachable for candidates who applied to this employer, so use their most
+  // recent application as the access context.
+  const cvAppId = applications[0]?._id;
+  const cvHref =
+    candidate.cv?.originalUrl && cvAppId
+      ? `/api/applications/${cvAppId}/documents/download?cv=1#cv.pdf`
+      : undefined;
+
   const tabs = [
     { key: "profile" as const, label: t("tabProfile"), count: null },
     { key: "applications" as const, label: t("tabApplications"), count: applications.length },
@@ -228,12 +238,12 @@ export default function UnifiedCandidatePage() {
             )}
 
             {/* Resume actions */}
-            {candidate.cv?.originalUrl && (
+            {cvHref && (
               <div className="flex gap-2 pt-2">
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setViewingCv(true)}>
                   <Eye className="w-3 h-3 me-1.5" /> {t("viewCV")}
                 </Button>
-                <a href={candidate.cv.originalUrl} target="_blank" rel="noopener noreferrer">
+                <a href={cvHref} target="_blank" rel="noopener noreferrer">
                   <Button size="sm" variant="ghost" className="h-8 text-xs">
                     <Download className="w-3 h-3 me-1.5" /> {t("download")}
                   </Button>
@@ -518,7 +528,7 @@ export default function UnifiedCandidatePage() {
             })()}
 
             {/* Inline Resume Viewer (desktop) */}
-            {candidate.cv?.originalUrl && (
+            {cvHref && (
               <div className="card-base overflow-hidden">
                 <div className="px-5 py-3 border-b flex items-center justify-between">
                   <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -528,7 +538,7 @@ export default function UnifiedCandidatePage() {
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setViewingCv(true)}>
                       <Eye className="w-3 h-3 me-1" /> {t("expand")}
                     </Button>
-                    <a href={candidate.cv.originalUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={cvHref} target="_blank" rel="noopener noreferrer">
                       <Button size="sm" variant="ghost" className="h-7 text-xs">
                         <Download className="w-3 h-3 me-1" /> {t("download")}
                       </Button>
@@ -537,7 +547,7 @@ export default function UnifiedCandidatePage() {
                 </div>
                 <div className="h-[500px]">
                   <iframe
-                    src={candidate.cv.originalUrl}
+                    src={cvHref}
                     className="w-full h-full border-0"
                     title={`${name}'s Resume`}
                     sandbox="allow-same-origin"
@@ -722,9 +732,9 @@ export default function UnifiedCandidatePage() {
       )}
 
       {/* Resume Viewer Modal */}
-      {viewingCv && candidate.cv?.originalUrl && (
+      {viewingCv && cvHref && (
         <ResumeViewerModal
-          url={candidate.cv.originalUrl}
+          url={cvHref}
           candidateName={name}
           onClose={() => setViewingCv(false)}
         />

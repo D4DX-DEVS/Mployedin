@@ -298,8 +298,6 @@ export default function AdminActivityTimelinePage() {
 
       {/* Filters */}
       <TableToolbar
-        title={t("title")}
-        description={t("description")}
         search={search}
         onSearchChange={(v) => { setSearch(v); pagination.resetPage(); }}
         searchPlaceholder={t("searchPlaceholder")}

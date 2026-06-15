@@ -1,9 +1,9 @@
 /**
  * AI Application Screening — Inngest Function
  *
- * Triggered right after an application is submitted when the employer has
- * `workflow.settings.aiAutoScreen` enabled. Computes the AI match score and
- * applies the employer's auto-reject threshold. Runs asynchronously so the
+ * Triggered right after an application is submitted. Computes the AI match score
+ * automatically for every application, and applies the employer's auto-reject
+ * threshold only when one was configured (aiAutoScreen). Runs asynchronously so the
  * seeker's apply request never blocks on (or fails because of) an LLM call.
  */
 

@@ -4,6 +4,7 @@ export type NotificationType =
   | "application_update"
   | "application_received"
   | "application_status_update"
+  | "application_invite"
   | "interview_scheduled"
   | "interview_reminder"
   | "interview_update"
@@ -56,6 +57,7 @@ const NotificationSchema = new Schema<INotification>(
         "application_update",
         "application_received",
         "application_status_update",
+        "application_invite",
         "interview_scheduled",
         "interview_reminder",
         "interview_update",

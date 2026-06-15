@@ -241,11 +241,15 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
 
   let employerId: string | undefined;
   let agentId: string | undefined;
+  let employerVerified = false;
 
   if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id agentId").lean();
+    const emp = await Employer.findOne({ userId: ctx.userId })
+      .select("_id agentId verifiedAt isAgentVerified")
+      .lean();
     if (!emp) return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
     employerId = String(emp._id);
+    employerVerified = Boolean(emp.verifiedAt) || Boolean(emp.isAgentVerified);
 
     // 8C.1: employer can assign agentId via body
     if (body.agentId) {
@@ -283,7 +287,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     if (body.agentId) agentId = body.agentId;
   }
 
-  // 8C.2: determine approval status based on role & agent involvement
+  // 8C.2: determine approval status based on role, agent involvement & verification
   let approvalStatus: "pending" | "approved";
   let resolvedStatus: string;
 
@@ -292,13 +296,17 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     resolvedStatus = status ?? "active";
   } else if (ctx.role === "agent") {
     approvalStatus = "pending";
-    resolvedStatus = "draft";
+    resolvedStatus = "pending_approval";
   } else if (ctx.role === "employer" && agentId) {
     // Employer posted with agent involvement → needs approval
     approvalStatus = "pending";
-    resolvedStatus = "draft";
+    resolvedStatus = "pending_approval";
+  } else if (ctx.role === "employer" && !employerVerified) {
+    // C-3: unverified employer self-posting → route to moderation queue before going live
+    approvalStatus = "pending";
+    resolvedStatus = "pending_approval";
   } else {
-    // Employer self-posting without agent → auto-approved
+    // Verified employer self-posting without agent → auto-approved
     approvalStatus = "approved";
     resolvedStatus = status ?? "active";
   }

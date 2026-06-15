@@ -76,7 +76,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   let result: { url: string };
   try {
-    result = await uploadFile(file, { folder: "documents" });
+    result = await uploadFile(file, { folder: "documents", private: true });
   } catch (err: unknown) {
     const code = (err as { Code?: string }).Code ?? (err as { name?: string }).name;
     if (code === "MalwareDetectedError") {

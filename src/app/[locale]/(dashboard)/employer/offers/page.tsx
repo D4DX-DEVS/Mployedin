@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { DollarSign, CalendarDays, Clock3, CircleCheckBig, ArrowRight, Eye, X, Sparkles, FileText, Briefcase } from "lucide-react";
+import { DollarSign, CalendarDays, Clock3, CircleCheckBig, ArrowRight, Eye, X, Sparkles, FileText, Briefcase, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -102,7 +102,7 @@ export default function EmployerOffersPage() {
   const respondedCount = offers.filter((offer) => offer.respondedAt).length;
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: t("candidate"), key: "jobSeekerId", formatter: (_v, r) => (r as Record<string, any>).jobSeekerId?.name || `Candidate #${String((r as Record<string, any>)._id).slice(-4)}` },
+    { header: t("candidate"), key: "jobSeekerId", formatter: (_v, r) => { const o = r as unknown as Offer; return candidateName(o); } },
     { header: t("role"), key: "jobId", formatter: (_v, r) => (r as Record<string, any>).jobId?.title || t("untitledRole") },
     { header: t("salary"), key: "salary", formatter: (_v, r) => { const o = r as Record<string, any>; return `${o.salary?.currency} ${o.salary?.amount?.toLocaleString()}`; } },
     { header: t("startDate"), key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : t("notSet") },
@@ -129,6 +129,10 @@ export default function EmployerOffersPage() {
   function formatSalary(offer: Offer): string {
     if (!offer.salary?.amount) return t("notDisclosed");
     return `${offer.salary.currency ?? "AED"} ${offer.salary.amount.toLocaleString()}`;
+  }
+
+  function candidateName(offer: Offer): string {
+    return offer.jobSeekerId?.userId?.name || offer.jobSeekerId?.fullName || `${t("candidate")} #${offer._id.slice(-4)}`;
   }
 
   return (
@@ -329,7 +333,7 @@ export default function EmployerOffersPage() {
                     <TableCell>
                       <div className="space-y-1">
                         <p className="font-semibold text-foreground">
-                          {offer.jobSeekerId?.name || `Candidate #${offer._id.slice(-4)}`}
+                          {candidateName(offer)}
                         </p>
                         <p className="text-xs text-muted-foreground">{t("createdAt")} {formatDate(offer.createdAt)}</p>
                       </div>
@@ -348,7 +352,7 @@ export default function EmployerOffersPage() {
                     </TableCell>
                     <TableCell>
                       <p className="font-medium text-foreground">{formatSalary(offer)}</p>
-                      <p className="text-xs text-muted-foreground">/{offer.salary.period === "monthly" ? t("perMonth") : t("perYear")}</p>
+                      <p className="text-xs text-muted-foreground">{offer.salary.period === "monthly" ? t("perMonth") : t("perYear")}</p>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(offer.startDate)}</TableCell>
                     <TableCell>
@@ -436,7 +440,7 @@ export default function EmployerOffersPage() {
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("candidate")}</p>
                   <p className="mt-2 text-sm font-semibold text-foreground">
-                    {detailOffer.jobSeekerId?.name || `#${detailOffer._id.slice(-4)}`}
+                    {candidateName(detailOffer)}
                   </p>
                 </div>
                 <div>
@@ -488,6 +492,16 @@ export default function EmployerOffersPage() {
                   <p className="mt-2 text-sm leading-6 text-red-700">{detailOffer.declineReason}</p>
                 </div>
               )}
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
+                <Button
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() => window.open(`/api/offers/${detailOffer._id}/letter/pdf`, "_blank", "noopener")}
+                >
+                  <FileDown className="mr-2 h-4 w-4" />
+                  {t("downloadLetter")}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

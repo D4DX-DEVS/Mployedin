@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { useCandidates, usePublishedJobs, useStartConversation, useAiMatch, useScreenCandidates } from "@/hooks/useCandidates";
+import { useCandidates, usePublishedJobs, useStartConversation, useAiMatch, useScreenCandidates, useInviteToApply } from "@/hooks/useCandidates";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { Candidate, CandidateJob, ScreenedCandidate } from "@/hooks/useCandidates";
@@ -41,6 +41,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   Search,
+  Send,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -219,6 +220,7 @@ interface CandidateCardProps {
   onOpenProfile: (candidateId: string) => void;
   onStartMessage: (recipientId: string) => void;
   onToggleReviewList: (candidateId: string) => void;
+  onInvite?: (candidateId: string) => void;
   onOpenInsights: () => void;
 }
 
@@ -232,6 +234,7 @@ function CandidateMatchCard({
   onOpenProfile,
   onStartMessage,
   onToggleReviewList,
+  onInvite,
   onOpenInsights,
 }: CandidateCardProps) {
   const t = useTranslations("employerCandidates");
@@ -386,6 +389,12 @@ function CandidateMatchCard({
                   <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onStartMessage(messageRecipientId)}>
                     <MessageSquare className="mr-2 h-4 w-4" />
                     {t("messageAction")}
+                  </DropdownMenuItem>
+                ) : null}
+                {onInvite ? (
+                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onInvite(candidate._id)}>
+                    <Send className="mr-2 h-4 w-4" />
+                    {t("inviteToApply")}
                   </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenProfile(candidate._id)}>
@@ -837,6 +846,7 @@ export default function EmployerCandidatesPage() {
   const startDmMutation = useStartConversation();
   const aiMatchMutation = useAiMatch();
   const screenMutation = useScreenCandidates();
+  const inviteMutation = useInviteToApply();
 
   const candidates = localCandidates ?? candidatesData?.candidates ?? [];
   const total = candidatesData?.total ?? 0;
@@ -1126,6 +1136,20 @@ export default function EmployerCandidatesPage() {
         type: "error",
         message: t("messageFailed"),
       });
+    }
+  };
+
+  // FG-4: invite a sourced candidate to apply to the currently selected job.
+  const inviteToApply = async (candidateId: string) => {
+    if (!selectedJob) {
+      toast.error(t("inviteSelectJob"));
+      return;
+    }
+    try {
+      await inviteMutation.mutateAsync({ jobSeekerId: candidateId, jobId: selectedJob });
+      toast.success(t("inviteSent"));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("inviteFailed"));
     }
   };
 
@@ -1626,6 +1650,7 @@ export default function EmployerCandidatesPage() {
                 onStartMessage={startDM}
                 onOpenProfile={(candidateId) => router.push(`/${locale}/employer/candidates/${candidateId}`)}
                 onToggleReviewList={toggleReviewList}
+                onInvite={inviteToApply}
                 onOpenInsights={() => setDetailCandidateId(candidate._id)}
               />
             );

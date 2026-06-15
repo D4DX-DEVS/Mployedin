@@ -2,8 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Placement from "@/models/Placement";
+import { Employer } from "@/models/Employer";
+import JobSeeker from "@/models/JobSeeker";
+import Job from "@/models/Job";
+import Agent from "@/models/Agent";
+import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { placementCreateSchema } from "@/lib/validators/placements";
+
+// Ensure referenced schemas are registered for populate() on cold starts.
+void Job; void JobSeeker; void Agent; void User;
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -30,14 +38,21 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const query: Record<string, unknown> = {};
 
   // Role-based scoping
-  if (ctx.role === "employer") query.employerId = ctx.userId;
+  if (ctx.role === "employer") {
+    const employerDoc = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!employerDoc) return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
+    query.employerId = employerDoc._id;
+  }
   else if (ctx.role === "agent") {
-    const Agent = (await import("@/models/Agent")).default;
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
     query.agentId = agentDoc._id;
   }
-  else if (ctx.role === "job_seeker") query.jobSeekerId = ctx.userId;
+  else if (ctx.role === "job_seeker") {
+    const jobSeekerDoc = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!jobSeekerDoc) return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });
+    query.jobSeekerId = jobSeekerDoc._id;
+  }
 
   // Filter: visa status
   if (visaStatus && visaStatus !== "all") {
@@ -136,8 +151,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       agentName: agt?.userId?.name,
       startDate: p.startDate,
       placedAt: p.placedAt,
-      salary: p.salary,
+      salary: p.salary != null ? { amount: p.salary, currency: p.currency ?? "AED" } : undefined,
       currency: p.currency ?? "AED",
+      status: (p as { status?: string }).status ?? p.visaStatus ?? "active",
       visaStatus: p.visaStatus ?? "pending",
       commissionPaid: p.commissionPaid,
       commissionAmount: p.commissionAmount,

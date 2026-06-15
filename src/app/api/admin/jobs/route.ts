@@ -145,6 +145,40 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     Job.countDocuments(query),
   ]);
 
+  // Platform-wide status + applicant counts for the stat tiles, independent of the
+  // current status tab and of pagination (single source of truth — fixes M-1).
+  const statusCountQuery = { ...query };
+  delete statusCountQuery.status;
+  const statusAgg = await Job.aggregate([
+    { $match: statusCountQuery },
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 },
+        applicants: { $sum: { $size: { $ifNull: ["$applicantIds", []] } } },
+      },
+    },
+  ]);
+  const statusCounts: Record<string, number> = {};
+  let totalApplicants = 0;
+  for (const s of statusAgg) {
+    if (s._id) statusCounts[s._id] = s.count;
+    totalApplicants += s.applicants ?? 0;
+  }
+
+  // Platform-wide poster approval-state counts, independent of the approval tab
+  // and pagination (keeps the approvals overview tiles consistent — M-1).
+  const approvalCountQuery = { ...query };
+  delete approvalCountQuery["poster.approvalStatus"];
+  const approvalAgg = await Job.aggregate([
+    { $match: approvalCountQuery },
+    { $group: { _id: { $ifNull: ["$poster.approvalStatus", "pending"] }, count: { $sum: 1 } } },
+  ]);
+  const approvalCounts: Record<string, number> = {};
+  for (const a of approvalAgg) {
+    if (a._id) approvalCounts[a._id] = a.count;
+  }
+
   // Flatten nested fields for the admin UI
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const jobs = rawJobs.map((job: any) => ({
@@ -156,6 +190,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({
     jobs,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    statusCounts,
+    approvalCounts,
+    totalApplicants,
   });
 }
 

@@ -20,6 +20,12 @@ export interface IOffer extends Document {
   expiresAt: Date;
   respondedAt?: Date;
   declineReason?: string;
+  /** Candidate e-signature captured at acceptance (FG-6). */
+  signature?: {
+    fullName: string;
+    signedAt: Date;
+    ip?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -66,6 +72,11 @@ const OfferSchema = new Schema<IOffer>(
     expiresAt: { type: Date, required: true },
     respondedAt: Date,
     declineReason: String,
+    signature: {
+      fullName: { type: String },
+      signedAt: { type: Date },
+      ip: { type: String },
+    },
   },
   { timestamps: true }
 );

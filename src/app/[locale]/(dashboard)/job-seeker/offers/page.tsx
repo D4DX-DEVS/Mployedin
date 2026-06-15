@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, X, Calendar, DollarSign } from "lucide-react";
+import { Check, X, Calendar, DollarSign, FileDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -41,6 +42,8 @@ export default function OffersPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [signatureName, setSignatureName] = useState("");
   const [declineReason, setDeclineReason] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 400);
@@ -82,11 +85,15 @@ export default function OffersPage() {
   }, [fetchOffers]);
 
   async function handleAcceptOffer(offerId: string) {
+    if (!signatureName.trim()) {
+      toast.error(t("errors.signatureRequired"));
+      return;
+    }
     try {
       const res = await csrfFetch(`/api/offers/${offerId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "accepted" }),
+        body: JSON.stringify({ status: "accepted", signatureName: signatureName.trim() }),
       });
 
       if (!res.ok) {
@@ -96,6 +103,8 @@ export default function OffersPage() {
       setOffers((prev) =>
         prev.map((o) => (o._id === offerId ? { ...o, status: "accepted" } : o))
       );
+      setAcceptingId(null);
+      setSignatureName("");
       setRespondingId(null);
     } catch (err) {
       console.error("Error accepting offer:", err);
@@ -303,11 +312,51 @@ export default function OffersPage() {
                         </Button>
                       </div>
                     </div>
+                  ) : acceptingId === offer._id ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium">
+                          {t("accept.signatureLabel")}
+                        </label>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          {t("accept.signatureHint")}
+                        </p>
+                        <Input
+                          placeholder={t("accept.signaturePlaceholder")}
+                          value={signatureName}
+                          onChange={(e) => setSignatureName(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleAcceptOffer(offer._id)}
+                          disabled={!signatureName.trim()}
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          {t("accept.confirmAccept")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setAcceptingId(null);
+                            setSignatureName("");
+                          }}
+                        >
+                          {t("actions.cancel")}
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         size="sm"
-                        onClick={() => handleAcceptOffer(offer._id)}
+                        onClick={() => {
+                          setAcceptingId(offer._id);
+                          setSignatureName("");
+                        }}
                         className="flex-1 sm:flex-none"
                       >
                         <Check className="w-4 h-4 mr-2" />
@@ -324,6 +373,19 @@ export default function OffersPage() {
                       </Button>
                     </div>
                   )}
+                </div>
+              )}
+
+              {offer.status === "accepted" && (
+                <div className="pt-2 border-t">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => window.open(`/api/offers/${offer._id}/letter/pdf`, "_blank", "noopener")}
+                  >
+                    <FileDown className="w-4 h-4 mr-2" />
+                    {t("actions.downloadLetter")}
+                  </Button>
                 </div>
               )}
 

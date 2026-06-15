@@ -45,6 +45,9 @@ interface RevenueStats {
   totalRevenue: number;
   thisMonthRevenue: number;
   paidInvoiceCount: number;
+  mrr: number;
+  arr: number;
+  paidActiveCount: number;
 }
 
 interface ActivityItem {
@@ -187,11 +190,11 @@ export default function AdminSubscriptionDashboardPage() {
           subtitle={`${data.overview.expired} expired · ${data.overview.cancelled} cancelled`}
         />
         <KpiCard
-          title="Revenue (All Time)"
-          value={`${formatCurrency(data.revenue.totalRevenue)} AED`}
+          title="MRR"
+          value={`${formatCurrency(data.revenue.mrr)} AED`}
           icon={<DollarSign className="h-5 w-5 text-amber-500" />}
           accent="amber"
-          subtitle={`${formatCurrency(data.revenue.thisMonthRevenue)} AED this month`}
+          subtitle={`${formatCurrency(data.revenue.arr)} AED ARR · ${data.revenue.paidActiveCount} paid active`}
         />
         <KpiCard
           title="Expiring Soon"

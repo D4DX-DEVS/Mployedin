@@ -288,11 +288,11 @@ export default async function JobDetailPage({ params }: PageProps) {
               )}
 
               {/* Tags */}
-              {job.tags?.length > 0 && (
+              {job.tags?.filter((t: string) => !/^seed-/i.test(t)).length > 0 && (
                 <div>
                   <h2 className="text-base font-semibold text-foreground mb-3">Tags</h2>
                   <div className="flex flex-wrap gap-2">
-                    {job.tags.map((t: string) => (
+                    {job.tags.filter((t: string) => !/^seed-/i.test(t)).map((t: string) => (
                       <Link
                         key={t}
                         href={`/${locale}/jobs?search=${encodeURIComponent(t)}`}

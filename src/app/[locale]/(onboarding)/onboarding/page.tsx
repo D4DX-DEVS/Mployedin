@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { Check, ChevronRight, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin, Mail, Wand2 } from "lucide-react";
+import { Check, ChevronRight, ChevronDown, Search, Loader2, X, Upload, Briefcase, GraduationCap, Sparkles, CheckCircle, LogOut, Linkedin, Mail, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,20 +63,107 @@ interface Step3Data {
 
 // ── Static data ───────────────────────────────────────────────────────────────
 const COUNTRY_CODES = [
-  { code: "+971", country: "AE", flag: "🇦🇪" },
-  { code: "+966", country: "SA", flag: "🇸🇦" },
-  { code: "+974", country: "QA", flag: "🇶🇦" },
-  { code: "+968", country: "OM", flag: "🇴🇲" },
-  { code: "+965", country: "KW", flag: "🇰🇼" },
-  { code: "+973", country: "BH", flag: "🇧🇭" },
-  { code: "+91", country: "IN", flag: "🇮🇳" },
-  { code: "+1", country: "US", flag: "🇺🇸" },
-  { code: "+44", country: "GB", flag: "🇬🇧" },
-  { code: "+92", country: "PK", flag: "🇵🇰" },
-  { code: "+63", country: "PH", flag: "🇵🇭" },
-  { code: "+880", country: "BD", flag: "🇧🇩" },
-  { code: "+20", country: "EG", flag: "🇪🇬" },
-  { code: "+249", country: "SD", flag: "🇸🇩" },
+  { code: "+971", country: "AE", name: "United Arab Emirates", flag: "🇦🇪" },
+  { code: "+966", country: "SA", name: "Saudi Arabia", flag: "🇸🇦" },
+  { code: "+974", country: "QA", name: "Qatar", flag: "🇶🇦" },
+  { code: "+968", country: "OM", name: "Oman", flag: "🇴🇲" },
+  { code: "+965", country: "KW", name: "Kuwait", flag: "🇰🇼" },
+  { code: "+973", country: "BH", name: "Bahrain", flag: "🇧🇭" },
+  { code: "+91", country: "IN", name: "India", flag: "🇮🇳" },
+  { code: "+1", country: "US", name: "United States", flag: "🇺🇸" },
+  { code: "+44", country: "GB", name: "United Kingdom", flag: "🇬🇧" },
+  { code: "+92", country: "PK", name: "Pakistan", flag: "🇵🇰" },
+  { code: "+63", country: "PH", name: "Philippines", flag: "🇵🇭" },
+  { code: "+880", country: "BD", name: "Bangladesh", flag: "🇧🇩" },
+  { code: "+20", country: "EG", name: "Egypt", flag: "🇪🇬" },
+  { code: "+249", country: "SD", name: "Sudan", flag: "🇸🇩" },
+  { code: "+93", country: "AF", name: "Afghanistan", flag: "🇦🇫" },
+  { code: "+355", country: "AL", name: "Albania", flag: "🇦🇱" },
+  { code: "+213", country: "DZ", name: "Algeria", flag: "🇩🇿" },
+  { code: "+54", country: "AR", name: "Argentina", flag: "🇦🇷" },
+  { code: "+374", country: "AM", name: "Armenia", flag: "🇦🇲" },
+  { code: "+61", country: "AU", name: "Australia", flag: "🇦🇺" },
+  { code: "+43", country: "AT", name: "Austria", flag: "🇦🇹" },
+  { code: "+994", country: "AZ", name: "Azerbaijan", flag: "🇦🇿" },
+  { code: "+32", country: "BE", name: "Belgium", flag: "🇧🇪" },
+  { code: "+975", country: "BT", name: "Bhutan", flag: "🇧🇹" },
+  { code: "+55", country: "BR", name: "Brazil", flag: "🇧🇷" },
+  { code: "+359", country: "BG", name: "Bulgaria", flag: "🇧🇬" },
+  { code: "+855", country: "KH", name: "Cambodia", flag: "🇰🇭" },
+  { code: "+237", country: "CM", name: "Cameroon", flag: "🇨🇲" },
+  { code: "+1", country: "CA", name: "Canada", flag: "🇨🇦" },
+  { code: "+56", country: "CL", name: "Chile", flag: "🇨🇱" },
+  { code: "+86", country: "CN", name: "China", flag: "🇨🇳" },
+  { code: "+57", country: "CO", name: "Colombia", flag: "🇨🇴" },
+  { code: "+506", country: "CR", name: "Costa Rica", flag: "🇨🇷" },
+  { code: "+385", country: "HR", name: "Croatia", flag: "🇭🇷" },
+  { code: "+357", country: "CY", name: "Cyprus", flag: "🇨🇾" },
+  { code: "+420", country: "CZ", name: "Czech Republic", flag: "🇨🇿" },
+  { code: "+45", country: "DK", name: "Denmark", flag: "🇩🇰" },
+  { code: "+593", country: "EC", name: "Ecuador", flag: "🇪🇨" },
+  { code: "+251", country: "ET", name: "Ethiopia", flag: "🇪🇹" },
+  { code: "+358", country: "FI", name: "Finland", flag: "🇫🇮" },
+  { code: "+33", country: "FR", name: "France", flag: "🇫🇷" },
+  { code: "+995", country: "GE", name: "Georgia", flag: "🇬🇪" },
+  { code: "+49", country: "DE", name: "Germany", flag: "🇩🇪" },
+  { code: "+233", country: "GH", name: "Ghana", flag: "🇬🇭" },
+  { code: "+30", country: "GR", name: "Greece", flag: "🇬🇷" },
+  { code: "+852", country: "HK", name: "Hong Kong", flag: "🇭🇰" },
+  { code: "+36", country: "HU", name: "Hungary", flag: "🇭🇺" },
+  { code: "+62", country: "ID", name: "Indonesia", flag: "🇮🇩" },
+  { code: "+98", country: "IR", name: "Iran", flag: "🇮🇷" },
+  { code: "+964", country: "IQ", name: "Iraq", flag: "🇮🇶" },
+  { code: "+353", country: "IE", name: "Ireland", flag: "🇮🇪" },
+  { code: "+972", country: "IL", name: "Israel", flag: "🇮🇱" },
+  { code: "+39", country: "IT", name: "Italy", flag: "🇮🇹" },
+  { code: "+81", country: "JP", name: "Japan", flag: "🇯🇵" },
+  { code: "+962", country: "JO", name: "Jordan", flag: "🇯🇴" },
+  { code: "+254", country: "KE", name: "Kenya", flag: "🇰🇪" },
+  { code: "+961", country: "LB", name: "Lebanon", flag: "🇱🇧" },
+  { code: "+218", country: "LY", name: "Libya", flag: "🇱🇾" },
+  { code: "+60", country: "MY", name: "Malaysia", flag: "🇲🇾" },
+  { code: "+960", country: "MV", name: "Maldives", flag: "🇲🇻" },
+  { code: "+356", country: "MT", name: "Malta", flag: "🇲🇹" },
+  { code: "+52", country: "MX", name: "Mexico", flag: "🇲🇽" },
+  { code: "+212", country: "MA", name: "Morocco", flag: "🇲🇦" },
+  { code: "+95", country: "MM", name: "Myanmar", flag: "🇲🇲" },
+  { code: "+977", country: "NP", name: "Nepal", flag: "🇳🇵" },
+  { code: "+31", country: "NL", name: "Netherlands", flag: "🇳🇱" },
+  { code: "+64", country: "NZ", name: "New Zealand", flag: "🇳🇿" },
+  { code: "+234", country: "NG", name: "Nigeria", flag: "🇳🇬" },
+  { code: "+47", country: "NO", name: "Norway", flag: "🇳🇴" },
+  { code: "+507", country: "PA", name: "Panama", flag: "🇵🇦" },
+  { code: "+51", country: "PE", name: "Peru", flag: "🇵🇪" },
+  { code: "+48", country: "PL", name: "Poland", flag: "🇵🇱" },
+  { code: "+351", country: "PT", name: "Portugal", flag: "🇵🇹" },
+  { code: "+40", country: "RO", name: "Romania", flag: "🇷🇴" },
+  { code: "+7", country: "RU", name: "Russia", flag: "🇷🇺" },
+  { code: "+250", country: "RW", name: "Rwanda", flag: "🇷🇼" },
+  { code: "+221", country: "SN", name: "Senegal", flag: "🇸🇳" },
+  { code: "+381", country: "RS", name: "Serbia", flag: "🇷🇸" },
+  { code: "+65", country: "SG", name: "Singapore", flag: "🇸🇬" },
+  { code: "+421", country: "SK", name: "Slovakia", flag: "🇸🇰" },
+  { code: "+27", country: "ZA", name: "South Africa", flag: "🇿🇦" },
+  { code: "+82", country: "KR", name: "South Korea", flag: "🇰🇷" },
+  { code: "+34", country: "ES", name: "Spain", flag: "🇪🇸" },
+  { code: "+94", country: "LK", name: "Sri Lanka", flag: "🇱🇰" },
+  { code: "+46", country: "SE", name: "Sweden", flag: "🇸🇪" },
+  { code: "+41", country: "CH", name: "Switzerland", flag: "🇨🇭" },
+  { code: "+963", country: "SY", name: "Syria", flag: "🇸🇾" },
+  { code: "+886", country: "TW", name: "Taiwan", flag: "🇹🇼" },
+  { code: "+255", country: "TZ", name: "Tanzania", flag: "🇹🇿" },
+  { code: "+66", country: "TH", name: "Thailand", flag: "🇹🇭" },
+  { code: "+216", country: "TN", name: "Tunisia", flag: "🇹🇳" },
+  { code: "+90", country: "TR", name: "Turkey", flag: "🇹🇷" },
+  { code: "+256", country: "UG", name: "Uganda", flag: "🇺🇬" },
+  { code: "+380", country: "UA", name: "Ukraine", flag: "🇺🇦" },
+  { code: "+598", country: "UY", name: "Uruguay", flag: "🇺🇾" },
+  { code: "+998", country: "UZ", name: "Uzbekistan", flag: "🇺🇿" },
+  { code: "+58", country: "VE", name: "Venezuela", flag: "🇻🇪" },
+  { code: "+84", country: "VN", name: "Vietnam", flag: "🇻🇳" },
+  { code: "+967", country: "YE", name: "Yemen", flag: "🇾🇪" },
+  { code: "+260", country: "ZM", name: "Zambia", flag: "🇿🇲" },
+  { code: "+263", country: "ZW", name: "Zimbabwe", flag: "🇿🇼" },
 ];
 
 const NOTICE_PERIODS = ["15 Days", "1 Month", "2 Months", "3 Months", "More than 3 Months", "Serving Notice Period"];
@@ -118,6 +205,80 @@ const STEPS = [
 ] as const;
 
 // ── Tiny helpers ──────────────────────────────────────────────────────────────
+function CountryCodeSelect({ value, onChange }: { value: string; onChange: (code: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const selected = COUNTRY_CODES.find((c) => c.code === value) ?? COUNTRY_CODES[0];
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? COUNTRY_CODES.filter((c) => c.code.includes(q) || c.country.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
+    : COUNTRY_CODES;
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-11 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 text-sm text-gray-700 transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none"
+      >
+        <span className="text-base leading-none">{selected.flag}</span>
+        <span className="font-medium">{selected.code}</span>
+        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1.5 w-60 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+          <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2">
+            <Search className="h-4 w-4 text-gray-400" />
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search country or code"
+              className="w-full bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
+            />
+          </div>
+          <ul className="max-h-60 overflow-y-auto py-1">
+            {filtered.length === 0 && (
+              <li className="px-3 py-2 text-sm text-gray-400">No matches</li>
+            )}
+            {filtered.map((c) => (
+              <li key={c.code + c.country}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(c.code);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-blue-50 ${
+                    c.code === value ? "bg-blue-50/60 text-blue-700" : "text-gray-700"
+                  }`}
+                >
+                  <span className="text-base leading-none">{c.flag}</span>
+                  <span className="flex-1 truncate font-medium">{c.name}</span>
+                  <span className="text-gray-400">{c.code}</span>
+                  {c.code === value && <Check className="ml-1 h-4 w-4 shrink-0 text-blue-600" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChipButton({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
   return (
     <button
@@ -841,15 +1002,10 @@ export default function JobSeekerOnboardingPage() {
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium text-gray-800">Mobile number <span className="text-red-500">*</span></Label>
                   <div className="flex gap-2">
-                    <select
+                    <CountryCodeSelect
                       value={step0.countryCode}
-                      onChange={(e) => setStep0((p) => ({ ...p, countryCode: e.target.value }))}
-                      className="h-11 px-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:border-blue-500 shrink-0"
-                    >
-                      {COUNTRY_CODES.map((c) => (
-                        <option key={c.code + c.country} value={c.code}>{c.flag} {c.code}</option>
-                      ))}
-                    </select>
+                      onChange={(code) => setStep0((p) => ({ ...p, countryCode: code }))}
+                    />
                     <div className="relative flex-1">
                       <Input
                         ref={phoneRef}

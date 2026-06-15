@@ -105,7 +105,7 @@ export const GET = withAuth(async () => {
       recentApplications,
       topAgents,
     ] = await Promise.all([
-    Job.countDocuments(),
+    Job.countDocuments({ deletedAt: null }),
     Application.countDocuments(),
     Placement.countDocuments(),
     Interview.countDocuments({ status: { $in: ["scheduled", "confirmed", "completed", "rescheduled"] } }),
@@ -113,8 +113,8 @@ export const GET = withAuth(async () => {
       { $match: { status: "paid" } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]),
-    Job.countDocuments({ createdAt: { $gte: currentPeriodStart } }),
-    Job.countDocuments({ createdAt: { $gte: previousPeriodStart, $lt: currentPeriodStart } }),
+    Job.countDocuments({ deletedAt: null, createdAt: { $gte: currentPeriodStart } }),
+    Job.countDocuments({ deletedAt: null, createdAt: { $gte: previousPeriodStart, $lt: currentPeriodStart } }),
     Application.countDocuments({ appliedAt: { $gte: currentPeriodStart } }),
     Application.countDocuments({ appliedAt: { $gte: previousPeriodStart, $lt: currentPeriodStart } }),
     Placement.countDocuments({ placedAt: { $gte: currentPeriodStart } }),
@@ -132,7 +132,7 @@ export const GET = withAuth(async () => {
       { $sort: { count: -1 } },
     ]),
     Job.aggregate<AggregateMonthRow>([
-      { $match: { createdAt: { $gte: monthlyWindowStart } } },
+      { $match: { deletedAt: null, createdAt: { $gte: monthlyWindowStart } } },
       {
         $group: {
           _id: {
@@ -163,6 +163,7 @@ export const GET = withAuth(async () => {
       { $sort: { "_id.year": 1, "_id.month": 1 } },
     ]),
     Job.aggregate<{ count: number }>([
+      { $match: { deletedAt: null } },
       {
         $lookup: {
           from: "applications",
@@ -189,6 +190,7 @@ export const GET = withAuth(async () => {
       employerName: string;
       applicationCount: number;
     }>([
+      { $match: { deletedAt: null } },
       { $sort: { createdAt: -1 } },
       { $limit: 5 },
       {

@@ -76,6 +76,13 @@ export default auth(async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // The PWA offline fallback is a static file at /offline.html. It must be
+  // served directly — applying auth (redirect to login) or i18n (locale
+  // prefixing) would break the Service Worker's precache of the fallback.
+  if (pathname === "/offline.html") {
+    return NextResponse.next();
+  }
+
   // Redirect locale-prefixed API routes → /api/… (clients like next-auth/react
   // may resolve relative URLs against the current locale-prefixed page).
   // 307 preserves the HTTP method (important for POST signIn calls).
@@ -139,12 +146,10 @@ export default auth(async function middleware(req: NextRequest) {
     const dashboardSections = ["/admin", "/super-agent", "/agent", "/employer", "/job-seeker"];
     const inDashboard = dashboardSections.some((s) => stripped === s || stripped.startsWith(s + "/"));
     const isVerifyPage = stripped.startsWith("/verify-email");
-    // Onboarding requires a verified email too. Otherwise an unverified job
-    // seeker could reach /onboarding, click "Complete later", and get bounced
-    // to /verify-email from /job-seeker — looking like they can't access the
-    // account they just "completed". Force verification before onboarding.
-    const isOnboardingGate = stripped.startsWith("/onboarding");
-    if ((inDashboard || isOnboardingGate) && !isVerifyPage && session.user.isEmailVerified === false) {
+    // Onboarding is intentionally accessible to unverified job seekers: new
+    // sign-ups complete their profile (details / CV parsing) first, and email
+    // verification is only enforced when they try to reach the dashboard.
+    if (inDashboard && !isVerifyPage && session.user.isEmailVerified === false) {
       const urlLocale = pathname.split("/")[1] || defaultLocale;
       const verifyUrl = new URL(`/${urlLocale}/verify-email`, req.url);
       if (session.user.email) {

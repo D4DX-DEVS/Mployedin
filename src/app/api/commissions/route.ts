@@ -55,23 +55,32 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     query.createdAt = dateFilter;
   }
 
-  // Agent name search — need to resolve matching agent IDs first
-  let agentIdFilter: unknown[] | undefined;
-  if (search && search.trim()) {
+  // Agent / super-agent name search — names live on the linked User, not on
+  // the Agent/SuperAgent document, so resolve matching users first. Restricted
+  // to admin to avoid broadening the scoped query for super-agents/agents.
+  if (search && search.trim() && ctx.role === "admin") {
     const Agent = (await import("@/models/Agent")).default;
-    const matchingAgents = await Agent.find(
+    const SuperAgent = (await import("@/models/SuperAgent")).default;
+    const User = (await import("@/models/User")).default;
+    const matchingUsers = await User.find(
       { fullName: { $regex: escapeRegex(search.trim()), $options: "i" } },
       { _id: 1 }
     ).lean();
-    agentIdFilter = matchingAgents.map((a: { _id: unknown }) => a._id);
-    query.agentId = ctx.role === "agent"
-      ? query.agentId // already resolved Agent._id above, keep it
-      : { $in: agentIdFilter };
+    const userIds = matchingUsers.map((u: { _id: unknown }) => u._id);
+    const [agents, superAgents] = await Promise.all([
+      Agent.find({ userId: { $in: userIds } }, { _id: 1 }).lean(),
+      SuperAgent.find({ userId: { $in: userIds } }, { _id: 1 }).lean(),
+    ]);
+    query.$or = [
+      { agentId: { $in: agents.map((a: { _id: unknown }) => a._id) } },
+      { superAgentId: { $in: superAgents.map((s: { _id: unknown }) => s._id) } },
+    ];
   }
 
-  const [commissions, total] = await Promise.all([
+  const [commissionsRaw, total] = await Promise.all([
     Commission.find(query)
-      .populate("agentId", "fullName")
+      .populate({ path: "agentId", select: "userId", populate: { path: "userId", select: "fullName" } })
+      .populate({ path: "superAgentId", select: "userId", populate: { path: "userId", select: "fullName" } })
       .populate("placementId", "jobTitle candidateName")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -79,6 +88,21 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       .lean(),
     Commission.countDocuments(query),
   ]);
+
+  // Names are not stored on Agent/SuperAgent — resolve them from the linked User
+  // and flatten onto a stable `agentName` (and keep agentId.fullName for back-compat).
+  type PopulatedRef = { _id: unknown; userId?: { fullName?: string } };
+  const commissions = (commissionsRaw as unknown as Array<Record<string, unknown> & {
+    agentId?: PopulatedRef; superAgentId?: PopulatedRef;
+  }>).map((c) => {
+    const agentName = c.agentId?.userId?.fullName ?? c.superAgentId?.userId?.fullName ?? null;
+    return {
+      ...c,
+      agentName,
+      agentId: c.agentId ? { _id: c.agentId._id, fullName: c.agentId.userId?.fullName ?? null } : c.agentId,
+      superAgentId: c.superAgentId ? { _id: c.superAgentId._id, fullName: c.superAgentId.userId?.fullName ?? null } : c.superAgentId,
+    };
+  });
 
   // Summary aggregation
   const summaryAgg = await Commission.aggregate([

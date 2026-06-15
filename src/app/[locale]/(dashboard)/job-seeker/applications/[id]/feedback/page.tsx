@@ -10,8 +10,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 interface ApplicationInfo {
   _id: string;
   status: string;
-  jobId?: { title?: string };
-  employerId?: { companyName?: string };
+  jobId?: { title?: string; employerId?: { companyName?: string } };
   hasFeedback?: boolean;
 }
 
@@ -112,7 +111,7 @@ export default function ApplicationFeedbackPage() {
   }
 
   const jobTitle = app.jobId?.title ?? "this position";
-  const companyName = app.employerId?.companyName ?? "the company";
+  const companyName = app.jobId?.employerId?.companyName ?? "the company";
 
   if (submitted) {
     return (

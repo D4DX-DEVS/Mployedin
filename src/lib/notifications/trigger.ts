@@ -16,6 +16,7 @@ import { inngest } from "@/lib/inngest/client";
 export type NotificationType =
   | "application_received"
   | "application_status_update"
+  | "application_invite"
   | "interview_scheduled"
   | "interview_reminder"
   | "interview_update"

@@ -128,6 +128,8 @@ function getJobSummary(job: Job): string | null {
 
 export default function AdminJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [serverApplicants, setServerApplicants] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -195,6 +197,8 @@ export default function AdminJobsPage() {
 
       const data = await res.json();
       setJobs(data.jobs ?? data.items ?? []);
+      setStatusCounts(data.statusCounts ?? {});
+      setServerApplicants(typeof data.totalApplicants === "number" ? data.totalApplicants : null);
       updateTotal(data.pagination?.total ?? data.total ?? data.totalCount ?? ((data.totalPages ?? 1) * limit));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to load jobs. Please try again.";
@@ -243,9 +247,9 @@ export default function AdminJobsPage() {
     } catch { toast.error("Failed to delete job"); }
   };
 
-  const activeJobs = jobs.filter((j) => j.status === "active").length;
-  const draftJobs = jobs.filter((j) => j.status === "draft").length;
-  const totalApplicants = jobs.reduce((sum, j) => sum + (j.applicantsCount ?? 0), 0);
+  const activeJobs = statusCounts.active ?? jobs.filter((j) => j.status === "active").length;
+  const pendingJobs = statusCounts.pending_approval ?? jobs.filter((j) => j.status === "pending_approval").length;
+  const totalApplicants = serverApplicants ?? jobs.reduce((sum, j) => sum + (j.applicantsCount ?? 0), 0);
 
   const hasActiveFilters = search || status !== "all" || selectedEmployer !== "all" || selectedAgent !== "all" || workMode !== "all" || employmentType !== "all" || locationFilter || skillsFilter;
 
@@ -350,7 +354,7 @@ export default function AdminJobsPage() {
           {([
             { label: "Total Jobs", value: total, note: "All postings", icon: Briefcase, tone: "text-sky-600", chip: "bg-sky-50 dark:bg-sky-950/30" },
             { label: "Active", value: activeJobs, note: "Currently live", icon: ShieldCheck, tone: "text-emerald-600", chip: "bg-emerald-50 dark:bg-emerald-950/30" },
-            { label: "Draft", value: draftJobs, note: "Unpublished", icon: FileText, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
+            { label: "Pending Review", value: pendingJobs, note: "Awaiting moderation", icon: FileText, tone: "text-amber-600", chip: "bg-amber-50 dark:bg-amber-950/30" },
             { label: "Applicants", value: totalApplicants, note: "Total applications", icon: Users, tone: "text-violet-600", chip: "bg-violet-50 dark:bg-violet-950/30" },
           ] as const).map(({ label, value, note, icon: Icon, tone, chip }) => (
             <div key={label} className="workspace-glass-panel rounded-2xl p-4">

@@ -496,7 +496,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Check employer's autoRejectBelow threshold for newly scored applications
   // (score would be set by a separate scoring step; we set initial status here)
-  const empRecord = await Employer.findOne({ userId: job.employerId as unknown as string })
+  // Job.employerId references the Employer collection directly, so look it up by _id.
+  const empRecord = await Employer.findById(job.employerId)
     .select("workflow companyName")
     .lean() as { companyName?: string; workflow?: { settings?: { autoRejectBelow?: number; aiAutoScreen?: boolean } } } | null;
   const autoRejectBelow = empRecord?.workflow?.settings?.autoRejectBelow;
@@ -600,17 +601,18 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     { $addToSet: { applicantIds: seeker._id } }
   );
 
-  // aiAutoScreen: scoring + auto-reject runs asynchronously via Inngest so the
-  // seeker's apply request never blocks on an LLM round-trip.
-  if (aiAutoScreen) {
-    inngest.send({
-      name: "application/ai-screen",
-      data: {
-        applicationId: String(application._id),
-        ...(autoRejectBelow !== undefined ? { autoRejectBelow } : {}),
-      },
-    }).catch(() => { /* non-blocking */ });
-  }
+  // FG-3: AI match scoring runs automatically on every application via Inngest so
+  // the seeker's apply request never blocks on an LLM round-trip. Auto-REJECT stays
+  // opt-in: the autoRejectBelow threshold is only forwarded when the employer has
+  // explicitly enabled aiAutoScreen, so enabling automatic scoring never silently
+  // rejects candidates for employers who have not configured a cutoff.
+  inngest.send({
+    name: "application/ai-screen",
+    data: {
+      applicationId: String(application._id),
+      ...(aiAutoScreen && autoRejectBelow !== undefined ? { autoRejectBelow } : {}),
+    },
+  }).catch(() => { /* non-blocking */ });
 
   await logActivity({
     ...actorFromCtx(ctx),

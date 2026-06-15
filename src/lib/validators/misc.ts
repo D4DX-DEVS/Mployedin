@@ -144,5 +144,11 @@ export const jobApprovalSchema = z.object({
 export const jobSeekerRegisterSchema = z.object({
   name: z.string().min(1).max(200).trim(),
   email: z.string().email().max(254).trim().toLowerCase(),
-  password: z.string().min(8).max(128),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128)
+    .regex(/[a-z]/, "Password must include a lowercase letter")
+    .regex(/[A-Z]/, "Password must include an uppercase letter")
+    .regex(/[0-9]/, "Password must include a number"),
 });

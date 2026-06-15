@@ -164,7 +164,13 @@ export default function AdminUsersPage() {
       });
       if (!res.ok) {
         const e = await res.json();
-        setCreateError(e.error ?? "Failed to create user");
+        const details = Array.isArray(e.details)
+          ? (e.details as { path?: string; message?: string }[])
+              .map((d) => (d.path ? `${d.path}: ${d.message}` : d.message))
+              .filter(Boolean)
+              .join("; ")
+          : "";
+        setCreateError(details || e.error || "Failed to create user");
         return;
       }
       setShowCreate(false);

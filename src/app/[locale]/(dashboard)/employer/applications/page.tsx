@@ -474,7 +474,9 @@ export default function EmployerApplicationsPage() {
     const js = app.jobSeekerId;
     const currentRole = js?.experience?.find((e) => e.isCurrent)?.jobTitle;
     return {
-      url: urlOverride ?? js?.cv?.originalUrl ?? "",
+      url:
+        urlOverride ??
+        (js?.cv?.originalUrl ? `/api/applications/${app._id}/documents/download?cv=1#cv.pdf` : ""),
       name: getCandidateName(app),
       applicationId: app._id,
       status: app.status,
@@ -641,13 +643,13 @@ export default function EmployerApplicationsPage() {
               {selectedJob ? `${selectedJob.title} — ${t("title")}` : t("title")}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{filteredApplications.length}</span> {t("applicants")}
+              <span className="font-medium text-foreground">{isLoading ? "—" : filteredApplications.length}</span> {t("applicants")}
               <span className="px-2 text-border">•</span>
-              <span className="font-medium text-foreground">{highMatchCount}</span> {t("highMatch")}
+              <span className="font-medium text-foreground">{isLoading ? "—" : highMatchCount}</span> {t("highMatch")}
               <span className="px-2 text-border">•</span>
-              <span className="font-medium text-foreground">{interviewCount}</span> {t("interviews")}
+              <span className="font-medium text-foreground">{isLoading ? "—" : interviewCount}</span> {t("interviews")}
               <span className="px-2 text-border">•</span>
-              <span className="font-medium text-foreground">{selectedStageCount}</span> {t("selected")}
+              <span className="font-medium text-foreground">{isLoading ? "—" : selectedStageCount}</span> {t("selected")}
             </p>
           </div>
 
@@ -670,9 +672,9 @@ export default function EmployerApplicationsPage() {
                 disabled={bulkAiMatch.isPending || applications.every((a) => a.aiMatchScore != null)}
                 onClick={handleBulkAiMatch}
               >
-                <Sparkles className={`mr-2 h-3.5 w-3.5 ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
+                <Sparkles className={`me-2 h-3.5 w-3.5 ${bulkAiMatch.isPending ? "animate-pulse text-primary" : ""}`} />
                 {bulkMatchProgress
-                  ? `Scoring ${bulkMatchProgress.done}/${bulkMatchProgress.total}...`
+                  ? t("scoringCandidate", { done: bulkMatchProgress.done, total: bulkMatchProgress.total })
                   : t("scoreAll")}
               </Button>
               <Button
@@ -681,7 +683,7 @@ export default function EmployerApplicationsPage() {
                 disabled={bulkAction.isPending || !filteredApplications.some((a) => a.aiMatchScore != null && a.status === "applied")}
                 onClick={handleAutoShortlist}
               >
-                <CheckCheck className="mr-2 h-3.5 w-3.5" />
+                <CheckCheck className="me-2 h-3.5 w-3.5" />
                 {t("shortlistTop")}
               </Button>
             </div>
@@ -1293,14 +1295,16 @@ export default function EmployerApplicationsPage() {
         />
       )}
 
-      <PaginationControls
-        page={page}
-        totalPages={totalPages}
-        total={total}
-        limit={limit}
-        onPageChange={(p: number) => { setPage(p); setSelected([]); }}
-        onLimitChange={(newLimit: number) => { setLimit(newLimit); setPage(1); setSelected([]); }}
-      />
+      {!isLoading && !applicationsQuery.isError && (
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          onPageChange={(p: number) => { setPage(p); setSelected([]); }}
+          onLimitChange={(newLimit: number) => { setLimit(newLimit); setPage(1); setSelected([]); }}
+        />
+      )}
     </div>
   );
 }
@@ -1841,13 +1845,13 @@ function ApplicationDetailsPanel({
                               variant="outline"
                               size="sm"
                               className="h-9 shrink-0 rounded-xl border-border bg-background/80 px-3 text-xs"
-                              onClick={() => onViewDocument(app, doc.url)}
+                              onClick={() => onViewDocument(app, `/api/applications/${app._id}/documents/download?i=${i}#${encodeURIComponent(doc.name)}`)}
                             >
                               <FileText className="mr-1.5 h-3.5 w-3.5" /> {t("viewResume")}
                             </Button>
                           ) : (
                             <a
-                              href={doc.url}
+                              href={`/api/applications/${app._id}/documents/download?i=${i}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-background/80 px-3 text-xs font-medium text-foreground hover:bg-background"

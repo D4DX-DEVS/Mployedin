@@ -462,6 +462,16 @@ function ApplicationCard({
   const [withdrawError, setWithdrawError] = useState("");
   const [showDetails, setShowDetails] = useState(false);
 
+  // Close the withdrawal dialog on Escape for keyboard accessibility.
+  useEffect(() => {
+    if (!showWithdraw) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowWithdraw(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [showWithdraw]);
+
   async function handleWithdraw() {
     if (!withdrawReason) return;
     setWithdrawing(true);
@@ -763,18 +773,25 @@ function ApplicationCard({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShowWithdraw(false); }}
         >
-          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`withdraw-title-${app._id}`}
+            aria-describedby={`withdraw-desc-${app._id}`}
+            className="bg-background rounded-2xl shadow-2xl w-full max-w-md p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">{t("withdrawal.title")}</h2>
+              <h2 id={`withdraw-title-${app._id}`} className="font-semibold">{t("withdrawal.title")}</h2>
               <button
                 type="button"
                 onClick={() => setShowWithdraw(false)}
+                aria-label={t("withdrawal.cancel")}
                 className="text-muted-foreground hover:text-foreground"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p id={`withdraw-desc-${app._id}`} className="text-sm text-muted-foreground">
               {t("withdrawal.description", { job: jobTitle })}
             </p>
 

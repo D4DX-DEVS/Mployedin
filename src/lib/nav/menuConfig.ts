@@ -1205,6 +1205,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 description: "Confirmed hires & placements",
                 descriptionAr: "التعيينات المؤكدة",
               },
+              {
+                title: "Background Checks",
+                titleAr: "التحقق من الخلفية",
+                href: p("/employer/background-checks"),
+                icon: "ShieldCheck",
+                description: "Reference & background checks",
+                descriptionAr: "التحقق من المراجع والخلفية",
+              },
             ],
           },
           {

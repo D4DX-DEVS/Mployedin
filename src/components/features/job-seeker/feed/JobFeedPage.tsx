@@ -6,7 +6,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight, ArrowUp } from "lucide-react";
@@ -83,6 +83,24 @@ async function fetchJobs(cursor: string | null, sort: SortMode, minScore?: numbe
   const res = await fetch(`/api/jobs/recommended?${params}`);
   if (!res.ok) throw new Error("Failed to fetch jobs");
   return res.json();
+}
+
+/**
+ * Fetch the set of job IDs the seeker has already applied to, so the feed can
+ * render an "Applied" state even for jobs surfaced via search (where the
+ * recommended feed's auto-exclusion does not apply).
+ */
+async function fetchAppliedJobIds(): Promise<string[]> {
+  const res = await fetch(`/api/applications?limit=100`);
+  if (!res.ok) return [];
+  const data = (await res.json()) as {
+    applications?: Array<{ status?: string; jobId?: { _id?: string } | string }>;
+  };
+  return (data.applications ?? [])
+    // Withdrawn applications can be re-applied to, so they don't count as "applied".
+    .filter((a) => a.status !== "withdrawn")
+    .map((a) => (typeof a.jobId === "object" ? a.jobId?._id : a.jobId))
+    .filter((id): id is string => Boolean(id));
 }
 
 const SEARCH_PAGE_SIZE = 20;
@@ -195,6 +213,20 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const [searchPage, setSearchPage] = useState(1);
   const debouncedSearch = useDebounce(searchQuery, 400);
   const isSearchMode = debouncedSearch.trim().length > 0 || employerIdFilter.length > 0;
+
+  // Hydrate already-applied job IDs so the "Applied" state shows on first load,
+  // including for jobs surfaced through search (not just the recommended feed).
+  const { data: appliedIdsData } = useQuery({
+    queryKey: ["applied-job-ids"],
+    queryFn: fetchAppliedJobIds,
+    staleTime: 5 * 60_000,
+  });
+
+  useEffect(() => {
+    if (appliedIdsData?.length) {
+      setAppliedIds((s) => new Set([...s, ...appliedIdsData]));
+    }
+  }, [appliedIdsData]);
 
   const {
     data: searchData,

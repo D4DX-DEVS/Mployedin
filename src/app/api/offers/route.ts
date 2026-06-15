@@ -93,7 +93,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     const regex = new RegExp(search, "i");
     const [matchingJobs, matchingSeekers] = await Promise.all([
       Job.find({ title: regex }).select("_id").lean(),
-      JobSeeker.find({ name: regex }).select("_id").lean(),
+      JobSeeker.find({ fullName: regex }).select("_id").lean(),
     ]);
     const jobIds = matchingJobs.map((j) => j._id);
     const seekerIds = matchingSeekers.map((s) => s._id);
@@ -126,17 +126,23 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .limit(limit)
       .populate("jobId", "title location")
       .populate("applicationId", "status")
-      .populate("jobSeekerId", "name email")
+      .populate({ path: "jobSeekerId", select: "fullName userId", populate: { path: "userId", select: "name email" } })
       .populate("employerId", "companyName")
       .lean(),
     Offer.countDocuments(query),
   ]);
 
+  // Resolve a candidate's display name from the populated job seeker -> user chain.
+  const resolveCandidateName = (seeker: unknown): string => {
+    const s = seeker as { fullName?: string; userId?: { name?: string } } | null;
+    return s?.userId?.name || s?.fullName || "Unknown";
+  };
+
   // Transform to items format expected by the page
   const items = offers.map((o) => ({
     _id: String(o._id),
-    candidateName: (o.jobSeekerId as unknown as { name?: string })?.name ?? "Unknown",
-    candidateEmail: (o.jobSeekerId as unknown as { email?: string })?.email ?? "",
+    candidateName: resolveCandidateName(o.jobSeekerId),
+    candidateEmail: (o.jobSeekerId as unknown as { userId?: { email?: string } })?.userId?.email ?? "",
     jobTitle: (o.jobId as unknown as { title?: string })?.title ?? "Unknown",
     companyName: (o.employerId as unknown as { companyName?: string })?.companyName ?? "",
     salary: o.salary?.amount,

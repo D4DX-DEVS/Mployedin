@@ -7,6 +7,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { Application } from "@/models/Application";
 import Job from "@/models/Job";
 import { JobSeeker } from "@/models/JobSeeker";
+import { Employer } from "@/models/Employer";
 
 const VALID_CONTEXTS = [
   "after_application",
@@ -76,8 +77,8 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const application = await Application.findById(applicationId)
-      .populate("jobId", "title location requirements")
-      .populate("jobSeekerId", "firstName lastName skills currentLocation")
+      .populate({ path: "jobId", select: "title location requirements employerId", populate: { path: "employerId", select: "companyName" } })
+      .populate({ path: "jobSeekerId", select: "fullName userId skills currentLocation", populate: { path: "userId", select: "name" } })
       .lean();
 
     if (!application) {
@@ -87,11 +88,13 @@ export async function POST(req: NextRequest) {
     const app = application as unknown as {
       status: string;
       aiMatchScore?: number;
-      jobId?: { title?: string; location?: { city?: string; country?: string } };
-      jobSeekerId?: { firstName?: string; lastName?: string; skills?: string[]; currentLocation?: string };
+      jobId?: { title?: string; location?: { city?: string; country?: string }; employerId?: { companyName?: string } };
+      jobSeekerId?: { fullName?: string; userId?: { name?: string }; skills?: string[]; currentLocation?: string };
     };
 
-    const candidateName = [app.jobSeekerId?.firstName, app.jobSeekerId?.lastName].filter(Boolean).join(" ") || "Candidate";
+    const candidateName = app.jobSeekerId?.userId?.name || app.jobSeekerId?.fullName || "Candidate";
+    const candidateFirstName = candidateName.split(/\s+/)[0] || candidateName;
+    const companyName = app.jobId?.employerId?.companyName || "our company";
     const jobTitle = app.jobId?.title ?? "the position";
     const jobLocation = [app.jobId?.location?.city, app.jobId?.location?.country].filter(Boolean).join(", ") || "";
 
@@ -114,16 +117,19 @@ CONTEXT: ${contextDescriptions[context as EmailContext]}
 ${customNote ? `ADDITIONAL INSTRUCTIONS: ${customNote}` : ""}
 
 CANDIDATE: ${candidateName}
+CANDIDATE FIRST NAME: ${candidateFirstName}
 JOB: ${jobTitle}${jobLocation ? ` in ${jobLocation}` : ""}
+HIRING COMPANY: ${companyName}
 APPLICATION STATUS: ${app.status}
 ${app.aiMatchScore ? `AI MATCH SCORE: ${app.aiMatchScore}/100` : ""}
 
 Generate a JSON response with:
 - subject: email subject line
-- body: professional email body (use <br> for line breaks, address candidate by first name)
+- body: professional email body (use <br> for line breaks, address the candidate by their first name)
 - tone: "formal" | "warm" | "encouraging" | "empathetic"
 - suggestedSendTime: "immediately" | "next_morning" | "end_of_day"
 
+IMPORTANT: Use the ACTUAL values provided above. Do NOT output bracketed placeholders such as [Candidate Name], [Company Name], [Your Name], or [Position] — always substitute the real candidate first name, job title, and "${companyName}". Sign off as the ${companyName} recruitment team.
 Keep the email concise (100-200 words), professional, and culturally appropriate for the Gulf region.
 Output ONLY valid JSON, no markdown code blocks.`;
 
@@ -140,13 +146,29 @@ Output ONLY valid JSON, no markdown code blocks.`;
       );
     }
 
+    // Safety net: replace any placeholders the model left behind with known values.
+    const fillPlaceholders = (text: unknown): unknown => {
+      if (typeof text !== "string") return text;
+      return text
+        .replace(/\[\s*(candidate(?:'s)?\s*(?:full\s*)?name|applicant(?:'s)?\s*name)\s*\]/gi, candidateName)
+        .replace(/\[\s*(?:candidate(?:'s)?\s*)?first\s*name\s*\]/gi, candidateFirstName)
+        .replace(/\[\s*(company(?:'s)?\s*name|hiring\s*company|organization(?:'s)?\s*name)\s*\]/gi, companyName)
+        .replace(/\[\s*(?:job\s*title|position|role)\s*\]/gi, jobTitle)
+        .replace(/\[\s*(?:your\s*name|recruiter(?:'s)?\s*name|sender(?:'s)?\s*name|hiring\s*manager)\s*\]/gi, `${companyName} recruitment team`);
+    };
+
+    const parsedObj = (parsed && typeof parsed === "object") ? parsed as Record<string, unknown> : {};
+    if ("subject" in parsedObj) parsedObj.subject = fillPlaceholders(parsedObj.subject);
+    if ("body" in parsedObj) parsedObj.body = fillPlaceholders(parsedObj.body);
+
     return NextResponse.json(
       {
         applicationId,
         candidateName,
         jobTitle,
+        companyName,
         context,
-        ...parsed as object,
+        ...parsedObj,
       },
       { headers: { "X-RateLimit-Remaining": String(remaining) } }
     );

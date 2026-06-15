@@ -28,6 +28,22 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     return NextResponse.json({ error: "Employer is already verified" }, { status: 409 });
   }
 
+  // M-2 (KYC): require at least one verification document before approving,
+  // unless the admin explicitly overrides with a documented reason.
+  const body = (await req.json().catch(() => ({}))) as { override?: boolean; reason?: string };
+  const hasDocuments = Array.isArray(employer.verificationDocs) && employer.verificationDocs.length > 0;
+  if (!hasDocuments && !body.override) {
+    return NextResponse.json(
+      {
+        error:
+          "No verification documents on file. Upload at least one document, or confirm an override with a reason.",
+        code: "NO_VERIFICATION_DOCS",
+      },
+      { status: 422 },
+    );
+  }
+  const overridden = !hasDocuments && Boolean(body.override);
+
   employer.domainVerified = true;
   employer.domainVerifiedAt = new Date();
   employer.verificationLevel = "company";
@@ -40,7 +56,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     action: "employer.manual_verify",
     resource: "employers",
     resourceId: params?.id,
-    changes: { after: { domainVerified: true, verifiedBy: "admin_manual" } },
+    changes: {
+      after: {
+        domainVerified: true,
+        verifiedBy: "admin_manual",
+        documentCount: employer.verificationDocs?.length ?? 0,
+        overridden,
+        ...(overridden && body.reason ? { overrideReason: body.reason } : {}),
+      },
+    },
     req,
   });
 

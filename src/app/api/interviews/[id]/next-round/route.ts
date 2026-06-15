@@ -8,6 +8,7 @@ import Job from "@/models/Job";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
 import type { UserRole } from "@/models/User";
@@ -58,7 +59,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     scheduledAt: new Date(body.scheduledAt),
     duration: body.duration ?? 45,
     location: body.location,
-    meetLink: body.meetLink,
+    meetLink: resolveMeetingLink(body.type, body.meetLink),
     instructions: body.instructions,
     status: "scheduled",
     interviewRound: nextRound,

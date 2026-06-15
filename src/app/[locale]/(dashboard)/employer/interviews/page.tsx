@@ -27,6 +27,9 @@ import { AIInterviewQuestionsPanel } from "@/components/features/employer/AIInte
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useInterviews, useUpdateInterview, useScheduleNextRound } from "@/hooks/useInterviews";
 import { useCreateOffer } from "@/hooks/useOffers";
+import { useCreateScorecard } from "@/hooks/useApplications";
+import { ScorecardForm } from "@/components/scorecards/ScorecardForm";
+import { FeatureGate } from "@/components/shared/FeatureGate";
 import type { Interview } from "@/hooks/useInterviews";
 import type { ExportColumn } from "@/lib/export";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -928,6 +931,10 @@ function InterviewActionModal({
   const [location, setLocation] = useState("");
   const [meetLink, setMeetLink] = useState("");
 
+  // FG-8: structured scorecard capture as part of interview completion.
+  const createScorecard = useCreateScorecard();
+  const [showScorecard, setShowScorecard] = useState(false);
+
   // Offer fields
   const [salaryAmount, setSalaryAmount] = useState("");
   const [salaryCurrency, setSalaryCurrency] = useState("AED");
@@ -952,6 +959,11 @@ function InterviewActionModal({
           outcome,
           feedback: feedback || undefined,
         });
+        // FG-8: after the interview is marked completed, offer a structured
+        // scorecard (per-competency rubric) instead of closing immediately.
+        setSubmitting(false);
+        setShowScorecard(true);
+        return;
       } else if (modal.kind === "reschedule") {
         if (!scheduledAt) { setSubmitError(t("selectDateTime")); setSubmitting(false); return; }
         // Update interview in-place — no duplicate creation
@@ -996,6 +1008,28 @@ function InterviewActionModal({
       salaryAmount, salaryCurrency, salaryPeriod, startDate, benefits, offerNotes,
       updateMutation, nextRoundMutation, createOfferMutation, onClose, onOfferCreated]);
 
+  const handleScorecardSubmit = useCallback(async (data: {
+    scores: {
+      technicalSkills: number;
+      communication: number;
+      cultureFit: number;
+      problemSolving: number;
+      motivation: number;
+    };
+    recommendation: string;
+    notes?: string;
+    strengths?: string;
+    concerns?: string;
+  }) => {
+    try {
+      await createScorecard.mutateAsync({ interviewId: iv._id, ...data });
+      toast.success(t("scorecardSaved"));
+      onClose();
+    } catch {
+      setSubmitError(tc("somethingWentWrong"));
+    }
+  }, [createScorecard, iv._id, onClose, t, tc]);
+
   const title = {
     complete: t("completeTitle"),
     reschedule: t("rescheduleTitle"),
@@ -1004,6 +1038,41 @@ function InterviewActionModal({
   }[modal.kind];
 
   const isScheduleForm = modal.kind === "reschedule" || modal.kind === "next-round";
+
+  // FG-8: scorecard capture step shown after a completion is saved.
+  if (showScorecard) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 py-8 backdrop-blur-sm"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="mx-4 w-full max-w-2xl rounded-2xl border border-border bg-background shadow-2xl">
+          <div className="border-b border-border px-6 py-4">
+            <h3 className="text-lg font-semibold text-foreground">{t("scorecardStepTitle")}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {iv.jobSeekerId?.fullName ?? t("candidate")} · {iv.jobId?.title ?? t("role")} · {t("round")} {iv.interviewRound ?? 1}
+            </p>
+          </div>
+          <div className="max-h-[calc(100vh-220px)] overflow-y-auto px-6 py-4">
+            <FeatureGate
+              feature="scorecardEvaluations"
+              fallback={
+                <div className="flex flex-col items-center gap-3 py-6 text-center">
+                  <p className="text-sm text-muted-foreground">{t("scorecardSkipNote")}</p>
+                  <Button onClick={onClose} className="h-10 rounded-xl px-5 text-sm">{tc("done")}</Button>
+                </div>
+              }
+            >
+              <ScorecardForm
+                interviewId={iv._id}
+                onSubmit={handleScorecardSubmit}
+                onCancel={onClose}
+                isLoading={createScorecard.isPending}
+              />
+            </FeatureGate>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
@@ -1100,6 +1169,18 @@ function InterviewActionModal({
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   placeholder={type === "video" ? t("meetLinkPlaceholder") : t("officePlaceholder")}
                 />
+                {(type === "video" || type === "hybrid") && (
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMeetLink(`https://meet.jit.si/Mployedin-${crypto.randomUUID().slice(0, 12)}`)}
+                      className="text-xs font-medium text-primary hover:underline"
+                    >
+                      {t("generateMeetLink")}
+                    </button>
+                    <span className="text-xs text-muted-foreground">{t("meetLinkAutoNote")}</span>
+                  </div>
+                )}
               </div>
             </>
           )}
