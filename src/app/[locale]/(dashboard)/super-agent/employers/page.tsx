@@ -97,6 +97,7 @@ export default function SuperAgentEmployersPage() {
   const locale = useLocale();
 
   const [facets, setFacets] = useState<Facets>({ industries: [], locations: [] });
+  const [serverStats, setServerStats] = useState<{ total: number; active: number; assigned: number } | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [referralDialogOpen, setReferralDialogOpen] = useState(false);
@@ -160,6 +161,7 @@ export default function SuperAgentEmployersPage() {
         const data = await res.json();
         setEmployers(data.employers ?? []);
         updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? data.employers?.length ?? 0);
+        if (data.stats) setServerStats(data.stats);
         if (data.facets) setFacets(data.facets);
       }
     } finally {
@@ -213,11 +215,11 @@ export default function SuperAgentEmployersPage() {
   });
 
   const stats = useMemo(() => ({
-    total: employers.length,
-    active: employers.filter((e) => e.isActive).length,
-    assigned: employers.filter((e) => Boolean(e.assignedAgent?.name)).length,
+    total: serverStats?.total ?? employers.length,
+    active: serverStats?.active ?? employers.filter((e) => e.isActive).length,
+    assigned: serverStats?.assigned ?? employers.filter((e) => Boolean(e.assignedAgent?.name)).length,
     revenue: employers.reduce((sum, employer) => sum + (employer.totalPaid ?? 0), 0),
-  }), [employers]);
+  }), [employers, serverStats]);
 
   const handleOnboard = async (values: Record<string, string>) => {
     const res = await fetch("/api/employers", {

@@ -16,7 +16,7 @@ import {
 import {
   Briefcase, Building2, Calendar, Eye, Globe, Loader2,
   MapPin, Search, DollarSign, GraduationCap,
-  Clock, Users, X, FileText, Activity,
+  Clock, Users, X, Activity,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -31,7 +31,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 
-type JobStatus = "all" | "active" | "draft" | "closed" | "expired";
+type JobStatus = "all" | "active" | "draft" | "closed" | "expired" | "pending_approval";
 
 interface RegionalJob {
   _id: string;
@@ -43,6 +43,7 @@ interface RegionalJob {
   employerId?: { name?: string; companyName?: string };
   agentId?: { userId?: string };
   postedByAgent?: { name?: string };
+  poster?: { approvalStatus?: string };
 }
 
 interface JobDetail {
@@ -74,6 +75,7 @@ interface JobCounts {
   draft: number;
   closed: number;
   expired: number;
+  pendingApproval: number;
   employers: number;
 }
 
@@ -91,7 +93,7 @@ export default function SuperAgentApprovalsPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Counts from API
-  const [counts, setCounts] = useState<JobCounts>({ total: 0, active: 0, draft: 0, closed: 0, expired: 0, employers: 0 });
+  const [counts, setCounts] = useState<JobCounts>({ total: 0, active: 0, draft: 0, closed: 0, expired: 0, pendingApproval: 0, employers: 0 });
 
   // Pagination
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination(20);
@@ -179,6 +181,22 @@ export default function SuperAgentApprovalsPage() {
     }
   };
 
+  // Inline approve/reject directly from a table row (no need to open the dialog).
+  const [rowActionId, setRowActionId] = useState<string | null>(null);
+  const handleRowApproval = async (jobId: string, status: "approved" | "rejected") => {
+    setRowActionId(jobId);
+    try {
+      const res = await fetch(`/api/super-agent/approvals/${jobId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) loadJobs();
+    } finally {
+      setRowActionId(null);
+    }
+  };
+
   const formatLocation = (loc: string | { isRemote?: boolean; city?: string; country?: string } | undefined) => {
     if (!loc) return "—";
     if (typeof loc === "string") return loc || "—";
@@ -187,6 +205,13 @@ export default function SuperAgentApprovalsPage() {
   };
 
   const kpis = [
+    {
+      label: "Pending Approval",
+      value: counts.pendingApproval,
+      helper: "Jobs awaiting your approval decision.",
+      icon: <Clock className="h-5 w-5" />,
+      toneClassName: "workspace-tone-amber",
+    },
     {
       label: "Total Jobs",
       value: counts.total,
@@ -200,13 +225,6 @@ export default function SuperAgentApprovalsPage() {
       helper: "Live jobs visible to seekers.",
       icon: <Activity className="h-5 w-5" />,
       toneClassName: "workspace-tone-emerald",
-    },
-    {
-      label: "Draft",
-      value: counts.draft,
-      helper: "Jobs not yet published.",
-      icon: <FileText className="h-5 w-5" />,
-      toneClassName: "workspace-tone-amber",
     },
     {
       label: "Employers",
@@ -238,10 +256,10 @@ export default function SuperAgentApprovalsPage() {
   return (
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
-        title="Regional Jobs"
-        description="View and monitor all job postings from agents and employers in your region. Inspect details, filter by status, and track activity."
-        summaryTitle="Overview"
-        summaryDescription="This is a read-only view of all jobs under your managed agents and their employers."
+        title="Job Approvals"
+        description="Review and approve job postings from your agents before they go live, and monitor all jobs across your region."
+        summaryTitle="Approval gate"
+        summaryDescription="Jobs submitted by your agents wait here for your approval. Approve to publish, or reject to send back as a draft."
       />
 
       <SuperAgentMetricsGrid items={kpis} />
@@ -273,6 +291,7 @@ export default function SuperAgentApprovalsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending_approval">Pending Approval</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="closed">Closed</SelectItem>
@@ -346,16 +365,45 @@ export default function SuperAgentApprovalsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {jobs.map((job) => (
+                {jobs.map((job) => {
+                  const isPending = job.poster?.approvalStatus === "pending";
+                  return (
                   <TableRow key={job._id} className="bg-transparent">
                     <TableCell className="font-medium text-foreground">{job.title}</TableCell>
                     <TableCell className="text-muted-foreground">{job.employerId?.companyName ?? job.employerId?.name ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{job.postedByAgent?.name ?? "Employer"}</TableCell>
                     <TableCell className="text-muted-foreground">{formatLocation(job.location)}</TableCell>
-                    <TableCell><StatusBadge status={job.status ?? "draft"} /></TableCell>
+                    <TableCell>
+                      {isPending ? (
+                        <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 dark:text-amber-400">Pending Approval</Badge>
+                      ) : (
+                        <StatusBadge status={job.status ?? "draft"} />
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{new Date(job.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end gap-2">
+                        {isPending && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="h-8"
+                              disabled={rowActionId === job._id}
+                              onClick={() => handleRowApproval(job._id, "approved")}
+                            >
+                              {rowActionId === job._id ? "…" : "Approve"}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8"
+                              disabled={rowActionId === job._id}
+                              onClick={() => handleRowApproval(job._id, "rejected")}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -368,7 +416,8 @@ export default function SuperAgentApprovalsPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}

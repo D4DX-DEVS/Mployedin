@@ -317,8 +317,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   const job = app.jobId as unknown as { _id?: unknown; title?: string };
 
-  // Auto-resolve agentId from employer if not provided
+  // Auto-resolve agentId.
+  // Priority: explicit body.agentId → the creating agent (so it appears in their
+  // own queue even when they own the job but aren't assigned to the employer) →
+  // the employer's assigned agent.
   let resolvedAgentId = body.agentId;
+  if (!resolvedAgentId && ctx.role === "agent") {
+    const { Agent } = await import("@/models/Agent");
+    const creatorAgent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (creatorAgent?._id) resolvedAgentId = String(creatorAgent._id);
+  }
   if (!resolvedAgentId) {
     const { Employer } = await import("@/models/Employer");
     const emp = await Employer.findById(app.employerId).select("agentId").lean();

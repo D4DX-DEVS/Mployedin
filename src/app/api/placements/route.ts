@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Placement from "@/models/Placement";
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
@@ -52,6 +53,17 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     const jobSeekerDoc = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!jobSeekerDoc) return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });
     query.jobSeekerId = jobSeekerDoc._id;
+  }
+  else if (ctx.role === "super_agent") {
+    // Scope to the super-agent's team (their agents) or placements credited to
+    // their profile — matching the dashboard/reports aggregation. Without this
+    // the list returned every placement on the platform.
+    const scope = await getSuperAgentScope(ctx.userId);
+    const agentDocIds = scope?.effectiveAgentIds ?? [];
+    query.$or = [
+      { agentId: { $in: agentDocIds } },
+      ...(scope?.saProfileId ? [{ superAgentId: scope.saProfileId }] : []),
+    ];
   }
 
   // Filter: visa status

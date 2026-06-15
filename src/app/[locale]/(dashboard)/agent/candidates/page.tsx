@@ -8,15 +8,25 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import {
   ArrowRight,
   BriefcaseBusiness,
   CalendarCheck2,
+  CalendarPlus,
+  Check,
+  ChevronRight,
   Inbox,
   Loader2,
   Sparkles,
   Star,
   Users,
+  X,
 } from "lucide-react";
 import { useSearchParams, usePathname } from "next/navigation";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -46,6 +56,18 @@ interface ApplicationItem {
 const STATUS_OPTIONS = [
   "", "applied", "shortlisted", "interview_scheduled", "selected", "offer", "hired", "rejected",
 ];
+
+// Contextual "advance to next stage" action for an agent, keyed by current status.
+const NEXT_STAGE: Record<string, { value: string; label: string }> = {
+  applied: { value: "shortlisted", label: "Shortlist" },
+  interview_scheduled: { value: "selected", label: "Mark Selected" },
+  selected: { value: "offer", label: "Move to Offer" },
+  offer: { value: "hired", label: "Mark Hired" },
+};
+
+const TERMINAL_STATUSES = new Set(["hired", "rejected", "withdrawn"]);
+// Statuses from which scheduling an interview is the natural next step.
+const SCHEDULABLE_STATUSES = new Set(["applied", "shortlisted", "interview_scheduled"]);
 
 export default function AgentCandidatesPage() {
   const pathname = usePathname();
@@ -85,17 +107,87 @@ export default function AgentCandidatesPage() {
 
   useEffect(() => { pagination.resetPage(); }, [statusFilter, jobIdFilter]);
 
-  const handleStatusUpdate = async (appId: string, newStatus: string) => {
+  // Scheduling dialog state
+  const [scheduleApp, setScheduleApp] = useState<ApplicationItem | null>(null);
+  const [scheduleForm, setScheduleForm] = useState({ scheduledAt: "", type: "video", duration: "45", location: "", meetLink: "" });
+  const [scheduleError, setScheduleError] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+
+  // Reject dialog state
+  const [rejectApp, setRejectApp] = useState<ApplicationItem | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState("");
+  const [rejecting, setRejecting] = useState(false);
+
+  const handleStatusUpdate = async (appId: string, newStatus: string, extra?: Record<string, unknown>) => {
     setUpdatingId(appId);
     try {
       const res = await fetch(`/api/applications/${appId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, ...extra }),
       });
       if (res.ok) await loadApplications();
+      return res.ok;
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const openSchedule = (app: ApplicationItem) => {
+    setScheduleError("");
+    // Default to tomorrow at 10:00 in the user's local timezone.
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(10, 0, 0, 0);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setScheduleForm({ scheduledAt: local, type: "video", duration: "45", location: "", meetLink: "" });
+    setScheduleApp(app);
+  };
+
+  const submitSchedule = async () => {
+    if (!scheduleApp) return;
+    setScheduleError("");
+    if (!scheduleForm.scheduledAt) { setScheduleError("Please pick a date and time."); return; }
+    const iso = new Date(scheduleForm.scheduledAt).toISOString();
+    if (new Date(iso) <= new Date()) { setScheduleError("Interview must be scheduled in the future."); return; }
+    setScheduling(true);
+    try {
+      const res = await fetch("/api/interviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: scheduleApp._id,
+          scheduledAt: iso,
+          type: scheduleForm.type,
+          duration: Number(scheduleForm.duration) || 45,
+          location: scheduleForm.location || undefined,
+          meetLink: scheduleForm.meetLink || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setScheduleError(data.error || "Could not schedule the interview.");
+        return;
+      }
+      setScheduleApp(null);
+      await loadApplications();
+    } finally {
+      setScheduling(false);
+    }
+  };
+
+  const submitReject = async () => {
+    if (!rejectApp) return;
+    setRejectError("");
+    if (!rejectReason.trim()) { setRejectError("A rejection reason is required."); return; }
+    setRejecting(true);
+    try {
+      const ok = await handleStatusUpdate(rejectApp._id, "rejected", { rejectionReason: rejectReason.trim() });
+      if (ok) { setRejectApp(null); setRejectReason(""); }
+      else setRejectError("Could not reject the application.");
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -269,6 +361,7 @@ export default function AgentCandidatesPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>AI Match</TableHead>
                   <TableHead>Applied</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -291,6 +384,52 @@ export default function AgentCandidatesPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{new Date(app.appliedAt ?? app.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {updatingId === app._id ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        ) : TERMINAL_STATUSES.has(app.status) ? (
+                          <span className="text-xs capitalize text-muted-foreground">{app.status}</span>
+                        ) : (
+                          <>
+                            {NEXT_STAGE[app.status] && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1 rounded-lg px-2.5 text-xs"
+                                title={NEXT_STAGE[app.status].label}
+                                onClick={() => handleStatusUpdate(app._id, NEXT_STAGE[app.status].value)}
+                              >
+                                {app.status === "applied" ? <Check className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                {NEXT_STAGE[app.status].label}
+                              </Button>
+                            )}
+                            {SCHEDULABLE_STATUSES.has(app.status) && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 rounded-lg p-0 text-sky-600 hover:bg-sky-50"
+                                title="Schedule interview"
+                                aria-label="Schedule interview"
+                                onClick={() => openSchedule(app)}
+                              >
+                                <CalendarPlus className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 rounded-lg p-0 text-destructive hover:bg-destructive/10"
+                              title="Reject candidate"
+                              aria-label="Reject candidate"
+                              onClick={() => { setRejectError(""); setRejectReason(""); setRejectApp(app); }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -307,6 +446,117 @@ export default function AgentCandidatesPage() {
         onPageChange={pagination.setPage}
         onLimitChange={pagination.setLimit}
       />
+
+      {/* Schedule interview dialog */}
+      <Dialog open={!!scheduleApp} onOpenChange={(o) => { if (!o) setScheduleApp(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule interview</DialogTitle>
+            <DialogDescription>
+              {scheduleApp?.jobSeekerId?.userId?.name ?? "Candidate"} · {scheduleApp?.jobId?.title ?? "Role"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {scheduleError && (
+              <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{scheduleError}</p>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="iv-when">Date &amp; time</Label>
+              <Input
+                id="iv-when"
+                type="datetime-local"
+                value={scheduleForm.scheduledAt}
+                onChange={(e) => setScheduleForm((f) => ({ ...f, scheduledAt: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="iv-type">Type</Label>
+                <select
+                  id="iv-type"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={scheduleForm.type}
+                  onChange={(e) => setScheduleForm((f) => ({ ...f, type: e.target.value }))}
+                >
+                  <option value="video">Video</option>
+                  <option value="offline">In-Person</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="iv-dur">Duration (min)</Label>
+                <Input
+                  id="iv-dur"
+                  type="number"
+                  min={15}
+                  max={480}
+                  value={scheduleForm.duration}
+                  onChange={(e) => setScheduleForm((f) => ({ ...f, duration: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="iv-loc">{scheduleForm.type === "video" ? "Meeting link" : "Location"}</Label>
+              {scheduleForm.type === "video" ? (
+                <Input
+                  id="iv-loc"
+                  placeholder="https://meet.google.com/… (auto-generated if blank)"
+                  value={scheduleForm.meetLink}
+                  onChange={(e) => setScheduleForm((f) => ({ ...f, meetLink: e.target.value }))}
+                />
+              ) : (
+                <Input
+                  id="iv-loc"
+                  placeholder="Office address / room"
+                  value={scheduleForm.location}
+                  onChange={(e) => setScheduleForm((f) => ({ ...f, location: e.target.value }))}
+                />
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScheduleApp(null)} disabled={scheduling}>Cancel</Button>
+            <Button onClick={submitSchedule} disabled={scheduling}>
+              {scheduling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
+              Schedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject dialog */}
+      <Dialog open={!!rejectApp} onOpenChange={(o) => { if (!o) setRejectApp(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject candidate</DialogTitle>
+            <DialogDescription>
+              {rejectApp?.jobSeekerId?.userId?.name ?? "Candidate"} · {rejectApp?.jobId?.title ?? "Role"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {rejectError && (
+              <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{rejectError}</p>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="rej-reason">Reason</Label>
+              <Textarea
+                id="rej-reason"
+                placeholder="Why is this candidate not moving forward?"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectApp(null)} disabled={rejecting}>Cancel</Button>
+            <Button variant="destructive" onClick={submitReject} disabled={rejecting}>
+              {rejecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -177,10 +177,30 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       });
 
     const facets = distinct === "true" ? await getEmployerFacets() : undefined;
+
+    // Server-side KPI stats across the WHOLE scoped set (not just the current
+    // page) so the dashboard cards don't report the page size as the total.
+    const statsAgg = await Employer.aggregate([
+      { $match: empQuery },
+      { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "u" } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          active: { $sum: { $cond: [{ $eq: [{ $arrayElemAt: ["$u.isActive", 0] }, false] }, 0, 1] } },
+          assigned: { $sum: { $cond: [{ $ifNull: ["$agentId", false] }, 1, 0] } },
+        },
+      },
+    ]);
+    const stats = statsAgg[0]
+      ? { total: statsAgg[0].total, active: statsAgg[0].active, assigned: statsAgg[0].assigned }
+      : { total: 0, active: 0, assigned: 0 };
+
     return NextResponse.json({
       employers,
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       totalCount: total,
+      stats,
       ...(facets ? { facets } : {}),
     });
   }

@@ -8,6 +8,7 @@ import Job from "@/models/Job";
 import Application from "@/models/Application";
 import Placement from "@/models/Placement";
 import Lead from "@/models/Lead";
+import Commission from "@/models/Commission";
 
 interface AuthCtx {
   userId: string;
@@ -75,7 +76,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
     statusMap[s._id] = s.count;
   });
 
-  // Placements
+  // Placements — scope by team agents or this super-agent's profile.
   const totalPlacements = await Placement.countDocuments({
     $or: [
       { agentId: { $in: agentDocIds } },
@@ -92,21 +93,70 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
     status: "converted",
   });
 
-  // Agent performance aggregation
-  const agentPerformance = agentDocs.map((a) => ({
-    agentId: a._id,
-    userId: a.userId,
-    employersCreated: a.performance?.employersCreated ?? 0,
-    leadsGenerated: a.performance?.leadsGenerated ?? 0,
-    vacanciesPosted: a.performance?.vacanciesPosted ?? 0,
-    placementsCompleted: a.performance?.placementsCompleted ?? 0,
-  }));
+  // Per-agent performance — derive from live collections so figures match the
+  // agents/reports/placements pages (the denormalized Agent.performance subdoc
+  // can drift and previously produced phantom placement/commission totals).
+  const agentIdStrings = agentDocIds.map(String);
+  const [placementsByAgent, leadsByAgent, employersByAgent, vacanciesByAgent] = await Promise.all([
+    Placement.aggregate([
+      { $match: { agentId: { $in: agentDocIds } } },
+      { $group: { _id: "$agentId", count: { $sum: 1 } } },
+    ]),
+    Lead.aggregate([
+      { $match: { agentId: { $in: agentDocIds } } },
+      { $group: { _id: "$agentId", count: { $sum: 1 } } },
+    ]),
+    Job.aggregate([
+      { $match: { agentId: { $in: agentDocIds } } },
+      { $group: { _id: "$agentId", employers: { $addToSet: "$employerId" } } },
+    ]),
+    Job.aggregate([
+      { $match: { agentId: { $in: agentDocIds } } },
+      { $group: { _id: "$agentId", count: { $sum: 1 } } },
+    ]),
+  ]);
+  const placementsAgentMap = new Map(placementsByAgent.map((r) => [String(r._id), r.count]));
+  const leadsAgentMap = new Map(leadsByAgent.map((r) => [String(r._id), r.count]));
+  const vacanciesAgentMap = new Map(vacanciesByAgent.map((r) => [String(r._id), r.count]));
+  const employersAgentMap = new Map(
+    employersByAgent.map((r) => [String(r._id), (r.employers ?? []).filter(Boolean).length])
+  );
 
-  // Fetch SA commissions
-  const SuperAgent = (await import("@/models/SuperAgent")).default;
-  const saCommissions = await SuperAgent.findOne({ _id: scope.saProfileId })
-    .select("commissions")
-    .lean();
+  // Agent performance aggregation (live, not denormalized)
+  const agentPerformance = agentDocs.map((a) => {
+    const key = String(a._id);
+    return {
+      agentId: a._id,
+      userId: a.userId,
+      employersCreated: employersAgentMap.get(key) ?? (a.assignedEmployerIds?.length ?? 0),
+      leadsGenerated: leadsAgentMap.get(key) ?? 0,
+      vacanciesPosted: vacanciesAgentMap.get(key) ?? 0,
+      placementsCompleted: placementsAgentMap.get(key) ?? 0,
+    };
+  });
+
+  // Commissions — aggregate from the Commission collection (single source of
+  // truth shared with the reports & commissions pages) rather than the
+  // SuperAgent.commissions denormalized counter which could be stale.
+  const commissionAgg = await Commission.aggregate([
+    {
+      $match: {
+        $or: [
+          { agentId: { $in: agentIdStrings } },
+          { superAgentId: ctx.userId },
+        ],
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: "$amount" },
+        pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, "$amount", 0] } },
+        paid: { $sum: { $cond: [{ $eq: ["$status", "paid"] }, "$amount", 0] } },
+      },
+    },
+  ]);
+  const commData = commissionAgg[0] ?? { total: 0, pending: 0, paid: 0 };
 
   return NextResponse.json({
     kpis: {
@@ -118,7 +168,11 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
       totalPlacements,
       totalLeads,
       convertedLeads,
-      commissions: saCommissions?.commissions ?? { total: 0, pending: 0, paid: 0 },
+      commissions: {
+        total: commData.total ?? 0,
+        pending: commData.pending ?? 0,
+        paid: commData.paid ?? 0,
+      },
     },
     applicationBreakdown: statusMap,
     agentPerformance,

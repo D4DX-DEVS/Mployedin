@@ -75,7 +75,16 @@ export default function AgentReportsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: q, scope: "platform" }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        if (res.status === 403) {
+          throw new Error("AI reports aren't available on your current plan. Please contact your administrator to enable them.");
+        }
+        if (res.status === 429) {
+          throw new Error("You've reached the AI usage limit for now. Please try again in a little while.");
+        }
+        throw new Error(data?.message || data?.error || "We couldn't generate that report. Please try again.");
+      }
       const data = await res.json();
       setResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: new Date().toLocaleTimeString() });
     } catch (e) {

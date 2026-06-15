@@ -35,8 +35,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
 
-  // Optional job status filter
-  if (status && ["active", "draft", "closed", "expired", "pending_approval"].includes(status)) {
+  // Optional job status filter.
+  // "pending_approval" is a virtual status backed by poster.approvalStatus so the
+  // super-agent can isolate jobs awaiting their decision (the Job Approval Gate).
+  if (status === "pending_approval") {
+    query["poster.approvalStatus"] = "pending";
+  } else if (status && ["active", "draft", "closed", "expired"].includes(status)) {
     query.status = status;
   }
 
@@ -70,21 +74,23 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scopeFilter: Record<string, any> = { ...query };
   delete scopeFilter.status;
+  delete scopeFilter["poster.approvalStatus"];
 
-  const [jobs, total, activeCount, draftCount, closedCount, expiredCount, employerAgg] = await Promise.all([
+  const [jobs, total, activeCount, draftCount, closedCount, expiredCount, pendingApprovalCount, employerAgg] = await Promise.all([
     Job.find(query)
       .populate("employerId", "companyName name")
       .populate("agentId", "userId")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .select("title status location category createdAt employerId agentId")
+      .select("title status location category createdAt employerId agentId poster.approvalStatus")
       .lean(),
     Job.countDocuments(query),
     Job.countDocuments({ ...scopeFilter, status: "active" }),
     Job.countDocuments({ ...scopeFilter, status: "draft" }),
     Job.countDocuments({ ...scopeFilter, status: "closed" }),
     Job.countDocuments({ ...scopeFilter, status: "expired" }),
+    Job.countDocuments({ ...scopeFilter, "poster.approvalStatus": "pending" }),
     Job.distinct("employerId", scopeFilter),
   ]);
 
@@ -98,6 +104,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       draft: draftCount,
       closed: closedCount,
       expired: expiredCount,
+      pendingApproval: pendingApprovalCount,
       employers: employerAgg.length,
     },
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },

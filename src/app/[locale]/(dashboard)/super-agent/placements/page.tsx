@@ -39,7 +39,7 @@ interface Placement {
   visaStatus?: string;
   commissionPaid?: boolean;
   commissionAmount?: number;
-  salary?: number;
+  salary?: { amount: number; currency: string } | number;
   currency?: string;
   startDate?: string;
   placedAt?: string;
@@ -134,6 +134,15 @@ function getCompanyName(p: Placement): string {
 }
 function getVisaStatus(p: Placement): string {
   return p.visaStatus ?? p.status ?? "pending";
+}
+function formatPlacementSalary(p: Placement): string {
+  // API returns salary as { amount, currency }; tolerate a raw number for safety.
+  const raw = p.salary;
+  const amount = typeof raw === "number" ? raw : raw?.amount;
+  if (amount == null) return "—";
+  const currency =
+    (typeof raw === "object" ? raw?.currency : undefined) ?? p.currency ?? "AED";
+  return `${currency} ${amount.toLocaleString()}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -266,7 +275,7 @@ export default function SuperAgentPlacementsPage() {
     { header: "Employer", key: "companyName", formatter: (_v, row) => getCompanyName(row as unknown as Placement) },
     { header: "Agent", key: "agentName" },
     { header: "Visa Status", key: "visaStatus", formatter: (_v, row) => getVisaStatus(row as unknown as Placement) },
-    { header: "Salary", key: "salary" },
+    { header: "Salary", key: "salary", formatter: (_v, row) => formatPlacementSalary(row as unknown as Placement) },
     { header: "Currency", key: "currency" },
     { header: "Commission Paid", key: "commissionPaid", formatter: (v) => v ? "Yes" : "No" },
     { header: "Start Date", key: "startDate", formatter: (v) => v ? new Date(String(v)).toLocaleDateString() : "" },
@@ -533,7 +542,7 @@ export default function SuperAgentPlacementsPage() {
                   <TableCell className="text-muted-foreground">{getCompanyName(p)}</TableCell>
                   <TableCell><StatusBadge status={getVisaStatus(p)} /></TableCell>
                   <TableCell className="text-foreground/85 tabular-nums">
-                    {p.salary ? `${(p.currency ?? "AED")} ${p.salary.toLocaleString()}` : "—"}
+                    {formatPlacementSalary(p)}
                   </TableCell>
                   <TableCell>
                     {p.commissionPaid ? (

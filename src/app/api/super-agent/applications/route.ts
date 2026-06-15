@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Application from "@/models/Application";
 import Agent from "@/models/Agent";
+import Job from "@/models/Job";
 import User from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
 
@@ -28,24 +29,57 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   /* Get agent user IDs for filtering */
   const agents = await Agent.find({ _id: { $in: agentIds } })
     .populate("userId", "fullName")
+    .select("userId assignedEmployerIds")
     .lean();
 
   const agentUserIds = agents.map((a: Record<string, unknown>) => (a.userId as Record<string, unknown>)?._id);
 
+  // Team scope by job: applications belong to the team when their job was posted
+  // by a managed agent OR by an employer assigned to a managed agent. This mirrors
+  // the dashboard aggregation so application counts stay consistent across screens.
+  const employerIds = agents.flatMap(
+    (a: Record<string, unknown>) => (a.assignedEmployerIds as unknown[]) ?? []
+  );
+  const teamJobs = await Job.find({
+    $or: [
+      { agentId: { $in: agentIds } },
+      ...(employerIds.length > 0 ? [{ employerId: { $in: employerIds } }] : []),
+    ],
+  })
+    .select("_id")
+    .lean();
+  const teamJobIds = teamJobs.map((j: Record<string, unknown>) => j._id);
+
   const filter: Record<string, unknown> = {};
   if (agentFilter && agentFilter !== "all") {
     filter.agentId = agentFilter;
-  } else if (agentIds.length > 0) {
-    filter.agentId = { $in: agentIds };
+  } else {
+    // Match on either the denormalized agentId OR membership in a team job.
+    const scopeOr: Record<string, unknown>[] = [];
+    if (agentIds.length > 0) scopeOr.push({ agentId: { $in: agentIds } });
+    if (teamJobIds.length > 0) scopeOr.push({ jobId: { $in: teamJobIds } });
+    if (scopeOr.length === 1) {
+      Object.assign(filter, scopeOr[0]);
+    } else if (scopeOr.length > 1) {
+      filter.$and = [{ $or: scopeOr }];
+    } else {
+      // No team scope at all → return nothing rather than the whole collection.
+      filter._id = { $in: [] };
+    }
   }
 
   if (status && status !== "all") filter.status = status;
   if (search) {
     const safe = escapeRegex(search);
-    filter.$or = [
-      { candidateName: { $regex: safe, $options: "i" } },
-      { jobTitle: { $regex: safe, $options: "i" } },
-      { companyName: { $regex: safe, $options: "i" } },
+    filter.$and = [
+      ...((filter.$and as Record<string, unknown>[]) ?? []),
+      {
+        $or: [
+          { candidateName: { $regex: safe, $options: "i" } },
+          { jobTitle: { $regex: safe, $options: "i" } },
+          { companyName: { $regex: safe, $options: "i" } },
+        ],
+      },
     ];
   }
 
