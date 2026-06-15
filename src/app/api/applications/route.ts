@@ -452,13 +452,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });
   }
 
-  // Withdrawn applications do not block re-applying.
+  // Check for any existing application (including withdrawn).
   const existing = await Application.findOne({
     jobSeekerId: seeker._id,
     jobId,
-    status: { $ne: "withdrawn" },
   }).lean();
-  if (existing) {
+  if (existing && existing.status !== "withdrawn") {
     return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
   }
 
@@ -556,7 +555,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     lastActiveAt: seekerDoc.updatedAt,
   });
 
-  const application = await Application.create({
+  const applicationData = {
     jobSeekerId: seeker._id,
     jobId,
     employerId: job.employerId,
@@ -565,11 +564,35 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     source: isEasyApply ? 'easy_apply' : 'full_form',
     status: "applied",
     appliedAt: new Date(),
-    statusHistory: [{ status: "applied", changedAt: new Date(), note: "Application submitted" }],
     behaviorSignals: signals,
     behaviorScore: bScore,
     screeningAnswers: screeningAnswers ?? [],
-  });
+  };
+
+  let application;
+  try {
+    if (existing && existing.status === "withdrawn") {
+      // Re-apply: update the withdrawn application instead of creating a duplicate
+      application = await Application.findByIdAndUpdate(
+        existing._id,
+        {
+          ...applicationData,
+          $push: { statusHistory: { status: "applied", changedAt: new Date(), note: "Re-applied after withdrawal" } },
+        },
+        { new: true }
+      );
+    } else {
+      application = await Application.create({
+        ...applicationData,
+        statusHistory: [{ status: "applied", changedAt: new Date(), note: "Application submitted" }],
+      });
+    }
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "code" in err && (err as { code: number }).code === 11000) {
+      return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
+    }
+    throw err;
+  }
 
   // Track applicant on the job document for quick count access
   await Job.updateOne(
