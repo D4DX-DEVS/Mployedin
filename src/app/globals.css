@@ -608,6 +608,14 @@ body {
       radial-gradient(circle at top right, hsl(var(--brand-blue-light) / 0.08), transparent 18%),
       linear-gradient(180deg, hsl(var(--surface-2) / 0.96), hsl(var(--secondary) / 0.94));
     overscroll-behavior: contain;
+    /* Reserve clearance for the floating AI assistant button (fixed, bottom-24 + h-14)
+       so end-of-content (right-column action buttons, last cards, table rows) is never
+       hidden behind it. On short, non-scrolling pages this padding is clamped by the
+       scroll container and stays invisible, so it costs nothing there; on scrolling pages
+       it adds the trailing clearance the button needs. scroll-padding-bottom keeps
+       focus/keyboard scroll clear of the button too. */
+    scroll-padding-bottom: 7.5rem;
+    padding-bottom: max(env(safe-area-inset-bottom), 7.5rem);
   }
 
   .dashboard-shell-workspace .page-container {
@@ -618,18 +626,18 @@ body {
   }
 
   .dashboard-shell-admin .admin-cms-page-container {
-    padding-inline: 1.75rem;
+    padding-inline: 1.5rem;
   }
 
   @media (min-width: 768px) {
     .dashboard-shell-admin .admin-cms-page-container {
-      padding-inline: 2.5rem;
+      padding-inline: 2rem;
     }
   }
 
   @media (min-width: 1024px) {
     .dashboard-shell-admin .admin-cms-page-container {
-      padding-inline: 3.25rem;
+      padding-inline: 2.5rem;
     }
   }
 

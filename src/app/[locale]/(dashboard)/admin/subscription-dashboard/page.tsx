@@ -206,9 +206,9 @@ export default function AdminSubscriptionDashboardPage() {
       </div>
 
       {/* ── Second Row: Role Split + Tier Distribution ── */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Role Split */}
-        <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+        <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4 min-w-0">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <Users className="h-4 w-4" /> Active by Role
           </h4>
@@ -283,7 +283,7 @@ export default function AdminSubscriptionDashboardPage() {
       )}
 
       {/* ── Third Row: Expiring Soon + Recent Activity ── */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Expiring Soon */}
         <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -432,13 +432,13 @@ function RoleCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border/40 p-4 flex items-center gap-3">
-      <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center">
+    <div className="rounded-xl border border-border/40 p-4 flex items-center gap-3 min-w-0">
+      <div className="h-10 w-10 shrink-0 rounded-xl bg-muted/50 flex items-center justify-center">
         {icon}
       </div>
-      <div>
+      <div className="min-w-0">
         <p className="text-xl font-bold">{count}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground truncate">{label}</p>
       </div>
     </div>
   );

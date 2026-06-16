@@ -90,7 +90,7 @@ export default function AdminSystemHealthPage() {
     : "unknown";
 
   return (
-    <div className="space-y-6">
+    <div className="page-container space-y-6">
       {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

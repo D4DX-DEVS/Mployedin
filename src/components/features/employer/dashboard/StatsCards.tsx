@@ -117,7 +117,7 @@ export function TimeToHire({ avgDays }: TimeToHireProps) {
         </>
       ) : (
         <>
-          <p className="mt-4 text-4xl font-semibold tracking-tight text-muted-foreground dark:text-amber-100/70">\u2014</p>
+          <p className="mt-4 text-4xl font-semibold tracking-tight text-muted-foreground dark:text-amber-100/70">&mdash;</p>
           <p className="mt-1.5 text-sm text-muted-foreground dark:text-amber-100/75">{t("noHiresYet")}</p>
         </>
       )}

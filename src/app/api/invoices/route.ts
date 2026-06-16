@@ -161,8 +161,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   ]);
 
   // Summary aggregation
+  // NOTE: Model.aggregate() does NOT auto-cast $match values the way find() does.
+  // For employers the filter carries `userId` as a plain string, which would compare
+  // against an ObjectId field and silently match nothing (summary returns all zeros
+  // even though the invoice list is populated). Cast the filter through the schema
+  // so string ids become ObjectIds before using it as the aggregation $match stage.
+  const aggregationMatch = Invoice.find(filter).cast(Invoice) as Record<string, unknown>;
   const summaryAgg = await Invoice.aggregate([
-    { $match: { ...filter } },
+    { $match: aggregationMatch },
     {
       $group: {
         _id: "$status",

@@ -329,8 +329,8 @@ export default function AdminExhibitionAnalyticsPage() {
         />
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+        <div className="workspace-panel-surface min-w-0 rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Monthly request flow</h2>
@@ -339,7 +339,7 @@ export default function AdminExhibitionAnalyticsPage() {
             <Badge variant="outline">12 months</Badge>
           </div>
           <div className="h-[22rem]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={monthly} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
                 <XAxis dataKey="month" axisLine={false} tickLine={false} className="text-xs" />
@@ -383,8 +383,8 @@ export default function AdminExhibitionAnalyticsPage() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="workspace-panel-surface rounded-[28px] p-5 sm:p-6">
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="workspace-panel-surface min-w-0 rounded-[28px] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Participation mix</h2>
@@ -395,7 +395,7 @@ export default function AdminExhibitionAnalyticsPage() {
           {participation.length > 0 ? (
             <>
               <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Pie
                       data={participation.map((item) => ({ name: item.type.replace(/_/g, " "), value: item.count }))}

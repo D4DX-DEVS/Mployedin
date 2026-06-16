@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -381,9 +381,8 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                 const estTotal = p.salary + estTax;
 
                 return (
-                  <>
+                  <Fragment key={p._id}>
                     <TableRow
-                      key={p._id}
                       className={`border-border/70 cursor-pointer transition-colors ${isSelected ? "bg-emerald-50/50 dark:bg-emerald-950/10" : "hover:bg-secondary/30"}`}
                       onClick={() => toggleSelect(p._id)}
                     >
@@ -554,7 +553,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </TableBody>
