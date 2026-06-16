@@ -192,6 +192,48 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
     debouncedAutoSave(formValues);
   }, [formValues, debouncedAutoSave, formState.isDirty]);
 
+  // ─── Auto-save draft to server on quit (close tab, refresh, or in-app nav) ───
+  const formValuesRef = useRef(formValues);
+  const isDirtyRef = useRef(formState.isDirty);
+  const publishedRef = useRef(false);
+  formValuesRef.current = formValues;
+  isDirtyRef.current = formState.isDirty;
+
+  const saveDraftBeacon = useCallback(() => {
+    // Skip when nothing changed, when already published, or when there is no
+    // usable title (the server route also guards on title length).
+    if (!isDirtyRef.current || publishedRef.current) return;
+    const title = formValuesRef.current.title?.trim();
+    if (!title || title.length < 3) return;
+
+    const payload = JSON.stringify({
+      ...formValuesRef.current,
+      status: "draft",
+      location: {
+        country: formValuesRef.current.location.country || "",
+        city: formValuesRef.current.location.city || "",
+        isRemote: formValuesRef.current.location.isRemote,
+      },
+    });
+    try {
+      navigator.sendBeacon("/api/jobs/auto-draft", payload);
+    } catch {
+      // sendBeacon can throw if the page is being discarded — ignore.
+    }
+  }, []);
+
+  useEffect(() => {
+    // beforeunload fires on hard refresh / tab close / external navigation.
+    window.addEventListener("beforeunload", saveDraftBeacon);
+    return () => {
+      window.removeEventListener("beforeunload", saveDraftBeacon);
+      // Cleanup also runs on in-app navigation (client-side route change), where
+      // beforeunload never fires — this is what previously lost the draft when an
+      // employer left the form via a sidebar link before posting.
+      saveDraftBeacon();
+    };
+  }, [saveDraftBeacon]);
+
   // ─── Navigation ──────────────────────────────────────────────────────────────
 
   async function goToStep(step: number) {
@@ -255,6 +297,9 @@ export function JobFormWizard({ locale, useAiPrefill = false }: JobFormWizardPro
       if (res.ok) {
         const data = (await res.json()) as { job: { _id: string } };
         const jobId = draftId ?? String(data.job._id);
+        // Mark as published so the unmount/beforeunload auto-draft save is skipped
+        // (otherwise leaving this page would recreate the just-posted job as a draft).
+        publishedRef.current = true;
         // Clear draft
         try {
           clearDraft();

@@ -157,6 +157,7 @@ export function Step2JobDetails() {
   const [generating, setGenerating] = useState(false);
   const [aiError, setAiError] = useState("");
   const [generated, setGenerated] = useState<GeneratedDescription | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
 
   const descriptionSections: DescriptionSection[] = DESCRIPTION_SECTION_KEYS.map((key) => ({
     key,
@@ -193,6 +194,7 @@ export function Step2JobDetails() {
           category,
           location: locationCountry,
           skills: skills?.slice(0, 10) ?? [],
+          prompt: aiPrompt.trim() || undefined,
         }),
       });
 
@@ -271,6 +273,27 @@ export function Step2JobDetails() {
                 </>
               )}
             </Button>
+          </div>
+
+          <div className="rounded-xl border border-dashed border-primary/30 bg-primary/[0.02] p-3">
+            <Label htmlFor="ai-prompt" className="text-xs font-medium text-primary">
+              {t("aiPromptLabel")}
+            </Label>
+            <Input
+              id="ai-prompt"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder={t("aiPromptPlaceholder")}
+              className="mt-1.5 h-9 text-xs border-primary/20 bg-background"
+              maxLength={300}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void generateDescription();
+                }
+              }}
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">{t("aiPromptHint")}</p>
           </div>
 
           <div className="flex flex-wrap gap-2">

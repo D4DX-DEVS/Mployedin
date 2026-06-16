@@ -32,7 +32,7 @@ export interface IEmployer extends Document {
   // Company Info
   companyName: string;
   companyEmail: string;
-  phone: string;
+  phone?: string;
   designation?: string;
   registrationNo?: string;
   taxId?: string;
@@ -98,7 +98,12 @@ const EmployerSchema = new Schema<IEmployer>(
     agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
     companyName: { type: String, required: true, trim: true },
     companyEmail: { type: String, required: true, lowercase: true },
-    phone: { type: String, required: true },
+    // Optional: the registration form and admin-create path both allow an empty
+    // phone. Keeping this required caused Employer.create() to throw a Mongoose
+    // ValidationError (empty string fails String `required`), which surfaced as a
+    // 500 "Server error" and left an orphan unverified User — making retries with
+    // the same email report "already registered".
+    phone: { type: String },
     designation: String,
     registrationNo: String,
     taxId: String,

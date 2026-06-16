@@ -142,22 +142,21 @@ export function PriorityActions({
     });
   }
 
-  const shown = actions.slice(0, 3);
+  // Only show urgent + medium priorities; exclude low-value "suggestions"
+  const actionable = actions.filter((a) => a.priority !== "suggestion");
+  const shown = actionable.slice(0, 3);
   if (shown.length === 0) return null;
 
   return (
     <section className="workspace-panel-surface h-full overflow-hidden rounded-[28px]">
-      <div className="border-b border-border/60 px-5 py-5 sm:px-6">
+      <div className="border-b border-border/60 px-5 py-3.5 sm:px-6 flex items-center gap-3">
         <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
           <Flame className="h-3.5 w-3.5" />
           {t("priorityActionsLabel")}
         </div>
-        <h2 className="mt-3 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-          {t("focusNextMove")}
-        </h2>
-        <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">
+        <span className="text-sm text-muted-foreground hidden sm:inline">
           {t("actionsTiedToActivity")}
-        </p>
+        </span>
       </div>
 
       <div className="space-y-2.5 px-4 py-4 sm:px-5 sm:py-5">

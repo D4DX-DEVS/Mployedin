@@ -85,13 +85,16 @@ export default async function RootLayout({
         className={`${inter.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
         {...(nonce ? { "data-nonce": nonce } : {})}
       >
-        {/* Raw <script> is correct here – this is a Server Component so the
-            script is emitted in the initial HTML and executes immediately.
-            suppressHydrationWarning prevents the nonce-mismatch warning
-            (browsers clear the nonce attribute after use for security). */}
+        {/* Native <script> with dangerouslySetInnerHTML avoids the React
+            "script tag inside component" warning while still executing
+            before the page hydrates (preventing FOUC for dark mode).
+            suppressHydrationWarning is required because browsers blank out
+            the nonce content attribute after load, which otherwise produces
+            a server/client hydration mismatch on the nonce attribute. */}
         <script
-          nonce={nonce}
+          id="theme-init"
           suppressHydrationWarning
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: getThemeInitializationScript() }}
         />
         <ThemeProvider>{children}</ThemeProvider>

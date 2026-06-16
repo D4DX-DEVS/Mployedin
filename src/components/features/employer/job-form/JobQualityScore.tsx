@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
-import { motion } from "framer-motion";
-import { TrendingUp, Lightbulb, CheckCircle2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { TrendingUp, Lightbulb, CheckCircle2, ChevronDown } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -24,6 +24,7 @@ export function JobQualityScore({ values }: JobQualityScoreProps) {
   const t = useTranslations("employerJobForm.quality");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
+  const [expanded, setExpanded] = useState(false);
 
   const factors = useMemo((): ScoreFactor[] => {
     const title = values.title ?? "";
@@ -145,32 +146,44 @@ export function JobQualityScore({ values }: JobQualityScoreProps) {
 
       {pending.length > 0 && (
         <div className="space-y-2">
-          <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
             <Lightbulb className="w-3.5 h-3.5" />
             {t("bestNext")}
-          </div>
-          {pending.map((factor) => (
-            <motion.div
-              key={factor.label}
-              layout
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex items-start gap-2 rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-xs"
-            >
-              <span className="shrink-0 font-semibold text-primary">
-                +{factor.points.toLocaleString(numberLocale)}%
-              </span>
-              <span className="text-muted-foreground">{factor.tip}</span>
-            </motion.div>
-          ))}
-          {incompleteFactors.length > pending.length && (
-            <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              {t("moreImprovements", { count: (incompleteFactors.length - pending.length).toLocaleString(numberLocale) })}
-            </div>
-          )}
+            <ChevronDown className={cn("w-3 h-3 transition-transform", expanded && "rotate-180")} />
+          </button>
+          <AnimatePresence initial={false}>
+            {expanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden space-y-2"
+              >
+                {pending.map((factor) => (
+                  <div
+                    key={factor.label}
+                    className="flex items-start gap-2 rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-xs"
+                  >
+                    <span className="shrink-0 font-semibold text-primary">
+                      +{factor.points.toLocaleString(numberLocale)}%
+                    </span>
+                    <span className="text-muted-foreground">{factor.tip}</span>
+                  </div>
+                ))}
+                {incompleteFactors.length > pending.length && (
+                  <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {t("moreImprovements", { count: (incompleteFactors.length - pending.length).toLocaleString(numberLocale) })}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
     </div>

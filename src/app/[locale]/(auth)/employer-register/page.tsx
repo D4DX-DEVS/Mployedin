@@ -39,19 +39,42 @@ const INDUSTRY_VALUES = [
   "healthcare",
   "hospitality",
   "finance",
+  "insurance",
   "retail",
+  "ecommerce",
   "oil_gas",
+  "renewable_energy",
   "logistics",
+  "maritime",
   "education",
   "real_estate",
   "manufacturing",
   "telecommunications",
   "media",
+  "gaming",
   "legal",
+  "consulting",
+  "marketing",
+  "human_resources",
   "government",
+  "nonprofit",
   "agriculture",
+  "food_beverage",
+  "fmcg",
   "automotive",
   "aviation",
+  "pharmaceuticals",
+  "fashion",
+  "beauty_wellness",
+  "sports_fitness",
+  "arts_design",
+  "architecture",
+  "events",
+  "security",
+  "facilities",
+  "mining",
+  "chemicals",
+  "environmental",
   "other",
 ] as const;
 
@@ -351,6 +374,17 @@ export default function EmployerRegisterPage() {
             <p className="text-xs text-muted-foreground">
               {t("verificationIntro")}
             </p>
+
+            {/* Verification process info */}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1.5">
+              <p className="text-xs font-semibold text-foreground">{t("verificationProcess.title")}</p>
+              <ol className="text-[11px] text-muted-foreground space-y-1 list-decimal list-inside">
+                <li>{t("verificationProcess.step1")}</li>
+                <li>{t("verificationProcess.step2")}</li>
+                <li>{t("verificationProcess.step3")}</li>
+              </ol>
+            </div>
+
             <div className="space-y-2">
               {verificationLevels.map((lvl) => (
                 <label key={lvl.value} className={`relative flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${

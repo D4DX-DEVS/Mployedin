@@ -5,7 +5,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, X, Upload, Phone, Search } from "lucide-react";
+import { ChevronDown, X, Upload, Phone, Search, FileText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
@@ -319,6 +319,17 @@ interface FormFileDropProps {
 export function FormFileDrop({ label, error, hint, accept, maxSizeMB = 10, value, onChange, required }: FormFileDropProps) {
   const t = useTranslations("common");
   const inputRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // Generate preview URL for image files
+  useEffect(() => {
+    if (value && value.type.startsWith("image/")) {
+      const url = URL.createObjectURL(value);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setPreviewUrl(null);
+  }, [value]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -357,11 +368,17 @@ export function FormFileDrop({ label, error, hint, accept, maxSizeMB = 10, value
           className="hidden"
         />
         {value ? (
-          <div className="flex items-center justify-center gap-2 text-sm">
-            <span className="font-medium text-primary">{value.name}</span>
-            <span className="text-muted-foreground">({(value.size / 1024).toFixed(0)} KB)</span>
-            <button type="button" onClick={(e) => { e.stopPropagation(); onChange(null); }}
-              className="hover:text-destructive"><X className="h-4 w-4" /></button>
+          <div className="space-y-2">
+            {previewUrl && (
+              <img src={previewUrl} alt={value.name} className="mx-auto max-h-24 rounded-md object-contain border border-border/40" />
+            )}
+            <div className="flex items-center justify-center gap-2 text-sm">
+              <FileText className="h-4 w-4 text-primary shrink-0" />
+              <span className="font-medium text-primary truncate max-w-[200px]">{value.name}</span>
+              <span className="text-muted-foreground">({(value.size / 1024).toFixed(0)} KB)</span>
+              <button type="button" onClick={(e) => { e.stopPropagation(); onChange(null); }}
+                className="hover:text-destructive"><X className="h-4 w-4" /></button>
+            </div>
           </div>
         ) : (
           <div className="text-sm text-muted-foreground">

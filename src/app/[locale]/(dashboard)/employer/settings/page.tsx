@@ -934,6 +934,9 @@ function CompanySettingsPage() {
                 <SectionCard>
                   <SectionHeader icon={FileText} title={t("verificationDocuments")} description={t("verificationDocumentsDesc")} />
                   <div className="p-6 space-y-4">
+                    <p className="text-xs text-muted-foreground bg-muted/30 border border-border/30 rounded-lg px-3 py-2 leading-relaxed">
+                      {t("verificationProcessNote")}
+                    </p>
                     {docError && (
                       <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{docError}</p>
                     )}

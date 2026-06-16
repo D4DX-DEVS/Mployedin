@@ -41,7 +41,7 @@ export function Sidebar({
     (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
     0
   );
-  const usesSimpleEmployerMenu = false;
+  const usesSimpleEmployerMenu = effectiveRole === "employer";
   const isSuperAgent = effectiveRole === "super_agent";
   const usesModernWorkspaceShell = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";
   const usesDualTierLayout = effectiveRole === "admin" || effectiveRole === "employer" || effectiveRole === "agent" || effectiveRole === "super_agent";

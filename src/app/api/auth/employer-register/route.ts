@@ -95,7 +95,26 @@ export async function POST(req: NextRequest) {
     // Check duplicate
     const existing = await User.findOne({ email: contactEmail });
     if (existing) {
-      return NextResponse.json({ message: "Email already registered." }, { status: 409 });
+      // Allow re-registration if the existing user never verified their email
+      // and was created over 24 hours ago (stale unverified attempt)
+      const isStaleUnverified =
+        !existing.isEmailVerified &&
+        existing.createdAt &&
+        Date.now() - new Date(existing.createdAt).getTime() > 24 * 60 * 60 * 1000;
+
+      if (isStaleUnverified) {
+        // Remove the stale user and their employer profile to allow re-registration
+        await Employer.deleteOne({ userId: existing._id });
+        await User.deleteOne({ _id: existing._id });
+      } else {
+        return NextResponse.json(
+          { message: existing.isEmailVerified
+              ? "This email is already registered. Please sign in instead."
+              : "This email has a pending verification. Please check your inbox or try again after 24 hours."
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const hashed = await bcrypt.hash(password, 12);
@@ -130,6 +149,7 @@ export async function POST(req: NextRequest) {
     let verifiedByAgentId: string | undefined;
     let matchedReferralLink: { _id: string } | null = null;
 
+    try {
     if (referralCode) {
       // 1. Check new ReferralLink collection first
       const rl = await ReferralLink.findOne({ code: referralCode, isActive: true });
@@ -251,6 +271,22 @@ export async function POST(req: NextRequest) {
       acceptedAt: new Date(),
       status: "active",
     });
+    } catch (creationErr) {
+      // A step after User.create failed (e.g. Employer/CompanyUser). Without a
+      // transaction this would leave an orphan unverified User, making future
+      // retries with the SAME email fail with "already registered". Roll back the
+      // partial state so the email is freed and the user can register again.
+      console.error("[Registration] Rolling back partial employer registration:", creationErr);
+      await Promise.allSettled([
+        CompanyUser.deleteMany({ userId: user._id }),
+        Employer.deleteOne({ userId: user._id }),
+        User.deleteOne({ _id: user._id }),
+      ]);
+      return NextResponse.json(
+        { message: "We couldn't complete your registration. Please try again." },
+        { status: 500 }
+      );
+    }
 
     // Auto-assign default subscription plan (fire-and-forget — don't block registration)
     autoAssignDefaultPlan(user._id.toString(), "employer").catch((err) =>

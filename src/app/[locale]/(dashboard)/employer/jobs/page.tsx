@@ -3,12 +3,19 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, Banknote, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, Image as ImageIcon } from "lucide-react";
+import { Plus, Edit2, Eye, Clock, CheckCircle, FileText, Trash2, Copy, Users, BriefcaseBusiness, ShieldCheck, BookTemplate, Search, Sparkles, ArrowRight, GitBranch, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -102,7 +109,6 @@ export default function EmployerJobsPage() {
   const activeJobs = data?.statusCounts?.active ?? jobs.filter((job) => job.status === "active").length;
   const draftJobs = data?.statusCounts?.draft ?? jobs.filter((job) => job.status === "draft").length;
   const pausedJobs = data?.statusCounts?.paused ?? jobs.filter((job) => job.status === "paused").length;
-  const hiddenSalaryJobs = jobs.filter((job) => job.showSalary === false).length;
   const totalOpenings = jobs.reduce((sum, job) => sum + (job.vacancies ?? 0), 0);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
@@ -386,12 +392,12 @@ export default function EmployerJobsPage() {
           <div className="workspace-glass-panel rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statSalaryHiddenLabel")}</p>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{hiddenSalaryJobs}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t("statSalaryHiddenDescription")}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("statPausedLabel")}</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{pausedJobs}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("statPausedDescription")}</p>
               </div>
-              <div className="workspace-muted-pill rounded-2xl p-2.5">
-              <Banknote className="h-5 w-5" />
+              <div className="workspace-tone-sky rounded-2xl p-2.5">
+              <PauseCircle className="h-5 w-5" />
               </div>
             </div>
           </div>
@@ -589,28 +595,28 @@ export default function EmployerJobsPage() {
             return (
               <article
                 key={job._id}
-                className="workspace-panel-surface rounded-[28px] p-3.5 transition-all hover:-translate-y-0.5 hover:border-border sm:p-4"
+                className="workspace-panel-surface rounded-[20px] p-3 transition-all hover:-translate-y-0.5 hover:border-border sm:p-3.5"
               >
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_268px] xl:items-start">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{job.title}</h3>
-                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2.5 py-0.5 text-xs font-medium capitalize`}>{job.status}</Badge>
+                      <h3 className="text-base font-semibold tracking-tight text-foreground">{job.title}</h3>
+                      <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0.5 text-[11px] font-medium capitalize`}>{job.status}</Badge>
                     </div>
-                    <div className="mt-2.5 flex flex-wrap gap-1.5">
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job)}</span>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job)}</span>
                       {job.category ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{job.category}</span>
                       ) : null}
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatSalary(job)}</span>
+                      <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatSalary(job)}</span>
                       {job.vacancies != null ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">
                           {job.vacancies} {job.vacancies === 1 ? t("openingSingular") : t("openingPlural")}
                         </span>
                       ) : null}
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{t("postedPrefix")} {posted}</span>
+                      <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{t("postedPrefix")} {posted}</span>
                       {expires ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{t("expiresPrefix")} {expires}</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{t("expiresPrefix")} {expires}</span>
                       ) : null}
                     </div>
 
@@ -623,38 +629,21 @@ export default function EmployerJobsPage() {
                     )}
 
                     {jobSummary ? (
-                      <p className="mt-2.5 line-clamp-2 max-w-3xl text-sm leading-5 text-muted-foreground">{jobSummary}</p>
+                      <p className="mt-1.5 line-clamp-1 max-w-3xl text-xs leading-4 text-muted-foreground">{jobSummary}</p>
                     ) : null}
 
-                    <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
-                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("viewsStat")}</p>
-                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{job.views?.toLocaleString() ?? 0}</p>
-                      </div>
-                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("applicantsStat")}</p>
-                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{getFilledSlots(job)}</p>
-                      </div>
-                      <div className="workspace-subtle-surface rounded-xl border border-border px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("capacityStat")}</p>
-                        <p className="mt-0.5 text-sm font-semibold text-foreground sm:text-base">{job.maxApplicants ?? t("capacityOpen")}</p>
-                      </div>
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                      <span className="inline-flex items-center gap-1 text-muted-foreground"><Eye className="h-3.5 w-3.5" /> {job.views?.toLocaleString() ?? 0} {t("viewsStat")}</span>
+                      <span className="inline-flex items-center gap-1 text-muted-foreground"><Users className="h-3.5 w-3.5" /> {getFilledSlots(job)} {t("applicantsStat")}</span>
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">{job.maxApplicants ?? t("capacityOpen")} {t("capacityStat")}</span>
                     </div>
                   </div>
 
-                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-2 rounded-[20px] border border-border p-2.5 xl:self-start">
-                    <div className="workspace-muted-pill flex items-center justify-between gap-3 rounded-2xl border border-border px-3 py-2">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("nextActionsLabel")}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{t("nextActionsDescription")}</p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
-
+                  <div aria-label={`Actions for ${job.title}`} role="group" className="workspace-subtle-surface flex flex-col gap-1.5 rounded-[16px] border border-border p-2 xl:self-start">
                     <div className="grid grid-cols-2 gap-2">
                       <Button
                         size="sm"
-                        className="col-span-2 h-10 gap-2 rounded-xl bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
+                        className="col-span-2 h-9 gap-2 rounded-xl bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700"
                         onClick={() => router.push(`/${locale}/employer/applications?jobId=${job._id}`)}
                       >
                         <Users className="h-4 w-4" />
@@ -665,60 +654,16 @@ export default function EmployerJobsPage() {
                         onClick={() => router.push(`/${locale}/employer/jobs/${job._id}`)}>
                         <Eye className="h-4 w-4" /> {t("viewButton")}
                       </Button>
-                      {can("jobs", "update") && (
+                      {can("jobs", "update") ? (
                         <Button size="sm" variant="outline" title={t("editButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
                           onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/edit`)}>
                           <Edit2 className="h-4 w-4" /> {t("editButton")}
                         </Button>
-                      )}
-                      {can("jobs", "update") && (
-                        <Button size="sm" variant="outline" title={t("workflowButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
-                          onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=workflow`)}>
-                          <GitBranch className="h-4 w-4" /> {t("workflowButton")}
-                        </Button>
-                      )}
-                      {can("jobs", "update") && (
-                        <Button size="sm" variant="outline" title={t("weightsButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
-                          onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=matching-weights`)}>
-                          <SlidersHorizontal className="h-4 w-4" /> {t("weightsButton")}
-                        </Button>
-                      )}
-                      {can("jobs", "create") && (
-                        <Button size="sm" variant="outline" title={t("posterButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
-                          onClick={() => setPosterJob(job)}>
-                          <ImageIcon className="h-4 w-4" /> {t("posterButton")}
-                        </Button>
-                      )}
-                      {can("jobs", "create") && (
-                        <Button size="sm" variant="outline" title={t("cloneButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground"
-                          onClick={() => { void handleCloneJob(job); }}
-                          disabled={cloningJobId === job._id}>
-                          <Copy className="h-4 w-4" /> {cloningJobId === job._id ? t("cloningButton") : t("cloneButton")}
-                        </Button>
-                      )}
-                      {can("jobs", "create") && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          title={savedTemplateIds.has(job._id) ? t("templateSavedButton") : t("templateButton")}
-                          className={`h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground ${
-                            savedTemplateIds.has(job._id)
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/40 cursor-default"
-                              : ""
-                          }`}
-                          onClick={() => { if (!savedTemplateIds.has(job._id)) void handleSaveAsTemplate(job); }}
-                          disabled={savingTemplateId === job._id || savedTemplateIds.has(job._id)}>
-                          {savedTemplateIds.has(job._id) ? (
-                            <><CheckCircle className="h-4 w-4" /> {t("templateSavedButton")}</>
-                          ) : savingTemplateId === job._id ? (
-                            <><BookTemplate className="h-4 w-4" /> {t("templateSavingButton")}</>
-                          ) : (
-                            <><BookTemplate className="h-4 w-4" /> {t("templateButton")}</>
-                          )}
-                        </Button>
-                      )}
+                      ) : null}
+
+                      {/* Contextual status action stays visible — it is the primary lifecycle control */}
                       {can("jobs", "update") && job.status === "draft" && (
-                        <Button size="sm" variant="outline" className="h-9 gap-1.5 rounded-xl border-emerald-200 px-3 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleActivateJob(job); }} disabled={isActivating}>
+                        <Button size="sm" variant="outline" className="col-span-2 h-9 gap-1.5 rounded-xl border-emerald-200 px-3 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-300 dark:hover:bg-emerald-950/40" onClick={() => { void handleActivateJob(job); }} disabled={isActivating}>
                         <CheckCircle className="h-3.5 w-3.5" /> {isActivating ? t("activatingButton") : t("activateButton")}
                         </Button>
                       )}
@@ -742,12 +687,63 @@ export default function EmployerJobsPage() {
                           <Clock className="h-4 w-4" /> {isDeactivating ? t("deactivatingButton") : t("deactivateButton")}
                         </Button>
                       )}
-                      {can("jobs", "delete") && (job.status === "draft" || job.status === "paused" || job.status === "closed" || job.status === "expired") && (
-                        <Button size="sm" variant="outline" title={t("deleteButton")} className="h-9 gap-2 rounded-xl border-destructive/20 px-3 text-destructive hover:bg-destructive/5"
-                          onClick={() => { void handleDeleteJob(job); }} disabled={isDeleting}>
-                          <Trash2 className="h-4 w-4" /> {isDeleting ? t("deletingButton") : t("deleteButton")}
-                        </Button>
-                      )}
+
+                      {/* Secondary actions collapsed into a menu to keep each card compact */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline" title={t("moreActionsButton")} className="h-9 gap-2 rounded-xl border-border bg-background/80 px-3 text-sm text-foreground">
+                            <MoreHorizontal className="h-4 w-4" /> {t("moreActionsButton")}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          {can("jobs", "update") && (
+                            <DropdownMenuItem onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=workflow`)}>
+                              <GitBranch className="h-4 w-4" /> {t("workflowButton")}
+                            </DropdownMenuItem>
+                          )}
+                          {can("jobs", "update") && (
+                            <DropdownMenuItem onClick={() => router.push(`/${locale}/employer/jobs/${job._id}?tab=matching-weights`)}>
+                              <SlidersHorizontal className="h-4 w-4" /> {t("weightsButton")}
+                            </DropdownMenuItem>
+                          )}
+                          {can("jobs", "create") && (
+                            <DropdownMenuItem onClick={() => setPosterJob(job)}>
+                              <ImageIcon className="h-4 w-4" /> {t("posterButton")}
+                            </DropdownMenuItem>
+                          )}
+                          {can("jobs", "create") && (
+                            <DropdownMenuItem onClick={() => { void handleCloneJob(job); }} disabled={cloningJobId === job._id}>
+                              <Copy className="h-4 w-4" /> {cloningJobId === job._id ? t("cloningButton") : t("cloneButton")}
+                            </DropdownMenuItem>
+                          )}
+                          {can("jobs", "create") && (
+                            <DropdownMenuItem
+                              onClick={() => { if (!savedTemplateIds.has(job._id)) void handleSaveAsTemplate(job); }}
+                              disabled={savingTemplateId === job._id || savedTemplateIds.has(job._id)}
+                            >
+                              {savedTemplateIds.has(job._id) ? (
+                                <><CheckCircle className="h-4 w-4 text-emerald-600" /> {t("templateSavedButton")}</>
+                              ) : savingTemplateId === job._id ? (
+                                <><BookTemplate className="h-4 w-4" /> {t("templateSavingButton")}</>
+                              ) : (
+                                <><BookTemplate className="h-4 w-4" /> {t("templateButton")}</>
+                              )}
+                            </DropdownMenuItem>
+                          )}
+                          {can("jobs", "delete") && (job.status === "draft" || job.status === "paused" || job.status === "closed" || job.status === "expired") && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => { void handleDeleteJob(job); }}
+                                disabled={isDeleting}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" /> {isDeleting ? t("deletingButton") : t("deleteButton")}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
@@ -757,14 +753,16 @@ export default function EmployerJobsPage() {
         </div>
       )}
 
-      <PaginationControls
-        page={page}
-        totalPages={totalPages}
-        total={total}
-        limit={limit}
-        onPageChange={setPage}
-        onLimitChange={(l) => { setLimit(l); setPage(1); }}
-      />
+      {total > 0 && (
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(l) => { setLimit(l); setPage(1); }}
+        />
+      )}
 
       {posterJob && (
         <JobPosterDialog
