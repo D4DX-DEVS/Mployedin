@@ -278,10 +278,12 @@ export const authConfig: NextAuthConfig = {
               isEmailVerified,
               isActive: true,
               locale: "en",
+              lastLogin: new Date(),
             });
             // Create empty JobSeeker profile for new social-login users
             await JobSeeker.create({
               userId: dbUser._id,
+              fullName: dbUser.name,
               isOnboarded: false,
               skills: [],
               experience: [],
@@ -338,6 +340,9 @@ export const authConfig: NextAuthConfig = {
               dbUser = await User.findByIdAndUpdate(dbUser._id, update, { new: true }) ?? dbUser;
             }
           }
+
+          // Update lastLogin for returning Firebase/Google users
+          await User.findByIdAndUpdate(dbUser._id, { lastLogin: new Date() });
 
           // Look up isOnboarded for existing users
           const fbJobSeeker = await JobSeeker.findOne({ userId: dbUser._id }).select("isOnboarded").lean();
@@ -491,8 +496,14 @@ export const authConfig: NextAuthConfig = {
             linkedinSub: account.provider === "linkedin" ? account.providerAccountId : undefined,
             appleSub: account.provider === "apple" ? account.providerAccountId : undefined,
             locale: "en",
+            lastLogin: new Date(),
           });
-        } else if (account.provider === "linkedin" && !dbUser.linkedinSub) {
+        } else {
+          // Update lastLogin for returning OAuth users
+          await User.findByIdAndUpdate(dbUser._id, { lastLogin: new Date() });
+        }
+
+        if (!isNewUser && account.provider === "linkedin" && !dbUser.linkedinSub) {
           // Link LinkedIn to existing account (auto-link — both sides verify email)
           await User.findByIdAndUpdate(dbUser._id, {
             linkedinSub: account.providerAccountId,
@@ -501,14 +512,14 @@ export const authConfig: NextAuthConfig = {
             ...(!dbUser.avatar && token.picture ? { avatar: token.picture } : {}),
           });
           dbUser.isEmailVerified = true;
-        } else if (account.provider === "linkedin" && !dbUser.isEmailVerified) {
+        } else if (!isNewUser && account.provider === "linkedin" && !dbUser.isEmailVerified) {
           // Existing linked user still unverified — LinkedIn verified the email via OAuth
           await User.findByIdAndUpdate(dbUser._id, {
             isEmailVerified: true,
             emailVerificationToken: undefined,
           });
           dbUser.isEmailVerified = true;
-        } else if (account.provider === "apple" && !dbUser.appleSub) {
+        } else if (!isNewUser && account.provider === "apple" && !dbUser.appleSub) {
           // Link Apple to existing account (auto-link — both sides verify email)
           await User.findByIdAndUpdate(dbUser._id, {
             appleSub: account.providerAccountId,
@@ -516,7 +527,7 @@ export const authConfig: NextAuthConfig = {
             emailVerificationToken: undefined,
           });
           dbUser.isEmailVerified = true;
-        } else if (account.provider === "apple" && !dbUser.isEmailVerified) {
+        } else if (!isNewUser && account.provider === "apple" && !dbUser.isEmailVerified) {
           await User.findByIdAndUpdate(dbUser._id, {
             isEmailVerified: true,
             emailVerificationToken: undefined,

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { ArrowRight, Mail, MapPin } from "lucide-react";
 
 type FooterVariant = "full" | "embedded";
@@ -53,6 +54,13 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
   const t = useTranslations("footer");
   const year = new Date().getFullYear();
   const isEmbedded = variant === "embedded";
+
+  // Render the support email only after mount so it never appears in the
+  // server-rendered HTML. This prevents Cloudflare's "Email Address
+  // Obfuscation" from rewriting it (which injects a CSP-blocked decode
+  // script and triggers a React hydration mismatch, error #418).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const platformSection: FooterSection = {
     title: t("platform"),
@@ -153,10 +161,11 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
               <div className="flex min-w-0 gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
                 <Mail className="mt-0.5 h-4 w-4 shrink-0 text-white/80" />
                 <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
+                  href={mounted ? `mailto:${SUPPORT_EMAIL}` : undefined}
                   className="min-w-0 text-sm leading-6 text-white/74 transition-colors [overflow-wrap:anywhere] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  suppressHydrationWarning
                 >
-                  {SUPPORT_EMAIL}
+                  {mounted ? SUPPORT_EMAIL : t("contactSupport")}
                 </a>
               </div>
             </div>

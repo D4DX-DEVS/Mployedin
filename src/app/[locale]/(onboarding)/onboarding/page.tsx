@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { TagAutocomplete, Autocomplete } from "@/components/ui/tag-autocomplete";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Step0Data {
@@ -398,8 +399,11 @@ export default function JobSeekerOnboardingPage() {
             marketingConsent: p.marketingConsent ?? prev.marketingConsent,
           }));
 
-          if (isLinkedIn && (p.fullName || userName)) {
-            setLinkedInPrefilled(true);
+          if (isLinkedIn) {
+            if (p.fullName || userName) setLinkedInPrefilled(true);
+            // A LinkedIn-authenticated user is a professional — default the
+            // work status to "experienced" so it's pre-selected on Step 0.
+            setStep0((prev) => ({ ...prev, workStatus: prev.workStatus || "experienced" }));
           }
 
           // Pre-fill step1 from LinkedIn extras (headline used as job title hint, location)
@@ -493,10 +497,14 @@ export default function JobSeekerOnboardingPage() {
         setStep0((p) => ({ ...p, name: imported.name || p.name }));
       }
 
+      // LinkedIn users have a professional profile — default the work status
+      // to "experienced". Don't gate this on a parsed experience entry, since
+      // scraping experience behind LinkedIn's auth wall is unreliable.
+      setStep0((p) => ({ ...p, workStatus: p.workStatus || "experienced" }));
+
       // Pre-fill Step 1 (Employment)
       const firstExp = imported.experience?.[0];
       if (firstExp) {
-        setStep0((p) => ({ ...p, workStatus: p.workStatus || "experienced" }));
         setStep1((p) => ({
           ...p,
           isCurrentlyEmployed: firstExp.isCurrent ?? p.isCurrentlyEmployed,
@@ -1147,26 +1155,26 @@ export default function JobSeekerOnboardingPage() {
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-800">Total work experience <span className="text-red-500">*</span></Label>
                       <div className="flex gap-3">
-                        <select
-                          value={step1.experienceYears}
-                          onChange={(e) => setStep1((p) => ({ ...p, experienceYears: e.target.value }))}
-                          className="flex-1 h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:border-blue-500"
-                        >
-                          <option value="">Select year</option>
-                          {Array.from({ length: 31 }, (_, i) => (
-                            <option key={i} value={String(i)}>{i === 0 ? "0 Years" : `${i} Year${i > 1 ? "s" : ""}`}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={step1.experienceMonths}
-                          onChange={(e) => setStep1((p) => ({ ...p, experienceMonths: e.target.value }))}
-                          className="flex-1 h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:border-blue-500"
-                        >
-                          <option value="">Select month</option>
-                          {Array.from({ length: 12 }, (_, i) => (
-                            <option key={i} value={String(i)}>{i} Month{i !== 1 ? "s" : ""}</option>
-                          ))}
-                        </select>
+                        <Select value={step1.experienceYears} onValueChange={(v) => setStep1((p) => ({ ...p, experienceYears: v }))}>
+                          <SelectTrigger className="flex-1 h-11">
+                            <SelectValue placeholder="Select year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 31 }, (_, i) => (
+                              <SelectItem key={i} value={String(i)}>{i === 0 ? "0 Years" : `${i} Year${i > 1 ? "s" : ""}`}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={step1.experienceMonths} onValueChange={(v) => setStep1((p) => ({ ...p, experienceMonths: v }))}>
+                          <SelectTrigger className="flex-1 h-11">
+                            <SelectValue placeholder="Select month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 12 }, (_, i) => (
+                              <SelectItem key={i} value={String(i)}>{i} Month{i !== 1 ? "s" : ""}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
@@ -1220,24 +1228,24 @@ export default function JobSeekerOnboardingPage() {
                       <Label className="text-sm font-medium text-gray-800">Duration <span className="text-red-500">*</span></Label>
                       <div className="flex items-center gap-3">
                         <div className="flex gap-2 flex-1">
-                          <select
-                            value={step1.startMonth}
-                            onChange={(e) => setStep1((p) => ({ ...p, startMonth: e.target.value }))}
-                            className="flex-1 h-11 rounded-lg border border-gray-300 bg-white px-2 text-sm text-gray-700 focus:outline-none focus:border-blue-500"
-                          >
-                            <option value="">Month</option>
-                            {["01","02","03","04","05","06","07","08","09","10","11","12"].map((m) => (
-                              <option key={m} value={m}>{m}</option>
-                            ))}
-                          </select>
-                          <select
-                            value={step1.startYear}
-                            onChange={(e) => setStep1((p) => ({ ...p, startYear: e.target.value }))}
-                            className="flex-1 h-11 rounded-lg border border-gray-300 bg-white px-2 text-sm text-gray-700 focus:outline-none focus:border-blue-500"
-                          >
-                            <option value="">Year</option>
-                            {YEARS_RANGE.map((y) => <option key={y} value={y}>{y}</option>)}
-                          </select>
+                          <Select value={step1.startMonth} onValueChange={(v) => setStep1((p) => ({ ...p, startMonth: v }))}>
+                            <SelectTrigger className="flex-1 h-11">
+                              <SelectValue placeholder="Month" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {["01","02","03","04","05","06","07","08","09","10","11","12"].map((m) => (
+                                <SelectItem key={m} value={m}>{m}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={step1.startYear} onValueChange={(v) => setStep1((p) => ({ ...p, startYear: v }))}>
+                            <SelectTrigger className="flex-1 h-11">
+                              <SelectValue placeholder="Year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {YEARS_RANGE.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <span className="text-sm text-gray-500 shrink-0">To</span>
                         <div className="flex-1 h-11 rounded-lg border border-gray-200 bg-gray-50 flex items-center px-3 text-sm text-gray-500">
@@ -1250,15 +1258,16 @@ export default function JobSeekerOnboardingPage() {
                     <div className="space-y-1.5">
                       <Label className="text-sm font-medium text-gray-800">Annual salary <span className="text-red-500">*</span></Label>
                       <div className="flex gap-2">
-                        <select
-                          value={step1.salaryCurrency}
-                          onChange={(e) => setStep1((p) => ({ ...p, salaryCurrency: e.target.value }))}
-                          className="h-11 px-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:border-blue-500 w-20 shrink-0"
-                        >
-                          {["AED", "SAR", "USD", "EUR", "GBP", "INR", "QAR", "KWD", "OMR", "BHD"].map((c) => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
+                        <Select value={step1.salaryCurrency} onValueChange={(v) => setStep1((p) => ({ ...p, salaryCurrency: v }))}>
+                          <SelectTrigger className="h-11 w-24 shrink-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {["AED", "SAR", "USD", "EUR", "GBP", "INR", "QAR", "KWD", "OMR", "BHD"].map((c) => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Input
                           type="number"
                           min="0"
@@ -1604,15 +1613,16 @@ export default function JobSeekerOnboardingPage() {
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium text-gray-800">Preferred salary</Label>
                   <div className="flex items-center gap-2">
-                    <select
-                      value={step3.salaryCurrency}
-                      onChange={(e) => setStep3((p) => ({ ...p, salaryCurrency: e.target.value }))}
-                      className="h-11 px-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:border-blue-500 w-20 shrink-0"
-                    >
-                      {["AED", "SAR", "USD", "EUR", "GBP", "INR", "QAR", "KWD"].map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
+                    <Select value={step3.salaryCurrency} onValueChange={(v) => setStep3((p) => ({ ...p, salaryCurrency: v }))}>
+                      <SelectTrigger className="h-11 w-24 shrink-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["AED", "SAR", "USD", "EUR", "GBP", "INR", "QAR", "KWD"].map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Input
                       type="number"
                       min="0"

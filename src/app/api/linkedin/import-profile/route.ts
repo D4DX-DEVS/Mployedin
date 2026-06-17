@@ -11,6 +11,17 @@ import logger from "@/lib/logger";
 export const runtime = "nodejs";
 
 /**
+ * Parse a date-like value, returning `undefined` for missing or invalid input
+ * so we never persist an `Invalid Date` (which breaks serialization and match
+ * scoring downstream).
+ */
+function safeDate(value?: string | Date | null): Date | undefined {
+  if (!value) return undefined;
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+/**
  * POST /api/linkedin/import-profile
  *
  * Uses the stored LinkedIn access token + AI to scrape and extract
@@ -98,8 +109,8 @@ async function handler(
       update.experience = imported.experience.map((exp) => ({
         jobTitle: exp.jobTitle,
         company: exp.company,
-        startDate: exp.startDate ? new Date(exp.startDate) : undefined,
-        endDate: exp.endDate ? new Date(exp.endDate) : undefined,
+        startDate: safeDate(exp.startDate),
+        endDate: safeDate(exp.endDate),
         isCurrent: exp.isCurrent ?? false,
         description: exp.description,
         country: exp.location,
@@ -110,11 +121,12 @@ async function handler(
           .map((e) => e.startDate)
           .filter(Boolean)
           .sort()[0];
-        if (earliest) {
+        const earliestDate = safeDate(earliest);
+        if (earliestDate) {
           const years = Math.floor(
-            (Date.now() - new Date(earliest).getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+            (Date.now() - earliestDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
           );
-          update.totalExperienceYears = Math.min(years, 50);
+          update.totalExperienceYears = Math.max(0, Math.min(years, 50));
           update.totalExperienceMonths = 0;
         }
       }
@@ -124,7 +136,7 @@ async function handler(
         degree: edu.degree,
         institution: edu.institution,
         field: edu.field,
-        graduationDate: edu.endYear ? new Date(`${edu.endYear}-06-01`) : undefined,
+        graduationDate: edu.endYear ? safeDate(`${edu.endYear}-06-01`) : undefined,
       }));
     }
 
