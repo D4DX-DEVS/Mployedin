@@ -13,7 +13,11 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   Building2,
+  Check,
+  ChevronsUpDown,
+  ChevronDown,
   Eye,
+  Filter,
   Inbox,
   Loader2,
   Plus,
@@ -29,6 +33,16 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import type { ExportColumn } from "@/lib/export";
 import { useTranslations } from "next-intl";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -87,6 +101,7 @@ export default function AgentJobsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [employerFilter, setEmployerFilter] = useState("");
+
   const [employers, setEmployers] = useState<EmployerOption[]>([]);
 
   /* ----- AI search state ----- */
@@ -96,6 +111,9 @@ export default function AgentJobsPage() {
   const [activeAiFilters, setActiveAiFilters] = useState<AiFilters | null>(null);
 
   const aiInputRef = useRef<HTMLInputElement>(null);
+
+  /* ----- Filter panel toggle ----- */
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   /* ---------------------------------------------------------------- */
   /*  Load employers for filter                                       */
@@ -252,6 +270,7 @@ export default function AgentJobsPage() {
   return (
     <div className="page-container agent-legacy-surface space-y-6">
       {/* ──────── HERO ──────── */}
+      {/* ──────── HERO + UNIFIED FILTERS ──────── */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
@@ -300,133 +319,151 @@ export default function AgentJobsPage() {
             );
           })}
         </div>
-      </section>
 
-      {/* ──────── AI SEARCH ──────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-sky-500/20">
-            <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold text-foreground">{t("ai.title")}</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t("ai.description")}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <div className="relative">
-            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-500/60" />
-            <Input
-              ref={aiInputRef}
-              value={aiQuery}
-              onChange={(e) => setAiQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
-              placeholder={t("ai.placeholder")}
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 pr-24 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
-              disabled={aiLoading}
-            />
-            <Button
-              onClick={() => handleAiSearch()}
-              disabled={aiLoading || !aiQuery.trim()}
-              size="sm"
-              className="absolute right-1.5 top-1/2 h-8 -translate-y-1/2 gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-medium text-white hover:bg-violet-700"
-            >
-              {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-              {t("ai.search")}
-            </Button>
-          </div>
-
-          {/* Suggestions */}
-          {!activeAiFilters && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {AI_SUGGESTION_KEYS.map((key) => {
-                const suggestion = t(`ai.suggestions.${key}`);
-                return (
-                <button
-                  key={key}
-                  onClick={() => { setAiQuery(suggestion); handleAiSearch(suggestion); }}
-                  className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
-                  {suggestion}
-                </button>
-              );})}
+        {/* ── Combined Filter Bar ── */}
+        <div className="mt-6 workspace-glass-panel rounded-2xl p-4">
+          {/* Toggle button */}
+          <button
+            onClick={() => setFiltersOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-sky-500/20">
+                <Filter className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div className="text-left">
+                <h2 className="text-sm font-semibold text-foreground">{t("filters.title")}</h2>
+                <p className="text-xs text-muted-foreground">{t("ai.description")}</p>
+              </div>
             </div>
-          )}
-
-          {/* AI summary banner */}
-          {aiSummary && (
-            <div className="mt-3 flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50/60 px-3 py-2 dark:border-violet-800/40 dark:bg-violet-950/30">
-              <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-400" />
-              <p className="flex-1 text-xs text-violet-700 dark:text-violet-300">{aiSummary}</p>
-              <button onClick={clearAiFilters} className="shrink-0 rounded p-0.5 hover:bg-violet-200/60 dark:hover:bg-violet-800/40">
-                <X className="h-3.5 w-3.5 text-violet-500" />
-              </button>
+            <div className="flex items-center gap-2">
+              {(search || statusFilter || employerFilter || activeAiFilters) && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-[10px] font-bold text-white">
+                  {[search, statusFilter, employerFilter, activeAiFilters].filter(Boolean).length}
+                </span>
+              )}
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${filtersOpen ? "rotate-180" : ""}`} />
             </div>
-          )}
-        </div>
-      </section>
+          </button>
 
-      {/* ──────── MANUAL FILTERS ──────── */}
-      <section className="workspace-panel-surface rounded-[28px] p-4 sm:p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filters.eyebrow")}</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("filters.title")}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{t("filters.description")}</p>
-          </div>
-        </div>
+          {/* Expandable filter content */}
+          <div
+            className={`grid transition-all duration-300 ease-in-out ${filtersOpen ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+          >
+            <div className="overflow-hidden">
+              {/* AI Search */}
+              <div className="space-y-3">
+                <div className="relative">
+                  <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-violet-500/60" />
+                  <Input
+                    ref={aiInputRef}
+                    value={aiQuery}
+                    onChange={(e) => setAiQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
+                    placeholder={t("ai.placeholder")}
+                    className="h-11 rounded-xl border-border bg-secondary/65 pl-9 pr-24 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
+                    disabled={aiLoading}
+                  />
+                  <Button
+                    onClick={() => handleAiSearch()}
+                    disabled={aiLoading || !aiQuery.trim()}
+                    size="sm"
+                    className="absolute right-1.5 top-1/2 h-8 -translate-y-1/2 gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-medium text-white hover:bg-violet-700"
+                  >
+                    {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                    {t("ai.search")}
+                  </Button>
+                </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-          {/* Text search */}
-          <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("filters.searchPlaceholder")}
-              className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
-            />
-          </div>
-          {/* Status tabs */}
-          <div className="flex flex-wrap gap-2">
-            {STATUS_TABS.map((value) => {
-              const isSelected = statusFilter === value;
-              return (
-                <Button
-                  key={value || "all"}
-                  onClick={() => setStatusFilter(value)}
-                  variant="outline"
-                  size="sm"
-                  className={isSelected
-                    ? "h-11 rounded-xl border-primary/20 bg-primary/10 px-4 text-primary hover:bg-primary/15"
-                    : "h-11 rounded-xl border-border bg-secondary/65 px-4 text-muted-foreground hover:bg-card"
-                  }
-                >
-                  {value ? statusLabels[value] ?? value : common("all")}
-                </Button>
-              );
-            })}
-          </div>
+                {/* AI Suggestions */}
+                {!activeAiFilters && (
+                  <div className="flex flex-wrap gap-2">
+                    {AI_SUGGESTION_KEYS.map((key) => {
+                      const suggestion = t(`ai.suggestions.${key}`);
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => { setAiQuery(suggestion); handleAiSearch(suggestion); }}
+                          className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                        >
+                          {suggestion}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
-          {/* Employer filter */}
-          {employers.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              <select
-                value={employerFilter}
-                onChange={(e) => setEmployerFilter(e.target.value)}
-                className="h-11 rounded-xl border border-border bg-secondary/65 px-3 text-sm text-foreground"
-              >
-                <option value="">{common("allEmployers")}</option>
-                {employers.map((emp) => (
-                  <option key={emp._id} value={emp._id}>{emp.companyName}</option>
-                ))}
-              </select>
+                {/* AI summary banner */}
+                {aiSummary && (
+                  <div className="flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50/60 px-3 py-2 dark:border-violet-800/40 dark:bg-violet-950/30">
+                    <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-400" />
+                    <p className="flex-1 text-xs text-violet-700 dark:text-violet-300">{aiSummary}</p>
+                    <button onClick={clearAiFilters} className="shrink-0 rounded p-0.5 hover:bg-violet-200/60 dark:hover:bg-violet-800/40">
+                      <X className="h-3.5 w-3.5 text-violet-500" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="my-4 flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{common("or")}</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+
+              {/* Manual Filters */}
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                {/* Text search */}
+                <div className="relative min-w-0">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={t("filters.searchPlaceholder")}
+                    className="h-11 rounded-xl border-border bg-secondary/65 pl-9 text-sm text-foreground shadow-none placeholder:text-muted-foreground"
+                  />
+                </div>
+                {/* Status tabs */}
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_TABS.map((value) => {
+                    const isSelected = statusFilter === value;
+                    return (
+                      <Button
+                        key={value || "all"}
+                        onClick={() => setStatusFilter(value)}
+                        variant="outline"
+                        size="sm"
+                        className={isSelected
+                          ? "h-11 rounded-xl border-primary/20 bg-primary/10 px-4 text-primary hover:bg-primary/15"
+                          : "h-11 rounded-xl border-border bg-secondary/65 px-4 text-muted-foreground hover:bg-card"
+                        }
+                      >
+                        {value ? statusLabels[value] ?? value : common("all")}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                {/* Employer filter */}
+                {employers.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <select
+                      value={employerFilter}
+                      onChange={(e) => setEmployerFilter(e.target.value)}
+                      className="h-11 rounded-xl border border-border bg-secondary/65 px-3 text-sm text-foreground"
+                    >
+                      <option value="">{common("allEmployers")}</option>
+                      {employers.map((emp) => (
+                        <option key={emp._id} value={emp._id}>{emp.companyName}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </section>
 
