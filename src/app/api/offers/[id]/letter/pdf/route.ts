@@ -12,6 +12,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import Offer from "@/models/Offer";
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
+import Agent from "@/models/Agent";
 import User from "@/models/User";
 import { generateOfferLetterPdf } from "@/lib/offers/generateOfferLetterPdf";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -43,7 +44,15 @@ async function handler(req: NextRequest, ctx: AuthCtx, params?: Record<string, s
     if (!emp || String(offerEmployerId) !== String((emp as { _id: unknown })._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-  } else if (!["admin", "agent", "super_agent"].includes(ctx.role)) {
+  } else if (ctx.role === "agent" || ctx.role === "super_agent") {
+    const employerId = (offer as { employerId: { _id?: unknown } | unknown }).employerId;
+    const offerEmployerId = (employerId as { _id?: unknown })?._id ?? employerId;
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
+    const assigned = (agentDoc?.assignedEmployerIds ?? []).map((id: unknown) => String(id));
+    if (!assigned.includes(String(offerEmployerId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

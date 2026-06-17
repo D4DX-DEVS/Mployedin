@@ -63,7 +63,10 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
     Placement.countDocuments({ agentId }),
     Application.countDocuments({ agentId }),
     Job.countDocuments({ agentId, status: "active" }),
-    Offer.countDocuments({ agentId }),
+    // Offers have no agentId; scope them to the agent's assigned employers.
+    agent.assignedEmployerIds?.length
+      ? Offer.countDocuments({ employerId: { $in: agent.assignedEmployerIds } })
+      : Promise.resolve(0),
     Interview.countDocuments({ agentId, status: "scheduled" }),
   ]);
 

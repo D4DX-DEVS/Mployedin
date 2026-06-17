@@ -21,6 +21,7 @@ import {
   CalendarPlus,
   Check,
   ChevronRight,
+  Gift,
   Inbox,
   Loader2,
   Sparkles,
@@ -58,10 +59,11 @@ const STATUS_OPTIONS = [
 ];
 
 // Contextual "advance to next stage" action for an agent, keyed by current status.
+// Note: moving a "selected" candidate to "offer" is handled by the Make Offer
+// dialog (which creates a real Offer record), not a plain status change.
 const NEXT_STAGE: Record<string, { value: string; label: string }> = {
   applied: { value: "shortlisted", label: "Shortlist" },
   interview_scheduled: { value: "selected", label: "Mark Selected" },
-  selected: { value: "offer", label: "Move to Offer" },
   offer: { value: "hired", label: "Mark Hired" },
 };
 
@@ -118,6 +120,20 @@ export default function AgentCandidatesPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectError, setRejectError] = useState("");
   const [rejecting, setRejecting] = useState(false);
+
+  // Make-offer dialog state
+  const [offerApp, setOfferApp] = useState<ApplicationItem | null>(null);
+  const [offerForm, setOfferForm] = useState({
+    amount: "",
+    currency: "AED",
+    period: "monthly",
+    startDate: "",
+    expiresAt: "",
+    benefits: "",
+    notes: "",
+  });
+  const [offerError, setOfferError] = useState("");
+  const [offering, setOffering] = useState(false);
 
   const handleStatusUpdate = async (appId: string, newStatus: string, extra?: Record<string, unknown>) => {
     setUpdatingId(appId);
@@ -188,6 +204,58 @@ export default function AgentCandidatesPage() {
       else setRejectError("Could not reject the application.");
     } finally {
       setRejecting(false);
+    }
+  };
+
+  const openOffer = (app: ApplicationItem) => {
+    setOfferError("");
+    // Default start date two weeks out, expiry one week out (both local date inputs).
+    const start = new Date(); start.setDate(start.getDate() + 14);
+    const expires = new Date(); expires.setDate(expires.getDate() + 7);
+    const toDateInput = (d: Date) => d.toISOString().slice(0, 10);
+    setOfferForm({
+      amount: "",
+      currency: "AED",
+      period: "monthly",
+      startDate: toDateInput(start),
+      expiresAt: toDateInput(expires),
+      benefits: "",
+      notes: "",
+    });
+    setOfferApp(app);
+  };
+
+  const submitOffer = async () => {
+    if (!offerApp) return;
+    setOfferError("");
+    const amount = Number(offerForm.amount);
+    if (!amount || amount <= 0) { setOfferError("Enter a valid salary amount."); return; }
+    if (!/^[A-Za-z]{3}$/.test(offerForm.currency)) { setOfferError("Currency must be a 3-letter code (e.g. AED)."); return; }
+    if (!offerForm.startDate) { setOfferError("Pick a start date."); return; }
+    if (new Date(offerForm.startDate) <= new Date()) { setOfferError("Start date must be in the future."); return; }
+    setOffering(true);
+    try {
+      const res = await fetch("/api/offers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: offerApp._id,
+          salary: { amount, currency: offerForm.currency.toUpperCase(), period: offerForm.period },
+          startDate: new Date(offerForm.startDate).toISOString(),
+          expiresAt: offerForm.expiresAt ? new Date(offerForm.expiresAt).toISOString() : undefined,
+          benefits: offerForm.benefits.trim() || undefined,
+          notes: offerForm.notes.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setOfferError(data.error || "Could not send the offer.");
+        return;
+      }
+      setOfferApp(null);
+      await loadApplications();
+    } finally {
+      setOffering(false);
     }
   };
 
@@ -416,6 +484,18 @@ export default function AgentCandidatesPage() {
                                 <CalendarPlus className="h-4 w-4" />
                               </Button>
                             )}
+                            {app.status === "selected" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1 rounded-lg px-2.5 text-xs text-emerald-700"
+                                title="Make offer"
+                                onClick={() => openOffer(app)}
+                              >
+                                <Gift className="h-3.5 w-3.5" />
+                                Make Offer
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="ghost"
@@ -553,6 +633,104 @@ export default function AgentCandidatesPage() {
             <Button variant="destructive" onClick={submitReject} disabled={rejecting}>
               {rejecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
               Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Make offer dialog */}
+      <Dialog open={!!offerApp} onOpenChange={(o) => { if (!o) setOfferApp(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Make an offer</DialogTitle>
+            <DialogDescription>
+              {offerApp?.jobSeekerId?.userId?.name ?? "Candidate"} · {offerApp?.jobId?.title ?? "Role"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {offerError && (
+              <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">{offerError}</p>
+            )}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="of-amount">Salary amount</Label>
+                <Input
+                  id="of-amount"
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 12000"
+                  value={offerForm.amount}
+                  onChange={(e) => setOfferForm((f) => ({ ...f, amount: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="of-currency">Currency</Label>
+                <Input
+                  id="of-currency"
+                  maxLength={3}
+                  value={offerForm.currency}
+                  onChange={(e) => setOfferForm((f) => ({ ...f, currency: e.target.value.toUpperCase() }))}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="of-period">Pay period</Label>
+                <select
+                  id="of-period"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={offerForm.period}
+                  onChange={(e) => setOfferForm((f) => ({ ...f, period: e.target.value }))}
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="annually">Annually</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="of-start">Start date</Label>
+                <Input
+                  id="of-start"
+                  type="date"
+                  value={offerForm.startDate}
+                  onChange={(e) => setOfferForm((f) => ({ ...f, startDate: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="of-expires">Offer expires</Label>
+              <Input
+                id="of-expires"
+                type="date"
+                value={offerForm.expiresAt}
+                onChange={(e) => setOfferForm((f) => ({ ...f, expiresAt: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="of-benefits">Benefits (optional)</Label>
+              <Textarea
+                id="of-benefits"
+                placeholder="Health insurance, annual flights, bonus…"
+                value={offerForm.benefits}
+                onChange={(e) => setOfferForm((f) => ({ ...f, benefits: e.target.value }))}
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="of-notes">Notes (optional)</Label>
+              <Textarea
+                id="of-notes"
+                placeholder="Anything else the candidate should know."
+                value={offerForm.notes}
+                onChange={(e) => setOfferForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOfferApp(null)} disabled={offering}>Cancel</Button>
+            <Button onClick={submitOffer} disabled={offering}>
+              {offering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Gift className="mr-2 h-4 w-4" />}
+              Send offer
             </Button>
           </DialogFooter>
         </DialogContent>

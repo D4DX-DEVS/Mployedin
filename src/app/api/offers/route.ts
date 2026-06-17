@@ -7,6 +7,7 @@ import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
 import Job from "@/models/Job";
 import Agent from "@/models/Agent";
+import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { offerCreateSchema } from "@/lib/validators/offers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -144,13 +145,41 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     candidateName: resolveCandidateName(o.jobSeekerId),
     candidateEmail: (o.jobSeekerId as unknown as { userId?: { email?: string } })?.userId?.email ?? "",
     jobTitle: (o.jobId as unknown as { title?: string })?.title ?? "Unknown",
+    jobLocation: (o.jobId as unknown as { location?: unknown })?.location ?? null,
     companyName: (o.employerId as unknown as { companyName?: string })?.companyName ?? "",
     salary: o.salary?.amount,
     currency: o.salary?.currency,
+    period: o.salary?.period,
+    benefits: o.benefits ?? "",
+    notes: o.notes ?? "",
     status: o.status,
     startDate: o.startDate?.toISOString?.() ?? "",
     expiresAt: o.expiresAt?.toISOString?.() ?? "",
+    respondedAt: (o as unknown as { respondedAt?: Date }).respondedAt?.toISOString?.() ?? "",
+    declineReason: (o as unknown as { declineReason?: string }).declineReason ?? "",
     createdAt: o.createdAt?.toISOString?.() ?? "",
+    revisionNumber: (o as unknown as { revisionNumber?: number }).revisionNumber ?? 1,
+    viewedAt: (o as unknown as { viewedAt?: Date }).viewedAt?.toISOString?.() ?? "",
+    lastRemindedAt: (o as unknown as { lastRemindedAt?: Date }).lastRemindedAt?.toISOString?.() ?? "",
+    reminderCount: (o as unknown as { reminderCount?: number }).reminderCount ?? 0,
+    counterOffer: (() => {
+      const c = (o as unknown as { counterOffer?: { amount?: number; currency?: string; period?: string; note?: string; proposedAt?: Date } }).counterOffer;
+      if (!c || c.amount == null) return null;
+      return {
+        amount: c.amount,
+        currency: c.currency ?? "",
+        period: c.period ?? "",
+        note: c.note ?? "",
+        proposedAt: c.proposedAt?.toISOString?.() ?? "",
+      };
+    })(),
+    events: ((o as unknown as { events?: Array<{ type: string; at?: Date; actorRole?: string; actorName?: string; note?: string }> }).events ?? []).map((e) => ({
+      type: e.type,
+      at: e.at?.toISOString?.() ?? "",
+      actorRole: e.actorRole ?? "",
+      actorName: e.actorName ?? "",
+      note: e.note ?? "",
+    })),
   }));
 
   return offersListResponse({
@@ -163,41 +192,73 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   });
 }
 
-// POST /api/offers — employer creates an offer
+// POST /api/offers — employer (or an agent assigned to the employer) creates an offer
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
-  if (ctx.role !== "employer") {
-    return NextResponse.json({ error: "Only employers can create offers" }, { status: 403 });
+  if (!["employer", "agent", "super_agent"].includes(ctx.role)) {
+    return NextResponse.json({ error: "Not allowed to create offers" }, { status: 403 });
   }
 
   await connectDB();
   const body = await validateBody(req, offerCreateSchema);
   const { applicationId, salary, startDate, benefits, notes, expiresAt } = body;
 
-  // Verify application exists and employer owns it
-  const application = await Application.findById(applicationId).populate("jobId", "employerId");
+  // Verify application exists and resolve the owning employer from its job.
+  const application = await Application.findById(applicationId).populate("jobId", "employerId title");
   if (!application) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
-  const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-  if (!emp || String((application.jobId as unknown as { employerId: string }).employerId) !== String(emp._id)) {
-    return NextResponse.json({ error: "Forbidden: application not owned by employer" }, { status: 403 });
+  const offerEmployerId = (application.jobId as unknown as { employerId?: unknown })?.employerId;
+  if (!offerEmployerId) {
+    return NextResponse.json({ error: "Application is not linked to an employer" }, { status: 400 });
+  }
+
+  // Authorize: employer owns the application directly, or an agent is assigned
+  // to the owning employer's portfolio.
+  if (ctx.role === "employer") {
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!emp || String(offerEmployerId) !== String(emp._id)) {
+      return NextResponse.json({ error: "Forbidden: application not owned by employer" }, { status: 403 });
+    }
+  } else {
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
+    const assigned = (agentDoc?.assignedEmployerIds ?? []).map((id: unknown) => String(id));
+    if (!assigned.includes(String(offerEmployerId))) {
+      return NextResponse.json({ error: "Forbidden: employer not in your assigned portfolio" }, { status: 403 });
+    }
+  }
+
+  // Block duplicate active offers for the same application.
+  const existing = await Offer.findOne({ applicationId, status: "pending" }).select("_id").lean();
+  if (existing) {
+    return NextResponse.json({ error: "An active offer already exists for this application" }, { status: 409 });
   }
 
   // Set default expiry date if not provided (7 days from now)
   const expiryDate = expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
+  const creator = await User.findById(ctx.userId).select("name").lean();
   const offer = await Offer.create({
     applicationId,
     jobId: application.jobId,
     jobSeekerId: application.jobSeekerId,
-    employerId: emp._id,
+    employerId: offerEmployerId,
     salary,
     startDate,
     benefits,
     notes,
     status: "pending",
     expiresAt: expiryDate,
+    revisionNumber: 1,
+    reminderCount: 0,
+    events: [
+      {
+        type: "created",
+        at: new Date(),
+        actorRole: ctx.role,
+        actorName: (creator as { name?: string } | null)?.name ?? ctx.role,
+      },
+    ],
   });
 
   // Update application status to "offer"

@@ -632,13 +632,21 @@
     },
     "status": {
       "pending": "قيد الانتظار",
+      "countered": "عرض مقابل",
       "accepted": "مقبول",
       "declined": "مرفوض",
       "expired": "منتهي",
       "withdrawn": "مسحوب"
     },
     "actions": {
-      "reset": "إعادة التعيين"
+      "reset": "إعادة التعيين",
+      "view": "عرض",
+      "revise": "تعديل",
+      "respondCounter": "الرد",
+      "remind": "تذكير",
+      "withdraw": "سحب",
+      "downloadLetter": "تنزيل الخطاب",
+      "cancel": "إلغاء"
     },
     "table": {
       "candidate": "المرشح",
@@ -647,11 +655,79 @@
       "status": "الحالة",
       "startDate": "تاريخ البدء",
       "expires": "ينتهي",
-      "sent": "أُرسل"
+      "sent": "أُرسل",
+      "actions": "إجراءات"
+    },
+    "perMonth": "/ شهريًا",
+    "perYear": "/ سنويًا",
+    "expiringSoon": "ينتهي قريبًا",
+    "detail": {
+      "title": "تفاصيل العرض",
+      "description": "تفصيل كامل للعرض المرسل إلى هذا المرشح.",
+      "candidate": "المرشح",
+      "status": "الحالة",
+      "salary": "الراتب",
+      "startDate": "تاريخ البدء",
+      "createdAt": "أُرسل",
+      "expires": "ينتهي",
+      "benefits": "المزايا",
+      "notes": "ملاحظات",
+      "responded": "تم الرد",
+      "declineReason": "سبب الرفض",
+      "counterOffer": "العرض المقابل من المرشح",
+      "timeline": "سجل النشاط"
+    },
+    "events": {
+      "created": "تم إرسال العرض",
+      "revised": "تم تعديل العرض",
+      "reminded": "تم إرسال تذكير",
+      "viewed": "اطّلع المرشح على العرض",
+      "accepted": "تم قبول العرض",
+      "declined": "تم رفض العرض",
+      "countered": "تم تقديم عرض مقابل",
+      "withdrawn": "تم سحب العرض",
+      "expired": "انتهى العرض"
+    },
+    "reviseDialog": {
+      "title": "تعديل العرض",
+      "titleCounter": "الرد على العرض المقابل",
+      "description": "حدّث الشروط. سيتم إشعار المرشح وإعادة فتح العرض للرد.",
+      "descriptionCounter": "عدّل الشروط ردًا على العرض المقابل للمرشح.",
+      "candidateAsked": "طلب المرشح",
+      "currency": "العملة",
+      "amount": "المبلغ",
+      "period": "الفترة",
+      "startDate": "تاريخ البدء",
+      "expiresAt": "ينتهي",
+      "benefits": "المزايا",
+      "revisionNote": "ملاحظة للمرشح",
+      "revisionNotePlaceholder": "رسالة اختيارية توضّح التغيير…",
+      "saving": "جارٍ الحفظ…",
+      "confirm": "إرسال العرض المعدّل",
+      "errors": {
+        "amount": "أدخل مبلغ راتب صالحًا.",
+        "currency": "يجب أن تكون العملة رمزًا من 3 أحرف (مثل AED).",
+        "startDate": "اختر تاريخ البدء.",
+        "startFuture": "يجب أن يكون تاريخ البدء في المستقبل.",
+        "failed": "تعذّر تعديل العرض. يرجى المحاولة مرة أخرى."
+      }
+    },
+    "withdrawDialog": {
+      "title": "سحب هذا العرض؟",
+      "description": "سيتم إشعار المرشح بأن العرض لم يعد متاحًا. لا يمكن التراجع عن ذلك.",
+      "confirm": "سحب العرض",
+      "withdrawing": "جارٍ السحب…"
     },
     "empty": "لا توجد عروض",
+    "success": {
+      "withdrawn": "تم سحب العرض.",
+      "revised": "تم تعديل العرض وإعادة إرساله.",
+      "reminded": "تم إرسال تذكير إلى المرشح."
+    },
     "errors": {
-      "fetchFailed": "فشل تحميل العروض. يرجى المحاولة مرة أخرى."
+      "fetchFailed": "فشل تحميل العروض. يرجى المحاولة مرة أخرى.",
+      "withdrawFailed": "تعذّر سحب العرض. يرجى المحاولة مرة أخرى.",
+      "remindFailed": "تعذّر إرسال التذكير. يرجى المحاولة مرة أخرى."
     }
   },
   "jobSeekerOffers": {
@@ -674,7 +750,8 @@
       "accepted": "مقبول",
       "declined": "مرفوض",
       "expired": "منتهي",
-      "withdrawn": "مسحوب"
+      "withdrawn": "مسحوب",
+      "countered": "تم إرسال عرض مقابل"
     },
     "labels": {
       "salary": "الراتب",
@@ -685,6 +762,21 @@
     "decline": {
       "reasonLabel": "سبب الرفض (مطلوب)",
       "reasonPlaceholder": "شارك سبب رفض هذا العرض..."
+    },
+    "counter": {
+      "action": "عرض مقابل",
+      "currencyLabel": "العملة",
+      "amountLabel": "الراتب المقترح",
+      "noteLabel": "ملاحظة (اختياري)",
+      "notePlaceholder": "اشرح عرضك المقابل…",
+      "submit": "إرسال العرض المقابل",
+      "success": "تم إرسال العرض المقابل إلى صاحب العمل.",
+      "pendingTitle": "عرضك المقابل في انتظار الرد",
+      "errors": {
+        "amount": "أدخل مبلغًا صالحًا.",
+        "currency": "يجب أن تكون العملة رمزًا من 3 أحرف (مثل AED).",
+        "failed": "تعذّر إرسال عرضك المقابل. يرجى المحاولة مرة أخرى."
+      }
     },
     "accept": {
       "signatureLabel": "اكتب اسمك القانوني الكامل للتوقيع",

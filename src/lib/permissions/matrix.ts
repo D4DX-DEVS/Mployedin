@@ -66,6 +66,8 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     exhibitions: ["read", "approve"],
     resources: ["read"],
     targets: ["create", "read", "update"],
+    // Read-only oversight of offers across the portfolio.
+    offers: ["read"],
   },
   agent: {
     jobs: ["create", "read", "update", "export"],
@@ -85,6 +87,9 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     exhibitions: ["create", "read"],
     resources: ["read"],
     targets: ["read"],
+    // Agents create/manage offers on behalf of their assigned employers; the
+    // route handlers enforce assigned-employer ownership.
+    offers: ["create", "read", "update", "delete"],
   },
   employer: {
     jobs: ["create", "read", "update", "delete"],

@@ -5,6 +5,7 @@ import Offer from "@/models/Offer";
 import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
+import Agent from "@/models/Agent";
 import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { offerRespondSchema } from "@/lib/validators/offers";
@@ -17,6 +18,17 @@ interface AuthCtx {
   userId: string;
   role: UserRole;
   locale: string;
+}
+
+/**
+ * Returns true if the agent/super_agent is assigned to the offer's employer.
+ * Used to scope agent access so they can only read/act on offers within their
+ * assigned employer portfolio.
+ */
+async function agentOwnsOffer(userId: string, employerId: unknown): Promise<boolean> {
+  const agentDoc = await Agent.findOne({ userId }).select("assignedEmployerIds").lean();
+  const assigned = (agentDoc?.assignedEmployerIds ?? []).map((id: unknown) => String(id));
+  return assigned.includes(String(employerId));
 }
 
 // GET /api/offers/[id] — get single offer
@@ -38,6 +50,23 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     if (!emp || String(offer.employerId) !== String(emp._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+  } else if (ctx.role === "agent" || ctx.role === "super_agent") {
+    if (!(await agentOwnsOffer(ctx.userId, offer.employerId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  // Record the first time the candidate opens the offer.
+  if (ctx.role === "job_seeker" && !offer.viewedAt && offer.status === "pending") {
+    await Offer.updateOne(
+      { _id: offer._id, viewedAt: { $exists: false } },
+      {
+        $set: { viewedAt: new Date() },
+        $push: { events: { type: "viewed", at: new Date(), actorRole: "job_seeker" } },
+      }
+    ).catch(() => {
+      /* non-blocking */
+    });
   }
 
   return NextResponse.json({ offer });
@@ -62,7 +91,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, offerRespondSchema);
-  const { status, declineReason, signatureName } = body;
+  const { status, declineReason, signatureName, counterOffer } = body;
 
   const prevStatus = offer.status;
   offer.status = status;
@@ -76,6 +105,20 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || undefined,
     };
   }
+  // Store the candidate's counter-proposal.
+  if (status === "countered" && counterOffer) {
+    offer.counterOffer = { ...counterOffer, proposedAt: new Date() };
+  }
+
+  const seekerName = await User.findById(ctx.userId).select("name").lean();
+  offer.events = offer.events ?? [];
+  offer.events.push({
+    type: status,
+    at: new Date(),
+    actorRole: "job_seeker",
+    actorName: (seekerName as { name?: string } | null)?.name ?? "Candidate",
+    note: status === "declined" ? declineReason : counterOffer?.note,
+  });
 
   await offer.save();
 
@@ -87,20 +130,30 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     } else if (status === "declined") {
       application.status = "selected"; // Back to selected if declined
     }
+    // "countered" keeps the application in the "offer" stage.
     await application.save();
   }
 
   // Notify employer
   const employer = await Employer.findById(offer.employerId).select("userId").lean();
   if (employer) {
-    const jobTitle = offer.jobId;
-    const statusLabel = status === "accepted" ? "accepted" : "declined";
+    let title: string;
+    let message: string;
+    if (status === "countered" && counterOffer) {
+      const counterText = `${counterOffer.currency} ${Number(counterOffer.amount).toLocaleString()} / ${counterOffer.period}`;
+      title = "Counter-Offer Received";
+      message = `The candidate submitted a counter-offer: ${counterText}.${counterOffer.note ? `\n\nNote: ${counterOffer.note}` : ""}\n\nReview and revise or decline.`;
+    } else {
+      const statusLabel = status === "accepted" ? "accepted" : "declined";
+      title = `Offer ${statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}`;
+      message = `Your offer has been ${statusLabel}. Check the details for more information.`;
+    }
     await notify({
       userId: String(employer.userId),
-      type: "application_status_update",
-      title: `Offer ${statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}`,
-      message: `Your offer has been ${statusLabel}. Check the details for more information.`,
-      link: `/en/employer/applications`,
+      type: "offer_update",
+      title,
+      message,
+      link: `/${ctx.locale}/employer/applications`,
       sendEmail: true,
       metadata: { offerId: String(offer._id), status },
     }).catch(() => {
@@ -122,7 +175,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   return NextResponse.json({ offer });
 }
 
-// DELETE /api/offers/[id] — employer withdraws offer
+// DELETE /api/offers/[id] — employer or assigned agent withdraws offer
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
@@ -130,9 +183,9 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   const offer = await Offer.findById(params?.id);
   if (!offer) return NextResponse.json({ error: "Offer not found" }, { status: 404 });
 
-  // Only employer can withdraw, and only if pending
-  if (ctx.role !== "employer") {
-    return NextResponse.json({ error: "Only employers can withdraw offers" }, { status: 403 });
+  // Only an employer or an assigned agent can withdraw, and only while pending.
+  if (!["employer", "agent", "super_agent"].includes(ctx.role)) {
+    return NextResponse.json({ error: "Not allowed to withdraw offers" }, { status: 403 });
   }
 
   if (offer.status !== "pending") {
@@ -142,12 +195,18 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
     );
   }
 
-  const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-  if (!emp || String(offer.employerId) !== String(emp._id)) {
+  if (ctx.role === "employer") {
+    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!emp || String(offer.employerId) !== String(emp._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else if (!(await agentOwnsOffer(ctx.userId, offer.employerId))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   offer.status = "withdrawn";
+  offer.events = offer.events ?? [];
+  offer.events.push({ type: "withdrawn", at: new Date(), actorRole: ctx.role });
   await offer.save();
 
   // Notify job seeker

@@ -632,13 +632,21 @@
     },
     "status": {
       "pending": "Pending",
+      "countered": "Countered",
       "accepted": "Accepted",
       "declined": "Declined",
       "expired": "Expired",
       "withdrawn": "Withdrawn"
     },
     "actions": {
-      "reset": "Reset"
+      "reset": "Reset",
+      "view": "View",
+      "revise": "Revise",
+      "respondCounter": "Respond",
+      "remind": "Remind",
+      "withdraw": "Withdraw",
+      "downloadLetter": "Download letter",
+      "cancel": "Cancel"
     },
     "table": {
       "candidate": "Candidate",
@@ -647,11 +655,79 @@
       "status": "Status",
       "startDate": "Start Date",
       "expires": "Expires",
-      "sent": "Sent"
+      "sent": "Sent",
+      "actions": "Actions"
+    },
+    "perMonth": "/ month",
+    "perYear": "/ year",
+    "expiringSoon": "Expiring soon",
+    "detail": {
+      "title": "Offer details",
+      "description": "Full breakdown of the offer sent to this candidate.",
+      "candidate": "Candidate",
+      "status": "Status",
+      "salary": "Salary",
+      "startDate": "Start date",
+      "createdAt": "Sent",
+      "expires": "Expires",
+      "benefits": "Benefits",
+      "notes": "Notes",
+      "responded": "Responded",
+      "declineReason": "Decline reason",
+      "counterOffer": "Candidate counter-offer",
+      "timeline": "Activity timeline"
+    },
+    "events": {
+      "created": "Offer sent",
+      "revised": "Offer revised",
+      "reminded": "Reminder sent",
+      "viewed": "Candidate viewed the offer",
+      "accepted": "Offer accepted",
+      "declined": "Offer declined",
+      "countered": "Counter-offer submitted",
+      "withdrawn": "Offer withdrawn",
+      "expired": "Offer expired"
+    },
+    "reviseDialog": {
+      "title": "Revise offer",
+      "titleCounter": "Respond to counter-offer",
+      "description": "Update the terms. The candidate will be notified and the offer re-opens for their response.",
+      "descriptionCounter": "Adjust the terms in response to the candidate's counter-offer.",
+      "candidateAsked": "Candidate asked for",
+      "currency": "Currency",
+      "amount": "Amount",
+      "period": "Period",
+      "startDate": "Start date",
+      "expiresAt": "Expires",
+      "benefits": "Benefits",
+      "revisionNote": "Note to candidate",
+      "revisionNotePlaceholder": "Optional message explaining the change…",
+      "saving": "Saving…",
+      "confirm": "Send revised offer",
+      "errors": {
+        "amount": "Enter a valid salary amount.",
+        "currency": "Currency must be a 3-letter code (e.g. AED).",
+        "startDate": "Pick a start date.",
+        "startFuture": "Start date must be in the future.",
+        "failed": "Could not revise the offer. Please try again."
+      }
+    },
+    "withdrawDialog": {
+      "title": "Withdraw this offer?",
+      "description": "The candidate will be notified that the offer is no longer available. This cannot be undone.",
+      "confirm": "Withdraw offer",
+      "withdrawing": "Withdrawing…"
     },
     "empty": "No offers found",
+    "success": {
+      "withdrawn": "Offer withdrawn.",
+      "revised": "Offer revised and re-sent.",
+      "reminded": "Reminder sent to the candidate."
+    },
     "errors": {
-      "fetchFailed": "Failed to load offers. Please try again."
+      "fetchFailed": "Failed to load offers. Please try again.",
+      "withdrawFailed": "Could not withdraw the offer. Please try again.",
+      "remindFailed": "Could not send the reminder. Please try again."
     }
   },
   "jobSeekerOffers": {
@@ -674,7 +750,8 @@
       "accepted": "Accepted",
       "declined": "Declined",
       "expired": "Expired",
-      "withdrawn": "Withdrawn"
+      "withdrawn": "Withdrawn",
+      "countered": "Counter-offer sent"
     },
     "labels": {
       "salary": "Salary",
@@ -685,6 +762,21 @@
     "decline": {
       "reasonLabel": "Reason for declining (required)",
       "reasonPlaceholder": "Share your reason for declining this offer..."
+    },
+    "counter": {
+      "action": "Counter-offer",
+      "currencyLabel": "Currency",
+      "amountLabel": "Proposed salary",
+      "noteLabel": "Note (optional)",
+      "notePlaceholder": "Explain your counter-offer…",
+      "submit": "Submit counter-offer",
+      "success": "Counter-offer sent to the employer.",
+      "pendingTitle": "Your counter-offer is awaiting a response",
+      "errors": {
+        "amount": "Enter a valid amount.",
+        "currency": "Currency must be a 3-letter code (e.g. AED).",
+        "failed": "Could not submit your counter-offer. Please try again."
+      }
     },
     "accept": {
       "signatureLabel": "Type your full legal name to sign",

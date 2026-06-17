@@ -54,7 +54,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     Placement.countDocuments({ agentId }),
     Lead.countDocuments({ agentId }),
     Commission.countDocuments({ agentId, status: "pending" }),
-    Offer.countDocuments({ agentId }),
+    // Offers have no agentId; scope them to the agent's assigned employers.
+    assignedEmployerIds?.length
+      ? Offer.countDocuments({ employerId: { $in: assignedEmployerIds } })
+      : Promise.resolve(0),
     Application.find(portfolioJobIds.length ? { jobId: { $in: portfolioJobIds } } : { agentId })
       .sort({ createdAt: -1 })
       .limit(5)
