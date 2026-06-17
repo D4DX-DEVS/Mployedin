@@ -28,6 +28,7 @@ import {
   Search,
   Sparkles,
   Tag,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -113,7 +114,7 @@ export default function AgentReferralLinksPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const ok = await confirmDialog("Deactivate this referral link?");
+    const ok = await confirmDialog("Permanently delete this referral link? This cannot be undone.");
     if (!ok) return;
     await deleteMutation.mutateAsync(id);
   };
@@ -317,6 +318,16 @@ export default function AgentReferralLinksPage() {
                     >
                       {link.isActive ? "Disable" : "Enable"}
                     </button>
+                    {link.usedCount === 0 && link.registrations.length === 0 && (
+                      <button
+                        onClick={() => handleDelete(link._id)}
+                        disabled={deleteMutation.isPending}
+                        title="Delete link"
+                        className="inline-flex h-8 items-center rounded-lg border border-red-200 px-2.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : link._id)}
                       className="inline-flex h-8 items-center rounded-lg border border-border px-2 text-muted-foreground hover:text-foreground"
