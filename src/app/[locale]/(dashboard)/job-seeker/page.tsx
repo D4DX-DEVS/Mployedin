@@ -118,10 +118,11 @@ export default async function JobSeekerPage({
       const emp = job.employerId as { companyName?: string; logo?: string } | null;
       const loc = job.location as { city?: string; country?: string; isRemote?: boolean } | null;
       const sal = job.salary as { min?: number; max?: number; currency?: string } | null;
+      const rawDate = job.createdAt instanceof Date ? job.createdAt : new Date(job.createdAt as string ?? 0);
       return {
         _id: String(job._id),
         title: String(job.title ?? ""),
-        createdAt: (job.createdAt instanceof Date ? job.createdAt : new Date(job.createdAt as string)).toISOString(),
+        createdAt: isNaN(rawDate.getTime()) ? new Date(0).toISOString() : rawDate.toISOString(),
         matchScore: calculateMatchScore(seekerProfile, jobProfileFromDoc(job as Parameters<typeof jobProfileFromDoc>[0])),
         // Serialize nested objects to plain primitives only
         location: loc
