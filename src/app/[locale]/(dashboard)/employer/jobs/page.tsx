@@ -346,7 +346,7 @@ export default function EmployerJobsPage() {
             </p>
           </div>
 
-          {can("jobs", "create") ? (
+          {can("jobs", "create") && (isLoading || jobs.length > 0 || hasActiveFilters) ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("portfolioLabel")}</p>

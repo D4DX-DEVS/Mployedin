@@ -27,6 +27,7 @@ export interface ISystemConfig extends Document {
     profileCompletion: CronJobConfig;
     weeklyDigest: CronJobConfig;
     jobExpiryAlerts: CronJobConfig;
+    emailSequenceSender: CronJobConfig;
   };
 
   // Global email defaults
@@ -71,6 +72,7 @@ const SystemConfigSchema = new Schema<ISystemConfig>(
       profileCompletion: { type: CronJobConfigSchema, default: () => ({ enabled: true }) },
       weeklyDigest: { type: CronJobConfigSchema, default: () => ({ enabled: true }) },
       jobExpiryAlerts: { type: CronJobConfigSchema, default: () => ({ enabled: true }) },
+      emailSequenceSender: { type: CronJobConfigSchema, default: () => ({ enabled: true }) },
     },
     globalDefaults: {
       defaultFrequency: { type: String, enum: ["instant", "daily", "weekly", "none"], default: "daily" },

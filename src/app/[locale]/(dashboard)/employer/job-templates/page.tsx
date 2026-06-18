@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Plus, Copy, Trash2, Search, FileText, Inbox, RotateCcw,
-  Briefcase, Clock, Edit,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
@@ -39,6 +39,7 @@ export default function EmployerJobTemplatesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: "", title: "", description: "", requirements: "",
     jobType: "full_time", experienceLevel: "mid",
@@ -69,6 +70,7 @@ export default function EmployerJobTemplatesPage() {
       toast.error(t("toastRequired"));
       return;
     }
+    setSaving(true);
     try {
       const res = await csrfFetch("/api/employer/job-templates", {
         method: "POST",
@@ -86,6 +88,8 @@ export default function EmployerJobTemplatesPage() {
       }
     } catch {
       toast.error(t("toastCreateFailed"));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -108,7 +112,7 @@ export default function EmployerJobTemplatesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       {/* Hero */}
       <section className="workspace-hero-surface overflow-hidden rounded-[28px] p-6 sm:p-7">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -139,28 +143,84 @@ export default function EmployerJobTemplatesPage() {
 
       {/* Create Form */}
       {showForm && (
-        <section className="workspace-panel-surface rounded-[28px] p-5 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">{t("createTitle")}</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Input placeholder={t("templateName")} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
-            <Input placeholder={t("jobTitle")} value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
-            <textarea
-              placeholder={t("jobDescription")}
-              value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-              className="sm:col-span-2 min-h-[80px] rounded-md border bg-background px-3 py-2 text-sm"
-            />
-            <textarea
-              placeholder={t("requirements")}
-              value={form.requirements}
-              onChange={(e) => setForm((p) => ({ ...p, requirements: e.target.value }))}
-              className="sm:col-span-2 min-h-[60px] rounded-md border bg-background px-3 py-2 text-sm"
-            />
-            <Input placeholder={t("skills")} value={form.skills} onChange={(e) => setForm((p) => ({ ...p, skills: e.target.value }))} className="sm:col-span-2" />
+        <section className="workspace-panel-surface rounded-[28px] p-6 space-y-5">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">{t("createTitle")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("createSubtitle")}</p>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={createTemplate}><Plus className="mr-1 h-4 w-4" /> {t("create")}</Button>
-            <Button variant="ghost" onClick={() => setShowForm(false)}>{t("cancel")}</Button>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                {t("fieldTemplateName")} <span className="text-red-500">*</span>
+              </label>
+              <Input
+                placeholder={t("placeholderTemplateName")}
+                value={form.name}
+                maxLength={100}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                {t("fieldJobTitle")} <span className="text-red-500">*</span>
+              </label>
+              <Input
+                placeholder={t("placeholderJobTitle")}
+                value={form.title}
+                maxLength={120}
+                onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium text-foreground">{t("fieldJobDescription")}</label>
+              <Textarea
+                placeholder={t("placeholderJobDescription")}
+                value={form.description}
+                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                className="min-h-[100px]"
+              />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium text-foreground">{t("fieldRequirements")}</label>
+              <Textarea
+                placeholder={t("placeholderRequirements")}
+                value={form.requirements}
+                onChange={(e) => setForm((p) => ({ ...p, requirements: e.target.value }))}
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium text-foreground">{t("fieldSkills")}</label>
+              <Input
+                placeholder={t("placeholderSkills")}
+                value={form.skills}
+                onChange={(e) => setForm((p) => ({ ...p, skills: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">{t("skillsHint")}</p>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <Button onClick={createTemplate} disabled={saving}>
+              {saving ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  {t("creating")}
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-1 h-4 w-4" /> {t("create")}
+                </>
+              )}
+            </Button>
+            <Button variant="ghost" onClick={() => setShowForm(false)} disabled={saving}>
+              {t("cancel")}
+            </Button>
           </div>
         </section>
       )}

@@ -54,7 +54,7 @@ export default function EmployerAssessmentsPage() {
   useEffect(() => { fetchAssessments(); }, [fetchAssessments]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="page-container">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -63,13 +63,15 @@ export default function EmployerAssessmentsPage() {
           </h1>
           <p className="text-muted-foreground mt-1">{t("description")}</p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          {t("createAssessment")}
-        </button>
+        {assessments.length > 0 ? (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            {t("createAssessment")}
+          </button>
+        ) : null}
       </div>
 
       {/* Stats */}

@@ -1182,6 +1182,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تصفح والبحث عن المرشحين",
               },
               {
+                title: "Talent Pools",
+                titleAr: "مجموعات المواهب",
+                href: p("/employer/talent-pools"),
+                icon: "Layers",
+                description: "Saved candidate pools for future roles",
+                descriptionAr: "مجموعات المرشحين المحفوظة للوظائف المستقبلية",
+              },
+              {
                 title: "Interviews",
                 titleAr: "المقابلات",
                 href: p("/employer/interviews"),
@@ -1246,6 +1254,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "MessageSquare",
                 description: "Email templates for candidates",
                 descriptionAr: "قوالب البريد الإلكتروني للمرشحين",
+              },
+              {
+                title: "Campaigns",
+                titleAr: "الحملات",
+                href: p("/employer/campaigns"),
+                icon: "Mail",
+                description: "Automated email nurture sequences",
+                descriptionAr: "تسلسلات بريد إلكتروني تلقائية للرعاية",
               },
               {
                 title: "Training",

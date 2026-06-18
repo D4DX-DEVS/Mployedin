@@ -38,6 +38,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const experienceMin = searchParams.get("experienceMin") ?? "";
   const experienceMax = searchParams.get("experienceMax") ?? "";
   const skills = searchParams.get("skills") ?? "";
+  const nationality = searchParams.get("nationality")?.trim() ?? "";
   const scoreMin = searchParams.get("scoreMin") ?? "";
   const scoreMax = searchParams.get("scoreMax") ?? "";
   const fetchJobs = searchParams.get("fetchJobs") === "true";
@@ -196,13 +197,21 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Combine experience + skills seeker filters
-  if (experienceFilterSeekerIds || skillsFilterSeekerIds) {
-    const combined = experienceFilterSeekerIds && skillsFilterSeekerIds
-      ? experienceFilterSeekerIds.filter((id) =>
-          skillsFilterSeekerIds!.some((sid) => String(sid) === String(id))
-        )
-      : experienceFilterSeekerIds ?? skillsFilterSeekerIds!;
+  // Nationality filter — filter by jobSeeker's nationality (case-insensitive, partial)
+  let nationalityFilterSeekerIds: unknown[] | null = null;
+  if (nationality) {
+    const escaped = nationality.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const seekers = await JobSeeker.find({ nationality: new RegExp(escaped, "i") }).select("_id").lean();
+    nationalityFilterSeekerIds = seekers.map((s) => s._id);
+  }
+
+  // Combine experience + skills + nationality seeker filters (intersection)
+  const seekerIdFilters = [experienceFilterSeekerIds, skillsFilterSeekerIds, nationalityFilterSeekerIds]
+    .filter((f): f is unknown[] => f !== null);
+  if (seekerIdFilters.length > 0) {
+    const combined = seekerIdFilters.reduce((acc, ids) =>
+      acc.filter((id) => ids.some((sid) => String(sid) === String(id)))
+    );
 
     if (combined.length === 0) {
       return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });

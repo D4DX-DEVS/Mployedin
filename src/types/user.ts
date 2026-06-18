@@ -13,7 +13,8 @@ export type Resource =
   | "users" | "notifications" | "reports" | "audit_logs"
   | "ai_cv" | "ai_match" | "ai_assistant" | "tasks" | "design_system"
   | "job_attributes" | "location_data" | "cms" | "contact_submissions"
-  | "offers" | "subscriptions" | "exhibitions" | "resources" | "targets";
+  | "offers" | "subscriptions" | "exhibitions" | "resources" | "targets"
+  | "onboarding";
 
 export type Action = "create" | "read" | "update" | "delete" | "approve" | "export" | "impersonate";
 

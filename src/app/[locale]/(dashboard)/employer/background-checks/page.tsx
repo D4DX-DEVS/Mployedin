@@ -208,7 +208,7 @@ export default function BackgroundChecksPage() {
       : "bg-gray-100 text-gray-600 border-gray-300";
 
   return (
-    <div className="space-y-6">
+    <div className="page-container">
       <PageHeader
         title={t("title")}
         description={t("description")}

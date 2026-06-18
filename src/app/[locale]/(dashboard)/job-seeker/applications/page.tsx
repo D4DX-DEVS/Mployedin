@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, Search, SlidersHorizontal, Building2, Video, DollarSign, Briefcase, ExternalLink } from "lucide-react";
+import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, Loader2, X, AlertTriangle, Search, SlidersHorizontal, Building2, Video, DollarSign, Briefcase, ExternalLink, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -755,12 +755,13 @@ function ApplicationCard({
                     </span>
                   )}
                 </div>
-              </div>
-            )}
-
-            {app.coverLetter && (
-              <div className="rounded-[18px] border border-border/60 bg-background/80 px-3 py-3 text-sm text-muted-foreground">
-                {app.coverLetter}
+                <Link
+                  href={`/${locale}/job-seeker/onboarding`}
+                  className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
+                >
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  {t("details.onboardingCta")}
+                </Link>
               </div>
             )}
           </div>

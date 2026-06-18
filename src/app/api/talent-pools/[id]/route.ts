@@ -16,7 +16,11 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
   if (!employer) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
 
   const pool = await TalentPool.findOne({ _id: id, employerId: employer._id })
-    .populate("candidates.jobSeekerId", "firstName lastName email skills experience")
+    .populate({
+      path: "candidates.jobSeekerId",
+      select: "fullName headline skills currentLocation userId",
+      populate: { path: "userId", select: "name email avatar" },
+    })
     .lean();
 
   if (!pool) return NextResponse.json({ error: "Pool not found" }, { status: 404 });

@@ -6,11 +6,13 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
+import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialog";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useCandidates, usePublishedJobs, useStartConversation, useAiMatch, useScreenCandidates, useInviteToApply } from "@/hooks/useCandidates";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -36,6 +38,7 @@ import {
   Clock3,
   Eye,
   FileText,
+  Layers,
   Loader2,
   MapPin,
   MessageSquare,
@@ -222,6 +225,7 @@ interface CandidateCardProps {
   onToggleReviewList: (candidateId: string) => void;
   onInvite?: (candidateId: string) => void;
   onOpenInsights: () => void;
+  onSaveToPool?: (candidate: Candidate) => void;
 }
 
 function CandidateMatchCard({
@@ -236,8 +240,10 @@ function CandidateMatchCard({
   onToggleReviewList,
   onInvite,
   onOpenInsights,
+  onSaveToPool,
 }: CandidateCardProps) {
   const t = useTranslations("employerCandidates");
+  const tp = useTranslations("talentPool");
   const currentRole = candidate.experience?.find((entry) => entry.isCurrent)?.jobTitle ?? null;
   const matchedSkills = getMatchedSkills(candidate, selectedJobData);
   const missingSkills = getMissingSkills(candidate, selectedJobData);
@@ -287,6 +293,13 @@ function CandidateMatchCard({
     >
       <div className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] sm:items-center sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
+          <span className="flex items-center" onClick={stopRowClick} onKeyDown={stopRowClick}>
+            <Checkbox
+              checked={isInReviewList}
+              onCheckedChange={() => onToggleReviewList(candidate._id)}
+              aria-label={t("selectCandidate", { name: candidateDisplayName })}
+            />
+          </span>
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold ${isInReviewList ? "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300"}`}>
             {(candidateDisplayName[0] ?? "?").toUpperCase()}
           </div>
@@ -401,6 +414,12 @@ function CandidateMatchCard({
                   <Eye className="mr-2 h-4 w-4" />
                   {t("openProfile")}
                 </DropdownMenuItem>
+                {onSaveToPool ? (
+                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onSaveToPool(candidate)}>
+                    <Layers className="mr-2 h-4 w-4" />
+                    {tp("saveToPool")}
+                  </DropdownMenuItem>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : null}
@@ -774,6 +793,7 @@ export default function EmployerCandidatesPage() {
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
   const t = useTranslations("employerCandidates");
+  const tp = useTranslations("talentPool");
 
   const AVAILABILITY_OPTIONS = useMemo(() => [
     { value: "all", label: t("anyAvailability") },
@@ -816,6 +836,8 @@ export default function EmployerCandidatesPage() {
   const [matchProgress, setMatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [localCandidates, setLocalCandidates] = useState<Candidate[] | null>(null);
   const [detailCandidateId, setDetailCandidateId] = useState<string | null>(null);
+  const [saveToPoolCandidate, setSaveToPoolCandidate] = useState<Candidate | null>(null);
+  const [bulkPoolOpen, setBulkPoolOpen] = useState(false);
   const [reviewListIds, setReviewListIds] = useState<Set<string>>(new Set());
   const [matchFeedback, setMatchFeedback] = useState<MatchFeedback | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -907,6 +929,8 @@ export default function EmployerCandidatesPage() {
   const readyNowCount = structuredCandidates.filter((candidate) => candidate.availabilityStatus === "immediately").length;
   const scoredCount = structuredCandidates.filter((candidate) => candidate.matchScore != null).length;
   const reviewCount = reviewListIds.size;
+  const allVisibleSelected = filteredCandidates.length > 0 && filteredCandidates.every((candidate) => reviewListIds.has(candidate._id));
+  const someVisibleSelected = filteredCandidates.some((candidate) => reviewListIds.has(candidate._id));
   const hasLoadError = hasJobsError || hasCandidatesError;
   const workflowStateRaw = getCandidateWorkflowState({
     hasSelectedJob: Boolean(selectedJob),
@@ -1139,6 +1163,19 @@ export default function EmployerCandidatesPage() {
     });
   };
 
+  const toggleSelectAllVisible = () => {
+    setReviewListIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = filteredCandidates.length > 0 && filteredCandidates.every((candidate) => next.has(candidate._id));
+      if (allSelected) {
+        filteredCandidates.forEach((candidate) => next.delete(candidate._id));
+      } else {
+        filteredCandidates.forEach((candidate) => next.add(candidate._id));
+      }
+      return next;
+    });
+  };
+
   const startDM = async (recipientUserId: string) => {
     try {
       const data = await startDmMutation.mutateAsync(recipientUserId);
@@ -1280,6 +1317,22 @@ export default function EmployerCandidatesPage() {
         onStartMessage={startDM}
         onOpenProfile={(candidateId) => router.push(`/${locale}/employer/candidates/${candidateId}`)}
         onToggleReviewList={toggleReviewList}
+      />
+
+      <SaveToPoolDialog
+        candidateId={saveToPoolCandidate?._id ?? null}
+        candidateName={saveToPoolCandidate ? getCandidateDisplayName(saveToPoolCandidate) : undefined}
+        open={Boolean(saveToPoolCandidate)}
+        onOpenChange={(open) => {
+          if (!open) setSaveToPoolCandidate(null);
+        }}
+      />
+
+      <SaveToPoolDialog
+        candidateId={null}
+        candidateIds={Array.from(reviewListIds)}
+        open={bulkPoolOpen}
+        onOpenChange={setBulkPoolOpen}
       />
 
       <section className="workspace-hero-surface overflow-hidden rounded-[24px] px-4 py-4 sm:px-5">
@@ -1630,6 +1683,43 @@ export default function EmployerCandidatesPage() {
         onExportPdf={handleExportPdf}
       />
 
+      {!loading && filteredCandidates.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-border bg-card px-4 py-2.5">
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+            <Checkbox
+              checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+              onCheckedChange={toggleSelectAllVisible}
+              aria-label={tp("selectAllOnPage")}
+            />
+            {reviewCount > 0 ? (
+              <span className="font-medium text-foreground">{tp("selectedCount", { count: reviewCount })}</span>
+            ) : (
+              <span className="text-muted-foreground">{tp("selectAllOnPage")}</span>
+            )}
+          </label>
+          {reviewCount > 0 ? (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                className="h-9 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
+                onClick={() => setBulkPoolOpen(true)}
+              >
+                <Layers className="mr-2 h-4 w-4" />
+                {tp("saveSelectedToPool", { count: reviewCount })}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-9 rounded-xl px-3 text-sm text-muted-foreground hover:bg-background/80"
+                onClick={() => setReviewListIds(new Set())}
+              >
+                {tp("clearSelection")}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, index) => (
@@ -1666,6 +1756,7 @@ export default function EmployerCandidatesPage() {
                 onOpenProfile={(candidateId) => router.push(`/${locale}/employer/candidates/${candidateId}`)}
                 onToggleReviewList={toggleReviewList}
                 onInvite={inviteToApply}
+                onSaveToPool={setSaveToPoolCandidate}
                 onOpenInsights={() => setDetailCandidateId(candidate._id)}
               />
             );

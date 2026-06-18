@@ -36,39 +36,11 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   SGD: "S$", IDR: "Rp", PHP: "₱", THB: "฿",
 };
 
-const SALARY_PERIODS = [
-  { value: "monthly", label: "Per Month" },
-  { value: "yearly", label: "Per Year" },
-  { value: "lpa", label: "LPA (Lakhs Per Annum)" },
-];
-
-const EMPLOYMENT_TYPE_OPTIONS = [
-  { value: "full_time", label: "Full-time" },
-  { value: "part_time", label: "Part-time" },
-  { value: "contract", label: "Contract" },
-  { value: "internship", label: "Internship" },
-  { value: "freelance", label: "Freelance" },
-];
-
-const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
-  full_time: "Full-time",
-  part_time: "Part-time",
-  contract: "Contract",
-  internship: "Internship",
-  freelance: "Freelance",
-};
-
 const WORK_MODE_OPTIONS = [
   { value: "onsite", label: "On-site" },
   { value: "hybrid", label: "Hybrid" },
   { value: "remote", label: "Remote" },
 ];
-
-const WORK_MODE_LABELS: Record<string, string> = {
-  onsite: "On-site",
-  hybrid: "Hybrid",
-  remote: "Remote",
-};
 
 // ─── Types ───────────────────────────────────────────────────────
 

@@ -10,7 +10,7 @@ export const ALL_RESOURCES: Resource[] = [
   "users", "notifications", "reports", "audit_logs",
   "ai_cv", "ai_match", "ai_assistant", "tasks", "design_system",
   "job_attributes", "location_data", "cms", "contact_submissions", "offers",
-  "subscriptions", "exhibitions", "resources", "targets",
+  "subscriptions", "exhibitions", "resources", "targets", "onboarding",
 ];
 
 /** All available actions */
@@ -48,6 +48,7 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     exhibitions: ["create", "read", "update", "delete", "approve"],
     resources: ["create", "read", "update", "delete"],
     targets: ["create", "read", "update", "delete", "export"],
+    onboarding: ["create", "read", "update", "delete"],
   },
   super_agent: {
     jobs: ["read", "approve", "export"],
@@ -102,6 +103,9 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     ai_assistant: ["read"],
     offers: ["create", "read", "update", "delete"],
     subscriptions: ["read"],
+    // Employer manages the post-hire onboarding workspace for their placements;
+    // the route handlers enforce placement ownership.
+    onboarding: ["read", "update"],
   },
   job_seeker: {
     jobs: ["read"],
@@ -116,6 +120,9 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     // handler enforces ownership and only permits status responses.
     offers: ["read", "update"],
     subscriptions: ["read"],
+    // Hired candidates view their onboarding and upload/sign requested
+    // documents; the route handler enforces ownership of the placement.
+    onboarding: ["read", "update"],
   },
 };
 

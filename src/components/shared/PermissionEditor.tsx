@@ -42,6 +42,7 @@ const RESOURCE_LABELS: Record<Resource, string> = {
   exhibitions: "Exhibitions",
   resources: "Resources",
   targets: "Targets",
+  onboarding: "Onboarding",
 };
 
 /** Human-readable labels for actions */

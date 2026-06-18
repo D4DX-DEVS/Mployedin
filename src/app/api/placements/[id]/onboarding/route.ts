@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Placement from "@/models/Placement";
@@ -8,6 +9,7 @@ import { validateBody } from "@/lib/validators";
 import { onboardingCreateSchema, onboardingUpdateSchema } from "@/lib/validators/onboarding";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 import type { IOnboardingTask } from "@/models/OnboardingChecklist";
 
@@ -130,7 +132,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
  */
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   await connectDB();
-  const { error } = await resolvePlacement(ctx, params?.id);
+  const { error, placement } = await resolvePlacement(ctx, params?.id);
   if (error) return error;
 
   const checklist = await OnboardingChecklist.findOne({ placementId: params?.id });
@@ -141,11 +143,24 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (body.notes !== undefined) checklist.notes = body.notes;
   if (body.startDate) checklist.startDate = new Date(body.startDate);
 
+  // Probation period (employer-managed).
+  if (body.probation) {
+    checklist.probation = {
+      endDate: body.probation.endDate ? new Date(body.probation.endDate) : undefined,
+      status: body.probation.status,
+      notes: body.probation.notes,
+    };
+    checklist.markModified("probation");
+  }
+
   if (body.addTask) {
     checklist.tasks.push({
       title: body.addTask.title,
       description: body.addTask.description,
       assignee: body.addTask.assignee,
+      assigneeUserId: body.addTask.assigneeUserId
+        ? new mongoose.Types.ObjectId(body.addTask.assigneeUserId)
+        : undefined,
       dueDate: body.addTask.dueDate ? new Date(body.addTask.dueDate) : undefined,
       completed: false,
     });
@@ -163,13 +178,39 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       }
       if (body.task.title) task.title = body.task.title;
       if (body.task.assignee !== undefined) task.assignee = body.task.assignee;
+      if (body.task.assigneeUserId !== undefined) {
+        task.assigneeUserId = body.task.assigneeUserId
+          ? new mongoose.Types.ObjectId(body.task.assigneeUserId)
+          : undefined;
+      }
       if (body.task.dueDate !== undefined) task.dueDate = body.task.dueDate ? new Date(body.task.dueDate) : undefined;
     }
     checklist.markModified("tasks");
   }
 
+  // Add a document — either a plain reference, or a request to the candidate.
+  let requestedDocName: string | undefined;
   if (body.addDocument) {
-    checklist.documents.push({ name: body.addDocument.name, url: body.addDocument.url, uploadedAt: new Date() });
+    const requested = body.addDocument.requestedFromCandidate === true;
+    checklist.documents.push({
+      name: body.addDocument.name,
+      url: body.addDocument.url || undefined,
+      requestedFromCandidate: requested,
+      requiresSignature: body.addDocument.requiresSignature === true,
+      status: requested ? "requested" : undefined,
+      uploadedBy: "employer",
+      dueDate: body.addDocument.dueDate ? new Date(body.addDocument.dueDate) : undefined,
+      uploadedAt: new Date(),
+    });
+    if (requested) requestedDocName = body.addDocument.name;
+    checklist.markModified("documents");
+  }
+  // Update an existing document's status (e.g. employer marks it approved).
+  if (body.document) {
+    const doc = checklist.documents[body.document.index];
+    if (!doc) return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    if (body.document.status) doc.status = body.document.status;
+    checklist.markModified("documents");
   }
   if (body.removeDocumentIndex !== undefined && checklist.documents[body.removeDocumentIndex]) {
     checklist.documents.splice(body.removeDocumentIndex, 1);
@@ -186,6 +227,22 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   await checklist.save();
+
+  // Notify the candidate when the employer requests a document from them.
+  if (requestedDocName) {
+    const candidateUserId = (placement as { jobSeekerId?: { userId?: { _id?: unknown } } })?.jobSeekerId?.userId?._id;
+    if (candidateUserId) {
+      await notify({
+        userId: String(candidateUserId),
+        type: "system",
+        title: "Onboarding document requested",
+        message: `Your new employer has requested a document: "${requestedDocName}". Please upload it from your onboarding page.`,
+        link: `/${ctx.locale}/job-seeker/onboarding`,
+        sendEmail: true,
+        metadata: { onboardingId: String(checklist._id), document: requestedDocName },
+      }).catch(() => { /* non-blocking */ });
+    }
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

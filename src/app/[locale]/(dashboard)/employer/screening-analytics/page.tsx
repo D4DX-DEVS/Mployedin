@@ -69,7 +69,7 @@ export default function ScreeningAnalyticsPage() {
   }, [selectedJobId, fetchAnalytics]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="page-container">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <FileQuestion className="w-6 h-6 text-primary" />

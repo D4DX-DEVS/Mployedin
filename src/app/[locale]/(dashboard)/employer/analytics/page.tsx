@@ -7,11 +7,15 @@ import {
   useAnalyticsHistorical,
   useAnalyticsJobs,
   useAnalyticsResponseTime,
+  useAnalyticsOffers,
+  useDiversityReport,
   type AnalyticsData,
   type PipelineData,
   type HistoricalData,
   type PerformanceData,
   type ResponseTimeData,
+  type OfferAnalyticsData,
+  type DiversityReportData,
 } from "@/hooks/useAnalytics";
 import { cn } from "@/lib/utils";
 import {
@@ -29,6 +33,7 @@ import {
   Eye,
   Zap,
   Sparkles,
+  Award,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -64,6 +69,8 @@ const ANALYTICS_TABS = [
   { key: "historical" as const, icon: TrendingUp },
   { key: "performance" as const, icon: Eye },
   { key: "response" as const, icon: Clock },
+  { key: "offers" as const, icon: Award },
+  { key: "diversity" as const, icon: Users },
 ];
 
 const FUNNEL_STAGES = ["applied", "shortlisted", "interview", "offer", "hired"];
@@ -102,6 +109,22 @@ const SOURCE_COLORS: Record<string, string> = {
   other: "#94a3b8",
 };
 
+const OFFER_STATUS_COLORS: Record<string, string> = {
+  accepted: "#10b981",
+  pending: "#f59e0b",
+  declined: "#ef4444",
+  expired: "#94a3b8",
+  withdrawn: "#6b7280",
+  countered: "#6366f1",
+};
+
+const GENDER_COLORS: Record<string, string> = {
+  male: "#3b82f6",
+  female: "#ec4899",
+  non_binary: "#8b5cf6",
+  prefer_not_to_say: "#94a3b8",
+};
+
 export default function EmployerAnalyticsPage() {
   const [activeTab, setActiveTab] = useState<typeof ANALYTICS_TABS[number]["key"]>("pipeline");
   const [selectedJobId, setSelectedJobId] = useState("");
@@ -137,6 +160,8 @@ export default function EmployerAnalyticsPage() {
   );
   const { data: performance, refetch: refetchPerformance } = useAnalyticsJobs(activeTab === "performance");
   const { data: responseTime, refetch: refetchResponseTime } = useAnalyticsResponseTime(activeTab === "response");
+  const { data: offerAnalytics, refetch: refetchOffers } = useAnalyticsOffers(activeTab === "offers");
+  const { data: diversityReport, refetch: refetchDiversity } = useDiversityReport(activeTab === "diversity");
 
   const activeTabMeta = ANALYTICS_TABS.find((t) => t.key === activeTab) || ANALYTICS_TABS[0];
 
@@ -189,6 +214,14 @@ export default function EmployerAnalyticsPage() {
 
       if (activeTab === "response") {
         refreshActions.push(refetchResponseTime());
+      }
+
+      if (activeTab === "offers") {
+        refreshActions.push(refetchOffers());
+      }
+
+      if (activeTab === "diversity") {
+        refreshActions.push(refetchDiversity());
       }
 
       await Promise.all(refreshActions);
@@ -475,6 +508,20 @@ export default function EmployerAnalyticsPage() {
         <ResponseTimeTab data={responseTime} />
       )}
       {activeTab === "response" && !responseTime && (
+        <TabLoadingSkeleton />
+      )}
+
+      {activeTab === "offers" && offerAnalytics && (
+        <OffersTab data={offerAnalytics} />
+      )}
+      {activeTab === "offers" && !offerAnalytics && (
+        <TabLoadingSkeleton />
+      )}
+
+      {activeTab === "diversity" && diversityReport && (
+        <DiversityTab data={diversityReport} />
+      )}
+      {activeTab === "diversity" && !diversityReport && (
         <TabLoadingSkeleton />
       )}
 
@@ -1503,6 +1550,232 @@ function formatHoursLabel(
   if (hours < 24) return t("hoursValue", { count: Math.round(hours) });
   const days = Math.round((hours / 24) * 10) / 10;
   return t("daysLabelPlural", { count: days });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Offers Tab (offer-acceptance analytics)
+   ══════════════════════════════════════════════════════════════════ */
+
+function OffersTab({ data }: { data: OfferAnalyticsData }) {
+  const t = useTranslations("employerAnalytics");
+
+  const statusChartData = data.statusBreakdown.map((row) => ({
+    name: t(`offerStatus_${row.status}`),
+    value: row.count,
+    fill: OFFER_STATUS_COLORS[row.status] || "#94a3b8",
+  }));
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard label={t("offersExtended")} value={data.totalOffers} description={t("offersExtendedDesc")} color="blue" />
+          <SummaryCard label={t("acceptanceRate")} value={`${data.acceptanceRate}%`} description={t("acceptanceRateDesc")} color="green" />
+          <SummaryCard label={t("responseRateOffers")} value={`${data.responseRate}%`} description={t("responseRateOffersDesc")} color="indigo" />
+          <SummaryCard
+            label={t("avgTimeToAccept")}
+            value={data.avgTimeToAcceptDays != null ? t("daysValue", { value: String(data.avgTimeToAcceptDays) }) : "—"}
+            description={t("avgTimeToAcceptDesc")}
+            color="amber"
+          />
+        </div>
+      </section>
+
+      <AnalyticsPanel>
+        <AnalyticsSectionHeader
+          title={t("offerStatusTitle")}
+          description={t("offerStatusDesc")}
+          icon={Award}
+          eyebrow={t("outcomesEyebrow")}
+        />
+
+        {data.totalOffers === 0 ? (
+          <p className="py-10 text-center text-slate-500">{t("noOfferData")}</p>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={statusChartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={90}
+                  paddingAngle={4}
+                  dataKey="value"
+                  label={({ name, percent }: { name?: string; percent?: number }) =>
+                    `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`
+                  }
+                  labelLine={false}
+                >
+                  {statusChartData.map((entry, idx) => (
+                    <Cell key={idx} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }}
+                  formatter={(value) => [value ?? 0, t("offersLabel")]}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+
+            <div className="space-y-2 self-center">
+              {data.statusBreakdown.map((row) => {
+                const pct = data.totalOffers > 0 ? Math.round((row.count / data.totalOffers) * 100) : 0;
+                return (
+                  <div key={row.status} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: OFFER_STATUS_COLORS[row.status] || "#94a3b8" }} />
+                      <span className="text-slate-700">{t(`offerStatus_${row.status}`)}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-slate-900">{row.count}</span>
+                      <span className="w-10 text-right text-slate-500">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </AnalyticsPanel>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Diversity Tab (voluntary anonymized DEI metrics)
+   ══════════════════════════════════════════════════════════════════ */
+
+function DiversityTab({ data }: { data: DiversityReportData }) {
+  const t = useTranslations("employerAnalytics");
+
+  const genderLabel = (key: string) => {
+    const known = ["male", "female", "non_binary", "prefer_not_to_say"];
+    return known.includes(key) ? t(`gender_${key}`) : key;
+  };
+
+  const genderChartData = Object.entries(data.genderDistribution).map(([key, value]) => ({
+    name: genderLabel(key),
+    value,
+    fill: GENDER_COLORS[key] || "#94a3b8",
+  }));
+
+  const ageChartData = Object.entries(data.ageDistribution)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([range, count]) => ({ range, count }));
+
+  const ethnicityEntries = Object.entries(data.ethnicityDistribution).sort(([, a], [, b]) => b - a);
+  const ethnicityTotal = ethnicityEntries.reduce((sum, [, c]) => sum + c, 0);
+
+  if (data.totalResponses === 0) {
+    return (
+      <AnalyticsPanel>
+        <AnalyticsSectionHeader
+          title={t("diversityTitle")}
+          description={t("diversityDesc")}
+          icon={Users}
+          eyebrow={t("inclusionEyebrow")}
+        />
+        <p className="py-10 text-center text-slate-500">{t("noDiversityData")}</p>
+      </AnalyticsPanel>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard label={t("diversityResponseRate")} value={`${data.responseRate}%`} description={t("diversityResponseRateDesc")} color="blue" />
+          <SummaryCard label={t("totalResponses")} value={data.totalResponses} description={t("totalResponsesDesc")} color="indigo" />
+          <SummaryCard label={t("veteranRate")} value={`${data.veteranRate}%`} description={t("veteranRateDesc")} color="green" />
+          <SummaryCard label={t("disabilityRate")} value={`${data.disabilityRate}%`} description={t("disabilityRateDesc")} color="purple" />
+        </div>
+      </section>
+
+      <div className="rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-3 text-xs leading-5 text-sky-800">
+        {t("diversityPrivacyNote")}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <AnalyticsPanel>
+          <AnalyticsSectionHeader
+            title={t("genderDistribution")}
+            description={t("genderDistributionDesc")}
+            icon={Users}
+            eyebrow={t("inclusionEyebrow")}
+          />
+          {genderChartData.length === 0 ? (
+            <p className="py-8 text-center text-slate-500">{t("noDiversityData")}</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie data={genderChartData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value" label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
+                  {genderChartData.map((entry, idx) => (
+                    <Cell key={idx} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} formatter={(value) => [value ?? 0, t("responsesLabel")]} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </AnalyticsPanel>
+
+        <AnalyticsPanel>
+          <AnalyticsSectionHeader
+            title={t("ageDistribution")}
+            description={t("ageDistributionDesc")}
+            icon={Calendar}
+            eyebrow={t("inclusionEyebrow")}
+          />
+          {ageChartData.length === 0 ? (
+            <p className="py-8 text-center text-slate-500">{t("noDiversityData")}</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={ageChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="range" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} />
+                <YAxis tick={{ fontSize: 12, fill: "#64748b" }} axisLine={{ stroke: "#e2e8f0" }} allowDecimals={false} />
+                <Tooltip contentStyle={{ borderRadius: "16px", border: "1px solid #e2e8f0", fontSize: "13px", boxShadow: "0 18px 45px -30px rgba(15, 23, 42, 0.4)" }} formatter={(value) => [value ?? 0, t("responsesLabel")]} />
+                <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={48} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </AnalyticsPanel>
+      </div>
+
+      <AnalyticsPanel>
+        <AnalyticsSectionHeader
+          title={t("ethnicityDistribution")}
+          description={t("ethnicityDistributionDesc")}
+          icon={Sparkles}
+          eyebrow={t("inclusionEyebrow")}
+        />
+        {ethnicityEntries.length === 0 ? (
+          <p className="py-8 text-center text-slate-500">{t("noDiversityData")}</p>
+        ) : (
+          <div className="space-y-3">
+            {ethnicityEntries.map(([ethnicity, count]) => {
+              const pct = ethnicityTotal > 0 ? Math.round((count / ethnicityTotal) * 100) : 0;
+              return (
+                <div key={ethnicity}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-700">{ethnicity}</span>
+                    <span className="text-slate-500">{count} · {pct}%</span>
+                  </div>
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </AnalyticsPanel>
+    </div>
+  );
 }
 
 function AnalyticsPanel({

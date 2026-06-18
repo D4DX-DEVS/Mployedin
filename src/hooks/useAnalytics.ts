@@ -131,6 +131,31 @@ export interface ResponseTimeData {
   distribution: { label: string; count: number }[];
 }
 
+export interface OfferAnalyticsData {
+  totalOffers: number;
+  accepted: number;
+  declined: number;
+  pending: number;
+  expired: number;
+  withdrawn: number;
+  countered: number;
+  acceptanceRate: number;
+  responseRate: number;
+  avgTimeToAcceptDays: number | null;
+  statusBreakdown: { status: string; count: number }[];
+}
+
+export interface DiversityReportData {
+  totalApplications: number;
+  totalResponses: number;
+  responseRate: number;
+  genderDistribution: Record<string, number>;
+  ethnicityDistribution: Record<string, number>;
+  ageDistribution: Record<string, number>;
+  veteranRate: number;
+  disabilityRate: number;
+}
+
 // Query keys factory
 export const analyticsKeys = {
   all: ["analytics"] as const,
@@ -144,6 +169,8 @@ export const analyticsKeys = {
   }) => [...analyticsKeys.all, "historical", params] as const,
   jobs: () => [...analyticsKeys.all, "jobs"] as const,
   responseTime: () => [...analyticsKeys.all, "response-time"] as const,
+  offers: () => [...analyticsKeys.all, "offers"] as const,
+  diversity: () => [...analyticsKeys.all, "diversity"] as const,
 };
 
 // Fetcher functions
@@ -198,6 +225,19 @@ async function fetchAnalyticsResponseTime(): Promise<ResponseTimeData> {
   return res.json();
 }
 
+async function fetchAnalyticsOffers(): Promise<OfferAnalyticsData> {
+  const res = await fetch("/api/employers/analytics/offers");
+  if (!res.ok) throw new Error("Failed to fetch offer analytics");
+  return res.json();
+}
+
+async function fetchDiversityReport(): Promise<DiversityReportData> {
+  const res = await fetch("/api/diversity");
+  if (!res.ok) throw new Error("Failed to fetch diversity report");
+  const json = await res.json();
+  return json.report as DiversityReportData;
+}
+
 // Hooks
 export function useAnalyticsOverview(enabled = true) {
   return useQuery({
@@ -247,6 +287,24 @@ export function useAnalyticsResponseTime(enabled = true) {
   return useQuery({
     queryKey: analyticsKeys.responseTime(),
     queryFn: fetchAnalyticsResponseTime,
+    staleTime: 60 * 1000,
+    enabled,
+  });
+}
+
+export function useAnalyticsOffers(enabled = true) {
+  return useQuery({
+    queryKey: analyticsKeys.offers(),
+    queryFn: fetchAnalyticsOffers,
+    staleTime: 60 * 1000,
+    enabled,
+  });
+}
+
+export function useDiversityReport(enabled = true) {
+  return useQuery({
+    queryKey: analyticsKeys.diversity(),
+    queryFn: fetchDiversityReport,
     staleTime: 60 * 1000,
     enabled,
   });

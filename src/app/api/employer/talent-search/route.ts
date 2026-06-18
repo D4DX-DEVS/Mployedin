@@ -27,6 +27,7 @@ async function handler(req: NextRequest) {
   const location = searchParams.get("location")?.trim();
   const availability = searchParams.get("availability")?.trim();
   const experienceYears = parseInt(searchParams.get("experienceYears") ?? "0");
+  const nationality = searchParams.get("nationality")?.trim();
   const skills = searchParams.get("skills")?.split(",").map((s) => s.trim()).filter(Boolean);
 
   const escape = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -35,6 +36,7 @@ async function handler(req: NextRequest) {
   const conditions: Record<string, unknown>[] = [{ profileVisibility: "visible" }];
 
   if (availability) conditions.push({ availabilityStatus: availability });
+  if (nationality) conditions.push({ nationality: new RegExp(escape(nationality), "i") });
   if (experienceYears > 0) conditions.push({ totalExperienceYears: { $gte: experienceYears } });
   if (skills && skills.length > 0) {
     conditions.push({ skills: { $in: skills.map((s) => new RegExp(escape(s), "i")) } });
@@ -61,7 +63,7 @@ async function handler(req: NextRequest) {
   const [docs, total] = await Promise.all([
     JobSeeker.find(filter)
       .select(
-        "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience cv.originalUrl userId"
+        "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience cv.originalUrl userId nationality"
       )
       .populate({ path: "userId", select: "name" })
       .sort({ profileCompleteness: -1, updatedAt: -1 })
@@ -78,6 +80,7 @@ async function handler(req: NextRequest) {
       fullName: (d.fullName as string) ?? user?.name,
       userId: user?._id ? { _id: String(user._id), name: user.name ?? "" } : undefined,
       currentLocation: d.currentLocation,
+      nationality: d.nationality,
       skills: d.skills,
       availabilityStatus: d.availabilityStatus,
       profileCompleteness: d.profileCompleteness,

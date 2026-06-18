@@ -9,6 +9,7 @@ export interface Placement {
   startDate?: string;
   salary?: { amount: number; currency: string };
   status: string;
+  visaStatus?: string;
   type: string;
   createdAt: string;
 }
@@ -24,6 +25,7 @@ export interface PlacementsFilters {
   page: number;
   limit: number;
   status?: string;
+  visaStatus?: string;
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────
@@ -39,6 +41,7 @@ async function fetchPlacements(filters: PlacementsFilters): Promise<{ placements
   params.set("page", String(filters.page));
   params.set("limit", String(filters.limit));
   if (filters.status && filters.status !== "all") params.set("status", filters.status);
+  if (filters.visaStatus && filters.visaStatus !== "all") params.set("visaStatus", filters.visaStatus);
 
   const res = await fetch(`/api/placements?${params}`);
   if (!res.ok) throw new Error("Failed to fetch placements");

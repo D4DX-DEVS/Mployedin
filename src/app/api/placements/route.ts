@@ -25,7 +25,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const skip = (page - 1) * limit;
 
   // --- Filters ---
-  const visaStatus = searchParams.get("visaStatus") || searchParams.get("status");
+  const lifecycleStatus = searchParams.get("status");
+  const visaStatus = searchParams.get("visaStatus");
   const commissionPaid = searchParams.get("commissionPaid");
   const search = searchParams.get("search");
   const agentId = searchParams.get("agentId");
@@ -66,7 +67,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     ];
   }
 
-  // Filter: visa status
+  // Filter: placement lifecycle status (active/completed/terminated)
+  if (lifecycleStatus && lifecycleStatus !== "all") {
+    query.status = lifecycleStatus;
+  }
+
+  // Filter: visa status (GCC) — separate from lifecycle status
   if (visaStatus && visaStatus !== "all") {
     query.visaStatus = visaStatus;
   }
@@ -100,6 +106,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     query.placedAt = dateQuery;
   }
 
+  // Status counts must reflect all lifecycle statuses regardless of the active
+  // status-tab filter, so exclude `status` from their aggregation match.
+  const { status: _statusFilter, ...statusAggQuery } = query;
+  void _statusFilter;
+
   const [placements, total, aggregation, statusAgg] = await Promise.all([
     Placement.find(query)
       .populate("jobId", "title location")
@@ -118,9 +129,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       { $match: query },
       { $group: { _id: "$currency", totalSalary: { $sum: "$salary" }, count: { $sum: 1 } } },
     ]),
-    // Aggregate status counts (unfiltered by status for accurate totals)
+    // Aggregate status counts (excludes the lifecycle-status filter for accurate totals)
     Placement.aggregate([
-      { $match: { ...query, ...(query.status ? {} : {}) } },
+      { $match: statusAggQuery },
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
   ]);

@@ -24,8 +24,9 @@ export default function EmployerPlacementsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [filter, setFilter] = useState("all");
+  const [visaFilter, setVisaFilter] = useState("all");
 
-  const { data, isLoading: loading, error, refetch } = usePlacements({ page, limit, status: filter });
+  const { data, isLoading: loading, error, refetch } = usePlacements({ page, limit, status: filter, visaStatus: visaFilter });
   const placements = data?.placements ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -76,7 +77,7 @@ export default function EmployerPlacementsPage() {
   }
 
   // Reset page when filter changes
-  useEffect(() => { setPage(1); }, [filter]);
+  useEffect(() => { setPage(1); }, [filter, visaFilter]);
 
   return (
     <div className="page-container employer-legacy-surface space-y-6">
@@ -190,6 +191,29 @@ export default function EmployerPlacementsPage() {
               >
                 {t(labelMap[statusOption])}
               </Button>
+              );
+            })}
+          </div>
+        </div>
+        {/* Visa status filter (GCC) */}
+        <div className="mt-4 flex flex-col gap-2 border-t border-border/40 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("filterVisaTitle")}</p>
+          <div className="flex flex-wrap gap-2">
+            {(["all", "not_required", "pending", "approved", "rejected", "stamped"] as const).map((visaOption) => {
+              const visaLabelMap = { all: "visaAll", not_required: "visaNotRequired", pending: "visaPending", approved: "visaApproved", rejected: "visaRejected", stamped: "visaStamped" } as const;
+              return (
+                <Button
+                  key={visaOption}
+                  onClick={() => setVisaFilter(visaOption)}
+                  variant="ghost"
+                  size="sm"
+                  className={visaFilter === visaOption
+                    ? "rounded-full bg-emerald-600 px-4 text-white hover:bg-emerald-700 hover:text-white"
+                    : "rounded-full border border-border bg-background/80 px-4 text-muted-foreground hover:bg-background"
+                  }
+                >
+                  {t(visaLabelMap[visaOption])}
+                </Button>
               );
             })}
           </div>

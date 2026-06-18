@@ -203,6 +203,7 @@ export default function EmployerApplicationsPage() {
   const [jobFilter, setJobFilter] = useState(initialJobId);
   const [experienceRange, setExperienceRange] = useState<[number | null, number | null]>([null, null]);
   const [skillsFilter, setSkillsFilter] = useState<string[]>([]);
+  const [nationalityFilter, setNationalityFilter] = useState("");
   const [jobsLoaded, setJobsLoaded] = useState(false);
 
   interface EmployerJob {
@@ -221,6 +222,7 @@ export default function EmployerApplicationsPage() {
   const debouncedSearch = useDebounce(searchQuery, 350);
   const debouncedScoreRange = useDebounce(scoreRange, 500);
   const debouncedExperienceRange = useDebounce(experienceRange, 500);
+  const debouncedNationality = useDebounce(nationalityFilter, 350);
 
   const applicationsQuery = useApplications({
     page,
@@ -233,6 +235,7 @@ export default function EmployerApplicationsPage() {
     experienceMin: debouncedExperienceRange[0] ?? undefined,
     experienceMax: debouncedExperienceRange[1] ?? undefined,
     skills: skillsFilter.length > 0 ? skillsFilter : undefined,
+    nationality: debouncedNationality.trim() || undefined,
     fetchJobs: !jobsLoaded,
   });
   const updateStatus = useUpdateApplicationStatus();
@@ -291,7 +294,7 @@ export default function EmployerApplicationsPage() {
       : `${t("title")} · MPLOYEDIN`;
   }, [selectedJob]);
 
-  useEffect(() => { setPage(1); setSelected([]); }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter]);
+  useEffect(() => { setPage(1); setSelected([]); }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, nationalityFilter]);
 
   function updateApplicationStatus(id: string, status: string, reason?: string) {
     return updateStatus.mutateAsync({ id, status, rejectionReason: reason });
@@ -517,7 +520,7 @@ export default function EmployerApplicationsPage() {
   const interviewCount = filteredApplications.filter((app) => app.status === "interview_scheduled").length;
   const selectedStageCount = filteredApplications.filter((app) => app.status === "selected").length;
   const allVisibleSelected = filteredApplications.length > 0 && filteredApplications.every((app) => selected.includes(app._id));
-  const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0 || !!jobFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0;
+  const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0 || !!jobFilter || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0 || nationalityFilter.trim().length > 0;
 
   async function handleBulkAction(
     action: "reject" | "move_stage" | "send_message",
@@ -899,6 +902,18 @@ export default function EmployerApplicationsPage() {
             )}
           </div>
 
+          {/* Nationality Filter */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("nationality")}</label>
+            <input
+              type="text"
+              value={nationalityFilter}
+              onChange={(e) => setNationalityFilter(e.target.value)}
+              placeholder={t("nationalityPlaceholder")}
+              className="h-9 w-full rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground"
+            />
+          </div>
+
           {/* Quick-fill from job requirements */}
           {selectedJob && (
             <div className="sm:col-span-2 lg:col-span-4 flex flex-wrap items-center gap-2 border-t border-border/40 pt-3">
@@ -932,6 +947,7 @@ export default function EmployerApplicationsPage() {
                     setDaysFilter(null);
                     setExperienceRange([null, null]);
                     setSkillsFilter([]);
+                    setNationalityFilter("");
                   }}>
                   {t("resetAllFilters")}
                 </Button>
@@ -941,7 +957,7 @@ export default function EmployerApplicationsPage() {
           {!selectedJob && (
             <div className="flex items-end">
               <Button size="sm" variant="ghost" className="h-9 rounded-xl px-4 text-sm text-muted-foreground"
-                onClick={() => { setScoreRange([0, 100]); setDaysFilter(null); setExperienceRange([null, null]); setSkillsFilter([]); }}>
+                onClick={() => { setScoreRange([0, 100]); setDaysFilter(null); setExperienceRange([null, null]); setSkillsFilter([]); setNationalityFilter(""); }}>
                 {t("reset")}
               </Button>
             </div>
