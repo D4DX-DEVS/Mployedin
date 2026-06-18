@@ -84,7 +84,9 @@ async function getHandler(
 
   let signed: string;
   try {
-    signed = await getPresignedUrl(urlToKey(url), 300);
+    // `view=1` renders the file inline (in-app viewer); otherwise it downloads.
+    const inline = searchParams.get("view") === "1";
+    signed = await getPresignedUrl(urlToKey(url), 300, inline ? { inline: true } : undefined);
   } catch {
     return NextResponse.json({ error: "Could not generate download link" }, { status: 502 });
   }

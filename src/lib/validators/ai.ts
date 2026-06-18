@@ -71,6 +71,8 @@ export const aiJobDescriptionSchema = z.object({
 export const aiEnhanceTextSchema = z.object({
   text: z.string().min(1).max(2000).trim(),
   context: z.string().max(200).optional(),
+  /** Quick-action mode. Defaults to "improve" for backward compatibility. */
+  mode: z.enum(["improve", "shorten", "grammar", "suggest"]).optional(),
 });
 
 /** POST /api/ai/profile-fill */
@@ -83,6 +85,16 @@ export const aiProfileFillSchema = z.object({
 export const aiScreenCandidatesSchema = z.object({
   jobId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid jobId"),
   maxCandidates: z.number().int().min(1).max(20).default(10),
+});
+
+/** POST /api/ai/ats-check */
+export const aiAtsCheckSchema = z.object({
+  /** JobSeeker _id to analyze. Optional — job seekers analyze their own CV. */
+  jobSeekerId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid jobSeekerId").optional(),
+  /** Optional job to compute keyword coverage against. */
+  jobId: z.string().regex(/^[a-f\d]{24}$/i, "Invalid jobId").optional(),
+  /** Force re-analysis even if a cached report exists. */
+  force: z.boolean().optional().default(false),
 });
 
 /** POST /api/ai/interview-questions */

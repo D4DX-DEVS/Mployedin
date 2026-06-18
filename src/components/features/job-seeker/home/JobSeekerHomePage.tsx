@@ -5,9 +5,11 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
+  Bookmark,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
+  Eye,
   FileText,
   Loader2,
   MapPin,
@@ -517,10 +519,16 @@ export function JobSeekerHomePage({
       value: formatNumber(stats?.upcomingInterviews?.count ?? 0),
     },
     {
-      label: t("quickAccess.preferences"),
-      href: `/${locale}/job-seeker/preferences`,
-      icon: Target,
-      value: t("quickAccess.edit"),
+      label: t("quickAccess.savedJobs"),
+      href: `/${locale}/job-seeker/jobs`,
+      icon: Bookmark,
+      value: formatNumber(stats?.savedJobs?.count ?? 0),
+    },
+    {
+      label: t("quickAccess.profileViews"),
+      href: `/${locale}/job-seeker/profile-views`,
+      icon: Eye,
+      value: formatNumber(stats?.recruiterViews?.total ?? 0),
     },
   ];
   const topSkills = (profile?.skills ?? [])
@@ -925,21 +933,35 @@ export function JobSeekerHomePage({
                 </div>
                 <CalendarDays className="h-4 w-4 text-primary" />
               </div>
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {quickLinks.map((item) => {
                   const Icon = item.icon;
 
                   return (
-                    <Link key={item.label} href={item.href} className="flex items-center justify-between rounded-[18px] border border-border/60 bg-background/80 px-3 py-3 text-sm transition-colors hover:bg-muted/30">
-                      <span className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-primary" />
-                        {item.label}
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className="group flex flex-col gap-2 rounded-[20px] border border-border/60 bg-background/80 p-3.5 transition-colors hover:border-primary/40 hover:bg-muted/30"
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Icon className="h-4 w-4" />
                       </span>
-                      <span className="font-semibold text-muted-foreground">{item.value}</span>
+                      <span className="text-2xl font-semibold leading-none tracking-tight text-foreground">{item.value}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
                     </Link>
                   );
                 })}
               </div>
+              <Link
+                href={`/${locale}/job-seeker/preferences`}
+                className="mt-3 flex items-center justify-between rounded-[18px] border border-border/60 px-3.5 py-3 text-sm font-medium transition-colors hover:bg-muted/40"
+              >
+                <span className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  {t("quickAccess.managePreferences")}
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
             </section>
 
             <section className="card-base overflow-hidden rounded-[28px] p-4 sm:p-5">

@@ -27,8 +27,17 @@ export function NotificationBell({ locale }: NotificationBellProps) {
   const markAllRead = useMarkAllRead();
   const markOneRead = useMarkOneRead();
 
+  function handleOpenChange(next: boolean) {
+    // When the user finishes checking (closes the panel), clear unread so
+    // notifications they've already seen don't keep showing as unread.
+    if (!next && unreadCount > 0) {
+      markAllRead.mutate();
+    }
+    setOpen(next);
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative h-8 w-8">
           <Bell className={`h-4 w-4 ${unreadCount > 0 ? "text-brand-blue" : ""}`} />

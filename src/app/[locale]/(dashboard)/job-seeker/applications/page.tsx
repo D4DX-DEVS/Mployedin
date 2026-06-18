@@ -254,7 +254,7 @@ export default function ApplicationsPage() {
                 )}
               </Button>
 
-              <div className="overflow-x-auto lg:flex-1">
+              <div className="overflow-x-auto scrollbar-none lg:flex-1">
                 <div
                   role="tablist"
                   aria-label={t("statusFiltersLabel")}

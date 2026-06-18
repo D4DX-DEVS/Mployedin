@@ -1,7 +1,12 @@
 import React from "react";
-import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
-import type { CVForm, FormattingOptions } from "./types";
-import { getTheme, getFontScale, getSectionGap, FONT_OPTIONS } from "./types";
+import { Document, Page, Text, View, Image, Link, StyleSheet } from "@react-pdf/renderer";
+import type { Style } from "@react-pdf/types";
+import type { CVForm, FormattingOptions, SectionKey, DateFormat } from "./types";
+import {
+  getTheme, getFontScale, getSectionGap, getSectionOrder,
+  formatDateValue, getPdfPageSize, getMarginPt, getLineHeight, normalizeUrl,
+} from "./types";
+import { parseRichText } from "./rich-text";
 
 export type CVPDFLabels = {
   yourName: string;
@@ -25,10 +30,87 @@ function languageLevel(labels: CVPDFLabels, proficiency: string): string {
   return labels.proficiency[proficiency] ?? proficiency;
 }
 
+/** Formats a "start – end" date range honoring the chosen date format. */
+function dateRange(start: string, end: string, isCurrent: boolean, df: DateFormat, present: string): string {
+  const s = formatDateValue(start, df);
+  const e = isCurrent ? present : formatDateValue(end, df);
+  if (!s && !e) return "";
+  return `${s} – ${e}`;
+}
+
+/**
+ * Renders a resume description for PDF. Accepts constrained rich-text HTML or
+ * plain text, converting it into react-pdf Text/View nodes with bullets,
+ * numbered lists, and bold/italic/underline inline formatting preserved.
+ */
+function RichPdfText({
+  value, style,
+}: { value: string; style?: Style }) {
+  if (!value) return null;
+  const blocks = parseRichText(value);
+  if (blocks.length === 0) return null;
+  let numberCounter = 0;
+  return (
+    <View>
+      {blocks.map((block, bi) => {
+        const inline = block.spans.map((span, si) => (
+          <Text
+            key={si}
+            style={{
+              fontWeight: span.bold ? "bold" : "normal",
+              fontStyle: span.italic ? "italic" : "normal",
+              textDecoration: span.underline ? "underline" : "none",
+            }}
+          >
+            {span.text}
+          </Text>
+        ));
+        let prefix = "";
+        if (block.type === "bullet") prefix = "•  ";
+        else if (block.type === "number") prefix = `${++numberCounter}.  `;
+        else numberCounter = 0;
+        return (
+          <Text key={bi} style={style}>
+            {prefix}{inline}
+          </Text>
+        );
+      })}
+    </View>
+  );
+}
+
+
 /** Only allow http(s) or data-URI images so a bad value can't break PDF rendering. */
 function safePhoto(src: string | undefined): string | null {
   if (!src) return null;
   return /^(https?:|data:image\/)/i.test(src) ? src : null;
+}
+
+/**
+ * A clickable PDF hyperlink that displays a friendly label but opens the URL
+ * when clicked in the exported PDF. Falls back to nothing if the URL is unsafe.
+ */
+function PdfLink({
+  url, label, style,
+}: { url: string; label: string; style?: Style }) {
+  const href = normalizeUrl(url);
+  if (!href) return null;
+  return (
+    <Link src={href} style={{ textDecoration: "none", ...(style as object) }}>
+      {label}
+    </Link>
+  );
+}
+
+/** Build the list of clickable profile links (LinkedIn, Portfolio, custom). */
+function profileLinks(data: CVForm): { url: string; label: string }[] {
+  const links: { url: string; label: string }[] = [];
+  if (data.linkedin) links.push({ url: data.linkedin, label: "LinkedIn" });
+  if (data.portfolio) links.push({ url: data.portfolio, label: "Portfolio" });
+  data.additionalLinks?.forEach((l) => {
+    if (l.url) links.push({ url: l.url, label: l.label || l.url });
+  });
+  return links;
 }
 
 /* ── Helper to resolve PDF font ── */
@@ -49,10 +131,10 @@ function getPDFBoldFont(formatting: FormattingOptions): string {
    PDF STYLES (parameterized by theme)
    ═══════════════════════════════════════ */
 
-function makeStyles(primary: string, scale: number, gap: string, font: string, boldFont: string) {
+function makeStyles(primary: string, scale: number, gap: string, font: string, boldFont: string, margin: number, lineHeight: number) {
   const base = 10 * scale;
   return StyleSheet.create({
-    page:       { padding: 40, fontFamily: font, fontSize: base, color: "#1a1a1a", lineHeight: 1.5 },
+    page:       { padding: margin, fontFamily: font, fontSize: base, color: "#1a1a1a", lineHeight },
     header:     { marginBottom: 16, borderBottom: `1.5pt solid ${primary}`, paddingBottom: 12 },
     name:       { fontSize: 22 * scale, fontFamily: boldFont, color: "#111827", marginBottom: 4 },
     headline:   { fontSize: base, color: "#4b5563", marginBottom: 6 },
@@ -111,104 +193,105 @@ function makeStyles(primary: string, scale: number, gap: string, font: string, b
    CLASSIC PDF
    ═══════════════════════════════════════ */
 
-function ClassicPDF({ data, styles: s, labels }: { data: CVForm; styles: ReturnType<typeof makeStyles>; labels: CVPDFLabels }) {
+function ClassicPDF({ data, styles: s, labels, df, pageSize, formatting }: { data: CVForm; styles: ReturnType<typeof makeStyles>; labels: CVPDFLabels; df: DateFormat; pageSize: "A4" | "LETTER"; formatting: FormattingOptions }) {
+  const sections: Record<SectionKey, React.ReactNode> = {
+    experience: data.experience.length > 0 ? (
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>{labels.experience}</Text>
+        {data.experience.map((exp, i) => (
+          <View key={i} style={s.expItem}>
+            <View style={s.expHeader}>
+              <View>
+                <Text style={s.expTitle}>{exp.jobTitle}</Text>
+                <Text style={s.expCompany}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</Text>
+              </View>
+              <Text style={s.expDate}>{dateRange(exp.startDate, exp.endDate, exp.isCurrent, df, labels.present)}</Text>
+            </View>
+            {exp.description ? <RichPdfText value={exp.description} style={s.expDesc} /> : null}
+          </View>
+        ))}
+      </View>
+    ) : null,
+    education: data.education.length > 0 ? (
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>{labels.education}</Text>
+        {data.education.map((edu, i) => (
+          <View key={i} style={s.eduItem}>
+            <View>
+              <Text style={s.eduDegree}>{edu.degree}{edu.field ? `, ${edu.field}` : ""}</Text>
+              <Text style={s.eduInst}>{edu.institution}</Text>
+              {edu.grade ? <Text style={s.eduGrade}>{labels.grade}: {edu.grade}</Text> : null}
+            </View>
+            {edu.graduationDate ? <Text style={s.expDate}>{formatDateValue(edu.graduationDate, df)}</Text> : null}
+          </View>
+        ))}
+      </View>
+    ) : null,
+    skills: data.skills.length > 0 ? (
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>{labels.skills}</Text>
+        <View style={s.skillsRow}>
+          {data.skills.map((sk, i) => <Text key={i} style={s.skillBadge}>{sk}</Text>)}
+        </View>
+      </View>
+    ) : null,
+    projects: data.projects?.length > 0 ? (
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>{labels.projects}</Text>
+        {data.projects.map((proj, i) => (
+          <View key={i} style={s.projItem}>
+            <Text style={s.projTitle}>{proj.title}</Text>
+            {proj.description ? <RichPdfText value={proj.description} style={s.projDesc} /> : null}
+            {proj.techStack?.length > 0 && (
+              <View style={s.projTechRow}>
+                {proj.techStack.map((t, j) => <Text key={j} style={s.projTechBadge}>{t}</Text>)}
+              </View>
+            )}
+          </View>
+        ))}
+      </View>
+    ) : null,
+    languages: data.languages.length > 0 ? (
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>{labels.languages}</Text>
+        <View style={s.langRow}>
+          {data.languages.map((l, i) => (
+            <Text key={i} style={s.langItem}>{l.language} <Text style={s.langLevel}>({languageLevel(labels, l.proficiency)})</Text></Text>
+          ))}
+        </View>
+      </View>
+    ) : null,
+    certifications: data.certifications.length > 0 ? (
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>{labels.certifications}</Text>
+        {data.certifications.map((c, i) => <Text key={i} style={s.certItem}>• {c}</Text>)}
+      </View>
+    ) : null,
+  };
+
   return (
-    <Page size="A4" style={s.page}>
+    <Page size={pageSize} style={s.page}>
       <View style={s.header}>
         <Text style={s.name}>{data.fullName || labels.yourName}</Text>
         {data.headline ? <Text style={s.headline}>{data.headline}</Text> : null}
         <View style={s.contactRow}>
-          {data.email ? <Text>{data.email}</Text> : null}
+          {data.email ? <PdfLink url={`mailto:${data.email}`} label={data.email} style={{ color: "#6b7280", textDecoration: "none" }} /> : null}
           {data.phone ? <Text>{data.phone}</Text> : null}
           {data.currentLocation ? <Text>{data.currentLocation}</Text> : null}
           {data.nationality ? <Text>{data.nationality}</Text> : null}
         </View>
-        {(data.linkedin || data.portfolio || data.additionalLinks?.length > 0) && (
+        {profileLinks(data).length > 0 && (
           <View style={s.linkRow}>
-            {data.linkedin ? <Text>{data.linkedin}</Text> : null}
-            {data.portfolio ? <Text>{data.portfolio}</Text> : null}
-            {data.additionalLinks?.map((link, i) => <Text key={i}>{link.label}: {link.url}</Text>)}
+            {profileLinks(data).map((link, i) => (
+              <PdfLink key={i} url={link.url} label={link.label} style={{ color: s.linkRow.color }} />
+            ))}
           </View>
         )}
       </View>
 
-      {data.experience.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>{labels.experience}</Text>
-          {data.experience.map((exp, i) => (
-            <View key={i} style={s.expItem}>
-              <View style={s.expHeader}>
-                <View>
-                  <Text style={s.expTitle}>{exp.jobTitle}</Text>
-                  <Text style={s.expCompany}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</Text>
-                </View>
-                <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? labels.present : exp.endDate}</Text>
-              </View>
-              {exp.description ? <Text style={s.expDesc}>{exp.description}</Text> : null}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {data.education.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>{labels.education}</Text>
-          {data.education.map((edu, i) => (
-            <View key={i} style={s.eduItem}>
-              <View>
-                <Text style={s.eduDegree}>{edu.degree}{edu.field ? `, ${edu.field}` : ""}</Text>
-                <Text style={s.eduInst}>{edu.institution}</Text>
-                {edu.grade ? <Text style={s.eduGrade}>{labels.grade}: {edu.grade}</Text> : null}
-              </View>
-              {edu.graduationDate ? <Text style={s.expDate}>{edu.graduationDate}</Text> : null}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {data.skills.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>{labels.skills}</Text>
-          <View style={s.skillsRow}>
-            {data.skills.map((sk, i) => <Text key={i} style={s.skillBadge}>{sk}</Text>)}
-          </View>
-        </View>
-      )}
-
-      {data.projects?.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>{labels.projects}</Text>
-          {data.projects.map((proj, i) => (
-            <View key={i} style={s.projItem}>
-              <Text style={s.projTitle}>{proj.title}</Text>
-              {proj.description ? <Text style={s.projDesc}>{proj.description}</Text> : null}
-              {proj.techStack?.length > 0 && (
-                <View style={s.projTechRow}>
-                  {proj.techStack.map((t, j) => <Text key={j} style={s.projTechBadge}>{t}</Text>)}
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {data.languages.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>{labels.languages}</Text>
-          <View style={s.langRow}>
-            {data.languages.map((l, i) => (
-              <Text key={i} style={s.langItem}>{l.language} <Text style={s.langLevel}>({languageLevel(labels, l.proficiency)})</Text></Text>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {data.certifications.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>{labels.certifications}</Text>
-          {data.certifications.map((c, i) => <Text key={i} style={s.certItem}>• {c}</Text>)}
-        </View>
-      )}
+      {getSectionOrder(formatting).map((key) => (
+        <React.Fragment key={key}>{sections[key]}</React.Fragment>
+      ))}
     </Page>
   );
 }
@@ -217,17 +300,20 @@ function ClassicPDF({ data, styles: s, labels }: { data: CVForm; styles: ReturnT
    MODERN PDF (sidebar)
    ═══════════════════════════════════════ */
 
-function ModernPDF({ data, styles: s, labels }: { data: CVForm; styles: ReturnType<typeof makeStyles>; labels: CVPDFLabels }) {
+function ModernPDF({ data, styles: s, labels, df, pageSize }: { data: CVForm; styles: ReturnType<typeof makeStyles>; labels: CVPDFLabels; df: DateFormat; pageSize: "A4" | "LETTER" }) {
   return (
-    <Page size="A4" style={{ flexDirection: "row", fontFamily: s.page.fontFamily, fontSize: s.page.fontSize, color: "#1a1a1a" }}>
+    <Page size={pageSize} style={{ flexDirection: "row", fontFamily: s.page.fontFamily, fontSize: s.page.fontSize, color: "#1a1a1a" }}>
       {/* Sidebar */}
       <View style={s.sidebar}>
         {safePhoto(data.photo) ? <Image src={safePhoto(data.photo) as string} style={s.photoSidebar} /> : null}
         <Text style={s.sidebarName}>{data.fullName || labels.yourName}</Text>
         {data.headline ? <Text style={{ ...s.sidebarText, marginBottom: 8, opacity: 0.8 }}>{data.headline}</Text> : null}
-        {data.email ? <Text style={s.sidebarText}>✉ {data.email}</Text> : null}
+        {data.email ? <PdfLink url={`mailto:${data.email}`} label={`✉ ${data.email}`} style={{ ...(s.sidebarText as object), color: "#ffffff" }} /> : null}
         {data.phone ? <Text style={s.sidebarText}>☎ {data.phone}</Text> : null}
         {data.currentLocation ? <Text style={s.sidebarText}>📍 {data.currentLocation}</Text> : null}
+        {profileLinks(data).map((link, i) => (
+          <PdfLink key={i} url={link.url} label={`🔗 ${link.label}`} style={{ ...(s.sidebarText as object), color: "#ffffff" }} />
+        ))}
 
         {data.skills.length > 0 && (
           <View style={s.sidebarSection}>
@@ -265,9 +351,9 @@ function ModernPDF({ data, styles: s, labels }: { data: CVForm; styles: ReturnTy
                     <Text style={s.expTitle}>{exp.jobTitle}</Text>
                     <Text style={s.expCompany}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</Text>
                   </View>
-                  <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? labels.present : exp.endDate}</Text>
+                  <Text style={s.expDate}>{dateRange(exp.startDate, exp.endDate, exp.isCurrent, df, labels.present)}</Text>
                 </View>
-                {exp.description ? <Text style={s.expDesc}>{exp.description}</Text> : null}
+                {exp.description ? <RichPdfText value={exp.description} style={s.expDesc} /> : null}
               </View>
             ))}
           </View>
@@ -282,7 +368,7 @@ function ModernPDF({ data, styles: s, labels }: { data: CVForm; styles: ReturnTy
                   <Text style={s.eduDegree}>{edu.degree}{edu.field ? `, ${edu.field}` : ""}</Text>
                   <Text style={s.eduInst}>{edu.institution}</Text>
                 </View>
-                {edu.graduationDate ? <Text style={s.expDate}>{edu.graduationDate}</Text> : null}
+                {edu.graduationDate ? <Text style={s.expDate}>{formatDateValue(edu.graduationDate, df)}</Text> : null}
               </View>
             ))}
           </View>
@@ -294,7 +380,7 @@ function ModernPDF({ data, styles: s, labels }: { data: CVForm; styles: ReturnTy
             {data.projects.map((proj, i) => (
               <View key={i} style={s.projItem}>
                 <Text style={s.projTitle}>{proj.title}</Text>
-                {proj.description ? <Text style={s.projDesc}>{proj.description}</Text> : null}
+                {proj.description ? <RichPdfText value={proj.description} style={s.projDesc} /> : null}
               </View>
             ))}
           </View>
@@ -308,17 +394,24 @@ function ModernPDF({ data, styles: s, labels }: { data: CVForm; styles: ReturnTy
    MINIMAL PDF
    ═══════════════════════════════════════ */
 
-function MinimalPDF({ data, styles: s, primary, labels }: { data: CVForm; styles: ReturnType<typeof makeStyles>; primary: string; labels: CVPDFLabels }) {
+function MinimalPDF({ data, styles: s, primary, labels, df, pageSize }: { data: CVForm; styles: ReturnType<typeof makeStyles>; primary: string; labels: CVPDFLabels; df: DateFormat; pageSize: "A4" | "LETTER" }) {
   return (
-    <Page size="A4" style={s.page}>
+    <Page size={pageSize} style={s.page}>
       <View style={{ textAlign: "center", marginBottom: 12, borderBottom: "0.5pt solid #e5e7eb", paddingBottom: 10 }}>
         <Text style={{ ...s.name, color: primary, textAlign: "center", letterSpacing: 1 }}>{data.fullName || labels.yourName}</Text>
         {data.headline ? <Text style={{ ...s.headline, textAlign: "center" }}>{data.headline}</Text> : null}
         <View style={{ ...s.contactRow, justifyContent: "center" }}>
-          {data.email ? <Text>{data.email}</Text> : null}
+          {data.email ? <PdfLink url={`mailto:${data.email}`} label={data.email} style={{ color: "#6b7280", textDecoration: "none" }} /> : null}
           {data.phone ? <Text>· {data.phone}</Text> : null}
           {data.currentLocation ? <Text>· {data.currentLocation}</Text> : null}
         </View>
+        {profileLinks(data).length > 0 && (
+          <View style={{ ...s.linkRow, justifyContent: "center" }}>
+            {profileLinks(data).map((link, i) => (
+              <PdfLink key={i} url={link.url} label={link.label} style={{ color: s.linkRow.color }} />
+            ))}
+          </View>
+        )}
       </View>
 
       {data.experience.length > 0 && (
@@ -328,9 +421,9 @@ function MinimalPDF({ data, styles: s, primary, labels }: { data: CVForm; styles
             <View key={i} style={s.expItem}>
               <View style={s.expHeader}>
                 <Text style={s.expTitle}>{exp.jobTitle} <Text style={{ fontFamily: s.page.fontFamily, color: "#6b7280" }}>{companyPhrase(labels, exp.company)}</Text></Text>
-                <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? labels.present : exp.endDate}</Text>
+                <Text style={s.expDate}>{dateRange(exp.startDate, exp.endDate, exp.isCurrent, df, labels.present)}</Text>
               </View>
-              {exp.description ? <Text style={s.expDesc}>{exp.description}</Text> : null}
+              {exp.description ? <RichPdfText value={exp.description} style={s.expDesc} /> : null}
             </View>
           ))}
         </View>
@@ -345,7 +438,7 @@ function MinimalPDF({ data, styles: s, primary, labels }: { data: CVForm; styles
                 <Text style={s.eduDegree}>{edu.degree}{edu.field ? `, ${edu.field}` : ""}</Text>
                 <Text style={s.eduInst}>{edu.institution}</Text>
               </View>
-              {edu.graduationDate ? <Text style={s.expDate}>{edu.graduationDate}</Text> : null}
+              {edu.graduationDate ? <Text style={s.expDate}>{formatDateValue(edu.graduationDate, df)}</Text> : null}
             </View>
           ))}
         </View>
@@ -372,10 +465,10 @@ function MinimalPDF({ data, styles: s, primary, labels }: { data: CVForm; styles
    PROFESSIONAL PDF — photo header + body
    ═══════════════════════════════════════ */
 
-function ProfessionalPDF({ data, styles: s, primary, labels }: { data: CVForm; styles: ReturnType<typeof makeStyles>; primary: string; labels: CVPDFLabels }) {
+function ProfessionalPDF({ data, styles: s, primary, labels, df, pageSize }: { data: CVForm; styles: ReturnType<typeof makeStyles>; primary: string; labels: CVPDFLabels; df: DateFormat; pageSize: "A4" | "LETTER" }) {
   const photo = safePhoto(data.photo);
   return (
-    <Page size="A4" style={{ ...s.page, padding: 0 }}>
+    <Page size={pageSize} style={{ ...s.page, padding: 0 }}>
       {/* Photo header band */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 24, backgroundColor: primary }}>
         {photo ? <Image src={photo} style={s.photoHeader} /> : null}
@@ -383,9 +476,12 @@ function ProfessionalPDF({ data, styles: s, primary, labels }: { data: CVForm; s
           <Text style={{ ...s.name, color: "white", marginBottom: 2 }}>{data.fullName || labels.yourName}</Text>
           {data.headline ? <Text style={{ fontSize: s.headline.fontSize, color: "rgba(255,255,255,0.85)" }}>{data.headline}</Text> : null}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
-            {data.email ? <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{data.email}</Text> : null}
+            {data.email ? <PdfLink url={`mailto:${data.email}`} label={data.email} style={{ fontSize: 8, color: "rgba(255,255,255,0.8)", textDecoration: "none" }} /> : null}
             {data.phone ? <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{data.phone}</Text> : null}
             {data.currentLocation ? <Text style={{ fontSize: 8, color: "rgba(255,255,255,0.8)" }}>{data.currentLocation}</Text> : null}
+            {profileLinks(data).map((link, i) => (
+              <PdfLink key={i} url={link.url} label={link.label} style={{ fontSize: 8, color: "#ffffff", textDecoration: "none" }} />
+            ))}
           </View>
         </View>
       </View>
@@ -401,9 +497,9 @@ function ProfessionalPDF({ data, styles: s, primary, labels }: { data: CVForm; s
                     <Text style={s.expTitle}>{exp.jobTitle}</Text>
                     <Text style={{ ...s.expCompany, color: primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</Text>
                   </View>
-                  <Text style={s.expDate}>{exp.startDate} – {exp.isCurrent ? labels.present : exp.endDate}</Text>
+                  <Text style={s.expDate}>{dateRange(exp.startDate, exp.endDate, exp.isCurrent, df, labels.present)}</Text>
                 </View>
-                {exp.description ? <Text style={s.expDesc}>{exp.description}</Text> : null}
+                {exp.description ? <RichPdfText value={exp.description} style={s.expDesc} /> : null}
               </View>
             ))}
           </View>
@@ -418,7 +514,7 @@ function ProfessionalPDF({ data, styles: s, primary, labels }: { data: CVForm; s
                   <Text style={s.eduDegree}>{edu.degree}{edu.field ? `, ${edu.field}` : ""}</Text>
                   <Text style={s.eduInst}>{edu.institution}</Text>
                 </View>
-                {edu.graduationDate ? <Text style={s.expDate}>{edu.graduationDate}</Text> : null}
+                {edu.graduationDate ? <Text style={s.expDate}>{formatDateValue(edu.graduationDate, df)}</Text> : null}
               </View>
             ))}
           </View>
@@ -439,7 +535,7 @@ function ProfessionalPDF({ data, styles: s, primary, labels }: { data: CVForm; s
             {data.projects.map((proj, i) => (
               <View key={i} style={s.projItem}>
                 <Text style={s.projTitle}>{proj.title}</Text>
-                {proj.description ? <Text style={s.projDesc}>{proj.description}</Text> : null}
+                {proj.description ? <RichPdfText value={proj.description} style={s.projDesc} /> : null}
               </View>
             ))}
           </View>
@@ -487,20 +583,25 @@ export function CVPDFDocument({
   const gap = getSectionGap(formatting);
   const font = getPDFFont(formatting);
   const boldFont = getPDFBoldFont(formatting);
-  const s = makeStyles(theme.primary, scale, gap, font, boldFont);
+  const margin = getMarginPt(formatting);
+  const lineHeight = getLineHeight(formatting);
+  const df = formatting.dateFormat;
+  const pageSize = getPdfPageSize(formatting);
+  const s = makeStyles(theme.primary, scale, gap, font, boldFont, margin, lineHeight);
 
   return (
     <Document>
       {templateId === "modern" ? (
-        <ModernPDF data={data} styles={s} labels={labels} />
+        <ModernPDF data={data} styles={s} labels={labels} df={df} pageSize={pageSize} />
       ) : templateId === "minimal" || templateId === "compact" ? (
-        <MinimalPDF data={data} styles={s} primary={theme.primary} labels={labels} />
-      ) : templateId === "professional" ? (
-        <ProfessionalPDF data={data} styles={s} primary={theme.primary} labels={labels} />
+        <MinimalPDF data={data} styles={s} primary={theme.primary} labels={labels} df={df} pageSize={pageSize} />
+      ) : templateId === "professional" || templateId === "banner" ? (
+        <ProfessionalPDF data={data} styles={s} primary={theme.primary} labels={labels} df={df} pageSize={pageSize} />
       ) : (
-        /* classic, executive, creative, elegant use the Classic layout for PDF.
-           A profile photo (when set) is rendered in Modern and Professional. */
-        <ClassicPDF data={data} styles={s} labels={labels} />
+        /* classic, executive, creative, elegant, timeline, academic, technical
+           use the order-aware Classic layout for PDF. A profile photo (when set)
+           is rendered in Modern, Professional and Banner. */
+        <ClassicPDF data={data} styles={s} labels={labels} df={df} pageSize={pageSize} formatting={formatting} />
       )}
     </Document>
   );

@@ -60,12 +60,13 @@ const translations: Record<string, unknown> = {
     updatePreferences: "تحديث التفضيلات",
   },
   quickAccess: {
-    eyebrow: "وصول سريع",
-    title: "ابق قريباً من مسار طلباتك",
+    eyebrow: "النشاط",
+    title: "نظرة سريعة على بحثك عن وظيفة",
     applications: "الطلبات",
     interviews: "المقابلات",
-    preferences: "التفضيلات",
-    edit: "تعديل",
+    savedJobs: "الوظائف المحفوظة",
+    profileViews: "مشاهدات الملف",
+    managePreferences: "إدارة تفضيلات الوظائف",
   },
   insights: {
     title: "رؤى الذكاء الاصطناعي اليومية",
@@ -165,7 +166,7 @@ describe("JobSeekerHomePage", () => {
     expect(await screen.findByText("تصفح الوظائف المطابقة")).toBeInTheDocument();
     expect(screen.getByText("اقتراحات الذكاء الاصطناعي")).toBeInTheDocument();
     expect(screen.getByText("ارفع سيرتك الذاتية")).toBeInTheDocument();
-    expect(screen.getByText("ابق قريباً من مسار طلباتك")).toBeInTheDocument();
+    expect(screen.getByText("نظرة سريعة على بحثك عن وظيفة")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/ai/daily-insights?locale=ar");

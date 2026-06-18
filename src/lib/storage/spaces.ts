@@ -268,11 +268,41 @@ export async function fileExists(key: string): Promise<boolean> {
  * Generate a time-limited presigned URL for a private file.
  * @param key    Object key
  * @param ttl    Expiry in seconds (default 3600 = 1 hour)
+ * @param opts   Optional response-header overrides. `inline: true` forces the
+ *               browser to render the file in-page (e.g. inside an iframe)
+ *               instead of downloading it, regardless of the object's stored
+ *               Content-Disposition.
  */
-export async function getPresignedUrl(key: string, ttl = 3600): Promise<string> {
+export async function getPresignedUrl(
+  key: string,
+  ttl = 3600,
+  opts?: { inline?: boolean; contentType?: string },
+): Promise<string> {
   const client = getClient();
-  const command = new GetObjectCommand({ Bucket: getBucket(), Key: key });
+  const command = new GetObjectCommand({
+    Bucket: getBucket(),
+    Key: key,
+    ...(opts?.inline && { ResponseContentDisposition: "inline" }),
+    ...(opts?.contentType && { ResponseContentType: opts.contentType }),
+  });
   return getSignedUrl(client, command, { expiresIn: ttl });
+}
+
+// ─── Download (raw bytes) ─────────────────────────────────────────────────────
+
+/**
+ * Download an object's raw bytes from Spaces.
+ * Accepts either an object key or a full CDN/Spaces URL.
+ */
+export async function downloadBuffer(keyOrUrl: string): Promise<Buffer> {
+  const client = getClient();
+  const key = urlToKey(keyOrUrl);
+  const res = await client.send(new GetObjectCommand({ Bucket: getBucket(), Key: key }));
+  if (!res.Body) {
+    throw new Error("Object body is empty");
+  }
+  const bytes = await res.Body.transformToByteArray();
+  return Buffer.from(bytes);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

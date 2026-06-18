@@ -172,6 +172,8 @@ export default function EmployerApplicationsPage() {
     name: string;
     applicationId?: string;
     status?: string;
+    jobSeekerId?: string;
+    jobId?: string;
     candidate?: { role?: string; experience?: number; skills?: string[]; location?: string };
     aiMatchScore?: number;
     matchBreakdown?: { skills?: number; experience?: number; location?: number; overall?: number };
@@ -476,10 +478,12 @@ export default function EmployerApplicationsPage() {
     return {
       url:
         urlOverride ??
-        (js?.cv?.originalUrl ? `/api/applications/${app._id}/documents/download?cv=1#cv.pdf` : ""),
+        (js?.cv?.originalUrl ? `/api/applications/${app._id}/documents/download?cv=1&view=1#cv.pdf` : ""),
       name: getCandidateName(app),
       applicationId: app._id,
       status: app.status,
+      jobSeekerId: js?._id,
+      jobId: app.jobId?._id,
       candidate: {
         role: currentRole,
         experience: js?.totalExperienceYears,
@@ -1287,6 +1291,8 @@ export default function EmployerApplicationsPage() {
           candidate={viewingCv.candidate}
           aiMatchScore={viewingCv.aiMatchScore}
           matchBreakdown={viewingCv.matchBreakdown}
+          jobSeekerId={viewingCv.jobSeekerId}
+          jobId={viewingCv.jobId}
           onStatusChange={
             viewingCv.applicationId && canUpdate
               ? (newStatus) => updateApplicationStatus(viewingCv.applicationId!, newStatus)
@@ -1845,7 +1851,7 @@ function ApplicationDetailsPanel({
                               variant="outline"
                               size="sm"
                               className="h-9 shrink-0 rounded-xl border-border bg-background/80 px-3 text-xs"
-                              onClick={() => onViewDocument(app, `/api/applications/${app._id}/documents/download?i=${i}#${encodeURIComponent(doc.name)}`)}
+                              onClick={() => onViewDocument(app, `/api/applications/${app._id}/documents/download?i=${i}&view=1#${encodeURIComponent(doc.name)}`)}
                             >
                               <FileText className="mr-1.5 h-3.5 w-3.5" /> {t("viewResume")}
                             </Button>

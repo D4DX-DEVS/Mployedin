@@ -97,6 +97,11 @@ export interface IJobSeeker extends Document {
     parsedAt?: Date;
     rawText?: string;
     contentHash?: string;
+    /** Cached ATS-friendliness score (0–100) from the last analysis. */
+    atsScore?: number;
+    /** Cached full ATS report (checks, recommendations, etc.). */
+    atsReport?: Record<string, unknown>;
+    atsAnalyzedAt?: Date;
   };
   // Skills & Experience
   skills: string[];
@@ -281,6 +286,9 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       parsedAt: Date,
       rawText: String,
       contentHash: String,
+      atsScore: Number,
+      atsReport: { type: Schema.Types.Mixed },
+      atsAnalyzedAt: Date,
     },
     skills: [String],
     suggestedSkills: [String],

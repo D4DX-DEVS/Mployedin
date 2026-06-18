@@ -1509,7 +1509,9 @@
       "downloadPdf": "Download PDF",
       "download": "Download",
       "saving": "Saving...",
-      "addToProfile": "Add to Profile"
+      "addToProfile": "Add to Profile",
+      "tips": "Tips",
+      "reorder": "Drag to reorder"
     },
     "hints": {
       "photo": "JPG, PNG or WEBP. Max 5 MB. Shown on photo-enabled templates."
@@ -1597,7 +1599,11 @@
         "creative": { "name": "Creative", "description": "Bold design with colored header and skill bars" },
         "elegant": { "name": "Elegant", "description": "Refined serif typography with gold accents" },
         "professional": { "name": "Professional", "description": "Photo header with two-column body for impact" },
-        "compact": { "name": "Compact", "description": "Dense single-column layout that fits more on a page" }
+        "compact": { "name": "Compact", "description": "Dense single-column layout that fits more on a page" },
+        "timeline": { "name": "Timeline", "description": "Vertical timeline with connected milestones" },
+        "academic": { "name": "Academic", "description": "Serif typography ideal for research and academia" },
+        "technical": { "name": "Technical", "description": "Monospace accents tailored for engineers" },
+        "banner": { "name": "Banner", "description": "Bold full-width photo banner header" }
       }
     },
     "formatting": {
@@ -1605,7 +1611,36 @@
       "selectFont": "Select font",
       "fontSize": "Font size",
       "theme": "Theme",
+      "customColor": "Custom color",
       "reset": "Reset to default",
+      "pageFormat": "Page format",
+      "pageFormats": {
+        "a4": "A4",
+        "letter": "US Letter"
+      },
+      "dateFormat": "Date format",
+      "lineHeight": "Line height",
+      "lineHeights": {
+        "tight": "Tight",
+        "normal": "Normal",
+        "relaxed": "Relaxed"
+      },
+      "margin": "Page margins",
+      "margins": {
+        "narrow": "Narrow",
+        "normal": "Normal",
+        "wide": "Wide"
+      },
+      "arrangeSections": "Arrange sections",
+      "arrangeSectionsHint": "Drag to change the order sections appear on your CV",
+      "sections": {
+        "experience": "Experience",
+        "education": "Education",
+        "skills": "Skills",
+        "projects": "Projects",
+        "languages": "Languages",
+        "certifications": "Certifications"
+      },
       "spacing": {
         "compact": "Compact",
         "medium": "Medium",
@@ -1615,6 +1650,102 @@
         "small": "Small",
         "medium": "Medium",
         "large": "Large"
+      }
+    },
+    "richText": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "bulletList": "Bullet list",
+      "numberedList": "Numbered list",
+      "link": "Add link"
+    },
+    "aiToolbar": {
+      "improve": "Improve",
+      "suggest": "Suggest",
+      "grammar": "Grammar",
+      "shorten": "Shorten",
+      "needContext": "Add more details first so AI has something to work with.",
+      "empty": "AI returned an empty result. Try again.",
+      "failed": "AI request failed. Please try again.",
+      "done": "Text updated with AI."
+    },
+    "tips": {
+      "title": "Resume Tips",
+      "subtitle": "Guidance to make each section shine",
+      "close": "Close",
+      "editingNow": "Editing now",
+      "general": {
+        "title": "General",
+        "items": [
+          "Keep your resume to 1-2 pages and lead with your strongest content.",
+          "Use consistent formatting, tense, and date styles throughout.",
+          "Tailor keywords to the job description to pass ATS screening.",
+          "Quantify achievements with numbers, percentages, and outcomes."
+        ]
+      },
+      "summary": {
+        "title": "Profile Summary",
+        "items": [
+          "Open with your role, years of experience, and core specialty.",
+          "Highlight 2-3 signature achievements or strengths.",
+          "Keep it to 2-4 concise sentences focused on value.",
+          "Avoid generic buzzwords; be specific and results-driven."
+        ]
+      },
+      "experience": {
+        "title": "Work Experience",
+        "items": [
+          "Start each bullet with a strong action verb (Led, Built, Reduced).",
+          "Show impact with metrics: revenue, time saved, users, growth.",
+          "Focus on achievements, not just responsibilities.",
+          "List roles in reverse-chronological order."
+        ]
+      },
+      "education": {
+        "title": "Education",
+        "items": [
+          "List your highest or most relevant qualification first.",
+          "Include degree, institution, and graduation year.",
+          "Add honors, GPA, or relevant coursework when impressive.",
+          "Keep it concise once you have professional experience."
+        ]
+      },
+      "skills": {
+        "title": "Skills",
+        "items": [
+          "Prioritize skills mentioned in the job description.",
+          "Group related skills and lead with your strongest.",
+          "Mix technical (hard) and interpersonal (soft) skills.",
+          "Avoid listing outdated or irrelevant tools."
+        ]
+      },
+      "projects": {
+        "title": "Projects",
+        "items": [
+          "Describe the problem, your role, and the outcome.",
+          "Mention the tech stack and tools you used.",
+          "Link to live demos or repositories when possible.",
+          "Highlight measurable results or recognition."
+        ]
+      },
+      "languages": {
+        "title": "Languages",
+        "items": [
+          "Use clear proficiency levels (Native, Professional, Conversational).",
+          "List languages relevant to the role or region.",
+          "Be honest about your proficiency.",
+          "Place near the bottom unless central to the job."
+        ]
+      },
+      "certifications": {
+        "title": "Certifications",
+        "items": [
+          "Include the certification name and issuing body.",
+          "Prioritize current, industry-recognized credentials.",
+          "Add the year if recent or relevant.",
+          "Remove expired or low-value certifications."
+        ]
       }
     },
     "proficiency": {
@@ -1712,12 +1843,13 @@
       "updatePreferences": "Update preferences"
     },
     "quickAccess": {
-      "eyebrow": "Quick access",
-      "title": "Stay close to your pipeline",
+      "eyebrow": "Activity",
+      "title": "Your job search at a glance",
       "applications": "Applications",
       "interviews": "Interviews",
-      "preferences": "Preferences",
-      "edit": "Edit"
+      "savedJobs": "Saved jobs",
+      "profileViews": "Profile views",
+      "managePreferences": "Manage job preferences"
     },
     "insights": {
       "title": "AI Daily Insights",

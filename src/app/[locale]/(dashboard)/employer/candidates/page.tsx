@@ -513,12 +513,12 @@ function CandidateInsightsDialog({
                 <p className="mt-2 text-sm font-semibold text-foreground">{candidate.profileCompleteness != null ? t("percentComplete", { percent: candidate.profileCompleteness }) : t("awaitingSignals")}</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("matchedSkills")}</p>
-                <p className="mt-2 text-sm font-semibold text-foreground">{matchedSkills.length}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{selectedJobData ? t("matchedSkills") : t("keySkills")}</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">{selectedJobData ? matchedSkills.length : (candidate.skills?.length ?? 0)}</p>
               </div>
               <div className="workspace-glass-panel rounded-2xl p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("missingSignals")}</p>
-                <p className="mt-2 text-sm font-semibold text-foreground">{missingSkills.length}</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">{selectedJobData ? missingSkills.length : "—"}</p>
               </div>
             </div>
 
@@ -805,6 +805,8 @@ export default function EmployerCandidatesPage() {
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
   const [viewingCv, setViewingCv] = useState<{
     url: string; name: string;
+    jobSeekerId?: string;
+    atsScore?: number;
     candidate?: { role?: string; experience?: number; skills?: string[]; location?: string };
     aiMatchScore?: number;
     matchBreakdown?: { skills?: number; experience?: number; location?: number; overall?: number };
@@ -943,9 +945,19 @@ export default function EmployerCandidatesPage() {
       return;
     }
 
+    // Close the candidate insights dialog so the CV viewer is not stacked behind it.
+    setDetailCandidateId(null);
+
+    const ext = candidate.cv.originalUrl.split("?")[0].split(".").pop()?.toLowerCase() || "pdf";
+
     setViewingCv({
-      url: candidate.cv.originalUrl,
+      // Stream the CV through our own origin so the browser renders it inline
+      // instead of downloading the cross-origin CDN object. The hash keeps the
+      // viewer's PDF/image detection working without affecting the request.
+      url: `/api/employers/candidates/${candidate._id}/cv#cv.${ext}`,
       name: getCandidateDisplayName(candidate),
+      jobSeekerId: candidate._id,
+      atsScore: candidate.cv?.atsScore,
       candidate: {
         role: candidate.experience?.find((entry) => entry.isCurrent)?.jobTitle ?? undefined,
         skills: candidate.skills,
@@ -1248,6 +1260,9 @@ export default function EmployerCandidatesPage() {
           matchBreakdown={viewingCv.matchBreakdown}
           strengths={viewingCv.strengths}
           gaps={viewingCv.gaps}
+          jobSeekerId={viewingCv.jobSeekerId}
+          jobId={selectedJob || undefined}
+          initialAtsScore={viewingCv.atsScore}
         />
       )}
 

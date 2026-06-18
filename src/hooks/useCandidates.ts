@@ -22,7 +22,7 @@ export interface Candidate {
   matchSummary?: string;
   strengths?: string[];
   gaps?: string[];
-  cv?: { originalUrl?: string };
+  cv?: { originalUrl?: string; atsScore?: number };
   shortlisted?: boolean;
 }
 
@@ -258,6 +258,53 @@ export function useScreenCandidates() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Screening failed" }));
         throw new Error(err.error ?? "Failed to screen candidates");
+      }
+      return res.json();
+    },
+  });
+}
+
+// ── ATS-friendliness check ─────────────────────────────────────────
+export type AtsCheckStatus = "pass" | "warn" | "fail";
+export interface AtsCheck {
+  id: string;
+  label: string;
+  status: AtsCheckStatus;
+  detail: string;
+  weight: number;
+}
+export interface AtsKeywordCoverage {
+  matched: string[];
+  missing: string[];
+  coverage: number;
+}
+export interface AtsReport {
+  atsScore: number;
+  rating: "excellent" | "good" | "fair" | "poor";
+  parseable: boolean;
+  wordCount: number;
+  pageCount: number;
+  fileType: "pdf" | "docx" | "image" | "unknown";
+  checks: AtsCheck[];
+  recommendations: string[];
+  keywordCoverage?: AtsKeywordCoverage;
+  analyzedAt: string;
+}
+
+/** Run a deterministic ATS-friendliness analysis on a candidate's CV. */
+export function useAtsCheck() {
+  return useMutation({
+    mutationFn: async (
+      { jobSeekerId, jobId, force }: { jobSeekerId?: string; jobId?: string; force?: boolean },
+    ): Promise<AtsReport> => {
+      const res = await csrfFetch("/api/ai/ats-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobSeekerId, jobId, force }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "ATS check failed" }));
+        throw new Error(err.error ?? "Failed to analyze CV");
       }
       return res.json();
     },

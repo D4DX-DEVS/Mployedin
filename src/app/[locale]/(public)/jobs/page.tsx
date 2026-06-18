@@ -1,5 +1,6 @@
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
+import "@/models/Employer"; // register schema for .populate("employerId")
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";

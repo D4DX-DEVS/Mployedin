@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { getSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import {
   Upload, CheckCircle, AlertCircle, Sparkles,
@@ -10,6 +10,7 @@ import {
   Trash2, Eye, EyeOff, Briefcase, GraduationCap,
   Globe, Award, User as UserIcon, FolderKanban,
   LayoutTemplate, Paintbrush, Maximize2, Minimize2,
+  ChevronDown, Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -32,12 +33,21 @@ import type { CVPDFLabels } from "./cv-pdf-document";
 import {
   PROFICIENCY_OPTIONS, EMPTY_EXPERIENCE, EMPTY_EDUCATION,
   EMPTY_LANGUAGE, EMPTY_PROJECT, EMPTY_LINK,
-  DEFAULT_FORMATTING, THEME_COLORS, toMonthInput,
+  DEFAULT_FORMATTING, toMonthInput, resolveTheme,
 } from "./types";
 import { TemplateRenderer } from "./templates";
 import { TemplatePicker, FormattingPanel } from "./template-picker";
-import { AIWriteButton } from "./ai-write-button";
+import { AIToolbar } from "./ai-toolbar";
+import { RichTextEditor } from "./rich-text-editor";
+import { TipsDrawer, type TipKey } from "./tips-drawer";
+import { SortableList, SortableItem } from "./sortable";
+import { htmlToPlainText, plainTextToHtml } from "./rich-text";
 import { MonthYearPicker } from "./month-picker";
+
+/* Reorder an array to match a new ordering of index-string ids. */
+function reorderByIds<T>(arr: T[], ids: string[]): T[] {
+  return ids.map((id) => arr[Number(id)]).filter((v): v is T => v !== undefined);
+}
 
 /* ── Filter out hidden sections for preview/PDF ── */
 function getVisibleForm(form: CVForm, hidden: Set<string>): CVForm {
@@ -59,6 +69,7 @@ function getVisibleForm(form: CVForm, hidden: Set<string>): CVForm {
 export default function CVBuilderPage() {
   const t = useTranslations("cvBuilderPage");
   const router = useRouter();
+  const { data: session } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -73,6 +84,11 @@ export default function CVBuilderPage() {
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  /* Contextual writing-tips drawer */
+  const [tipsOpen, setTipsOpen] = useState(false);
+  const [activeTipSection, setActiveTipSection] = useState<TipKey | null>(null);
+  const openTips = (section: TipKey) => { setActiveTipSection(section); setTipsOpen(true); };
 
   /* Section visibility — controls which sections appear in preview & PDF */
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(new Set());
@@ -96,6 +112,18 @@ export default function CVBuilderPage() {
     document.title = t("documentTitle");
     fetchProfile();
   }, []);
+
+  /* Fill identity fields from the auth session once it's available, without
+     overwriting anything the profile already provided or the user has typed. */
+  useEffect(() => {
+    if (!session?.user) return;
+    setForm((prev) => ({
+      ...prev,
+      fullName: prev.fullName || session.user?.name || "",
+      email: prev.email || session.user?.email || "",
+      photo: prev.photo || session.user?.image || "",
+    }));
+  }, [session]);
 
   /* ── Fetch profile ── */
   async function fetchProfile() {
@@ -141,7 +169,7 @@ export default function CVBuilderPage() {
                 startDate: e.startDate ? new Date(e.startDate as string).toISOString().slice(0, 7) : "",
                 endDate: e.endDate ? new Date(e.endDate as string).toISOString().slice(0, 7) : "",
                 isCurrent: (e.isCurrent as boolean) ?? false,
-                description: (e.description as string) ?? "",
+                description: plainTextToHtml((e.description as string) ?? ""),
               }))
             : prev.experience,
           education: profile.education?.length
@@ -163,7 +191,7 @@ export default function CVBuilderPage() {
           projects: profile.projects?.length
             ? profile.projects.map((p: Record<string, unknown>) => ({
                 title: (p.title as string) ?? "",
-                description: (p.description as string) ?? "",
+                description: plainTextToHtml((p.description as string) ?? ""),
                 techStack: Array.isArray(p.techStack) ? p.techStack as string[] : [],
                 projectUrl: (p.projectUrl as string) ?? "",
                 repoUrl: (p.repoUrl as string) ?? "",
@@ -171,15 +199,6 @@ export default function CVBuilderPage() {
             : prev.projects,
         }));
 
-      }
-      const session = await getSession();
-      if (session?.user) {
-        setForm((prev) => ({
-          ...prev,
-          fullName: prev.fullName || session.user?.name || "",
-          email: prev.email || session.user?.email || "",
-          photo: prev.photo || session.user?.image || "",
-        }));
       }
     } catch {
       // Non-blocking
@@ -256,7 +275,7 @@ export default function CVBuilderPage() {
               startDate: toMonthInput(e.from as string),
               endDate: e.to !== "present" ? toMonthInput(e.to as string) : "",
               isCurrent: (e.current as boolean) || e.to === "present",
-              description: (e.description as string) ?? "",
+              description: plainTextToHtml((e.description as string) ?? ""),
             }))
           : prev.experience,
         education: ext.education?.length
@@ -281,7 +300,7 @@ export default function CVBuilderPage() {
         projects: ext.projects?.length
           ? ext.projects.map((p: Record<string, unknown>) => ({
               title: (p.title as string) ?? "",
-              description: (p.description as string) ?? "",
+              description: plainTextToHtml((p.description as string) ?? ""),
               techStack: Array.isArray(p.techStack) ? p.techStack as string[] : [],
               projectUrl: (p.projectUrl as string) ?? "",
               repoUrl: (p.repoUrl as string) ?? "",
@@ -381,7 +400,7 @@ export default function CVBuilderPage() {
         experience: form.experience.map((e) => ({
           jobTitle: e.jobTitle, company: e.company, country: e.country,
           startDate: e.startDate || undefined, endDate: e.endDate || undefined,
-          isCurrent: e.isCurrent, description: e.description,
+          isCurrent: e.isCurrent, description: htmlToPlainText(e.description),
         })),
         education: form.education.map((e) => ({
           degree: e.degree, institution: e.institution, field: e.field,
@@ -390,7 +409,7 @@ export default function CVBuilderPage() {
         languages: form.languages.map((l) => ({ language: l.language, proficiency: l.proficiency })),
         certifications: form.certifications,
         projects: form.projects.map((p) => ({
-          title: p.title, description: p.description, techStack: p.techStack,
+          title: p.title, description: htmlToPlainText(p.description), techStack: p.techStack,
           projectUrl: p.projectUrl || undefined, repoUrl: p.repoUrl || undefined,
         })),
         socialLinks: [
@@ -453,7 +472,7 @@ export default function CVBuilderPage() {
     );
   }
 
-  const themeColor = THEME_COLORS.find((c) => c.id === formatting.themeColor)?.primary ?? "#2563eb";
+  const themeColor = resolveTheme(formatting.themeColor).primary;
   const proficiencyOptions = PROFICIENCY_OPTIONS.map((option) => ({
     ...option,
     label: t(`proficiency.${option.value}`),
@@ -509,20 +528,26 @@ export default function CVBuilderPage() {
         {/* ────── LEFT: EDITOR PANEL ────── */}
         <div className={`transition-all duration-300 ${previewExpanded ? "hidden" : "w-full lg:w-[55%]"}`}>
           <Tabs defaultValue="editor" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="editor" className="gap-1.5">
-                <Pencil className="w-3.5 h-3.5" />
-                {t("tabs.editor")}
-              </TabsTrigger>
-              <TabsTrigger value="templates" className="gap-1.5">
-                <LayoutTemplate className="w-3.5 h-3.5" />
-                {t("tabs.templates")}
-              </TabsTrigger>
-              <TabsTrigger value="formatting" className="gap-1.5">
-                <Paintbrush className="w-3.5 h-3.5" />
-                {t("tabs.formatting")}
-              </TabsTrigger>
-            </TabsList>
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <TabsList>
+                <TabsTrigger value="editor" className="gap-1.5">
+                  <Pencil className="w-3.5 h-3.5" />
+                  {t("tabs.editor")}
+                </TabsTrigger>
+                <TabsTrigger value="templates" className="gap-1.5">
+                  <LayoutTemplate className="w-3.5 h-3.5" />
+                  {t("tabs.templates")}
+                </TabsTrigger>
+                <TabsTrigger value="formatting" className="gap-1.5">
+                  <Paintbrush className="w-3.5 h-3.5" />
+                  {t("tabs.formatting")}
+                </TabsTrigger>
+              </TabsList>
+              <button type="button" onClick={() => openTips("general")}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
+                <Lightbulb className="h-3.5 w-3.5" />{t("actions.tips")}
+              </button>
+            </div>
 
             {/* ──── TAB: AI EDITOR ──── */}
             <TabsContent value="editor">
@@ -622,21 +647,19 @@ export default function CVBuilderPage() {
                         onChange={(v) => setForm((f) => ({ ...f, currentLocation: v }))} placeholder={t("placeholders.location")} />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs text-muted-foreground">{t("fields.profileSummary")}</Label>
-                        <AIWriteButton
-                          section="summary"
-                          context={{ currentText: form.headline, skills: form.skills.join(", ") }}
-                          onResult={(text) => setForm((f) => ({ ...f, headline: text }))}
-                          label={t("actions.writeWithAi")}
-                        />
-                      </div>
+                      <Label className="text-xs text-muted-foreground">{t("fields.profileSummary")}</Label>
                       <Textarea
                         value={form.headline}
                         onChange={(e) => setForm((f) => ({ ...f, headline: e.target.value }))}
                         placeholder={t("placeholders.summary")}
                         rows={3}
                         className="resize-none"
+                      />
+                      <AIToolbar
+                        section="summary"
+                        seed={form.headline}
+                        context={{ skills: form.skills.join(", ") }}
+                        onResult={(text) => setForm((f) => ({ ...f, headline: text }))}
                       />
                       <p className="text-[0.65rem] text-muted-foreground text-right">{form.headline.length}/1000</p>
                     </div>
@@ -674,9 +697,12 @@ export default function CVBuilderPage() {
                   {form.experience.length === 0 && (
                     <p className="text-xs text-muted-foreground py-4 text-center">{t("empty.experience")}</p>
                   )}
-                  <div className="space-y-4">
+                  <SortableList className="space-y-4"
+                    ids={form.experience.map((_, i) => String(i))}
+                    onReorder={(ids) => setForm((f) => ({ ...f, experience: reorderByIds(f.experience, ids) }))}>
                     {form.experience.map((exp, i) => (
-                      <div key={i} className="p-4 rounded-lg border bg-muted/20 space-y-3 relative group">
+                      <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
+                      <div className="p-4 pl-9 rounded-lg border bg-muted/20 space-y-3 relative group">
                         <button onClick={() => removeExperience(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -708,24 +734,24 @@ export default function CVBuilderPage() {
                           <label htmlFor={`current-${i}`} className="text-xs text-muted-foreground">{t("fields.currentWork")}</label>
                         </div>
                         <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs text-muted-foreground">{t("fields.description")}</Label>
-                            <AIWriteButton
-                              section="experience_description"
-                              context={{ jobTitle: exp.jobTitle, company: exp.company, currentText: exp.description }}
-                              onResult={(text) => updateExperience(i, "description", text)}
-                            />
-                          </div>
-                          <Textarea
+                          <Label className="text-xs text-muted-foreground">{t("fields.description")}</Label>
+                          <RichTextEditor
                             value={exp.description}
-                            onChange={(e) => updateExperience(i, "description", e.target.value)}
+                            onChange={(html) => updateExperience(i, "description", html)}
                             placeholder={t("placeholders.experienceDescription")}
-                            rows={2} className="resize-none text-sm"
+                            ariaLabel={t("fields.description")}
+                          />
+                          <AIToolbar
+                            section="experience_description"
+                            seed={htmlToPlainText(exp.description)}
+                            context={{ jobTitle: exp.jobTitle, company: exp.company }}
+                            onResult={(text) => updateExperience(i, "description", plainTextToHtml(text))}
                           />
                         </div>
                       </div>
+                      </SortableItem>
                     ))}
-                  </div>
+                  </SortableList>
                 </SectionCard>
 
                 {/* Education */}
@@ -738,9 +764,12 @@ export default function CVBuilderPage() {
                   {form.education.length === 0 && (
                     <p className="text-xs text-muted-foreground py-4 text-center">{t("empty.education")}</p>
                   )}
-                  <div className="space-y-4">
+                  <SortableList className="space-y-4"
+                    ids={form.education.map((_, i) => String(i))}
+                    onReorder={(ids) => setForm((f) => ({ ...f, education: reorderByIds(f.education, ids) }))}>
                     {form.education.map((edu, i) => (
-                      <div key={i} className="p-4 rounded-lg border bg-muted/20 space-y-3 relative group">
+                      <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
+                      <div className="p-4 pl-9 rounded-lg border bg-muted/20 space-y-3 relative group">
                         <button onClick={() => removeEducation(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -757,8 +786,9 @@ export default function CVBuilderPage() {
                             onChange={(v) => updateEducation(i, "grade", v)} placeholder={t("placeholders.grade")} />
                         </div>
                       </div>
+                      </SortableItem>
                     ))}
-                  </div>
+                  </SortableList>
                 </SectionCard>
 
                 {/* Skills */}
@@ -785,9 +815,12 @@ export default function CVBuilderPage() {
                   {form.projects.length === 0 && (
                     <p className="text-xs text-muted-foreground py-4 text-center">{t("empty.projects")}</p>
                   )}
-                  <div className="space-y-4">
+                  <SortableList className="space-y-4"
+                    ids={form.projects.map((_, i) => String(i))}
+                    onReorder={(ids) => setForm((f) => ({ ...f, projects: reorderByIds(f.projects, ids) }))}>
                     {form.projects.map((proj, i) => (
-                      <div key={i} className="p-4 rounded-lg border bg-muted/20 space-y-3 relative group">
+                      <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
+                      <div className="p-4 pl-9 rounded-lg border bg-muted/20 space-y-3 relative group">
                         <button onClick={() => removeProject(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -797,17 +830,19 @@ export default function CVBuilderPage() {
                               onChange={(v) => updateProject(i, "title", v)} placeholder={t("placeholders.projectTitle")} />
                           </div>
                           <div className="md:col-span-2 space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-xs text-muted-foreground">{t("fields.description")}</Label>
-                              <AIWriteButton
-                                section="project_description"
-                                context={{ projectTitle: proj.title, techStack: proj.techStack.join(", "), currentText: proj.description }}
-                                onResult={(text) => updateProject(i, "description", text)}
-                              />
-                            </div>
-                            <Textarea value={proj.description}
-                              onChange={(e) => updateProject(i, "description", e.target.value)}
-                              placeholder={t("placeholders.projectDescription")} rows={2} className="resize-none text-sm" />
+                            <Label className="text-xs text-muted-foreground">{t("fields.description")}</Label>
+                            <RichTextEditor
+                              value={proj.description}
+                              onChange={(html) => updateProject(i, "description", html)}
+                              placeholder={t("placeholders.projectDescription")}
+                              ariaLabel={t("fields.description")}
+                            />
+                            <AIToolbar
+                              section="project_description"
+                              seed={htmlToPlainText(proj.description)}
+                              context={{ projectTitle: proj.title, techStack: proj.techStack.join(", ") }}
+                              onResult={(text) => updateProject(i, "description", plainTextToHtml(text))}
+                            />
                           </div>
                           <div className="md:col-span-2 space-y-1.5">
                             <Label className="text-xs text-muted-foreground">{t("fields.techStack")}</Label>
@@ -821,8 +856,9 @@ export default function CVBuilderPage() {
                             onChange={(v) => updateProject(i, "repoUrl", v)} placeholder="https://github.com/..." />
                         </div>
                       </div>
+                      </SortableItem>
                     ))}
-                  </div>
+                  </SortableList>
                 </SectionCard>
 
                 {/* Languages */}
@@ -833,9 +869,12 @@ export default function CVBuilderPage() {
                   sectionKey="languages" hidden={hiddenSections.has("languages")} onToggle={() => toggleSection("languages")}
                 >
                   {form.languages.length === 0 && <p className="text-xs text-muted-foreground py-2 text-center">{t("empty.languages")}</p>}
-                  <div className="space-y-3">
+                  <SortableList className="space-y-3"
+                    ids={form.languages.map((_, i) => String(i))}
+                    onReorder={(ids) => setForm((f) => ({ ...f, languages: reorderByIds(f.languages, ids) }))}>
                     {form.languages.map((lang, i) => (
-                      <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-end gap-3 group">
+                      <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
+                      <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-3 pl-9 group">
                         <FormField label={t("fields.language")} value={lang.language}
                           onChange={(v) => updateLanguage(i, "language", v)} placeholder={t("placeholders.language")} />
                         <div className="space-y-1.5">
@@ -847,8 +886,9 @@ export default function CVBuilderPage() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
+                      </SortableItem>
                     ))}
-                  </div>
+                  </SortableList>
                 </SectionCard>
 
                 {/* Certifications */}
@@ -971,6 +1011,8 @@ export default function CVBuilderPage() {
           </div>
         </div>
       </div>
+
+      <TipsDrawer open={tipsOpen} onOpenChange={setTipsOpen} activeSection={activeTipSection} />
     </div>
   );
 }
@@ -1005,12 +1047,19 @@ function SectionCard({
   onToggle?: () => void;
 }) {
   const t = useTranslations("cvBuilderPage.visibility");
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <div className={`card-base p-4 sm:p-5 space-y-4 ${hidden ? "opacity-50" : ""}`}>
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="flex items-center gap-2 text-sm font-semibold text-left"
+          aria-expanded={!collapsed}
+        >
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${collapsed ? "-rotate-90" : ""}`} />
           {icon} {title} {badge}
-        </h3>
+        </button>
         <div className="flex items-center gap-2">
           {sectionKey && onToggle && (
             <button
@@ -1030,7 +1079,7 @@ function SectionCard({
           {action}
         </div>
       </div>
-      {children}
+      {!collapsed && children}
     </div>
   );
 }
