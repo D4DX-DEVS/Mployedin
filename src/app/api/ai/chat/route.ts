@@ -452,15 +452,136 @@ Use this data to answer questions about team performance, identify underperforme
       }
     }
 
+    // ─── Employer data injection (job_creator / interview_ai / screening_ai) ─
+    // Grounds the recruitment assistant with the employer's OWN jobs and applicants
+    // so Screening/Interview AI can rank real candidates without manual CV pasting.
+    if (userRole === "employer" && ["job_creator", "interview_ai", "screening_ai"].includes(context ?? "")) {
+      try {
+        await connectDB();
+        const employer = await Employer.findOne({ userId: session.user.id }).select("_id companyName").lean();
+        if (employer) {
+          const employerId = employer._id;
+
+          // Employer's own jobs (exclude soft-deleted), newest first
+          const jobs = await Job.find({ employerId, deletedAt: { $exists: false } })
+            .select("_id title status location requirements category")
+            .sort({ createdAt: -1 })
+            .limit(20)
+            .lean();
+
+          const jobIds = jobs.map((j) => j._id);
+          const jobTitleMap = new Map(jobs.map((j) => [j._id.toString(), j.title]));
+
+          const jobLines = jobs.map((j) => {
+            const loc = j.location?.isRemote
+              ? "Remote"
+              : `${j.location?.city ?? "?"}, ${j.location?.country ?? "?"}`;
+            const skills = j.requirements?.skills?.slice(0, 6).join(", ") ?? "";
+            const exp = j.requirements
+              ? `${j.requirements.experienceMin ?? 0}–${j.requirements.experienceMax ?? "?"} yrs`
+              : "";
+            return `- ${j.title} (id: ${j._id}) | status: ${j.status} | ${loc}${exp ? ` | Experience: ${exp}` : ""}${skills ? ` | Required skills: ${skills}` : ""}`;
+          });
+
+          const jobsBlock = jobLines.length
+            ? `\n\n## Your Job Postings (REAL data from ${employer.companyName ?? "your account"} — reference these directly, never invent jobs)\n${jobLines.join("\n")}`
+            : `\n\n## Your Job Postings\nYou have not posted any jobs yet. If the user wants to screen candidates, tell them they need to post a job and receive applications first.`;
+
+          // Applicant grounding for screening + interview tabs only
+          let applicantsBlock = "";
+          if (["screening_ai", "interview_ai"].includes(context ?? "") && jobIds.length) {
+            const applications = await Application.find({
+              jobId: { $in: jobIds },
+              status: { $ne: "withdrawn" },
+            })
+              .select("jobId jobSeekerId status aiMatchScore matchStrengths matchGaps appliedAt")
+              .sort({ aiMatchScore: -1, appliedAt: -1 })
+              .limit(60)
+              .lean();
+
+            if (applications.length) {
+              const seekerIds = [...new Set(applications.map((a) => a.jobSeekerId?.toString()).filter(Boolean))];
+              const seekers = await JobSeeker.find({ _id: { $in: seekerIds } })
+                .select("userId fullName headline skills experience education languages currentLocation nationality totalExperienceYears totalExperienceMonths")
+                .lean();
+              const seekerMap = new Map(seekers.map((s) => [s._id.toString(), s]));
+
+              const userIds = seekers.map((s) => s.userId).filter(Boolean);
+              const users = userIds.length
+                ? await User.find({ _id: { $in: userIds } }).select("name").lean()
+                : [];
+              const userNameMap = new Map(users.map((u) => [u._id.toString(), u.name]));
+
+              // Group applicants by job, capped per job to control token usage
+              const byJob = new Map<string, typeof applications>();
+              for (const app of applications) {
+                const jid = app.jobId?.toString() ?? "";
+                if (!byJob.has(jid)) byJob.set(jid, []);
+                const arr = byJob.get(jid)!;
+                if (arr.length < 10) arr.push(app);
+              }
+
+              const sections: string[] = [];
+              for (const [jid, apps] of byJob) {
+                const title = jobTitleMap.get(jid) ?? "Unknown role";
+                const lines = apps.map((app, idx) => {
+                  const s = seekerMap.get(app.jobSeekerId?.toString() ?? "");
+                  const name =
+                    s?.fullName ||
+                    userNameMap.get(s?.userId?.toString() ?? "") ||
+                    "Candidate";
+                  const yrs = s?.totalExperienceYears ?? 0;
+                  const mos = s?.totalExperienceMonths ?? 0;
+                  const expStr = yrs || mos ? `${yrs}y${mos ? ` ${mos}m` : ""} exp` : "exp N/A";
+                  const exps = (s?.experience ?? []) as Array<{ jobTitle?: string; company?: string; isCurrent?: boolean }>;
+                  const latest = exps.find((e) => e.isCurrent) ?? exps[0];
+                  const role = latest
+                    ? `${latest.jobTitle}${latest.company ? ` @ ${latest.company}` : ""}`
+                    : "—";
+                  const edu = s?.education?.[0]
+                    ? `${s.education[0].degree ?? ""}${s.education[0].field ? ` in ${s.education[0].field}` : ""}`.trim()
+                    : "—";
+                  const skills = s?.skills?.slice(0, 12).join(", ") || "—";
+                  const langs = ((s?.languages ?? []) as Array<{ language?: string }>)
+                    .map((l) => l.language)
+                    .filter(Boolean)
+                    .join(", ") || "—";
+                  const score = app.aiMatchScore != null ? `${Math.round(app.aiMatchScore)}% AI match` : "not scored";
+                  const status = String(app.status).replace(/_/g, " ");
+                  const strengths = app.matchStrengths?.length ? ` | Strengths: ${app.matchStrengths.slice(0, 3).join(", ")}` : "";
+                  const gaps = app.matchGaps?.length ? ` | Gaps: ${app.matchGaps.slice(0, 2).join(", ")}` : "";
+                  return `  ${idx + 1}. ${name} — ${score} | Status: ${status} | ${expStr} | Latest: ${role} | Education: ${edu} | Location: ${s?.currentLocation ?? "—"} | Skills: ${skills} | Languages: ${langs}${strengths}${gaps}`;
+                });
+                sections.push(`### ${title}\n${lines.join("\n")}`);
+              }
+
+              applicantsBlock = `\n\n## Your Applicants (REAL candidates who applied — grouped by job, sorted by AI match score)\n${sections.join("\n\n")}\n\nWhen the user asks to screen, rank, shortlist, compare, or build interview briefs for candidates, use THIS data directly and reference candidates by name. Do NOT ask the user to paste CVs or job descriptions — you already have their profiles above. If a candidate the user names is not in this list, say you only have access to the applicants shown above.`;
+            } else {
+              applicantsBlock = `\n\n## Your Applicants\nNo applications have been received for your jobs yet. If the user asks to screen or rank candidates, tell them honestly that no applicants have applied yet — do not invent candidates.`;
+            }
+          }
+
+          roleStatsContext = jobsBlock + applicantsBlock;
+        }
+      } catch (err) {
+        console.error("[AI Chat] Failed to fetch employer data:", err);
+      }
+    }
+
     // ─── Recent activity + page context injection ───────────────
     let pageContext = "";
     let recentActivityContext = "";
 
-    if (currentPage && ["admin_assist", "super_agent_assist", "agent_assist"].includes(context ?? "")) {
+    const dataAwareContexts = [
+      "admin_assist", "super_agent_assist", "agent_assist",
+      "job_creator", "interview_ai", "screening_ai",
+    ];
+
+    if (currentPage && dataAwareContexts.includes(context ?? "")) {
       pageContext = `\n\n## Current Page\nThe user is currently viewing: ${currentPage}`;
     }
 
-    if (["admin_assist", "super_agent_assist", "agent_assist"].includes(context ?? "")) {
+    if (dataAwareContexts.includes(context ?? "")) {
       try {
         await connectDB();
         const recentLogs = await AuditLog.find({
