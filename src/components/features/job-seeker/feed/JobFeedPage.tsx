@@ -9,16 +9,18 @@ import {
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight, ArrowUp } from "lucide-react";
+import { Loader2, Sparkles, Zap, Search, X, ChevronLeft, ChevronRight, ArrowUp, BookmarkPlus } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useFeatureGate } from "@/hooks/useFeatureGate";
 import Link from "next/link";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { Button } from "@/components/ui/button";
 
 import { JobFeedCard, type FeedJob } from "./JobFeedCard";
 import { JobFeedSidebar, type FeedFilters } from "./JobFeedSidebar";
 import { EasyApplyFlowDialog } from "./EasyApplyFlowDialog";
+import { SaveSearchDialog } from "./SaveSearchDialog";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -211,8 +213,15 @@ export function JobFeedPage({ locale }: { locale: string }) {
   // ── Search state ────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
   const [searchPage, setSearchPage] = useState(1);
+  const [saveSearchOpen, setSaveSearchOpen] = useState(false);
   const debouncedSearch = useDebounce(searchQuery, 400);
   const isSearchMode = debouncedSearch.trim().length > 0 || employerIdFilter.length > 0;
+  // Only one experience/work-type selection maps cleanly onto a saved search's
+  // single-value filters; otherwise leave it for the user to pick in the dialog.
+  const prefillExperience = filters.experienceLevels.length === 1 ? filters.experienceLevels[0] : "";
+  const prefillWorkType = filters.workTypes.length === 1 ? filters.workTypes[0] : "";
+  // A saved search needs a text query; hide the action in employer-only browse.
+  const canSaveSearch = debouncedSearch.trim().length > 0;
 
   // Hydrate already-applied job IDs so the "Applied" state shows on first load,
   // including for jobs surfaced through search (not just the recommended feed).
@@ -464,11 +473,25 @@ export function JobFeedPage({ locale }: { locale: string }) {
                           : t("search.employerRoles")}
                     </span>
                   </div>
-                  {searchData && searchData.pages > 1 && (
-                    <span className="text-xs text-muted-foreground">
-                      {t("pagination.pageOf", { page: searchPage, pages: searchData.pages })}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3 sm:shrink-0">
+                    {searchData && searchData.pages > 1 && (
+                      <span className="text-xs text-muted-foreground">
+                        {t("pagination.pageOf", { page: searchPage, pages: searchData.pages })}
+                      </span>
+                    )}
+                    {canSaveSearch && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSaveSearchOpen(true)}
+                        className="gap-1.5 rounded-full"
+                      >
+                        <BookmarkPlus className="h-4 w-4" />
+                        {t("saveSearch.button")}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -735,6 +758,15 @@ export function JobFeedPage({ locale }: { locale: string }) {
           onApplied={handleApplied}
         />
       )}
+
+      <SaveSearchDialog
+        open={saveSearchOpen}
+        onOpenChange={setSaveSearchOpen}
+        query={debouncedSearch}
+        experienceLevel={prefillExperience}
+        workType={prefillWorkType}
+        locale={locale}
+      />
     </div>
   );
 }

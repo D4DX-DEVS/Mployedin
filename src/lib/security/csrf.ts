@@ -93,6 +93,10 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/cron/",
   "/api/filters",
   "/api/inngest", // Inngest has its own signature verification
+  // RFC 8058 one-click unsubscribe: mail providers (Gmail/Apple) POST here with
+  // no cookies/CSRF token. The signed JWT in ?token= is the anti-forgery guard,
+  // and the action is idempotent (only disables notifications for that user).
+  "/api/unsubscribe",
 ];
 
 /**

@@ -417,6 +417,38 @@
       "pendingResultsFor": "Results for \"{query}\"",
       "employerRoles": "Employer roles"
     },
+    "saveSearch": {
+      "button": "Save search",
+      "title": "Save this search",
+      "description": "We'll email you when new jobs match these criteria.",
+      "noKeyword": "All jobs",
+      "nameLabel": "Alert name",
+      "namePlaceholder": "e.g. Senior React roles",
+      "experienceLabel": "Experience level",
+      "frequencyLabel": "Email me",
+      "experience": {
+        "any": "Any experience",
+        "entry": "Entry level (0–2 yrs)",
+        "mid": "Mid level (3–5 yrs)",
+        "senior": "Senior level (6+ yrs)"
+      },
+      "frequency": {
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "never": "Don't email me"
+      },
+      "workType": {
+        "remote": "Remote",
+        "onsite": "On-site"
+      },
+      "save": "Save search",
+      "cancel": "Cancel",
+      "created": "Search saved — we'll alert you about new matches.",
+      "duplicate": "You've already saved this search.",
+      "failed": "Couldn't save the search. Please try again.",
+      "required": "Add a name and a search keyword first.",
+      "viewSaved": "View"
+    },
     "actions": {
       "refinePreferences": "Refine preferences",
       "editPreferences": "Edit preferences",
@@ -1072,6 +1104,10 @@
       "namePlaceholder": "Alert name *",
       "queryPlaceholder": "Search keywords *",
       "locationPlaceholder": "Location (optional)",
+      "experienceAny": "Any experience",
+      "experienceEntry": "Entry level (0–2 yrs)",
+      "experienceMid": "Mid level (3–5 yrs)",
+      "experienceSenior": "Senior level (6+ yrs)",
       "daily": "Daily alerts",
       "weekly": "Weekly alerts",
       "never": "No alerts",
@@ -1085,6 +1121,7 @@
       "loadFailed": "Failed to load saved searches",
       "required": "Name and search query are required",
       "created": "Saved search created",
+      "duplicate": "You've already saved this search.",
       "createFailed": "Failed to create saved search",
       "deleted": "Search deleted",
       "deleteFailed": "Failed to delete",

@@ -1,8 +1,8 @@
 /**
- * GET /api/cron/subscription-usage-reset — Monthly cron (1st of month)
+ * GET /api/cron/subscription-usage-reset — Daily cron
  *
  * Resets usage counters for all active subscriptions whose usageResetAt
- * has passed. Sets next reset date to 1st of following month.
+ * has passed. Sets next reset date via nextUsageReset().
  *
  * Idempotent — only processes subs whose usageResetAt <= now.
  */
@@ -28,17 +28,15 @@ export async function GET(req: NextRequest) {
       status: "active",
       usageResetAt: { $lte: now },
     },
-    [
-      {
-        $set: {
-          "usage.activeJobs": 0,
-          "usage.applicationsViewed": 0,
-          "usage.applicationsSubmitted": 0,
-          "usage.aiUsage": initAiUsage(),
-          usageResetAt: nextUsageReset(now),
-        },
+    {
+      $set: {
+        "usage.activeJobs": 0,
+        "usage.applicationsViewed": 0,
+        "usage.applicationsSubmitted": 0,
+        "usage.aiUsage": initAiUsage(),
+        usageResetAt: nextUsageReset(now),
       },
-    ],
+    },
   );
 
   const resetCount = result.modifiedCount ?? 0;

@@ -1,0 +1,107 @@
+name: Scheduled Crons
+
+# Host-agnostic cron scheduler. Works on DigitalOcean (App Platform or Droplet)
+# or any host, because GitHub Actions calls the public production URL directly.
+# Auth uses the static Bearer token supported by verifyCronRequest (CRON_SECRET).
+#
+# Required repo configuration (Settings → Secrets and variables → Actions):
+#   - Variable  PRODUCTION_URL   e.g. https://app.mployedin.com   (no trailing path)
+#   - Secret    CRON_SECRET      must match CRON_SECRET in the DigitalOcean app env
+#
+# NOTE: GitHub disables scheduled workflows after 60 days of repo inactivity, and
+# scheduled runs may be delayed by a few minutes under load — fine for these jobs.
+
+on:
+  schedule:
+    - cron: "0 * * * *" # interview-reminders + saved-search-alerts (hourly)
+    - cron: "0 0 * * *" # subscription-usage-reset
+    - cron: "0 1 * * *" # offer-expiry
+    - cron: "0 2 * * *" # job-expiry
+    - cron: "0 3 * * *" # subscription-expiry
+    - cron: "0 7 * * *" # job-alerts
+    - cron: "0 8 * * *" # lead-followup-reminder
+    - cron: "0 8 * * 1" # target-risk-check + agent-weekly-digest (Mondays)
+    - cron: "0 9 * * *" # invoice-overdue-reminder
+  workflow_dispatch:
+    inputs:
+      paths:
+        description: "Comma-separated cron paths to run (or 'all')"
+        required: false
+        default: "all"
+
+concurrency:
+  group: scheduled-crons-${{ github.event.schedule || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger cron endpoints
+        env:
+          BASE_URL: ${{ vars.PRODUCTION_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SCHEDULE: ${{ github.event.schedule }}
+          DISPATCH_PATHS: ${{ github.event.inputs.paths }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BASE_URL:-}" ]; then echo "::error::PRODUCTION_URL variable is not set"; exit 1; fi
+          if [ -z "${CRON_SECRET:-}" ]; then echo "::error::CRON_SECRET secret is not set"; exit 1; fi
+
+          ALL_PATHS=(
+            /api/cron/interview-reminders
+            /api/cron/saved-search-alerts
+            /api/cron/subscription-usage-reset
+            /api/cron/offer-expiry
+            /api/cron/job-expiry
+            /api/cron/subscription-expiry
+            /api/cron/job-alerts
+            /api/cron/lead-followup-reminder
+            /api/cron/target-risk-check
+            /api/cron/agent-weekly-digest
+            /api/cron/invoice-overdue-reminder
+          )
+
+          declare -a PATHS=()
+          if [ -n "${SCHEDULE:-}" ]; then
+            case "$SCHEDULE" in
+              "0 * * * *") PATHS=(/api/cron/interview-reminders /api/cron/saved-search-alerts) ;;
+              "0 0 * * *") PATHS=(/api/cron/subscription-usage-reset) ;;
+              "0 1 * * *") PATHS=(/api/cron/offer-expiry) ;;
+              "0 2 * * *") PATHS=(/api/cron/job-expiry) ;;
+              "0 3 * * *") PATHS=(/api/cron/subscription-expiry) ;;
+              "0 7 * * *") PATHS=(/api/cron/job-alerts) ;;
+              "0 8 * * *") PATHS=(/api/cron/lead-followup-reminder) ;;
+              "0 8 * * 1") PATHS=(/api/cron/target-risk-check /api/cron/agent-weekly-digest) ;;
+              "0 9 * * *") PATHS=(/api/cron/invoice-overdue-reminder) ;;
+              *) echo "Unknown schedule '$SCHEDULE'"; PATHS=() ;;
+            esac
+          elif [ "${DISPATCH_PATHS:-all}" = "all" ]; then
+            PATHS=("${ALL_PATHS[@]}")
+          else
+            IFS=',' read -ra PATHS <<< "${DISPATCH_PATHS}"
+          fi
+
+          if [ "${#PATHS[@]}" -eq 0 ]; then echo "No paths to run."; exit 0; fi
+
+          BASE_URL="${BASE_URL%/}"
+          FAILED=0
+          for p in "${PATHS[@]}"; do
+            p="$(echo "$p" | xargs)"
+            url="${BASE_URL}${p}"
+            echo "→ GET ${p}"
+            code=$(curl -sS -o /tmp/body.txt -w '%{http_code}' \
+              --max-time 120 --retry 2 --retry-delay 5 \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              "$url" || true)
+            [ -z "$code" ] && code="000"
+            body="$(cat /tmp/body.txt 2>/dev/null || true)"
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+              echo "  ✓ ${code} ${body}"
+            else
+              echo "::error::${p} returned ${code}: ${body}"
+              FAILED=1
+            fi
+          done
+          exit $FAILED

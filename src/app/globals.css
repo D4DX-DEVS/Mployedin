@@ -309,9 +309,11 @@ body {
 
 /* ── PORTAL Z-INDEX FIX ── */
 /* Radix popper wrappers use position:fixed which creates a stacking context at z-auto.
-   Force a high z-index on the wrapper so dropdowns/selects/popovers appear above all page content. */
+   The wrapper z-index caps the inner content's z-index, so it must sit ABOVE dialog
+   content (10000) — otherwise selects/popovers opened inside a dialog render behind it.
+   Matches the z-[10001] used by every popper content component (select, popover, etc.). */
 [data-radix-popper-content-wrapper] {
-  z-index: 9999 !important;
+  z-index: 10001 !important;
 }
 
 /* Dialog portals must be above the sticky header and all page content */
@@ -1527,3 +1529,4 @@ body {
   from { transform: scaleY(0.3); opacity: 0.6; }
   to { transform: scaleY(1); opacity: 1; }
 }
+

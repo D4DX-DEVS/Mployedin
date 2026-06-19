@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { connectDB } from "@/lib/db/mongoose";
 import NotificationPreference from "@/models/NotificationPreference";
+import SavedSearch from "@/models/SavedSearch";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
 
 interface UnsubscribePayload {
   userId: string;
   category?: string;
+  /** When present, disables email alerts for just this saved search. */
+  savedSearchId?: string;
 }
 
 /**
@@ -48,6 +51,27 @@ export async function GET(req: NextRequest) {
   }
 
   await connectDB();
+
+  if (payload.savedSearchId) {
+    // Granular: turn off alerts for a single saved search (scoped to the owner).
+    const updated = await SavedSearch.findOneAndUpdate(
+      { _id: payload.savedSearchId, userId: payload.userId },
+      { $set: { emailAlert: false } },
+      { new: true },
+    ).lean();
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
+    const name = (updated as { name?: string } | null)?.name;
+    return new NextResponse(
+      buildUnsubscribePage(
+        true,
+        name
+          ? `Email alerts turned off for your saved search "${name}".`
+          : "Email alerts turned off for this saved search.",
+        `${baseUrl}/en/job-seeker/jobs`,
+      ),
+      { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } },
+    );
+  }
 
   if (payload.category) {
     // Unsubscribe from specific category
@@ -99,6 +123,14 @@ export async function POST(req: NextRequest) {
   }
 
   await connectDB();
+
+  if (payload.savedSearchId) {
+    await SavedSearch.updateOne(
+      { _id: payload.savedSearchId, userId: payload.userId },
+      { $set: { emailAlert: false } },
+    );
+    return NextResponse.json({ success: true });
+  }
 
   await NotificationPreference.updateOne(
     { userId: payload.userId },

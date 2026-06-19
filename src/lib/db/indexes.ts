@@ -156,6 +156,15 @@ export async function ensureIndexes() {
     { key: { userId: 1, type: 1, createdAt: -1 } },
   ]);
 
+  // ── SavedSearches ───────────────────────────────────────────────────────────
+  await safeCreateIndexes(db, "savedsearches", [
+    { key: { userId: 1 } },
+    { key: { userId: 1, createdAt: -1 } },
+    // Hot path: saved-search-alerts cron selects due alerts (emailAlert + frequency,
+    // then lastNotifiedAt range/null). Equality prefix keeps the scan tight at scale.
+    { key: { emailAlert: 1, frequency: 1, lastNotifiedAt: 1 } },
+  ]);
+
   // ── AuditLogs ──────────────────────────────────────────────────────────────
   await safeCreateIndexes(db, "auditlogs", [
     { key: { actorId: 1 } },

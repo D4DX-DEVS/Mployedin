@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import mongoose from "mongoose";
 import { z } from "zod";
-
-const SavedSearch = mongoose.models.SavedSearch;
+import SavedSearch from "@/models/SavedSearch";
 
 const savedSearchUpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -16,7 +14,7 @@ const savedSearchUpdateSchema = z.object({
     salary: z.string().max(100).optional(),
   }).optional(),
   emailAlert: z.boolean().optional(),
-  frequency: z.enum(["daily", "weekly", "never"]).optional(),
+  frequency: z.enum(["instant", "daily", "weekly", "never"]).optional(),
 }).strict();
 
 async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {

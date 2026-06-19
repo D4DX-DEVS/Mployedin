@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Bell, Plus, Trash2, Search, Inbox, RotateCcw, Mail,
-  BellRing, Briefcase, MapPin, Clock,
+  BellRing, Briefcase, MapPin, Clock, TrendingUp,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
@@ -40,11 +40,16 @@ export default function SavedSearchesPage() {
   const t = useTranslations("jobSeekerExtra.savedSearches");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
+  const expLabel = (lvl?: string) =>
+    lvl === "entry" ? t("experienceEntry")
+      : lvl === "mid" ? t("experienceMid")
+        : lvl === "senior" ? t("experienceSenior")
+          : "";
   const [searches, setSearches] = useState<SavedSearch[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
-    name: "", query: "", location: "", jobType: "",
+    name: "", query: "", location: "", jobType: "", experienceLevel: "",
     frequency: "weekly",
   });
 
@@ -80,6 +85,7 @@ export default function SavedSearchesPage() {
           filters: {
             location: form.location || undefined,
             jobType: form.jobType || undefined,
+            experienceLevel: form.experienceLevel || undefined,
           },
           frequency: form.frequency,
           emailAlert: form.frequency !== "never",
@@ -87,9 +93,13 @@ export default function SavedSearchesPage() {
       });
       if (res.ok) {
         toast.success(t("created"));
-        setForm({ name: "", query: "", location: "", jobType: "", frequency: "weekly" });
+        setForm({ name: "", query: "", location: "", jobType: "", experienceLevel: "", frequency: "weekly" });
         setShowForm(false);
         fetchSearches();
+      } else if (res.status === 409) {
+        toast.info(t("duplicate"));
+      } else {
+        toast.error(t("createFailed"));
       }
     } catch {
       toast.error(t("createFailed"));
@@ -159,6 +169,16 @@ export default function SavedSearchesPage() {
             <Input placeholder={t("queryPlaceholder")} value={form.query} onChange={(e) => setForm((p) => ({ ...p, query: e.target.value }))} />
             <Input placeholder={t("locationPlaceholder")} value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} />
             <select
+              value={form.experienceLevel}
+              onChange={(e) => setForm((p) => ({ ...p, experienceLevel: e.target.value }))}
+              className="rounded-md border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">{t("experienceAny")}</option>
+              <option value="entry">{t("experienceEntry")}</option>
+              <option value="mid">{t("experienceMid")}</option>
+              <option value="senior">{t("experienceSenior")}</option>
+            </select>
+            <select
               value={form.frequency}
               onChange={(e) => setForm((p) => ({ ...p, frequency: e.target.value }))}
               className="rounded-md border bg-background px-3 py-2 text-sm"
@@ -207,6 +227,11 @@ export default function SavedSearchesPage() {
                       {s.filters?.jobType && (
                         <span className="inline-flex items-center gap-1">
                           <Briefcase className="h-3 w-3" /> {s.filters.jobType}
+                        </span>
+                      )}
+                      {s.filters?.experienceLevel && (
+                        <span className="inline-flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" /> {expLabel(s.filters.experienceLevel)}
                         </span>
                       )}
                     </div>

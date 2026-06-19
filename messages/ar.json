@@ -417,6 +417,38 @@
       "pendingResultsFor": "نتائج عن \"{query}\"",
       "employerRoles": "وظائف صاحب العمل"
     },
+    "saveSearch": {
+      "button": "حفظ البحث",
+      "title": "احفظ هذا البحث",
+      "description": "سنراسلك عبر البريد عند ظهور وظائف جديدة تطابق هذه المعايير.",
+      "noKeyword": "كل الوظائف",
+      "nameLabel": "اسم التنبيه",
+      "namePlaceholder": "مثال: وظائف React الأولى",
+      "experienceLabel": "مستوى الخبرة",
+      "frequencyLabel": "أرسل لي بريدًا",
+      "experience": {
+        "any": "أي مستوى خبرة",
+        "entry": "مبتدئ (0–2 سنوات)",
+        "mid": "متوسط (3–5 سنوات)",
+        "senior": "خبير (6+ سنوات)"
+      },
+      "frequency": {
+        "daily": "يوميًا",
+        "weekly": "أسبوعيًا",
+        "never": "لا ترسل لي بريدًا"
+      },
+      "workType": {
+        "remote": "عن بُعد",
+        "onsite": "في الموقع"
+      },
+      "save": "حفظ البحث",
+      "cancel": "إلغاء",
+      "created": "تم حفظ البحث — سننبهك بالوظائف الجديدة.",
+      "duplicate": "لقد حفظت هذا البحث بالفعل.",
+      "failed": "تعذر حفظ البحث. حاول مجددًا.",
+      "required": "أضف اسمًا وكلمة بحث أولاً.",
+      "viewSaved": "عرض"
+    },
     "actions": {
       "refinePreferences": "تحسين التفضيلات",
       "editPreferences": "تعديل التفضيلات",
@@ -1072,6 +1104,10 @@
       "namePlaceholder": "اسم التنبيه *",
       "queryPlaceholder": "كلمات البحث *",
       "locationPlaceholder": "الموقع (اختياري)",
+      "experienceAny": "أي مستوى خبرة",
+      "experienceEntry": "مبتدئ (0–2 سنوات)",
+      "experienceMid": "متوسط (3–5 سنوات)",
+      "experienceSenior": "خبير (6+ سنوات)",
       "daily": "تنبيهات يومية",
       "weekly": "تنبيهات أسبوعية",
       "never": "بدون تنبيهات",
@@ -1085,6 +1121,7 @@
       "loadFailed": "فشل تحميل عمليات البحث المحفوظة",
       "required": "الاسم وكلمات البحث مطلوبان",
       "created": "تم إنشاء البحث المحفوظ",
+      "duplicate": "لقد حفظت هذا البحث بالفعل.",
       "createFailed": "فشل إنشاء البحث المحفوظ",
       "deleted": "تم حذف البحث",
       "deleteFailed": "فشل الحذف",
