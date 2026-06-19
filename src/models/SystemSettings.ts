@@ -25,6 +25,9 @@ export interface ISystemSettings extends Document {
   supportEmail: string;
   maintenanceMode: boolean;
   defaultCurrency: string;
+  /** When false (default), subscription enforcement is bypassed and all users get full access.
+   *  Flip to true once payment integration is live to enforce plan limits / feature gates. */
+  subscriptionEnforcementEnabled: boolean;
   smtp?: ISmtpConfig;
   commissionOverrides?: ICommissionOverride[];
   updatedAt: Date;
@@ -36,6 +39,7 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
     supportEmail: { type: String, default: "support@mployedin.com" },
     maintenanceMode: { type: Boolean, default: false },
     defaultCurrency: { type: String, default: "AED" },
+    subscriptionEnforcementEnabled: { type: Boolean, default: false },
     smtp: {
       smtpEmail: { type: String },
       smtpAppPassword: { type: String, select: false },

@@ -45,8 +45,8 @@ export default function BlogListingPage() {
     fetch(`/api/public/blogs?${params}`)
       .then((r) => r.json())
       .then((d) => {
-        setPosts(d.data ?? []);
-        setTotalPages(d.totalPages ?? 1);
+        setPosts(d.items ?? []);
+        setTotalPages(d.pagination?.pages ?? 1);
       })
       .catch(console.error)
       .finally(() => setLoading(false));

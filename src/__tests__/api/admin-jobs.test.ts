@@ -45,6 +45,7 @@ jest.mock("@/models/Job", () => ({
   default: {
     find: jest.fn().mockReturnValue(chainable),
     countDocuments: jest.fn().mockResolvedValue(0),
+    aggregate: jest.fn().mockResolvedValue([]),
   },
 }));
 

@@ -16,6 +16,7 @@ const config: Config = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^next-intl$": "<rootDir>/src/__mocks__/next-intl.ts",
+    "^next-intl/server$": "<rootDir>/src/__mocks__/next-intl-server.ts",
     "^use-intl/react$": "<rootDir>/src/__mocks__/use-intl/react.ts",
     "^isomorphic-dompurify$": "<rootDir>/src/__mocks__/isomorphic-dompurify.ts",
   },

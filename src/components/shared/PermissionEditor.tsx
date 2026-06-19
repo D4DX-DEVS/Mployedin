@@ -32,7 +32,6 @@ const RESOURCE_LABELS: Record<Resource, string> = {
   ai_match: "AI Match",
   ai_assistant: "AI Assistant",
   tasks: "Tasks",
-  design_system: "Design System",
   job_attributes: "Job Attributes",
   location_data: "Location Data",
   cms: "CMS",
@@ -76,7 +75,7 @@ const RESOURCE_GROUPS: { label: string; resources: Resource[] }[] = [
   },
   {
     label: "Content & Config",
-    resources: ["design_system", "job_attributes", "location_data", "cms", "contact_submissions"],
+    resources: ["job_attributes", "location_data", "cms", "contact_submissions"],
   },
 ];
 

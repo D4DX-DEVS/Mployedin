@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Plus, Trash2, Edit2, X, Loader2, Crown, ChevronDown, ChevronUp,
-  Check, Copy, Users, Briefcase, Sparkles, BarChart3, FileText,
+  Check, Copy, Users, Briefcase, Sparkles, BarChart3, FileText, ShieldCheck, AlertTriangle,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
 } from "@/hooks/useSubscriptionPlans";
 import { AI_FEATURE_KEYS, type AIFeatureKey } from "@/types/subscription-plan";
 import { convertAndFormat } from "@/lib/currency";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 // ── Constants ──────────────────────────────────────────────────────
 const AI_FEATURE_LABELS: Record<AIFeatureKey, string> = {
@@ -127,6 +128,97 @@ function planToForm(p: SubscriptionPlanItem): PlanFormState {
     isDefault: p.isDefault,
     sortOrder: p.sortOrder,
   };
+}
+
+// ── Subscription Enforcement Toggle ────────────────────────────────
+function EnforcementToggleCard() {
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/settings");
+        if (!res.ok) throw new Error("Failed to load settings");
+        const data = await res.json();
+        if (active) setEnabled(Boolean(data?.settings?.subscriptionEnforcementEnabled));
+      } catch {
+        if (active) setError("Could not load the current setting.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const handleToggle = async (next: boolean) => {
+    setSaving(true);
+    setError(null);
+    const previous = enabled;
+    setEnabled(next); // optimistic
+    try {
+      const res = await csrfFetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionEnforcementEnabled: next }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+    } catch {
+      setEnabled(previous); // rollback
+      setError("Could not update the setting. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-border bg-background/70 p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${enabled ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Subscription Enforcement</h3>
+            <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">
+              {enabled
+                ? "Enforcement is ON. Plan limits and feature gates apply to employers and job seekers."
+                : "Enforcement is OFF. All users get full access and no plan limits or feature gates apply. Keep this off until payment integration is live."}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 self-start sm:self-center">
+          {(loading || saving) && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          <span className={`text-xs font-medium ${enabled ? "text-emerald-700" : "text-muted-foreground"}`}>
+            {enabled ? "ON" : "OFF"}
+          </span>
+          <Switch
+            checked={enabled}
+            disabled={loading || saving}
+            onCheckedChange={handleToggle}
+            aria-label="Toggle subscription enforcement"
+          />
+        </div>
+      </div>
+
+      {enabled && (
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            With enforcement on, users without an active subscription (and past their grace period) will be
+            blocked from gated features. Only turn this on once billing is ready.
+          </span>
+        </div>
+      )}
+
+      {error && (
+        <p className="mt-3 text-xs text-red-600">{error}</p>
+      )}
+    </div>
+  );
 }
 
 // ── Page Component ─────────────────────────────────────────────────
@@ -249,6 +341,9 @@ export default function AdminSubscriptionPlansPage() {
         }
       />
 
+      {/* ─── Subscription Enforcement Toggle ─── */}
+      <EnforcementToggleCard />
+
       {/* ─── Tab Switcher ─── */}
       <div className="flex gap-2">
         <button
@@ -310,7 +405,7 @@ export default function AdminSubscriptionPlansPage() {
                 <Input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g., Gold"
+                  placeholder="e.g., Premium"
                   className="rounded-xl"
                 />
               </div>
@@ -324,7 +419,7 @@ export default function AdminSubscriptionPlansPage() {
                   max={10}
                   className="rounded-xl"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">0 = Free, 1 = Silver, 2 = Gold, 3 = Platinum</p>
+                <p className="mt-1 text-xs text-muted-foreground">0 = Free (default). Higher number = higher tier.</p>
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Price *</label>

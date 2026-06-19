@@ -39,7 +39,10 @@ interface SystemHealth {
 export default function AdminSystemHealthPage() {
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  // Initialize to null so the server-rendered HTML and the first client render
+  // match (avoids a hydration mismatch from time differing between SSR/client).
+  // Populated on the first fetch, which runs in an effect after mount.
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   const fetchHealth = useCallback(async () => {
     setLoading(true);
@@ -113,7 +116,7 @@ export default function AdminSystemHealthPage() {
             </Button>
           </div>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Last updated: {lastRefresh.toLocaleTimeString()} · Auto-refreshes every 60s</p>
+        <p className="mt-2 text-xs text-muted-foreground">Last updated: {lastRefresh ? lastRefresh.toLocaleTimeString() : "—"} · Auto-refreshes every 60s</p>
       </section>
 
       {loading && !health ? (

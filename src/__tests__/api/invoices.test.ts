@@ -26,6 +26,7 @@ const invoiceChain = {
   skip: jest.fn().mockReturnThis(),
   limit: jest.fn().mockReturnThis(),
   lean: jest.fn().mockResolvedValue([]),
+  cast: jest.fn().mockReturnValue({}),
 };
 
 const Invoice = {

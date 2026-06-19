@@ -43,6 +43,7 @@ jest.mock("@/hooks/useCandidates", () => ({
   useStartConversation: () => ({ mutateAsync: mutateAsyncStartConversationMock }),
   useAiMatch: () => ({ mutateAsync: mutateAsyncAiMatchMock }),
   useScreenCandidates: () => ({ mutateAsync: jest.fn().mockResolvedValue({}) }),
+  useInviteToApply: () => ({ mutateAsync: jest.fn().mockResolvedValue({}) }),
 }));
 
 jest.mock("@/components/ui/button", () => ({
@@ -82,6 +83,10 @@ jest.mock("@/components/shared/PaginationControls", () => ({
 
 jest.mock("@/components/shared/ResumeViewerModal", () => ({
   ResumeViewerModal: () => null,
+}));
+
+jest.mock("@/components/features/employer/SaveToPoolDialog", () => ({
+  SaveToPoolDialog: () => null,
 }));
 
 describe("EmployerCandidatesPage", () => {

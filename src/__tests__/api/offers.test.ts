@@ -28,7 +28,7 @@ Object.values(offerQuery).forEach((fn) => (fn as jest.Mock).mockReturnThis());
     _id: "offer_001",
     jobId: { _id: "job_001", title: "Frontend Developer", location: "Dubai" },
     applicationId: { _id: "app_001", status: "offer" },
-    jobSeekerId: { _id: "seeker_001", name: "Candidate", email: "candidate@example.com" },
+    jobSeekerId: { _id: "seeker_001", fullName: "Candidate", userId: { name: "Candidate", email: "candidate@example.com" } },
     employerId: { _id: "emp_001", companyName: "Acme" },
     salary: { amount: 12000, currency: "AED", period: "monthly" },
     status: "pending",

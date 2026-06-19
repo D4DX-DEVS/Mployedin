@@ -154,7 +154,7 @@ describe("EmployerApplicationsPage", () => {
     await user.click(screen.getByRole("button", { name: /detailed view/i }));
 
     expect(await screen.findByRole("dialog", { name: /candidate details for amina noor/i })).toBeInTheDocument();
-    expect(screen.getByText("Review Signals")).toBeInTheDocument();
+    expect(screen.getByText("Review signals")).toBeInTheDocument();
     expect(screen.getByText("Delivers production-ready React features across global teams.")).toBeInTheDocument();
     expect(screen.getByText("Leadership in cross-functional delivery")).toBeInTheDocument();
   });
@@ -180,6 +180,6 @@ describe("EmployerApplicationsPage", () => {
     await user.click(screen.getByTestId("applicant-row-app-1"));
 
     expect(await screen.findByRole("dialog", { name: /candidate details for amina noor/i })).toBeInTheDocument();
-    expect(screen.getByText("Review Signals")).toBeInTheDocument();
+    expect(screen.getByText("Review signals")).toBeInTheDocument();
   });
 });

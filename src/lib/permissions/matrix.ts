@@ -8,7 +8,7 @@ export const ALL_RESOURCES: Resource[] = [
   "jobs", "applications", "interviews", "placements", "leads",
   "commissions", "employers", "agents", "job_seekers", "super_agents",
   "users", "notifications", "reports", "audit_logs",
-  "ai_cv", "ai_match", "ai_assistant", "tasks", "design_system",
+  "ai_cv", "ai_match", "ai_assistant", "tasks",
   "job_attributes", "location_data", "cms", "contact_submissions", "offers",
   "subscriptions", "exhibitions", "resources", "targets", "onboarding",
 ];
@@ -38,7 +38,6 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     ai_match: ["read"],
     ai_assistant: ["read"],
     tasks: ["read", "update"],
-    design_system: ["read"],
     job_attributes: ["create", "read", "update", "delete"],
     location_data: ["create", "read", "update", "delete"],
     cms: ["create", "read", "update", "delete"],

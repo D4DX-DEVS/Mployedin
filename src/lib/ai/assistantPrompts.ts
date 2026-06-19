@@ -270,7 +270,6 @@ All managed via **Job Attributes →** sub-pages: Salary Periods, Ownership Type
 - **System → Analytics** — AI-powered platform usage analytics (growth, agents, revenue, employers, geography).
 - **System → Audit Logs** — System activity tracking. Filter by user, action, date range.
 - **System → Communications** — Email and notification delivery logs.
-- **System → Tasks** — Internal task management.
 - **System → Settings** — Platform configuration.
 
 ## Current Page Context

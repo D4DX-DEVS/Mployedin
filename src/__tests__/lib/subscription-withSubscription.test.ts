@@ -25,6 +25,13 @@ jest.mock("@/lib/subscription/gracePeriod", () => ({
   getGracePeriodJobSeekerLimits: jest.fn(),
 }));
 
+// Enforcement is ON for these tests so the gating logic actually runs.
+// (In production it defaults to OFF — see enforcementFlag.ts.)
+jest.mock("@/lib/subscription/enforcementFlag", () => ({
+  isSubscriptionEnforcementEnabled: jest.fn().mockResolvedValue(true),
+  clearSubscriptionEnforcementCache: jest.fn(),
+}));
+
 const mockFindOne = Subscription.findOne as jest.Mock;
 const mockFindByIdAndUpdate = Subscription.findByIdAndUpdate as jest.Mock;
 
@@ -34,7 +41,9 @@ function makeReq(url = "http://localhost/api/test"): NextRequest {
   return new NextRequest(new URL(url));
 }
 
-const mockHandler = jest.fn().mockResolvedValue(NextResponse.json({ ok: true }));
+// Return a fresh response per call — a NextResponse body can only be read once,
+// so a single shared instance breaks any test that calls res.json().
+const mockHandler = jest.fn(() => Promise.resolve(NextResponse.json({ ok: true })));
 
 const employerCtx = { userId: "u1", role: "employer" as const, locale: "en" };
 const adminCtx = { userId: "u2", role: "admin" as const, locale: "en" };
@@ -103,6 +112,7 @@ describe("withSubscription", () => {
   // ── No subscription ──────────────────────────────────────────────────────
 
   describe("no subscription", () => {
+    // No subscription and not in grace period → enforcement blocks the request.
     test("returns 403 SUBSCRIPTION_REQUIRED when not in grace period", async () => {
       mockFindOne.mockResolvedValue(null);
       const wrapped = withSubscription(mockHandler, { type: "ai", feature: "ai_chat" });
@@ -178,11 +188,26 @@ describe("withSubscription", () => {
   // ── Numeric limit checks ────────────────────────────────────────────────
 
   describe("numeric limit checks", () => {
-    test("allows when under limit", async () => {
+    test("allows when under limit and increments usage on success", async () => {
       mockFindOne.mockResolvedValue(activeSub);
+      mockFindByIdAndUpdate.mockResolvedValue(null);
       const wrapped = withSubscription(mockHandler, { type: "limit", feature: "activeJobs" });
       await wrapped(makeReq(), employerCtx);
       expect(mockHandler).toHaveBeenCalled();
+      expect(mockFindByIdAndUpdate).toHaveBeenCalledWith("sub1", {
+        $inc: { "usage.activeJobs": 1 },
+      });
+    });
+
+    test("does not increment usage when handler fails", async () => {
+      mockFindOne.mockResolvedValue(activeSub);
+      const failingHandler = jest.fn(() =>
+        Promise.resolve(NextResponse.json({ error: "boom" }, { status: 500 })),
+      );
+      const wrapped = withSubscription(failingHandler, { type: "limit", feature: "activeJobs" });
+      const res = await wrapped(makeReq(), employerCtx);
+      expect(res.status).toBe(500);
+      expect(mockFindByIdAndUpdate).not.toHaveBeenCalled();
     });
 
     test("blocks when at limit with 429", async () => {
@@ -193,6 +218,7 @@ describe("withSubscription", () => {
       const body = await res.json();
       expect(res.status).toBe(429);
       expect(body.error).toBe("LIMIT_EXCEEDED");
+      expect(mockFindByIdAndUpdate).not.toHaveBeenCalled();
     });
 
     test("allows unlimited (-1)", async () => {
@@ -248,6 +274,36 @@ describe("withSubscription", () => {
         targetRole: "job_seeker",
         status: "active",
       });
+    });
+  });
+
+  // ── Enforcement disabled (global toggle OFF) ─────────────────────────────
+
+  describe("enforcement disabled", () => {
+    test("passes through without touching the DB when enforcement is off", async () => {
+      const { isSubscriptionEnforcementEnabled } = require("@/lib/subscription/enforcementFlag");
+      (isSubscriptionEnforcementEnabled as jest.Mock).mockResolvedValueOnce(false);
+
+      const wrapped = withSubscription(mockHandler, { type: "ai", feature: "ai_voice_input" });
+      const req = makeReq();
+      const res = await wrapped(req, employerCtx);
+
+      expect(mockHandler).toHaveBeenCalledWith(req, employerCtx, undefined);
+      expect(mockFindOne).not.toHaveBeenCalled();
+      expect(connectDB).not.toHaveBeenCalled();
+      const body = await res.json();
+      expect(body.ok).toBe(true);
+    });
+
+    test("ignores limits when enforcement is off", async () => {
+      const { isSubscriptionEnforcementEnabled } = require("@/lib/subscription/enforcementFlag");
+      (isSubscriptionEnforcementEnabled as jest.Mock).mockResolvedValueOnce(false);
+
+      const wrapped = withSubscription(mockHandler, { type: "limit", feature: "activeJobs" });
+      await wrapped(makeReq(), employerCtx);
+
+      expect(mockHandler).toHaveBeenCalled();
+      expect(mockFindOne).not.toHaveBeenCalled();
     });
   });
 });

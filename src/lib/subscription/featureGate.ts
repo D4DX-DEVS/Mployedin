@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/db/mongoose";
 import Subscription from "@/models/Subscription";
 import type { FeatureCheck } from "./withSubscription";
+import { isSubscriptionEnforcementEnabled } from "./enforcementFlag";
 import {
   isInGracePeriod,
   getGracePeriodEmployerLimits,
@@ -34,6 +35,12 @@ export async function checkFeatureGate(
   check: FeatureCheck,
   targetRole?: "employer" | "job_seeker",
 ): Promise<FeatureGateResult> {
+  // Subscription enforcement is toggled globally by an admin. While it is OFF
+  // (default, until payment integration is live) every feature is allowed.
+  if (!(await isSubscriptionEnforcementEnabled())) {
+    return { allowed: true };
+  }
+
   await connectDB();
 
   const role = targetRole ?? "employer"; // caller should provide
@@ -44,10 +51,13 @@ export async function checkFeatureGate(
     status: "active",
   }).lean();
 
-  // If no subscription, check grace period
-  // All users get platinum-tier access until payment gateway is implemented
+  // No subscription — allow during the signup grace period, otherwise require one.
   if (!sub) {
-    return { allowed: true };
+    const inGrace = await isInGracePeriod(userId);
+    if (inGrace) {
+      return { allowed: true };
+    }
+    return { allowed: false, reason: "SUBSCRIPTION_REQUIRED" };
   }
 
   const snapshot = sub.planSnapshot;
@@ -208,6 +218,15 @@ export async function getFeatureGateMap(
   userId: string,
   targetRole: "employer" | "job_seeker",
 ): Promise<Record<string, { allowed: boolean; limit?: number; used?: number; remaining?: number }>> {
+  // When enforcement is OFF (default), expose a full-access gate map so every
+  // feature reads as allowed.
+  if (!(await isSubscriptionEnforcementEnabled())) {
+    const fullLimits = targetRole === "employer"
+      ? getGracePeriodEmployerLimits()
+      : getGracePeriodJobSeekerLimits();
+    return buildGateMapFromLimits(fullLimits, targetRole);
+  }
+
   await connectDB();
 
   const sub = await Subscription.findOne({
@@ -216,12 +235,16 @@ export async function getFeatureGateMap(
     status: "active",
   }).lean();
 
-  // All users get platinum-tier access until payment gateway is implemented
+  // No subscription — grant a Gold-tier map during the grace period, else nothing.
   if (!sub) {
-    const graceLimits = targetRole === "employer"
-      ? getGracePeriodEmployerLimits()
-      : getGracePeriodJobSeekerLimits();
-    return buildGateMapFromLimits(graceLimits, targetRole);
+    const inGrace = await isInGracePeriod(userId);
+    if (inGrace) {
+      const graceLimits = targetRole === "employer"
+        ? getGracePeriodEmployerLimits()
+        : getGracePeriodJobSeekerLimits();
+      return buildGateMapFromLimits(graceLimits, targetRole);
+    }
+    return {};
   }
 
   const snapshot = sub.planSnapshot;

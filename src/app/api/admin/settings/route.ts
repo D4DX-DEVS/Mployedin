@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { clearCommissionOverrideCache } from "@/lib/commissions/resolveRate";
+import { clearSubscriptionEnforcementCache } from "@/lib/subscription/enforcementFlag";
 import SystemSettings from "@/models/SystemSettings";
 import type { ISystemSettings } from "@/models/SystemSettings";
 import { validateBody } from "@/lib/validators";
@@ -35,7 +36,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
   const body = await validateBody(req, systemSettingsUpdateSchema);
-  const allowed: (keyof ISystemSettings)[] = ["platformName", "supportEmail", "maintenanceMode", "defaultCurrency", "commissionOverrides"];
+  const allowed: (keyof ISystemSettings)[] = ["platformName", "supportEmail", "maintenanceMode", "defaultCurrency", "subscriptionEnforcementEnabled", "commissionOverrides"];
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if ((body as Record<string, unknown>)[key] !== undefined) update[key] = (body as Record<string, unknown>)[key];
@@ -64,6 +65,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // Invalidate commission rate cache when overrides change
   if (update.commissionOverrides !== undefined) {
     clearCommissionOverrideCache();
+  }
+
+  // Invalidate subscription-enforcement cache so the toggle takes effect now
+  if (update.subscriptionEnforcementEnabled !== undefined) {
+    clearSubscriptionEnforcementCache();
   }
 
   await logActivity({

@@ -14,11 +14,8 @@ import connectDB from "@/lib/db/mongoose";
 import Subscription from "@/models/Subscription";
 import type { UserRole } from "@/types/user";
 import type { AIFeatureKey } from "@/models/SubscriptionPlan";
-import {
-  isInGracePeriod,
-  getGracePeriodEmployerLimits,
-  getGracePeriodJobSeekerLimits,
-} from "./gracePeriod";
+import { isSubscriptionEnforcementEnabled } from "./enforcementFlag";
+import { isInGracePeriod } from "./gracePeriod";
 
 // ── Feature check types ──────────────────────────────────────────────────────
 
@@ -50,10 +47,12 @@ export function withSubscription(
       return handler(req, ctx, params);
     }
 
-    // All users get platinum-tier access until payment gateway is implemented
-    return handler(req, ctx, params);
+    // Subscription enforcement is toggled globally by an admin. While it is OFF
+    // (default, until payment integration is live) all users get full access.
+    if (!(await isSubscriptionEnforcementEnabled())) {
+      return handler(req, ctx, params);
+    }
 
-    /* eslint-disable no-unreachable -- subscription enforcement disabled temporarily */
     await connectDB();
 
     const targetRole = ctx.role === "employer" ? "employer" : "job_seeker";
@@ -175,7 +174,19 @@ export function withSubscription(
         );
       }
 
-      return handler(req, ctx, params);
+      const res = await handler(req, ctx, params);
+
+      // Count successful create/apply actions toward the monthly usage so the
+      // numeric limits actually enforce on subsequent requests. The usage
+      // counters reset monthly (see helpers.nextUsageReset). `teamMembers` is
+      // stateful and tracked elsewhere, so it is never incremented here.
+      if (res.status >= 200 && res.status < 300 && check.feature !== "teamMembers") {
+        await Subscription.findByIdAndUpdate(sub._id, {
+          $inc: { [`usage.${check.feature}`]: 1 },
+        });
+      }
+
+      return res;
     }
 
     // ── Boolean Toggle Check ─────────────────────────────────────────────

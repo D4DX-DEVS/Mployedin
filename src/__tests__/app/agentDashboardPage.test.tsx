@@ -11,6 +11,7 @@ const redirectMock = jest.fn();
 const connectDBMock = jest.fn();
 const agentFindOneMock = jest.fn();
 const jobFindMock = jest.fn();
+const jobCountDocumentsMock = jest.fn();
 const applicationAggregateMock = jest.fn();
 
 jest.mock("@/lib/auth/config", () => ({
@@ -36,6 +37,7 @@ jest.mock("@/models/Job", () => ({
   __esModule: true,
   default: {
     find: (...args: unknown[]) => jobFindMock(...args),
+    countDocuments: (...args: unknown[]) => jobCountDocumentsMock(...args),
   },
 }));
 
@@ -53,10 +55,12 @@ describe("AgentDashboard", () => {
     connectDBMock.mockReset();
     agentFindOneMock.mockReset();
     jobFindMock.mockReset();
+    jobCountDocumentsMock.mockReset();
     applicationAggregateMock.mockReset();
 
     authMock.mockResolvedValue({ user: { id: "user-1" } });
     connectDBMock.mockResolvedValue(undefined);
+    jobCountDocumentsMock.mockResolvedValue(1);
 
     agentFindOneMock.mockReturnValue({
       select: () => ({

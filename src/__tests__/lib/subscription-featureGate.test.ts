@@ -24,6 +24,13 @@ jest.mock("@/lib/subscription/gracePeriod", () => ({
   getGracePeriodJobSeekerLimits: jest.fn(),
 }));
 
+// Enforcement is ON for these tests so the gating logic actually runs.
+// (In production it defaults to OFF — see enforcementFlag.ts.)
+jest.mock("@/lib/subscription/enforcementFlag", () => ({
+  isSubscriptionEnforcementEnabled: jest.fn().mockResolvedValue(true),
+  clearSubscriptionEnforcementCache: jest.fn(),
+}));
+
 const mockFindOne = Subscription.findOne as jest.Mock;
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -303,5 +310,33 @@ describe("getFeatureGateMap", () => {
     expect(map.applicationsSubmitted.allowed).toBe(true);
     expect(map.salaryInsights).toEqual({ allowed: true });
     expect(map.profileVisibilityBoost).toEqual({ allowed: false });
+  });
+});
+
+// ── Tests: enforcement disabled (global toggle OFF) ──────────────────────────
+
+describe("enforcement disabled", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test("checkFeatureGate allows everything without a DB read", async () => {
+    const { isSubscriptionEnforcementEnabled } = require("@/lib/subscription/enforcementFlag");
+    (isSubscriptionEnforcementEnabled as jest.Mock).mockResolvedValueOnce(false);
+
+    const result = await checkFeatureGate("user1", { type: "ai", feature: "ai_voice_input" }, "employer");
+    expect(result.allowed).toBe(true);
+    expect(mockFindOne).not.toHaveBeenCalled();
+  });
+
+  test("getFeatureGateMap returns a full-access map without a DB read", async () => {
+    const { isSubscriptionEnforcementEnabled } = require("@/lib/subscription/enforcementFlag");
+    (isSubscriptionEnforcementEnabled as jest.Mock).mockResolvedValueOnce(false);
+    const { getGracePeriodEmployerLimits } = require("@/lib/subscription/gracePeriod");
+    (getGracePeriodEmployerLimits as jest.Mock).mockReturnValueOnce(baseSub.planSnapshot.employerLimits);
+
+    const map = await getFeatureGateMap("user1", "employer");
+    expect(map.dataExport).toEqual({ allowed: true });
+    expect(mockFindOne).not.toHaveBeenCalled();
   });
 });

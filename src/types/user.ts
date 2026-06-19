@@ -11,7 +11,7 @@ export type Resource =
   | "jobs" | "applications" | "interviews" | "placements" | "leads"
   | "commissions" | "employers" | "agents" | "job_seekers" | "super_agents"
   | "users" | "notifications" | "reports" | "audit_logs"
-  | "ai_cv" | "ai_match" | "ai_assistant" | "tasks" | "design_system"
+  | "ai_cv" | "ai_match" | "ai_assistant" | "tasks"
   | "job_attributes" | "location_data" | "cms" | "contact_submissions"
   | "offers" | "subscriptions" | "exhibitions" | "resources" | "targets"
   | "onboarding";
