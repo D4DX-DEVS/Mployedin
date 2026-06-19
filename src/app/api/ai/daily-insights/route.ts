@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Application from "@/models/Application";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
+import { Employer } from "@/models/Employer";
 import { routeGenerate } from "@/lib/ai/router";
 import { redactPII } from "@/lib/ai/sanitize";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
@@ -75,10 +76,15 @@ ${missingSections.length > 0 ? `Missing sections: ${missingSections.join(", ")}`
 Skills: ${(seeker?.skills ?? []).slice(0, 5).join(", ")}
 New applications today: ${recentApps.length}`;
   } else if (ctx.role === "employer") {
-    const [activeJobs, newApps] = await Promise.all([
-      Job.countDocuments({ employerId: ctx.userId, status: "active" }),
-      Application.countDocuments({ createdAt: { $gte: yesterday } }),
-    ]);
+    // Jobs/applications reference the Employer profile _id, not the user id.
+    const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    const employerId = employer?._id;
+    const [activeJobs, newApps] = employerId
+      ? await Promise.all([
+          Job.countDocuments({ employerId, status: "active", deletedAt: null }),
+          Application.countDocuments({ employerId, createdAt: { $gte: yesterday } }),
+        ])
+      : [0, 0];
 
     contextData = `
 Role: Employer

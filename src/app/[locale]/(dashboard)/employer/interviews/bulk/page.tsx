@@ -56,7 +56,9 @@ export default function EmployerBulkInterviewPage() {
       email: user?.email ?? "",
       jobTitle: (app.jobId as { title?: string } | undefined)?.title,
       applicationId: app._id,
-      selected: selections[candidateId] ?? false,
+      // Selection is keyed by the unique applicationId — a candidate can appear
+      // once per job they applied to, so the candidate id is not unique here.
+      selected: selections[app._id] ?? false,
     };
   });
 
@@ -72,7 +74,7 @@ export default function EmployerBulkInterviewPage() {
   const toggleAll = () => {
     const allSelected = filteredCandidates.every(c => c.selected);
     const updates: Record<string, boolean> = {};
-    filteredCandidates.forEach(c => { updates[c._id] = !allSelected; });
+    filteredCandidates.forEach(c => { updates[c.applicationId ?? c._id] = !allSelected; });
     setSelections(prev => ({ ...prev, ...updates }));
   };
 
@@ -136,10 +138,10 @@ export default function EmployerBulkInterviewPage() {
               </div>
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                 {filteredCandidates.map(c => (
-                  <label key={c._id} className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                  <label key={c.applicationId ?? c._id} className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all ${
                     c.selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
                   }`}>
-                    <input type="checkbox" checked={c.selected} onChange={() => toggleSelect(c._id)}
+                    <input type="checkbox" checked={c.selected} onChange={() => toggleSelect(c.applicationId ?? c._id)}
                       className="accent-primary shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{c.name}</p>

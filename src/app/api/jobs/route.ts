@@ -169,6 +169,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   ]);
   // Aggregate real application counts from Application collection for managed job views
   let portfolioStats: { employerCount: number; totalApplicants: number } | undefined;
+  let totalVacancies: number | undefined;
   if (canFilterManagedJobs && jobs.length > 0) {
     const jobIds = jobs.map((j) => j._id);
     const appCounts = await Application.aggregate([
@@ -185,11 +186,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // scope, not just the current page.
   if (canFilterManagedJobs) {
     const baseQuery = { ...query, ...(status ? { status: { $exists: true } } : {}) };
-    const portfolioJobs = await Job.find(baseQuery).select("_id employerId").lean();
+    const portfolioJobs = await Job.find(baseQuery).select("_id employerId vacancies").lean();
     const employerSet = new Set(
       portfolioJobs.map((j) => (j.employerId ? String(j.employerId) : null)).filter(Boolean),
     );
     const portfolioJobIds = portfolioJobs.map((j) => j._id);
+    totalVacancies = portfolioJobs.reduce(
+      (sum, j) => sum + ((j as { vacancies?: number }).vacancies ?? 0),
+      0,
+    );
     const totalApplicants = portfolioJobIds.length
       ? await Application.countDocuments({ jobId: { $in: portfolioJobIds } })
       : 0;
@@ -201,6 +206,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     pagination: { page, limit, total, pages: Math.ceil(total / limit), totalPages: Math.ceil(total / limit) },
     ...(statusAgg && { statusCounts: statusAgg }),
     ...(portfolioStats && { portfolioStats }),
+    ...(totalVacancies !== undefined && { totalVacancies }),
   }, {
     headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
   });

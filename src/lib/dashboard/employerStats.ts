@@ -102,7 +102,7 @@ export async function getEmployerDashboardStats(
     timeToHireResult,
     lastActivity,
   ] = await Promise.all([
-    Job.countDocuments({ employerId, status: "active" }),
+    Job.countDocuments({ employerId, status: "active", deletedAt: null }),
     Application.countDocuments({ employerId }),
     Application.countDocuments({ employerId, status: "applied" }),
     Application.countDocuments({ employerId, status: "shortlisted" }),

@@ -109,7 +109,7 @@ export default function EmployerJobsPage() {
   const activeJobs = data?.statusCounts?.active ?? jobs.filter((job) => job.status === "active").length;
   const draftJobs = data?.statusCounts?.draft ?? jobs.filter((job) => job.status === "draft").length;
   const pausedJobs = data?.statusCounts?.paused ?? jobs.filter((job) => job.status === "paused").length;
-  const totalOpenings = jobs.reduce((sum, job) => sum + (job.vacancies ?? 0), 0);
+  const totalOpenings = data?.totalVacancies ?? jobs.reduce((sum, job) => sum + (job.vacancies ?? 0), 0);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("exportTitleCol"), key: "title", formatter: (v) => String(v ?? "") },

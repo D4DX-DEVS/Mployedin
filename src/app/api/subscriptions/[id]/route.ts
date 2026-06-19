@@ -82,11 +82,12 @@ async function patchHandler(
     reason: body.reason,
   });
 
-  // Backward compat
+  // Backward compat — reset legacy plan flags so premium feature gates
+  // (e.g. SMTP override) and UI badges don't show a stale "premium" plan.
   if (sub.targetRole === "employer") {
     await Employer.findOneAndUpdate(
       { userId: sub.userId },
-      { paymentStatus: "pending" },
+      { paymentStatus: "pending", subscriptionType: "basic" },
     );
   }
 

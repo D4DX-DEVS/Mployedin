@@ -30,7 +30,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     scheduledInterviews,
     placements,
   ] = await Promise.all([
-    Job.countDocuments({ employerId, status: "active" }),
+    Job.countDocuments({ employerId, status: "active", deletedAt: null }),
     Application.countDocuments({ employerId }),
     Interview.countDocuments({ employerId, status: "scheduled" }),
     Placement.countDocuments({ employerId }),
