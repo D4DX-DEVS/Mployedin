@@ -85,14 +85,6 @@ type SettingsForm = z.infer<typeof settingsFormSchema>;
 
 // ─── Mock / static data ───────────────────────────────────────────────────────
 
-const MOCK_RESUMES = [
-  { id: "resume_v2", label: "Resume_v2.pdf" },
-  { id: "resume_backend", label: "Resume_Backend.pdf" },
-  { id: "resume_frontend", label: "Resume_Frontend.pdf" },
-];
-
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 const CURRENCIES = ["USD", "AED", "SAR", "EGP", "KWD", "QAR", "BHD", "OMR"];
 
 const SPEED_OPTIONS: { value: SettingsForm["applySpeed"]; label: string; desc: string }[] = [
@@ -340,6 +332,9 @@ export default function JobSeekerSettingsPage() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeTab, setActiveTab] = useState("interviews"); // TODO: was "auto-apply" — re-enable when auto-apply feature is ready
 
+  // ── Resume documents from user's profile ────────────────────────────────
+  const [userResumes, setUserResumes] = useState<{ id: string; name: string }[]>([]);
+
   // ── Avatar state ────────────────────────────────────────────────────────────
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -432,6 +427,7 @@ export default function JobSeekerSettingsPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.settings) reset({ ...DEFAULTS, ...d.settings });
+        if (d.resumes?.length) setUserResumes(d.resumes);
       })
       .catch(console.error)
       .finally(() => setInitialLoading(false));
@@ -779,12 +775,12 @@ export default function JobSeekerSettingsPage() {
           <TabsContent value="profile" className="mt-5 space-y-5 focus-visible:outline-none">
             <SettingCard
               icon={<ShieldCheck className="h-4 w-4" />}
-              title="Profile Visibility"
-              description="Control what employers see on your public profile."
+              title={t("profileVisibility.title")}
+              description={t("profileVisibility.description")}
             >
               <SettingRow
-                label="Show Salary Expectations"
-                description="Display your salary range on your profile and applications."
+                label={t("profileVisibility.showSalary")}
+                description={t("profileVisibility.showSalaryDescription")}
               >
                 <Controller
                   control={control}
@@ -796,8 +792,8 @@ export default function JobSeekerSettingsPage() {
               </SettingRow>
 
               <SettingRow
-                label="Open to Relocation"
-                description="Signal to employers you're willing to relocate within the GCC."
+                label={t("profileVisibility.openToRelocation")}
+                description={t("profileVisibility.openToRelocationDescription")}
               >
                 <Controller
                   control={control}
@@ -812,25 +808,25 @@ export default function JobSeekerSettingsPage() {
             {(values.showSalary || values.openToRelocation) && (
               <SettingCard
                 icon={<DollarSign className="h-4 w-4" />}
-                title="Visibility Details"
-                description="Fine-tune the information shown on your public profile."
+                title={t("profileVisibility.detailsTitle")}
+                description={t("profileVisibility.detailsDescription")}
               >
                 {values.showSalary && (
                   <div className="py-3">
-                    <p className="text-sm font-medium text-foreground mb-2.5">Displayed Salary Range</p>
+                    <p className="text-sm font-medium text-foreground mb-2.5">{t("profileVisibility.salaryRange")}</p>
                     <div className="flex gap-2">
                       <Controller
                         control={control}
                         name="salaryMin"
                         render={({ field }) => (
-                          <Input type="number" placeholder="Min salary" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} className="h-9 text-sm" />
+                          <Input type="number" placeholder={t("profileVisibility.minSalary")} value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} className="h-9 text-sm" />
                         )}
                       />
                       <Controller
                         control={control}
                         name="salaryMax"
                         render={({ field }) => (
-                          <Input type="number" placeholder="Max salary" value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} className="h-9 text-sm" />
+                          <Input type="number" placeholder={t("profileVisibility.maxSalary")} value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} className="h-9 text-sm" />
                         )}
                       />
                       <Controller
@@ -857,13 +853,13 @@ export default function JobSeekerSettingsPage() {
                   <div className="py-3">
                     <div className="flex items-center gap-1.5 mb-2.5">
                       <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">Preferred Relocation Cities</p>
+                      <p className="text-sm font-medium text-foreground">{t("profileVisibility.preferredCities")}</p>
                     </div>
                     <Controller
                       control={control}
                       name="preferredLocations"
                       render={({ field }) => (
-                        <TagInput values={field.value} onChange={field.onChange} placeholder="e.g. Dubai, Riyadh, Doha…" />
+                        <TagInput values={field.value} onChange={field.onChange} placeholder={t("profileVisibility.citiesPlaceholder")} />
                       )}
                     />
                   </div>
@@ -878,13 +874,13 @@ export default function JobSeekerSettingsPage() {
           <TabsContent value="resume-ai" className="mt-5 space-y-5 focus-visible:outline-none">
             <SettingCard
               icon={<BrainCircuit className="h-4 w-4" />}
-              title="Resume & AI Behavior"
-              description="Configure how AI writes and applies on your behalf."
+              title={t("resumeAi.title")}
+              description={t("resumeAi.description")}
             >
               <SettingRow
-                label="Default Resume"
-                description="Used for all AI-generated applications."
-                tooltip="Upload additional resumes from the Documents page."
+                label={t("resumeAi.defaultResume")}
+                description={t("resumeAi.defaultResumeDescription")}
+                tooltip={t("resumeAi.defaultResumeTooltip")}
               >
                 <Controller
                   control={control}
@@ -892,18 +888,18 @@ export default function JobSeekerSettingsPage() {
                   render={({ field }) => (
                     <SearchableSelect
                       className="h-8 w-48 text-sm rounded-lg"
-                      options={MOCK_RESUMES.map((r) => ({ value: r.id, label: r.label }))}
+                      options={userResumes.map((r) => ({ value: r.id, label: r.name }))}
                       value={field.value}
                       onValueChange={field.onChange}
-                      placeholder="Select resume"
+                      placeholder={userResumes.length ? t("resumeAi.selectResume") : t("resumeAi.noResumes")}
                     />
                   )}
                 />
               </SettingRow>
 
               <SettingRow
-                label="Auto-generate Cover Letters"
-                description="AI writes a tailored cover letter for every application."
+                label={t("resumeAi.autoGenerateCoverLetters")}
+                description={t("resumeAi.autoGenerateCoverLettersDescription")}
               >
                 <Controller
                   control={control}
@@ -915,9 +911,9 @@ export default function JobSeekerSettingsPage() {
               </SettingRow>
 
               <SettingRow
-                label="Auto-answer Screening Questions"
-                description="AI fills in pre-screening questionnaires from your profile."
-                tooltip="AI uses your profile and resume to answer common screening questions. Review answers before submitting in Manual mode."
+                label={t("resumeAi.autoAnswerScreening")}
+                description={t("resumeAi.autoAnswerScreeningDescription")}
+                tooltip={t("resumeAi.autoAnswerScreeningTooltip")}
               >
                 <Controller
                   control={control}
@@ -932,8 +928,8 @@ export default function JobSeekerSettingsPage() {
             {values.autoGenerateCoverLetter && (
               <SettingCard
                 icon={<Sparkles className="h-4 w-4" />}
-                title="Cover Letter Tone"
-                description="Choose the writing style AI uses for your cover letters."
+                title={t("resumeAi.toneTitle")}
+                description={t("resumeAi.toneDescription")}
               >
                 <div className="py-3">
                   <Controller
@@ -952,18 +948,18 @@ export default function JobSeekerSettingsPage() {
                                 : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
                             }`}
                           >
-                            {tone === "professional" && "Professional"}
-                            {tone === "friendly" && "Friendly"}
-                            {tone === "bold" && "Bold"}
+                            {tone === "professional" && t("resumeAi.toneProfessional")}
+                            {tone === "friendly" && t("resumeAi.toneFriendly")}
+                            {tone === "bold" && t("resumeAi.toneBold")}
                           </button>
                         ))}
                       </div>
                     )}
                   />
                   <p className="mt-3 text-xs text-muted-foreground">
-                    {values.coverLetterTone === "professional" && "Clear, structured, and business-appropriate."}
-                    {values.coverLetterTone === "friendly" && "Warm, approachable, and conversational."}
-                    {values.coverLetterTone === "bold" && "Confident, direct, and memorable."}
+                    {values.coverLetterTone === "professional" && t("resumeAi.toneProfessionalDescription")}
+                    {values.coverLetterTone === "friendly" && t("resumeAi.toneFriendlyDescription")}
+                    {values.coverLetterTone === "bold" && t("resumeAi.toneBoldDescription")}
                   </p>
                 </div>
               </SettingCard>
@@ -974,12 +970,12 @@ export default function JobSeekerSettingsPage() {
           <TabsContent value="notifications" className="mt-5 space-y-5 focus-visible:outline-none">
             <SettingCard
               icon={<Bell className="h-4 w-4" />}
-              title="Notification Preferences"
-              description="Choose which activity triggers a notification."
+              title={t("notifications.title")}
+              description={t("notifications.description")}
             >
               <SettingRow
-                label="Job Match Alerts"
-                description="Get notified when new jobs match your profile."
+                label={t("notifications.jobMatchAlerts")}
+                description={t("notifications.jobMatchAlertsDescription")}
               >
                 <Controller
                   control={control}
@@ -991,8 +987,8 @@ export default function JobSeekerSettingsPage() {
               </SettingRow>
 
               <SettingRow
-                label="Application Submitted"
-                description="Confirmation each time an application is sent."
+                label={t("notifications.applicationSubmitted")}
+                description={t("notifications.applicationSubmittedDescription")}
               >
                 <Controller
                   control={control}
@@ -1004,8 +1000,8 @@ export default function JobSeekerSettingsPage() {
               </SettingRow>
 
               <SettingRow
-                label="Interview Notifications"
-                description="Reminders and updates about scheduled interviews."
+                label={t("notifications.interviewNotifications")}
+                description={t("notifications.interviewNotificationsDescription")}
               >
                 <Controller
                   control={control}

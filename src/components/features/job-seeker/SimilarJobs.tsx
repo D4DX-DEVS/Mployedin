@@ -21,15 +21,17 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
     staleTime: 10 * 60_000,
   });
 
-  const jobs = data?.jobs ?? [];
+  const jobs = (data?.jobs ?? []).slice(0, 3);
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">Similar Jobs</h2>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-24 animate-pulse rounded-[22px] bg-muted" />
-        ))}
+      <div className="mt-8 border-t border-border pt-8 space-y-4">
+        <h2 className="text-lg font-semibold text-foreground">Similar Jobs</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-36 animate-pulse rounded-lg sm:rounded-[22px] bg-muted" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -37,17 +39,17 @@ export function SimilarJobs({ jobId, locale }: { jobId: string; locale: string }
   if (jobs.length === 0) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="mt-8 border-t border-border pt-8 space-y-4">
       <div>
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Keep exploring</div>
         <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Similar Jobs</h2>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {jobs.map((job) => (
           <Link
             key={job._id}
             href={`/${locale}/job-seeker/jobs/${job._id}`}
-            className="group block rounded-[22px] border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)]"
+            className="group block rounded-lg sm:rounded-[22px] border border-border/70 bg-card p-3 sm:p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)]"
           >
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               {job.overlap} matching skill{job.overlap !== 1 ? "s" : ""}

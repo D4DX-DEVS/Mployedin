@@ -428,9 +428,9 @@ export default function JobSeekerProfilePage() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4">
+      <div className="px-3 py-4 sm:p-6 max-w-5xl mx-auto space-y-3 sm:space-y-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="card-base p-5 animate-pulse space-y-3">
+          <div key={i} className="card-base p-4 sm:p-5 animate-pulse space-y-3">
             <div className="h-4 bg-muted rounded w-1/3" />
             <div className="h-16 bg-muted rounded" />
           </div>
@@ -440,7 +440,7 @@ export default function JobSeekerProfilePage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4">
+    <div className="px-3 py-4 sm:p-6 max-w-5xl mx-auto space-y-3 sm:space-y-4">
 
       {/* ── Page Header ────────────────────────────────────────────────── */}
       <PageHeader

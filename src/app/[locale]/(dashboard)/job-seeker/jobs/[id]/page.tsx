@@ -180,40 +180,42 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="mx-auto max-w-6xl px-4 py-8">
-          <section className="overflow-hidden rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-6 py-6 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-8 sm:py-7">
+        <div className="mx-auto max-w-6xl px-4 py-5 sm:py-8">
+          <section className="overflow-hidden rounded-2xl sm:rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-4 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-8 sm:py-7">
             <div>
               <div>
                 <div className="inline-flex rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
                   Job detail
                 </div>
-                <div className="mt-4 flex items-start justify-between gap-4">
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="min-w-0">
-                    <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-[2.25rem]">
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl lg:text-[2.25rem]">
                       {job.title}
                     </h1>
                     {employer?._id ? (
                       <Link
                         href={`/${locale}/job-seeker/companies/${String(employer._id)}`}
-                        className="mt-2 inline-flex text-base font-medium text-muted-foreground transition-colors hover:text-primary"
+                        className="mt-2 inline-flex text-sm sm:text-base font-medium text-muted-foreground transition-colors hover:text-primary"
                       >
                         {employer.companyName}
                       </Link>
                     ) : (
-                      <p className="mt-2 text-base font-medium text-muted-foreground">{employer?.companyName}</p>
+                      <p className="mt-2 text-sm sm:text-base font-medium text-muted-foreground">{employer?.companyName}</p>
                     )}
                   </div>
-                  {(employer?.domainVerified || employer?.isAgentVerified) && (
-                    <span className="shrink-0 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600">
-                      Verified employer
-                    </span>
-                  )}
-                  <ShareJob
-                    jobId={String(job._id)}
-                    jobTitle={job.title}
-                    companyName={employer?.companyName ?? "Company"}
-                    locale={locale}
-                  />
+                  <div className="flex items-center gap-2 shrink-0">
+                    {(employer?.domainVerified || employer?.isAgentVerified) && (
+                      <span className="shrink-0 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600">
+                        Verified employer
+                      </span>
+                    )}
+                    <ShareJob
+                      jobId={String(job._id)}
+                      jobTitle={job.title}
+                      companyName={employer?.companyName ?? "Company"}
+                      locale={locale}
+                    />
+                  </div>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2 text-sm text-muted-foreground">
@@ -259,9 +261,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
             </div>
           </section>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px]">
-            <div className="space-y-6">
-              <section className="card-base rounded-[28px] p-6">
+          <div className="mt-5 sm:mt-6 grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px]">
+            <div className="space-y-5 sm:space-y-6">
+              <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Overview</div>
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What this role covers</h2>
                 <div className="mt-4 space-y-2">
@@ -271,7 +273,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Responsibilities */}
               {job.responsibilities?.length > 0 && (
-                <section className="card-base rounded-[28px] p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Responsibilities</div>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What you&apos;ll do</h2>
                   <ul className="mt-4 space-y-2">
@@ -287,7 +289,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Qualifications */}
               {job.qualifications?.length > 0 && (
-                <section className="card-base rounded-[28px] p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Qualifications</div>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What we&apos;re looking for</h2>
                   <ul className="mt-4 space-y-2">
@@ -303,7 +305,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Benefits */}
               {job.benefits?.length > 0 && (
-                <section className="card-base rounded-[28px] p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Benefits</div>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What you&apos;ll get</h2>
                   <ul className="mt-4 space-y-2">
@@ -319,7 +321,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               {/* Learning Outcomes */}
               {job.learningOutcomes?.length > 0 && (
-                <section className="card-base rounded-[28px] p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Learning</div>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What you&apos;ll learn</h2>
                   <ul className="mt-4 space-y-2">
@@ -337,9 +339,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               <SkillInsights jobId={String(job._id)} source="job_view" />
 
               {job.requirements && (
-                <section className="card-base rounded-[28px] p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Requirements</div>
-                  <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">What the employer is looking for</h2>
+                  <h2 className="mt-1 text-lg sm:text-xl font-semibold tracking-tight text-foreground">What the employer is looking for</h2>
 
                   <div className="mt-5 space-y-5">
                     {job.requirements.skills?.length > 0 && (
@@ -402,7 +404,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               )}
 
               {job.tags?.length > 0 && (
-                <section className="card-base rounded-[28px] p-6">
+                <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-6">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Search terms</div>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">Related tags</h2>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -420,13 +422,13 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
               )}
             </div>
 
-            <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
-              <aside className="rounded-[26px] border border-border/70 bg-background/95 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
+            <div className="space-y-4 sm:space-y-5 lg:self-start">
+              <aside className="rounded-xl sm:rounded-[26px] border border-border/70 bg-background/95 p-4 sm:p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)]">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Quick apply</div>
                   <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Apply with the profile you already built.</h2>
                 </div>
-                <div className="mt-4 space-y-2 rounded-[22px] border border-border/60 bg-card px-4 py-4 text-sm text-muted-foreground">
+                <div className="mt-4 space-y-2 rounded-xl sm:rounded-[22px] border border-border/60 bg-card px-4 py-4 text-sm text-muted-foreground">
                   <p>Use your saved profile details and attach your CV automatically when available.</p>
                   {responseTimeDays ? (
                     <p className="font-medium text-green-600">
@@ -444,7 +446,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 </div>
               </aside>
 
-              <section className="card-base rounded-[28px] p-5">
+              <section className="card-base rounded-xl sm:rounded-[28px] p-4 sm:p-5">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Employer profile</div>
                 <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">About the employer</h3>
                 <div className="mt-4 space-y-3 text-sm text-muted-foreground">
@@ -488,14 +490,15 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
               <Link
                 href={`/${locale}/job-seeker/jobs`}
-                className="block rounded-[22px] border border-border/70 bg-background/90 px-4 py-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                className="block rounded-xl sm:rounded-[22px] border border-border/70 bg-background/90 px-4 py-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
               >
                 Back to Job Search
               </Link>
-
-              <SimilarJobs jobId={String(job._id)} locale={locale} />
             </div>
           </div>
+
+          {/* Similar Jobs - full width below */}
+          <SimilarJobs jobId={String(job._id)} locale={locale} />
         </div>
       </div>
     </>

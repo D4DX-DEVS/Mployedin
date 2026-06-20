@@ -49,7 +49,8 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const clone = await Job.create({
     employerId: source.employerId,
     agentId: effectiveAgentId,
-    title: `${source.title} (Copy)`,
+    title: source.title,
+    clonedFrom: source._id,
     description: source.description,
     requirements: source.requirements,
     salary: source.salary,

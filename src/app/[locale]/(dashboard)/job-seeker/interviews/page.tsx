@@ -119,13 +119,13 @@ export default function InterviewsPage() {
       />
 
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="card-base animate-pulse h-28" />
+            <div key={i} className="card-base animate-pulse h-24 sm:h-28" />
           ))}
         </div>
       ) : interviews.length === 0 ? (
-        <div className="card-base text-center py-16">
+        <div className="card-base text-center py-10 sm:py-16">
           <Video className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
           <h3 className="font-semibold mb-1">{t("emptyTitle")}</h3>
           <p className="text-sm text-muted-foreground">

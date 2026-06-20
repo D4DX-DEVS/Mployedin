@@ -152,8 +152,8 @@ export default function ApplicationDetailPage() {
       </Button>
 
       {/* ── Header Card ─────────────────────────────────────────── */}
-      <section className="card-base rounded-2xl border p-5 space-y-3">
-        <div className="flex items-start gap-3">
+      <section className="card-base rounded-lg sm:rounded-2xl border p-3 sm:p-5 space-y-3">
+        <div className="flex items-start gap-2 sm:gap-3">
           <div className="h-12 w-12 rounded-xl border bg-muted/20 flex items-center justify-center shrink-0">
             {employer?.logo ? (
               <img src={employer.logo} alt={employer.companyName ?? ""} className="h-9 w-9 rounded-lg object-contain" />

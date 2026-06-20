@@ -602,6 +602,7 @@ export default function EmployerJobsPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base font-semibold tracking-tight text-foreground">{job.title}</h3>
                       <Badge className={`${STATUS_COLORS[job.status] ?? ""} border px-2 py-0.5 text-[11px] font-medium capitalize`}>{job.status}</Badge>
+                      {job.clonedFrom ? <Badge variant="outline" className="border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"><Copy className="mr-1 h-3 w-3" />{t("clonedBadge")}</Badge> : null}
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-border dark:bg-background/80 dark:text-slate-300">{formatLocation(job)}</span>

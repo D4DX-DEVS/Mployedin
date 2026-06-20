@@ -268,10 +268,10 @@ export default function OffersPage() {
       ) : (
         <div className="space-y-4">
           {offers.map((offer) => (
-            <div key={offer._id} className="card-base p-6 space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{offer.jobId.title}</h3>
+            <div key={offer._id} className="card-base p-4 sm:p-6 space-y-3 sm:space-y-4">
+              <div className="flex items-start justify-between gap-2 sm:gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-base sm:text-lg truncate">{offer.jobId.title}</h3>
                   <p className="text-sm text-muted-foreground">
                     {typeof offer.jobId.location === "object" && offer.jobId.location ? (offer.jobId.location.isRemote ? t("remote") : [offer.jobId.location.city, offer.jobId.location.country].filter(Boolean).join(", ") || "—") : (offer.jobId.location ?? "—")}
                   </p>

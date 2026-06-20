@@ -16,6 +16,29 @@ interface JobSeekerSettings {
   instantBooking: boolean;
   showSalary: boolean;
   openToRelocation: boolean;
+  timezone?: string;
+  timeBuffer?: number;
+  weeklyAvailability?: string[];
+  availableHours?: { day: string; startTime: string; endTime: string }[];
+  defaultResumeId?: string;
+  autoGenerateCoverLetter?: boolean;
+  coverLetterTone?: string;
+  autoAnswerScreening?: boolean;
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryCurrency?: string;
+  preferredLocations?: string[];
+  notifications?: {
+    jobMatchAlerts?: boolean;
+    applicationSubmitted?: boolean;
+    interviewNotifications?: boolean;
+  };
+}
+
+interface ResumeDoc {
+  id: string;
+  name: string;
+  url: string;
 }
 
 async function getHandler(_req: NextRequest, ctx: { userId: string; role: string }) {
@@ -25,8 +48,8 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
 
   await connectDB();
   const js = await (JobSeeker as unknown as {
-    findOne: (q: object) => { select: (s: string) => { lean: () => Promise<{ settings?: JobSeekerSettings } | null> } }
-  }).findOne({ userId: ctx.userId }).select("settings").lean();
+    findOne: (q: object) => { select: (s: string) => { lean: () => Promise<{ settings?: JobSeekerSettings; documents?: { id: string; name: string; category: string; url: string }[] } | null> } }
+  }).findOne({ userId: ctx.userId }).select("settings documents").lean();
 
   const defaults: JobSeekerSettings = {
     autoApply: false,
@@ -34,9 +57,25 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
     instantBooking: true,
     showSalary: true,
     openToRelocation: true,
+    autoGenerateCoverLetter: true,
+    coverLetterTone: "professional",
+    autoAnswerScreening: false,
+    salaryCurrency: "USD",
+    notifications: {
+      jobMatchAlerts: true,
+      applicationSubmitted: true,
+      interviewNotifications: true,
+    },
   };
 
-  return NextResponse.json({ settings: js?.settings ?? defaults });
+  const resumes: ResumeDoc[] = (js?.documents ?? [])
+    .filter((d) => d.category === "resume" && d.url)
+    .map((d) => ({ id: d.id, name: d.name, url: d.url }));
+
+  return NextResponse.json({
+    settings: js?.settings ?? defaults,
+    resumes,
+  });
 }
 
 async function patchHandler(req: NextRequest, ctx: { userId: string; role: string }) {

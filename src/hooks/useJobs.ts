@@ -28,6 +28,7 @@ export interface Job {
   applicationCount?: number;
   createdAt: string;
   expiresAt?: string;
+  clonedFrom?: string;
 }
 
 interface JobsResponse {

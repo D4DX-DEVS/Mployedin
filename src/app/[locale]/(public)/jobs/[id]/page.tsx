@@ -180,14 +180,14 @@ export default async function JobDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8">
+        <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6 md:py-8">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8 lg:items-start">
             {/* Main content */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2 space-y-5 sm:space-y-6">
               {/* Header */}
-              <div>
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <h1 className="text-2xl font-semibold text-foreground">{job.title}</h1>
+              <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-3">
+                  <h1 className="text-xl sm:text-2xl font-semibold text-foreground">{job.title}</h1>
                   <div className="flex items-center gap-2 shrink-0">
                     <SocialShare
                       url={`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/${locale}/jobs/${String(job._id)}`}
@@ -242,14 +242,16 @@ export default async function JobDetailPage({ params }: PageProps) {
               </div>
 
               {/* Description */}
-              <div>
+              <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
                 <h2 className="text-base font-semibold text-foreground mb-3">Job Description</h2>
-                <MarkdownRenderer content={job.description ?? ""} />
+                <div className="text-justify">
+                  <MarkdownRenderer content={job.description ?? ""} />
+                </div>
               </div>
 
               {/* Requirements */}
               {job.requirements && (
-                <div className="space-y-4">
+                <div className="bg-card border border-border rounded-xl p-5 sm:p-6 space-y-4">
                   <h2 className="text-base font-semibold text-foreground">Requirements</h2>
 
                   {job.requirements.skills?.length > 0 && (
@@ -289,7 +291,7 @@ export default async function JobDetailPage({ params }: PageProps) {
 
               {/* Tags */}
               {job.tags?.filter((t: string) => !/^seed-/i.test(t)).length > 0 && (
-                <div>
+                <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
                   <h2 className="text-base font-semibold text-foreground mb-3">Tags</h2>
                   <div className="flex flex-wrap gap-2">
                     {job.tags.filter((t: string) => !/^seed-/i.test(t)).map((t: string) => (
@@ -309,7 +311,7 @@ export default async function JobDetailPage({ params }: PageProps) {
             {/* Sidebar */}
             <div className="space-y-4 lg:self-start">
               {/* Apply card */}
-              <div className="bg-card border border-border rounded-xl p-5 lg:sticky lg:top-6">
+              <div className="bg-card border border-border rounded-xl p-5">
                 <div className="mb-4">
                   <p className="text-sm font-semibold text-foreground">{job.title}</p>
                   <p className="text-xs text-muted-foreground">{employer?.companyName}</p>
@@ -362,11 +364,11 @@ export default async function JobDetailPage({ params }: PageProps) {
               <Link href={`/${locale}/jobs`} className="block text-center text-sm text-muted-foreground hover:text-foreground transition-colors">
                 ← Back to all jobs
               </Link>
-
-              {/* Similar Jobs */}
-              <SimilarJobs jobId={String(job._id)} locale={locale} />
             </div>
           </div>
+
+          {/* Similar Jobs - full width below */}
+          <SimilarJobs jobId={String(job._id)} locale={locale} />
         </div>
       </div>
     </>

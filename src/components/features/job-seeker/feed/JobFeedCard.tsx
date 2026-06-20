@@ -186,7 +186,7 @@ export const JobFeedCard = memo(function JobFeedCard({
 
   return (
     <div
-      className="card-base group relative overflow-hidden rounded-[26px] border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all duration-200 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.35)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_60px_-38px_rgba(37,99,235,0.18)]"
+      className="card-base group relative overflow-hidden rounded-lg sm:rounded-[26px] border border-border/70 bg-[linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(248,250,252,0.96))] transition-all duration-200 shadow-[0_18px_48px_-38px_rgba(15,23,42,0.35)] hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_24px_60px_-38px_rgba(37,99,235,0.18)]"
     >
       <div className="flex gap-2 sm:gap-3.5">
         {/* Card body */}
@@ -340,7 +340,7 @@ export const JobFeedCard = memo(function JobFeedCard({
 
           {/* Bottom: posted date + stats + actions */}
           <div className="mt-4 flex flex-col gap-3 border-t border-border/40 pt-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] text-muted-foreground">
               <span>{posted.value == null ? t(`time.${posted.key}`) : t(`time.${posted.key}`, { value: posted.value.toLocaleString(numberLocale) })}</span>
               {(job.views ?? 0) > 0 && (
                 <span className="flex items-center gap-1">

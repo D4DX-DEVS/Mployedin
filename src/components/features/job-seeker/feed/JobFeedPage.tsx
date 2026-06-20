@@ -356,7 +356,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-5 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-6 sm:py-6">
+      <section className="overflow-hidden rounded-xl sm:rounded-[30px] border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-4 py-4 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-5 sm:py-5 lg:px-6 lg:py-6">
         <div className="space-y-5">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
@@ -364,7 +364,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 {t("hero.badge")}
               </div>
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl lg:text-3xl">
                   {t("hero.title")}
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
@@ -451,11 +451,11 @@ export function JobFeedPage({ locale }: { locale: string }) {
           </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-5 items-start lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_300px]">
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 sm:gap-5 items-start lg:grid-cols-[1fr_250px] xl:grid-cols-[1fr_280px]">
+        <div className="space-y-3 sm:space-y-4">
           {isSearchMode ? (
             <>
-              <div className="rounded-[24px] border border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:px-5">
+              <div className="rounded-lg sm:rounded-[24px] border border-border/60 bg-card px-3 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.04)] sm:px-4 sm:py-4 lg:px-5">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
@@ -504,13 +504,13 @@ export function JobFeedPage({ locale }: { locale: string }) {
               )}
 
               {searchError && !searchLoading && (
-                <div className="card-base rounded-[24px] py-10 text-center">
+                <div className="card-base rounded-lg sm:rounded-[24px] py-6 sm:py-10 text-center">
                   <p className="text-sm text-muted-foreground">{t("errors.searchFailed")}</p>
                 </div>
               )}
 
               {!searchLoading && !searchError && searchData?.jobs.length === 0 && (
-                <div className="card-base rounded-[26px] py-12 text-center">
+                <div className="card-base rounded-lg sm:rounded-[26px] py-8 sm:py-12 text-center">
                   <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                     <Search className="h-7 w-7 text-primary/60" />
                   </div>
@@ -607,7 +607,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
               )}
 
               {error && !isLoading && (
-                <div className="card-base rounded-[24px] py-10 text-center">
+                <div className="card-base rounded-lg sm:rounded-[24px] py-6 sm:py-10 text-center">
                   <p className="text-sm text-muted-foreground">
                     {t("errors.recommendationsFailed")}
                   </p>
@@ -615,7 +615,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
               )}
 
               {!isLoading && !error && visibleJobs.length === 0 && (
-                <div className="card-base rounded-[26px] py-12 text-center">
+                <div className="card-base rounded-lg sm:rounded-[26px] py-8 sm:py-12 text-center">
                   <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                     <Search className="h-7 w-7 text-primary/60" />
                   </div>

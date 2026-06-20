@@ -136,6 +136,7 @@ export interface IJob extends Document {
     contactPhone?: string;
   };
   locations?: IJobLocation[];
+  clonedFrom?: mongoose.Types.ObjectId;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -263,6 +264,7 @@ const JobSchema = new Schema<IJob>(
       isRemote: { type: Boolean, default: false },
       _id: false,
     }],
+    clonedFrom: { type: Schema.Types.ObjectId, ref: "Job" },
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true }

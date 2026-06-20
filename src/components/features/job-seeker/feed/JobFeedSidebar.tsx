@@ -190,7 +190,7 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProp
   return (
     <div className="space-y-4">
       {/* ── Preferences ── */}
-      <div className="card-base rounded-[26px]">
+      <div className="card-base rounded-lg sm:rounded-[26px]">
         <div className="mb-4">
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("profileSignal")}</div>
           <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("preferencesTitle")}</h3>
@@ -229,7 +229,7 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale }: SidebarProp
       </div>
 
       {/* ── Filters ── */}
-      <div className="card-base rounded-[26px]">
+      <div className="card-base rounded-lg sm:rounded-[26px]">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("refineResults")}</div>
