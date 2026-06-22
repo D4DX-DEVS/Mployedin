@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown")
     .split(",")[0]
     .trim();
-  const { allowed, resetAt } = checkRateLimit(`taxonomy:${ip}`, {
+  const { allowed, resetAt } = await checkRateLimit(`taxonomy:${ip}`, {
     limit: 120,
     windowSec: 60,
     prefix: "tax",

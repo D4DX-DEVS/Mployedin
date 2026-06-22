@@ -18,7 +18,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.applications);
+  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.applications);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },

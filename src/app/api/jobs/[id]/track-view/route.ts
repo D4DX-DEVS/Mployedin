@@ -11,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
-  const { allowed } = checkRateLimit(`track-view:${ip}`, { limit: 30, windowSec: 60, prefix: "tview" });
+  const { allowed } = await checkRateLimit(`track-view:${ip}`, { limit: 30, windowSec: 60, prefix: "tview" });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }

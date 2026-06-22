@@ -53,7 +53,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 });
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.leads);
+  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.leads);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

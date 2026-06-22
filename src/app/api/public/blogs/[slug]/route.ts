@@ -8,7 +8,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
-  const { allowed } = checkRateLimit(`blog-detail:${ip}`, { limit: 60, windowSec: 60, prefix: "blogd" });
+  const { allowed } = await checkRateLimit(`blog-detail:${ip}`, { limit: 60, windowSec: 60, prefix: "blogd" });
   if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   try {

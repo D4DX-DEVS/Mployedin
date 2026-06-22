@@ -105,7 +105,22 @@
       "PowerShell(Select-String -Path \".playwright-mcp\\\\page-2026-06-11T10-20-29-300Z.yml\" -Pattern 'Apply|button' | Select-Object -First 20 | ForEach-Object { $_.Line.Trim\\(\\).Substring\\(0,[Math]::Min\\(100,$_.Line.Trim\\(\\).Length\\)\\) })",
       "PowerShell(Select-String -Path \".playwright-mcp\\\\skills-page.yml\" -Pattern 'Apply|Recommended|With CV|job' | Select-Object -First 25 | ForEach-Object { $_.Line.Trim\\(\\).Substring\\(0,[Math]::Min\\(110,$_.Line.Trim\\(\\).Length\\)\\) })",
       "PowerShell($f = Get-ChildItem -Recurse -Filter \"skills-page.yml\" -Path \"$env:TEMP\",\"D:\\\\Mployedin\\\\mployedin\" -ErrorAction SilentlyContinue | Select-Object -First 1; if \\($f\\) { Select-String -Path $f.FullName -Pattern 'Apply|Recommended|With CV' | Select-Object -First 20 | ForEach-Object { $_.Line.Trim\\(\\).Substring\\(0,[Math]::Min\\(110,$_.Line.Trim\\(\\).Length\\)\\) } } else { Write-Output \"not found\" })",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(tee /tmp/tsc-output.txt)",
+      "Bash(echo \"EXIT_MARKER:$?\")",
+      "Bash(echo \"TSC_EXIT:$?\")",
+      "Bash(tee /tmp/build-output.txt)",
+      "Bash(xargs echo \"dynamic routes:\")",
+      "Read(//tmp/**)",
+      "Bash(xargs echo \"static routes:\")",
+      "mcp__plugin_ecc_playwright__browser_resize",
+      "mcp__plugin_ecc_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_network_requests",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_type",
+      "PowerShell(git *)",
+      "mcp__ide__getDiagnostics"
     ]
   },
   "enableAllProjectMcpServers": true,

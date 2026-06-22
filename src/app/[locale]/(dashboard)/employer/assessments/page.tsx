@@ -10,6 +10,7 @@ import {
   ClipboardCheck, Plus, Trash2, Edit, Users, BarChart3,
   Clock, CheckCircle2, XCircle, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { PageHero } from "@/components/shared/PageHero";
 
 interface Assessment {
   _id: string;
@@ -55,15 +56,11 @@ export default function EmployerAssessmentsPage() {
 
   return (
     <div className="page-container">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <ClipboardCheck className="w-6 h-6 text-primary" />
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground mt-1">{t("description")}</p>
-        </div>
-        {assessments.length > 0 ? (
+      <PageHero
+        icon={ClipboardCheck}
+        title={t("title")}
+        description={t("description")}
+        actions={assessments.length > 0 ? (
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
@@ -71,8 +68,8 @@ export default function EmployerAssessmentsPage() {
             <Plus className="w-4 h-4" />
             {t("createAssessment")}
           </button>
-        ) : null}
-      </div>
+        ) : undefined}
+      />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-4">

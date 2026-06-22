@@ -13,7 +13,7 @@ import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
  * and trending skills in their category/industry.
  */
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
-  const rl = checkRateLimitDual(_req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
+  const rl = await checkRateLimitDual(_req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

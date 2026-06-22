@@ -304,6 +304,9 @@ export function ResumeViewerModal({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState(status);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const previewLoadedRef = useRef(false);
 
   const displayName = fileName ?? (candidateName ? `${candidateName}'s CV` : "Resume");
   const hasRightPanel = !!(candidate || aiMatchScore != null || jobSeekerId);
@@ -318,6 +321,56 @@ export function ResumeViewerModal({
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  // The CV is streamed through our own origin, but its response carries
+  // X-Frame-Options: DENY / CSP frame-ancestors 'none' (clickjacking
+  // protection), so the browser refuses to frame it by URL. Instead we fetch
+  // the bytes and render an in-memory blob: URL, which is exempt from those
+  // directives. A missing URL, a browser without a built-in PDF viewer, or a
+  // failed fetch falls back to a download prompt.
+  useEffect(() => {
+    if (!isPdf) return;
+    previewLoadedRef.current = false;
+    setPdfBlobUrl(null);
+
+    const canViewPdf =
+      typeof navigator === "undefined" ||
+      (navigator as { pdfViewerEnabled?: boolean }).pdfViewerEnabled !== false;
+    if (!url || !canViewPdf) {
+      setPreviewFailed(true);
+      return;
+    }
+
+    setPreviewFailed(false);
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    const controller = new AbortController();
+
+    fetch(url, { credentials: "same-origin", signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`CV preview failed: ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPdfBlobUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewFailed(true);
+      });
+
+    const timer = setTimeout(() => {
+      if (!previewLoadedRef.current) setPreviewFailed(true);
+    }, 8000);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timer);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [url, isPdf]);
 
   // Escape: exit fullscreen first, then close
   useEffect(() => {
@@ -447,11 +500,40 @@ export function ResumeViewerModal({
           {/* CV Viewer — padded, light bg */}
           <div className="flex-1 overflow-auto bg-gray-50 dark:bg-muted/20 p-4">
             {isPdf ? (
-              <iframe
-                src={url}
-                className="w-full h-full rounded-lg border border-border/30 shadow-sm bg-white"
-                title={displayName}
-              />
+              previewFailed ? (
+                <div className="flex flex-col items-center justify-center min-h-full gap-3 text-center px-6">
+                  <FileText className="w-10 h-10 text-muted-foreground/60" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Preview isn&rsquo;t available here</p>
+                    <p className="text-xs text-muted-foreground max-w-xs">
+                      This CV can&rsquo;t be embedded in the browser. Open or download it to view the full document.
+                    </p>
+                  </div>
+                  {url && (
+                    <a
+                      href={url}
+                      download={displayName}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Open / Download CV
+                    </a>
+                  )}
+                </div>
+              ) : pdfBlobUrl ? (
+                <iframe
+                  src={pdfBlobUrl}
+                  onLoad={() => { previewLoadedRef.current = true; }}
+                  className="w-full h-full rounded-lg border border-border/30 shadow-sm bg-white"
+                  title={displayName}
+                />
+              ) : (
+                <div className="flex items-center justify-center min-h-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/50" />
+                </div>
+              )
             ) : (
               <div className="flex items-center justify-center min-h-full">
                 <img

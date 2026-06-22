@@ -5,7 +5,7 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 export interface Candidate {
   _id: string;
   fullName?: string;
-  userId?: { _id: string; name: string; email: string };
+  userId?: { _id: string; name: string; email?: string; avatar?: string };
   currentLocation?: string;
   experience?: { jobTitle: string; company: string; isCurrent: boolean }[];
   skills?: string[];
@@ -84,7 +84,7 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
         jobSeekerId?: {
           _id?: unknown;
           fullName?: string;
-          userId?: { _id: string; name: string; email: string };
+          userId?: { _id: string; name: string; email: string; avatar?: string };
           skills?: string[];
           currentLocation?: string;
           totalExperienceYears?: number;

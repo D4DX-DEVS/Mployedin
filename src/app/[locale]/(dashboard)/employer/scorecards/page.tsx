@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useScorecards } from "@/hooks/useScorecards";
@@ -77,7 +77,8 @@ export default function ScorecardListPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <PageHeader
+        <PageHero
+          icon={Award}
           title={t("title")}
           description="Loading scorecards..."
         />
@@ -92,7 +93,8 @@ export default function ScorecardListPage() {
 
   return (
     <div className="page-container">
-      <PageHeader
+      <PageHero
+        icon={Award}
         title={t("title")}
         description={t("totalScorecards", { count: total })}
       />

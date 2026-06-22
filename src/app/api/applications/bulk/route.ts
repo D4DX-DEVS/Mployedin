@@ -21,7 +21,7 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
-  const { allowed } = checkRateLimit(`bulk:${ctx.userId ?? ip}`, RATE_LIMIT_CONFIGS.bulk);
+  const { allowed } = await checkRateLimit(`bulk:${ctx.userId ?? ip}`, RATE_LIMIT_CONFIGS.bulk);
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
   }

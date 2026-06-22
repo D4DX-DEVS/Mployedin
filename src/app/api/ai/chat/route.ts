@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     // Rate limit AI calls per user
     const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
-    const { allowed, remaining, resetAt } = checkRateLimit(
+    const { allowed, remaining, resetAt } = await checkRateLimit(
       `ai-chat:${session.user.id ?? ip}`,
       RATE_LIMIT_CONFIGS.ai
     );

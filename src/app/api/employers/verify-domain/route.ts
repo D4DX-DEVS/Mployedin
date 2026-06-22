@@ -21,7 +21,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   // Rate limit: max 3 per day
   const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
-  const { allowed } = checkRateLimit(`domain-verify:${ctx.userId}`, {
+  const { allowed } = await checkRateLimit(`domain-verify:${ctx.userId}`, {
     limit: 3,
     windowSec: 24 * 60 * 60,
   });

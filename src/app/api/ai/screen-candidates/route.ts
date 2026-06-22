@@ -4,7 +4,7 @@ import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import { Application } from "@/models/Application";
@@ -12,8 +12,6 @@ import { JobSeeker } from "@/models/JobSeeker";
 import { validateBody } from "@/lib/validators";
 import { aiScreenCandidatesSchema } from "@/lib/validators/ai";
 import { logActivity } from "@/lib/audit/log";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,7 +29,7 @@ export async function POST(req: NextRequest) {
       req.headers.get("x-forwarded-for") ??
       req.headers.get("x-real-ip") ??
       "unknown";
-    const { allowed, remaining, resetAt } = checkRateLimit(
+    const { allowed, remaining, resetAt } = await checkRateLimit(
       `ai-screening:${(session.user as unknown as { id: string }).id ?? ip}`,
       RATE_LIMIT_CONFIGS.ai
     );
@@ -94,27 +92,29 @@ export async function POST(req: NextRequest) {
 
     const seekerIds = applications.map((a) => (a as { jobSeekerId: unknown }).jobSeekerId);
     const seekers = await JobSeeker.find({ _id: { $in: seekerIds } })
-      .select("firstName lastName skills experience education languages")
+      .select("fullName userId totalExperienceYears skills experience education languages")
+      .populate("userId", "name")
       .lean();
 
     // Build structured candidate summaries for the AI
     const candidateSummaries = seekers.map((s) => {
       const seeker = s as {
         _id: { toString(): string };
-        firstName?: string;
-        lastName?: string;
+        fullName?: string;
+        userId?: { name?: string };
+        totalExperienceYears?: number;
         skills?: string[];
         experience?: Array<{ jobTitle?: string; years?: number }>;
         education?: Array<{ degree?: string; field?: string }>;
         languages?: Array<{ language?: string; proficiency?: string }>;
       };
-      const totalYears = (seeker.experience ?? []).reduce(
+      const totalYears = seeker.totalExperienceYears ?? (seeker.experience ?? []).reduce(
         (acc, e) => acc + (e.years ?? 0),
         0
       );
       return {
         id: seeker._id.toString(),
-        name: `${seeker.firstName ?? ""} ${seeker.lastName ?? ""}`.trim() || "Unknown",
+        name: seeker.fullName?.trim() || seeker.userId?.name?.trim() || "Unknown",
         skills: (seeker.skills ?? []).slice(0, 20),
         experienceYears: totalYears,
         latestRole: seeker.experience?.[0]?.jobTitle ?? "N/A",
@@ -157,13 +157,7 @@ For each candidate provide a JSON object with:
 
 Output ONLY a JSON array, no markdown code blocks, sorted by score descending.`;
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { maxOutputTokens: 3000 },
-    });
-
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text().trim();
+    const rawText = (await generateText(prompt, GEMINI_MODELS.flash, 3000)).trim();
 
     let ranked: unknown[] = [];
     try {

@@ -18,7 +18,7 @@ const schema = z.object({
  */
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") ?? "unknown";
-  const { allowed } = checkRateLimit(`reset-pwd:${ip}`, { limit: 5, windowSec: 300, prefix: "rpwd" });
+  const { allowed } = await checkRateLimit(`reset-pwd:${ip}`, { limit: 5, windowSec: 300, prefix: "rpwd" });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }

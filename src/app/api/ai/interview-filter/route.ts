@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       req.headers.get("x-real-ip") ??
       "unknown";
     const userId = (session.user as unknown as { id: string }).id ?? ip;
-    const { allowed } = checkRateLimit(
+    const { allowed } = await checkRateLimit(
       `ai-filter:${userId}`,
       RATE_LIMIT_CONFIGS.ai
     );

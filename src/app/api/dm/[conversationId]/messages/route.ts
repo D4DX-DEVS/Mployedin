@@ -64,7 +64,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string }, params?: R
   const conv = await assertParticipant(conversationId, ctx.userId);
   if (!conv) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const rl = checkRateLimitDual(req, ctx.userId, { limit: 60, windowSec: 60, prefix: "dm-send" });
+  const rl = await checkRateLimitDual(req, ctx.userId, { limit: 60, windowSec: 60, prefix: "dm-send" });
   if (!rl.allowed) return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
 
   const body = await validateBody(req, dmSendMessageSchema);

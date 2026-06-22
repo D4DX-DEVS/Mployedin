@@ -22,7 +22,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "ai", feature: "ai_daily_insights" });
   if (gateErr) return gateErr;
 
-  const rl = checkRateLimitDual(_req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
+  const rl = await checkRateLimitDual(_req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

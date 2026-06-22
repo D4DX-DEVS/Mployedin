@@ -17,9 +17,9 @@ import { logActivity } from "@/lib/audit/log";
 /** Roles allowed to enroll in TOTP 2FA (high-privilege staff). */
 const TWO_FA_ROLES = new Set(["admin", "super_agent"]);
 
-function rateLimitGuard(ctx: AuthContext): NextResponse | null {
+async function rateLimitGuard(ctx: AuthContext): Promise<NextResponse | null> {
   // Tight per-user throttle — TOTP codes are 6 digits, brute force must be impossible.
-  const rl = checkRateLimit(`2fa:${ctx.userId}`, { limit: 10, windowSec: 300, prefix: "2fa" });
+  const rl = await checkRateLimit(`2fa:${ctx.userId}`, { limit: 10, windowSec: 300, prefix: "2fa" });
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many attempts. Try again later." },
@@ -52,7 +52,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     return NextResponse.json({ error: "Two-factor authentication is only available for admin and super agent accounts" }, { status: 403 });
   }
 
-  const limited = rateLimitGuard(ctx);
+  const limited = await rateLimitGuard(ctx);
   if (limited) return limited;
 
   await connectDB();

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
@@ -209,7 +209,8 @@ export default function BackgroundChecksPage() {
 
   return (
     <div className="page-container">
-      <PageHeader
+      <PageHero
+        icon={ShieldCheck}
         title={t("title")}
         description={t("description")}
         actions={

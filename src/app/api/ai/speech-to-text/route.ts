@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
       req.headers.get("x-forwarded-for") ??
       req.headers.get("x-real-ip") ??
       "unknown";
-    const { allowed, remaining, resetAt } = checkRateLimit(
+    const { allowed, remaining, resetAt } = await checkRateLimit(
       `ai-speech:${(session.user as unknown as { id: string }).id ?? ip}`,
       RATE_LIMIT_CONFIGS.ai
     );

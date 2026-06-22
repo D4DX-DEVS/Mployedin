@@ -60,6 +60,18 @@ Tell me the role, location, top skills, and any salary or openings if you want t
 For example: "Senior React developer in Kochi, hybrid, Node and React, salary optional, 2 openings."`;
 
 const AI_PREFILL_STORAGE_KEY = "job-ai-prefill";
+const AI_CHAT_STORAGE_KEY = "job-ai-chat-session";
+
+/** Read the persisted AI chat session (conversation + extracted draft). */
+function readChatSession(): { messages?: Message[]; extractedJob?: ExtractedJob | null; extractedBulkJobs?: ExtractedJob[] } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = sessionStorage.getItem(AI_CHAT_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
 const VOICE_WAVE_BARS = [0.45, 0.8, 1, 0.65, 0.9, 0.55, 0.75] as const;
 const DETECTED_LANGUAGE_LABELS: Record<string, string> = {
   "en-US": "langEnglish",
@@ -230,13 +242,15 @@ export default function EmployerAIJobCreatePage() {
   const t = useTranslations("ai");
   const currentLocale = useLocale();
   const isRtl = currentLocale === "ar";
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: t("jobCreator.initialMessage") }
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = readChatSession();
+    if (saved?.messages && saved.messages.length > 0) return saved.messages;
+    return [{ role: "assistant", content: t("jobCreator.initialMessage") }];
+  });
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [extractedJob, setExtractedJob] = useState<ExtractedJob | null>(null);
-  const [extractedBulkJobs, setExtractedBulkJobs] = useState<ExtractedJob[]>([]);
+  const [extractedJob, setExtractedJob] = useState<ExtractedJob | null>(() => readChatSession()?.extractedJob ?? null);
+  const [extractedBulkJobs, setExtractedBulkJobs] = useState<ExtractedJob[]>(() => readChatSession()?.extractedBulkJobs ?? []);
   const [creatingBulk, setCreatingBulk] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ created: number; total: number; errors: string[] } | null>(null);
   const [voiceLanguage, setVoiceLanguage] = useState("auto");
@@ -278,6 +292,22 @@ export default function EmployerAIJobCreatePage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Persist the conversation + draft so an accidental remount or navigation
+  // (back from the form, tab switch, dev Fast Refresh) doesn't discard the
+  // AI-generated draft. Cleared once the draft is carried into the job form.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (messages.length <= 1 && !extractedJob && extractedBulkJobs.length === 0) return;
+    try {
+      sessionStorage.setItem(
+        AI_CHAT_STORAGE_KEY,
+        JSON.stringify({ messages, extractedJob, extractedBulkJobs }),
+      );
+    } catch {
+      /* quota / serialization — non-critical */
+    }
+  }, [messages, extractedJob, extractedBulkJobs]);
 
   const sendMessage = async () => {
     if (!input.trim() || isStreaming || isRecording || isVoiceProcessing) return;
@@ -357,6 +387,7 @@ export default function EmployerAIJobCreatePage() {
     if (!extractedJob) return;
     try {
       sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify(buildPrefill(extractedJob)));
+      sessionStorage.removeItem(AI_CHAT_STORAGE_KEY);
       router.push(`/${locale}/employer/jobs/new?mode=manual&prefill=ai`);
     } catch {
       toast.error(t("jobCreator.failedOpenForm"));

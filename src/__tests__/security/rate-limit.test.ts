@@ -17,100 +17,104 @@ describe("checkRateLimit", () => {
   // Use unique keys per test to avoid cross-test pollution
   const uniqueKey = () => `user-${Date.now()}-${Math.random()}`;
 
-  test("allows requests within limit", () => {
+  test("allows requests within limit", async () => {
     const key = uniqueKey();
-    const r1 = checkRateLimit(key, testConfig);
+    const r1 = await checkRateLimit(key, testConfig);
     expect(r1.allowed).toBe(true);
     expect(r1.remaining).toBe(2);
   });
 
-  test("counts requests correctly and decrements remaining", () => {
+  test("counts requests correctly and decrements remaining", async () => {
     const key = uniqueKey();
-    checkRateLimit(key, testConfig); // 1
-    const r2 = checkRateLimit(key, testConfig); // 2
+    await checkRateLimit(key, testConfig); // 1
+    const r2 = await checkRateLimit(key, testConfig); // 2
     expect(r2.allowed).toBe(true);
     expect(r2.remaining).toBe(1);
   });
 
-  test("blocks after exceeding limit", () => {
+  test("blocks after exceeding limit", async () => {
     const key = uniqueKey();
-    checkRateLimit(key, testConfig); // 1
-    checkRateLimit(key, testConfig); // 2
-    checkRateLimit(key, testConfig); // 3 (last allowed)
-    const r4 = checkRateLimit(key, testConfig); // 4 (blocked)
+    await checkRateLimit(key, testConfig); // 1
+    await checkRateLimit(key, testConfig); // 2
+    await checkRateLimit(key, testConfig); // 3 (last allowed)
+    const r4 = await checkRateLimit(key, testConfig); // 4 (blocked)
     expect(r4.allowed).toBe(false);
     expect(r4.remaining).toBe(0);
   });
 
-  test("allows exactly 'limit' requests", () => {
+  test("allows exactly 'limit' requests", async () => {
     const key = uniqueKey();
     for (let i = 0; i < testConfig.limit; i++) {
-      expect(checkRateLimit(key, testConfig).allowed).toBe(true);
+      expect((await checkRateLimit(key, testConfig)).allowed).toBe(true);
     }
-    expect(checkRateLimit(key, testConfig).allowed).toBe(false);
+    expect((await checkRateLimit(key, testConfig)).allowed).toBe(false);
   });
 
-  test("different keys are isolated", () => {
+  test("different keys are isolated", async () => {
     const key1 = uniqueKey();
     const key2 = uniqueKey();
 
     // Exhaust key1
     for (let i = 0; i <= testConfig.limit; i++) {
-      checkRateLimit(key1, testConfig);
+      await checkRateLimit(key1, testConfig);
     }
-    expect(checkRateLimit(key1, testConfig).allowed).toBe(false);
+    expect((await checkRateLimit(key1, testConfig)).allowed).toBe(false);
 
     // key2 should still be allowed
-    expect(checkRateLimit(key2, testConfig).allowed).toBe(true);
+    expect((await checkRateLimit(key2, testConfig)).allowed).toBe(true);
   });
 
-  test("different prefixes create separate namespaces", () => {
+  test("different prefixes create separate namespaces", async () => {
     const key = uniqueKey();
     const configA: RateLimitConfig = { limit: 1, windowSec: 60, prefix: "ns-a" };
     const configB: RateLimitConfig = { limit: 1, windowSec: 60, prefix: "ns-b" };
 
-    checkRateLimit(key, configA); // 1st for ns-a
-    expect(checkRateLimit(key, configA).allowed).toBe(false); // 2nd — blocked
+    await checkRateLimit(key, configA); // 1st for ns-a
+    expect((await checkRateLimit(key, configA)).allowed).toBe(false); // 2nd — blocked
 
     // ns-b should still allow
-    expect(checkRateLimit(key, configB).allowed).toBe(true);
+    expect((await checkRateLimit(key, configB)).allowed).toBe(true);
   });
 
-  test("returns resetAt timestamp in the future", () => {
+  test("returns resetAt timestamp in the future", async () => {
     const key = uniqueKey();
-    const result = checkRateLimit(key, testConfig);
+    const result = await checkRateLimit(key, testConfig);
     expect(result.resetAt).toBeGreaterThan(Date.now());
   });
 
-  test("remaining never goes below 0", () => {
+  test("remaining never goes below 0", async () => {
     const key = uniqueKey();
     for (let i = 0; i < testConfig.limit + 5; i++) {
-      checkRateLimit(key, testConfig);
+      await checkRateLimit(key, testConfig);
     }
-    const result = checkRateLimit(key, testConfig);
+    const result = await checkRateLimit(key, testConfig);
     expect(result.remaining).toBe(0);
   });
 
-  test("uses default api config when none provided", () => {
+  test("uses default api config when none provided", async () => {
     const key = uniqueKey();
-    const result = checkRateLimit(key);
+    const result = await checkRateLimit(key);
     expect(result.allowed).toBe(true);
     // Default api config has limit=100, so remaining should be 99
     expect(result.remaining).toBe(RATE_LIMIT_CONFIGS.api.limit - 1);
   });
 
-  test("window resets after expiry", () => {
+  test("window resets after expiry", async () => {
     const key = uniqueKey();
-    // Use a tiny window; Date.now() advances between calls, so resetAt will be in the past
+    // windowSec:0 means each entry expires immediately, so a later call (once the
+    // event loop has advanced the clock) starts a fresh window — exercising the
+    // reset-after-expiry branch.
     const shortConfig: RateLimitConfig = { limit: 1, windowSec: 0, prefix: "short" };
 
-    checkRateLimit(key, shortConfig); // 1st — allowed (creates entry with resetAt = now)
-    // With windowSec=0, resetAt equals now. The check is `resetAt < now` which may
-    // or may not be true depending on sub-ms timing. The implementation correctly
-    // keeps the window open if resetAt >= now, so a 0s window may not expire immediately.
-    // Instead, verify the basic invariant: after exceeding the limit, allowed is false.
-    const r2 = checkRateLimit(key, shortConfig);
-    expect(r2.allowed).toBe(false);
+    const r1 = await checkRateLimit(key, shortConfig); // 1st — allowed, window already expired
+    expect(r1.allowed).toBe(true);
+
+    // A small delay guarantees Date.now() advances past resetAt, so the window expires.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const r2 = await checkRateLimit(key, shortConfig);
+    // The expired window reset, so this fresh request is allowed again.
+    expect(r2.allowed).toBe(true);
     expect(r2.remaining).toBe(0);
   });
 });

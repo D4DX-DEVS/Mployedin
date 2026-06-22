@@ -13,6 +13,7 @@ import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { getFirebaseAdminAuth } from "@/lib/firebase/admin";
 import type { CompanyRole } from "@/models/CompanyUser";
 import logger from "@/lib/logger";
+import { rehostExternalAvatar } from "@/lib/storage/rehost-avatar";
 import { fetchLinkedInExtras } from "@/lib/auth/linkedin-profile";
 import { encrypt, decrypt } from "@/lib/security/encryption";
 import { verifyTotp, hashRecoveryCode } from "@/lib/security/totp";
@@ -54,7 +55,7 @@ export const authConfig: NextAuthConfig = {
           request?.headers?.get("x-real-ip") ??
           "unknown"
         ).split(",")[0].trim();
-        const ipCheck = checkRateLimit(ip, { limit: 10, windowSec: 300, prefix: "login-ip" });
+        const ipCheck = await checkRateLimit(ip, { limit: 10, windowSec: 300, prefix: "login-ip" });
         if (!ipCheck.allowed) {
           logActivity({
             action: "login.failed",
@@ -164,7 +165,7 @@ export const authConfig: NextAuthConfig = {
           }
 
           // Throttle code guesses per account (6-digit codes must not be brute-forceable).
-          const totpRl = checkRateLimit(`2fa-login:${user._id}`, { limit: 8, windowSec: 300, prefix: "2fa-login" });
+          const totpRl = await checkRateLimit(`2fa-login:${user._id}`, { limit: 8, windowSec: 300, prefix: "2fa-login" });
           if (!totpRl.allowed) {
             logActivity({
               actorId: user._id.toString(),
@@ -280,6 +281,12 @@ export const authConfig: NextAuthConfig = {
               locale: "en",
               lastLogin: new Date(),
             });
+            // Re-host the provider avatar on our own storage so the URL never expires.
+            const rehosted = await rehostExternalAvatar(providerAvatar);
+            if (rehosted) {
+              await User.updateOne({ _id: dbUser._id }, { $set: { avatar: rehosted } });
+              dbUser.avatar = rehosted;
+            }
             // Create empty JobSeeker profile for new social-login users
             await JobSeeker.create({
               userId: dbUser._id,
@@ -333,7 +340,7 @@ export const authConfig: NextAuthConfig = {
               update.name = providerName;
             }
             if (!dbUser.avatar && providerAvatar) {
-              update.avatar = providerAvatar;
+              update.avatar = (await rehostExternalAvatar(providerAvatar)) ?? providerAvatar;
             }
 
             if (Object.keys(update).length > 0) {
@@ -498,6 +505,12 @@ export const authConfig: NextAuthConfig = {
             locale: "en",
             lastLogin: new Date(),
           });
+          // Re-host the provider avatar on our own storage so the URL never expires.
+          const rehosted = await rehostExternalAvatar(token.picture as string | null | undefined);
+          if (rehosted) {
+            await User.updateOne({ _id: dbUser._id }, { $set: { avatar: rehosted } });
+            dbUser.avatar = rehosted;
+          }
         } else {
           // Update lastLogin for returning OAuth users
           await User.findByIdAndUpdate(dbUser._id, { lastLogin: new Date() });
@@ -505,11 +518,14 @@ export const authConfig: NextAuthConfig = {
 
         if (!isNewUser && account.provider === "linkedin" && !dbUser.linkedinSub) {
           // Link LinkedIn to existing account (auto-link — both sides verify email)
+          const linkedAvatar = !dbUser.avatar && token.picture
+            ? ((await rehostExternalAvatar(token.picture as string)) ?? (token.picture as string))
+            : undefined;
           await User.findByIdAndUpdate(dbUser._id, {
             linkedinSub: account.providerAccountId,
             isEmailVerified: true,
             emailVerificationToken: undefined,
-            ...(!dbUser.avatar && token.picture ? { avatar: token.picture } : {}),
+            ...(linkedAvatar ? { avatar: linkedAvatar } : {}),
           });
           dbUser.isEmailVerified = true;
         } else if (!isNewUser && account.provider === "linkedin" && !dbUser.isEmailVerified) {
@@ -589,6 +605,8 @@ export const authConfig: NextAuthConfig = {
         token.isEmailVerified = dbUser.isEmailVerified ?? true;
         token.permissionMode = dbUser.permissionMode ?? "role_default";
         token.customPermissions = dbUser.customPermissions ?? undefined;
+        // Reflect the persisted (re-hosted) avatar in the live session image.
+        token.picture = dbUser.avatar ?? token.picture;
 
         // Log OAuth login / registration
         logActivity({

@@ -50,7 +50,7 @@ async function getHandler(_req: NextRequest, ctx: AuthContext) {
  * DELETE /api/user/email-change — cancel a pending change.
  */
 async function postHandler(req: NextRequest, ctx: AuthContext) {
-  const rl = checkRateLimit(`email-change:${ctx.userId}`, { limit: 3, windowSec: 600, prefix: "emch" });
+  const rl = await checkRateLimit(`email-change:${ctx.userId}`, { limit: 3, windowSec: 600, prefix: "emch" });
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Try again later." },

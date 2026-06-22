@@ -26,7 +26,7 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 // GET /api/jobs — paginated job search (role-scoped)
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
-  const rateLimit = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.api);
+  const rateLimit = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.api);
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

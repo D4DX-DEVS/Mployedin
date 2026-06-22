@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
   // Rate limit
   const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
-  const { allowed } = checkRateLimit(
+  const { allowed } = await checkRateLimit(
     `job-extract:${session.user.id ?? ip}`,
     RATE_LIMIT_CONFIGS.upload
   );

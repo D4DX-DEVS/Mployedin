@@ -11,7 +11,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
 export async function GET(req: NextRequest) {
   // Rate limit: 30 requests per minute per IP
   const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
-  const { allowed } = checkRateLimit(`companies:${ip}`, { limit: 30, windowSec: 60, prefix: "companies" });
+  const { allowed } = await checkRateLimit(`companies:${ip}`, { limit: 30, windowSec: 60, prefix: "companies" });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }

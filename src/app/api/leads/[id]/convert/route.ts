@@ -24,7 +24,7 @@ interface AuthCtx { userId: string; role: UserRole; locale: string }
  * Creates User + Employer + CompanyUser, links to agent, updates lead status.
  */
 async function handler(req: NextRequest, ctx: AuthCtx) {
-  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.employers);
+  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.employers);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

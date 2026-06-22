@@ -15,7 +15,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   // Max 3 exports per day per user to prevent data harvesting abuse
-  const { allowed } = checkRateLimit(`gdpr-export:${ctx.userId}`, { limit: 3, windowSec: 86400, prefix: "gdpr" });
+  const { allowed } = await checkRateLimit(`gdpr-export:${ctx.userId}`, { limit: 3, windowSec: 86400, prefix: "gdpr" });
   if (!allowed) {
     return NextResponse.json({ error: "Export limit reached. You may request up to 3 exports per day." }, { status: 429 });
   }

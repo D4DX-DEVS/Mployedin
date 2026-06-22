@@ -302,7 +302,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .populate({
         path: "jobSeekerId",
         select: "userId fullName skills currentLocation totalExperienceYears experience availabilityStatus profileCompleteness cv.originalUrl",
-        populate: { path: "userId", select: "name email" },
+        populate: { path: "userId", select: "name email avatar" },
       })
       .lean(),
     Application.countDocuments(query),
@@ -435,7 +435,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
 // POST /api/applications — apply for a job
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
-  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.applications);
+  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.applications);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

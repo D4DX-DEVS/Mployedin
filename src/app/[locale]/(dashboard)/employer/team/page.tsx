@@ -10,7 +10,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import {
@@ -207,7 +207,8 @@ export default function TeamManagementPage() {
     <div className="page-container employer-legacy-surface">
       {ConfirmDialogNode}
       {/* Header */}
-      <PageHeader
+      <PageHero
+        icon={Users}
         title={t("title")}
         description={pendingCount > 0 ? t("descriptionWithPending", { activeCount, pendingCount }) : t("descriptionActiveOnly", { activeCount })}
         actions={

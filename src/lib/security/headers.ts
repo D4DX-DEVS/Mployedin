@@ -43,7 +43,10 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       // WASM module (delivered as a data: URI) during client-side PDF export.
       "connect-src 'self' data: https://generativelanguage.googleapis.com https://openrouter.ai https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com https://*.pusher.com wss://*.pusher.com",
       "worker-src 'self' blob:",
-      "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://www.youtube.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
+      // blob: lets the candidate CV viewer frame an in-memory PDF. The proxied
+      // CV response sets X-Frame-Options: DENY / frame-ancestors 'none', so it
+      // can only be embedded via a blob: URL, never by its same-origin URL.
+      "frame-src 'self' blob: https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://www.youtube.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",

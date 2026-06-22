@@ -13,7 +13,7 @@ import BlogPost from "@/models/BlogPost";
  */
 export async function GET(req: NextRequest) {
   const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
-  const { allowed } = checkRateLimit(`landing:${ip}`, { limit: 30, windowSec: 60, prefix: "landing" });
+  const { allowed } = await checkRateLimit(`landing:${ip}`, { limit: 30, windowSec: 60, prefix: "landing" });
   if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   try {

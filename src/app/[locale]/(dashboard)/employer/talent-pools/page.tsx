@@ -19,6 +19,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useConfirm } from "@/hooks/useConfirm";
+import { PageHero } from "@/components/shared/PageHero";
 import {
   Layers,
   Loader2,
@@ -59,24 +60,19 @@ export default function EmployerTalentPoolsPage() {
 
   return (
     <div className="page-container space-y-6">
-      <section className="overflow-hidden rounded-[28px] border border-border bg-card p-6 sm:p-7">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-700 dark:bg-sky-500/10 dark:text-sky-300">
-              <Layers className="h-3.5 w-3.5" />
-              {t("title")}
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-foreground sm:text-[2rem]">{t("title")}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
-          </div>
-          {pools.length > 0 ? (
+      <PageHero
+        icon={Layers}
+        title={t("title")}
+        description={t("subtitle")}
+        actions={
+          pools.length > 0 ? (
             <Button onClick={() => setCreateOpen(true)} className="shrink-0">
               <Plus className="mr-2 h-4 w-4" />
               {t("createPool")}
             </Button>
-          ) : null}
-        </div>
-      </section>
+          ) : undefined
+        }
+      />
 
       {isLoading ? (
         <div className="flex justify-center py-16">

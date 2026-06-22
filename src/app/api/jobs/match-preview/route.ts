@@ -13,7 +13,7 @@ import JobSeeker from "@/models/JobSeeker";
  * based on current JobSeeker profiles in the platform.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.api);
+  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.api);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

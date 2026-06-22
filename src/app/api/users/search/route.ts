@@ -28,7 +28,7 @@ function escapeRegex(str: string): string {
  */
 async function handler(req: NextRequest, ctx: AuthCtx) {
   // Rate limit: 20/min per user
-  const rl = checkRateLimitDual(req, ctx.userId, {
+  const rl = await checkRateLimitDual(req, ctx.userId, {
     limit: 20,
     windowSec: 60,
     prefix: "user-search",

@@ -31,7 +31,7 @@ import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
  *   - If a day fills up, remaining interviews spill to the next day
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.bulk);
+  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.bulk);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

@@ -65,7 +65,7 @@ async function handler(req: NextRequest) {
       .select(
         "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience cv.originalUrl userId nationality"
       )
-      .populate({ path: "userId", select: "name" })
+      .populate({ path: "userId", select: "name avatar" })
       .sort({ profileCompleteness: -1, updatedAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -74,11 +74,11 @@ async function handler(req: NextRequest) {
   ]);
 
   const items = (docs as Array<Record<string, unknown>>).map((d) => {
-    const user = d.userId as { _id?: unknown; name?: string } | null;
+    const user = d.userId as { _id?: unknown; name?: string; avatar?: string } | null;
     return {
       _id: String(d._id),
       fullName: (d.fullName as string) ?? user?.name,
-      userId: user?._id ? { _id: String(user._id), name: user.name ?? "" } : undefined,
+      userId: user?._id ? { _id: String(user._id), name: user.name ?? "", avatar: user.avatar } : undefined,
       currentLocation: d.currentLocation,
       nationality: d.nationality,
       skills: d.skills,

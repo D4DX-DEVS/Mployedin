@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialog";
+import { ScoreRing } from "@/components/features/employer/candidates/ScoreRing";
+import { CandidateDetailPanel } from "@/components/features/employer/candidates/CandidateDetailPanel";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -14,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useCandidates, usePublishedJobs, useStartConversation, useAiMatch, useScreenCandidates, useInviteToApply } from "@/hooks/useCandidates";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -52,6 +55,7 @@ import {
   Target,
   Trophy,
   Users,
+  X,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -213,12 +217,34 @@ function getCandidateDisplayName(candidate: Candidate): string {
   return accountName || "Unknown candidate"; // dynamic fallback, translated via caller
 }
 
+/**
+ * Tracks whether the observed container is at least `minWidth` px wide.
+ * Container-based (not viewport-based) so the layout reacts to the real space
+ * left after the dashboard nav rail, instead of the full window width.
+ */
+function useContainerWide(minWidth: number) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [isWide, setIsWide] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      setIsWide(width >= minWidth);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [minWidth]);
+  return [ref, isWide] as const;
+}
+
 interface CandidateCardProps {
   candidate: Candidate;
   selectedJobData?: CandidateJob;
   hasAnyScore: boolean;
   rank: number | null;
   isInReviewList: boolean;
+  isSelected: boolean;
   onOpenCv: (candidate: Candidate) => void;
   onOpenProfile: (candidateId: string) => void;
   onStartMessage: (recipientId: string) => void;
@@ -234,6 +260,7 @@ function CandidateMatchCard({
   hasAnyScore,
   rank,
   isInReviewList,
+  isSelected,
   onOpenCv,
   onOpenProfile,
   onStartMessage,
@@ -281,8 +308,13 @@ function CandidateMatchCard({
       data-testid={`candidate-row-${candidate._id}`}
       role="button"
       tabIndex={0}
+      aria-pressed={isSelected}
       aria-label={rowLabel}
-      className={`group overflow-hidden rounded-[22px] border transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-sky-500/70 ${cardSurfaceClass(candidate.matchScore, isInReviewList)}`}
+      className={`group relative cursor-pointer overflow-hidden rounded-2xl border transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-sky-500/70 ${
+        isSelected
+          ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/40"
+          : cardSurfaceClass(candidate.matchScore, isInReviewList)
+      }`}
       onClick={onOpenInsights}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -291,39 +323,43 @@ function CandidateMatchCard({
         }
       }}
     >
-      <div className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_auto] sm:items-center sm:px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex items-center" onClick={stopRowClick} onKeyDown={stopRowClick}>
-            <Checkbox
-              checked={isInReviewList}
-              onCheckedChange={() => onToggleReviewList(candidate._id)}
-              aria-label={t("selectCandidate", { name: candidateDisplayName })}
-            />
-          </span>
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold ${isInReviewList ? "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300"}`}>
+      {isSelected ? <span aria-hidden className="absolute inset-y-0 start-0 w-1 bg-primary" /> : null}
+      <div className="flex items-start gap-3 px-4 py-3.5">
+        <span className="flex items-center pt-1" onClick={stopRowClick} onKeyDown={stopRowClick}>
+          <Checkbox
+            checked={isInReviewList}
+            onCheckedChange={() => onToggleReviewList(candidate._id)}
+            aria-label={t("selectCandidate", { name: candidateDisplayName })}
+          />
+        </span>
+        <Avatar className="h-11 w-11 ring-0">
+          {candidate.userId?.avatar ? (
+            <AvatarImage src={candidate.userId.avatar} alt={candidateDisplayName} />
+          ) : null}
+          <AvatarFallback
+            className={`text-sm font-semibold ${isInReviewList ? "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300"}`}
+          >
             {(candidateDisplayName[0] ?? "?").toUpperCase()}
-          </div>
-          <div className="min-w-0 space-y-1">
-            <div className="flex min-w-0 items-center gap-2">
-              <h3 className="truncate text-sm font-semibold text-foreground sm:text-[15px]">{candidateDisplayName}</h3>
-              {rank ? (
-                <span className="hidden items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground lg:inline-flex">
-                  <Trophy className="h-3 w-3 text-amber-500" />
-                  #{rank}
-                </span>
-              ) : null}
-              {isInReviewList ? (
-                <span className="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300 lg:inline-flex">
-                  {t("savedLabel")}
-                </span>
-              ) : null}
-            </div>
-            <p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
-          </div>
-        </div>
+          </AvatarFallback>
+        </Avatar>
 
-        <div className="min-w-0 space-y-1">
-          <p className="truncate text-xs font-medium text-foreground/85">{primaryMeta || t("locationExpNotSpecified")}</p>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <h3 className="truncate text-sm font-semibold text-foreground sm:text-[15px]">{candidateDisplayName}</h3>
+            {rank ? (
+              <span className="hidden items-center gap-1 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground lg:inline-flex">
+                <Trophy className="h-3 w-3 text-amber-500" />
+                #{rank}
+              </span>
+            ) : null}
+            {isInReviewList ? (
+              <span className="hidden rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300 lg:inline-flex">
+                {t("savedLabel")}
+              </span>
+            ) : null}
+          </div>
+          <p className="truncate text-sm text-muted-foreground">{currentRole ?? t("roleNotSpecified")}</p>
+          <p className="truncate text-xs text-muted-foreground/90">{primaryMeta || t("locationExpNotSpecified")}</p>
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {visibleSkills.map((skill) => {
               const isRequired = requiredSkills.some((requiredSkill) => normalizeText(requiredSkill) === normalizeText(skill));
@@ -344,90 +380,92 @@ function CandidateMatchCard({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end" onClick={stopRowClick} onKeyDown={stopRowClick}>
-          {hasAnyScore ? (
-            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${scoreBadgeClass(candidate.matchScore)}`}>
-              {candidate.matchScore != null ? `${candidate.matchScore}% ${t("aiMatchSuffix")}` : t("unscored")}
-            </span>
-          ) : null}
-          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${availabilityTone(candidate.availabilityStatus)}`}>
+        <div className="flex shrink-0 flex-col items-end gap-2" onClick={stopRowClick} onKeyDown={stopRowClick}>
+          {hasAnyScore ? <ScoreRing value={candidate.matchScore} size={50} strokeWidth={5} /> : null}
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${availabilityTone(candidate.availabilityStatus)}`}>
             {candidate.availabilityStatus === "immediately" ? <Zap className="h-3 w-3" /> : null}
             {availabilityLabel}
           </span>
-          <Button
-            size="sm"
-            className="h-8 rounded-lg bg-slate-950 px-3 text-xs font-semibold text-white hover:bg-slate-800"
-            onClick={(event) => {
-              stopRowClick(event);
-              onOpenInsights();
-            }}
-          >
-            {t("viewDetails")}
-          </Button>
-          <Button
-            size="sm"
-            variant={isInReviewList ? "default" : "outline"}
-            aria-label={isInReviewList ? t("savedForReview") : t("saveForReview")}
-            className={isInReviewList ? "h-8 rounded-lg bg-sky-600 px-2.5 text-xs font-semibold text-white hover:bg-sky-700" : "h-8 rounded-lg border-border bg-background/80 px-2.5 text-xs"}
-            onClick={(event) => {
-              stopRowClick(event);
-              onToggleReviewList(candidate._id);
-            }}
-          >
-            <Star className={`h-3.5 w-3.5 ${isInReviewList ? "fill-current" : ""}`} />
-            <span className="sr-only">{isInReviewList ? t("savedForReview") : t("saveForReview")}</span>
-          </Button>
-          {hasSecondaryActions ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={t("moreActions", { name: candidateDisplayName })}
-                  onClick={stopRowClick}
-                  className="h-8 rounded-lg border-border bg-background/80 px-2.5 text-xs font-medium text-foreground/85"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">{t("moreLabel")}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 rounded-2xl border-border bg-popover p-1.5">
-                {candidate.cv?.originalUrl ? (
-                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenCv(candidate)}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    {t("viewCv")}
+          <div className="flex items-center gap-1.5">
+            {messageRecipientId ? (
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label={t("messageAction")}
+                className="h-8 w-8 rounded-lg border-border bg-background/80 p-0"
+                onClick={(event) => {
+                  stopRowClick(event);
+                  onStartMessage(messageRecipientId);
+                }}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant={isInReviewList ? "default" : "outline"}
+              aria-label={isInReviewList ? t("savedForReview") : t("saveForReview")}
+              className={isInReviewList ? "h-8 w-8 rounded-lg bg-sky-600 p-0 text-white hover:bg-sky-700" : "h-8 w-8 rounded-lg border-border bg-background/80 p-0"}
+              onClick={(event) => {
+                stopRowClick(event);
+                onToggleReviewList(candidate._id);
+              }}
+            >
+              <Star className={`h-3.5 w-3.5 ${isInReviewList ? "fill-current" : ""}`} />
+            </Button>
+            {hasSecondaryActions ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={t("moreActions", { name: candidateDisplayName })}
+                    onClick={stopRowClick}
+                    className="h-8 w-8 rounded-lg border-border bg-background/80 p-0 text-foreground/85"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">{t("moreLabel")}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52 rounded-2xl border-border bg-popover p-1.5">
+                  {candidate.cv?.originalUrl ? (
+                    <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenCv(candidate)}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      {t("viewCv")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {messageRecipientId ? (
+                    <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onStartMessage(messageRecipientId)}>
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      {t("messageAction")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onInvite ? (
+                    <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onInvite(candidate._id)}>
+                      <Send className="mr-2 h-4 w-4" />
+                      {t("inviteToApply")}
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenProfile(candidate._id)}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    {t("openProfile")}
                   </DropdownMenuItem>
-                ) : null}
-                {messageRecipientId ? (
-                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onStartMessage(messageRecipientId)}>
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    {t("messageAction")}
-                  </DropdownMenuItem>
-                ) : null}
-                {onInvite ? (
-                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onInvite(candidate._id)}>
-                    <Send className="mr-2 h-4 w-4" />
-                    {t("inviteToApply")}
-                  </DropdownMenuItem>
-                ) : null}
-                <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenProfile(candidate._id)}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  {t("openProfile")}
-                </DropdownMenuItem>
-                {onSaveToPool ? (
-                  <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onSaveToPool(candidate)}>
-                    <Layers className="mr-2 h-4 w-4" />
-                    {tp("saveToPool")}
-                  </DropdownMenuItem>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
+                  {onSaveToPool ? (
+                    <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onSaveToPool(candidate)}>
+                      <Layers className="mr-2 h-4 w-4" />
+                      {tp("saveToPool")}
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+          </div>
         </div>
       </div>
     </article>
   );
 }
+
 
 interface CandidateInsightsDialogProps {
   candidate: Candidate | null;
@@ -460,12 +498,21 @@ function CandidateInsightsDialog({
   const currentRole = candidate.experience?.find((entry) => entry.isCurrent)?.jobTitle ?? null;
   const matchedSkills = getMatchedSkills(candidate, selectedJobData);
   const missingSkills = getMissingSkills(candidate, selectedJobData);
+  const hasInsights = Boolean(candidate.matchSummary || candidate.matchBreakdown);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] max-w-5xl overflow-hidden rounded-[32px] border-border bg-background p-0 shadow-[0_40px_120px_-48px_rgba(15,23,42,0.5)]">
+      <DialogContent hideClose className="max-h-[88vh] max-w-5xl overflow-hidden rounded-[32px] border-border bg-background p-0 shadow-[0_40px_120px_-48px_rgba(15,23,42,0.5)]">
         <div className="max-h-[88vh] overflow-y-auto">
-          <div className="border-b border-border bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_34%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] px-6 py-6 dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_34%),linear-gradient(135deg,_rgba(2,6,23,0.96),_rgba(15,23,42,0.92))] sm:px-8">
+          <div className="relative border-b border-border bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_34%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] px-6 py-6 dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_34%),linear-gradient(135deg,_rgba(2,6,23,0.96),_rgba(15,23,42,0.92))] sm:px-8">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="absolute end-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background shadow-sm transition-colors hover:bg-muted"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
             <DialogHeader className="gap-3 text-left">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
@@ -489,7 +536,7 @@ function CandidateInsightsDialog({
                     {candidate.totalExperienceYears != null ? ` • ${t("yearsExperience", { years: candidate.totalExperienceYears })}` : ""}
                   </DialogDescription>
                 </div>
-                <div className="flex flex-wrap gap-2 lg:justify-end">
+                <div className="flex flex-wrap gap-2 lg:justify-end lg:pe-10">
                   {candidate.cv?.originalUrl ? (
                     <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenCv(candidate)}>
                       <FileText className="mr-2 h-3.5 w-3.5" />
@@ -541,40 +588,42 @@ function CandidateInsightsDialog({
               </div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-              <div className="space-y-4">
-                {candidate.matchSummary ? (
-                  <div className="workspace-glass-panel rounded-[24px] p-5">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiSummary")}</p>
-                    <p className="mt-3 text-sm leading-7 text-muted-foreground">{candidate.matchSummary}</p>
-                  </div>
-                ) : null}
+            <div className={hasInsights ? "grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]" : "grid gap-4"}>
+              {hasInsights ? (
+                <div className="space-y-4">
+                  {candidate.matchSummary ? (
+                    <div className="workspace-glass-panel rounded-[24px] p-5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiSummary")}</p>
+                      <p className="mt-3 text-sm leading-7 text-muted-foreground">{candidate.matchSummary}</p>
+                    </div>
+                  ) : null}
 
-                {candidate.matchBreakdown ? (
-                  <div className="workspace-glass-panel rounded-[24px] p-5">
-                    <div className="mb-4 flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4 text-sky-600" />
-                      <p className="text-sm font-semibold text-foreground">{t("scoreBreakdown")}</p>
-                    </div>
-                    <div className="space-y-3">
-                      {(Object.entries(candidate.matchBreakdown) as Array<[string, number]>).map(([key, value]) => (
-                        <div key={key} className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                            <span className="capitalize">{key}</span>
-                            <span className="font-semibold text-foreground/85">{value}%</span>
+                  {candidate.matchBreakdown ? (
+                    <div className="workspace-glass-panel rounded-[24px] p-5">
+                      <div className="mb-4 flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-sky-600" />
+                        <p className="text-sm font-semibold text-foreground">{t("scoreBreakdown")}</p>
+                      </div>
+                      <div className="space-y-3">
+                        {(Object.entries(candidate.matchBreakdown) as Array<[string, number]>).map(([key, value]) => (
+                          <div key={key} className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                              <span className="capitalize">{key}</span>
+                              <span className="font-semibold text-foreground/85">{value}%</span>
+                            </div>
+                            <div className="h-2.5 overflow-hidden rounded-full bg-muted/50">
+                              <div
+                                className={`h-full rounded-full ${value >= 80 ? "bg-emerald-500" : value >= 60 ? "bg-amber-500" : "bg-rose-400"}`}
+                                style={{ width: `${value}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="h-2.5 overflow-hidden rounded-full bg-muted/50">
-                            <div
-                              className={`h-full rounded-full ${value >= 80 ? "bg-emerald-500" : value >= 60 ? "bg-amber-500" : "bg-rose-400"}`}
-                              style={{ width: `${value}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ) : null}
-              </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div className="space-y-4">
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5">
@@ -841,11 +890,14 @@ export default function EmployerCandidatesPage() {
   const [reviewListIds, setReviewListIds] = useState<Set<string>>(new Set());
   const [matchFeedback, setMatchFeedback] = useState<MatchFeedback | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [screeningResults, setScreeningResults] = useState<{
     candidates: ScreenedCandidate[];
     jobTitle: string;
     totalReviewed: number;
   } | null>(null);
+  // 896px ≈ Tailwind container @4xl: enough room for the detail column beside the list.
+  const [layoutRef, isWide] = useContainerWide(896);
   const debouncedSearch = useDebounce(search, 300);
   const normalizedLocationFilter = normalizeText(locationFilter);
   const normalizedSkillsFilter = useMemo(
@@ -962,6 +1014,9 @@ export default function EmployerCandidatesPage() {
     scoreFilter !== "all" ? { key: "score", label: SCORE_FILTER_LABELS[scoreFilter] } : null,
     savedOnly ? { key: "saved", label: t("savedLabel") } : null,
   ].filter((chip): chip is { key: string; label: string } => Boolean(chip));
+
+  // Filter panel is collapsible from the hero; force it open while matching or when there is feedback to show.
+  const filtersExpanded = showFilters || Boolean(matchProgress) || Boolean(matchFeedback);
 
   function openCandidateCv(candidate: Candidate) {
     if (!candidate.cv?.originalUrl) {
@@ -1305,7 +1360,7 @@ export default function EmployerCandidatesPage() {
 
       <CandidateInsightsDialog
         candidate={detailCandidate}
-        open={Boolean(detailCandidate)}
+        open={!isWide && Boolean(detailCandidate)}
         selectedJobData={selectedJobData}
         isInReviewList={detailCandidate ? reviewListIds.has(detailCandidate._id) : false}
         onOpenChange={(open) => {
@@ -1365,6 +1420,27 @@ export default function EmployerCandidatesPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowFilters((current) => {
+                  const next = !current;
+                  if (!next) setMatchFeedback(null);
+                  return next;
+                });
+              }}
+              aria-expanded={filtersExpanded}
+              className="h-9 rounded-xl border-border bg-background/80 px-4 text-sm font-semibold"
+            >
+              <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />
+              {t("filters")}
+              {activeFilterChips.length > 0 ? (
+                <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-600 px-1.5 text-[11px] font-semibold text-white">
+                  {activeFilterChips.length}
+                </span>
+              ) : null}
+            </Button>
             <Button
               onClick={runAIMatch}
               disabled={!selectedJob || !!matchProgress || structuredCandidates.length === 0}
@@ -1438,6 +1514,8 @@ export default function EmployerCandidatesPage() {
         </div>
       )}
 
+      {/* Collapsible filter panel — toggled from the hero, full width for breathing room */}
+      {filtersExpanded ? (
           <section className="workspace-panel-surface rounded-[24px] p-4 backdrop-blur">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -1455,7 +1533,7 @@ export default function EmployerCandidatesPage() {
             </Button>
           </div>
 
-          <div className="mt-3 grid gap-2 xl:grid-cols-[minmax(0,1.8fr)_minmax(220px,1fr)_minmax(160px,0.7fr)_minmax(170px,0.7fr)]">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -1475,12 +1553,11 @@ export default function EmployerCandidatesPage() {
                 ]}
                 value={selectedJob || "none"}
                 onValueChange={(value) => applySelectedJob(value === "none" ? "" : value)}
-                disabled={jobsLoading || jobs.length === 0}
-                placeholder={t("compareAgainstJob")}
+                placeholder={t("noJobSelected")}
               />
             </div>
 
-            <div className="xl:col-span-2">
+            <div>
               <Input
                 value={locationFilter}
                 onChange={(event) => setLocationFilter(event.target.value)}
@@ -1500,7 +1577,7 @@ export default function EmployerCandidatesPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="relative">
               <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -1591,7 +1668,7 @@ export default function EmployerCandidatesPage() {
 
             {showAdvancedFilters ? (
               <div className="mt-3 space-y-3 rounded-[20px] border border-border bg-background/60 p-3">
-                <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <div className="grid gap-2">
                   <Input
                     value={skillsFilter}
                     onChange={(event) => setSkillsFilter(event.target.value)}
@@ -1676,29 +1753,35 @@ export default function EmployerCandidatesPage() {
             </div>
           ) : null}
         </section>
+      ) : null}
 
+      {/* List + sticky detail */}
+      <div ref={layoutRef} className="@container/cands">
+      <div className="grid gap-4 @4xl/cands:grid-cols-[minmax(340px,380px)_minmax(0,1fr)]">
+        {/* Center: candidate list */}
+        <div className="min-w-0 space-y-3">
+      {/* Toolbar — Select all (left) + bulk actions + Export (right) on one horizontal section */}
       <TableToolbar
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-      />
-
-      {!loading && filteredCandidates.length > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-border bg-card px-4 py-2.5">
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-            <Checkbox
-              checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
-              onCheckedChange={toggleSelectAllVisible}
-              aria-label={tp("selectAllOnPage")}
-            />
-            {reviewCount > 0 ? (
-              <span className="font-medium text-foreground">{tp("selectedCount", { count: reviewCount })}</span>
-            ) : (
-              <span className="text-muted-foreground">{tp("selectAllOnPage")}</span>
-            )}
-          </label>
-          {reviewCount > 0 ? (
-            <div className="flex items-center gap-2">
+        className="flex-wrap rounded-[20px] border border-border bg-card px-4 py-2.5"
+        left={
+          !loading && filteredCandidates.length > 0 ? (
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+              <Checkbox
+                checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+                onCheckedChange={toggleSelectAllVisible}
+                aria-label={tp("selectAllOnPage")}
+              />
+              {reviewCount > 0 ? (
+                <span className="font-medium text-foreground">{tp("selectedCount", { count: reviewCount })}</span>
+              ) : (
+                <span className="text-muted-foreground">{tp("selectAllOnPage")}</span>
+              )}
+            </label>
+          ) : null
+        }
+        right={
+          reviewCount > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
                 className="h-9 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700"
@@ -1716,9 +1799,12 @@ export default function EmployerCandidatesPage() {
                 {tp("clearSelection")}
               </Button>
             </div>
-          ) : null}
-        </div>
-      ) : null}
+          ) : null
+        }
+        onExportCsv={handleExportCsv}
+        onExportExcel={handleExportExcel}
+        onExportPdf={handleExportPdf}
+      />
 
       {loading ? (
         <div className="space-y-2">
@@ -1751,6 +1837,7 @@ export default function EmployerCandidatesPage() {
                 hasAnyScore={hasAnyScore}
                 rank={rank}
                 isInReviewList={isInReviewList}
+                isSelected={detailCandidateId === candidate._id}
                 onOpenCv={openCandidateCv}
                 onStartMessage={startDM}
                 onOpenProfile={(candidateId) => router.push(`/${locale}/employer/candidates/${candidateId}`)}
@@ -1763,15 +1850,36 @@ export default function EmployerCandidatesPage() {
           })}
         </div>
       )}
+        </div>
 
-      <PaginationControls
-        page={page}
-        totalPages={totalPages}
-        total={total}
-        limit={limit}
-        onPageChange={setPage}
-        onLimitChange={(l) => { setLimit(l); setPage(1); }}
-      />
+        {/* Right: sticky detail panel (only when the container is wide enough) */}
+        <aside className="hidden @4xl/cands:block">
+          <div className="sticky top-4 h-[calc(100vh-1.5rem)]">
+            <CandidateDetailPanel
+              candidate={isWide ? detailCandidate : null}
+              selectedJobData={selectedJobData}
+              isInReviewList={detailCandidate ? reviewListIds.has(detailCandidate._id) : false}
+              onOpenCv={openCandidateCv}
+              onStartMessage={startDM}
+              onOpenProfile={(candidateId) => router.push(`/${locale}/employer/candidates/${candidateId}`)}
+              onToggleReviewList={toggleReviewList}
+            />
+          </div>
+        </aside>
+      </div>
+
+      {/* Pagination — full-width footer under the whole list + detail card */}
+      <div className="mt-4 border-t border-border pt-4">
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(l) => { setLimit(l); setPage(1); }}
+        />
+      </div>
+      </div>
     </div>
   );
 }

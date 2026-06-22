@@ -80,7 +80,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const rateLimit = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
+  const rateLimit = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

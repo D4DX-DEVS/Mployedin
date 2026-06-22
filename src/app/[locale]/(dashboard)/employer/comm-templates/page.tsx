@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Mail } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import type { CommTemplateType } from "@/models/CommTemplate";
 import { toast } from "sonner";
@@ -90,7 +90,8 @@ export default function CommTemplatesPage() {
     <FeatureGate feature="commTemplates">
     <div className="page-container space-y-6">
       {ConfirmDialogNode}
-      <PageHeader
+      <PageHero
+        icon={Mail}
         title={t("title")}
         description={t("description")}
         actions={

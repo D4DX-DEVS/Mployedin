@@ -20,7 +20,7 @@ const linkedInShareSchema = z.object({
  * when LinkedIn OAuth tokens with w_member_social are stored.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.api);
+  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.api);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests." },

@@ -41,7 +41,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   // Rate limit: 10 tenant switches per minute per user
-  const rlResult = checkRateLimit(`tenant_switch:${userId}`, {
+  const rlResult = await checkRateLimit(`tenant_switch:${userId}`, {
     limit: 10,
     windowSec: 60,
     prefix: "tenant",

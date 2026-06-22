@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useCandidateDetail } from "@/hooks/useCandidates";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
+import { CvInlineFrame } from "@/components/shared/CvInlineFrame";
 import { useTranslations } from "next-intl";
 
 /* ── Types ── */
@@ -167,10 +168,20 @@ export default function UnifiedCandidatePage() {
   // reachable for candidates who applied to this employer, so use their most
   // recent application as the access context.
   const cvAppId = applications[0]?._id;
-  const cvHref =
+  // Inline preview streams the CV through our OWN origin (Content-Disposition:
+  // inline, same-origin → CORS-safe) so the blob viewer can frame the PDF.
+  // Pointing an <iframe> straight at the application download route instead
+  // 302-redirects to the cross-origin Spaces URL, which Chrome refuses to frame
+  // ("This page has been blocked by Chrome"). withAuth enforces tiered access.
+  const cvViewHref = candidate.cv?.originalUrl
+    ? `/api/employers/candidates/${id}/cv#cv.pdf`
+    : undefined;
+  // Download keeps the application route (forces a save with the real filename);
+  // falls back to the inline stream for pool candidates with no application.
+  const cvDownloadHref =
     candidate.cv?.originalUrl && cvAppId
       ? `/api/applications/${cvAppId}/documents/download?cv=1#cv.pdf`
-      : undefined;
+      : cvViewHref;
 
   const tabs = [
     { key: "profile" as const, label: t("tabProfile"), count: null },
@@ -238,12 +249,12 @@ export default function UnifiedCandidatePage() {
             )}
 
             {/* Resume actions */}
-            {cvHref && (
+            {cvViewHref && (
               <div className="flex gap-2 pt-2">
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setViewingCv(true)}>
                   <Eye className="w-3 h-3 me-1.5" /> {t("viewCV")}
                 </Button>
-                <a href={cvHref} target="_blank" rel="noopener noreferrer">
+                <a href={cvDownloadHref} target="_blank" rel="noopener noreferrer">
                   <Button size="sm" variant="ghost" className="h-8 text-xs">
                     <Download className="w-3 h-3 me-1.5" /> {t("download")}
                   </Button>
@@ -528,7 +539,7 @@ export default function UnifiedCandidatePage() {
             })()}
 
             {/* Inline Resume Viewer (desktop) */}
-            {cvHref && (
+            {cvViewHref && (
               <div className="card-base overflow-hidden">
                 <div className="px-5 py-3 border-b flex items-center justify-between">
                   <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -538,7 +549,7 @@ export default function UnifiedCandidatePage() {
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setViewingCv(true)}>
                       <Eye className="w-3 h-3 me-1" /> {t("expand")}
                     </Button>
-                    <a href={cvHref} target="_blank" rel="noopener noreferrer">
+                    <a href={cvDownloadHref} target="_blank" rel="noopener noreferrer">
                       <Button size="sm" variant="ghost" className="h-7 text-xs">
                         <Download className="w-3 h-3 me-1" /> {t("download")}
                       </Button>
@@ -546,13 +557,7 @@ export default function UnifiedCandidatePage() {
                   </div>
                 </div>
                 <div className="h-[500px]">
-                  <iframe
-                    src={cvHref}
-                    className="w-full h-full border-0"
-                    title={`${name}'s Resume`}
-                    sandbox="allow-same-origin"
-                    referrerPolicy="no-referrer"
-                  />
+                  <CvInlineFrame url={cvViewHref} title={`${name}'s Resume`} downloadHref={cvDownloadHref} />
                 </div>
               </div>
             )}
@@ -732,9 +737,9 @@ export default function UnifiedCandidatePage() {
       )}
 
       {/* Resume Viewer Modal */}
-      {viewingCv && cvHref && (
+      {viewingCv && cvViewHref && (
         <ResumeViewerModal
-          url={cvHref}
+          url={cvViewHref}
           candidateName={name}
           onClose={() => setViewingCv(false)}
         />

@@ -26,7 +26,7 @@ const Course = mongoose.models.Course || mongoose.model("Course", CourseSchema);
 export async function GET(req: NextRequest) {
   // Rate limit: 30 requests per minute per IP
   const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
-  const { allowed } = checkRateLimit(`courses:${ip}`, { limit: 30, windowSec: 60, prefix: "courses" });
+  const { allowed } = await checkRateLimit(`courses:${ip}`, { limit: 30, windowSec: 60, prefix: "courses" });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }

@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { PageHero } from "@/components/shared/PageHero";
 import { LogoUpload } from "@/components/features/employer/LogoUpload";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -406,12 +407,7 @@ function CompanySettingsPage() {
     <div className={`page-container${hasChanges ? " pb-20" : ""}`}>
       {ConfirmDialogNode}
       {/* ── Page Title ─────────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {t("description")}
-        </p>
-      </div>
+      <PageHero icon={Building2} title={t("title")} description={t("description")} />
 
       {/* ── Hero Identity Card ─────────────────────────────────────────── */}
       <div className="rounded-xl border border-border/50 bg-gradient-to-br from-card via-card to-primary/[0.02] shadow-sm overflow-hidden">

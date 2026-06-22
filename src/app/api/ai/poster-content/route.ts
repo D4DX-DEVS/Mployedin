@@ -61,7 +61,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   });
   if (gateErr) return gateErr;
 
-  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
+  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.ai);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

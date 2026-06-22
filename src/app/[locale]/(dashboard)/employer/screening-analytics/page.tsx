@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { PageHero } from "@/components/shared/PageHero";
 import { BarChart3, FileQuestion, Hash, MessageSquare, PieChart } from "lucide-react";
 
 interface QuestionAnalytic {
@@ -70,13 +71,7 @@ export default function ScreeningAnalyticsPage() {
 
   return (
     <div className="page-container">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <FileQuestion className="w-6 h-6 text-primary" />
-          {t("title")}
-        </h1>
-        <p className="text-muted-foreground mt-1">{t("description")}</p>
-      </div>
+      <PageHero icon={FileQuestion} title={t("title")} description={t("description")} />
 
       {/* Job Selector */}
       <div className="bg-card border border-border rounded-xl p-4">

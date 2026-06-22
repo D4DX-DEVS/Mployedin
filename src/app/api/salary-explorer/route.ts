@@ -10,7 +10,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
 export async function GET(req: NextRequest) {
   // SECURITY: public + aggregation-heavy route — throttle per IP.
   const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
-  const rl = checkRateLimit(ip, { limit: 30, windowSec: 60, prefix: "salary-explorer" });
+  const rl = await checkRateLimit(ip, { limit: 30, windowSec: 60, prefix: "salary-explorer" });
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

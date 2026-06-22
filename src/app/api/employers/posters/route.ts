@@ -10,7 +10,7 @@ import Job from "@/models/Job";
  * Upload a poster image to S3 and link it to the job.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const rl = checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.upload);
+  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.upload);
   if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests." },

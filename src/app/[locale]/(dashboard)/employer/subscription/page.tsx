@@ -11,7 +11,7 @@ import {
   Clock, CheckCircle, AlertTriangle, FileText, MessageSquare,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { PageHero } from "@/components/shared/PageHero";
 import { Badge } from "@/components/ui/badge";
 import { useMySubscription, type MySubscription } from "@/hooks/useSubscription";
 import { useFeatureGateMap } from "@/hooks/useFeatureGate";
@@ -54,7 +54,7 @@ export default function EmployerSubscriptionPage() {
   if (isLoading) {
     return (
       <div className="page-container space-y-4">
-        <PageHeader title={t("title")} />
+        <PageHero icon={Crown} title={t("title")} />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-28 animate-pulse rounded-2xl bg-background/70" />
         ))}
@@ -64,19 +64,20 @@ export default function EmployerSubscriptionPage() {
 
   return (
     <div className="page-container space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <PageHeader
-          title={t("title")}
-          description={t("description")}
-        />
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{t("displayCurrency")}</span>
-          <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
-          {rateSource === "live" && (
-            <span className="text-[10px] text-emerald-500" title="Live exchange rates">● live</span>
-          )}
-        </div>
-      </div>
+      <PageHero
+        icon={Crown}
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{t("displayCurrency")}</span>
+            <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} />
+            {rateSource === "live" && (
+              <span className="text-[10px] text-emerald-500" title="Live exchange rates">● live</span>
+            )}
+          </div>
+        }
+      />
 
       {subscription ? (
         <ActivePlanView

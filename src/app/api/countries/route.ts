@@ -8,7 +8,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
 // Public endpoint — used for country search dropdowns
 export async function GET(req: NextRequest) {
   const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
-  const { allowed } = checkRateLimit(`countries:${ip}`, { limit: 60, windowSec: 60, prefix: "cntry" });
+  const { allowed } = await checkRateLimit(`countries:${ip}`, { limit: 60, windowSec: 60, prefix: "cntry" });
   if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   await connectDB();

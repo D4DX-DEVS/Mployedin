@@ -15,7 +15,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
-  const { allowed } = checkRateLimit(`similar:${ip}`, { limit: 60, windowSec: 60, prefix: "similar" });
+  const { allowed } = await checkRateLimit(`similar:${ip}`, { limit: 60, windowSec: 60, prefix: "similar" });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
