@@ -64,6 +64,10 @@ export async function POST(req: NextRequest) {
           : [],
         experienceMin: Number(body.requirements?.experienceMin) || 0,
         experienceMax: Number(body.requirements?.experienceMax) || 10,
+        education:
+          typeof body.requirements?.education === "string"
+            ? body.requirements.education.slice(0, 200)
+            : undefined,
       },
       salary: {
         min: Number(body.salary?.min) || 0,

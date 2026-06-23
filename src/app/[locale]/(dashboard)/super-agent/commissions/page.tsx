@@ -155,9 +155,9 @@ export default function SuperAgentCommissionsPage() {
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
         title="Commission Management"
-        description="Review payout records, approve commissions, and maintain the regional override rate from the same modern oversight workspace."
+        description="Review payout records, approve commissions, and maintain the regional override rate from one streamlined workspace."
         summaryTitle="Finance lane"
-        summaryDescription="Status filters, approval actions, and profile-rate updates still hit the same existing endpoints."
+        summaryDescription="Filter by status, approve payouts, and update your override rate — all in real time."
       />
 
       <SuperAgentMetricsGrid items={kpis} />

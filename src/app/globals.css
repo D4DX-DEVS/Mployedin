@@ -114,17 +114,18 @@ input[type="number"] {
   --sidebar-collapsed: 72px;
 
   /* ── APPLICATION STATUS COLORS ── */
+  /* Foreground values darkened to meet WCAG AA (4.5:1) against their -bg pairs. */
   --status-applied: 223 58% 37%;
   --status-applied-bg: 204 70% 95%;
-  --status-shortlisted: 38 92% 50%;
+  --status-shortlisted: 38 95% 31%;
   --status-shortlisted-bg: 38 100% 94%;
-  --status-interview: 271 81% 56%;
+  --status-interview: 271 72% 42%;
   --status-interview-bg: 271 100% 96%;
-  --status-selected: 142 71% 45%;
+  --status-selected: 142 72% 28%;
   --status-selected-bg: 142 76% 94%;
-  --status-rejected: 0 72% 51%;
+  --status-rejected: 0 74% 42%;
   --status-rejected-bg: 0 100% 96%;
-  --status-pending: 215 16% 47%;
+  --status-pending: 215 20% 38%;
   --status-pending-bg: 210 40% 96%;
 
   /* ── AI FEATURE TOKENS ── */
@@ -259,15 +260,15 @@ input[type="number"] {
 
   --status-applied: 223 58% 37%;
   --status-applied-bg: 204 70% 95%;
-  --status-shortlisted: 38 92% 50%;
+  --status-shortlisted: 38 95% 31%;
   --status-shortlisted-bg: 38 100% 94%;
-  --status-interview: 271 81% 56%;
+  --status-interview: 271 72% 42%;
   --status-interview-bg: 271 100% 96%;
-  --status-selected: 142 71% 45%;
+  --status-selected: 142 72% 28%;
   --status-selected-bg: 142 76% 94%;
-  --status-rejected: 0 72% 51%;
+  --status-rejected: 0 74% 42%;
   --status-rejected-bg: 0 100% 96%;
-  --status-pending: 215 16% 47%;
+  --status-pending: 215 20% 38%;
   --status-pending-bg: 210 40% 96%;
 
   --ai-gradient-from: 223 58% 37%;

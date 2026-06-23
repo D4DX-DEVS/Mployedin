@@ -307,7 +307,7 @@ export default function AgentCandidatesPage() {
 
           <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[260px]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Pipeline</p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} applications</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{pagination.total} application{pagination.total === 1 ? "" : "s"}</p>
             <p className="text-xs text-muted-foreground">Candidate activity across the jobs currently in your scope.</p>
           </div>
         </div>
@@ -398,7 +398,7 @@ export default function AgentCandidatesPage() {
           </div>
           <div className="workspace-muted-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium">
             <ArrowRight className="h-3.5 w-3.5 text-primary" />
-            {pagination.total} applications across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}
+            {pagination.total} application{pagination.total === 1 ? "" : "s"} across {pagination.totalPages} page{pagination.totalPages === 1 ? "" : "s"}
           </div>
         </div>
         <TableToolbar

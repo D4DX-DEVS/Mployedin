@@ -143,6 +143,7 @@ export const jobFormSchema = z.object({
     preferredSkills: z.array(z.string().max(100)).max(30).default([]),
     experienceMin: z.number().int().min(0).max(50).default(0),
     experienceMax: z.number().int().min(0).max(50).default(10),
+    education: z.string().max(200).optional(),
   }),
 
   // New optional fields

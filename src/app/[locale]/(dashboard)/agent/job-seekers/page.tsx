@@ -23,6 +23,8 @@ interface JobSeeker {
   _id: string;
   userId: { name: string; email: string };
   currentLocation?: string;
+  nationality?: string;
+  summary?: string;
   experience?: { jobTitle: string; isCurrent: boolean }[];
   profileCompleteness: number;
   skills: string[];
@@ -58,8 +60,10 @@ const SORT_OPTIONS = [
 ];
 
 const EDIT_FIELDS: CrudField[] = [
-  { name: "currentJobTitle", label: "Job Title", type: "text" },
-  { name: "location", label: "Location", type: "text" },
+  { name: "currentLocation", label: "Location", type: "text" },
+  { name: "nationality", label: "Nationality", type: "text" },
+  { name: "summary", label: "Summary", type: "textarea" },
+  { name: "skills", label: "Skills (comma-separated)", type: "text" },
 ];
 
 export default function AgentJobSeekersPage() {
@@ -130,10 +134,22 @@ export default function AgentJobSeekersPage() {
 
   const handleSave = async (values: Record<string, string>) => {
     if (!editSeeker) return;
+    const payload: Record<string, unknown> = {
+      currentLocation: values.currentLocation ?? "",
+      nationality: values.nationality ?? "",
+      summary: values.summary ?? "",
+      skills: (values.skills ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    };
     const res = await fetch(`/api/job-seekers/${editSeeker._id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error("Failed to update");
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      const detail = Array.isArray(err?.details) && err.details.length
+        ? `${err.details[0].path}: ${err.details[0].message}`
+        : null;
+      throw new Error(detail ?? err?.error ?? "Failed to update job seeker");
+    }
     setEditSeeker(null);
     fetchSeekers();
   };
@@ -485,8 +501,10 @@ export default function AgentJobSeekersPage() {
         title="Edit Job Seeker"
         fields={EDIT_FIELDS}
         initialValues={editSeeker ? {
-          currentJobTitle: getCurrentTitle(editSeeker) ?? "",
-          location: editSeeker.currentLocation ?? "",
+          currentLocation: editSeeker.currentLocation ?? "",
+          nationality: editSeeker.nationality ?? "",
+          summary: editSeeker.summary ?? "",
+          skills: (editSeeker.skills ?? []).join(", "),
         } : undefined}
         onSubmit={handleSave}
       />

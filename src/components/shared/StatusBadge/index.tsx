@@ -91,6 +91,22 @@ const statusVariants: Record<
   disputed: { label: "Disputed", className: "status-rejected" },
   clawed_back: { label: "Clawed Back", className: "status-rejected" },
 
+  // Interview statuses
+  scheduled: { label: "Scheduled", className: "status-pending" },
+  confirmed: { label: "Confirmed", className: "status-active" },
+  completed: { label: "Completed", className: "status-selected" },
+  cancelled: { label: "Cancelled", className: "status-rejected" },
+  rescheduled: { label: "Rescheduled", className: "status-shortlisted" },
+
+  // Invoice statuses
+  issued: { label: "Issued", className: "status-applied" },
+  sent: { label: "Sent", className: "status-shortlisted" },
+  partially_paid: { label: "Partially Paid", className: "status-pending" },
+  overdue: { label: "Overdue", className: "status-rejected" },
+  void: { label: "Void", className: "status-draft" },
+  refunded: { label: "Refunded", className: "status-withdrawn" },
+  credit_note: { label: "Credit Note", className: "status-draft" },
+
   // Generic
   true: { label: "Yes", className: "status-selected" },
   false: { label: "No", className: "status-rejected" },
@@ -110,7 +126,9 @@ export function StatusBadge({
   size = "sm",
 }: StatusBadgeProps) {
   const variant = statusVariants[status] ?? {
-    label: status,
+    // Humanize any unmapped enum (e.g. "no_show" -> "No Show") so the
+    // raw database value is never shown to the user.
+    label: status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
     className: "status-draft",
   };
 

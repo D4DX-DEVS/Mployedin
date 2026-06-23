@@ -19,7 +19,7 @@ import { AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
 export interface CrudField {
   name: string;
   label: string;
-  type: "text" | "email" | "number" | "select" | "textarea" | "date";
+  type: "text" | "email" | "number" | "select" | "textarea" | "date" | "password";
   required?: boolean;
   placeholder?: string;
   options?: { value: string; label: string }[];

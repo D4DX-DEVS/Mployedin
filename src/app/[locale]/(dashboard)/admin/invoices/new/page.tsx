@@ -13,7 +13,7 @@ export default function AdminNewInvoicePage() {
       open={true}
       onClose={() => router.push(`/${locale}/admin/invoices`)}
       onSuccess={() => router.push(`/${locale}/admin/invoices`)}
-      defaultCurrency="INR"
+      defaultCurrency="AED"
       searchScope="admin"
       role="admin"
       mode="page"

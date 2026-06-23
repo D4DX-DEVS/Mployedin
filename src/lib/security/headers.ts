@@ -47,6 +47,10 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       // CV response sets X-Frame-Options: DENY / frame-ancestors 'none', so it
       // can only be embedded via a blob: URL, never by its same-origin URL.
       "frame-src 'self' blob: https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://www.youtube.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
+      // object-src is required so the resource/document PDF preview <embed> can
+      // load from our own Spaces CDN. Without it, <embed> falls back to
+      // default-src 'self' and the preview renders blank.
+      "object-src 'self' blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",
@@ -58,7 +62,7 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
 /** Static headers for API routes (no inline scripts, no nonce needed). */
 export const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data: https://generativelanguage.googleapis.com https://openrouter.ai https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com https://*.pusher.com wss://*.pusher.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data: https://generativelanguage.googleapis.com https://openrouter.ai https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com https://*.pusher.com wss://*.pusher.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; object-src 'self' blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   ...SHARED_HEADERS,
 };
 

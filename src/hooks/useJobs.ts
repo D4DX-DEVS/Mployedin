@@ -48,6 +48,7 @@ export interface JobsFilters {
   location?: string;
   skills?: string[];
   showSalary?: "true" | "false";
+  sortBy?: string;
   myJobs?: boolean;
 }
 
@@ -73,6 +74,7 @@ async function fetchJobs(filters: JobsFilters): Promise<JobsResponse> {
   if (filters.location) params.set("location", filters.location);
   if (filters.skills?.length) params.set("skills", filters.skills.join(","));
   if (filters.showSalary) params.set("showSalary", filters.showSalary);
+  if (filters.sortBy && filters.sortBy !== "default") params.set("sortBy", filters.sortBy);
 
   const res = await fetch(`/api/jobs?${params}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch jobs");

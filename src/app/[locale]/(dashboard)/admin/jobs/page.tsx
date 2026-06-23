@@ -494,7 +494,7 @@ export default function AdminJobsPage() {
               <div className="relative">
                 <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
                 <Input
-                  placeholder='AI search: e.g. "active remote React jobs in Kochi"'
+                  placeholder='AI search: e.g. "active remote React jobs in Dubai"'
                   value={aiQuery}
                   onChange={(e) => setAiQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyAiSearch(); } }}

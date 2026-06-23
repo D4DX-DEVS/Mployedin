@@ -260,7 +260,7 @@ export default function SuperAgentEmployersPage() {
     <div className="page-container space-y-6">
       <SuperAgentPageIntro
         title="Employer Relationships"
-        description="Track employer accounts across your region, review who owns each relationship, and keep commercial coverage visible without changing the underlying account data flow."
+        description="Track employer accounts across your region, review who owns each relationship, and keep commercial coverage visible at a glance."
         summaryTitle="Portfolio"
         summaryDescription="Search across employer records, compare activity, and confirm which accounts already have active agent ownership."
       >

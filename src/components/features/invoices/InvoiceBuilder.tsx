@@ -1352,8 +1352,8 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                                 const city = job.location?.city;
                                 const sal = job.salary;
                                 const salaryText = sal?.min && sal?.max
-                                  ? `${(sal.currency ?? "INR")} ${sal.min.toLocaleString()}–${sal.max.toLocaleString()}`
-                                  : sal?.min ? `${(sal.currency ?? "INR")} ${sal.min.toLocaleString()}+` : null;
+                                  ? `${(sal.currency ?? "AED")} ${sal.min.toLocaleString()}–${sal.max.toLocaleString()}`
+                                  : sal?.min ? `${(sal.currency ?? "AED")} ${sal.min.toLocaleString()}+` : null;
                                 const typeLabel = job.employmentType?.replace(/_/g, " ") ?? "";
                                 return (
                                   <button

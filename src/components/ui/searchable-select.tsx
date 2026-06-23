@@ -26,6 +26,8 @@ interface SearchableSelectProps {
   searchValue?: string;
   onSearchValueChange?: (value: string) => void;
   placeholder?: string;
+  /** Accessible name for the combobox trigger. Falls back to placeholder. */
+  ariaLabel?: string;
   searchPlaceholder?: string;
   disabled?: boolean;
   className?: string;
@@ -50,6 +52,7 @@ export function SearchableSelect({
   searchValue,
   onSearchValueChange,
   placeholder = "Select…",
+  ariaLabel,
   searchPlaceholder = "Search…",
   disabled = false,
   className,
@@ -100,6 +103,7 @@ export function SearchableSelect({
           type="button"
           role="combobox"
           aria-expanded={open}
+          aria-label={ariaLabel ?? placeholder}
           disabled={disabled}
           className={cn(
             "flex h-10 w-full items-center gap-2 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",

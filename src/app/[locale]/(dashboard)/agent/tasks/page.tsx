@@ -103,10 +103,14 @@ export default function AgentTasksPage() {
     }
 
     try {
+      const payload = {
+        ...newTask,
+        dueDate: newTask.dueDate ? new Date(newTask.dueDate).toISOString() : undefined,
+      };
       const res = await csrfFetch("/api/agent/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newTask),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -114,6 +118,9 @@ export default function AgentTasksPage() {
         setNewTask({ title: "", description: "", priority: "medium", category: "follow_up", dueDate: "" });
         setShowForm(false);
         fetchTasks();
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error ?? "Failed to create task");
       }
     } catch {
       toast.error("Failed to create task");
@@ -131,6 +138,9 @@ export default function AgentTasksPage() {
       if (res.ok) {
         toast.success("Task updated");
         fetchTasks();
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error ?? "Failed to update task");
       }
     } catch {
       toast.error("Failed to update task");
@@ -143,6 +153,9 @@ export default function AgentTasksPage() {
       if (res.ok) {
         toast.success("Task deleted");
         fetchTasks();
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error ?? "Failed to delete task");
       }
     } catch {
       toast.error("Failed to delete task");

@@ -266,6 +266,25 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
             </motion.div>
           )}
         </div>
+
+        {/* Education / Minimum Qualification */}
+        <div className="space-y-3 rounded-2xl border border-border bg-background p-4 shadow-sm">
+          <div>
+            <Label htmlFor="education" className="text-sm font-semibold">
+              {t("education")}{" "}
+              <span className="text-xs font-normal text-muted-foreground">({t("optional")})</span>
+            </Label>
+            <p className="mt-1 text-xs text-muted-foreground">{t("educationHint")}</p>
+          </div>
+          <Input
+            id="education"
+            type="text"
+            maxLength={200}
+            placeholder={t("educationPlaceholder")}
+            {...register("requirements.education")}
+            className={cn(errors.requirements?.education && "border-destructive")}
+          />
+        </div>
       </div>
     </motion.div>
   );

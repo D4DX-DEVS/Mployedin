@@ -138,9 +138,9 @@ const AI_SUGGESTIONS = [
   "Find senior developer positions",
   "Jobs in UAE paying above 10000 AED",
   "Entry level internships",
-  "Contract roles in India",
+  "Contract roles in Abu Dhabi",
   "Active jobs with React skills",
-  "High-salary jobs in Kochi",
+  "High-salary jobs in Dubai",
   "Full-time positions posted this week",
 ];
 
@@ -463,7 +463,7 @@ export default function SuperAgentJobsPage() {
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
-                placeholder="e.g. Show me remote React developer jobs in India paying above 50000 INR"
+                placeholder="e.g. Show me remote React developer jobs in Dubai paying above 10000 AED"
                 className="h-11 rounded-xl bg-background/85 pl-9 text-sm shadow-none"
               />
             </div>
@@ -657,7 +657,7 @@ export default function SuperAgentJobsPage() {
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">City</label>
                   <div className="relative">
                     <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input placeholder="e.g. Kochi, Dubai" value={city} onChange={(e) => setCity(e.target.value)} className="h-9 pl-8 text-sm" />
+                    <Input placeholder="e.g. Dubai, Abu Dhabi" value={city} onChange={(e) => setCity(e.target.value)} className="h-9 pl-8 text-sm" />
                   </div>
                 </div>
                 <div>

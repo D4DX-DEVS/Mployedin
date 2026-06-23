@@ -39,7 +39,7 @@ export function NotificationBell({ locale }: NotificationBellProps) {
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-8 w-8">
+        <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-label={t("title")}>
           <Bell className={`h-4 w-4 ${unreadCount > 0 ? "text-brand-blue" : ""}`} />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-background">

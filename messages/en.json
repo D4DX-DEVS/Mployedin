@@ -3368,6 +3368,11 @@
     "allSalaryVisibility": "All salary visibility",
     "salaryShown": "Salary shown",
     "salaryHiddenFilter": "Salary hidden",
+    "sortDefault": "Default order",
+    "sortMostApplications": "Most applications",
+    "sortFewestApplications": "Fewest applications",
+    "sortNewest": "Newest first",
+    "sortOldest": "Oldest first",
     "filterByLocationPlaceholder": "Filter by location",
     "skillsPlaceholder": "Skills, comma separated",
     "aiSearchPlaceholder": "AI search: e.g. draft remote React roles in Dubai with hidden salary",
@@ -3903,6 +3908,46 @@
     "withdrawn": "Withdrawn",
     "otherRole": "other role",
     "match": "match",
+    "matchExcellent": "Excellent",
+    "matchVeryGood": "Very Good",
+    "matchGood": "Good Match",
+    "matchLow": "Low",
+    "moveStage": "Move Stage",
+    "aiEmail": "AI Email",
+    "tabOverview": "Overview",
+    "tabResume": "Resume",
+    "tabTimeline": "Timeline",
+    "tabScorecard": "Scorecard",
+    "aiMatchScore": "AI Match Score",
+    "quickInfo": "Quick Info",
+    "appliedOnDate": "Applied on {date}",
+    "updateStage": "Update Stage",
+    "noResumeUploaded": "No resume uploaded yet.",
+    "openFullTimeline": "Open full timeline",
+    "timelineHint": "Review the full activity history and stage changes for this candidate.",
+    "scorecardEmptyHint": "No scorecard has been added for this candidate yet.",
+    "assessment": "Assessment",
+    "tabNotes": "Notes",
+    "tabMessages": "Messages",
+    "moreActions": "More actions",
+    "sendMessage": "Send Message",
+    "addScorecard": "Add Scorecard",
+    "shortlistAction": "Shortlist",
+    "rejectAction": "Reject",
+    "downloadResume": "Download",
+    "openResume": "Open",
+    "viewAllApplications": "View All Applications",
+    "appliedRoles": "Applied Roles",
+    "otherRolesCount": "{count} Other Roles",
+    "sourceLabel": "Source",
+    "currentStageLabel": "Current Stage",
+    "skillsFrontend": "Frontend",
+    "skillsBackend": "Backend",
+    "skillsDatabase": "Database",
+    "skillsTools": "Tools",
+    "showMore": "+{count} more",
+    "matchLabel": "Match",
+    "appliedOn": "Applied On",
     "aiPending": "AI pending",
     "score": "Score",
     "applicantRowFor": "Applicant row for {name}",
@@ -4664,7 +4709,7 @@
       "quickActions": {
         "eyebrow": "Quick actions",
         "title": "Jump into the work that moves your region forward",
-        "description": "Each route below stays unchanged. This refresh only upgrades the workspace surface and navigation flow."
+        "description": "Jump straight into approvals, pipeline, and reporting — everything your region needs in one place."
       },
       "oversight": {
         "eyebrow": "Oversight focus",
@@ -4785,7 +4830,7 @@
         "activeApplicants": "Show active jobs with most applicants",
         "draftReview": "Draft jobs that need review",
         "postedThisWeek": "Jobs posted this week",
-        "kochiRoles": "Roles in Kochi with high applicant count"
+        "kochiRoles": "Roles with the highest applicant count"
       }
     },
     "filters": {
@@ -4831,7 +4876,7 @@
     "title": "Post Job on Behalf of Employer",
     "description": "Create a role for one of your assigned employers without leaving the agent workspace.",
     "toast": {
-      "success": "Job posted successfully",
+      "success": "Job submitted for review",
       "error": "Failed to post job"
     },
     "employer": {
@@ -6176,7 +6221,10 @@
       "experienceHint": "Set a realistic range so strong candidates are not filtered out unnecessarily.",
       "minimumYears": "Minimum (years)",
       "maximumYears": "Maximum (years)",
-      "candidateFitRange": "Candidate fit range"
+      "candidateFitRange": "Candidate fit range",
+      "education": "Minimum Education",
+      "educationHint": "Optional. The minimum education or qualification expected for this role.",
+      "educationPlaceholder": "e.g. Bachelor's degree in Computer Science"
     },
     "step4": {
       "title": "Salary & Settings",

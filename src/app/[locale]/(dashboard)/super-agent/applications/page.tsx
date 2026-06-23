@@ -224,7 +224,7 @@ export default function SuperAgentApplicationsPage() {
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-xs capitalize text-muted-foreground">{a.source ?? "direct"}</TableCell>
+                  <TableCell className="text-xs capitalize text-muted-foreground">{(a.source ?? "direct").replace(/_/g, " ")}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(a.appliedAt).toLocaleDateString()}</TableCell>
                 </TableRow>
               ))}

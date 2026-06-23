@@ -122,7 +122,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // fields are managed only via the dedicated user-administration route.
 
   Object.assign(seeker, update);
-  await seeker.save();
+  // validateModifiedOnly: only re-validate the fields we changed. Imported
+  // legacy profiles may contain values that fail current schema validation;
+  // validating the whole doc here would throw a 500 on an unrelated field.
+  await seeker.save({ validateModifiedOnly: true });
 
   await logActivity({
     ...actorFromCtx(ctx),

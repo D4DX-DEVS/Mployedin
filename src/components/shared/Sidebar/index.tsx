@@ -86,7 +86,9 @@ export function Sidebar({
   };
 
   const [activeMainTitle, setActiveMainTitle] = useState<string>(getInitialActiveItem());
-  const [submenuExpanded, setSubmenuExpanded] = useState(true);
+  // Dual-tier layouts keep the secondary panel collapsed until the user opens a
+  // group, so page content always uses the full width (no squeezing / clipping).
+  const [submenuExpanded, setSubmenuExpanded] = useState(!usesDualTierLayout);
 
   useEffect(() => {
     const current = getInitialActiveItem();
@@ -156,8 +158,11 @@ export function Sidebar({
   }, [mobileOpen, onMobileClose]);
 
   useEffect(() => {
-    setSubmenuExpanded(true);
-  }, [activeMainTitle]);
+    // Inline layouts auto-expand their children when the active group changes.
+    // Dual-tier stays collapsed until the user explicitly opens a group, and
+    // collapses again after a child page is selected (handled in onClick).
+    if (!usesDualTierLayout) setSubmenuExpanded(true);
+  }, [activeMainTitle, usesDualTierLayout]);
 
   const activeMainItem = allMainItems.find((item) => item.title === activeMainTitle);
   const hasSubmenu = Boolean(activeMainItem?.children?.length);

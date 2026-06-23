@@ -352,7 +352,7 @@ export default function SuperAgentLeadsPage() {
         title="Lead Pipeline"
         description="Review every employer lead across your team, switch between stages quickly, and keep regional follow-up work visible from one modern queue."
         summaryTitle="Coverage"
-        summaryDescription="Use the stage strip to isolate bottlenecks, then search by company or contact without changing the existing API behavior."
+        summaryDescription="Use the stage strip to isolate bottlenecks, then search by company or contact to drill in."
       />
 
       <SuperAgentMetricsGrid items={kpis} />
@@ -360,7 +360,7 @@ export default function SuperAgentLeadsPage() {
       <SuperAgentSection
         eyebrow="Pipeline"
         title="Filter and review employer leads"
-        description="Stage toggles, advanced filters, and AI-powered search all drive the same lead query logic."
+        description="Use stage toggles, advanced filters, and AI-powered search to focus on the right leads."
       >
         {/* ---- Stage Strip ---- */}
         <div className="flex flex-col gap-4">

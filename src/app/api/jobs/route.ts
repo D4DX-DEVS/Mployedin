@@ -55,6 +55,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     .map((skill) => skill.trim())
     .filter((skill) => skill.length > 0 && skill.length <= 50)
     .slice(0, 8);
+  const sortBy = searchParams.get("sortBy") ?? "";
   const remote = searchParams.get("remote") === "true";
   const myJobs = searchParams.get("myJobs") === "true";
   const invoiceableOnly = searchParams.get("invoiceableOnly") === "true";
@@ -143,11 +144,57 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const skip = (page - 1) * limit;
+
+  // Sorting. Explicit sortBy overrides the implicit text-score default.
+  // Application-count sorting needs the real count from the Application
+  // collection (matches the displayed number), which lives outside the Job
+  // document — resolve the ordered + paginated ids via aggregation, then fetch
+  // the full docs and reorder to match.
+  const isApplicationSort =
+    (sortBy === "applications_desc" || sortBy === "applications_asc") && canFilterManagedJobs;
+
+  let orderedIds: Types.ObjectId[] | null = null;
+  if (isApplicationSort) {
+    const sortDir = sortBy === "applications_asc" ? 1 : -1;
+    const ordered = await Job.aggregate([
+      { $match: query },
+      {
+        $lookup: {
+          from: Application.collection.name,
+          let: { jid: "$_id" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$jobId", "$$jid"] } } },
+            { $count: "n" },
+          ],
+          as: "_appCount",
+        },
+      },
+      { $addFields: { _appCount: { $ifNull: [{ $arrayElemAt: ["$_appCount.n", 0] }, 0] } } },
+      { $sort: { _appCount: sortDir, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      { $project: { _id: 1 } },
+    ]);
+    orderedIds = ordered.map((d) => d._id as Types.ObjectId);
+  }
+
+  const baseJobQuery = orderedIds
+    ? Job.find({ _id: { $in: orderedIds } })
+    : Job.find(query)
+        .sort(
+          sortBy === "newest"
+            ? { createdAt: -1 }
+            : sortBy === "oldest"
+              ? { createdAt: 1 }
+              : search
+                ? { score: { $meta: "textScore" } }
+                : { createdAt: -1 },
+        )
+        .skip(skip)
+        .limit(limit);
+
   const [jobs, total, statusAgg] = await Promise.all([
-    Job.find(query)
-      .sort(search ? { score: { $meta: "textScore" } } : { createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
+    baseJobQuery
       .populate("employerId", "companyName country industry logo")
       .populate({
         path: "agentId",
@@ -157,7 +204,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
           { path: "superAgentId", select: "overrideRate userId", populate: { path: "userId", select: "name" } },
         ],
       })
-      .lean(),
+      .lean()
+      .then((docs) => {
+        if (!orderedIds) return docs;
+        // Restore the application-count ordering lost by the $in fetch.
+        const orderMap = new Map(orderedIds.map((id, index) => [String(id), index]));
+        return [...docs].sort(
+          (a, b) => (orderMap.get(String(a._id)) ?? 0) - (orderMap.get(String(b._id)) ?? 0),
+        );
+      }),
     Job.countDocuments(query),
     // Status counts for stat cards (use base query without status filter)
     canFilterManagedJobs

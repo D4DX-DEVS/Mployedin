@@ -72,7 +72,7 @@ export function SuperAgentPageIntro({
         </div>
 
         {summaryTitle || summaryDescription || children ? (
-          <div className="flex w-full shrink-0 flex-col gap-3 sm:flex-row xl:w-auto xl:max-w-[52%] xl:flex-nowrap xl:items-start">
+          <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap xl:w-auto xl:max-w-[52%] xl:items-start xl:justify-end">
             {summaryTitle || summaryDescription ? (
               <div className="workspace-glass-panel rounded-2xl px-4 py-3 text-left sm:min-w-[220px] sm:flex-1">
                 {summaryTitle ? <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{summaryTitle}</p> : null}

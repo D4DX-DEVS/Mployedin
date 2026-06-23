@@ -354,7 +354,7 @@ export default function SuperAgentPlacementsPage() {
         title="Placements"
         description="Track successful candidate placements made by your team, monitor start timing, and keep employer delivery visible from one polished review surface."
         summaryTitle="Placement flow"
-        summaryDescription="Filter by visa status, salary range, date, commission, and more. The API handles every combination server-side."
+        summaryDescription="Filter by visa status, salary range, date, commission, and more — every combination is handled instantly."
       />
 
       <SuperAgentMetricsGrid items={kpis} />
@@ -362,7 +362,7 @@ export default function SuperAgentPlacementsPage() {
       <SuperAgentSection
         eyebrow="Placements"
         title="Review successful hiring outcomes"
-        description="Visa status toggles, keyword search, and advanced filters all drive the same placement query."
+        description="Use visa status toggles, keyword search, and advanced filters to find the placements you need."
       >
         {/* ---- Visa Status Strip ---- */}
         <div className="flex flex-col gap-4">

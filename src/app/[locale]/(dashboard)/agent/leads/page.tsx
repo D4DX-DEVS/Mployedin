@@ -529,11 +529,21 @@ export default function AgentLeadsPage() {
   const handleSave = async (values: Record<string, string>) => {
     const url = editLead ? `/api/leads/${editLead._id}` : "/api/leads";
     const method = editLead ? "PATCH" : "POST";
-    const payload: Record<string, unknown> = { ...values };
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(values)) {
+      if (typeof v === "string" && v.trim() === "") continue; // omit blank optional fields
+      payload[k] = v;
+    }
     if (payload.expectedRevenue) payload.expectedRevenue = Number(payload.expectedRevenue);
     else delete payload.expectedRevenue;
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    if (!res.ok) throw new Error("Failed to save lead");
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      const detail = Array.isArray(err?.details) && err.details.length
+        ? `${err.details[0].path}: ${err.details[0].message}`
+        : null;
+      throw new Error(detail ?? err?.error ?? "Failed to save lead");
+    }
     setEditLead(null);
     fetchLeads();
   };

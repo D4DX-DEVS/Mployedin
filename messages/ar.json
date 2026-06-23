@@ -3368,6 +3368,11 @@
     "allSalaryVisibility": "جميع حالات ظهور الراتب",
     "salaryShown": "الراتب ظاهر",
     "salaryHiddenFilter": "الراتب مخفي",
+    "sortDefault": "الترتيب الافتراضي",
+    "sortMostApplications": "الأكثر طلبات",
+    "sortFewestApplications": "الأقل طلبات",
+    "sortNewest": "الأحدث أولاً",
+    "sortOldest": "الأقدم أولاً",
     "filterByLocationPlaceholder": "التصفية حسب الموقع",
     "skillsPlaceholder": "المهارات، مفصولة بفواصل",
     "aiSearchPlaceholder": "بحث الذكاء الاصطناعي: مثلاً وظائف React عن بُعد في دبي براتب مخفي",
@@ -3903,6 +3908,46 @@
     "withdrawn": "منسحب",
     "otherRole": "دور آخر",
     "match": "تطابق",
+    "matchExcellent": "ممتاز",
+    "matchVeryGood": "جيد جدًا",
+    "matchGood": "تطابق جيد",
+    "matchLow": "منخفض",
+    "moveStage": "تغيير المرحلة",
+    "aiEmail": "بريد بالذكاء الاصطناعي",
+    "tabOverview": "نظرة عامة",
+    "tabResume": "السيرة الذاتية",
+    "tabTimeline": "الجدول الزمني",
+    "tabScorecard": "بطاقة التقييم",
+    "aiMatchScore": "درجة التطابق بالذكاء الاصطناعي",
+    "quickInfo": "معلومات سريعة",
+    "appliedOnDate": "تقدّم في {date}",
+    "updateStage": "تحديث المرحلة",
+    "noResumeUploaded": "لم يتم رفع سيرة ذاتية بعد.",
+    "openFullTimeline": "فتح الجدول الزمني الكامل",
+    "timelineHint": "راجع سجل النشاط الكامل وتغييرات المراحل لهذا المرشح.",
+    "scorecardEmptyHint": "لم تتم إضافة بطاقة تقييم لهذا المرشح بعد.",
+    "assessment": "التقييم",
+    "tabNotes": "ملاحظات",
+    "tabMessages": "الرسائل",
+    "moreActions": "المزيد من الإجراءات",
+    "sendMessage": "إرسال رسالة",
+    "addScorecard": "إضافة بطاقة تقييم",
+    "shortlistAction": "قائمة مختصرة",
+    "rejectAction": "رفض",
+    "downloadResume": "تحميل",
+    "openResume": "فتح",
+    "viewAllApplications": "عرض جميع الطلبات",
+    "appliedRoles": "الأدوار المقدم عليها",
+    "otherRolesCount": "{count} أدوار أخرى",
+    "sourceLabel": "المصدر",
+    "currentStageLabel": "المرحلة الحالية",
+    "skillsFrontend": "الواجهة الأمامية",
+    "skillsBackend": "الخادم",
+    "skillsDatabase": "قاعدة البيانات",
+    "skillsTools": "الأدوات",
+    "showMore": "+{count} المزيد",
+    "matchLabel": "تطابق",
+    "appliedOn": "تاريخ التقديم",
     "aiPending": "الذكاء الاصطناعي قيد الانتظار",
     "score": "تقييم",
     "applicantRowFor": "صف طلب المرشح {name}",
@@ -4664,7 +4709,7 @@
       "quickActions": {
         "eyebrow": "إجراءات سريعة",
         "title": "انتقل إلى العمل الذي يدفع منطقتك للأمام",
-        "description": "تبقى المسارات كما هي؛ تم تحسين سطح العمل وتدفق التنقل فقط."
+        "description": "انتقل مباشرةً إلى الموافقات وخط العمل والتقارير — كل ما تحتاجه منطقتك في مكان واحد."
       },
       "oversight": {
         "eyebrow": "محور الإشراف",
@@ -4785,7 +4830,7 @@
         "activeApplicants": "اعرض الوظائف النشطة ذات المتقدمين الأكثر",
         "draftReview": "المسودات التي تحتاج مراجعة",
         "postedThisWeek": "الوظائف المنشورة هذا الأسبوع",
-        "kochiRoles": "أدوار في كوتشي ذات عدد متقدمين مرتفع"
+        "kochiRoles": "الأدوار ذات أعلى عدد من المتقدمين"
       }
     },
     "filters": {
@@ -4831,7 +4876,7 @@
     "title": "نشر وظيفة نيابة عن صاحب عمل",
     "description": "أنشئ دوراً لأحد أصحاب العمل المخصصين لك دون مغادرة مساحة الوكيل.",
     "toast": {
-      "success": "تم نشر الوظيفة بنجاح",
+      "success": "تم إرسال الوظيفة للمراجعة",
       "error": "فشل نشر الوظيفة"
     },
     "employer": {
@@ -6176,7 +6221,10 @@
       "experienceHint": "حدد نطاقًا واقعيًا حتى لا يتم استبعاد المرشحين الأقوياء دون داعٍ.",
       "minimumYears": "الحد الأدنى (سنوات)",
       "maximumYears": "الحد الأقصى (سنوات)",
-      "candidateFitRange": "نطاق ملاءمة المرشح"
+      "candidateFitRange": "نطاق ملاءمة المرشح",
+      "education": "الحد الأدنى للتعليم",
+      "educationHint": "اختياري. الحد الأدنى من التعليم أو المؤهل المتوقع لهذا الدور.",
+      "educationPlaceholder": "مثال: بكالوريوس في علوم الحاسب"
     },
     "step4": {
       "title": "الراتب والإعدادات",

@@ -13,6 +13,7 @@ const ALLOWED_ROLES: UserRole[] = ["employer", "agent", "admin", "super_agent"];
 const JOB_STATUSES = new Set(["active", "draft", "closed", "expired"]);
 const APPROVAL_STATUSES = new Set(["pending", "approved", "rejected"]);
 const WORK_MODES = new Set(["onsite", "hybrid", "remote"]);
+const SORT_OPTIONS = new Set(["applications_desc", "applications_asc", "newest", "oldest", "relevance"]);
 
 interface RawJobSearchFilters {
   search?: unknown;
@@ -22,6 +23,7 @@ interface RawJobSearchFilters {
   location?: unknown;
   skills?: unknown;
   showSalary?: unknown;
+  sortBy?: unknown;
   summary?: unknown;
 }
 
@@ -42,6 +44,9 @@ function normalizeJobSearchFilters(raw: RawJobSearchFilters) {
   const workMode = typeof raw.workMode === "string" && WORK_MODES.has(raw.workMode)
     ? raw.workMode
     : undefined;
+  const sortBy = typeof raw.sortBy === "string" && SORT_OPTIONS.has(raw.sortBy)
+    ? raw.sortBy
+    : undefined;
   const skills = Array.isArray(raw.skills)
     ? raw.skills
       .filter((skill): skill is string => typeof skill === "string")
@@ -58,6 +63,7 @@ function normalizeJobSearchFilters(raw: RawJobSearchFilters) {
     location: normalizeString(raw.location),
     skills,
     showSalary: typeof raw.showSalary === "boolean" ? raw.showSalary : undefined,
+    sortBy,
     summary: normalizeString(raw.summary, 220),
   };
 }
@@ -93,6 +99,7 @@ Return ONLY valid JSON with this exact shape:
   "location": string | null,
   "skills": string[],
   "showSalary": boolean | null,
+  "sortBy": "applications_desc" | "applications_asc" | "newest" | "oldest" | "relevance" | null,
   "summary": string
 }
 
@@ -103,6 +110,7 @@ Guidelines:
 - If skills are extracted, leave "search" null unless there is additional non-skill keyword intent.
 - If the user asks for remote jobs, set workMode to "remote".
 - If the user asks for salary hidden or undisclosed jobs, set showSalary to false.
+- Set "sortBy" to control ordering: "applications_desc" for the most/highest applications or applicants, "applications_asc" for the fewest/least, "newest" for the latest or recently posted roles, "oldest" for the earliest. When the request is only about ordering (e.g. "jobs with the most applications"), set "search" to null and do not invent keywords.
 - Never invent company names, dates, or IDs.
 - Keep summary under 180 characters.
 

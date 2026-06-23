@@ -149,7 +149,7 @@ export default function SuperAgentReportsPage() {
         title="Reports"
         description="Use the report summary as your regional scorecard for team coverage, lead volume, placements, and commission output."
         summaryTitle="Reporting surface"
-        summaryDescription="The page still consumes the same `/api/super-agent/reports` payload and only changes the presentation layer."
+        summaryDescription="A consolidated view of your team's coverage, pipeline, and commission performance — updated in real time."
       />
 
       {loading ? (

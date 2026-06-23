@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useConfirm } from "@/hooks/useConfirm";
 
 /* ────────────────────────────────────────────────────────
    Types
@@ -45,28 +47,36 @@ const typeIcon: Record<InsightType, React.ReactNode> = {
   opportunity: <Rocket className="h-4 w-4" />,
 };
 
-const severityStyles: Record<InsightSeverity, { border: string; badge: string; badgeText: string }> = {
+const severityStyles: Record<
+  InsightSeverity,
+  { border: string; badge: string; badgeText: string; iconChip: string }
+> = {
   critical: {
     border: "border-l-rose-500",
     badge: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
     badgeText: "Critical",
+    iconChip: "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300",
   },
   warning: {
     border: "border-l-amber-400",
     badge: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
     badgeText: "Warning",
+    iconChip: "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300",
   },
   info: {
     border: "border-l-emerald-400",
     badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
     badgeText: "Info",
+    iconChip: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300",
   },
 };
 
-const confidenceStyles: Record<ConfidenceLevel, string> = {
-  high: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300",
-  medium: "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
-  low: "bg-zinc-100 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
+// Confidence is a separate signal from severity, so it reads as a subtle
+// dot + label rather than a second colored pill competing with the badge.
+const confidenceStyles: Record<ConfidenceLevel, { dot: string; label: string }> = {
+  high: { dot: "bg-sky-500", label: "High" },
+  medium: { dot: "bg-violet-500", label: "Medium" },
+  low: { dot: "bg-zinc-400", label: "Low" },
 };
 
 /* ────────────────────────────────────────────────────────
@@ -75,6 +85,7 @@ const confidenceStyles: Record<ConfidenceLevel, string> = {
 
 export function SuperAgentInsightsPanel() {
   const router = useRouter();
+  const { confirm, ConfirmDialogNode } = useConfirm();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -160,7 +171,13 @@ export function SuperAgentInsightsPanel() {
     }
 
     if (insight.actionType === "assign_leads" && insight.actionPayload) {
-      if (!confirm(`Assign more leads to ${insight.actionPayload.targetAgentName}?`)) return;
+      const ok = await confirm({
+        title: "Assign leads",
+        message: `Assign more leads to ${insight.actionPayload.targetAgentName}?`,
+        confirmLabel: "Assign leads",
+        variant: "default",
+      });
+      if (!ok) return;
 
       // Optimistic: mark done immediately
       setActionDone((prev) => new Set(prev).add(key));
@@ -175,7 +192,7 @@ export function SuperAgentInsightsPanel() {
         if (!fromAgent) {
           // Rollback
           setActionDone((prev) => { const next = new Set(prev); next.delete(key); return next; });
-          alert("No underperforming agent found to reassign leads from.");
+          toast.error("No underperforming agent found to reassign leads from.");
           return;
         }
 
@@ -189,10 +206,11 @@ export function SuperAgentInsightsPanel() {
           }),
         });
         if (!res.ok) throw new Error();
+        toast.success("Leads reassigned successfully.");
       } catch {
         // Rollback on failure
         setActionDone((prev) => { const next = new Set(prev); next.delete(key); return next; });
-        alert("Failed to reassign leads");
+        toast.error("Failed to reassign leads.");
       } finally {
         setActionLoading(null);
       }
@@ -202,7 +220,17 @@ export function SuperAgentInsightsPanel() {
     if (insight.actionType === "send_reminder" && insight.actionPayload) {
       const ids = insight.actionPayload.agentUserIds ?? [insight.actionPayload.agentUserId];
       const names = insight.actionPayload.agentNames ?? [insight.actionPayload.agentName];
-      if (!confirm(`Send performance reminder to ${Array.isArray(names) ? (names as string[]).join(", ") : names}?`)) return;
+      const recipients = Array.isArray(names) ? (names as string[]) : [String(names)];
+      const ok = await confirm({
+        title: "Send performance reminder",
+        message:
+          recipients.length === 1
+            ? `Send a performance reminder to ${recipients[0]}?`
+            : `Send a performance reminder to ${recipients.length} agents (${recipients.join(", ")})?`,
+        confirmLabel: "Send reminder",
+        variant: "default",
+      });
+      if (!ok) return;
 
       // Optimistic: mark done immediately
       setActionDone((prev) => new Set(prev).add(key));
@@ -215,10 +243,13 @@ export function SuperAgentInsightsPanel() {
           body: JSON.stringify({ agentUserIds: Array.isArray(ids) ? ids : [ids] }),
         });
         if (!res.ok) throw new Error();
+        toast.success(
+          recipients.length === 1 ? "Reminder sent." : `Reminders sent to ${recipients.length} agents.`
+        );
       } catch {
         // Rollback on failure
         setActionDone((prev) => { const next = new Set(prev); next.delete(key); return next; });
-        alert("Failed to send reminder");
+        toast.error("Failed to send reminder.");
       } finally {
         setActionLoading(null);
       }
@@ -307,7 +338,9 @@ export function SuperAgentInsightsPanel() {
   // ── Insight cards ──
 
   return (
-    <div className="workspace-glass-panel rounded-2xl px-4 py-4 text-left sm:min-w-[280px] sm:max-w-[340px] space-y-0">
+    <>
+      {ConfirmDialogNode}
+      <div className="workspace-glass-panel rounded-2xl px-4 py-4 text-left sm:min-w-[280px] sm:max-w-[340px] space-y-0">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
@@ -348,34 +381,37 @@ export function SuperAgentInsightsPanel() {
             <div
               key={insight.id}
               className={cn(
-                "rounded-xl border-l-[3px] bg-background/60 dark:bg-card/40 px-3 py-2.5 transition-all duration-300",
+                "rounded-xl border border-l-[3px] border-border/50 bg-background/70 px-3 py-2.5 shadow-sm transition-all duration-300 hover:bg-background hover:shadow-md dark:bg-card/50 dark:hover:bg-card/70",
                 sev.border,
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
                 isDismissed && "opacity-50"
               )}
             >
               {/* Header */}
-              <div className="flex items-start gap-2 mb-1">
-                <span className="mt-0.5 shrink-0 text-muted-foreground">{typeIcon[insight.type]}</span>
+              <div className="flex items-start gap-2.5 mb-1">
+                <span className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", sev.iconChip)}>
+                  {typeIcon[insight.type]}
+                </span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-semibold text-foreground">{insight.title}</span>
-                    <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded-full", sev.badge)}>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[13px] font-semibold leading-tight text-foreground">{insight.title}</span>
+                    <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full", sev.badge)}>
                       {sev.badgeText}
                     </span>
-                    {insight.confidence && (
-                      <span className={cn("text-[9px] font-medium px-1.5 py-0.5 rounded-full", confidenceStyles[insight.confidence])}>
-                        {insight.confidence}
-                      </span>
-                    )}
                   </div>
-                  <p className="text-[11px] leading-relaxed text-muted-foreground mt-0.5">{insight.message}</p>
+                  {insight.confidence && (
+                    <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/80">
+                      <span className={cn("h-1.5 w-1.5 rounded-full", confidenceStyles[insight.confidence].dot)} />
+                      {confidenceStyles[insight.confidence].label} confidence
+                    </span>
+                  )}
+                  <p className="text-[11px] leading-relaxed text-muted-foreground mt-1">{insight.message}</p>
                 </div>
                 {/* Dismiss button */}
                 {!isDismissed && (
                   <button
                     onClick={() => dismissInsight(insight.id)}
-                    className="shrink-0 mt-0.5 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                    className="shrink-0 -mr-0.5 mt-0.5 rounded-md p-0.5 text-muted-foreground/40 transition-colors hover:bg-muted hover:text-muted-foreground"
                     title="Dismiss"
                   >
                     <X className="h-3 w-3" />
@@ -384,7 +420,7 @@ export function SuperAgentInsightsPanel() {
               </div>
 
               {/* Footer: action + feedback */}
-              <div className="flex items-center justify-between mt-2 pl-6">
+              <div className="flex items-center justify-between mt-2 pl-[38px]">
                 {insight.action && insight.actionType ? (
                   isActionComplete ? (
                     <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
@@ -433,6 +469,7 @@ export function SuperAgentInsightsPanel() {
           );
         })}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

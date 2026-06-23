@@ -59,7 +59,7 @@ export function PaginationControls({
           value={String(limit)}
           onValueChange={(v) => onLimitChange(Number(v))}
         >
-          <SelectTrigger className="h-8 w-[70px]">
+          <SelectTrigger className="h-8 w-[70px]" aria-label={t("rowsPerPage")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

@@ -99,12 +99,24 @@ export default function AgentJobPosterPage() {
         router.push("../jobs");
       } else {
         const err = await res.json().catch(() => null);
-        toast.error(err?.message || t("toast.error"));
+        const detail = Array.isArray(err?.details) && err.details.length
+          ? `${err.details[0].path}: ${err.details[0].message}`
+          : null;
+        toast.error(detail ?? err?.error ?? err?.message ?? t("toast.error"));
       }
     } finally {
       setSubmitting(false);
     }
   };
+
+  const canSubmit = Boolean(
+    selectedEmployer &&
+    form.title.trim() &&
+    form.category &&
+    form.country &&
+    form.city.trim() &&
+    form.description.trim()
+  );
 
   return (
     <div className="page-container agent-legacy-surface space-y-6">
@@ -279,7 +291,7 @@ export default function AgentJobPosterPage() {
           </Button>
           <Button
             type="submit"
-            disabled={submitting || !selectedEmployer}
+            disabled={submitting || !canSubmit}
             className="h-11 rounded-xl bg-sky-600 hover:bg-sky-700"
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

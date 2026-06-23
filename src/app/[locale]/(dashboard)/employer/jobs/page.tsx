@@ -50,6 +50,7 @@ export default function EmployerJobsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [workModeFilter, setWorkModeFilter] = useState("all");
   const [salaryVisibilityFilter, setSalaryVisibilityFilter] = useState("all");
+  const [sortByFilter, setSortByFilter] = useState("default");
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [skillsFilter, setSkillsFilter] = useState("");
@@ -82,6 +83,7 @@ export default function EmployerJobsPage() {
     location: debouncedLocation,
     skills: normalizedSkills,
     showSalary: salaryVisibilityFilter === "all" ? undefined : salaryVisibilityFilter === "shown" ? "true" : "false",
+    sortBy: sortByFilter,
     myJobs: true,
   });
 
@@ -91,6 +93,7 @@ export default function EmployerJobsPage() {
   const hasActiveFilters = statusFilter !== "all"
     || workModeFilter !== "all"
     || salaryVisibilityFilter !== "all"
+    || sortByFilter !== "default"
     || Boolean(search.trim())
     || Boolean(locationFilter.trim())
     || Boolean(skillsFilter.trim());
@@ -265,6 +268,7 @@ export default function EmployerJobsPage() {
     setStatusFilter("all");
     setWorkModeFilter("all");
     setSalaryVisibilityFilter("all");
+    setSortByFilter("default");
     setLocationFilter("");
     setSkillsFilter("");
     setAiQuery("");
@@ -300,6 +304,7 @@ export default function EmployerJobsPage() {
       setSalaryVisibilityFilter(
         filters.showSalary === true ? "shown" : filters.showSalary === false ? "hidden" : "all"
       );
+      setSortByFilter(filters.sortBy ?? "default");
       setAiSummary(data.summary ?? null);
 
       toast.success(data.degraded ? t("toastAiUnavailable") : t("toastAiApplied"));
@@ -448,6 +453,19 @@ export default function EmployerJobsPage() {
             value={statusFilter}
             onValueChange={setStatusFilter}
             placeholder={t("allStatuses")}
+          />
+          <SearchableSelect
+            className="h-11 w-full rounded-xl border-border bg-background/70"
+            options={[
+              { value: "default", label: t("sortDefault") },
+              { value: "applications_desc", label: t("sortMostApplications") },
+              { value: "applications_asc", label: t("sortFewestApplications") },
+              { value: "newest", label: t("sortNewest") },
+              { value: "oldest", label: t("sortOldest") },
+            ]}
+            value={sortByFilter}
+            onValueChange={setSortByFilter}
+            placeholder={t("sortDefault")}
           />
         </div>
 

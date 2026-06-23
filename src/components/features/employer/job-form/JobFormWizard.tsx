@@ -67,7 +67,7 @@ const DEFAULT_JOB_FORM_VALUES: JobFormValues = {
   category: "",
   location: { country: "", city: "", isRemote: false },
   description: "",
-  requirements: { skills: [], preferredSkills: [], experienceMin: 0, experienceMax: 10 },
+  requirements: { skills: [], preferredSkills: [], experienceMin: 0, experienceMax: 10, education: "" },
   salary: { min: 0, max: 0, currency: "USD", isNegotiable: false, period: "monthly" },
   employmentType: undefined,
   workMode: undefined,

@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useInvoiceAnalytics } from "@/hooks/useInvoiceAnalytics";
+import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Sparkles, RotateCcw, CalendarDays, ArrowRight, Inbox,
@@ -86,7 +87,7 @@ export default function SuperAgentInvoicesPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [displayCurrency, setDisplayCurrency] = useState("AED");
+  const { displayCurrency } = useCurrencyPreference();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [analyticsPeriod, setAnalyticsPeriod] = useState("30d");
@@ -96,10 +97,6 @@ export default function SuperAgentInvoicesPage() {
     draft: 0, pending_approval: 0, issued: 0, paid: 0, partially_paid: 0, overdue: 0,
     totalAmount: 0, totalPaid: 0, totalBalance: 0,
   });
-
-  useEffect(() => {
-    fetch("/api/settings/public").then(r => r.json()).then(d => setDisplayCurrency(d.settings?.defaultCurrency ?? "AED")).catch(() => {});
-  }, []);
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);

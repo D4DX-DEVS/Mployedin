@@ -37,7 +37,7 @@ const EMPLOYER_FIELDS: CrudField[] = [
 const ONBOARD_FIELDS: CrudField[] = [
   { name: "name", label: "Contact Name", type: "text", required: true },
   { name: "email", label: "Email", type: "text", required: true },
-  { name: "password", label: "Temporary Password", type: "text", required: true },
+  { name: "password", label: "Temporary Password", type: "password", required: true },
   { name: "companyName", label: "Company Name", type: "text", required: true },
   { name: "industry", label: "Industry", type: "text" },
   { name: "phone", label: "Phone", type: "text" },

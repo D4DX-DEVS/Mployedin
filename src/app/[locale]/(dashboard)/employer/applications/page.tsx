@@ -7,11 +7,14 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Award,
+  BadgeCheck,
   BarChart3,
   BriefcaseBusiness,
   Calendar,
+  Check,
   CheckCheck,
   CheckSquare,
+  ChevronDown,
   Clock,
   DollarSign,
   ExternalLink,
@@ -21,6 +24,7 @@ import {
   Inbox,
   Mail,
   MapPin,
+  MoreHorizontal,
   Paperclip,
   Plus,
   Search,
@@ -38,6 +42,7 @@ import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { AIEmailDraftButton } from "@/components/shared/AIEmailDraftButton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -67,7 +72,7 @@ interface Applicant {
   jobId: { _id: string; title: string };
   jobSeekerId: {
     _id?: string;
-    userId?: { _id?: string; name?: string } | string;
+    userId?: { _id?: string; name?: string; avatar?: string } | string;
     skills?: string[];
     currentLocation?: string;
     totalExperienceYears?: number;
@@ -121,7 +126,7 @@ function getAiMatchBadgeClass(score?: number): string {
   if (score >= 50) {
     return "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300";
   }
-  return "border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
+  return "border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300";
 }
 
 function getCurrentRole(app: Applicant): string {
@@ -140,6 +145,37 @@ function getLocationExperienceSummary(app: Applicant, formatYears: (years: numbe
 
 function getApplicantTags(app: Applicant): string[] {
   return (app.jobSeekerId?.skills ?? []).slice(0, 3);
+}
+
+function getCandidateAvatar(app: Applicant): string | undefined {
+  const u = app.jobSeekerId?.userId;
+  return typeof u === "object" && u?.avatar ? u.avatar : undefined;
+}
+
+function getCandidateInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.charAt(0).toUpperCase();
+  return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase();
+}
+
+// Measures the rendered width of a container element so the layout can switch
+// between an inline split view (wide) and a full-screen modal (narrow) without
+// relying on viewport breakpoints (the dashboard nav rail consumes ~436px).
+function useContainerWide(minWidth: number) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [isWide, setIsWide] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? 0;
+      setIsWide(width >= minWidth);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [minWidth]);
+  return [ref, isWide] as const;
 }
 
 export default function EmployerApplicationsPage() {
@@ -167,6 +203,7 @@ export default function EmployerApplicationsPage() {
   const [timelinePanel, setTimelinePanel] = useState<{ appId: string; candidateLabel: string } | null>(null);
   const [detailPanel, setDetailPanel] = useState<Applicant | null>(null);
   const detailTriggerRef = useRef<HTMLElement | null>(null);
+  const [layoutRef, isWide] = useContainerWide(1020);
   const [viewingCv, setViewingCv] = useState<{
     url: string;
     name: string;
@@ -686,7 +723,7 @@ export default function EmployerApplicationsPage() {
               </Button>
               <Button
                 size="sm"
-                className="h-9 rounded-xl bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700"
+                className="h-9 rounded-xl bg-emerald-700 px-3 text-xs font-semibold text-white hover:bg-emerald-800"
                 disabled={bulkAction.isPending || !filteredApplications.some((a) => a.aiMatchScore != null && a.status === "applied")}
                 onClick={handleAutoShortlist}
               >
@@ -1102,7 +1139,7 @@ export default function EmployerApplicationsPage() {
             </Button>
             <Button
               size="sm"
-              className="h-9 rounded-xl bg-emerald-600 px-4 text-white hover:bg-emerald-700"
+              className="h-9 rounded-xl bg-emerald-700 px-4 text-white hover:bg-emerald-800"
               disabled={bulkAction.isPending || shortlistCount < 1}
               onClick={confirmAutoShortlist}
             >
@@ -1152,39 +1189,76 @@ export default function EmployerApplicationsPage() {
         </div>
       )}
 
-      {applicationsQuery.isError ? (
-        <div className="workspace-panel-surface rounded-[24px] px-6 py-16 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-rose-50 text-rose-500 dark:bg-rose-500/15 dark:text-rose-400">
-            <Inbox className="h-7 w-7" />
-          </div>
-          <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-            {t("unableToLoad")}
-          </h3>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-            {t("unableToLoadDesc")}
-          </p>
-          <Button variant="outline" className="mt-4" onClick={() => applicationsQuery.refetch()}>
-            {tc("tryAgain")}
-          </Button>
+      <div
+        ref={layoutRef}
+        className={isWide && detailPanel ? "grid grid-cols-[minmax(0,1fr)_minmax(480px,600px)] items-start gap-4" : ""}
+      >
+        <div className="min-w-0 space-y-3">
+          {applicationsQuery.isError ? (
+            <div className="workspace-panel-surface rounded-[24px] px-6 py-16 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[24px] bg-rose-50 text-rose-500 dark:bg-rose-500/15 dark:text-rose-400">
+                <Inbox className="h-7 w-7" />
+              </div>
+              <h3 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+                {t("unableToLoad")}
+              </h3>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+                {t("unableToLoadDesc")}
+              </p>
+              <Button variant="outline" className="mt-4" onClick={() => applicationsQuery.refetch()}>
+                {tc("tryAgain")}
+              </Button>
+            </div>
+          ) : isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-20 animate-pulse rounded-[20px] border border-border/60 bg-background/70" />
+              ))}
+            </div>
+          ) : (
+            <TableView
+              applications={filteredApplications}
+              selected={selected}
+              onToggle={canUpdate ? toggleSelect : undefined}
+              onGenerateAiMatch={canUpdate ? handleGenerateAiMatch : undefined}
+              aiMatchPendingId={computeAiMatch.isPending ? computeAiMatch.variables?.applicationId : undefined}
+              scorecardMap={scorecardMap}
+              onOpenDetails={openDetailPanel}
+              getCandidateName={getCandidateName}
+              onViewCv={(app) => setViewingCv(buildViewingCv(app))}
+              hasActiveRefinement={hasActiveRefinement}
+            />
+          )}
         </div>
-      ) : isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-[20px] border border-border/60 bg-background/70" />
-          ))}
-        </div>
-      ) : (
-        <TableView
-          applications={filteredApplications}
-          selected={selected}
-          onToggle={canUpdate ? toggleSelect : undefined}
-          onGenerateAiMatch={canUpdate ? handleGenerateAiMatch : undefined}
-          aiMatchPendingId={computeAiMatch.isPending ? computeAiMatch.variables?.applicationId : undefined}
-          scorecardMap={scorecardMap}
-          onOpenDetails={openDetailPanel}
-          getCandidateName={getCandidateName}
-          onViewCv={(app) => setViewingCv(buildViewingCv(app))}
-          hasActiveRefinement={hasActiveRefinement}
+        {detailPanel ? (
+          <ApplicationDetailsPanel
+            variant={isWide ? "inline" : "modal"}
+            app={detailPanel}
+            locale={locale}
+            scorecard={scorecardMap[detailPanel._id]}
+            aiMatchPendingId={computeAiMatch.isPending ? computeAiMatch.variables?.applicationId : undefined}
+            onClose={closeDetailPanel}
+            onGenerateAiMatch={canUpdate ? handleGenerateAiMatch : undefined}
+            onOpenScorecard={canUpdate ? handleOpenScorecard : undefined}
+            onOpenTimeline={openTimeline}
+            onScheduleInterview={canUpdate ? openInterviewModal : undefined}
+            onViewCv={(app) => setViewingCv(buildViewingCv(app))}
+            onViewDocument={(app, url) => setViewingCv(buildViewingCv(app, url))}
+            onCreateOffer={canUpdate ? (app) => setOfferModal({ appId: app._id }) : undefined}
+            onChangeStatus={canUpdate ? handleStageChange : undefined}
+            getCandidateName={getCandidateName}
+          />
+        ) : null}
+      </div>
+
+      {!isLoading && !applicationsQuery.isError && (
+        <PaginationControls
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          onPageChange={(p: number) => { setPage(p); setSelected([]); }}
+          onLimitChange={(newLimit: number) => { setLimit(newLimit); setPage(1); setSelected([]); }}
         />
       )}
 
@@ -1277,24 +1351,7 @@ export default function EmployerApplicationsPage() {
         />
       )}
 
-      {detailPanel && (
-        <ApplicationDetailsPanel
-          app={detailPanel}
-          locale={locale}
-          scorecard={scorecardMap[detailPanel._id]}
-          aiMatchPendingId={computeAiMatch.isPending ? computeAiMatch.variables?.applicationId : undefined}
-          onClose={closeDetailPanel}
-          onGenerateAiMatch={canUpdate ? handleGenerateAiMatch : undefined}
-          onOpenScorecard={canUpdate ? handleOpenScorecard : undefined}
-          onOpenTimeline={openTimeline}
-          onScheduleInterview={canUpdate ? openInterviewModal : undefined}
-          onViewCv={(app) => setViewingCv(buildViewingCv(app))}
-          onViewDocument={(app, url) => setViewingCv(buildViewingCv(app, url))}
-          onCreateOffer={canUpdate ? (app) => setOfferModal({ appId: app._id }) : undefined}
-          onChangeStatus={canUpdate ? handleStageChange : undefined}
-          getCandidateName={getCandidateName}
-        />
-      )}
+      {/* Candidate detail panel is rendered inline/modal within the split layout above. */}
 
       {/* Resume Viewer Modal */}
       {viewingCv && (
@@ -1317,16 +1374,6 @@ export default function EmployerApplicationsPage() {
         />
       )}
 
-      {!isLoading && !applicationsQuery.isError && (
-        <PaginationControls
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          limit={limit}
-          onPageChange={(p: number) => { setPage(p); setSelected([]); }}
-          onLimitChange={(newLimit: number) => { setLimit(newLimit); setPage(1); setSelected([]); }}
-        />
-      )}
     </div>
   );
 }
@@ -1379,9 +1426,13 @@ function TableView({
 
   return (
     <section className="workspace-panel-surface overflow-hidden rounded-[24px]">
-      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
+      <div className="hidden items-center gap-3 border-b border-border/70 bg-background/50 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid" style={{ gridTemplateColumns: "28px 1.4fr 1fr 80px 1.2fr 80px 100px" }}>
+        <span />
         <span>{t("candidate")}</span>
-        <span>{t("roleMatchSkills")}</span>
+        <span>{t("roleMatchSkills").split(",")[0]?.trim()}</span>
+        <span>{t("matchLabel")}</span>
+        <span>{t("skills")}</span>
+        <span>{t("appliedOn")}</span>
         <span className="text-right">{t("actions")}</span>
       </div>
 
@@ -1389,13 +1440,18 @@ function TableView({
         {applications.map((app) => {
           const isSelected = selected.includes(app._id);
           const candidateName = getCandidateName(app);
+          const avatarUrl = getCandidateAvatar(app);
+          const candidateInitials = getCandidateInitials(candidateName);
           const currentRole = getCurrentRole(app);
-          const locationExperience = getLocationExperienceSummary(app, (years) => t("yearsExp", { count: years }));
+          const location = app.jobSeekerId?.currentLocation ?? "";
+          const experienceYears = app.jobSeekerId?.totalExperienceYears;
           const topSkills = getApplicantTags(app);
-          const appliedDate = new Date(app.appliedAt).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { day: "2-digit", month: "short" });
+          const extraSkillsCount = (app.jobSeekerId?.skills?.length ?? 0) - topSkills.length;
+          const appliedDate = new Date(app.appliedAt).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { day: "numeric", month: "short", year: "numeric" });
           const scorecard = scorecardMap?.[app._id];
-          const aiScoreLabel = app.aiMatchScore != null ? `${app.aiMatchScore}% ${t("match")}` : t("aiPending");
-          const statusLabel = statusLabelMap[app.status] ?? app.status.replace(/_/g, " ");
+          const matchScore = app.aiMatchScore;
+          const matchColor = matchScore != null ? (matchScore >= 80 ? "text-emerald-600" : matchScore >= 70 ? "text-sky-600" : matchScore >= 50 ? "text-amber-600" : "text-rose-500") : "text-muted-foreground";
+          const matchText = matchScore != null ? (matchScore >= 80 ? t("matchExcellent") : matchScore >= 70 ? t("matchVeryGood") : matchScore >= 50 ? t("matchGood") : t("matchLow")) : "";
 
           return (
             <article
@@ -1403,11 +1459,13 @@ function TableView({
               data-testid={`applicant-row-${app._id}`}
               aria-label={t("applicantRowFor", { name: candidateName })}
               onClick={() => onOpenDetails?.(app)}
-              className={`grid gap-2 px-4 py-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-300/60 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] sm:items-center ${
-                isSelected ? "bg-sky-500/10" : "bg-transparent hover:bg-background/70"
+              className={`group cursor-pointer px-4 py-3 transition-all duration-200 hover:bg-sky-50/50 dark:hover:bg-sky-500/5 lg:grid lg:items-center lg:gap-3 ${
+                isSelected ? "bg-sky-500/10" : "bg-transparent"
               }`}
+              style={{ gridTemplateColumns: "28px 1.4fr 1fr 80px 1.2fr 80px 100px" }}
             >
-              <div className="flex min-w-0 items-center gap-3">
+              {/* Checkbox */}
+              <div className="hidden lg:block">
                 {onToggle ? (
                   <button
                     type="button"
@@ -1416,108 +1474,101 @@ function TableView({
                       event.stopPropagation();
                       onToggle(app._id);
                     }}
-                    className="shrink-0 text-muted-foreground transition hover:text-foreground"
+                    className="text-muted-foreground transition hover:text-foreground"
                   >
                     {isSelected ? <CheckSquare className="h-5 w-5 text-sky-600 dark:text-sky-300" /> : <Square className="h-5 w-5" />}
                   </button>
                 ) : null}
+              </div>
 
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 shadow-inner dark:text-sky-300">
-                  <User className="h-4 w-4" />
-                </div>
-
+              {/* Candidate */}
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar className="h-10 w-10 shrink-0 ring-2 ring-background shadow-sm">
+                  {avatarUrl ? <AvatarImage src={avatarUrl} alt={candidateName} className="object-cover" /> : null}
+                  <AvatarFallback className="bg-sky-100 text-xs font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
+                    {candidateInitials}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <a
                       href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
-                      className="truncate text-sm font-semibold tracking-tight text-foreground hover:text-sky-700 hover:underline dark:hover:text-sky-300 sm:text-base"
+                      className="truncate text-sm font-semibold text-foreground hover:text-sky-700 hover:underline dark:hover:text-sky-300"
                       onClick={(event) => event.stopPropagation()}
                     >
                       {candidateName}
                     </a>
-                    <StatusBadge status={app.status} label={statusLabel} />
-                    {scorecard ? (
-                      <Badge className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
-                        {scorecard.overallScore.toFixed(1)}/5
-                      </Badge>
-                    ) : null}
+                    <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-sky-500" />
                   </div>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {location}
+                    {experienceYears != null ? (location ? ` • ${t("yearsExp", { count: experienceYears })} exp` : `${t("yearsExp", { count: experienceYears })} exp`) : ""}
+                  </p>
                 </div>
               </div>
 
-              <div className="min-w-0 sm:px-1">
-                <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                  <span className="truncate text-[13px] font-medium text-foreground">{app.jobId?.title ?? (currentRole || t("roleNotSpecified"))}</span>
-                  <span className="hidden text-border sm:inline">•</span>
-                  <span className="truncate text-[11px] text-muted-foreground">{locationExperience || t("locationExpPending")}</span>
-                </div>
-
-                <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                  <Badge className={`${getAiMatchBadgeClass(app.aiMatchScore)} rounded-full px-2 py-0.5 text-[10px] font-semibold`}>
-                    {aiScoreLabel}
-                  </Badge>
-                  {topSkills.map((skill) => (
-                    <span key={skill} className="rounded-full border border-border bg-background/70 px-2 py-0.5 text-[11px] text-muted-foreground">
-                      {skill}
-                    </span>
-                  ))}
-                  {!topSkills.length ? (
-                    <span className="text-[11px] text-muted-foreground">{currentRole || t("roleNotSpecified")}</span>
-                  ) : null}
-                </div>
-
-                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span>{t("appliedDate", { date: appliedDate })}</span>
-                  {(app.otherApplicationsCount ?? 0) > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-300">
-                      <Users className="h-3 w-3" />
-                      +{app.otherApplicationsCount} {t("otherRole")}
-                    </span>
-                  ) : null}
-                </div>
+              {/* Role & Experience */}
+              <div className="hidden min-w-0 lg:block">
+                <p className="truncate text-sm font-medium text-foreground">{currentRole || app.jobId?.title || t("roleNotSpecified")}</p>
               </div>
 
-              <div className="flex items-center gap-2 sm:justify-end">
+              {/* Match */}
+              <div className="hidden lg:block">
+                {matchScore != null ? (
+                  <div className="text-center">
+                    <p className={`text-lg font-bold leading-tight ${matchColor}`}>{matchScore}%</p>
+                    <p className={`text-[10px] font-semibold ${matchColor}`}>{matchText}</p>
+                  </div>
+                ) : (
+                  <p className="text-center text-xs text-muted-foreground">{t("aiPending")}</p>
+                )}
+              </div>
+
+              {/* Skills */}
+              <div className="hidden min-w-0 lg:flex lg:flex-wrap lg:gap-1">
+                {topSkills.map((skill) => (
+                  <span key={skill} className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
+                    {skill}
+                  </span>
+                ))}
+                {extraSkillsCount > 0 ? (
+                  <span className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-300">
+                    +{extraSkillsCount}
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Applied On */}
+              <div className="hidden text-xs text-muted-foreground lg:block">{appliedDate}</div>
+
+              {/* Actions */}
+              <div className="hidden items-center justify-end gap-1.5 lg:flex">
                 {onOpenDetails ? (
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="h-8 rounded-lg border-border bg-background/80 px-3 text-xs"
+                    className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
                     onClick={(event) => {
                       event.stopPropagation();
                       onOpenDetails?.(app, event.currentTarget);
                     }}
+                    aria-label={t("detailedView")}
                   >
-                    <BarChart3 className="mr-1 h-3.5 w-3.5" /> {t("detailedView")}
+                    <BarChart3 className="h-4 w-4" />
                   </Button>
                 ) : null}
                 {app.jobSeekerId?.cv?.originalUrl && onViewCv ? (
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="h-8 w-8 rounded-lg border-border bg-background/80 p-0"
+                    className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-foreground"
                     onClick={(event) => {
                       event.stopPropagation();
                       onViewCv(app);
                     }}
                     aria-label={t("viewCvFor", { name: candidateName })}
                   >
-                    <FileText className="h-3.5 w-3.5" />
-                  </Button>
-                ) : null}
-                {app.aiMatchScore == null && onGenerateAiMatch ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 rounded-lg px-2.5 text-[11px] text-sky-700 hover:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/15"
-                    disabled={aiMatchPendingId === app._id}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onGenerateAiMatch(app);
-                    }}
-                  >
-                    <Sparkles className={`mr-1 h-3 w-3 ${aiMatchPendingId === app._id ? "animate-pulse text-sky-600" : ""}`} />
-                    {t("score")}
+                    <FileText className="h-4 w-4" />
                   </Button>
                 ) : null}
               </div>
@@ -1529,8 +1580,54 @@ function TableView({
   );
 }
 
+function StageStepper({ currentStatus, appliedDate }: { currentStatus: string; appliedDate: string }) {
+  const t = useTranslations("employerApplications");
+  const steps = [
+    { key: "applied", label: t("applied") },
+    { key: "shortlisted", label: t("shortlisted") },
+    { key: "interview_scheduled", label: t("interview") },
+    { key: "assessment", label: t("assessment") },
+    { key: "offer", label: t("offer") },
+    { key: "selected", label: t("hired") },
+  ];
+  const isRejected = currentStatus === "rejected" || currentStatus === "withdrawn";
+  const currentIndex = steps.findIndex((s) => s.key === currentStatus);
+  const lastIndex = steps.length - 1;
+  return (
+    <div className="mt-4">
+      <div className="flex items-start">
+        {steps.map((step, i) => {
+          const reached = !isRejected && currentIndex >= 0 && i <= currentIndex;
+          const isCurrent = !isRejected && i === currentIndex;
+          return (
+            <div key={step.key} className={i < lastIndex ? "flex flex-1 items-start" : "flex items-start"}>
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold transition ${reached ? "bg-sky-500 text-white" : "bg-muted text-muted-foreground"} ${isCurrent ? "ring-2 ring-sky-300 ring-offset-2 ring-offset-background dark:ring-sky-500/40" : ""}`}
+                >
+                  {reached ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                </span>
+                <span className={`whitespace-nowrap text-[10px] font-medium ${isCurrent ? "text-sky-700 dark:text-sky-300" : "text-muted-foreground"}`}>
+                  {step.label}
+                </span>
+              </div>
+              {i < lastIndex ? (
+                <span className={`mx-1.5 mt-3 h-0.5 flex-1 rounded-full ${reached && i < currentIndex ? "bg-sky-500" : "bg-muted"}`} />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <p className={`mt-2.5 text-center text-[11px] ${isRejected ? "font-semibold text-rose-500" : "text-muted-foreground"}`}>
+        {isRejected ? t("rejected") : `${t("currentStageLabel")}: ${steps[currentIndex]?.label ?? t("applied")} • ${t("appliedOnDate", { date: appliedDate })}`}
+      </p>
+    </div>
+  );
+}
+
 function ApplicationDetailsPanel({
   app,
+  variant = "modal",
   locale,
   scorecard,
   aiMatchPendingId,
@@ -1546,6 +1643,7 @@ function ApplicationDetailsPanel({
   getCandidateName,
 }: {
   app: Applicant;
+  variant?: "modal" | "inline";
   locale: string;
   scorecard?: Scorecard;
   aiMatchPendingId?: string;
@@ -1564,6 +1662,8 @@ function ApplicationDetailsPanel({
   const [nextStage, setNextStage] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [statusPending, setStatusPending] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "resume" | "timeline" | "notes" | "messages" | "scorecard">("overview");
+  const [stageMenuOpen, setStageMenuOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const t = useTranslations("employerApplications");
   const tc = useTranslations("employerCommon");
@@ -1580,6 +1680,8 @@ function ApplicationDetailsPanel({
   };
   const currentRole = getCurrentRole(app);
   const candidateName = getCandidateName(app);
+  const avatarUrl = getCandidateAvatar(app);
+  const candidateInitials = getCandidateInitials(candidateName);
   const candidateExperienceYears = app.jobSeekerId?.totalExperienceYears;
   const displayDateLocale = locale === "ar" ? "ar-SA" : "en-US";
   const appliedDate = new Date(app.appliedAt).toLocaleDateString(displayDateLocale);
@@ -1594,6 +1696,32 @@ function ApplicationDetailsPanel({
   const stageOptions = pipelineStages
     .filter((stage) => stage.value !== app.status)
     .map((stage) => ({ value: stage.value, label: stage.label }));
+
+  const matchLabel = app.aiMatchScore == null
+    ? t("aiScorePending")
+    : app.aiMatchScore >= 80 ? t("matchExcellent")
+    : app.aiMatchScore >= 70 ? t("matchVeryGood")
+    : app.aiMatchScore >= 50 ? t("matchGood")
+    : t("matchLow");
+  const matchLabelColor = app.aiMatchScore == null
+    ? "text-muted-foreground"
+    : app.aiMatchScore >= 80 ? "text-emerald-600 dark:text-emerald-400"
+    : app.aiMatchScore >= 70 ? "text-sky-600 dark:text-sky-400"
+    : app.aiMatchScore >= 50 ? "text-amber-600 dark:text-amber-400"
+    : "text-rose-500 dark:text-rose-400";
+  const resumeDoc = app.documents?.find((doc) => doc.type === "resume");
+  const resumeDocIndex = app.documents?.findIndex((doc) => doc.type === "resume") ?? -1;
+  const hasResume = !!app.jobSeekerId?.cv?.originalUrl || !!resumeDoc;
+
+  function handleViewResume() {
+    if (app.jobSeekerId?.cv?.originalUrl && onViewCv) {
+      onViewCv(app);
+      return;
+    }
+    if (resumeDoc && resumeDocIndex >= 0 && onViewDocument) {
+      onViewDocument(app, `/api/applications/${app._id}/documents/download?i=${resumeDocIndex}&view=1#${encodeURIComponent(resumeDoc.name)}`);
+    }
+  }
 
   async function handleQuickStageChange(nextStatus: string) {
     if (!onChangeStatus) return;
@@ -1626,6 +1754,10 @@ function ApplicationDetailsPanel({
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (variant !== "modal") return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -1633,12 +1765,12 @@ function ApplicationDetailsPanel({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, []);
+  }, [variant]);
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || variant !== "modal") return;
     closeButtonRef.current?.focus();
-  }, [mounted]);
+  }, [mounted, variant]);
 
   useEffect(() => {
     setNextStage("");
@@ -1646,6 +1778,13 @@ function ApplicationDetailsPanel({
   }, [app._id, app.status]);
 
   useEffect(() => {
+    setActiveTab("overview");
+    setStageMenuOpen(false);
+  }, [app._id]);
+
+  useEffect(() => {
+    if (variant !== "modal") return;
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
@@ -1657,9 +1796,463 @@ function ApplicationDetailsPanel({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
+  }, [onClose, variant]);
 
-  const sheet = (
+  const panelBody = (
+    <>
+        <div className="shrink-0 border-b border-border bg-background px-4 py-4 sm:px-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <Avatar className="h-14 w-14 shrink-0 ring-2 ring-background shadow-sm">
+                {avatarUrl ? <AvatarImage src={avatarUrl} alt={candidateName} className="object-cover" /> : null}
+                <AvatarFallback className="bg-sky-100 text-lg font-bold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
+                  {candidateInitials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <a
+                    href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
+                    className="truncate text-lg font-bold tracking-tight text-foreground hover:text-sky-700 hover:underline dark:hover:text-sky-300"
+                  >
+                    {candidateName}
+                  </a>
+                  <BadgeCheck className="h-4 w-4 shrink-0 text-sky-500" />
+                </div>
+                <p className="truncate text-sm font-medium text-foreground/80">{currentRole || t("roleNotSpecified")}</p>
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span className="truncate">
+                    {app.jobSeekerId?.currentLocation ?? t("notSpecified")}
+                    {candidateExperienceYears != null ? ` • ${t("yearsExp", { count: candidateExperienceYears })}` : ""}
+                  </span>
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-start gap-2">
+              <div className="text-end">
+                <p className="text-2xl font-bold leading-none tracking-tight text-foreground">{app.aiMatchScore != null ? `${app.aiMatchScore}%` : "—"}</p>
+                <p className={`mt-1 text-xs font-semibold ${matchLabelColor}`}>{matchLabel}</p>
+              </div>
+              <Button ref={closeButtonRef} variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 dark:hover:text-rose-300" onClick={onClose} aria-label={t("closeCandidateDetails")}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {onChangeStatus && stageOptions.length > 0 ? (
+              <div className="relative">
+                <Button
+                  size="sm"
+                  className="h-9 rounded-lg px-3 text-sm"
+                  disabled={statusPending}
+                  onClick={() => setStageMenuOpen((open) => !open)}
+                >
+                  {t("moveStage")}
+                  <ChevronDown className="ms-1 h-3.5 w-3.5" />
+                </Button>
+                {stageMenuOpen ? (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setStageMenuOpen(false)} aria-hidden="true" />
+                    <div className="absolute start-0 top-full z-20 mt-1 w-52 rounded-xl border border-border bg-popover p-1 shadow-lg">
+                      {stageOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className="flex w-full items-center rounded-lg px-3 py-2 text-start text-sm text-foreground transition hover:bg-muted"
+                          onClick={() => {
+                            setStageMenuOpen(false);
+                            if (opt.value === "rejected") {
+                              setNextStage("rejected");
+                              setActiveTab("overview");
+                            } else {
+                              handleQuickStageChange(opt.value);
+                            }
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            {onScheduleInterview ? (
+              <Button variant="outline" size="sm" className="h-9 rounded-lg border-border px-3 text-sm" onClick={() => onScheduleInterview(app)}>
+                <Calendar className="me-1.5 h-3.5 w-3.5" />
+                {t("scheduleInterview")}
+              </Button>
+            ) : null}
+            <AIEmailDraftButton
+              applicationId={app._id}
+              candidateName={candidateName}
+              defaultContext={
+                app.status === "applied" ? "after_application" :
+                app.status === "shortlisted" ? "after_shortlist" :
+                app.status === "interview_scheduled" ? "after_interview" :
+                app.status === "rejected" ? "after_rejection" :
+                app.status === "offer" ? "after_offer" :
+                "follow_up_general"
+              }
+            />
+            <Button variant="outline" size="sm" className="h-9 w-9 rounded-lg border-border p-0" aria-label={t("moreActions")}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <StageStepper currentStatus={app.status} appliedDate={appliedDate} />
+        </div>
+
+        <div className="shrink-0 border-b border-border bg-background px-4 sm:px-5">
+          <div className="flex gap-4 overflow-x-auto">
+            {([
+              { key: "overview", label: t("tabOverview") },
+              { key: "resume", label: t("tabResume") },
+              { key: "timeline", label: t("tabTimeline") },
+              { key: "notes", label: t("tabNotes") },
+              { key: "messages", label: t("tabMessages") },
+              { key: "scorecard", label: t("tabScorecard") },
+            ] as const).map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`whitespace-nowrap border-b-2 py-2.5 text-sm font-medium transition ${activeTab === tab.key ? "border-sky-500 text-sky-700 dark:text-sky-300" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20 px-4 py-4 sm:px-5">
+          {activeTab === "overview" ? (
+          <div className="space-y-4">
+            {/* Row 1: AI Match Score | Application Overview (2 equal cards) */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiMatchScore")}</p>
+                {app.aiMatchScore != null ? (
+                  <div className="mt-3">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold tracking-tight text-foreground">{app.aiMatchScore}%</span>
+                      <span className={`text-sm font-semibold ${matchLabelColor}`}>{matchLabel}</span>
+                    </div>
+                    {matchItems.length ? (
+                      <div className="mt-3 space-y-2">
+                        {matchItems.map((item) => (
+                          <div key={item.label} className="flex items-center gap-2">
+                            <span className="w-20 text-[11px] text-muted-foreground">{item.label}</span>
+                            <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/50">
+                              <div
+                                className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-rose-400"}`}
+                                style={{ width: `${item.value}%` }}
+                              />
+                            </div>
+                            <span className="w-9 text-right text-[11px] font-medium text-foreground/80">{item.value}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="mt-3">
+                    {onGenerateAiMatch ? (
+                      <Button size="sm" variant="ghost" className="h-8 rounded-xl px-3 text-xs text-sky-700 hover:bg-sky-500/10 dark:text-sky-300" disabled={aiMatchPendingId === app._id} onClick={() => onGenerateAiMatch(app)}>
+                        <Sparkles className={`mr-1.5 h-3.5 w-3.5 ${aiMatchPendingId === app._id ? "animate-pulse text-sky-600" : ""}`} />
+                        {t("generateScore")}
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{t("aiScorePending")}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("applicationOverview")}</p>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">{t("appliedDateLabel")}</span>
+                    <span className="text-[11px] font-semibold text-foreground">{appliedDate}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">{t("currentStageLabel")}</span>
+                    <StatusBadge status={app.status} label={currentStageLabel} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">{t("appliedRoles")}</span>
+                    <span className="text-[11px] font-semibold text-foreground">{(app.otherApplicationsCount ?? 0) > 0 ? t("otherRolesCount", { count: app.otherApplicationsCount ?? 0 }) : "1"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">{t("sourceLabel")}</span>
+                    <span className="text-[11px] font-semibold text-foreground">LinkedIn</span>
+                  </div>
+                </div>
+                {(app.otherApplicationsCount ?? 0) > 0 ? (
+                  <Button variant="outline" size="sm" className="mt-3 h-8 w-full rounded-xl border-border text-[11px]">
+                    {t("viewAllApplications")}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Row 2: Resume (full width, compact) */}
+            {hasResume ? (
+              <div className="workspace-glass-panel flex items-center gap-3 rounded-2xl p-4">
+                <div className="flex h-10 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-foreground">{resumeDoc?.name ?? t("docResume")}</p>
+                  <p className="text-[10px] text-muted-foreground">324 KB</p>
+                </div>
+                <Button variant="outline" size="sm" className="h-8 shrink-0 rounded-xl border-border px-3 text-[11px]" onClick={handleViewResume}>
+                  <ExternalLink className="me-1.5 h-3.5 w-3.5" /> {t("viewResume")}
+                </Button>
+              </div>
+            ) : null}
+
+            {/* Row 3: Skills | Experience (2 cards) */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("keySkills")}</p>
+                {app.jobSeekerId?.skills?.length ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {app.jobSeekerId.skills.map((skill) => (
+                      <span key={skill} className="rounded-md border border-border bg-background/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-muted-foreground">{t("noSkills")}</p>
+                )}
+              </div>
+
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("experience")}</p>
+                {app.jobSeekerId?.experience?.length ? (
+                  <div className="mt-3 space-y-2">
+                    {app.jobSeekerId.experience.map((exp, i) => (
+                      <div key={i} className="space-y-0.5">
+                        <p className="text-xs font-semibold text-foreground">{exp.jobTitle}{exp.isCurrent ? ` (${t("current")})` : ""}</p>
+                        <p className="text-[10px] text-muted-foreground">{exp.company}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-muted-foreground">{t("noExperience")}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Row 4: Strengths | Watchouts (2 cards) */}
+            {(app.matchStrengths?.length || app.matchGaps?.length) ? (
+              <div className="grid grid-cols-2 gap-4">
+                {app.matchStrengths?.length ? (
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">{t("strengths")}</p>
+                    <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+                      {app.matchStrengths.map((s) => (
+                        <li key={s} className="flex gap-1.5">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : <div />}
+                {app.matchGaps?.length ? (
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">{t("watchouts")}</p>
+                    <ul className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+                      {app.matchGaps.map((g) => (
+                        <li key={g} className="flex gap-1.5">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                          <span>{g}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : <div />}
+              </div>
+            ) : null}
+
+            {/* Row 5: Quick Actions (full width) */}
+            <div className="workspace-glass-panel rounded-2xl p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("quickActions")}</p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]">
+                  <Plus className="me-1.5 h-3.5 w-3.5" /> {t("addNote")}
+                </Button>
+                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]">
+                  <Send className="me-1.5 h-3.5 w-3.5" /> {t("sendMessage")}
+                </Button>
+                {onOpenScorecard ? (
+                  <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px]" onClick={() => onOpenScorecard({ applicationId: app._id })}>
+                    <Award className="me-1.5 h-3.5 w-3.5" /> {t("addScorecard")}
+                  </Button>
+                ) : null}
+                {onChangeStatus && app.status === "applied" ? (
+                  <Button variant="outline" size="sm" className="h-9 rounded-xl border-border text-[11px] text-sky-700 dark:text-sky-300" disabled={statusPending} onClick={() => handleQuickStageChange("shortlisted")}>
+                    <CheckCheck className="me-1.5 h-3.5 w-3.5" /> {t("shortlistAction")}
+                  </Button>
+                ) : null}
+                {!(["rejected", "offer"]).includes(app.status) && onChangeStatus ? (
+                  <Button size="sm" variant="ghost" className="h-9 rounded-xl bg-rose-500/10 text-[11px] text-rose-600 hover:bg-rose-500/15 dark:text-rose-300" onClick={() => setNextStage("rejected")}>
+                    {t("rejectAction")}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Row 6: Stage Management (full width) */}
+            {onChangeStatus ? (
+              <div className="workspace-glass-panel rounded-2xl p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("stageManagement")}</p>
+                <p className="mt-2 text-[10px] text-muted-foreground">{t("moveToStage")}</p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <SearchableSelect
+                    className="h-9 flex-1 rounded-xl border-border bg-background/80 text-xs"
+                    options={[{ value: "", label: t("moveToStage") }, ...stageOptions]}
+                    value={nextStage}
+                    onValueChange={setNextStage}
+                    placeholder={t("moveToStage")}
+                  />
+                  <Button size="sm" className="h-9 shrink-0 rounded-xl px-4 text-xs" disabled={!nextStage || statusPending || (nextStage === "rejected" && !rejectReason.trim())} onClick={handleApplyStageChange}>
+                    {statusPending ? t("updating") : t("updateStage")}
+                  </Button>
+                </div>
+                {nextStage === "rejected" ? (
+                  <textarea
+                    value={rejectReason}
+                    onChange={(event) => setRejectReason(event.target.value)}
+                    placeholder={t("rejectionReasonRequired")}
+                    maxLength={500}
+                    className="mt-2 h-16 w-full rounded-xl border border-border bg-background/80 px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-rose-300"
+                  />
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+          ) : null}
+
+          {activeTab === "resume" ? (
+            <div className="space-y-4">
+              <div className="workspace-glass-panel rounded-[24px] p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("tabResume")}</p>
+                {hasResume ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/70 p-4">
+                      <div className="flex h-14 w-11 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-500">
+                        <FileText className="h-6 w-6" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-foreground">{resumeDoc?.name ?? t("docResume")}</p>
+                        <p className="text-xs text-muted-foreground">{t("docResume")}</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="h-10 w-full rounded-xl border-border bg-background/80 text-sm" onClick={handleViewResume}>
+                      <FileText className="me-2 h-4 w-4" /> {t("viewResume")}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-muted-foreground">{t("noResumeUploaded")}</p>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {activeTab === "timeline" ? (
+            <div className="workspace-glass-panel rounded-[24px] p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
+                <History className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-foreground">{t("timeline")}</p>
+              <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">{t("timelineHint")}</p>
+              {onOpenTimeline ? (
+                <Button variant="outline" size="sm" className="mt-4 rounded-xl border-border bg-background/80 text-sm" onClick={() => onOpenTimeline(app._id, candidateName)}>
+                  <History className="me-2 h-3.5 w-3.5" /> {t("openFullTimeline")}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {activeTab === "notes" ? (
+            <div className="workspace-glass-panel rounded-[24px] p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
+                <FileText className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-foreground">{t("notes")}</p>
+              <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">Add private notes about this candidate for your team.</p>
+              <Button variant="outline" size="sm" className="mt-4 rounded-xl border-border bg-background/80 text-sm">
+                <Plus className="me-2 h-3.5 w-3.5" /> {t("addNote")}
+              </Button>
+            </div>
+          ) : null}
+
+          {activeTab === "messages" ? (
+            <div className="workspace-glass-panel rounded-[24px] p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
+                <Mail className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-foreground">{t("tabMessages")}</p>
+              <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">Communication history with this candidate will appear here.</p>
+              <Button variant="outline" size="sm" className="mt-4 rounded-xl border-border bg-background/80 text-sm">
+                <Send className="me-2 h-3.5 w-3.5" /> {t("sendMessage")}
+              </Button>
+            </div>
+          ) : null}
+
+          {activeTab === "scorecard" ? (
+            <div className="workspace-glass-panel rounded-[24px] p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("scorecard")}</p>
+              {scorecard ? (
+                <div className="mt-3">
+                  <p className="text-3xl font-bold tracking-tight text-foreground">{t("overallScore", { score: scorecard.overallScore.toFixed(1) })}</p>
+                  {onOpenScorecard ? (
+                    <Button variant="outline" size="sm" className="mt-4 rounded-xl border-border bg-background/80 text-sm" onClick={() => onOpenScorecard({ applicationId: app._id })}>
+                      <Award className="me-2 h-3.5 w-3.5" /> {t("viewScorecard")}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="mt-3 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-300">
+                    <Award className="h-6 w-6" />
+                  </div>
+                  <p className="mt-3 text-sm text-muted-foreground">{t("scorecardEmptyHint")}</p>
+                  {onOpenScorecard && ["interview_scheduled", "selected"].includes(app.status) ? (
+                    <Button variant="outline" size="sm" className="mt-4 rounded-xl border-border bg-background/80 text-sm" onClick={() => onOpenScorecard({ applicationId: app._id })}>
+                      <Award className="me-2 h-3.5 w-3.5" /> {t("addScorecard")}
+                    </Button>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+    </>
+  );
+
+  if (!mounted) return null;
+
+  if (variant === "inline") {
+    return (
+      <aside
+        role="region"
+        aria-label={t("candidateDetailsFor", { name: candidateName })}
+        className="sticky top-4 flex max-h-[calc(100dvh-2rem)] min-h-0 flex-col overflow-hidden rounded-[22px] border border-border bg-background shadow-sm"
+      >
+        {panelBody}
+      </aside>
+    );
+  }
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(event) => {
@@ -1675,391 +2268,11 @@ function ApplicationDetailsPanel({
         className="absolute inset-y-0 right-0 flex h-screen min-h-0 w-[96vw] max-w-[760px] flex-col overflow-hidden border-l border-border bg-background shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in slide-in-from-right duration-300"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 shrink-0 border-b border-border bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_34%),linear-gradient(135deg,_rgba(255,255,255,0.98),_rgba(239,246,255,0.94))] px-5 py-5 dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_34%),linear-gradient(135deg,_rgba(2,6,23,0.96),_rgba(15,23,42,0.92))] sm:px-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-sky-500/10 text-sky-600 shadow-inner dark:text-sky-300">
-                  <User className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700/80 dark:text-sky-300/80">{t("detailedView")}</p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <a
-                      href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
-                      className="truncate text-xl font-semibold tracking-tight text-foreground hover:text-sky-700 hover:underline dark:hover:text-sky-300"
-                    >
-                      {candidateName}
-                    </a>
-                    <StatusBadge status={app.status} label={currentStageLabel} />
-                    <Badge className={`${getAiMatchBadgeClass(app.aiMatchScore)} rounded-full px-2.5 py-1 text-xs font-semibold`}>
-                      {app.aiMatchScore != null ? `${app.aiMatchScore}% ${t("match")}` : t("aiScorePending")}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {currentRole || t("roleNotSpecified")}
-                    {app.jobSeekerId?.currentLocation ? ` • ${app.jobSeekerId.currentLocation}` : ""}
-                    {candidateExperienceYears != null ? ` • ${t("yearsExp", { count: candidateExperienceYears })}` : ""}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                  <span className="font-semibold text-foreground">{t("appliedDateLabel")}</span>
-                  <span className="ms-1.5">{appliedDate}</span>
-                </div>
-                <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                  <span className="font-semibold text-foreground">{t("role")}</span>
-                  <span className="ms-1.5">{app.jobId?.title ?? t("unassigned")}</span>
-                </div>
-                {(app.otherApplicationsCount ?? 0) > 0 ? (
-                  <div className="rounded-full border border-border bg-background/80 px-3 py-1.5 text-xs text-muted-foreground shadow-sm">
-                    <span className="font-semibold text-foreground">{t("otherRole")}</span>
-                    <span className="ms-1.5">{app.otherApplicationsCount}</span>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <Button ref={closeButtonRef} variant="ghost" size="sm" className="h-9 w-9 rounded-full p-0 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500 dark:hover:text-rose-300" onClick={onClose} aria-label={t("closeCandidateDetails")}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_28%),linear-gradient(to_bottom,rgba(148,163,184,0.08),transparent_28%)] px-4 py-4 sm:px-6 sm:py-5">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("currentRole")}</p>
-              <p className="mt-2 text-sm font-semibold text-foreground">{currentRole || t("roleNotSpecified")}</p>
-            </div>
-            <div className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("location")}</p>
-              <p className="mt-2 text-sm font-semibold text-foreground">{app.jobSeekerId?.currentLocation ?? t("notSpecified")}</p>
-            </div>
-            <div className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("experience")}</p>
-              <p className="mt-2 text-sm font-semibold text-foreground">{candidateExperienceYears != null ? t("yearsExp", { count: candidateExperienceYears }) : t("locationExpPending")}</p>
-            </div>
-            <div className="workspace-glass-panel rounded-2xl p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("scorecard")}</p>
-              <p className={`mt-2 text-sm font-semibold ${scorecard ? scorecard.overallScore >= 4 ? "text-emerald-600 dark:text-emerald-300" : scorecard.overallScore >= 3 ? "text-amber-600 dark:text-amber-300" : "text-rose-500 dark:text-rose-300" : "text-muted-foreground"}`}>
-                {scorecard ? t("overallScore", { score: scorecard.overallScore.toFixed(1) }) : t("notAddedYet")}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(280px,0.92fr)]">
-            <div className="space-y-4">
-              <div className="workspace-glass-panel rounded-[24px] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("applicationOverview")}</p>
-                <div className="mt-3 space-y-3 text-sm text-muted-foreground">
-                  <div>
-                    <p className="font-semibold text-foreground">{app.jobId?.title ?? t("untitledRole")}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{t("applicationOverviewText", { date: appliedDate, stage: currentStageLabel })}</p>
-                  </div>
-                  {(app.otherApplicationsCount ?? 0) > 0 ? (
-                    <p className="rounded-2xl border border-border bg-background/70 px-3 py-2 text-xs text-muted-foreground">
-                      {t("otherApplicationsSummary", { count: app.otherApplicationsCount ?? 0 })}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="workspace-glass-panel rounded-[24px] p-5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("reviewSignals")}</p>
-                  {app.aiMatchScore == null && onGenerateAiMatch ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 rounded-xl px-3 text-xs text-sky-700 hover:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/15"
-                      disabled={aiMatchPendingId === app._id}
-                      onClick={() => onGenerateAiMatch(app)}
-                    >
-                      <Sparkles className={`mr-1 h-3.5 w-3.5 ${aiMatchPendingId === app._id ? "animate-pulse text-sky-600" : ""}`} />
-                      {t("generateScore")}
-                    </Button>
-                  ) : null}
-                </div>
-
-                {app.aiMatchScore != null ? (
-                  <div className="mt-3 space-y-3">
-                    <div className="rounded-2xl bg-background/70 px-3.5 py-3">
-                      <p className="text-[11px] font-medium text-muted-foreground">{t("aiMatch")}</p>
-                      <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{app.aiMatchScore}%</p>
-                    </div>
-
-                    {matchItems.length ? (
-                      <div className="space-y-2">
-                        {matchItems.map((item) => (
-                          <div key={item.label} className="flex items-center gap-2">
-                            <span className="w-20 text-[11px] text-muted-foreground">{item.label}</span>
-                            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/50">
-                              <div
-                                className={`h-full rounded-full ${item.value >= 70 ? "bg-emerald-500" : item.value >= 50 ? "bg-amber-500" : "bg-rose-400"}`}
-                                style={{ width: `${item.value}%` }}
-                              />
-                            </div>
-                            <span className="w-10 text-right text-[11px] font-medium text-foreground/80">{item.value}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{t("aiCategoryScoresUnavailable")}</p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{t("generateAiMatchPrompt")}</p>
-                )}
-              </div>
-
-              {app.coverLetter ? (
-                <div className="workspace-glass-panel rounded-[24px] p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("coverLetter")}</p>
-                  <p className="mt-3 text-sm leading-7 text-muted-foreground">{app.coverLetter}</p>
-                </div>
-              ) : null}
-
-              {app.screeningAnswers && app.screeningAnswers.length > 0 ? (
-                <div className="workspace-glass-panel rounded-[24px] p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("screeningAnswers")}</p>
-                  <div className="mt-3 space-y-3">
-                    {app.screeningAnswers.map((sa) => (
-                      <div key={sa.questionId} className="space-y-1">
-                        <p className="text-xs font-medium text-foreground/80">{sa.questionLabel}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {Array.isArray(sa.answer)
-                            ? sa.answer.join(", ")
-                            : typeof sa.answer === "boolean"
-                              ? sa.answer ? t("yes") : t("no")
-                              : String(sa.answer)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {app.documents && app.documents.length > 0 ? (
-                <div className="workspace-glass-panel rounded-[24px] p-5">
-                  <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    <Paperclip className="h-3.5 w-3.5" /> {t("attachments")}
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    {app.documents.map((doc, i) => {
-                      const isPortfolio = doc.type === "portfolio";
-                      const isResume = doc.type === "resume";
-                      const Icon = isPortfolio ? ExternalLink : FileText;
-                      const typeLabel = isPortfolio ? t("docPortfolio") : isResume ? t("docResume") : t("docOther");
-                      return (
-                        <div key={`${doc.url}-${i}`} className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background/70 px-3.5 py-2.5">
-                          <div className="flex min-w-0 items-center gap-2.5">
-                            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-foreground">{doc.name}</p>
-                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{typeLabel}</p>
-                            </div>
-                          </div>
-                          {isResume && onViewDocument && doc.url ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-9 shrink-0 rounded-xl border-border bg-background/80 px-3 text-xs"
-                              onClick={() => onViewDocument(app, `/api/applications/${app._id}/documents/download?i=${i}&view=1#${encodeURIComponent(doc.name)}`)}
-                            >
-                              <FileText className="mr-1.5 h-3.5 w-3.5" /> {t("viewResume")}
-                            </Button>
-                          ) : (
-                            <a
-                              href={`/api/applications/${app._id}/documents/download?i=${i}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-background/80 px-3 text-xs font-medium text-foreground hover:bg-background"
-                            >
-                              <ExternalLink className="h-3.5 w-3.5" /> {t("openDocument")}
-                            </a>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-
-              {app.matchStrengths?.length ? (
-                <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/10 p-5">
-                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{t("strengths")}</p>
-                  <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                    {app.matchStrengths.map((strength) => (
-                      <li key={strength} className="flex gap-2">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                        <span>{strength}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {app.matchGaps?.length ? (
-                <div className="rounded-[24px] border border-amber-500/20 bg-amber-500/10 p-5">
-                  <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">{t("watchouts")}</p>
-                  <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                    {app.matchGaps.map((gap) => (
-                      <li key={gap} className="flex gap-2">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                        <span>{gap}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="space-y-4">
-              <div className="workspace-glass-panel rounded-[24px] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("keySkills")}</p>
-                {app.jobSeekerId?.skills?.length ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {app.jobSeekerId.skills.map((skill) => (
-                      <span key={skill} className="rounded-full border border-border bg-background/70 px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">{t("noSkills")}</p>
-                )}
-              </div>
-
-              {/* Education */}
-              <div className="workspace-glass-panel rounded-[24px] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("education")}</p>
-                {app.jobSeekerId?.education?.length ? (
-                  <div className="mt-3 space-y-3">
-                    {app.jobSeekerId.education.map((edu, i) => (
-                      <div key={i} className="space-y-0.5">
-                        <p className="text-sm font-semibold text-foreground">{edu.degree}{edu.field ? ` - ${edu.field}` : ""}</p>
-                        <p className="text-xs text-muted-foreground">{edu.institution}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">{t("noEducation")}</p>
-                )}
-              </div>
-
-              {/* Experience */}
-              <div className="workspace-glass-panel rounded-[24px] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("experience")}</p>
-                {app.jobSeekerId?.experience?.length ? (
-                  <div className="mt-3 space-y-3">
-                    {app.jobSeekerId.experience.map((exp, i) => (
-                      <div key={i} className="space-y-0.5">
-                        <p className="text-sm font-semibold text-foreground">{exp.jobTitle}{exp.isCurrent ? ` (${t("current")})` : ""}</p>
-                        <p className="text-xs text-muted-foreground">{exp.company}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm text-muted-foreground">{t("noExperience")}</p>
-                )}
-              </div>
-
-              <div className="workspace-glass-panel rounded-[24px] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("quickActions")}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {app.jobSeekerId?.cv?.originalUrl && onViewCv ? (
-                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onViewCv(app)}>
-                      <FileText className="mr-2 h-3.5 w-3.5" /> {t("viewResume")}
-                    </Button>
-                  ) : null}
-                  {onOpenTimeline ? (
-                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenTimeline(app._id, candidateName)}>
-                      <History className="mr-2 h-3.5 w-3.5" /> {t("timeline")}
-                    </Button>
-                  ) : null}
-                  {onOpenScorecard && ["interview_scheduled", "selected"].includes(app.status) ? (
-                    <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenScorecard({ applicationId: app._id })}>
-                      <Award className="mr-2 h-3.5 w-3.5" /> {scorecard ? t("viewScorecard") : t("addScorecard")}
-                    </Button>
-                  ) : null}
-                  {app.status === "shortlisted" && onScheduleInterview ? (
-                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-violet-500/10 px-4 text-sm text-violet-700 hover:bg-violet-500/15 dark:text-violet-300" onClick={() => onScheduleInterview(app)}>
-                      <Calendar className="mr-2 h-3.5 w-3.5" /> {t("scheduleInterview")}
-                    </Button>
-                  ) : null}
-                  {app.status === "selected" && onCreateOffer ? (
-                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-cyan-500/10 px-4 text-sm text-cyan-700 hover:bg-cyan-500/15 dark:text-cyan-300" onClick={() => onCreateOffer(app)}>
-                      <DollarSign className="mr-2 h-3.5 w-3.5" /> {t("sendOffer")}
-                    </Button>
-                  ) : null}
-                  {app.status === "applied" && onChangeStatus ? (
-                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-sky-500/10 px-4 text-sm text-sky-700 hover:bg-sky-500/15 dark:text-sky-300" disabled={statusPending} onClick={() => handleQuickStageChange("shortlisted")}>
-                      {t("shortlisted")}
-                    </Button>
-                  ) : null}
-                  {app.status === "interview_scheduled" && onChangeStatus ? (
-                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-emerald-500/10 px-4 text-sm text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300" disabled={statusPending} onClick={() => handleQuickStageChange("selected")}>
-                      {t("markSelected")}
-                    </Button>
-                  ) : null}
-                  {!(["rejected", "offer"]).includes(app.status) && onChangeStatus ? (
-                    <Button size="sm" variant="ghost" className="h-10 rounded-xl bg-rose-500/10 px-4 text-sm text-rose-600 hover:bg-rose-500/15 dark:text-rose-300" onClick={() => setNextStage("rejected")}>
-                      {t("rejected")}
-                    </Button>
-                  ) : null}
-                  <AIEmailDraftButton
-                    applicationId={app._id}
-                    candidateName={candidateName}
-                    defaultContext={
-                      app.status === "applied" ? "after_application" :
-                      app.status === "shortlisted" ? "after_shortlist" :
-                      app.status === "interview_scheduled" ? "after_interview" :
-                      app.status === "rejected" ? "after_rejection" :
-                      app.status === "offer" ? "after_offer" :
-                      "follow_up_general"
-                    }
-                  />
-                </div>
-
-                {onChangeStatus ? (
-                  <div className="mt-4 rounded-2xl border border-border bg-background/60 p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("stageManagement")}</p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                      <SearchableSelect
-                        className="h-10 w-full rounded-xl border-border bg-background/80"
-                        options={[{ value: "", label: t("moveToStage") }, ...stageOptions]}
-                        value={nextStage}
-                        onValueChange={setNextStage}
-                        placeholder={t("moveToStage")}
-                      />
-                      <Button size="sm" className="h-10 rounded-xl px-4 text-sm" disabled={!nextStage || statusPending || (nextStage === "rejected" && !rejectReason.trim())} onClick={handleApplyStageChange}>
-                        {statusPending ? t("updating") : t("applyStage")}
-                      </Button>
-                    </div>
-                    {nextStage === "rejected" ? (
-                      <textarea
-                        value={rejectReason}
-                        onChange={(event) => setRejectReason(event.target.value)}
-                        placeholder={t("rejectionReasonRequired")}
-                        maxLength={500}
-                        className="mt-3 h-20 w-full rounded-2xl border border-border bg-background/80 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-rose-300"
-                      />
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
+        {panelBody}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
-
-  if (!mounted) return null;
-  return createPortal(sheet, document.body);
 }
 
 function BulkInterviewScheduleModal({
