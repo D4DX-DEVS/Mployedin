@@ -679,7 +679,7 @@ export default function EmployerApplicationsPage() {
   }
 
   return (
-    <div className="page-container employer-legacy-surface space-y-4">
+    <div className="page-container employer-legacy-surface space-y-4 pb-2" style={{ paddingBottom: "4px" }}>
       <section className="workspace-hero-surface overflow-hidden rounded-[22px] px-4 py-3 sm:px-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">

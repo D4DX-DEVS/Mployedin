@@ -621,6 +621,13 @@ body {
     padding-bottom: max(env(safe-area-inset-bottom), 7.5rem);
   }
 
+  @media (min-width: 1024px) {
+    .dashboard-shell-workspace .dashboard-main-workspace {
+      padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+      scroll-padding-bottom: 1rem;
+    }
+  }
+
   .dashboard-shell-workspace .page-container {
     max-width: 1440px;
     padding-top: 1.75rem;
