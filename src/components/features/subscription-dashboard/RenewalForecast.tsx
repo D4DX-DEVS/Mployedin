@@ -1,0 +1,64 @@
+"use client";
+
+import { CalendarClock, AlertCircle } from "lucide-react";
+import type { RenewalForecast as RenewalForecastData } from "./useSubscriptionDashboard";
+
+interface RenewalForecastProps {
+  data: RenewalForecastData;
+}
+
+function formatCurrency(n: number) {
+  return new Intl.NumberFormat("en-US").format(n);
+}
+
+export function RenewalForecast({ data }: RenewalForecastProps) {
+  const buckets = [
+    { label: "Within 7 days", ...data.within7, color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20" },
+    { label: "8 – 15 days", ...data.within15, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    { label: "16 – 30 days", ...data.within30, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  ];
+
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card p-6">
+      <div className="flex items-center justify-between mb-5">
+        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <CalendarClock className="h-4 w-4" /> Renewal Forecast
+          <AlertCircle className="h-3.5 w-3.5 text-muted-foreground/50" />
+        </h4>
+        <span className="text-xs text-primary cursor-pointer hover:underline">View all</span>
+      </div>
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 gap-4 mb-5">
+        <div className="rounded-xl border border-border/40 p-3 text-center">
+          <p className="text-xs text-muted-foreground mb-1">Renewing Next 30 Days</p>
+          <p className="text-2xl font-bold text-primary">{data.totalRenewing}</p>
+          <p className="text-[10px] text-muted-foreground">Subscriptions</p>
+        </div>
+        <div className="rounded-xl border border-border/40 p-3 text-center">
+          <p className="text-xs text-muted-foreground mb-1">Expected Revenue</p>
+          <p className="text-2xl font-bold text-emerald-500">{formatCurrency(data.expectedRevenue)}</p>
+          <p className="text-[10px] text-muted-foreground">AED</p>
+        </div>
+      </div>
+
+      {/* Buckets */}
+      <div className="space-y-2">
+        {buckets.map((b) => (
+          <div
+            key={b.label}
+            className={`flex items-center justify-between rounded-xl border ${b.border} ${b.bg} p-3`}
+          >
+            <span className={`text-sm font-medium ${b.color}`}>{b.label}</span>
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-semibold">{b.count}</span>
+              <span className="text-sm text-muted-foreground">
+                {formatCurrency(b.revenue)} AED
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}

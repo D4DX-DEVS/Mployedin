@@ -1,33 +1,45 @@
-"use client";
+﻿"use client";
 
 /**
- * Employer Subscription Page
+ * Employer Subscription Page — Modern SaaS layout
  *
- * Shows current plan, usage meters, AI usage, and invoice history.
+ * 1. Current Plan + Billing Info
+ * 2. Usage Overview with warning indicators
+ * 3. Choose Your Plan (pricing cards)
+ * 4. Included / Locked Features
+ * 5. Billing & Invoices (only if exist)
+ * 6. Payment Method placeholder
  */
 
+import { useState } from "react";
 import {
-  Crown, Sparkles, Briefcase, Users, Eye, BarChart3,
-  Clock, CheckCircle, AlertTriangle, FileText, MessageSquare,
+  Crown, Briefcase, Users, Eye, BarChart3,
+  Check, X, AlertTriangle, FileText,
+  CreditCard, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { PageHero } from "@/components/shared/PageHero";
 import { Badge } from "@/components/ui/badge";
-import { useMySubscription, type MySubscription } from "@/hooks/useSubscription";
+import { Button } from "@/components/ui/button";
+import {
+  useMySubscription, useAvailablePlans, useSelfAssignFreePlan, useToggleAutoRenew,
+  type MySubscription, type AvailablePlan,
+} from "@/hooks/useSubscription";
 import { useFeatureGateMap } from "@/hooks/useFeatureGate";
 import { useInvoices, type InvoiceItem } from "@/hooks/useInvoices";
 import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { CurrencySelector } from "@/components/shared/CurrencySelector";
+import { PricingGrid } from "@/components/subscription/PricingGrid";
 import { convertAndFormat } from "@/lib/currency";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(d: string | undefined) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-US", {
-    year: "numeric", month: "short", day: "numeric",
-  });
+  return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
 function daysUntil(d: string | undefined) {
@@ -35,11 +47,22 @@ function daysUntil(d: string | undefined) {
   return Math.ceil((new Date(d).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-const AI_KEYS = [
-  "ai_chat", "ai_daily_insights", "ai_job_matching", "ai_cv_extraction",
-  "ai_interview_questions", "ai_skills_gap", "ai_candidate_screening",
-  "ai_salary_benchmark", "ai_job_description", "ai_hiring_reports", "ai_voice_input",
-];
+function pctUsed(used: number, max: number) {
+  if (max <= 0) return 0;
+  return Math.min(100, Math.round((used / max) * 100));
+}
+
+function barColor(pct: number) {
+  if (pct >= 100) return "bg-red-500";
+  if (pct >= 80) return "bg-amber-500";
+  return "bg-sky-500";
+}
+
+function barBg(pct: number) {
+  if (pct >= 100) return "bg-red-500/10";
+  if (pct >= 80) return "bg-amber-500/10";
+  return "bg-sky-500/10";
+}
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
@@ -48,6 +71,7 @@ export default function EmployerSubscriptionPage() {
   const { data: subscription, isLoading } = useMySubscription();
   const { data: gateMap } = useFeatureGateMap();
   const { data: invoices } = useInvoices({});
+  const { data: plans = [] } = useAvailablePlans("employer");
   const { displayCurrency, setDisplayCurrency } = useCurrencyPreference();
   const { rates, source: rateSource } = useExchangeRates();
 
@@ -56,7 +80,7 @@ export default function EmployerSubscriptionPage() {
       <div className="page-container space-y-4">
         <PageHero icon={Crown} title={t("title")} />
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-28 animate-pulse rounded-2xl bg-background/70" />
+          <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted/30" />
         ))}
       </div>
     );
@@ -80,351 +104,293 @@ export default function EmployerSubscriptionPage() {
       />
 
       {subscription ? (
-        <ActivePlanView
+        <ActiveView
           subscription={subscription}
           features={gateMap?.features ?? {}}
           invoices={invoices ?? []}
+          plans={plans}
           displayCurrency={displayCurrency}
           rates={rates}
         />
       ) : (
-        <NoPlanView />
+        <NoPlanView plans={plans} displayCurrency={displayCurrency} rates={rates} />
       )}
     </div>
   );
 }
 
-// ── Active Plan View ─────────────────────────────────────────────────────────
+// ── Active View ──────────────────────────────────────────────────────────────
 
-function ActivePlanView({
-  subscription,
-  features,
-  invoices,
-  displayCurrency,
-  rates,
+function ActiveView({
+  subscription, features, invoices, plans, displayCurrency, rates,
 }: {
   subscription: MySubscription;
   features: Record<string, { allowed: boolean; limit?: number; used?: number; remaining?: number }>;
   invoices: InvoiceItem[];
+  plans: AvailablePlan[];
   displayCurrency: string;
   rates: Record<string, number>;
 }) {
   const t = useTranslations("subscription");
+  const toggleAutoRenew = useToggleAutoRenew();
   const snap = subscription.planSnapshot;
   const limits = snap?.employerLimits as Record<string, unknown> | undefined;
   const usage = subscription.usage;
   const remaining = daysUntil(subscription.endDate);
+  const currentTier = snap?.tier ?? 0;
+
+  const usageItems = [
+    { label: t("activeJobs"), icon: <Briefcase className="h-5 w-5" />, used: usage?.activeJobs ?? 0, max: (limits?.maxActiveJobs as number) ?? 0 },
+    { label: t("applicationsViewed"), icon: <Eye className="h-5 w-5" />, used: usage?.applicationsViewed ?? 0, max: (limits?.maxApplicationsViewPerMonth as number) ?? 0 },
+    { label: t("teamMembers"), icon: <Users className="h-5 w-5" />, used: 0, max: (limits?.maxTeamMembers as number) ?? 0 },
+  ];
+
+  const hasWarning = usageItems.some((u) => u.max > 0 && u.max !== -1 && pctUsed(u.used, u.max) >= 80);
+
+  const maxJobs = (limits?.maxActiveJobs as number) ?? 0;
+  const maxApps = (limits?.maxApplicationsViewPerMonth as number) ?? 0;
+  const maxTeam = (limits?.maxTeamMembers as number) ?? 0;
+
+  const featureList = [
+    { label: "Job Posting", detail: maxJobs === -1 ? "Unlimited" : `${maxJobs} Job Postings`, allowed: true },
+    { label: "Applicant Tracking", detail: `Up to ${maxApps === -1 ? "unlimited" : maxApps} applications/month`, allowed: true },
+    { label: "Team Collaboration", detail: `Up to ${maxTeam === -1 ? "unlimited" : maxTeam} team members`, allowed: true },
+    { label: t("dataExport"), allowed: features.dataExport?.allowed ?? false },
+    { label: t("analytics"), detail: `${(limits?.analyticsLevel as string) ?? "none"} level`, allowed: (limits?.analyticsLevel as string) !== "none" },
+    { label: t("commTemplates"), allowed: features.commTemplates?.allowed ?? false },
+    { label: t("scorecards"), allowed: features.scorecardEvaluations?.allowed ?? false },
+    { label: t("prioritySupport"), allowed: features.prioritySupport?.allowed ?? false },
+  ];
+  const included = featureList.filter((f) => f.allowed);
+  const locked = featureList.filter((f) => !f.allowed);
 
   return (
     <div className="space-y-6">
-      {/* ── Plan Card ── */}
-      <section className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-sky-500/0 p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center">
+      {/* ── 1. Current Plan ── */}
+      <section className="rounded-2xl border border-border/60 bg-card p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+          <div className="flex items-start gap-3 flex-1">
+            <div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0">
               <Crown className="h-6 w-6 text-sky-500" />
             </div>
             <div>
-              <h3 className="text-xl font-bold">{snap?.name ?? "Unknown"}</h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-xl font-bold">{snap?.name ?? "Unknown"}</h3>
+                <Badge className={subscription.status === "active" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30" : "bg-amber-500/10 text-amber-600 border border-amber-500/30"}>
+                  {subscription.status === "active" ? t("active") : subscription.status}
+                </Badge>
+              </div>
               <p className="text-sm text-muted-foreground">
-                {snap?.price > 0
-                  ? convertAndFormat(snap.price, snap.currency ?? "AED", displayCurrency, rates)
-                  : "Free"}{" "}
-                / {snap?.billingCycle}
+                {snap?.price > 0 ? `${convertAndFormat(snap.price, snap.currency ?? "AED", displayCurrency, rates)} / ${snap?.billingCycle}` : "Free / monthly"}
               </p>
-              {snap?.price > 0 && displayCurrency !== (snap.currency ?? "AED") && (
-                <p className="text-[10px] text-muted-foreground/60">
-                  ≈ original: {snap.price} {snap.currency}
-                </p>
-              )}
             </div>
           </div>
-          <div className="text-right">
-            <Badge className={`${
-              subscription.status === "active"
-                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
-                : "bg-amber-500/10 text-amber-400 border border-amber-500/30"
-            }`}>
-              {subscription.status === "active" ? (
-                <><CheckCircle className="h-3 w-3 mr-1" /> {t("active")}</>
-              ) : (
-                <><AlertTriangle className="h-3 w-3 mr-1" /> {subscription.status}</>
-              )}
-            </Badge>
-            <p className="text-xs text-muted-foreground mt-1">
-              {remaining > 0 ? t("daysLeft", { count: remaining }) : t("expired")}
-            </p>
+
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+            <div>
+              <p className="text-muted-foreground text-xs">Next Renewal</p>
+              <p className="font-medium">{formatDate(subscription.endDate)} ({remaining}d)</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Auto Renew</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <Switch
+                  checked={subscription.autoRenew}
+                  disabled={toggleAutoRenew.isPending}
+                  onCheckedChange={(checked) =>
+                    toggleAutoRenew.mutate(
+                      { subscriptionId: subscription._id, autoRenew: checked },
+                      { onError: (err) => toast.error(err.message) },
+                    )
+                  }
+                />
+                <span className="text-sm font-medium">{subscription.autoRenew ? t("enabled") : t("disabled")}</span>
+              </div>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Billing Cycle</p>
+              <p className="font-medium capitalize">{snap?.billingCycle ?? "monthly"}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Payment Method</p>
+              <p className="font-medium text-muted-foreground">
+                No payment method
+                <button onClick={() => toast.info("Coming soon", { description: "Payment integration is not yet available." })} className="text-sky-500 hover:text-sky-600 ml-1">Add</button>
+              </p>
+            </div>
           </div>
         </div>
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <InfoCard label={t("startDate")} value={formatDate(subscription.startDate)} icon={<Clock className="h-4 w-4" />} />
-          <InfoCard label={t("endDate")} value={formatDate(subscription.endDate)} icon={<Clock className="h-4 w-4" />} />
-          <InfoCard label={t("autoRenew")} value={subscription.autoRenew ? t("enabled") : t("disabled")} icon={<CheckCircle className="h-4 w-4" />} />
-        </div>
       </section>
 
-      {/* ── Usage Meters ── */}
+      {/* ── 2. Usage Overview ── */}
       <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <BarChart3 className="h-4 w-4" /> {t("usage")}
+          <BarChart3 className="h-4 w-4" /> Usage Overview
         </h4>
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <UsageMeter
-            label={t("activeJobs")}
-            icon={<Briefcase className="h-4 w-4 text-sky-500" />}
-            used={usage?.activeJobs ?? 0}
-            max={(limits?.maxActiveJobs as number) ?? 0}
-          />
-          <UsageMeter
-            label={t("applicationsViewed")}
-            icon={<Eye className="h-4 w-4 text-sky-500" />}
-            used={usage?.applicationsViewed ?? 0}
-            max={(limits?.maxApplicationsViewPerMonth as number) ?? 0}
-          />
-          <UsageMeter
-            label={t("teamMembers")}
-            icon={<Users className="h-4 w-4 text-sky-500" />}
-            used={0}
-            max={(limits?.maxTeamMembers as number) ?? 0}
-          />
-        </div>
-      </section>
-
-      {/* ── AI Features Usage ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Sparkles className="h-4 w-4" /> {t("aiFeatures")}
-        </h4>
-
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {AI_KEYS.map((key) => {
-            const gate = features[key];
-            if (!gate) return null;
-            const label = t(`aiLabel_${key}` as Parameters<typeof t>[0]);
-
+        <div className="grid gap-4 sm:grid-cols-3">
+          {usageItems.map((u) => {
+            const unlimited = u.max === -1;
+            const pct = unlimited ? 0 : pctUsed(u.used, u.max);
             return (
-              <div
-                key={key}
-                className={`rounded-xl border p-3 ${
-                  gate.allowed
-                    ? "border-border/40"
-                    : "border-red-500/20 bg-red-500/5 opacity-60"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium">{label}</span>
-                  {gate.allowed ? (
-                    <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-500/30">
-                      <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> {t("on")}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs text-red-400 border-red-500/30">
-                      {t("off")}
-                    </Badge>
+              <div key={u.label} className={`rounded-xl border p-4 ${pct >= 80 ? "border-amber-500/40" : "border-border/40"}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${barBg(pct)}`}>{u.icon}</div>
+                  <span className="text-sm font-medium">{u.label}</span>
+                </div>
+                <div className="flex items-baseline justify-between mb-2">
+                  <p className="text-2xl font-bold">{u.used}<span className="text-sm font-normal text-muted-foreground"> / {unlimited ? "∞" : u.max}</span></p>
+                  {!unlimited && u.max > 0 && (
+                    <span className={`text-xs font-medium ${pct >= 100 ? "text-red-500" : pct >= 80 ? "text-amber-500" : "text-muted-foreground"}`}>{pct}% used</span>
                   )}
                 </div>
-                {gate.limit !== undefined && (
-                  <div className="mt-1.5">
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>{gate.used ?? 0} {t("used")}</span>
-                      <span>{gate.remaining ?? 0} {t("left")}</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-muted">
-                      <div
-                        className={`h-full rounded-full ${
-                          (gate.remaining ?? 0) === 0 ? "bg-red-500" : "bg-sky-500"
-                        }`}
-                        style={{
-                          width: `${gate.limit > 0 ? Math.min(100, ((gate.used ?? 0) / gate.limit) * 100) : 0}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
+                <div className="h-2 rounded-full bg-muted">
+                  <div className={`h-full rounded-full transition-all ${barColor(pct)}`} style={{ width: `${unlimited ? 5 : Math.max(pct, 2)}%` }} />
+                </div>
               </div>
             );
           })}
         </div>
+        {hasWarning && (
+          <div className="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+            <p className="text-sm text-muted-foreground flex-1">You are nearing your plan limits. Upgrade your plan to increase capacity.</p>
+            <Button size="sm" variant="outline" className="shrink-0 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => toast.info("Contact your administrator to upgrade.")}>Upgrade Plan</Button>
+          </div>
+        )}
       </section>
 
-      {/* ── Boolean Features ── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <FileText className="h-4 w-4" /> {t("planFeatures")}
-        </h4>
-
-        <div className="flex flex-wrap gap-2">
-          <FeaturePill label={t("dataExport")} allowed={features.dataExport?.allowed} />
-          <FeaturePill label={t("commTemplates")} allowed={features.commTemplates?.allowed} />
-          <FeaturePill label={t("scorecards")} allowed={features.scorecardEvaluations?.allowed} />
-          <FeaturePill label={t("matchingWeights")} allowed={features.matchingWeightCustomization?.allowed} />
-          <FeaturePill label={t("workflow")} allowed={features.workflowCustomization?.allowed} />
-          <FeaturePill label={t("prioritySupport")} allowed={features.prioritySupport?.allowed} />
-          <FeaturePill label={t("brandedPage")} allowed={features.brandedCompanyPage?.allowed} />
-          <FeaturePill label={t("analytics")} allowed={features.analyticsLevel?.allowed} />
-        </div>
-      </section>
-
-      {/* ── Invoice History ── */}
-      {invoices.length > 0 && <InvoiceTable invoices={invoices} displayCurrency={displayCurrency} rates={rates} />}
-
-      {/* ── Upgrade CTA ── */}
-      {(snap?.tier ?? 0) < 3 && (
-        <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-center space-y-2">
-          <Crown className="h-8 w-8 text-amber-500 mx-auto" />
-          <p className="font-semibold">{t("upgradeTitle")}</p>
-          <p className="text-sm text-muted-foreground">
-            {t("upgradeEmployer")}
-          </p>
+      {/* ── 3. Choose Your Plan ── */}
+      {plans.length > 0 && (
+        <section className="space-y-4">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> Choose your plan</h4>
+          <PricingGrid plans={plans} currentTier={currentTier} displayCurrency={displayCurrency} rates={rates} />
         </section>
       )}
+
+      {/* ── 4. Included / Locked Features ── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> Included in your plan</h4>
+          <ul className="space-y-2.5">
+            {included.map((f) => (
+              <li key={f.label} className="flex items-start gap-3">
+                <Check className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">{f.label}</p>
+                  {f.detail && <p className="text-xs text-muted-foreground">{f.detail}</p>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+        {locked.length > 0 && (
+          <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
+            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><X className="h-4 w-4 text-muted-foreground/50" /> Not included</h4>
+            <ul className="space-y-2.5">
+              {locked.map((f) => (
+                <li key={f.label} className="flex items-start gap-3 opacity-60">
+                  <X className="h-4 w-4 text-muted-foreground/40 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">{f.label}</p>
+                    <p className="text-xs text-muted-foreground">Available on higher plans</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+
+      {/* ── 5. Billing & Invoices ── */}
+      {invoices.length > 0 && <InvoiceSection invoices={invoices} displayCurrency={displayCurrency} rates={rates} />}
+
+      {/* ── 6. Payment Method ── */}
+      <section className="rounded-2xl border border-border/60 bg-card p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-semibold">Payment Method</p>
+              <p className="text-xs text-muted-foreground">No payment method added. Add a payment method to enable auto-renewal.</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => toast.info("Payment setup coming soon", { description: "Online payment integration is not yet available." })}>Add Payment Method</Button>
+        </div>
+      </section>
     </div>
   );
 }
 
 // ── No Plan View ─────────────────────────────────────────────────────────────
 
-function NoPlanView() {
+function NoPlanView({ plans, displayCurrency, rates }: { plans: AvailablePlan[]; displayCurrency: string; rates: Record<string, number> }) {
+  const { mutate: selfAssign, isPending } = useSelfAssignFreePlan();
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-12 text-center space-y-3">
-      <Crown className="h-12 w-12 text-muted-foreground/30 mx-auto" />
-      <h3 className="text-lg font-semibold">No Active Subscription</h3>
-      <p className="text-sm text-muted-foreground max-w-md mx-auto">
-        You are currently on the free tier. Contact your administrator
-        to get a premium plan assigned for access to AI features, higher limits,
-        and advanced tools.
-      </p>
-    </section>
-  );
-}
-
-// ── Sub-Components ───────────────────────────────────────────────────────────
-
-function InfoCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border/40 p-3">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-        {icon} {label}
-      </div>
-      <p className="font-medium">{value}</p>
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-sky-500/30 bg-gradient-to-br from-sky-500/5 to-transparent p-6 flex items-start gap-4">
+        <div className="h-12 w-12 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0"><Crown className="h-6 w-6 text-sky-500" /></div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-lg">Welcome to Mployedin</h3>
+          <p className="text-sm text-muted-foreground mt-1">Activate your free plan to start posting jobs and tracking applicants. Upgrade anytime to unlock more features and higher limits.</p>
+        </div>
+        <Button onClick={() => selfAssign()} disabled={isPending} className="shrink-0">{isPending ? "Activating…" : "Activate Free Plan"}</Button>
+      </section>
+      {plans.length > 0 && (
+        <section className="space-y-4">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Crown className="h-4 w-4" /> Choose the right plan for your team</h4>
+          <PricingGrid plans={plans} showActivateFree displayCurrency={displayCurrency} rates={rates} />
+        </section>
+      )}
     </div>
   );
 }
 
-function UsageMeter({
-  label,
-  icon,
-  used,
-  max,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  used: number;
-  max: number;
-}) {
-  const unlimited = max === -1;
-  const pct = unlimited ? 10 : max > 0 ? Math.min(100, (used / max) * 100) : 0;
+// ── Invoice Section ──────────────────────────────────────────────────────────
 
-  return (
-    <div className="rounded-xl border border-border/40 p-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="flex items-center gap-1.5 text-sm font-medium">
-          {icon} {label}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {unlimited ? `${used} / ∞` : `${used} / ${max}`}
-        </span>
-      </div>
-      <div className="h-2 rounded-full bg-muted">
-        <div
-          className={`h-full rounded-full transition-all ${
-            pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-sky-500"
-          }`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function FeaturePill({ label, allowed }: { label: string; allowed?: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium border ${
-        allowed
-          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-          : "border-border/40 bg-muted/20 text-muted-foreground/50"
-      }`}
-    >
-      {allowed ? <CheckCircle className="h-3 w-3" /> : null}
-      {label}
-    </span>
-  );
-}
-
-function InvoiceTable({ invoices, displayCurrency, rates }: { invoices: InvoiceItem[]; displayCurrency: string; rates: Record<string, number> }) {
-  const TYPE_BADGE: Record<string, string> = {
-    new: "bg-sky-500/10 text-sky-400 border-sky-500/30",
-    renewal: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-    upgrade: "bg-purple-500/10 text-purple-400 border-purple-500/30",
-    downgrade: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-  };
+function InvoiceSection({ invoices, displayCurrency, rates }: { invoices: InvoiceItem[]; displayCurrency: string; rates: Record<string, number> }) {
+  const [expanded, setExpanded] = useState(invoices.length <= 3);
+  const visible = expanded ? invoices : invoices.slice(0, 3);
 
   return (
     <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
-      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-        <MessageSquare className="h-4 w-4" /> Invoices
-      </h4>
-
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><FileText className="h-4 w-4" /> Billing & Invoices</h4>
+        <span className="text-xs text-muted-foreground">{invoices.length} invoice{invoices.length !== 1 ? "s" : ""}</span>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-muted-foreground border-b border-border/40">
-              <th className="pb-2 pr-4">Invoice #</th>
-              <th className="pb-2 pr-4">Type</th>
-              <th className="pb-2 pr-4">Plan</th>
-              <th className="pb-2 pr-4">Amount</th>
-              <th className="pb-2 pr-4">Status</th>
-              <th className="pb-2">Date</th>
+              <th className="pb-2 pr-4 font-medium">Invoice ID</th>
+              <th className="pb-2 pr-4 font-medium">Date</th>
+              <th className="pb-2 pr-4 font-medium">Plan</th>
+              <th className="pb-2 pr-4 font-medium">Amount</th>
+              <th className="pb-2 font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
-            {invoices.map((inv) => (
-              <tr key={inv._id} className="border-b border-border/20">
-                <td className="py-2.5 pr-4 font-mono text-xs">{inv.invoiceNumber}</td>
-                <td className="py-2.5 pr-4">
-                  <Badge variant="outline" className={`text-xs ${TYPE_BADGE[inv.type] ?? ""}`}>
-                    {inv.type}
-                  </Badge>
-                </td>
-                <td className="py-2.5 pr-4">{inv.planName}</td>
-                <td className="py-2.5 pr-4 font-medium">
+            {visible.map((inv) => (
+              <tr key={inv._id} className="border-b border-border/20 last:border-0">
+                <td className="py-3 pr-4 font-mono text-xs">{inv.invoiceNumber}</td>
+                <td className="py-3 pr-4 text-muted-foreground">{formatDate(inv.issuedAt)}</td>
+                <td className="py-3 pr-4">{inv.planName}</td>
+                <td className="py-3 pr-4 font-medium">
                   {convertAndFormat(inv.amount, inv.currency ?? "AED", displayCurrency, rates)}
-                  {displayCurrency !== (inv.currency ?? "AED") && (
-                    <span className="block text-[10px] text-muted-foreground/60">
-                      ≈ {inv.amount} {inv.currency}
-                    </span>
-                  )}
+                  {displayCurrency !== (inv.currency ?? "AED") && <span className="block text-[10px] text-muted-foreground/50">{inv.amount} {inv.currency}</span>}
                 </td>
-                <td className="py-2.5 pr-4">
-                  <Badge variant="outline" className={`text-xs ${
-                    inv.status === "paid"
-                      ? "text-emerald-400 border-emerald-500/30"
-                      : inv.status === "void"
-                        ? "text-red-400 border-red-500/30"
-                        : "text-amber-400 border-amber-500/30"
-                  }`}>
-                    {inv.status}
-                  </Badge>
+                <td className="py-3">
+                  <Badge variant="outline" className={`text-xs ${inv.status === "paid" ? "text-emerald-500 border-emerald-500/30" : inv.status === "void" ? "text-red-500 border-red-500/30" : "text-amber-500 border-amber-500/30"}`}>{inv.status}</Badge>
                 </td>
-                <td className="py-2.5 text-muted-foreground">{formatDate(inv.issuedAt)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {invoices.length > 3 && (
+        <button onClick={() => setExpanded(!expanded)} className="text-xs text-sky-500 hover:text-sky-600 flex items-center gap-1 mx-auto">
+          {expanded ? <><ChevronUp className="h-3 w-3" /> Show less</> : <><ChevronDown className="h-3 w-3" /> View all {invoices.length} invoices</>}
+        </button>
+      )}
     </section>
   );
 }

@@ -25,13 +25,17 @@ export function CurrencySelector({ value, onChange }: CurrencySelectorProps) {
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-[180px] h-8 text-xs">
         <SelectValue>
-          {current ? `${current.symbol} ${current.code}` : value}
+          {current
+            ? current.symbol !== current.code
+              ? `${current.symbol} ${current.code}`
+              : current.code
+            : value}
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="max-h-60">
         {SUPPORTED_CURRENCIES.map((c: CurrencyInfo) => (
           <SelectItem key={c.code} value={c.code} className="text-xs">
-            {c.symbol} {c.code} — {c.label}
+            {c.symbol !== c.code ? `${c.symbol} ` : ""}{c.code} — {c.label}
           </SelectItem>
         ))}
       </SelectContent>

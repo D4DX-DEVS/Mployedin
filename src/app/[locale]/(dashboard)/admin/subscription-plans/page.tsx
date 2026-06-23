@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   useSubscriptionPlans,
   useCreateSubscriptionPlan,
   useUpdateSubscriptionPlan,
@@ -424,11 +427,13 @@ export default function AdminSubscriptionPlansPage() {
               <div>
                 <label className="mb-1 block text-sm font-medium">Price *</label>
                 <Input
-                  type="number"
-                  value={form.price}
-                  onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
-                  min={0}
-                  step={0.01}
+                  type="text"
+                  inputMode="decimal"
+                  value={form.price === 0 ? "0" : String(form.price)}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
+                    setForm((f) => ({ ...f, price: raw === "" ? 0 : Number(raw) }));
+                  }}
                   className="rounded-xl"
                 />
               </div>
@@ -444,15 +449,19 @@ export default function AdminSubscriptionPlansPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Billing Cycle *</label>
-                <select
+                <Select
                   value={form.billingCycle}
-                  onChange={(e) => setForm((f) => ({ ...f, billingCycle: e.target.value as PlanFormState["billingCycle"] }))}
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                  onValueChange={(v) => setForm((f) => ({ ...f, billingCycle: v as PlanFormState["billingCycle"] }))}
                 >
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
+                  <SelectTrigger className="w-full rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Sort Order</label>

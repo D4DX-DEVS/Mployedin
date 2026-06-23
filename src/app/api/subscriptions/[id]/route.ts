@@ -1,18 +1,17 @@
 /**
  * GET  /api/subscriptions/[id]  — Get subscription by ID
- * PATCH /api/subscriptions/[id] — Cancel subscription
+ * PATCH /api/subscriptions/[id] — Cancel subscription OR toggle auto-renew
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
-import { validateBody } from "@/lib/validators";
-import { subscriptionCancelSchema } from "@/lib/validators/subscriptions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import connectDB from "@/lib/db/mongoose";
 import Subscription from "@/models/Subscription";
 import SubscriptionHistory from "@/models/SubscriptionHistory";
 import { Employer } from "@/models/Employer";
 import type { UserRole } from "@/types/user";
+import { z } from "zod";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
@@ -38,19 +37,66 @@ async function getHandler(
   return NextResponse.json({ subscription: sub });
 }
 
-// ── PATCH (Cancel) ───────────────────────────────────────────────────────────
+// ── PATCH (Cancel OR Toggle Auto-Renew) ──────────────────────────────────────
 async function patchHandler(
   req: NextRequest,
   ctx: AuthCtx,
   params?: Record<string, string>,
 ) {
+  await connectDB();
+
+  const raw = await req.json();
+
+  // ── Auto-Renew Toggle ─────────────────────────────────────────
+  if ("autoRenew" in raw) {
+    const parsed = z.object({ autoRenew: z.boolean() }).safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid autoRenew value" }, { status: 400 });
+    }
+
+    const sub = await Subscription.findById(params?.id);
+    if (!sub) {
+      return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
+    }
+
+    // Owner or admin can toggle
+    const isAdmin = ["admin", "super_agent", "agent"].includes(ctx.role);
+    if (!isAdmin && sub.userId.toString() !== ctx.userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (sub.status !== "active") {
+      return NextResponse.json(
+        { error: `Cannot update a subscription with status "${sub.status}"` },
+        { status: 400 },
+      );
+    }
+
+    sub.autoRenew = parsed.data.autoRenew;
+    await sub.save();
+
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "subscription.autoRenew",
+      resource: "subscriptions",
+      resourceId: sub._id.toString(),
+      meta: { autoRenew: parsed.data.autoRenew },
+      req,
+    });
+
+    return NextResponse.json({ subscription: sub });
+  }
+
+  // ── Cancel ────────────────────────────────────────────────────
   // Only admin/super_agent can cancel
   if (!["admin", "super_agent"].includes(ctx.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await connectDB();
-  const body = await validateBody(req, subscriptionCancelSchema);
+  const cancelParsed = z.object({ reason: z.string().max(500).trim().optional() }).safeParse(raw);
+  if (!cancelParsed.success) {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const body = cancelParsed.data;
 
   const sub = await Subscription.findById(params?.id);
   if (!sub) {

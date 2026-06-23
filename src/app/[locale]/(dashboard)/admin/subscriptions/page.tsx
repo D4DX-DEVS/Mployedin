@@ -1,20 +1,34 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, Fragment } from "react";
 import {
   Search, Crown, ArrowUpRight, ArrowDownRight, RotateCcw, X, Loader2,
   Clock, CheckCircle, XCircle, AlertTriangle, User, Briefcase,
-  ChevronDown, ChevronUp, CreditCard, Users,
+  ChevronDown, ChevronUp, CreditCard, Users, ChevronLeft, ChevronRight,
+  FileText, CalendarDays, BarChart3, Eye,
 } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { useQuery } from "@tanstack/react-query";
+import { PageHero } from "@/components/shared/PageHero";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { useUserSearch, type SearchUser } from "@/hooks/useUserSearch";
 import { useSubscriptionPlans, type SubscriptionPlanItem } from "@/hooks/useSubscriptionPlans";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { usePagination } from "@/hooks/usePagination";
 import type { ExportColumn } from "@/lib/export";
+import {
+  useAdminSubscriptions,
+  type AdminSubscriptionItem,
+  type AdminSubscriptionsFilters,
+} from "@/hooks/useAdminSubscriptions";
+import { useInvoices, type InvoiceItem } from "@/hooks/useInvoices";
+import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
 import {
   useUserSubscription,
   useSubscriptionHistory,
@@ -60,16 +74,43 @@ const ACTION_LABELS: Record<string, string> = {
   reactivated: "Reactivated",
 };
 
+// ── KPI Fetch ─────────────────────────────────────────────────────────────────
+
+interface OverviewStats {
+  total: number;
+  active: number;
+  expired: number;
+  cancelled: number;
+  suspended: number;
+}
+
+interface StatsData {
+  overview: OverviewStats;
+  expiringSoon: { _id: string }[];
+}
+
+async function fetchStats(): Promise<StatsData> {
+  const res = await fetch("/api/admin/subscription-stats");
+  if (!res.ok) throw new Error("Failed to load stats");
+  return res.json();
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AdminSubscriptionsPage() {
+  const [activeTab, setActiveTab] = useState<"table" | "manage">("table");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<SearchUser | null>(null);
 
-  // ── Search users ──
-  const { data: searchResults, isLoading: isSearching } = useUserSearch(searchQuery);
+  // ── KPI Stats ──
+  const { data: stats } = useQuery({
+    queryKey: ["admin", "subscription-stats"],
+    queryFn: fetchStats,
+    staleTime: 60_000,
+  });
 
-  // Filter to only employer and job_seeker
+  // ── Search users ──
+  const { data: searchResults } = useUserSearch(searchQuery);
   const filteredResults = useMemo(
     () => (searchResults ?? []).filter((u) => u.role === "employer" || u.role === "job_seeker"),
     [searchResults],
@@ -87,73 +128,627 @@ export default function AdminSubscriptionsPage() {
     title: "Subscription Users",
   });
 
+  const overview = stats?.overview;
+  const expiringSoonCount = stats?.expiringSoon?.length ?? 0;
+
   return (
     <div className="page-container space-y-6">
-      <PageHeader
+      <PageHero
+        icon={Crown}
         title="Subscription Management"
-        description="Assign, change, and manage user subscriptions"
+        description="View all subscribers, track plans, and manage user subscriptions"
       />
 
-      {/* ── User Search ──────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Search User
-        </h3>
-
-        <TableToolbar
-          search={searchQuery}
-          onSearchChange={(v) => setSearchQuery(v)}
-          searchPlaceholder="Search by name or email…"
-          onExportCsv={handleExportCsv}
-          onExportExcel={handleExportExcel}
-          onExportPdf={handleExportPdf}
-        />
-
-        {/* Search Results */}
-        {filteredResults.length > 0 && !selectedUser && (
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {filteredResults.map((user) => (
-              <button
-                key={user._id}
-                onClick={() => {
-                  setSelectedUser(user);
-                  setSearchQuery("");
-                }}
-                className="w-full flex items-center gap-3 rounded-xl border border-border/40 p-3 hover:bg-sky-500/5 hover:border-sky-500/30 transition-colors text-left"
-              >
-                <div className="h-9 w-9 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500">
-                  {user.role === "employer" ? <Briefcase className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{user.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {user.role === "employer" ? "Employer" : "Job Seeker"}
-                    {user.companyName ? ` · ${user.companyName}` : ""}
-                  </p>
-                </div>
-                <Badge variant="outline" className="text-xs shrink-0">
-                  {user.role === "employer" ? "Employer" : "Job Seeker"}
-                </Badge>
-              </button>
-            ))}
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[
+          { label: "Total Subscribers", value: overview?.total ?? 0, icon: Users, color: "text-sky-500 bg-sky-500/10" },
+          { label: "Active", value: overview?.active ?? 0, icon: CheckCircle, color: "text-emerald-500 bg-emerald-500/10" },
+          { label: "Expiring Soon", value: expiringSoonCount, icon: AlertTriangle, color: "text-amber-500 bg-amber-500/10" },
+          { label: "Cancelled", value: overview?.cancelled ?? 0, icon: XCircle, color: "text-red-500 bg-red-500/10" },
+        ].map((kpi) => (
+          <div key={kpi.label} className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3">
+            <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${kpi.color}`}>
+              <kpi.icon className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{kpi.value}</p>
+              <p className="text-xs text-muted-foreground">{kpi.label}</p>
+            </div>
           </div>
-        )}
-      </section>
+        ))}
+      </div>
 
-      {/* ── Bulk Assign Section ──────────────────────────────────────── */}
-      <BulkAssignSection />
+      {/* ── Tab Switcher ── */}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant={activeTab === "table" ? "default" : "outline"}
+          className={activeTab === "table" ? "bg-sky-600 hover:bg-sky-700" : ""}
+          onClick={() => setActiveTab("table")}
+        >
+          <Users className="h-3.5 w-3.5 mr-1.5" />
+          All Subscribers
+        </Button>
+        <Button
+          size="sm"
+          variant={activeTab === "manage" ? "default" : "outline"}
+          className={activeTab === "manage" ? "bg-sky-600 hover:bg-sky-700" : ""}
+          onClick={() => setActiveTab("manage")}
+        >
+          <Search className="h-3.5 w-3.5 mr-1.5" />
+          Search &amp; Manage
+        </Button>
+      </div>
 
-      {/* ── Selected User Panel ──────────────────────────────────────── */}
-      {selectedUser && (
-        <UserSubscriptionPanel
-          user={selectedUser}
-          onClear={() => setSelectedUser(null)}
-        />
+      {/* ── All Subscribers Table ── */}
+      {activeTab === "table" && <SubscribersTable />}
+
+      {/* ── Search & Manage (existing flow) ── */}
+      {activeTab === "manage" && (
+        <>
+          <section className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Search User
+            </h3>
+            <TableToolbar
+              search={searchQuery}
+              onSearchChange={(v) => setSearchQuery(v)}
+              searchPlaceholder="Search by name or email…"
+              onExportCsv={handleExportCsv}
+              onExportExcel={handleExportExcel}
+              onExportPdf={handleExportPdf}
+            />
+            {filteredResults.length > 0 && !selectedUser && (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {filteredResults.map((user) => (
+                  <button
+                    key={user._id}
+                    onClick={() => { setSelectedUser(user); setSearchQuery(""); }}
+                    className="w-full flex items-center gap-3 rounded-xl border border-border/40 p-3 hover:bg-sky-500/5 hover:border-sky-500/30 transition-colors text-left"
+                  >
+                    <div className="h-9 w-9 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500">
+                      {user.role === "employer" ? <Briefcase className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {user.role === "employer" ? "Employer" : "Job Seeker"}
+                        {user.companyName ? ` · ${user.companyName}` : ""}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-xs shrink-0">
+                      {user.role === "employer" ? "Employer" : "Job Seeker"}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+          <BulkAssignSection />
+          {selectedUser && (
+            <UserSubscriptionPanel user={selectedUser} onClear={() => setSelectedUser(null)} />
+          )}
+        </>
       )}
     </div>
   );
 }
 
+// ── Subscribers Table ────────────────────────────────────────────────────────
+
+function SubscribersTable() {
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+  const [filters, setFilters] = useState<AdminSubscriptionsFilters>({
+    sortBy: "createdAt", sortOrder: "desc",
+  });
+  const [searchInput, setSearchInput] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Merge pagination into filters for the API call
+  const queryFilters = useMemo(() => ({ ...filters, page, limit }), [filters, page, limit]);
+
+  const { data, isLoading } = useAdminSubscriptions(queryFilters);
+  const subscriptions = data?.subscriptions ?? [];
+
+  // Sync total from API response
+  React.useEffect(() => {
+    if (data?.total != null) updateTotal(data.total);
+  }, [data?.total, updateTotal]);
+
+  // Plans for filter dropdown
+  const { data: employerPlans } = useSubscriptionPlans({ targetRole: filters.role === "job_seeker" ? "job_seeker" : "employer", isActive: "true" });
+  const { data: jobSeekerPlans } = useSubscriptionPlans({ targetRole: "job_seeker", isActive: "true" });
+  const allPlans = useMemo(() => {
+    if (filters.role === "employer") return employerPlans ?? [];
+    if (filters.role === "job_seeker") return jobSeekerPlans ?? [];
+    return [...(employerPlans ?? []), ...(jobSeekerPlans ?? [])];
+  }, [filters.role, employerPlans, jobSeekerPlans]);
+
+  const hasActiveFilters = !!(filters.status || filters.role || filters.planId || filters.autoRenew || filters.search || dateFrom || dateTo);
+
+  const clearFilters = useCallback(() => {
+    setFilters({ sortBy: "createdAt", sortOrder: "desc" });
+    setSearchInput("");
+    setDateFrom("");
+    setDateTo("");
+    resetPage();
+  }, [resetPage]);
+
+  // Export columns
+  const subExportColumns: ExportColumn<AdminSubscriptionItem>[] = useMemo(() => [
+    { header: "Name", key: "userId" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).userId?.name ?? "—" },
+    { header: "Email", key: "userId" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).userId?.email ?? "—" },
+    { header: "Role", key: "targetRole" as keyof AdminSubscriptionItem, formatter: (v) => v === "employer" ? "Employer" : "Job Seeker" },
+    { header: "Plan", key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).planSnapshot?.name ?? "—" },
+    { header: "Tier", key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => String((r as unknown as AdminSubscriptionItem).planSnapshot?.tier ?? 0) },
+    { header: "Price", key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => { const s = (r as unknown as AdminSubscriptionItem).planSnapshot; return s?.price > 0 ? `${s.price} ${s.currency}` : "Free"; } },
+    { header: "Billing Cycle", key: "planSnapshot" as keyof AdminSubscriptionItem, formatter: (_v, r) => (r as unknown as AdminSubscriptionItem).planSnapshot?.billingCycle ?? "—" },
+    { header: "Status", key: "status" as keyof AdminSubscriptionItem },
+    { header: "Start Date", key: "startDate" as keyof AdminSubscriptionItem, formatter: (v) => formatDate(v as string) },
+    { header: "End Date", key: "endDate" as keyof AdminSubscriptionItem, formatter: (v) => formatDate(v as string) },
+    { header: "Auto-Renew", key: "autoRenew" as keyof AdminSubscriptionItem, formatter: (v) => v ? "Yes" : "No" },
+    { header: "Days Left", key: "endDate" as keyof AdminSubscriptionItem, formatter: (v, r) => (r as unknown as AdminSubscriptionItem).status === "active" ? String(daysUntil(v as string)) : "—" },
+  ], []);
+
+  const { handleExportCsv: exportCsv, handleExportExcel: exportExcel, handleExportPdf: exportPdf } = useTableExport({
+    data: subscriptions as unknown as Record<string, unknown>[],
+    columns: subExportColumns as unknown as ExportColumn<Record<string, unknown>>[],
+    filename: "subscribers-export",
+    title: "Subscribers Report",
+  });
+
+  return (
+    <section className="space-y-4">
+      {/* ── Role Toggle ── */}
+      <div className="flex gap-2">
+        {([
+          { value: undefined, label: "All", icon: Users },
+          { value: "employer", label: "Employers", icon: Briefcase },
+          { value: "job_seeker", label: "Job Seekers", icon: User },
+        ] as const).map((opt) => (
+          <button
+            key={opt.label}
+            onClick={() => { setFilters((f) => ({ ...f, role: opt.value, planId: undefined })); resetPage(); }}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+              filters.role === opt.value
+                ? "bg-sky-600 text-white"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            <opt.icon className="h-4 w-4" />
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Table Card ── */}
+      <div className="rounded-2xl border border-border/60 bg-card">
+        <TableToolbar
+          search={searchInput}
+          onSearchChange={(v) => { setSearchInput(v); }}
+          searchPlaceholder="Search by name or email…"
+          onExportCsv={exportCsv}
+          onExportExcel={exportExcel}
+          onExportPdf={exportPdf}
+          hasActiveFilters={hasActiveFilters}
+          filterContent={
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                {/* Status */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+                  <Select
+                    value={filters.status ?? "all"}
+                    onValueChange={(v) => { setFilters((f) => ({ ...f, status: v === "all" ? undefined : v })); resetPage(); }}
+                  >
+                    <SelectTrigger className="rounded-xl h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="expired">Expired</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="suspended">Suspended</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Plan */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Plan</label>
+                  <Select
+                    value={filters.planId ?? "all"}
+                    onValueChange={(v) => { setFilters((f) => ({ ...f, planId: v === "all" ? undefined : v })); resetPage(); }}
+                  >
+                    <SelectTrigger className="rounded-xl h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Plans</SelectItem>
+                      {allPlans.map((p) => (
+                        <SelectItem key={p._id} value={p._id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Auto-Renew */}
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Auto-Renew</label>
+                  <Select
+                    value={filters.autoRenew ?? "all"}
+                    onValueChange={(v) => { setFilters((f) => ({ ...f, autoRenew: v === "all" ? undefined : v })); resetPage(); }}
+                  >
+                    <SelectTrigger className="rounded-xl h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="true">Yes</SelectItem>
+                      <SelectItem value="false">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Date Range */}
+                <div className="xl:col-span-2">
+                  <label className="text-xs text-muted-foreground mb-1 block">Date Range</label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => { setDateFrom(e.target.value); setFilters((f) => ({ ...f, dateFrom: e.target.value || undefined })); resetPage(); }}
+                        className="rounded-xl h-9 pl-9"
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground">to</span>
+                    <div className="relative flex-1">
+                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => { setDateTo(e.target.value); setFilters((f) => ({ ...f, dateTo: e.target.value || undefined })); resetPage(); }}
+                        className="rounded-xl h-9 pl-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline" size="sm"
+                  onClick={clearFilters}
+                  disabled={!hasActiveFilters}
+                  className="gap-1.5"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" /> Clear Filters
+                </Button>
+                <Button
+                  size="sm" className="bg-sky-600 hover:bg-sky-700 gap-1.5"
+                  onClick={() => { setFilters((f) => ({ ...f, search: searchInput || undefined })); resetPage(); }}
+                >
+                  <Search className="h-3.5 w-3.5" /> Apply
+                </Button>
+              </div>
+            </div>
+          }
+          right={
+            <span className="text-xs text-muted-foreground">
+              {total} subscriber{total !== 1 ? "s" : ""}
+            </span>
+          }
+        />
+
+        {/* ── Table ── */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/40 text-left text-xs text-muted-foreground uppercase tracking-wider">
+                <th className="px-4 py-3 font-medium w-8" />
+                <th className="px-4 py-3 font-medium">User</th>
+                <th className="px-4 py-3 font-medium">Role</th>
+                <th className="px-4 py-3 font-medium">Plan</th>
+                <th className="px-4 py-3 font-medium">Price</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Start</th>
+                <th className="px-4 py-3 font-medium">End</th>
+                <th className="px-4 py-3 font-medium">Auto-Renew</th>
+                <th className="px-4 py-3 font-medium">Days Left</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-border/20">
+                    <td colSpan={10} className="px-4 py-3">
+                      <div className="h-5 animate-pulse rounded bg-muted/30" />
+                    </td>
+                  </tr>
+                ))
+              ) : subscriptions.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
+                    <Crown className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    No subscriptions found
+                  </td>
+                </tr>
+              ) : (
+                subscriptions.map((sub) => (
+                  <ExpandableRow
+                    key={sub._id}
+                    sub={sub}
+                    isExpanded={expandedId === sub._id}
+                    onToggle={() => setExpandedId(expandedId === sub._id ? null : sub._id)}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── Pagination ── */}
+        <div className="border-t border-border/80 px-4 py-3 sm:px-5">
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={setLimit}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Expandable Row ──────────────────────────────────────────────────────────
+
+function ExpandableRow({
+  sub, isExpanded, onToggle,
+}: {
+  sub: AdminSubscriptionItem;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const user = sub.userId;
+  const snap = sub.planSnapshot;
+  const days = daysUntil(sub.endDate);
+  const sCfg = STATUS_CONFIG[sub.status] ?? STATUS_CONFIG.active;
+  const SIcon = sCfg.icon;
+
+  return (
+    <Fragment>
+      <tr
+        className="border-b border-border/20 hover:bg-sky-500/5 transition-colors cursor-pointer"
+        onClick={onToggle}
+      >
+        <td className="px-4 py-3">
+          {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500 shrink-0">
+              {sub.targetRole === "employer" ? <Briefcase className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
+            </div>
+            <div className="min-w-0">
+              <p className="font-medium truncate">{user?.name ?? "—"}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email ?? "—"}</p>
+            </div>
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <Badge variant="outline" className="text-xs">
+            {sub.targetRole === "employer" ? "Employer" : "Job Seeker"}
+          </Badge>
+        </td>
+        <td className="px-4 py-3">
+          <p className="font-medium">{snap?.name ?? "—"}</p>
+          <p className="text-xs text-muted-foreground">Tier {snap?.tier ?? 0}</p>
+        </td>
+        <td className="px-4 py-3 text-sm">
+          {snap?.price > 0 ? `${snap.price} ${snap.currency}` : "Free"}
+          {snap?.price > 0 && <span className="text-xs text-muted-foreground">/{snap.billingCycle}</span>}
+        </td>
+        <td className="px-4 py-3">
+          <Badge className={`${sCfg.color} border text-xs`}>
+            <SIcon className="h-3 w-3 mr-1" />
+            {sub.status}
+          </Badge>
+        </td>
+        <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(sub.startDate)}</td>
+        <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(sub.endDate)}</td>
+        <td className="px-4 py-3">
+          <Badge variant="outline" className={`text-xs ${sub.autoRenew ? "text-emerald-500 border-emerald-500/30" : "text-muted-foreground"}`}>
+            {sub.autoRenew ? "Yes" : "No"}
+          </Badge>
+        </td>
+        <td className="px-4 py-3">
+          {sub.status === "active" ? (
+            <span className={`text-sm font-medium ${days <= 7 ? "text-red-400" : days <= 30 ? "text-amber-400" : "text-foreground"}`}>
+              {days > 0 ? `${days}d` : "Today"}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </td>
+      </tr>
+
+      {/* ── Expanded Detail ── */}
+      {isExpanded && (
+        <tr>
+          <td colSpan={10} className="bg-muted/20 px-6 py-5 border-b border-border/40">
+            <ExpandedDetail sub={sub} />
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  );
+}
+
+// ── Expanded Detail Panel ───────────────────────────────────────────────────
+
+function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
+  const userId = sub.userId?._id;
+  const [activeSection, setActiveSection] = useState<"details" | "history" | "invoices">("details");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+
+  const { data: history } = useSubscriptionHistory(userId ?? "");
+  const { data: invoices } = useInvoices({ userId: userId ?? "" });
+
+  const snap = sub.planSnapshot;
+
+  return (
+    <div className="space-y-4">
+      {/* ── Section Tabs ── */}
+      <div className="flex gap-2">
+        {([
+          { key: "details" as const, label: "Details", icon: Eye },
+          { key: "history" as const, label: "History", icon: Clock, count: history?.length },
+          { key: "invoices" as const, label: "Invoices", icon: FileText, count: (invoices as InvoiceItem[] | undefined)?.length },
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={(e) => { e.stopPropagation(); setActiveSection(tab.key); }}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeSection === tab.key
+                ? "bg-sky-600 text-white"
+                : "bg-muted/50 text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            <tab.icon className="h-3.5 w-3.5" />
+            {tab.label}
+            {tab.count !== undefined && tab.count > 0 && (
+              <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${
+                activeSection === tab.key ? "bg-white/20" : "bg-sky-500/10 text-sky-500"
+              }`}>
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Details Section ── */}
+      {activeSection === "details" && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <DetailCard label="Plan" value={snap?.name ?? "—"} sub={`Tier ${snap?.tier ?? 0}`} />
+          <DetailCard label="Price" value={snap?.price > 0 ? `${snap.price} ${snap.currency}` : "Free"} sub={snap?.billingCycle ?? "monthly"} />
+          <DetailCard label="Period" value={`${formatDate(sub.startDate)} — ${formatDate(sub.endDate)}`} sub={sub.status === "active" ? `${daysUntil(sub.endDate)} days remaining` : sub.status} />
+          <DetailCard label="Auto-Renew" value={sub.autoRenew ? "Enabled" : "Disabled"} sub={`Created ${formatDate(sub.createdAt)}`} />
+        </div>
+      )}
+
+      {/* ── History Section ── */}
+      {activeSection === "history" && (
+        <div className="space-y-2">
+          {!history?.length ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No history yet</p>
+          ) : (
+            <div className="relative pl-6 space-y-3 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-px before:bg-border/60">
+              {history.map((item: HistoryItem) => (
+                <div key={item._id} className="relative">
+                  <div className="absolute -left-[19px] top-1 h-3 w-3 rounded-full border-2 border-background bg-sky-500" />
+                  <div className="rounded-xl border border-border/40 p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <Badge variant="outline" className="text-xs">
+                        {ACTION_LABELS[item.action] ?? item.action}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">{formatDate(item.createdAt)}</span>
+                    </div>
+                    {item.fromPlanName && item.toPlanName && (
+                      <p className="text-sm text-muted-foreground">{item.fromPlanName} → {item.toPlanName}</p>
+                    )}
+                    {!item.fromPlanName && item.toPlanName && (
+                      <p className="text-sm text-muted-foreground">Assigned: {item.toPlanName}</p>
+                    )}
+                    {item.reason && <p className="text-xs text-muted-foreground/70 mt-1">Reason: {item.reason}</p>}
+                    <p className="text-xs text-muted-foreground/50 mt-1">By {item.performedByRole}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Invoices Section ── */}
+      {activeSection === "invoices" && (
+        <div className="space-y-2">
+          {!(invoices as InvoiceItem[] | undefined)?.length ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No invoices yet</p>
+          ) : (
+            <>
+              <div className="overflow-x-auto rounded-xl border border-border/40">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/40 text-left text-xs text-muted-foreground uppercase">
+                      <th className="px-3 py-2 font-medium">Invoice #</th>
+                      <th className="px-3 py-2 font-medium">Plan</th>
+                      <th className="px-3 py-2 font-medium">Amount</th>
+                      <th className="px-3 py-2 font-medium">Status</th>
+                      <th className="px-3 py-2 font-medium">Issued</th>
+                      <th className="px-3 py-2 font-medium">Paid</th>
+                      <th className="px-3 py-2 font-medium" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(invoices as InvoiceItem[]).map((inv) => {
+                      const invStatus = inv.status === "paid"
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                        : inv.status === "issued"
+                          ? "bg-sky-500/10 text-sky-400 border-sky-500/30"
+                          : "bg-muted text-muted-foreground border-border/40";
+                      return (
+                        <tr key={inv._id} className="border-b border-border/20 hover:bg-sky-500/5">
+                          <td className="px-3 py-2 font-mono text-xs">{inv.invoiceNumber}</td>
+                          <td className="px-3 py-2 text-xs">{inv.planName ?? "—"}</td>
+                          <td className="px-3 py-2 text-xs font-medium">{inv.amount} {inv.currency}</td>
+                          <td className="px-3 py-2">
+                            <Badge className={`${invStatus} border text-[10px]`}>{inv.status}</Badge>
+                          </td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(inv.issuedAt)}</td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(inv.paidAt)}</td>
+                          <td className="px-3 py-2">
+                            <Button
+                              variant="ghost" size="sm" className="h-7 w-7 p-0"
+                              onClick={(e) => { e.stopPropagation(); setSelectedInvoiceId(inv._id); }}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Invoice Detail Modal */}
+              <InvoiceDetailView
+                invoiceId={selectedInvoiceId}
+                open={!!selectedInvoiceId}
+                onClose={() => setSelectedInvoiceId(null)}
+                onRefresh={() => {}}
+                role="admin"
+              />
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DetailCard({ label, value, sub: subtext }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-xl border border-border/40 p-3">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className="font-medium text-sm">{value}</p>
+      <p className="text-xs text-muted-foreground capitalize">{subtext}</p>
+    </div>
+  );
+}
 // ── User Subscription Panel ──────────────────────────────────────────────────
 
 function UserSubscriptionPanel({

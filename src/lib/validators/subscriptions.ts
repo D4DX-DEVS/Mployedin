@@ -108,6 +108,11 @@ export const subscriptionCancelSchema = z.object({
   reason: z.string().max(500).trim().optional(),
 });
 
+// ── PATCH /api/subscriptions/[id] — toggle auto-renew ────────────────────────
+export const subscriptionAutoRenewSchema = z.object({
+  autoRenew: z.boolean(),
+});
+
 // ── POST /api/subscriptions/renew ────────────────────────────────────────────
 export const subscriptionRenewSchema = z.object({
   subscriptionId: commonSchemas.objectId,
