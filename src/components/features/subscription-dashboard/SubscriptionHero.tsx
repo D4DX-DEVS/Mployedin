@@ -12,9 +12,9 @@ export function SubscriptionHero({ onRefresh }: SubscriptionHeroProps) {
   return (
     <PageHero
       title="Subscription Dashboard"
-      eyebrow="Finance"
+      eyebrow="Finance · Subscriptions"
       icon={Crown}
-      description="Overview of all subscriptions, revenue, and activity"
+      description="A complete view of revenue, plans, and activity across employers and job seekers."
       actions={
         <>
           {onRefresh && (

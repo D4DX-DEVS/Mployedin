@@ -1,11 +1,18 @@
 "use client";
 
-import { BarChart3, TrendingUp, TrendingDown } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import type { PlanPerformanceItem } from "./useSubscriptionDashboard";
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 }
+
+const TIER_COLORS: Record<number, string> = {
+  0: "bg-zinc-400",
+  1: "bg-slate-500",
+  2: "bg-amber-500",
+  3: "bg-violet-500",
+};
 
 interface Props {
   data: PlanPerformanceItem[];
@@ -23,28 +30,26 @@ export function PlanPerformanceTable({ data }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border/40 text-left">
-              <th className="pb-3 pr-4 font-medium text-muted-foreground">Plan</th>
-              <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">Active</th>
-              <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">Revenue</th>
-              <th className="pb-3 pr-4 font-medium text-muted-foreground text-right">Churn</th>
-              <th className="pb-3 font-medium text-muted-foreground text-right">Growth</th>
+              <th className="pb-3 pr-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Plan</th>
+              <th className="pb-3 pr-4 font-medium text-muted-foreground text-xs uppercase tracking-wider text-right">Active</th>
+              <th className="pb-3 pr-4 font-medium text-muted-foreground text-xs uppercase tracking-wider text-right">Revenue</th>
+              <th className="pb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider text-right">Churn</th>
             </tr>
           </thead>
           <tbody>
             {data.map((plan, idx) => (
               <tr key={`${plan.planName}-${plan.tier}-${idx}`} className="border-b border-border/20 last:border-0">
-                <td className="py-3 pr-4 font-medium">{plan.planName}</td>
-                <td className="py-3 pr-4 text-right">{plan.activeUsers}</td>
-                <td className="py-3 pr-4 text-right">{formatCurrency(plan.revenue)} AED</td>
-                <td className="py-3 pr-4 text-right">
-                  <span className={plan.churn > 5 ? "text-red-500" : plan.churn > 0 ? "text-amber-500" : "text-emerald-500"}>
-                    {plan.churn}%
-                  </span>
+                <td className="py-3 pr-4">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${TIER_COLORS[plan.tier] ?? "bg-primary"}`} />
+                    <span className="font-medium">{plan.planName}</span>
+                  </div>
                 </td>
+                <td className="py-3 pr-4 text-right font-semibold">{plan.activeUsers}</td>
+                <td className="py-3 pr-4 text-right">{formatCurrency(plan.revenue)}</td>
                 <td className="py-3 text-right">
-                  <span className={`inline-flex items-center gap-0.5 ${plan.growth >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-                    {plan.growth >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    {Math.abs(plan.growth)}%
+                  <span className={`font-semibold ${plan.churn > 5 ? "text-red-500" : plan.churn > 0 ? "text-amber-500" : "text-emerald-500"}`}>
+                    {plan.churn}%
                   </span>
                 </td>
               </tr>

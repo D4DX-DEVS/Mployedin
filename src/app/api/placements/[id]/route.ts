@@ -33,12 +33,23 @@ async function verifyOwnership(
     if (!agent || String(placement.agentId) !== String(agent._id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+  } else if (ctx.role === "super_agent") {
+    // S1: scope super_agent to placements whose agent is within their book of business
+    // (team + region). No platform-wide read of candidate PII + salary.
+    const { getSuperAgentScope } = await import("@/lib/auth/agentRestrictions");
+    const scope = await getSuperAgentScope(ctx.userId);
+    const inScope = Boolean(
+      placement.agentId && scope?.effectiveAgentIds.some((id) => String(id) === String(placement.agentId))
+    );
+    if (!inScope) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   return null;
 }
 
-async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
+async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const placement = await Placement.findById(params?.id)
@@ -46,6 +57,12 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
     .populate({ path: "jobSeekerId", populate: { path: "userId", select: "name email" } })
     .lean();
   if (!placement) return NextResponse.json({ error: "Placement not found" }, { status: 404 });
+
+  // H2: enforce the same ownership check used on PATCH/DELETE — closes employer↔employer
+  // and agent↔agent IDOR exposing candidate PII + salary.
+  const forbidden = await verifyOwnership(placement, ctx);
+  if (forbidden) return forbidden;
+
   return NextResponse.json({ placement });
 }
 

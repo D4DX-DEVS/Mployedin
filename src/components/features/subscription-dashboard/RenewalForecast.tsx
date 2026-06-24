@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, AlertCircle } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import type { RenewalForecast as RenewalForecastData } from "./useSubscriptionDashboard";
 
 interface RenewalForecastProps {
@@ -13,9 +13,9 @@ function formatCurrency(n: number) {
 
 export function RenewalForecast({ data }: RenewalForecastProps) {
   const buckets = [
-    { label: "Within 7 days", ...data.within7, color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20" },
-    { label: "8 – 15 days", ...data.within15, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-    { label: "16 – 30 days", ...data.within30, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    { label: "Within 7 days", ...data.within7, color: "text-red-500", dot: "bg-red-500" },
+    { label: "8 – 15 days", ...data.within15, color: "text-amber-500", dot: "bg-amber-500" },
+    { label: "16 – 30 days", ...data.within30, color: "text-emerald-500", dot: "bg-emerald-500" },
   ];
 
   return (
@@ -23,33 +23,35 @@ export function RenewalForecast({ data }: RenewalForecastProps) {
       <div className="flex items-center justify-between mb-5">
         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           <CalendarClock className="h-4 w-4" /> Renewal Forecast
-          <AlertCircle className="h-3.5 w-3.5 text-muted-foreground/50" />
         </h4>
         <span className="text-xs text-primary cursor-pointer hover:underline">View all</span>
       </div>
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-4 mb-5">
-        <div className="rounded-xl border border-border/40 p-3 text-center">
-          <p className="text-xs text-muted-foreground mb-1">Renewing Next 30 Days</p>
-          <p className="text-2xl font-bold text-primary">{data.totalRenewing}</p>
-          <p className="text-[10px] text-muted-foreground">Subscriptions</p>
+        <div className="rounded-xl border border-border/40 p-4 text-center">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Next 30 Days</p>
+          <p className="text-3xl font-bold">{data.totalRenewing}</p>
+          <p className="text-xs text-muted-foreground">subscriptions</p>
         </div>
-        <div className="rounded-xl border border-border/40 p-3 text-center">
-          <p className="text-xs text-muted-foreground mb-1">Expected Revenue</p>
-          <p className="text-2xl font-bold text-emerald-500">{formatCurrency(data.expectedRevenue)}</p>
-          <p className="text-[10px] text-muted-foreground">AED</p>
+        <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-500/20 p-4 text-center">
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider font-semibold mb-1">Expected Revenue</p>
+          <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(data.expectedRevenue)}</p>
+          <p className="text-xs text-muted-foreground">AED</p>
         </div>
       </div>
 
       {/* Buckets */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {buckets.map((b) => (
           <div
             key={b.label}
-            className={`flex items-center justify-between rounded-xl border ${b.border} ${b.bg} p-3`}
+            className="flex items-center justify-between py-2"
           >
-            <span className={`text-sm font-medium ${b.color}`}>{b.label}</span>
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${b.dot}`} />
+              <span className={`text-sm font-medium ${b.color}`}>{b.label}</span>
+            </div>
             <div className="flex items-center gap-4">
               <span className="text-sm font-semibold">{b.count}</span>
               <span className="text-sm text-muted-foreground">

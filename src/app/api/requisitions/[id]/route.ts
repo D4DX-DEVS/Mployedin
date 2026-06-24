@@ -14,6 +14,14 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
   const requisition = await Requisition.findById(id).lean();
   if (!requisition) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // H1: object-level authz — only the owning employer (or admin) may read a requisition.
+  if (ctx.role !== "admin") {
+    const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!employer || String(requisition.employerId) !== String(employer._id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   return NextResponse.json({ requisition });
 }
 

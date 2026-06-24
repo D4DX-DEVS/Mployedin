@@ -71,14 +71,11 @@ export default function AdminSubscriptionDashboardPage() {
       {/* ── Hero with Quick Actions ── */}
       <SubscriptionHero onRefresh={() => refetch()} />
 
-      {/* ── KPI Cards ── */}
-      <KpiCardsRow overview={data.overview} comparisons={data.kpiComparisons} />
+      {/* ── KPI Cards (4 main metrics) ── */}
+      <KpiCardsRow overview={data.overview} comparisons={data.kpiComparisons} revenueTrend={data.revenueTrend} />
 
       {/* ── Alerts Center (shown only if there are alerts) ── */}
       <AlertsCenter data={data.alerts} />
-
-      {/* ── Revenue Health Metrics ── */}
-      <RevenueHealthCards data={data.revenueHealth} />
 
       {/* ── Revenue Trend + Plan Performance (side by side on large) ── */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -87,6 +84,9 @@ export default function AdminSubscriptionDashboardPage() {
         </div>
         <PlanPerformanceTable data={data.planPerformance} />
       </div>
+
+      {/* ── Revenue Health Metrics ── */}
+      <RevenueHealthCards data={data.revenueHealth} />
 
       {/* ── Conversion Funnel + Plan Distribution ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -97,7 +97,7 @@ export default function AdminSubscriptionDashboardPage() {
         />
       </div>
 
-      {/* ── Subscription Funnel (Employer/Jobseeker) + Top Customers ── */}
+      {/* ── Plan Split (Employer/Jobseeker) + Top Customers ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SubscriptionFunnel
           employer={data.subscriptionFunnel.employer}
@@ -106,20 +106,18 @@ export default function AdminSubscriptionDashboardPage() {
         <TopCustomersTable data={data.topCustomers} />
       </div>
 
-      {/* ── Top Agents + Renewal Forecast ── */}
+      {/* ── Renewal Forecast + Recent Activity ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TopSellingAgentsTable data={data.topAgents} />
         <RenewalForecast data={data.renewalForecast} />
-      </div>
-
-      {/* ── Recent Activity + Invoice Health ── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <RecentActivityFeed data={data.recentActivity} />
-        <InvoiceHealthCards data={data.invoiceHealth} />
       </div>
 
-      {/* ── Revenue by Country ── */}
-      <RevenueByCountry data={data.revenueByCountry} />
+      {/* ── Bottom Row: Invoices + Revenue by Country + Top Agents (3 columns) ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <InvoiceHealthCards data={data.invoiceHealth} />
+        <RevenueByCountry data={data.revenueByCountry} />
+        <TopSellingAgentsTable data={data.topAgents} />
+      </div>
     </div>
   );
 }

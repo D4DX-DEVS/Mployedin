@@ -9,10 +9,10 @@ interface Props {
 
 export function ConversionFunnelChart({ data }: Props) {
   const stages = [
-    { label: "Total Users", value: data.totalUsers, color: "bg-sky-500" },
-    { label: "Verified", value: data.verified, color: "bg-blue-500" },
+    { label: "Total Users", value: data.totalUsers, color: "bg-primary" },
+    { label: "Verified", value: data.verified, color: "bg-primary/80" },
     { label: "Onboarded", value: data.onboarded, color: "bg-indigo-500" },
-    { label: "Trial / Free", value: data.trial, color: "bg-violet-500" },
+    { label: "Trial / Free", value: data.trial, color: "bg-rose-400" },
     { label: "Paid", value: data.paid, color: "bg-emerald-500" },
     { label: "Renewed", value: data.renewed, color: "bg-amber-500" },
   ];

@@ -42,6 +42,13 @@ async function postHandler(
   await connectDB();
   const body = await validateBody(req, verifyPaymentSchema);
 
+  // M2 (segregation of duties): approving auto-marks the invoice paid and auto-approves
+  // commissions — including the verifying agent's OWN commission. Restrict approval to
+  // admin/super_agent; agents may only reject/flag.
+  if (body.action === "approve" && !["admin", "super_agent"].includes(ctx.role)) {
+    return NextResponse.json({ error: "Only admin or super-agent can approve payments" }, { status: 403 });
+  }
+
   const invoice = await Invoice.findById(params?.id);
   if (!invoice) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });

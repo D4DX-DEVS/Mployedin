@@ -4,7 +4,7 @@
  * POST /api/graphql  — standard GraphQL endpoint
  * GET  /api/graphql  — GraphiQL playground (dev only)
  *
- * Protected: admin / super_agent roles only.
+ * Protected: admin role only (returns platform-wide financials + customer PII).
  */
 
 import { createYoga } from "graphql-yoga";
@@ -17,13 +17,18 @@ const yoga = createYoga({
   schema,
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response },
+  // L1: never expose the GraphiQL schema explorer / playground in production.
+  graphiql: process.env.NODE_ENV !== "production",
 });
 
 async function guardAndHandle(req: NextRequest) {
   const session = await auth();
   const role = (session?.user as unknown as { role?: string })?.role;
 
-  if (!role || !["admin", "super_agent"].includes(role)) {
+  // C1: subscriptionDashboard aggregates platform-wide revenue + customer PII with NO
+  // tenant scoping. Restrict to admin only — a super_agent must not see other
+  // territories' financials/customers. The only consumers are admin dashboard pages.
+  if (role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

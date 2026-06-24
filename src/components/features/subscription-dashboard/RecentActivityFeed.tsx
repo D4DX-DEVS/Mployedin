@@ -81,9 +81,9 @@ export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
             return (
               <div
                 key={a.id}
-                className="flex items-start gap-3 rounded-xl border border-border/40 p-3"
+                className="flex items-center gap-3 rounded-xl border border-border/40 p-3"
               >
-                <div className={`mt-0.5 ${cfg.color}`}>
+                <div className={`mt-0.5 shrink-0 ${cfg.color}`}>
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -91,14 +91,17 @@ export function RecentActivityFeed({ data }: RecentActivityFeedProps) {
                     <span className="font-medium">{a.userName}</span>{" "}
                     <span className="text-muted-foreground">{cfg.label.toLowerCase()}</span>
                     {a.toPlanName && (
-                      <span className="text-muted-foreground"> → {a.toPlanName}</span>
+                      <> → <span className="font-semibold text-primary">{a.toPlanName}</span></>
                     )}
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
                     <span>{timeAgo(a.createdAt)}</span>
-                    {a.performedByName && <span>by {a.performedByName}</span>}
+                    {a.performedByName && <span>· by {a.performedByName}</span>}
                   </div>
                 </div>
+                <span className="shrink-0 text-[10px] font-medium rounded-md border border-border/60 bg-muted/40 px-2 py-0.5">
+                  {a.userEmail?.includes("employer") ? "Employer" : "Job Seeker"}
+                </span>
               </div>
             );
           })}

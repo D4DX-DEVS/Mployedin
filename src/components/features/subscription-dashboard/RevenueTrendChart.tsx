@@ -24,8 +24,9 @@ export function RevenueTrendChart({ data }: RevenueTrendChartProps) {
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <TrendingUp className="h-4 w-4" /> Revenue Trend (MRR)
           </h4>
+          <p className="text-xs text-muted-foreground mt-1">Employer vs Job Seeker contribution over time</p>
         </div>
-        <span className="text-xs text-muted-foreground">Last 6 Months</span>
+        <span className="text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-lg">Last 6 months</span>
       </div>
       {data.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-12">

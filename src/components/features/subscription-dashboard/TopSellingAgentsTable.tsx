@@ -1,6 +1,6 @@
 "use client";
 
-import { Award } from "lucide-react";
+import { Award, UserX } from "lucide-react";
 import type { TopAgent } from "./useSubscriptionDashboard";
 
 interface TopSellingAgentsTableProps {
@@ -21,11 +21,16 @@ export function TopSellingAgentsTable({ data }: TopSellingAgentsTableProps) {
             (This Month)
           </span>
         </h4>
-        <span className="text-xs text-primary cursor-pointer hover:underline">View all</span>
       </div>
 
       {data.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">No agent data</p>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <UserX className="h-10 w-10 text-muted-foreground/40 mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">No agent sales yet</p>
+          <p className="text-xs text-muted-foreground/70 mt-1 max-w-[200px]">
+            Agent-attributed subscriptions will appear here once recorded.
+          </p>
+        </div>
       ) : (
         <div className="space-y-3">
           {data.map((a) => (
@@ -41,9 +46,9 @@ export function TopSellingAgentsTable({ data }: TopSellingAgentsTableProps) {
               </div>
               <div className="text-center shrink-0">
                 <p className="text-sm font-semibold">{a.subscriptionsSold}</p>
-                <p className="text-[10px] text-muted-foreground">Subscriptions</p>
+                <p className="text-[10px] text-muted-foreground">Sold</p>
               </div>
-              <div className="text-right shrink-0 ml-4">
+              <div className="text-right shrink-0 ml-2">
                 <p className="text-sm font-semibold">{formatCurrency(a.revenue)} AED</p>
                 <p className="text-[10px] text-muted-foreground">Revenue</p>
               </div>
