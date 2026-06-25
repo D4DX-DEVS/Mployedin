@@ -72,18 +72,48 @@ graphify-out/
 _*.js
 _*.mjs
 
-# Build/TSC output logs
-build-*.txt
+# Build output logs (npm run build / next build captures)
+build*.txt
+build*.log
+build-*.*
+build.*log
+b.log
+b2.log
+# Captures of build output to files
+build-capture.txt
+build-output.txt
+build-result*.txt
+build-verify*.txt
+build-final*.txt
+build-full*.txt
+build-offers-feature.txt
+build-prod-check.txt
 build_runner.py
-tsc-*.txt
+
+# TypeScript/TSC output captures (type-check sessions)
+tsc*.txt
+tsc_*.txt
+tsc-out.txt
+tsc-output.txt
+tsconfig.tsbuildinfo
+check_types_temp.js
+check-types.js
+
+# Playwright MCP browser session artifacts (auto-generated, NOT needed for playwright.config.ts)
+# These are console logs + page accessibility-tree snapshots from MCP-driven browser sessions.
+.playwright-mcp/
+
+# Adhoc verification scripts (one-off DB/feature checks, not part of source)
+verify_invoices.mjs
+check_tr.*.txt
+check_translations*.js
+test-verify-final.txt
 
 # Temp utility scripts
 create_dir.bat
 create_dirs.bat
 create_dirs.js
 create-dirs.js
-check_types_temp.js
-check-types.js
 run_build.bat
 run_check.bat
 run-typecheck.js
@@ -101,5 +131,10 @@ playwright.config.ts
 
 # Coverage reports (generated, not committed)
 coverage/
+
+# Chat/Claude session artifacts in repo root (not part of codebase)
+audit-screens/
+audit-crawl-report.json
+employer-job-new.jpeg
 
 mployedin\IMPORTED-USERS.md

@@ -204,3 +204,122 @@ Combined with C1 (`role !== "admin" → 403`), the playground and schema are unr
 
 1. ✅ **Done** — `super_agent` scope branch added to `placements` `verifyOwnership` (`route.ts:36-47`) and to `employers/[id]` GET (`route.ts:29-42`), both using `getSuperAgentScope(ctx.userId).effectiveAgentIds`. H2/H3 now VERIFIED FIXED.
 2. ⬜ **Open (S1)** — sweep the remaining `super_agent … read/export` routes (e.g. `applications`, `interviews`, `commissions`, `reports`) for the same scope filter, plus the export/report surface.
+
+
+
+its did by  glm 5.2 so we need verify the audit is perfect and the bugs and fixes its said is proper or not then fix it 
+
+MPLOYEDIN — PRODUCTION-READINESS AUDIT REPORT
+Prepared by: GitHub Copilot
+Model: Gemini 3.5 Flash
+Date: June 25, 2026
+Status: NOT YET READY FOR PRODUCTION (Requires remediation of critical/high-severity issues detailed below)
+
+EXECUTIVE SUMMARY
+A comprehensive, read-only audit of the Mployedin codebase was conducted across all 5 user roles (admin, super_agent, agent, employer, job_seeker).
+
+The platform exhibits a highly sophisticated architecture with robust security foundations, including:
+
+Centralized RBAC & Middleware: A robust withAuth route wrapper and a proxy-based middleware that handles locale routing, CSRF protection, security headers, and role-based route access.
+Secure Tenant View: A secure, DB-backed, and cookie-verified tenant-switching mechanism allowing staff (admin, super_agent, agent) to securely proxy employer workspaces with request-level re-authorization.
+Hardened Auth: Credentials login with IP-level rate limiting, account lockout, and TOTP 2FA.
+Secure Cron Jobs: HMAC-SHA256 signed cron requests with replay protection.
+However, several critical bugs, security vulnerabilities, and integration gaps must be resolved before the platform can be safely deployed to production. Most notably, server-side subscription enforcement is globally bypassed, CV uploads are stored in a public-read bucket, and several database queries contain scoping bugs that could leak cross-tenant data.
+
+1. ROLE-SPECIFIC AUDIT & DATA LEAKAGE ANALYSIS
+The platform's 5 roles are structured hierarchically for staff, with independent workspaces for employers and job seekers. Below is the audit of each role's boundaries and data-isolation integrity.
+
+1.1 Admin (admin)
+Access Scope: Full read/write access to all resources, dashboards, and audit logs.
+Audit Findings:
+Strength: Impersonation flow (/api/admin/impersonate) is correctly gated behind the impersonate action in the RBAC matrix.
+Strength: Centralized GraphQL endpoint (/api/graphql) correctly enforces admin-only access.
+Weakness: The GraphQL endpoint lacks query depth/complexity limits, leaving it vulnerable to Denial of Service (DoS) via deeply nested queries.
+1.2 Super-Agent (super_agent)
+Access Scope: Regional manager overseeing a pool of Agents, approving their job postings, and tracking regional commissions.
+Audit Findings:
+🔴 CRITICAL BUG (Data Leakage): In src/app/api/super-agent/leads/route.ts (line 70), when filtering by hasNotes === "false", the code overwrites filter.$or (which contains the super-agent's regional scope). This drops the regional boundary, allowing a super-agent to view leads belonging to other regions/agents.
+⚠️ HIGH BUG (Analytics Corruption): In src/app/api/super-agent/insights/route.ts (lines 106 & 109), the queries filter Lead.agentId and Placement.agentId using agentUserIds (which are User._ids). However, these models store Agent._id (the profile ID). This mismatch causes regional insights and trend metrics to return empty or incorrect data.
+⚠️ HIGH BUG (Over-restrictive Access): In src/app/api/offers/[id]/route.ts (line 29), the super-agent check reuses the agentOwnsOffer helper against the Agent model by userId. This incorrectly denies legitimate super-agents access to view offers within their portfolio.
+⚠️ MEDIUM BUG (Commission Scoping): In src/app/api/commissions/route.ts (line 36), the query scopes commissions using query.superAgentId = ctx.userId. However, commissions reference the SuperAgent profile ID (_id), not the User._id. This results in empty commission lists for super-agents.
+1.3 Agent (agent)
+Access Scope: Frontline recruiter managing assigned employers, candidates, jobs, and leads.
+Audit Findings:
+🔴 CRITICAL BUG (Scope Bypass): In src/app/api/interviews/route.ts (line 89), if an agent or super_agent passes an employerId query parameter, the handler deletes the scoped $or filter and replaces it with a direct employerId filter. This allows an agent to bypass their assigned employer boundaries and read interviews for any employer on the platform.
+⚠️ HIGH BUG (Reminders Loop): In src/app/api/cron/interview-reminders/route.ts (line 109), the cron job writes metadata.oneHourReminderSent = true to the Interview document. However, the Interview schema does not define a metadata field. Because Mongoose enforces strict schemas, this flag is never saved to the database, causing the cron job to repeatedly send duplicate 1-hour reminders to candidates on every run.
+1.4 Employer (employer)
+Access Scope: Manages job postings, applications, interviews, offers, and onboarding.
+Audit Findings:
+Strength: Write-scoping is enforced during tenant view. Staff can write on behalf of employers, but DELETE operations are strictly restricted to admins.
+⚠️ HIGH BUG (PII Exposure): In src/models/Employer.ts (line 114), sensitive fields like registrationNo and taxId are decrypted in post-find hooks but are not marked select: false in the schema. They are returned by default in standard queries, unnecessarily exposing sensitive corporate PII.
+1.5 Job Seeker (job_seeker)
+Access Scope: Manages profile, CV parsing, job search, applications, and onboarding.
+Audit Findings:
+⚠️ HIGH BUG (CV Privacy Leak): In src/app/api/ai/cv-extract/route.ts (line 276), the CV upload path calls uploadBuffer to store the original CV file in AWS/DigitalOcean Spaces under the "cvs" folder. However, it does not pass private: true. Since the storage helper in src/lib/storage/spaces.ts defaults to public-read ACL, uploaded CVs are stored publicly, allowing anyone with the URL to access candidates' private resumes.
+2. SECURITY & AUTHENTICATION AUDIT
+2.1 Authentication & Session Management
+⚠️ HIGH RISK (Deactivation Bypass): In src/lib/auth/config.ts (lines 269 & 491), the OAuth login callback (Google, LinkedIn, Apple) does not check if the user account is active (isActive: true) before issuing or refreshing the session token. While credentials login correctly blocks inactive users, deactivated users can still log in and access the platform via OAuth.
+⚠️ HIGH RISK (2FA Bypass): In src/lib/auth/config.ts (line 161), TOTP 2FA is enforced in the credentials authorize flow but is completely missing from the OAuth callback flow. If an admin or super-agent has 2FA enabled but logs in via an OAuth-linked account, the 2FA check is bypassed.
+⚠️ HIGH RISK (Verification Token Expiry): In src/app/api/auth/verify-email/route.ts (line 31) and src/models/User.ts (line 75), email verification tokens are hashed but have no expiration date or check. A leaked verification link remains valid indefinitely.
+⚠️ MEDIUM RISK (Unprotected Registration): The public agent registration endpoint (/api/auth/agent-register) lacks rate limiting, making it vulnerable to automated spam and registration abuse.
+⚠️ MEDIUM BUG (Agent Registration Failure): In src/app/api/auth/agent-register/route.ts (line 46), the registration handler writes fullName and emailVerified to the database. However, the User schema requires name and isEmailVerified. This mismatch can cause agent registration to fail or default to unverified.
+2.2 CSRF & Cryptography
+Strength: Double-submit cookie CSRF protection is implemented with constant-time comparison (timingSafeEqual) in src/lib/security/csrf.ts.
+Strength: TOTP verification uses constant-time comparison.
+⚠️ LOW RISK (Broad CSRF Exemption): The CSRF exemption prefix /api/auth/ is too broad. It exempts custom state-changing routes (like password reset and email verification) which should ideally be protected, rather than only exempting NextAuth internals.
+3. INTEGRATIONS & INFRASTRUCTURE AUDIT
+3.1 Subscription Feature Gates
+🔴 CRITICAL BUG (Revenue Bypass): In src/lib/subscription/featureGate.ts (line 176), the server-side feature gate contains a temporary bypass:
+Additionally, the client-side feature-gate API route (/api/subscriptions/feature-gate) hard-returns { bypass: true }. This means all paid features, AI tools, and limits are completely free and unrestricted for all users.
+3.2 Payment Gateways
+⚠️ HIGH RISK (Unimplemented Webhooks): Both Stripe (src/lib/payments/stripe.ts line 61) and Razorpay (src/lib/payments/razorpay.ts line 56) webhook verification methods are stubbed out and throw "not yet configured" errors. The platform cannot process payments or handle subscription lifecycle events (renewals, cancellations) in its current state.
+3.3 Email & Communications
+⚠️ HIGH RISK (Email HTML Injection / XSS): In src/lib/communications/email.ts (line 228), email templates directly interpolate dynamic user inputs (such as applicantName, jobTitle, and companyName) into raw HTML strings without escaping or sanitizing them. If a user registers with a malicious name containing HTML/JS, they can inject arbitrary content into emails sent to other users.
+3.4 Environment Variables
+⚠️ HIGH RISK (Silent Failures): In src/lib/env.ts (line 16), startup validation only enforces three environment variables (MONGODB_URI, NEXTAUTH_SECRET, ENCRYPTION_KEY). Critical integration keys (OpenAI, Anthropic, Gemini, SMTP, Firebase, Stripe, AWS) are not validated at startup, leading to silent runtime crashes when these features are invoked.
+4. DATABASE & PERFORMANCE AUDIT
+4.1 Database Indexes
+⚠️ HIGH RISK (Missing Production Indexes): The platform disables Mongoose's automatic index creation in production (autoIndex: false) for performance reasons. However, several critical collections are missing from the centralized index bootstrap in src/lib/db/indexes.ts:
+The offers collection is completely unindexed, leading to full-collection scans when filtering by employerId, jobSeekerId, or status.
+The partial unique index on Interview (applicationId, interviewRound) is defined in the schema but missing from indexes.ts, leaving the system vulnerable to duplicate active interview rounds under concurrent requests.
+4.2 Query Performance & Architecture
+⚠️ MEDIUM RISK (Unbounded Queries): The notification list endpoint (/api/notifications) accepts a limit parameter from the query string but does not cap it. A malicious client could request a limit of 100000, causing high memory usage and database strain.
+⚠️ MEDIUM RISK (Non-Transactional Cascades): Cascade delete operations in src/lib/db/cascade.ts run sequentially without database transactions. A failure mid-way will leave orphaned references and inconsistent database state.
+⚠️ MEDIUM RISK (Floating-Point Currency): Monetary fields in Invoice and Commission models are stored as standard JavaScript Number (double-precision floats). While rounding is applied, repeated financial aggregations are susceptible to floating-point precision drift.
+5. FRONTEND & UX AUDIT
+5.1 Internationalization (i18n)
+⚠️ MEDIUM RISK (Arabic UX Regressions):
+The email verification (/verify-email) and email change confirmation (/confirm-email-change) pages are hardcoded in English and do not support Arabic localization.
+The translation audit (check_tr.txt) indicates over 50 potential English fallback strings remaining in the Arabic translation files (ar.json), leading to a mixed-language experience for Arabic users.
+Multiple dashboard pages across all roles contain hardcoded English UI strings instead of using next-intl translation keys.
+5.2 Incomplete Features & Placeholders
+⚠️ MEDIUM RISK (Stubbed UI):
+The Job Seeker settings page contains explicitly disabled feature blocks and TODO scaffolding for "Auto-Apply" features.
+The Job Seeker subscription page contains a hardcoded "Coming Soon" payment placeholder, preventing users from attempting to subscribe.
+PRODUCTION-READINESS CHECKLIST
+Category	Audit Item	Status	Notes
+Security	CSRF Protection	✅ Pass	Double-submit cookie pattern with constant-time comparison.
+Security	Cron Authentication	✅ Pass	HMAC-SHA256 signatures with replay protection.
+Security	Tenant View Isolation	✅ Pass	Request-level re-authorization prevents privilege escalation.
+Security	OAuth 2FA & Active Gates	❌ Fail	OAuth bypasses 2FA and active-account checks.
+Security	CV File Privacy	❌ Fail	CVs uploaded to public-read storage.
+Security	Email HTML Sanitization	❌ Fail	Dynamic values interpolated into email HTML without escaping.
+Database	Super-Agent Scoping	❌ Fail	Lead filter overwrites regional scope; insights use wrong ID types.
+Database	Agent Scoping	❌ Fail	Interview list endpoint allows arbitrary employer ID filter.
+Database	Production Indexes	❌ Fail	offers collection and partial unique interview indexes are unindexed.
+Database	Interview Reminders	❌ Fail	Reminder sent flag written to non-existent schema field.
+Integrations	Subscription Enforcement	❌ Fail	Server-side feature gates are globally bypassed.
+Integrations	Payment Webhooks	❌ Fail	Stripe and Razorpay webhook verifications are stubbed.
+Integrations	Startup Env Validation	❌ Fail	Critical integration keys are not validated at startup.
+Frontend	Arabic Localization	❌ Fail	Auth pages are English-only; 50+ missing keys in Arabic translation.
+RECOMMENDATION
+The Mployedin platform has a highly secure and well-designed core architecture, but it is NOT ready for production.
+
+To prepare the platform for launch, the engineering team must prioritize:
+
+Fixing the Super-Agent and Agent scoping bugs to prevent cross-tenant data leakage.
+Securing CV uploads by passing private: true to the storage helper.
+Enforcing active-account and 2FA checks on OAuth logins.
+Implementing Stripe/Razorpay webhook verification and removing the subscription feature gate bypass.
+Escaping dynamic values in email templates to prevent HTML injection.
+Adding the missing database indexes to src/lib/db/indexes.ts.
