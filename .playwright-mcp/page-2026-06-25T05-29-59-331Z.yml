@@ -1,0 +1,144 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - img "Mployedin" [ref=e8]
+            - generic [ref=e9]:
+              - generic [ref=e10]: Mployedin
+              - generic [ref=e11]: Admin workspace
+          - navigation [ref=e12]:
+            - link "Dashboard" [ref=e13] [cursor=pointer]:
+              - /url: /en/admin
+              - img [ref=e14]
+              - generic [ref=e19]: Dashboard
+            - button "Recruitment" [ref=e20]:
+              - img [ref=e21]
+              - generic [ref=e24]: Recruitment
+            - button "People" [ref=e25]:
+              - img [ref=e26]
+              - generic [ref=e31]: People
+            - button "Finance" [ref=e32]:
+              - img [ref=e33]
+              - generic [ref=e35]: Finance
+            - button "CMS / Content" [ref=e36]:
+              - img [ref=e37]
+              - generic [ref=e39]: CMS / Content
+            - button "Job Attributes" [ref=e40]:
+              - img [ref=e41]
+              - generic [ref=e42]: Job Attributes
+            - button "Location Data" [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e47]: Location Data
+            - button "Reports & Analytics" [ref=e48]:
+              - img [ref=e49]
+              - generic [ref=e50]: Reports & Analytics
+            - button "System" [ref=e51]:
+              - img [ref=e52]
+              - generic [ref=e55]: System
+            - link "Exhibition Requests" [ref=e56] [cursor=pointer]:
+              - /url: /en/admin/exhibitions
+              - img [ref=e57]
+              - generic [ref=e59]: Exhibition Requests
+            - link "Exhibition Analytics" [ref=e60] [cursor=pointer]:
+              - /url: /en/admin/exhibitions/analytics
+              - img [ref=e61]
+              - generic [ref=e62]: Exhibition Analytics
+            - link "Resource Management" [ref=e63] [cursor=pointer]:
+              - /url: /en/admin/resources
+              - img [ref=e64]
+              - generic [ref=e66]: Resource Management
+            - link "Messages" [ref=e67] [cursor=pointer]:
+              - /url: /en/admin/messages
+              - img [ref=e68]
+              - generic [ref=e70]: Messages
+            - link "Notifications" [ref=e71] [cursor=pointer]:
+              - /url: /en/notifications
+              - img [ref=e72]
+              - generic [ref=e75]: Notifications
+      - generic [ref=e76]:
+        - banner [ref=e77]:
+          - button "Search... ⌘ K" [ref=e81]:
+            - img [ref=e82]
+            - generic [ref=e85]: Search...
+            - generic:
+              - generic: ⌘
+              - text: K
+        - main [ref=e86]:
+          - generic [ref=e87]:
+            - generic [ref=e88]:
+              - generic [ref=e89]:
+                - generic [ref=e90]:
+                  - generic [ref=e91]:
+                    - img [ref=e92]
+                    - text: Recruitment Control
+                  - heading "Job Listings" [level=1] [ref=e95]
+                  - paragraph [ref=e96]: Manage and monitor all job postings across the platform — approve, reject, or edit roles from employers and agents.
+                - generic [ref=e97]:
+                  - generic [ref=e98]:
+                    - paragraph [ref=e99]: Platform total
+                    - paragraph [ref=e100]: 0 jobs
+                    - paragraph [ref=e101]: Across 1 page
+                  - link "Post Job" [ref=e102] [cursor=pointer]:
+                    - /url: ./new
+                    - button "Post Job" [ref=e103]:
+                      - img
+                      - text: Post Job
+              - generic [ref=e104]:
+                - generic [ref=e105]:
+                  - generic [ref=e106]:
+                    - generic [ref=e107]:
+                      - paragraph [ref=e108]: Total Jobs
+                      - paragraph [ref=e109]: "0"
+                    - img [ref=e111]
+                  - paragraph [ref=e114]: All postings
+                - generic [ref=e115]:
+                  - generic [ref=e116]:
+                    - generic [ref=e117]:
+                      - paragraph [ref=e118]: Active
+                      - paragraph [ref=e119]: "0"
+                    - img [ref=e121]
+                  - paragraph [ref=e124]: Currently live
+                - generic [ref=e125]:
+                  - generic [ref=e126]:
+                    - generic [ref=e127]:
+                      - paragraph [ref=e128]: Pending Review
+                      - paragraph [ref=e129]: "0"
+                    - img [ref=e131]
+                  - paragraph [ref=e134]: Awaiting moderation
+                - generic [ref=e135]:
+                  - generic [ref=e136]:
+                    - generic [ref=e137]:
+                      - paragraph [ref=e138]: Applicants
+                      - paragraph [ref=e139]: "0"
+                    - img [ref=e141]
+                  - paragraph [ref=e146]: Total applications
+              - generic [ref=e147]:
+                - button "Show Filters" [ref=e148]:
+                  - img [ref=e149]
+                  - text: Show Filters
+                  - img [ref=e151]
+                - button "Export" [ref=e156]:
+                  - img
+                  - generic [ref=e157]: Export
+            - generic [ref=e164]:
+              - generic [ref=e165]:
+                - generic [ref=e166]: Rows per page
+                - combobox "Rows per page" [ref=e167]:
+                  - img [ref=e168]
+                - combobox [ref=e170]
+              - generic [ref=e171]: Showing 0–0 of 0
+              - generic [ref=e172]:
+                - button "First page" [disabled]:
+                  - img
+                - button "Previous page" [disabled]:
+                  - img
+                - generic [ref=e173]: 1 / 1
+                - button "Next page" [disabled]:
+                  - img
+                - button "Last page" [disabled]:
+                  - img
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e179] [cursor=pointer]:
+    - img [ref=e180]

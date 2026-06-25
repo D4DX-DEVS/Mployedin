@@ -1,0 +1,73 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e66]:
+      - complementary [ref=e67]:
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - img "Mployedin" [ref=e71]
+            - generic [ref=e72]:
+              - generic [ref=e73]: Mployedin
+              - generic [ref=e74]: Agent workspace
+          - navigation [ref=e75]:
+            - link "Dashboard" [ref=e76] [cursor=pointer]:
+              - /url: /en/agent
+              - img [ref=e77]
+              - generic [ref=e82]: Dashboard
+            - button "Hiring" [ref=e83]:
+              - img [ref=e84]
+              - generic [ref=e87]: Hiring
+            - button "Tools" [ref=e88]:
+              - img [ref=e89]
+              - generic [ref=e91]: Tools
+            - link "Exhibition Requests" [ref=e92] [cursor=pointer]:
+              - /url: /en/agent/exhibitions
+              - img [ref=e93]
+              - generic [ref=e95]: Exhibition Requests
+            - link "Resource Downloads" [ref=e96] [cursor=pointer]:
+              - /url: /en/agent/resources
+              - img [ref=e97]
+              - generic [ref=e99]: Resource Downloads
+            - link "Messages" [ref=e100] [cursor=pointer]:
+              - /url: /en/agent/messages
+              - img [ref=e101]
+              - generic [ref=e103]: Messages
+            - link "Team Chat" [ref=e104] [cursor=pointer]:
+              - /url: /en/agent/chat
+              - img [ref=e105]
+              - generic [ref=e108]: Team Chat
+            - link "Settings" [ref=e109] [cursor=pointer]:
+              - /url: /en/agent/settings
+              - img [ref=e110]
+              - generic [ref=e113]: Settings
+            - link "Notifications" [ref=e114] [cursor=pointer]:
+              - /url: /en/notifications
+              - img [ref=e115]
+              - generic [ref=e118]: Notifications
+      - generic [ref=e119]:
+        - banner [ref=e120]:
+          - generic [ref=e121]:
+            - button "Search... ⌘ K" [ref=e124]:
+              - img [ref=e125]
+              - generic [ref=e128]: Search...
+              - generic:
+                - generic: ⌘
+                - text: K
+            - generic [ref=e129]:
+              - button "Switch to dark mode" [ref=e130]:
+                - img
+              - generic [ref=e131]:
+                - button "Switch to English" [ref=e133] [cursor=pointer]:
+                  - generic [ref=e134]: EN
+                - button "Switch to Arabic" [ref=e135] [cursor=pointer]:
+                  - generic [ref=e136]: AR
+              - button "A" [ref=e137] [cursor=pointer]
+        - main [ref=e138]
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e164] [cursor=pointer]:
+    - generic [ref=e167]:
+      - text: Compiling
+      - generic [ref=e168]:
+        - generic [ref=e169]: .
+        - generic [ref=e170]: .
+        - generic [ref=e171]: .
+  - alert [ref=e65]

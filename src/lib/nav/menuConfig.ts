@@ -325,16 +325,7 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 group: "Pages",
                 groupAr: "الصفحات",
               },
-              {
-                title: "Poster Templates",
-                titleAr: "قوالب الإعلانات",
-                href: p("/admin/poster-templates"),
-                icon: "LayoutTemplate",
-                description: "Design poster templates for employers",
-                descriptionAr: "تصميم قوالب الإعلانات لأصحاب العمل",
-                group: "Pages",
-                groupAr: "الصفحات",
-              },
+
             ],
           },
           {
@@ -1308,6 +1299,24 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 icon: "FileText",
                 description: "Reusable job posting templates",
                 descriptionAr: "قوالب نشر الوظائف القابلة لإعادة الاستخدام",
+              },
+            ],
+          },
+          {
+            title: "Marketing",
+            titleAr: "التسويق",
+            href: p("/employer/my-posters"),
+            icon: "Image",
+            description: "Recruitment marketing tools",
+            descriptionAr: "أدوات التسويق للتوظيف",
+            children: [
+              {
+                title: "My Posters",
+                titleAr: "ملصقاتي",
+                href: p("/employer/my-posters"),
+                icon: "Image",
+                description: "AI-generated recruitment posters",
+                descriptionAr: "ملصقات التوظيف المولدة بالذكاء الاصطناعي",
               },
             ],
           },

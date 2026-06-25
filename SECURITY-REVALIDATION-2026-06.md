@@ -9,12 +9,12 @@
 |---|---|---|
 | C1 | GraphQL platform-wide exposure to super_agent | ✅ **VERIFIED FIXED** |
 | H1 | requisitions/[id] GET IDOR | ✅ **VERIFIED FIXED** |
-| H2 | placements/[id] GET IDOR | ⚠️ **PARTIALLY FIXED** (super_agent still unscoped) |
-| H3 | employers/[id] GET IDOR | ⚠️ **PARTIALLY FIXED** (super_agent still unscoped) |
+| H2 | placements/[id] GET IDOR | ✅ **VERIFIED FIXED** (super_agent now scoped) |
+| H3 | employers/[id] GET IDOR | ✅ **VERIFIED FIXED** (super_agent now scoped) |
 | M2 | agent self-approves own-commission payment | ✅ **VERIFIED FIXED** |
 | L1 | GraphiQL/introspection in prod | ✅ **VERIFIED FIXED** |
 
-**Net:** 4 fully fixed, 2 partially fixed. The partial fixes share one root cause — **`super_agent` is not scoped on oversight-read paths**, so a super-agent can read any placement (candidate PII + salary) and any employer (PII) platform-wide, crossing territory boundaries. Every other super_agent path in the app *is* scoped (`getSuperAgentScope`), so this is an omission, not design.
+**Net:** all 6 fixed. The earlier partial fixes (H2/H3) shared one root cause — **`super_agent` was not scoped on oversight-read paths**. Both now add a `super_agent` branch that scopes via `getSuperAgentScope(...).effectiveAgentIds` (placements: against `placement.agentId`; employers: against the target employer's `agentId`), so a super-agent can no longer read placements/employers outside their book of business.
 
 ---
 
@@ -75,7 +75,7 @@ if (ctx.role !== "admin") {
 
 ---
 
-## H2 — placements/[id] GET IDOR → ⚠️ PARTIALLY FIXED
+## H2 — placements/[id] GET IDOR → ✅ VERIFIED FIXED
 
 **Original attack:** employer/agent A reads employer/agent B's placement (candidate PII + salary).
 
@@ -99,17 +99,17 @@ RBAC guard is `{ resource: "placements", action: "read" }`; per the matrix, `sup
 | Role | Result | Why |
 |---|---|---|
 | Admin | ✅ allowed | `verifyOwnership` admin bypass |
-| Super Agent | ❌ **ALLOWED — any placement, platform-wide** | no super_agent branch → `return null` |
+| Super Agent (in scope) | ✅ allowed | `placement.agentId` ∈ `effectiveAgentIds` |
+| Super Agent (out of scope) | 🔒 403 | `placement.agentId` ∉ `effectiveAgentIds` |
 | Agent (non-owner) | 🔒 403 | agentId mismatch |
 | Employer (non-owner) | 🔒 403 | employerId mismatch |
 | Job Seeker | 🔒 403 (RBAC) | no `placements:read` |
 
-**Verdict:** original employer/agent IDOR **closed**; **super_agent cross-territory read of candidate PII + salary remains open.**
-**Fix:** add a super_agent branch to `verifyOwnership` (scope via `getSuperAgentScope(ctx.userId).effectiveAgentIds` against `placement.agentId`), or default-deny the fall-through.
+**Verdict:** fully closed. `verifyOwnership` now has a `super_agent` branch (`route.ts:36-47`) that scopes via `getSuperAgentScope(ctx.userId).effectiveAgentIds` against `placement.agentId` and 403s on out-of-scope placements. No platform-wide read of candidate PII + salary remains.
 
 ---
 
-## H3 — employers/[id] GET IDOR → ⚠️ PARTIALLY FIXED
+## H3 — employers/[id] GET IDOR → ✅ VERIFIED FIXED
 
 **Original attack:** any agent/super_agent/employer reads any employer's User PII (name/email/phone) by id.
 
@@ -128,13 +128,13 @@ RBAC guard `{ resource: "employers", action: "read" }`; matrix gives `super_agen
 | Role | Result | Why |
 |---|---|---|
 | Admin | ✅ allowed | oversight (no check) |
-| Super Agent | ❌ **ALLOWED — any employer PII, platform-wide** | no super_agent scope check |
+| Super Agent (in scope) | ✅ allowed | target employer's `agentId` ∈ `effectiveAgentIds` |
+| Super Agent (out of scope) | 🔒 403 | target employer's `agentId` ∉ `effectiveAgentIds` |
 | Agent (non-assigned) | 🔒 403 | not in `assignedEmployerIds` |
 | Employer (non-self) | 🔒 403 | `ctx.userId !== params.id` |
 | Job Seeker | 🔒 403 (RBAC) | no `employers:read` |
 
-**Verdict:** original employer/agent IDOR **closed**; **super_agent platform-wide PII read remains open.** (Auth secrets remain protected — `passwordHash`, `passwordResetToken`, `twoFactorSecretEnc`, etc. are schema-level `select:false`; the leak is PII, not credentials.)
-**Fix:** scope super_agent to employers reachable via `getSuperAgentScope` (their agents' `assignedEmployerIds`), or treat super_agent like agent.
+**Verdict:** fully closed. The GET handler now has a `super_agent` branch (`route.ts:29-42`) that resolves the target's `Employer.agentId` and 403s unless it is within `getSuperAgentScope(ctx.userId).effectiveAgentIds`. No platform-wide employer PII read remains. (Auth secrets were already protected — `passwordHash`, `passwordResetToken`, `twoFactorSecretEnc`, etc. are schema-level `select:false`.)
 
 ---
 
@@ -200,8 +200,7 @@ Combined with C1 (`role !== "admin" → 403`), the playground and schema are unr
 
 ---
 
-## Required actions before "VERIFIED FIXED" on H2/H3
+## Status / remaining follow-ups
 
-1. Add a `super_agent` scope branch to `placements` `verifyOwnership` and to `employers/[id]` GET (use `getSuperAgentScope(ctx.userId).effectiveAgentIds`; for employers, resolve the target's `agentId`/`assignedEmployerIds`).
-2. Re-run this revalidation on H2/H3 after the change.
-3. Sweep all `super_agent … read/export` routes (S1) + the export/report surface.
+1. ✅ **Done** — `super_agent` scope branch added to `placements` `verifyOwnership` (`route.ts:36-47`) and to `employers/[id]` GET (`route.ts:29-42`), both using `getSuperAgentScope(ctx.userId).effectiveAgentIds`. H2/H3 now VERIFIED FIXED.
+2. ⬜ **Open (S1)** — sweep the remaining `super_agent … read/export` routes (e.g. `applications`, `interviews`, `commissions`, `reports`) for the same scope filter, plus the export/report surface.

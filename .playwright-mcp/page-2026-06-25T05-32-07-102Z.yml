@@ -1,0 +1,116 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - img "Mployedin" [ref=e8]
+            - generic [ref=e9]:
+              - generic [ref=e10]: Mployedin
+              - generic [ref=e11]: Admin workspace
+          - navigation [ref=e12]:
+            - link "Dashboard" [ref=e13] [cursor=pointer]:
+              - /url: /en/admin
+              - img [ref=e14]
+              - generic [ref=e19]: Dashboard
+            - button "Recruitment" [ref=e20]:
+              - img [ref=e21]
+              - generic [ref=e24]: Recruitment
+            - button "People" [ref=e25]:
+              - img [ref=e26]
+              - generic [ref=e31]: People
+            - button "Finance" [ref=e32]:
+              - img [ref=e33]
+              - generic [ref=e35]: Finance
+            - button "CMS / Content" [ref=e36]:
+              - img [ref=e37]
+              - generic [ref=e39]: CMS / Content
+            - button "Job Attributes" [ref=e40]:
+              - img [ref=e41]
+              - generic [ref=e42]: Job Attributes
+            - button "Location Data" [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e47]: Location Data
+            - button "Reports & Analytics" [ref=e48]:
+              - img [ref=e49]
+              - generic [ref=e50]: Reports & Analytics
+            - button "System" [ref=e51]:
+              - img [ref=e52]
+              - generic [ref=e55]: System
+            - link "Exhibition Requests" [ref=e56] [cursor=pointer]:
+              - /url: /en/admin/exhibitions
+              - img [ref=e57]
+              - generic [ref=e59]: Exhibition Requests
+            - link "Exhibition Analytics" [ref=e60] [cursor=pointer]:
+              - /url: /en/admin/exhibitions/analytics
+              - img [ref=e61]
+              - generic [ref=e62]: Exhibition Analytics
+            - link "Resource Management" [ref=e63] [cursor=pointer]:
+              - /url: /en/admin/resources
+              - img [ref=e64]
+              - generic [ref=e66]: Resource Management
+            - link "Messages" [ref=e67] [cursor=pointer]:
+              - /url: /en/admin/messages
+              - img [ref=e68]
+              - generic [ref=e70]: Messages
+            - link "Notifications" [ref=e71] [cursor=pointer]:
+              - /url: /en/notifications
+              - img [ref=e72]
+              - generic [ref=e75]: Notifications
+      - generic [ref=e76]:
+        - banner [ref=e77]:
+          - button "Search... ⌘ K" [ref=e81]:
+            - img [ref=e82]
+            - generic [ref=e85]: Search...
+            - generic:
+              - generic: ⌘
+              - text: K
+        - main [ref=e86]:
+          - generic [ref=e87]:
+            - generic [ref=e88]:
+              - generic [ref=e89]:
+                - img [ref=e90]
+                - text: Admin workspace
+              - heading "Reports & Analytics" [level=1] [ref=e93]
+              - paragraph [ref=e94]: Platform demand, funnel health, conversion pressure, and operator workload at a glance.
+            - generic [ref=e96]:
+              - link "Total Jobs vs prev 30d 0 roles still need candidate demand." [ref=e97] [cursor=pointer]:
+                - /url: ../jobs
+                - generic [ref=e98]:
+                  - generic [ref=e99]:
+                    - paragraph [ref=e102]: Total Jobs
+                    - paragraph [ref=e103]
+                  - img [ref=e106]
+                - generic [ref=e110]: vs prev 30d
+                - paragraph [ref=e111]: 0 roles still need candidate demand.
+              - link "Applications vs prev 30d 0.0 applications per role across the platform." [ref=e112] [cursor=pointer]:
+                - /url: ../applications
+                - generic [ref=e113]:
+                  - generic [ref=e114]:
+                    - paragraph [ref=e117]: Applications
+                    - paragraph [ref=e118]
+                  - img [ref=e121]
+                - generic [ref=e125]: vs prev 30d
+                - paragraph [ref=e126]: 0.0 applications per role across the platform.
+              - link "Placements vs prev 30d 0% application-to-placement conversion." [ref=e127] [cursor=pointer]:
+                - /url: ../applications?status=placed
+                - generic [ref=e128]:
+                  - generic [ref=e129]:
+                    - paragraph [ref=e132]: Placements
+                    - paragraph [ref=e133]
+                  - img [ref=e136]
+                - generic [ref=e141]: vs prev 30d
+                - paragraph [ref=e142]: 0% application-to-placement conversion.
+              - link "Revenue vs prev 30d No placement revenue has been unlocked yet." [ref=e143] [cursor=pointer]:
+                - /url: ../subscriptions
+                - generic [ref=e144]:
+                  - generic [ref=e145]:
+                    - paragraph [ref=e148]: Revenue
+                    - paragraph [ref=e149]
+                  - img [ref=e152]
+                - generic [ref=e156]: vs prev 30d
+                - paragraph [ref=e157]: No placement revenue has been unlocked yet.
+            - status "Loading reports" [ref=e158]
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e167] [cursor=pointer]:
+    - img [ref=e168]

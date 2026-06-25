@@ -23,7 +23,6 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useJobs, useUpdateJobStatus, useCloneJob, useDeleteJob, useSaveAsTemplate, useJobTemplates, type Job } from "@/hooks/useJobs";
 import { useDebounce } from "@/hooks/useDebounce";
-import { JobPosterDialog } from "@/components/features/employer/jobs/JobPosterDialog";
 import type { ExportColumn } from "@/lib/export";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -58,7 +57,7 @@ export default function EmployerJobsPage() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
   const [cloningJobId, setCloningJobId] = useState<string | null>(null);
-  const [posterJob, setPosterJob] = useState<Job | null>(null);
+
   const [pendingJobAction, setPendingJobAction] = useState<{ jobId: string; action: PendingJobAction } | null>(null);
   const debouncedSearch = useDebounce(search, 300);
   const debouncedLocation = useDebounce(locationFilter, 300);
@@ -726,7 +725,7 @@ export default function EmployerJobsPage() {
                             </DropdownMenuItem>
                           )}
                           {can("jobs", "create") && (
-                            <DropdownMenuItem onClick={() => setPosterJob(job)}>
+                            <DropdownMenuItem onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/poster`)}>
                               <ImageIcon className="h-4 w-4" /> {t("posterButton")}
                             </DropdownMenuItem>
                           )}
@@ -780,15 +779,6 @@ export default function EmployerJobsPage() {
           limit={limit}
           onPageChange={setPage}
           onLimitChange={(l) => { setLimit(l); setPage(1); }}
-        />
-      )}
-
-      {posterJob && (
-        <JobPosterDialog
-          open={!!posterJob}
-          onOpenChange={(open) => { if (!open) setPosterJob(null); }}
-          job={posterJob}
-          locale={locale}
         />
       )}
     </div>

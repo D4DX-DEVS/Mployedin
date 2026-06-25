@@ -1,0 +1,448 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e75]:
+      - complementary [ref=e76]:
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - img "Mployedin" [ref=e80]
+            - generic [ref=e81]:
+              - generic [ref=e82]: Mployedin
+              - generic [ref=e83]: Admin workspace
+          - navigation [ref=e84]:
+            - link "Dashboard" [ref=e85] [cursor=pointer]:
+              - /url: /en/admin
+              - img [ref=e86]
+              - generic [ref=e91]: Dashboard
+            - button "Recruitment" [ref=e92]:
+              - img [ref=e93]
+              - generic [ref=e96]: Recruitment
+            - button "People" [ref=e97]:
+              - img [ref=e98]
+              - generic [ref=e103]: People
+            - button "Finance" [ref=e104]:
+              - img [ref=e105]
+              - generic [ref=e107]: Finance
+            - button "CMS / Content" [ref=e108]:
+              - img [ref=e109]
+              - generic [ref=e111]: CMS / Content
+            - button "Job Attributes" [ref=e112]:
+              - img [ref=e113]
+              - generic [ref=e114]: Job Attributes
+            - button "Location Data" [ref=e115]:
+              - img [ref=e116]
+              - generic [ref=e119]: Location Data
+            - button "Reports & Analytics" [ref=e120]:
+              - img [ref=e121]
+              - generic [ref=e122]: Reports & Analytics
+            - button "System" [ref=e123]:
+              - img [ref=e124]
+              - generic [ref=e127]: System
+            - link "Exhibition Requests" [ref=e128] [cursor=pointer]:
+              - /url: /en/admin/exhibitions
+              - img [ref=e129]
+              - generic [ref=e131]: Exhibition Requests
+            - link "Exhibition Analytics" [ref=e132] [cursor=pointer]:
+              - /url: /en/admin/exhibitions/analytics
+              - img [ref=e133]
+              - generic [ref=e134]: Exhibition Analytics
+            - link "Resource Management" [ref=e135] [cursor=pointer]:
+              - /url: /en/admin/resources
+              - img [ref=e136]
+              - generic [ref=e138]: Resource Management
+            - link "Messages" [ref=e139] [cursor=pointer]:
+              - /url: /en/admin/messages
+              - img [ref=e140]
+              - generic [ref=e142]: Messages
+            - link "Notifications" [ref=e143] [cursor=pointer]:
+              - /url: /en/notifications
+              - img [ref=e144]
+              - generic [ref=e147]: Notifications
+      - generic [ref=e148]:
+        - banner [ref=e149]:
+          - generic [ref=e150]:
+            - button "Search... ⌘ K" [ref=e153]:
+              - img [ref=e154]
+              - generic [ref=e157]: Search...
+              - generic:
+                - generic: ⌘
+                - text: K
+            - generic [ref=e158]:
+              - button "Switch to dark mode" [ref=e159]:
+                - img
+              - generic [ref=e160]:
+                - button "Switch to English" [ref=e162] [cursor=pointer]:
+                  - generic [ref=e163]: EN
+                - button "Switch to Arabic" [ref=e164] [cursor=pointer]:
+                  - generic [ref=e165]: AR
+              - button "Notifications" [ref=e166]:
+                - img
+              - button "SA" [ref=e167] [cursor=pointer]
+        - main [ref=e168]:
+          - generic [ref=e169]:
+            - generic [ref=e170]:
+              - generic [ref=e171]:
+                - generic [ref=e172]:
+                  - generic [ref=e173]:
+                    - img [ref=e174]
+                    - text: Admin workspace
+                  - heading "Admin Dashboard" [level=1] [ref=e177]
+                  - paragraph [ref=e178]: Platform overview, operational metrics, and shortcuts in an action-oriented workspace that tells admin teams where to move next.
+                - generic [ref=e179]:
+                  - paragraph [ref=e180]: System watch
+                  - paragraph [ref=e181]: 50 active jobs
+                  - paragraph [ref=e182]: 35 platform applications are currently moving through the funnel.
+                  - generic [ref=e183]:
+                    - generic [ref=e184]:
+                      - paragraph [ref=e185]: Demand
+                      - paragraph [ref=e186]: "0.7"
+                      - paragraph [ref=e187]: apps per active job
+                    - generic [ref=e188]:
+                      - paragraph [ref=e189]: Conversion
+                      - paragraph [ref=e190]: 3%
+                      - paragraph [ref=e191]: applications to placements
+              - generic [ref=e192]:
+                - link [ref=e193] [cursor=pointer]:
+                  - /url: /en/admin/users
+                  - article [ref=e194]:
+                    - generic [ref=e195]:
+                      - generic [ref=e196]:
+                        - paragraph [ref=e197]: Total Users
+                        - paragraph [ref=e198]: "281"
+                      - img [ref=e200]
+                    - generic [ref=e205]:
+                      - img [ref=e206]
+                      - text: +383% vs last month
+                    - paragraph [ref=e209]: 203 new accounts joined in the last 30 days.
+                    - paragraph [ref=e210]: Job Seeker is still the dominant cohort.
+                - link [ref=e211] [cursor=pointer]:
+                  - /url: /en/admin/jobs
+                  - article [ref=e212]:
+                    - generic [ref=e213]:
+                      - generic [ref=e214]:
+                        - paragraph [ref=e215]: Active Jobs
+                        - paragraph [ref=e216]: "50"
+                      - img [ref=e218]
+                    - generic [ref=e221]:
+                      - img [ref=e222]
+                      - text: "-13% vs last month"
+                    - paragraph [ref=e225]: 27 new roles opened in the last 30 days.
+                    - paragraph [ref=e226]: 28 active roles still have zero applications.
+                - link [ref=e227] [cursor=pointer]:
+                  - /url: /en/admin/applications
+                  - article [ref=e228]:
+                    - generic [ref=e229]:
+                      - generic [ref=e230]:
+                        - paragraph [ref=e231]: Total Applications
+                        - paragraph [ref=e232]: "35"
+                      - img [ref=e234]
+                    - generic [ref=e237]:
+                      - img [ref=e238]
+                      - text: "-7% vs last month"
+                    - paragraph [ref=e241]: 13 applications landed in the last 30 days.
+                    - paragraph [ref=e242]: 0.7 applications per active job across the platform.
+                - link [ref=e243] [cursor=pointer]:
+                  - /url: /en/admin/interviews
+                  - article [ref=e244]:
+                    - generic [ref=e245]:
+                      - generic [ref=e246]:
+                        - paragraph [ref=e247]: Total Interviews
+                        - paragraph [ref=e248]: "10"
+                      - img [ref=e250]
+                    - generic [ref=e252]:
+                      - img [ref=e253]
+                      - text: 10 total
+                    - paragraph [ref=e256]: 10 interviews have been scheduled across the platform.
+                    - paragraph [ref=e257]: Interview pipeline is active and progressing.
+            - generic [ref=e258]:
+              - generic [ref=e259]:
+                - generic [ref=e261]:
+                  - heading "Quick Actions" [level=2] [ref=e262]
+                  - paragraph [ref=e263]: Jump straight into the admin flows that keep governance and platform quality moving.
+                - generic [ref=e264]:
+                  - link "50 active Jobs Overview Monitor role quality, demand, and activity across the platform. Open workspace" [ref=e265] [cursor=pointer]:
+                    - /url: /en/admin/jobs
+                    - generic [ref=e266]:
+                      - img [ref=e268]
+                      - generic [ref=e271]: 50 active
+                    - generic [ref=e272]:
+                      - paragraph [ref=e273]: Jobs Overview
+                      - paragraph [ref=e274]: Monitor role quality, demand, and activity across the platform.
+                    - generic [ref=e275]:
+                      - text: Open workspace
+                      - img [ref=e276]
+                  - link "48 inactive employers User Management Adjust roles, access, and follow up on inactive cohorts. Open workspace" [ref=e278] [cursor=pointer]:
+                    - /url: /en/admin/users
+                    - generic [ref=e279]:
+                      - img [ref=e281]
+                      - generic [ref=e286]: 48 inactive employers
+                    - generic [ref=e287]:
+                      - paragraph [ref=e288]: User Management
+                      - paragraph [ref=e289]: Adjust roles, access, and follow up on inactive cohorts.
+                    - generic [ref=e290]:
+                      - text: Open workspace
+                      - img [ref=e291]
+                  - link "28 low-demand roles Jobs Management Audit role quality, demand, and activity from one queue. Open workspace" [ref=e293] [cursor=pointer]:
+                    - /url: /en/admin/jobs
+                    - generic [ref=e294]:
+                      - img [ref=e296]
+                      - generic [ref=e299]: 28 low-demand roles
+                    - generic [ref=e300]:
+                      - paragraph [ref=e301]: Jobs Management
+                      - paragraph [ref=e302]: Audit role quality, demand, and activity from one queue.
+                    - generic [ref=e303]:
+                      - text: Open workspace
+                      - img [ref=e304]
+                  - link "Security trail Audit Logs Review sensitive changes, security events, and governance trails. Open workspace" [ref=e306] [cursor=pointer]:
+                    - /url: /en/admin/audit-logs
+                    - generic [ref=e307]:
+                      - img [ref=e309]
+                      - generic [ref=e311]: Security trail
+                    - generic [ref=e312]:
+                      - paragraph [ref=e313]: Audit Logs
+                      - paragraph [ref=e314]: Review sensitive changes, security events, and governance trails.
+                    - generic [ref=e315]:
+                      - text: Open workspace
+                      - img [ref=e316]
+                  - link "10 interviews tracked Analytics Investigate trend shifts, conversion pressure, and market movement. Open workspace" [ref=e318] [cursor=pointer]:
+                    - /url: /en/admin/analytics
+                    - generic [ref=e319]:
+                      - img [ref=e321]
+                      - generic [ref=e324]: 10 interviews tracked
+                    - generic [ref=e325]:
+                      - paragraph [ref=e326]: Analytics
+                      - paragraph [ref=e327]: Investigate trend shifts, conversion pressure, and market movement.
+                    - generic [ref=e328]:
+                      - text: Open workspace
+                      - img [ref=e329]
+              - generic [ref=e331]:
+                - generic [ref=e333]:
+                  - heading "Recent Activity" [level=2] [ref=e334]
+                  - paragraph [ref=e335]: Keep the dashboard alive with the latest account, job, and funnel movement.
+                - generic [ref=e336]:
+                  - link "QA Verify Draft Role was posted Jun 23 Draft" [ref=e337] [cursor=pointer]:
+                    - /url: /en/admin/jobs
+                    - img [ref=e339]
+                    - generic [ref=e342]:
+                      - generic [ref=e343]:
+                        - paragraph [ref=e344]: QA Verify Draft Role was posted
+                        - generic [ref=e345]: Jun 23
+                      - paragraph [ref=e346]: Draft
+                  - link "QA Audit Test Role was posted Jun 23 Unknown" [ref=e347] [cursor=pointer]:
+                    - /url: /en/admin/jobs
+                    - img [ref=e349]
+                    - generic [ref=e352]:
+                      - generic [ref=e353]:
+                        - paragraph [ref=e354]: QA Audit Test Role was posted
+                        - generic [ref=e355]: Jun 23
+                      - paragraph [ref=e356]: Unknown
+                  - link "Senior React Developer was posted Jun 22 Unknown" [ref=e357] [cursor=pointer]:
+                    - /url: /en/admin/jobs
+                    - img [ref=e359]
+                    - generic [ref=e362]:
+                      - generic [ref=e363]:
+                        - paragraph [ref=e364]: Senior React Developer was posted
+                        - generic [ref=e365]: Jun 22
+                      - paragraph [ref=e366]: Unknown
+                  - link "Aanya Sharma joined as Job Seeker Jun 18 New access footprint added to the platform mix." [ref=e367] [cursor=pointer]:
+                    - /url: /en/admin/users
+                    - img [ref=e369]
+                    - generic [ref=e372]:
+                      - generic [ref=e373]:
+                        - paragraph [ref=e374]: Aanya Sharma joined as Job Seeker
+                        - generic [ref=e375]: Jun 18
+                      - paragraph [ref=e376]: New access footprint added to the platform mix.
+                  - link "Test Dropdown User joined as Job Seeker Jun 17 New access footprint added to the platform mix." [ref=e377] [cursor=pointer]:
+                    - /url: /en/admin/users
+                    - img [ref=e379]
+                    - generic [ref=e382]:
+                      - generic [ref=e383]:
+                        - paragraph [ref=e384]: Test Dropdown User joined as Job Seeker
+                        - generic [ref=e385]: Jun 17
+                      - paragraph [ref=e386]: New access footprint added to the platform mix.
+                  - link "Roshan kk joined as Job Seeker Jun 17 New access footprint added to the platform mix." [ref=e387] [cursor=pointer]:
+                    - /url: /en/admin/users
+                    - img [ref=e389]
+                    - generic [ref=e392]:
+                      - generic [ref=e393]:
+                        - paragraph [ref=e394]: Roshan kk joined as Job Seeker
+                        - generic [ref=e395]: Jun 17
+                      - paragraph [ref=e396]: New access footprint added to the platform mix.
+            - generic [ref=e397]:
+              - generic [ref=e398]:
+                - generic [ref=e399]:
+                  - generic [ref=e400]:
+                    - heading "Platform Insights" [level=2] [ref=e401]
+                    - paragraph [ref=e402]: Turn raw volume into next-step decisions before demand or conversion slip out of view.
+                  - generic [ref=e403]:
+                    - paragraph [ref=e404]: Insight engine
+                    - paragraph [ref=e405]: Action-first heuristics
+                - generic [ref=e406]:
+                  - article [ref=e407]:
+                    - generic [ref=e408]: Attention
+                    - heading "28 active jobs are missing applicant demand" [level=3] [ref=e409]
+                    - paragraph [ref=e410]: Review job copy, sourcing, or distribution before roles go stale.
+                    - link "View Jobs" [ref=e411] [cursor=pointer]:
+                      - /url: /en/admin/jobs
+                      - text: View Jobs
+                      - img [ref=e412]
+                  - article [ref=e414]:
+                    - generic [ref=e415]: Critical
+                    - heading "48 employers have been inactive for 7+ days" [level=3] [ref=e416]
+                    - paragraph [ref=e417]: Re-engage accounts before new jobs or candidate reviews stall.
+                    - link "Fix Now" [ref=e418] [cursor=pointer]:
+                      - /url: /en/admin/users
+                      - text: Fix Now
+                      - img [ref=e419]
+                  - article [ref=e421]:
+                    - generic [ref=e422]: Critical
+                    - heading "Application-to-placement conversion is below target" [level=3] [ref=e423]
+                    - paragraph [ref=e424]: Only 3% of applications have converted into placements so far.
+                    - link "Fix Now" [ref=e425] [cursor=pointer]:
+                      - /url: /en/admin/analytics
+                      - text: Fix Now
+                      - img [ref=e426]
+              - generic [ref=e428]:
+                - generic [ref=e429]:
+                  - generic [ref=e430]:
+                    - heading "Hiring Funnel" [level=2] [ref=e431]
+                    - paragraph [ref=e432]: Spot where volume compresses between live roles, applications, interviews, and placements.
+                  - generic [ref=e433]:
+                    - paragraph [ref=e434]: Placements
+                    - paragraph [ref=e435]: 1 closed
+                - generic [ref=e436]:
+                  - generic [ref=e437]:
+                    - generic [ref=e438]:
+                      - generic [ref=e439]: Jobs
+                      - generic [ref=e440]: "50"
+                    - 'generic "Jobs: 50" [ref=e442]': Jobs
+                    - paragraph [ref=e443]: 70% move to the next stage
+                  - generic [ref=e444]:
+                    - generic [ref=e445]:
+                      - generic [ref=e446]: Applications
+                      - generic [ref=e447]: "35"
+                    - 'generic "Applications: 35" [ref=e449]': Applications
+                    - paragraph [ref=e450]: 29% move to the next stage
+                  - generic [ref=e451]:
+                    - generic [ref=e452]:
+                      - generic [ref=e453]: Interviews
+                      - generic [ref=e454]: "10"
+                    - 'generic "Interviews: 10" [ref=e456]': Interviews
+                    - paragraph [ref=e457]: 10% move to the next stage
+                  - generic [ref=e458]:
+                    - generic [ref=e459]:
+                      - generic [ref=e460]: Placements
+                      - generic [ref=e461]: "1"
+                    - 'generic "Placements: 1" [ref=e463]': Placements
+            - generic [ref=e464]:
+              - generic [ref=e465]:
+                - generic [ref=e466]:
+                  - generic [ref=e467]:
+                    - heading "Jobs vs Applications" [level=2] [ref=e468]
+                    - paragraph [ref=e469]: See whether demand is tracking alongside role creation over the last six months.
+                  - generic [ref=e470]:
+                    - generic [ref=e471]: Jobs
+                    - generic [ref=e473]: Applications
+                - img "Jobs and applications trend" [ref=e476]:
+                  - generic [ref=e478]: "8"
+                  - generic [ref=e480]: "16"
+                  - generic [ref=e482]: "23"
+                  - generic [ref=e484]: "31"
+                  - generic [ref=e489]: Jan
+                  - generic [ref=e492]: Feb
+                  - generic [ref=e495]: Mar
+                  - generic [ref=e498]: Apr
+                  - generic [ref=e501]: May
+                  - generic [ref=e504]: Jun
+                - generic [ref=e511]:
+                  - generic [ref=e512]:
+                    - paragraph [ref=e513]: Jobs opened
+                    - paragraph [ref=e514]: "27"
+                    - paragraph [ref=e515]: new roles launched in the last 30 days
+                  - generic [ref=e516]:
+                    - paragraph [ref=e517]: Application flow
+                    - paragraph [ref=e518]: "13"
+                    - paragraph [ref=e519]: candidates entered the funnel this month
+                  - generic [ref=e520]:
+                    - paragraph [ref=e521]: Demand ratio
+                    - paragraph [ref=e522]: "0.7"
+                    - paragraph [ref=e523]: applications for every active role
+              - generic [ref=e524]:
+                - generic [ref=e525]:
+                  - generic [ref=e526]:
+                    - heading "Users by Role" [level=2] [ref=e527]
+                    - paragraph [ref=e528]: Monitor how access is distributed across the platform and where role mix may need intervention.
+                  - generic [ref=e529]:
+                    - paragraph [ref=e530]: Dominant user group
+                    - paragraph [ref=e531]: Job Seeker
+                - generic [ref=e532]:
+                  - generic [ref=e534]:
+                    - generic [ref=e535]:
+                      - paragraph [ref=e536]: Job Seeker
+                      - paragraph [ref=e537]: Dominant user group
+                    - generic [ref=e538]:
+                      - paragraph [ref=e539]: 74%
+                      - paragraph [ref=e540]: 209 users
+                  - generic [ref=e544]:
+                    - generic [ref=e545]:
+                      - paragraph [ref=e546]: Employer
+                      - paragraph [ref=e547]: Healthy share of the platform mix
+                    - generic [ref=e548]:
+                      - paragraph [ref=e549]: 18%
+                      - paragraph [ref=e550]: 50 users
+                  - generic [ref=e554]:
+                    - generic [ref=e555]:
+                      - paragraph [ref=e556]: Agent
+                      - paragraph [ref=e557]: Underrepresented in the current mix
+                    - generic [ref=e558]:
+                      - paragraph [ref=e559]: 5%
+                      - paragraph [ref=e560]: 14 users
+                  - generic [ref=e564]:
+                    - generic [ref=e565]:
+                      - paragraph [ref=e566]: Super Agent
+                      - paragraph [ref=e567]: Underrepresented in the current mix
+                    - generic [ref=e568]:
+                      - paragraph [ref=e569]: 1%
+                      - paragraph [ref=e570]: 4 users
+                  - generic [ref=e574]:
+                    - generic [ref=e575]:
+                      - paragraph [ref=e576]: Unknown
+                      - paragraph [ref=e577]: Underrepresented in the current mix
+                    - generic [ref=e578]:
+                      - paragraph [ref=e579]: 0%
+                      - paragraph [ref=e580]: 1 users
+                  - generic [ref=e584]:
+                    - generic [ref=e585]:
+                      - paragraph [ref=e586]: Unknown
+                      - paragraph [ref=e587]: Underrepresented in the current mix
+                    - generic [ref=e588]:
+                      - paragraph [ref=e589]: 0%
+                      - paragraph [ref=e590]: 1 users
+                  - generic [ref=e594]:
+                    - generic [ref=e595]:
+                      - paragraph [ref=e596]: Unknown
+                      - paragraph [ref=e597]: Underrepresented in the current mix
+                    - generic [ref=e598]:
+                      - paragraph [ref=e599]: 0%
+                      - paragraph [ref=e600]: 1 users
+                  - generic [ref=e604]:
+                    - generic [ref=e605]:
+                      - paragraph [ref=e606]: Admin
+                      - paragraph [ref=e607]: Underrepresented in the current mix
+                    - generic [ref=e608]:
+                      - paragraph [ref=e609]: 0%
+                      - paragraph [ref=e610]: 1 users
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e61] [cursor=pointer]:
+    - img [ref=e62]
+  - alert [ref=e66]
+  - button "Open AI Assistant" [ref=e613]:
+    - img [ref=e614]
+  - generic [ref=e618]:
+    - generic [ref=e619]:
+      - img "MPLOYEDIN" [ref=e620]
+      - generic [ref=e621]:
+        - paragraph [ref=e622]: Install MPLOYEDIN
+        - paragraph [ref=e623]: Add to your home screen for quick access and an app-like experience.
+      - button "Dismiss" [ref=e624]:
+        - img [ref=e625]
+    - button "Install App" [ref=e628]

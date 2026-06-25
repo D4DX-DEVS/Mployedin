@@ -88,6 +88,12 @@ export interface IEmployer extends Document {
     isConfigured?: boolean;
     configuredAt?: Date;
   };
+  // Poster credits (monthly quota)
+  posterCredits?: {
+    used: number;
+    limit: number;
+    resetDate: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -174,6 +180,11 @@ const EmployerSchema = new Schema<IEmployer>(
       secretKeyEnc: { type: String, select: false },
       isConfigured: { type: Boolean, default: false },
       configuredAt: { type: Date },
+    },
+    posterCredits: {
+      used: { type: Number, default: 0 },
+      limit: { type: Number, default: 5 },
+      resetDate: { type: Date },
     },
   },
   { timestamps: true }

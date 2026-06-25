@@ -106,6 +106,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       query.jobId = { $in: accessibleJobIds };
     }
     // If no Agent doc, skip filtering (consistent with jobs API)
+  } else if (ctx.role === "super_agent") {
+    // S1: scope super_agent to applications for employers within their book of
+    // business (team + region agents). Default-deny: an SA with no scope sees
+    // nothing — never the platform-wide candidate PII + CV set.
+    const { getSuperAgentEmployerIds } = await import("@/lib/auth/agentRestrictions");
+    const empIds = await getSuperAgentEmployerIds(ctx.userId);
+    if (empIds.length === 0) {
+      return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}) });
+    }
+    const saJobs = await Job.find({ employerId: { $in: empIds } }).select("_id").lean();
+    accessibleJobIds = saJobs.map((j) => j._id);
+    query.jobId = { $in: accessibleJobIds };
   }
 
   if (status) query.status = status;

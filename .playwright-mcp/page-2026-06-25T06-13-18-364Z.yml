@@ -1,0 +1,214 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - img "Mployedin" [ref=e8]
+            - generic [ref=e9]:
+              - generic [ref=e10]: Mployedin
+              - generic [ref=e11]: Employer workspace
+          - navigation [ref=e12]:
+            - link "Dashboard" [ref=e13] [cursor=pointer]:
+              - /url: /en/employer
+              - img [ref=e14]
+              - generic [ref=e19]: Dashboard
+            - button "Hiring" [ref=e20]:
+              - img [ref=e21]
+              - generic [ref=e24]: Hiring
+            - button "Tools" [ref=e25]:
+              - img [ref=e26]
+              - generic [ref=e28]: Tools
+            - button "Marketing" [ref=e29]:
+              - img [ref=e30]
+              - generic [ref=e34]: Marketing
+            - link "Calendar" [ref=e35] [cursor=pointer]:
+              - /url: /en/employer/calendar
+              - img [ref=e36]
+              - generic [ref=e38]: Calendar
+            - link "Payment Setup" [ref=e39] [cursor=pointer]:
+              - /url: /en/employer/payment-setup
+              - img [ref=e40]
+              - generic [ref=e42]: Payment Setup
+            - link "Analytics" [ref=e43] [cursor=pointer]:
+              - /url: /en/employer/analytics
+              - img [ref=e44]
+              - generic [ref=e45]: Analytics
+            - link "Messages" [ref=e46] [cursor=pointer]:
+              - /url: /en/employer/messages
+              - img [ref=e47]
+              - generic [ref=e49]: Messages
+            - link "Notifications" [ref=e50] [cursor=pointer]:
+              - /url: /en/notifications
+              - img [ref=e51]
+              - generic [ref=e54]: Notifications
+            - button "Team" [ref=e55]:
+              - img [ref=e56]
+              - generic [ref=e61]: Team
+            - button "Company Settings" [ref=e62]:
+              - img [ref=e63]
+              - generic [ref=e66]: Company Settings
+      - generic [ref=e67]:
+        - banner [ref=e68]:
+          - generic [ref=e69]:
+            - button "Search... ⌘ K" [ref=e72]:
+              - img [ref=e73]
+              - generic [ref=e76]: Search...
+              - generic:
+                - generic: ⌘
+                - text: K
+            - generic [ref=e145]:
+              - button "Switch to dark mode" [ref=e146]:
+                - img
+              - generic [ref=e147]:
+                - button "Switch to English" [ref=e149] [cursor=pointer]:
+                  - generic [ref=e150]: EN
+                - button "Switch to Arabic" [ref=e151] [cursor=pointer]:
+                  - generic [ref=e152]: AR
+              - button "Notifications" [ref=e153]:
+                - img
+              - button "Company logo" [ref=e154] [cursor=pointer]:
+                - img "Company logo" [ref=e155]
+        - main [ref=e77]:
+          - generic [ref=e156]:
+            - generic [ref=e158]:
+              - generic [ref=e159]:
+                - generic [ref=e160]:
+                  - generic [ref=e161]:
+                    - heading "Post a New Job" [level=1] [ref=e162]
+                    - paragraph [ref=e163]: Create a job posting to attract qualified candidates
+                  - generic [ref=e165]:
+                    - generic [ref=e166]: Auto-saves while you type
+                    - button "Load Template" [ref=e167]:
+                      - img
+                      - text: Load Template
+                - navigation "Form progress" [ref=e169]:
+                  - list [ref=e170]:
+                    - listitem [ref=e171]:
+                      - button "1 Step 1 Basic Info" [disabled] [ref=e172]:
+                        - generic [ref=e173]:
+                          - generic [ref=e175]: "1"
+                          - generic [ref=e176]:
+                            - paragraph [ref=e177]: Step 1
+                            - paragraph [ref=e178]: Basic Info
+                    - listitem [ref=e179]:
+                      - button "2 Step 2 Job Details" [disabled] [ref=e180]:
+                        - generic [ref=e181]:
+                          - generic [ref=e183]: "2"
+                          - generic [ref=e184]:
+                            - paragraph [ref=e185]: Step 2
+                            - paragraph [ref=e186]: Job Details
+                    - listitem [ref=e187]:
+                      - button "3 Step 3 Requirements" [disabled] [ref=e188]:
+                        - generic [ref=e189]:
+                          - generic [ref=e191]: "3"
+                          - generic [ref=e192]:
+                            - paragraph [ref=e193]: Step 3
+                            - paragraph [ref=e194]: Requirements
+                    - listitem [ref=e195]:
+                      - button "4 Step 4 Salary & Settings" [disabled] [ref=e196]:
+                        - generic [ref=e197]:
+                          - generic [ref=e199]: "4"
+                          - generic [ref=e200]:
+                            - paragraph [ref=e201]: Step 4
+                            - paragraph [ref=e202]: Salary & Settings
+                    - listitem [ref=e203]:
+                      - button "5 Step 5 Screening Questions" [disabled] [ref=e204]:
+                        - generic [ref=e205]:
+                          - generic [ref=e207]: "5"
+                          - generic [ref=e208]:
+                            - paragraph [ref=e209]: Step 5
+                            - paragraph [ref=e210]: Screening Questions
+              - generic [ref=e212]:
+                - generic [ref=e215]:
+                  - generic [ref=e216]:
+                    - generic [ref=e217]:
+                      - heading "Basic Information" [level=2] [ref=e218]
+                      - paragraph [ref=e219]: Start with the essentials and keep the role easy to scan.
+                    - generic [ref=e220]: Clear titles and location details usually improve candidate quality first.
+                  - generic [ref=e221]:
+                    - generic [ref=e222]:
+                      - generic [ref=e223]: Job Title *
+                      - textbox "Job Title *" [ref=e225]:
+                        - /placeholder: e.g. Senior Software Engineer
+                      - paragraph [ref=e226]: Use the exact role candidates search for instead of internal team titles.
+                    - generic [ref=e227]:
+                      - text: Category
+                      - combobox "Select a job category" [ref=e228]:
+                        - generic [ref=e229]: Select a job category
+                        - img [ref=e230]
+                      - paragraph [ref=e233]: Pick the closest category so recommendations and benchmarks stay relevant.
+                  - generic [ref=e234]:
+                    - generic [ref=e235]:
+                      - text: Employment Type
+                      - generic [ref=e236]: (optional)
+                    - combobox "Select employment type" [ref=e237]:
+                      - generic [ref=e238]: Select employment type
+                      - img [ref=e239]
+                    - paragraph [ref=e242]: Full-time, part-time, contract, etc. Helps candidates filter by work arrangement.
+                  - generic [ref=e243]:
+                    - generic [ref=e244]:
+                      - text: Duration
+                      - generic [ref=e245]: (optional)
+                    - textbox "e.g. 3-6 Months, 1 Year" [ref=e246]
+                    - paragraph [ref=e247]: Useful for internships or contract roles. Leave blank for permanent positions.
+                  - generic [ref=e248]:
+                    - generic [ref=e249]:
+                      - generic [ref=e250]:
+                        - generic [ref=e251]:
+                          - img [ref=e252]
+                          - text: Location
+                        - paragraph [ref=e255]: Add the base location and select the work arrangement.
+                      - generic [ref=e256]:
+                        - img [ref=e257]
+                        - generic [ref=e261]:
+                          - button "On-site" [ref=e262]
+                          - button "Hybrid" [ref=e263]
+                          - button "Remote" [ref=e264]
+                    - generic [ref=e265]:
+                      - generic [ref=e266]:
+                        - generic [ref=e267]: Country *
+                        - combobox "Select country" [ref=e268]:
+                          - generic [ref=e269]: Select country
+                          - img [ref=e270]
+                      - generic [ref=e273]:
+                        - generic [ref=e274]: City *
+                        - textbox "City *" [ref=e275]:
+                          - /placeholder: e.g. Dubai, Pune, London
+                - generic [ref=e277]:
+                  - generic [ref=e278]:
+                    - generic [ref=e279]:
+                      - generic [ref=e280]:
+                        - img [ref=e281]
+                        - text: Listing Health
+                      - paragraph [ref=e284]: Low detail so far - finish the essentials first
+                    - generic [ref=e285]: 10%
+                  - generic [ref=e286]:
+                    - generic [ref=e287]: 1/6 checks complete
+                    - generic [ref=e288]: Improve the essentials first
+                  - progressbar [ref=e289]
+                  - button "Best next improvements" [ref=e292]:
+                    - img [ref=e293]
+                    - text: Best next improvements
+                    - img [ref=e295]
+            - toolbar "Form navigation" [ref=e297]:
+              - generic [ref=e299]:
+                - generic [ref=e300]:
+                  - button "Back" [disabled]:
+                    - img
+                    - generic: Back
+                  - button "Save Draft" [ref=e301]:
+                    - img
+                    - generic [ref=e302]: Save Draft
+                - generic [ref=e303]:
+                  - generic [ref=e304]: Step 1 of 5
+                  - button "Next" [ref=e305]:
+                    - text: Next
+                    - img
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e141] [cursor=pointer]:
+    - img [ref=e142]
+  - alert [ref=e306]
+  - button "Open Recruitment AI" [ref=e307]:
+    - img [ref=e308]
+    - img [ref=e311]

@@ -65,13 +65,16 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     const agents = await Agent.find({ superAgentId: ctx.userId }).select("_id assignedEmployerIds").lean();
     const allEmployerIds = agents.flatMap((a) => a.assignedEmployerIds ?? []);
     const allAgentIds = agents.map((a) => a._id);
-    if (allEmployerIds.length > 0 || allAgentIds.length > 0) {
-      scopedEmployerIds = allEmployerIds;
-      query.$or = [
-        ...(allEmployerIds.length > 0 ? [{ employerId: { $in: allEmployerIds } }] : []),
-        ...(allAgentIds.length > 0 ? [{ agentId: { $in: allAgentIds } }] : []),
-      ];
+    // S1: default-deny. Previously, an SA with no team agents fell through with an
+    // empty query and saw EVERY interview platform-wide. Now no scope → no data.
+    if (allEmployerIds.length === 0 && allAgentIds.length === 0) {
+      return NextResponse.json({ interviews: [], total: 0, page, limit, statusCounts: {} });
     }
+    scopedEmployerIds = allEmployerIds;
+    query.$or = [
+      ...(allEmployerIds.length > 0 ? [{ employerId: { $in: allEmployerIds } }] : []),
+      ...(allAgentIds.length > 0 ? [{ agentId: { $in: allAgentIds } }] : []),
+    ];
   }
   // admin: query stays {} — sees all
 

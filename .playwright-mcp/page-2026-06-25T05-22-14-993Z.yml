@@ -1,0 +1,247 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - img "Mployedin" [ref=e8]
+            - generic [ref=e9]:
+              - generic [ref=e10]: Mployedin
+              - generic [ref=e11]: Super agent workspace
+          - navigation [ref=e12]:
+            - link "Dashboard" [ref=e13] [cursor=pointer]:
+              - /url: /en/super-agent
+              - img [ref=e14]
+              - generic [ref=e19]: Dashboard
+            - button "Team" [ref=e20]:
+              - img [ref=e21]
+              - generic [ref=e26]: Team
+            - button "Overview" [ref=e27]:
+              - img [ref=e28]
+              - generic [ref=e29]: Overview
+            - link "Exhibition Requests" [ref=e30] [cursor=pointer]:
+              - /url: /en/super-agent/exhibitions
+              - img [ref=e31]
+              - generic [ref=e33]: Exhibition Requests
+            - link "Exhibition Analytics" [ref=e34] [cursor=pointer]:
+              - /url: /en/super-agent/exhibitions/analytics
+              - img [ref=e35]
+              - generic [ref=e36]: Exhibition Analytics
+            - link "Resource Downloads" [ref=e37] [cursor=pointer]:
+              - /url: /en/super-agent/resources
+              - img [ref=e38]
+              - generic [ref=e40]: Resource Downloads
+            - link "Messages" [ref=e41] [cursor=pointer]:
+              - /url: /en/super-agent/messages
+              - img [ref=e42]
+              - generic [ref=e44]: Messages
+            - link "Settings" [ref=e45] [cursor=pointer]:
+              - /url: /en/super-agent/settings
+              - img [ref=e46]
+              - generic [ref=e49]: Settings
+            - link "Notifications" [ref=e50] [cursor=pointer]:
+              - /url: /en/notifications
+              - img [ref=e51]
+              - generic [ref=e54]: Notifications
+      - generic [ref=e55]:
+        - banner [ref=e56]:
+          - generic [ref=e57]:
+            - button "Search... ⌘ K" [ref=e60]:
+              - img [ref=e61]
+              - generic [ref=e64]: Search...
+              - generic:
+                - generic: ⌘
+                - text: K
+            - generic [ref=e65]:
+              - button "Switch to dark mode" [ref=e66]:
+                - img
+              - generic [ref=e67]:
+                - button "Switch to English" [ref=e69] [cursor=pointer]:
+                  - generic [ref=e70]: EN
+                - button "Switch to Arabic" [ref=e71] [cursor=pointer]:
+                  - generic [ref=e72]: AR
+              - button "Notifications" [ref=e73]:
+                - img
+              - button "SA" [ref=e74] [cursor=pointer]
+        - main [ref=e75]:
+          - generic [ref=e77]:
+            - generic [ref=e78]:
+              - generic [ref=e79]:
+                - generic [ref=e80]:
+                  - generic [ref=e81]:
+                    - img [ref=e82]
+                    - text: Super agent workspace
+                  - heading "Super Agent Dashboard" [level=1] [ref=e85]
+                  - paragraph [ref=e86]: Run regional oversight, guide your agent team, and clear hiring blockers from the same modern workspace used across the employer dashboard.
+                - generic [ref=e87]:
+                  - generic [ref=e88]:
+                    - paragraph [ref=e89]: Control lanes
+                    - paragraph [ref=e90]: Team and oversight
+                    - paragraph [ref=e91]: Manage field execution, approvals, placements, and commission visibility without bouncing between layouts.
+                  - generic [ref=e92]:
+                    - paragraph [ref=e93]: Operating rhythm
+                    - paragraph [ref=e94]: Built for daily review
+                    - paragraph [ref=e95]: Open the day with agent performance, move into approvals, then finish with placements and commission checks.
+              - generic [ref=e96]:
+                - generic [ref=e98]:
+                  - generic [ref=e99]:
+                    - paragraph [ref=e100]: Active Agents
+                    - paragraph [ref=e101]: "7"
+                    - paragraph [ref=e102]: Your live team roster with current delivery ownership.
+                  - img [ref=e104]
+                - generic [ref=e109]:
+                  - generic [ref=e110]:
+                    - paragraph [ref=e111]: Total Employers
+                    - paragraph [ref=e112]: "22"
+                    - paragraph [ref=e113]: Employer accounts under your agents' management.
+                  - img [ref=e115]
+                - generic [ref=e120]:
+                  - generic [ref=e121]:
+                    - paragraph [ref=e122]: Total Placements
+                    - paragraph [ref=e123]: "0"
+                    - paragraph [ref=e124]: Confirmed hires and closed outcomes flowing through your team.
+                  - img [ref=e126]
+                - generic [ref=e130]:
+                  - generic [ref=e131]:
+                    - paragraph [ref=e132]: Commissions Earned
+                    - paragraph [ref=e133]: ₹ 15,000
+                    - paragraph [ref=e134]: Commission performance and payout visibility for your portfolio.
+                  - img [ref=e136]
+              - generic [ref=e138]:
+                - generic [ref=e139]:
+                  - paragraph [ref=e140]: Jobs Posted
+                  - paragraph [ref=e141]: "14"
+                  - paragraph [ref=e142]: 12 active
+                - generic [ref=e143]:
+                  - paragraph [ref=e144]: CVs Received
+                  - paragraph [ref=e145]: "4"
+                  - paragraph [ref=e146]: Total applications
+                - generic [ref=e147]:
+                  - paragraph [ref=e148]: Leads Generated
+                  - paragraph [ref=e149]: "19"
+                  - paragraph [ref=e150]: Across all agents
+            - link "1 job approvals waiting on you Clear pending postings so your agents can go live without delay. Review approvals" [ref=e151] [cursor=pointer]:
+              - /url: /en/super-agent/approvals
+              - generic [ref=e152]:
+                - img [ref=e154]
+                - generic [ref=e157]:
+                  - paragraph [ref=e158]: 1 job approvals waiting on you
+                  - paragraph [ref=e159]: Clear pending postings so your agents can go live without delay.
+              - generic [ref=e160]:
+                - text: Review approvals
+                - img [ref=e161]
+            - generic [ref=e163]:
+              - generic [ref=e164]:
+                - generic [ref=e165]:
+                  - paragraph [ref=e166]: Conversion funnel
+                  - heading "See where the region converts and where it stalls" [level=2] [ref=e167]
+                  - paragraph [ref=e168]: Track volume from first lead through to confirmed placement across your whole team.
+                - generic [ref=e169]:
+                  - paragraph [ref=e170]: Placement rate
+                  - paragraph [ref=e171]: 0%
+              - generic [ref=e172]:
+                - generic [ref=e173]:
+                  - generic [ref=e174]: Leads
+                  - generic [ref=e176]: "19"
+                - generic [ref=e177]:
+                  - generic [ref=e178]: Employers
+                  - generic [ref=e180]: "22"
+                - generic [ref=e181]:
+                  - generic [ref=e182]: Jobs
+                  - generic [ref=e184]: "14"
+                - generic [ref=e185]:
+                  - generic [ref=e186]: Applications
+                  - generic [ref=e188]: "4"
+                - generic [ref=e189]:
+                  - generic [ref=e190]: Placements
+                  - generic [ref=e192]: "0"
+            - generic [ref=e193]:
+              - generic [ref=e194]:
+                - paragraph [ref=e195]: Quick actions
+                - heading "Jump into the work that moves your region forward" [level=2] [ref=e196]
+                - paragraph [ref=e197]: Jump straight into approvals, pipeline, and reporting — everything your region needs in one place.
+                - generic [ref=e198]:
+                  - link "Agent Performance Review the team roster, throughput, and individual accountability." [ref=e199] [cursor=pointer]:
+                    - /url: /en/super-agent/agents
+                    - generic [ref=e200]:
+                      - img [ref=e202]
+                      - img [ref=e206]
+                    - heading "Agent Performance" [level=3] [ref=e208]
+                    - paragraph [ref=e209]: Review the team roster, throughput, and individual accountability.
+                  - link "Lead Pipeline Track follow-ups, active prospecting, and employer conversion flow." [ref=e210] [cursor=pointer]:
+                    - /url: /en/super-agent/leads
+                    - generic [ref=e211]:
+                      - img [ref=e213]
+                      - img [ref=e217]
+                    - heading "Lead Pipeline" [level=3] [ref=e219]
+                    - paragraph [ref=e220]: Track follow-ups, active prospecting, and employer conversion flow.
+                  - link "Job Approvals Clear pending approvals quickly without leaving the oversight workspace." [ref=e221] [cursor=pointer]:
+                    - /url: /en/super-agent/approvals
+                    - generic [ref=e222]:
+                      - img [ref=e224]
+                      - img [ref=e227]
+                    - heading "Job Approvals" [level=3] [ref=e229]
+                    - paragraph [ref=e230]: Clear pending approvals quickly without leaving the oversight workspace.
+                  - link "Commission Report Stay on top of placement-driven earnings and regional payout status." [ref=e231] [cursor=pointer]:
+                    - /url: /en/super-agent/commissions
+                    - generic [ref=e232]:
+                      - img [ref=e234]
+                      - img [ref=e236]
+                    - heading "Commission Report" [level=3] [ref=e238]
+                    - paragraph [ref=e239]: Stay on top of placement-driven earnings and regional payout status.
+              - generic [ref=e240]:
+                - generic [ref=e241]:
+                  - generic [ref=e242]:
+                    - paragraph [ref=e243]: Team performance
+                    - heading "Top agents" [level=2] [ref=e244]
+                  - link "View all agents" [ref=e245] [cursor=pointer]:
+                    - /url: /en/super-agent/agents
+                    - text: View all agents
+                    - img [ref=e246]
+                - generic [ref=e248]:
+                  - generic [ref=e249]:
+                    - generic [ref=e250]: "1"
+                    - generic [ref=e251]:
+                      - paragraph [ref=e252]: Agent Ahmed
+                      - paragraph [ref=e253]: 13 leads · 15 jobs posted
+                    - generic [ref=e254]:
+                      - paragraph [ref=e255]: "7"
+                      - paragraph [ref=e256]: Placements
+                  - generic [ref=e257]:
+                    - generic [ref=e258]: "2"
+                    - generic [ref=e259]:
+                      - paragraph [ref=e260]: Agent Sara
+                      - paragraph [ref=e261]: 8 leads · 12 jobs posted
+                    - generic [ref=e262]:
+                      - paragraph [ref=e263]: "6"
+                      - paragraph [ref=e264]: Placements
+                  - generic [ref=e265]:
+                    - generic [ref=e266]: "3"
+                    - generic [ref=e267]:
+                      - paragraph [ref=e268]: Agent Khalid
+                      - paragraph [ref=e269]: 19 leads · 12 jobs posted
+                    - generic [ref=e270]:
+                      - paragraph [ref=e271]: "4"
+                      - paragraph [ref=e272]: Placements
+                  - generic [ref=e273]:
+                    - generic [ref=e274]: "4"
+                    - generic [ref=e275]:
+                      - paragraph [ref=e276]: Agent
+                      - paragraph [ref=e277]: 3 leads · 3 jobs posted
+                    - generic [ref=e278]:
+                      - paragraph [ref=e279]: "0"
+                      - paragraph [ref=e280]: Placements
+                  - generic [ref=e281]:
+                    - generic [ref=e282]: "5"
+                    - generic [ref=e283]:
+                      - paragraph [ref=e284]: svdsv
+                      - paragraph [ref=e285]: 0 leads · 0 jobs posted
+                    - generic [ref=e286]:
+                      - paragraph [ref=e287]: "0"
+                      - paragraph [ref=e288]: Placements
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e294] [cursor=pointer]:
+    - img [ref=e295]
+  - alert [ref=e298]
+  - button "Open AI Assistant" [ref=e299]:
+    - img [ref=e300]

@@ -1,0 +1,200 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - img "Mployedin" [ref=e8]
+            - generic [ref=e9]:
+              - generic [ref=e10]: Mployedin
+              - generic [ref=e11]: Admin workspace
+          - navigation [ref=e12]:
+            - link "Dashboard" [ref=e13] [cursor=pointer]:
+              - /url: /en/admin
+              - img [ref=e14]
+              - generic [ref=e19]: Dashboard
+            - button "Recruitment" [ref=e20]:
+              - img [ref=e21]
+              - generic [ref=e24]: Recruitment
+            - button "People" [ref=e25]:
+              - img [ref=e26]
+              - generic [ref=e31]: People
+            - button "Finance" [ref=e32]:
+              - img [ref=e33]
+              - generic [ref=e35]: Finance
+            - button "CMS / Content" [ref=e36]:
+              - img [ref=e37]
+              - generic [ref=e39]: CMS / Content
+            - button "Job Attributes" [ref=e40]:
+              - img [ref=e41]
+              - generic [ref=e42]: Job Attributes
+            - button "Location Data" [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e47]: Location Data
+            - button "Reports & Analytics" [ref=e48]:
+              - img [ref=e49]
+              - generic [ref=e50]: Reports & Analytics
+            - button "System" [ref=e51]:
+              - img [ref=e52]
+              - generic [ref=e55]: System
+            - link "Exhibition Requests" [ref=e56] [cursor=pointer]:
+              - /url: /en/admin/exhibitions
+              - img [ref=e57]
+              - generic [ref=e59]: Exhibition Requests
+            - link "Exhibition Analytics" [ref=e60] [cursor=pointer]:
+              - /url: /en/admin/exhibitions/analytics
+              - img [ref=e61]
+              - generic [ref=e62]: Exhibition Analytics
+            - link "Resource Management" [ref=e63] [cursor=pointer]:
+              - /url: /en/admin/resources
+              - img [ref=e64]
+              - generic [ref=e66]: Resource Management
+            - link "Messages" [ref=e67] [cursor=pointer]:
+              - /url: /en/admin/messages
+              - img [ref=e68]
+              - generic [ref=e70]: Messages
+            - link "Notifications" [ref=e71] [cursor=pointer]:
+              - /url: /en/notifications
+              - img [ref=e72]
+              - generic [ref=e75]: Notifications
+      - generic [ref=e76]:
+        - banner [ref=e77]:
+          - button "Search... ⌘ K" [ref=e81]:
+            - img [ref=e82]
+            - generic [ref=e85]: Search...
+            - generic:
+              - generic: ⌘
+              - text: K
+        - main [ref=e86]:
+          - generic [ref=e87]:
+            - generic [ref=e89]:
+              - generic [ref=e90]:
+                - heading "Finance & Revenue Operations" [level=1] [ref=e91]
+                - paragraph [ref=e92]: Enterprise invoice management, commission engine, tax compliance, and revenue intelligence dashboard.
+                - generic [ref=e94]:
+                  - img [ref=e95]
+                  - text: Finance workspace
+              - generic [ref=e99]:
+                - generic [ref=e100]:
+                  - img [ref=e101]
+                  - textbox "Search invoices by number…" [ref=e104]
+                - button "Filter" [ref=e105]:
+                  - img
+                  - text: Filter
+                - generic [ref=e106]:
+                  - generic [ref=e107]:
+                    - img [ref=e108]
+                    - text: 0 invoices
+                  - generic [ref=e110]:
+                    - button "Queue" [ref=e111]:
+                      - img [ref=e112]
+                      - text: Queue
+                    - button "Invoices" [ref=e115]:
+                      - img [ref=e116]
+                      - text: Invoices
+                    - button "Analytics" [ref=e119]:
+                      - img [ref=e120]
+                      - text: Analytics
+                - button "Export" [ref=e122]:
+                  - img
+                  - generic [ref=e123]: Export
+            - generic [ref=e124]:
+              - generic [ref=e125]:
+                - generic [ref=e126]:
+                  - heading "Uninvoiced Placements" [level=3] [ref=e127]
+                  - paragraph [ref=e128]: 0 placements pending invoice generation. Select and generate in bulk.
+                - generic [ref=e130]:
+                  - img [ref=e131]
+                  - textbox "Search placements…" [ref=e134]
+              - generic [ref=e135]:
+                - table [ref=e138]:
+                  - rowgroup [ref=e139]:
+                    - row "Job / Placement Employer Candidate Agent Amount Tax Region Commission Visa Quick Action" [ref=e140]:
+                      - columnheader [ref=e141]:
+                        - button [ref=e142]:
+                          - img [ref=e143]
+                      - columnheader "Job / Placement" [ref=e145]
+                      - columnheader "Employer" [ref=e146]
+                      - columnheader "Candidate" [ref=e147]
+                      - columnheader "Agent" [ref=e148]
+                      - columnheader "Amount" [ref=e149]
+                      - columnheader "Tax Region" [ref=e150]
+                      - columnheader "Commission" [ref=e151]
+                      - columnheader "Visa" [ref=e152]
+                      - columnheader "Quick Action" [ref=e153]
+                  - rowgroup [ref=e154]:
+                    - row [ref=e155]:
+                      - cell [ref=e156]
+                      - cell [ref=e158]
+                      - cell [ref=e160]
+                      - cell [ref=e162]
+                      - cell [ref=e164]
+                      - cell [ref=e166]
+                      - cell [ref=e168]
+                      - cell [ref=e170]
+                      - cell [ref=e172]
+                      - cell [ref=e174]
+                    - row [ref=e176]:
+                      - cell [ref=e177]
+                      - cell [ref=e179]
+                      - cell [ref=e181]
+                      - cell [ref=e183]
+                      - cell [ref=e185]
+                      - cell [ref=e187]
+                      - cell [ref=e189]
+                      - cell [ref=e191]
+                      - cell [ref=e193]
+                      - cell [ref=e195]
+                    - row [ref=e197]:
+                      - cell [ref=e198]
+                      - cell [ref=e200]
+                      - cell [ref=e202]
+                      - cell [ref=e204]
+                      - cell [ref=e206]
+                      - cell [ref=e208]
+                      - cell [ref=e210]
+                      - cell [ref=e212]
+                      - cell [ref=e214]
+                      - cell [ref=e216]
+                    - row [ref=e218]:
+                      - cell [ref=e219]
+                      - cell [ref=e221]
+                      - cell [ref=e223]
+                      - cell [ref=e225]
+                      - cell [ref=e227]
+                      - cell [ref=e229]
+                      - cell [ref=e231]
+                      - cell [ref=e233]
+                      - cell [ref=e235]
+                      - cell [ref=e237]
+                    - row [ref=e239]:
+                      - cell [ref=e240]
+                      - cell [ref=e242]
+                      - cell [ref=e244]
+                      - cell [ref=e246]
+                      - cell [ref=e248]
+                      - cell [ref=e250]
+                      - cell [ref=e252]
+                      - cell [ref=e254]
+                      - cell [ref=e256]
+                      - cell [ref=e258]
+                - generic [ref=e261]:
+                  - generic [ref=e262]:
+                    - generic [ref=e263]: Rows per page
+                    - combobox "Rows per page" [ref=e264]:
+                      - img [ref=e265]
+                    - combobox [ref=e267]
+                  - generic [ref=e268]: Showing 0–0 of 0
+                  - generic [ref=e269]:
+                    - button "First page" [disabled]:
+                      - img
+                    - button "Previous page" [disabled]:
+                      - img
+                    - generic [ref=e270]: 1 / 0
+                    - button "Next page" [disabled]:
+                      - img
+                    - button "Last page" [disabled]:
+                      - img
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e276] [cursor=pointer]:
+    - img [ref=e277]

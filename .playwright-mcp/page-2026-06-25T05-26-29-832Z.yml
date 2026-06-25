@@ -1,0 +1,258 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - img "Mployedin" [ref=e8]
+            - generic [ref=e9]:
+              - generic [ref=e10]: Mployedin
+              - generic [ref=e11]: Admin workspace
+          - navigation [ref=e12]:
+            - link "Dashboard" [ref=e13] [cursor=pointer]:
+              - /url: /en/admin
+              - img [ref=e14]
+              - generic [ref=e19]: Dashboard
+            - button "Recruitment" [ref=e20]:
+              - img [ref=e21]
+              - generic [ref=e24]: Recruitment
+            - button "People" [ref=e25]:
+              - img [ref=e26]
+              - generic [ref=e31]: People
+            - button "Finance" [ref=e32]:
+              - img [ref=e33]
+              - generic [ref=e35]: Finance
+            - button "CMS / Content" [ref=e36]:
+              - img [ref=e37]
+              - generic [ref=e39]: CMS / Content
+            - button "Job Attributes" [ref=e40]:
+              - img [ref=e41]
+              - generic [ref=e42]: Job Attributes
+            - button "Location Data" [ref=e43]:
+              - img [ref=e44]
+              - generic [ref=e47]: Location Data
+            - button "Reports & Analytics" [ref=e48]:
+              - img [ref=e49]
+              - generic [ref=e50]: Reports & Analytics
+            - button "System" [ref=e51]:
+              - img [ref=e52]
+              - generic [ref=e55]: System
+            - link "Exhibition Requests" [ref=e56] [cursor=pointer]:
+              - /url: /en/admin/exhibitions
+              - img [ref=e57]
+              - generic [ref=e59]: Exhibition Requests
+            - link "Exhibition Analytics" [ref=e60] [cursor=pointer]:
+              - /url: /en/admin/exhibitions/analytics
+              - img [ref=e61]
+              - generic [ref=e62]: Exhibition Analytics
+            - link "Resource Management" [ref=e63] [cursor=pointer]:
+              - /url: /en/admin/resources
+              - img [ref=e64]
+              - generic [ref=e66]: Resource Management
+            - link "Messages" [ref=e67] [cursor=pointer]:
+              - /url: /en/admin/messages
+              - img [ref=e68]
+              - generic [ref=e70]: Messages
+            - link "Notifications" [ref=e71] [cursor=pointer]:
+              - /url: /en/notifications
+              - img [ref=e72]
+              - generic [ref=e75]: Notifications
+      - generic [ref=e76]:
+        - banner [ref=e77]:
+          - generic [ref=e78]:
+            - button "Search... ⌘ K" [ref=e81]:
+              - img [ref=e82]
+              - generic [ref=e85]: Search...
+              - generic:
+                - generic: ⌘
+                - text: K
+            - generic [ref=e144]:
+              - button "Switch to dark mode" [ref=e145]:
+                - img
+              - generic [ref=e146]:
+                - button "Switch to English" [ref=e148] [cursor=pointer]:
+                  - generic [ref=e149]: EN
+                - button "Switch to Arabic" [ref=e150] [cursor=pointer]:
+                  - generic [ref=e151]: AR
+              - button "Notifications" [ref=e152]:
+                - img
+              - button "SA" [ref=e153] [cursor=pointer]
+        - main [ref=e86]:
+          - generic [ref=e155]:
+            - generic [ref=e156]:
+              - generic [ref=e157]:
+                - heading "Industries" [level=1] [ref=e158]
+                - paragraph [ref=e159]: Manage industry sector options
+              - generic [ref=e160]:
+                - generic [ref=e161]:
+                  - img
+                  - textbox "Search industries…" [ref=e162]
+                - button "Filter" [ref=e163]:
+                  - img
+                  - text: Filter
+                - button "Add New" [ref=e164]:
+                  - img
+                  - text: Add New
+            - table [ref=e167]:
+              - rowgroup [ref=e168]:
+                - row "Name Name (Arabic) Slug Order Status Actions" [ref=e169]:
+                  - columnheader "Name" [ref=e170]
+                  - columnheader "Name (Arabic)" [ref=e171]
+                  - columnheader "Slug" [ref=e172]
+                  - columnheader "Order" [ref=e173]
+                  - columnheader "Status" [ref=e174]
+                  - columnheader "Actions" [ref=e175]
+              - rowgroup [ref=e176]:
+                - row "AUDIT Test Industry — audit-test-industry 0 Active Edit AUDIT Test Industry Delete AUDIT Test Industry" [ref=e345]:
+                  - cell "AUDIT Test Industry" [ref=e346]
+                  - cell "—" [ref=e347]
+                  - cell "audit-test-industry" [ref=e348]
+                  - cell "0" [ref=e349]
+                  - cell "Active" [ref=e350]:
+                    - generic [ref=e351]: Active
+                  - cell "Edit AUDIT Test Industry Delete AUDIT Test Industry" [ref=e353]:
+                    - generic [ref=e354]:
+                      - button "Edit AUDIT Test Industry" [ref=e355]:
+                        - img
+                      - button "Delete AUDIT Test Industry" [ref=e356]:
+                        - img
+                - row "Accounting/Taxation المحاسبة/الضرائب accountingtaxation 0 Active Edit Accounting/Taxation Delete Accounting/Taxation" [ref=e357]:
+                  - cell "Accounting/Taxation" [ref=e358]
+                  - cell "المحاسبة/الضرائب" [ref=e359]
+                  - cell "accountingtaxation" [ref=e360]
+                  - cell "0" [ref=e361]
+                  - cell "Active" [ref=e362]:
+                    - generic [ref=e363]: Active
+                  - cell "Edit Accounting/Taxation Delete Accounting/Taxation" [ref=e365]:
+                    - generic [ref=e366]:
+                      - button "Edit Accounting/Taxation" [ref=e367]:
+                        - img
+                      - button "Delete Accounting/Taxation" [ref=e368]:
+                        - img
+                - row "Advertising/PR الإعلان/العلاقات العامة advertisingpr 1 Active Edit Advertising/PR Delete Advertising/PR" [ref=e369]:
+                  - cell "Advertising/PR" [ref=e370]
+                  - cell "الإعلان/العلاقات العامة" [ref=e371]
+                  - cell "advertisingpr" [ref=e372]
+                  - cell "1" [ref=e373]
+                  - cell "Active" [ref=e374]:
+                    - generic [ref=e375]: Active
+                  - cell "Edit Advertising/PR Delete Advertising/PR" [ref=e377]:
+                    - generic [ref=e378]:
+                      - button "Edit Advertising/PR" [ref=e379]:
+                        - img
+                      - button "Delete Advertising/PR" [ref=e380]:
+                        - img
+                - row "Agriculture/Fertilizer/Pesticide الزراعة/الأسمدة/المبيدات agriculturefertilizerpesticide 2 Active Edit Agriculture/Fertilizer/Pesticide Delete Agriculture/Fertilizer/Pesticide" [ref=e381]:
+                  - cell "Agriculture/Fertilizer/Pesticide" [ref=e382]
+                  - cell "الزراعة/الأسمدة/المبيدات" [ref=e383]
+                  - cell "agriculturefertilizerpesticide" [ref=e384]
+                  - cell "2" [ref=e385]
+                  - cell "Active" [ref=e386]:
+                    - generic [ref=e387]: Active
+                  - cell "Edit Agriculture/Fertilizer/Pesticide Delete Agriculture/Fertilizer/Pesticide" [ref=e389]:
+                    - generic [ref=e390]:
+                      - button "Edit Agriculture/Fertilizer/Pesticide" [ref=e391]:
+                        - img
+                      - button "Delete Agriculture/Fertilizer/Pesticide" [ref=e392]:
+                        - img
+                - row "Apparel/Clothing الملابس/الأزياء apparelclothing 3 Active Edit Apparel/Clothing Delete Apparel/Clothing" [ref=e393]:
+                  - cell "Apparel/Clothing" [ref=e394]
+                  - cell "الملابس/الأزياء" [ref=e395]
+                  - cell "apparelclothing" [ref=e396]
+                  - cell "3" [ref=e397]
+                  - cell "Active" [ref=e398]:
+                    - generic [ref=e399]: Active
+                  - cell "Edit Apparel/Clothing Delete Apparel/Clothing" [ref=e401]:
+                    - generic [ref=e402]:
+                      - button "Edit Apparel/Clothing" [ref=e403]:
+                        - img
+                      - button "Delete Apparel/Clothing" [ref=e404]:
+                        - img
+                - row "Architecture/Interior Design العمارة/التصميم الداخلي architectureinterior-design 4 Active Edit Architecture/Interior Design Delete Architecture/Interior Design" [ref=e405]:
+                  - cell "Architecture/Interior Design" [ref=e406]
+                  - cell "العمارة/التصميم الداخلي" [ref=e407]
+                  - cell "architectureinterior-design" [ref=e408]
+                  - cell "4" [ref=e409]
+                  - cell "Active" [ref=e410]:
+                    - generic [ref=e411]: Active
+                  - cell "Edit Architecture/Interior Design Delete Architecture/Interior Design" [ref=e413]:
+                    - generic [ref=e414]:
+                      - button "Edit Architecture/Interior Design" [ref=e415]:
+                        - img
+                      - button "Delete Architecture/Interior Design" [ref=e416]:
+                        - img
+                - row "Arts / Entertainment الفنون / الترفيه arts-entertainment 5 Active Edit Arts / Entertainment Delete Arts / Entertainment" [ref=e417]:
+                  - cell "Arts / Entertainment" [ref=e418]
+                  - cell "الفنون / الترفيه" [ref=e419]
+                  - cell "arts-entertainment" [ref=e420]
+                  - cell "5" [ref=e421]
+                  - cell "Active" [ref=e422]:
+                    - generic [ref=e423]: Active
+                  - cell "Edit Arts / Entertainment Delete Arts / Entertainment" [ref=e425]:
+                    - generic [ref=e426]:
+                      - button "Edit Arts / Entertainment" [ref=e427]:
+                        - img
+                      - button "Delete Arts / Entertainment" [ref=e428]:
+                        - img
+                - row "AutoMobile السيارات automobile 6 Active Edit AutoMobile Delete AutoMobile" [ref=e429]:
+                  - cell "AutoMobile" [ref=e430]
+                  - cell "السيارات" [ref=e431]
+                  - cell "automobile" [ref=e432]
+                  - cell "6" [ref=e433]
+                  - cell "Active" [ref=e434]:
+                    - generic [ref=e435]: Active
+                  - cell "Edit AutoMobile Delete AutoMobile" [ref=e437]:
+                    - generic [ref=e438]:
+                      - button "Edit AutoMobile" [ref=e439]:
+                        - img
+                      - button "Delete AutoMobile" [ref=e440]:
+                        - img
+                - row "Aviation الطيران aviation 7 Active Edit Aviation Delete Aviation" [ref=e441]:
+                  - cell "Aviation" [ref=e442]
+                  - cell "الطيران" [ref=e443]
+                  - cell "aviation" [ref=e444]
+                  - cell "7" [ref=e445]
+                  - cell "Active" [ref=e446]:
+                    - generic [ref=e447]: Active
+                  - cell "Edit Aviation Delete Aviation" [ref=e449]:
+                    - generic [ref=e450]:
+                      - button "Edit Aviation" [ref=e451]:
+                        - img
+                      - button "Delete Aviation" [ref=e452]:
+                        - img
+                - row "Banking/Financial Services البنوك/الخدمات المالية bankingfinancial-services 8 Active Edit Banking/Financial Services Delete Banking/Financial Services" [ref=e453]:
+                  - cell "Banking/Financial Services" [ref=e454]
+                  - cell "البنوك/الخدمات المالية" [ref=e455]
+                  - cell "bankingfinancial-services" [ref=e456]
+                  - cell "8" [ref=e457]
+                  - cell "Active" [ref=e458]:
+                    - generic [ref=e459]: Active
+                  - cell "Edit Banking/Financial Services Delete Banking/Financial Services" [ref=e461]:
+                    - generic [ref=e462]:
+                      - button "Edit Banking/Financial Services" [ref=e463]:
+                        - img
+                      - button "Delete Banking/Financial Services" [ref=e464]:
+                        - img
+            - generic [ref=e298]:
+              - generic [ref=e299]:
+                - generic [ref=e300]: Rows per page
+                - combobox "Rows per page" [ref=e301]:
+                  - generic: "10"
+                  - img [ref=e302]
+              - generic [ref=e304]: Showing 1–10 of 59
+              - generic [ref=e305]:
+                - button "First page" [disabled]:
+                  - img
+                - button "Previous page" [disabled]:
+                  - img
+                - generic [ref=e306]: 1 / 6
+                - button "Next page" [ref=e307]:
+                  - img
+                - button "Last page" [ref=e308]:
+                  - img
+    - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e140] [cursor=pointer]:
+    - img [ref=e141]
+  - alert [ref=e309]
+  - button "Open AI Assistant" [ref=e310]:
+    - img [ref=e311]

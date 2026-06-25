@@ -167,6 +167,25 @@ export async function getSuperAgentScope(saUserId: string): Promise<SuperAgentSc
   };
 }
 
+/**
+ * Resolve the employer _ids a super-agent may see: employers whose assigned
+ * agent is within the SA's effective scope (team + region). Returns [] when the
+ * SA has no scope — callers MUST treat [] as "see nothing" (default-deny), never
+ * as "no filter". This is the single source of truth for scoping super_agent
+ * reads on generic resource routes (applications, etc.).
+ */
+export async function getSuperAgentEmployerIds(
+  saUserId: string
+): Promise<mongoose.Types.ObjectId[]> {
+  const scope = await getSuperAgentScope(saUserId);
+  if (!scope || scope.effectiveAgentIds.length === 0) return [];
+  const { Employer } = await import("@/models/Employer");
+  const employers = await Employer.find({ agentId: { $in: scope.effectiveAgentIds } })
+    .select("_id")
+    .lean();
+  return employers.map((e) => e._id as mongoose.Types.ObjectId);
+}
+
 /** Deduplicate an array of ObjectIds. */
 function deduplicateIds(ids: mongoose.Types.ObjectId[]): mongoose.Types.ObjectId[] {
   const seen = new Set<string>();

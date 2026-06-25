@@ -1,0 +1,1849 @@
+{
+  "admin": [
+    {
+      "path": "/en/admin/activity-timeline",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/agents",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/analytics",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/applications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/approvals",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/audit",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "ClientFetchError: Failed to fetch. Read more at https://errors.authjs.dev#autherror\n    at fetchData (http://localhost:3000/_next/static/chu"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/admin/audit-logs",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "ClientFetchError: Failed to fetch. Read more at https://errors.authjs.dev#autherror\n    at fetchData (http://localhost:3000/_next/static/chu"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/admin/bulk-import",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/cms/banners",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/cms/blogs",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/cms/contact-submissions",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/cms/faqs",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/cms",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/cms/static-pages/new",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/cms/static-pages",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/cms/testimonials",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/cms/videos",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/commissions",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/commissions-report",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/communications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/employers",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/exhibitions/analytics",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/exhibitions",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/gdpr",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/impersonate",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/interviews",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/invoices/new",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/invoices",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/career-levels",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/degree-levels",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/degree-types",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/functional-areas",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/genders",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/industries",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/job-experience",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/job-shifts",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/job-skills",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/job-types",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/language-levels",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/major-subjects",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/marital-statuses",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/ownership-types",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes",
+      "status": 200,
+      "verdict": "WARN",
+      "notes": "1 console err",
+      "consoleErrors": [
+        "ClientFetchError: Failed to fetch. Read more at https://errors.authjs.dev#autherror\n    at fetchData (http://localhost:3000/_next/static/chu"
+      ],
+      "links": [
+        "/en/admin",
+        "/en/admin/exhibitions",
+        "/en/admin/exhibitions/analytics",
+        "/en/admin/resources",
+        "/en/admin/messages",
+        "/en/notifications"
+      ]
+    },
+    {
+      "path": "/en/admin/job-attributes/result-types",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-attributes/salary-periods",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/job-seekers",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/jobs/new",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/jobs",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/location-data/cities",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/location-data/countries",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/location-data",
+      "status": 200,
+      "verdict": "WARN",
+      "notes": "1 console err",
+      "consoleErrors": [
+        "ClientFetchError: Failed to fetch. Read more at https://errors.authjs.dev#autherror\n    at fetchData (http://localhost:3000/_next/static/chu"
+      ],
+      "links": [
+        "/en/admin",
+        "/en/admin/exhibitions",
+        "/en/admin/exhibitions/analytics",
+        "/en/admin/resources",
+        "/en/admin/messages",
+        "/en/notifications"
+      ]
+    },
+    {
+      "path": "/en/admin/location-data/states",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/matching-weight-templates",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/messages",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/placements",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/referral-links",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/reports",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/resources",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/settings/notifications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/settings",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/subscription-dashboard",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/subscription-plans",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/subscriptions",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/super-agents",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/system-health",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/target-management/create",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/target-management",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/target-report",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/targets",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/territory",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/users",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/webhooks",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/admin/workflow-templates",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/profile",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/settings",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/notifications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/account",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/admin/cms/static-pages/[id]/edit",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/admin/target-management/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/admin/targets/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    }
+  ],
+  "super_agent": [
+    {
+      "path": "/en/super-agent/agents",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/applications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/approvals",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/commissions",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/commissions-report",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/employers",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/exhibitions/analytics",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/exhibitions",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/insights",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/interviews",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/invoices/new",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/invoices",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/job-seekers",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/jobs",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/leads",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/market",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/messages",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/placements",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/referral-links",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/reports",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/resources",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/settings",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/target-management/create",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/target-management",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/target-report",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/targets",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/territory",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/profile",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/settings",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/notifications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/account",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/super-agent/agents/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/super-agent/targets/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    }
+  ],
+  "agent": [
+    {
+      "path": "/en/agent/calendar",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/candidates",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/chat",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/commissions",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/commissions-report",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/employers",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/exhibitions",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/interviews",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/invoices",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/job-seekers",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/jobs/new",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/jobs",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/leads/new",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/leads",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/messages",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/offers",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/placements",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/referral-links",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/reports",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/resources",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/settings",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/target-management",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/target-report",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/targets",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/agent/tasks",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/profile",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/settings",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/notifications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/account",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/agent/jobs/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/agent/leads/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/agent/targets/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    }
+  ],
+  "employer": [
+    {
+      "path": "/en/employer/activity-history",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/analytics",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/applications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/assessments",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/background-checks",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/calendar",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/campaigns",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/candidates",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/comm-templates",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/interviews/bulk",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/interviews",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/invoices",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/job-templates",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/jobs/ai-create",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/jobs/ai-extract",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/jobs/new",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/jobs",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/matching-weights",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/messages",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/my-posters",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/offers",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/payment-setup",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/placements",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/scorecards",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/screening-analytics",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/settings",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/subscription",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/talent-pools",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/team/activity-logs",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/team",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/training",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/employer/workflow",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/profile",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/settings",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/notifications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/account",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 2 console err",
+      "consoleErrors": [
+        "ClientFetchError: Failed to fetch. Read more at https://errors.authjs.dev#autherror\n    at fetchData (http://localhost:3000/_next/static/chu",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/employer/applications/[id]/panel",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/employer/candidates/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/employer/jobs/[id]/edit",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/employer/jobs/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/employer/jobs/[id]/poster",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/employer/placements/[id]/onboarding",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    }
+  ],
+  "job_seeker": [
+    {
+      "path": "/en/job-seeker/applications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/calendar",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/companies",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/courses",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/cv",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/documents",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/experience",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/interviews",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/jobs",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/messages",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/offers",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/onboarding",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/portfolio",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/preferences",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/profile",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/profile/personal-details",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/profile-boost",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/profile-views",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/referral",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/saved-searches",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/search",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/settings/notifications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/settings",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/skills",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/subscription",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/profile",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 2 console err",
+      "consoleErrors": [
+        "ClientFetchError: Failed to fetch. Read more at https://errors.authjs.dev#autherror\n    at fetchData (http://localhost:3000/_next/static/chu",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/settings",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 1 console err",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/notifications",
+      "status": 200,
+      "verdict": "FAIL",
+      "notes": "nextjs error overlay",
+      "consoleErrors": [],
+      "links": []
+    },
+    {
+      "path": "/en/account",
+      "status": 404,
+      "verdict": "FAIL",
+      "notes": "HTTP 404; nextjs error overlay; 2 console err",
+      "consoleErrors": [
+        "ClientFetchError: Failed to fetch. Read more at https://errors.authjs.dev#autherror\n    at fetchData (http://localhost:3000/_next/static/chu",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "links": []
+    },
+    {
+      "path": "/en/job-seeker/applications/[id]/feedback",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/job-seeker/applications/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/job-seeker/companies/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    },
+    {
+      "path": "/en/job-seeker/jobs/[id]",
+      "status": 0,
+      "verdict": "SKIP",
+      "notes": "no real id link found to test",
+      "consoleErrors": []
+    }
+  ]
+}

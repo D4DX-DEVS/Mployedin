@@ -1,128 +1,81 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
-import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
-import { uploadBuffer, deleteFile, urlToKey } from "@/lib/storage/spaces";
 import { connectDB } from "@/lib/db/mongoose";
-import Job from "@/models/Job";
+import { Employer } from "@/models/Employer";
+import PosterGeneration from "@/models/PosterGeneration";
+import type { UserRole } from "@/models/User";
 
-/**
- * POST /api/employers/posters
- * Upload a poster image to S3 and link it to the job.
- */
-export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const rl = await checkRateLimitDual(req, ctx.userId, RATE_LIMIT_CONFIGS.upload);
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: "Too many requests." },
-      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } },
-    );
-  }
-
-  const formData = await req.formData();
-  const file = formData.get("file") as File | null;
-  const jobId = formData.get("jobId") as string | null;
-
-  if (!file || !jobId) {
-    return NextResponse.json({ error: "File and jobId are required." }, { status: 400 });
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: "File too large. Max 5MB." }, { status: 400 });
-  }
-
-  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-    return NextResponse.json({ error: "Only PNG, JPEG, and WebP are allowed." }, { status: 400 });
-  }
-
-  await connectDB();
-
-  // Verify job belongs to this employer
-  const job = await Job.findOne({
-    _id: jobId,
-    $or: [{ employerId: ctx.userId }, { "employerId": { $exists: true } }],
-  });
-  if (!job) {
-    return NextResponse.json({ error: "Job not found." }, { status: 404 });
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const result = await uploadBuffer(buffer, {
-    folder: "media",
-    fileName: `poster-${jobId}-${Date.now()}.png`,
-    contentType: file.type,
-    validateAs: "image",
-  });
-
-  // Update job poster field
-  job.poster = {
-    url: result.url,
-    approvalStatus: "approved",
-    uploadedAt: new Date(),
-  };
-  await job.save();
-
-  return NextResponse.json({
-    url: result.url,
-    jobId,
-    savedAt: new Date().toISOString(),
-  });
-});
+interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 /**
  * GET /api/employers/posters
- * List all saved posters for the employer's jobs.
+ * Lists all AI-generated posters for the authenticated employer.
+ * Query: ?page=1&limit=12
  */
-export const GET = withAuth(async (req: NextRequest, ctx) => {
+async function getHandler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "employer") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await connectDB();
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id");
+  if (!employer) {
+    return NextResponse.json({ error: "Employer not found" }, { status: 404 });
+  }
 
-  const jobs = await Job.find(
-    {
-      employerId: ctx.userId,
-      "poster.url": { $exists: true, $ne: null },
-    },
-    { _id: 1, title: 1, poster: 1, createdAt: 1 },
-  )
-    .sort({ "poster.uploadedAt": -1 })
-    .limit(50)
-    .lean();
+  const url = new URL(req.url);
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+  const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") || "12", 10)));
+  const skip = (page - 1) * limit;
 
-  const posters = jobs.map((j) => ({
-    jobId: j._id,
-    jobTitle: j.title,
-    url: j.poster?.url,
-    savedAt: j.poster?.uploadedAt,
-  }));
+  const [posters, total] = await Promise.all([
+    PosterGeneration.find({ employerId: employer._id })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("jobId", "title")
+      .lean(),
+    PosterGeneration.countDocuments({ employerId: employer._id }),
+  ]);
 
-  return NextResponse.json({ posters });
-});
+  return NextResponse.json({
+    posters,
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  });
+}
 
 /**
- * DELETE /api/employers/posters
- * Remove a poster from S3 and clear the job reference.
+ * POST /api/employers/posters
+ * Saves a poster generation (confirms selection).
+ * Body: { generationId: string }
  */
-export const DELETE = withAuth(async (req: NextRequest, ctx) => {
-  const { jobId } = await req.json();
-
-  if (!jobId) {
-    return NextResponse.json({ error: "jobId is required." }, { status: 400 });
+async function postHandler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "employer") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   await connectDB();
-
-  const job = await Job.findOne({ _id: jobId, employerId: ctx.userId });
-  if (!job || !job.poster?.url) {
-    return NextResponse.json({ error: "Poster not found." }, { status: 404 });
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("_id");
+  if (!employer) {
+    return NextResponse.json({ error: "Employer not found" }, { status: 404 });
   }
 
-  try {
-    const key = urlToKey(job.poster.url);
-    await deleteFile(key);
-  } catch {
-    // File might already be deleted — continue
+  const body = await req.json();
+  const { generationId } = body;
+  if (!generationId) {
+    return NextResponse.json({ error: "generationId required" }, { status: 400 });
   }
 
-  job.poster = { url: undefined, approvalStatus: "pending", uploadedAt: undefined };
-  await job.save();
+  const poster = await PosterGeneration.findOne({
+    _id: generationId,
+    employerId: employer._id,
+  });
+  if (!poster) {
+    return NextResponse.json({ error: "Poster not found" }, { status: 404 });
+  }
 
-  return NextResponse.json({ success: true });
-});
+  return NextResponse.json({ id: poster._id, shareSlug: poster.shareSlug });
+}
+
+export const GET = withAuth(getHandler);
+export const POST = withAuth(postHandler);

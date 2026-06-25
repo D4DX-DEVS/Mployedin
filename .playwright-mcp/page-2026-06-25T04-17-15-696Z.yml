@@ -1,0 +1,65 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e9]:
+      - link "Mployedin" [ref=e11] [cursor=pointer]:
+        - /url: /en
+        - img "Mployedin" [ref=e12]
+      - generic [ref=e13]:
+        - heading "Where talent and opportunity meet." [level=1] [ref=e14]
+        - paragraph [ref=e15]: Whether you're hiring top talent or searching for your next role, Mployedin connects the right people with the right opportunities — across borders, powered by AI.
+      - generic [ref=e16]: © 2026 MPLOYEDIN. All rights reserved.
+    - generic [ref=e17]:
+      - button "Switch to dark mode" [ref=e65]:
+        - img
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - heading "Welcome back" [level=1] [ref=e25]
+          - paragraph [ref=e26]: Please enter your credentials to access your account.
+        - generic [ref=e27]:
+          - generic [ref=e28]:
+            - text: Email address
+            - textbox "Email address" [ref=e29]:
+              - /placeholder: name@example.com
+              - text: admin@mployedin.com
+          - generic [ref=e30]:
+            - generic [ref=e31]:
+              - generic [ref=e32]: Password
+              - link "Forgot password?" [ref=e33] [cursor=pointer]:
+                - /url: /en/forgot-password
+            - generic [ref=e34]:
+              - textbox "Password" [ref=e35]:
+                - /placeholder: ••••••••
+                - text: Admin@1234
+              - button "Show password" [ref=e36]:
+                - img [ref=e37]
+          - generic [ref=e40]:
+            - checkbox "Remember my email" [ref=e41]
+            - checkbox
+            - generic [ref=e42] [cursor=pointer]: Remember my email
+          - button "Sign in" [ref=e43]
+        - generic [ref=e48]: or continue with
+        - generic [ref=e49]:
+          - button "Google" [ref=e50]:
+            - img
+            - text: Google
+          - button "Apple" [ref=e51]:
+            - img
+            - text: Apple
+          - button "LinkedIn" [ref=e52]:
+            - img
+            - text: LinkedIn
+        - paragraph [ref=e53]:
+          - text: Don't have an account?
+          - link "Create account" [ref=e54] [cursor=pointer]:
+            - /url: /en/register
+          - text: ·
+          - link "Post jobs as employer" [ref=e55] [cursor=pointer]:
+            - /url: /en/employer-register
+  - button "Open Next.js Dev Tools" [ref=e67] [cursor=pointer]:
+    - generic [ref=e70]:
+      - text: Compiling
+      - generic [ref=e71]:
+        - generic [ref=e72]: .
+        - generic [ref=e73]: .
+        - generic [ref=e74]: .
+  - alert [ref=e66]

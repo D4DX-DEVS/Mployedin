@@ -16,7 +16,6 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useJobDetail, useUpdateJobStatus, useCloneJob, useDeleteJob } from "@/hooks/useJobs";
 import { useConfirm } from "@/hooks/useConfirm";
-import { JobPosterDialog } from "@/components/features/employer/jobs/JobPosterDialog";
 import SocialShare from "@/components/features/public/SocialShare";
 import { useTranslations } from "next-intl";
 
@@ -147,21 +146,13 @@ export default function JobDetailPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
-      {job && (
-        <JobPosterDialog
-          open={posterOpen}
-          onOpenChange={setPosterOpen}
-          job={job}
-          locale={locale}
-        />
-      )}
       {/* Back + Actions */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <Button variant="ghost" size="sm" className="gap-2 -ml-2 text-muted-foreground hover:text-foreground" onClick={() => router.push(`/${locale}/employer/jobs`)}>
           <ArrowLeft className="w-4 h-4" /> {t("backToJobs")}
         </Button>
         <div className="flex gap-2 flex-wrap">
-          <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={() => setPosterOpen(true)}>
+          <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={() => router.push(`/${locale}/employer/jobs/${job._id}/poster`)}>
             <ImageIcon className="w-3.5 h-3.5" /> {t("createPoster")}
           </Button>
           <Button size="sm" variant="outline" className="gap-1.5 h-9" onClick={cloneJob} disabled={cloning}>

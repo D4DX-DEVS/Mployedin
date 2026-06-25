@@ -35,9 +35,17 @@ export async function connectDB(): Promise<typeof mongoose> {
   }
 
   if (!cached.promise) {
+    // Pool sizing is env-tunable so serverless (many short-lived instances) and
+    // long-lived Node servers can be tuned without code changes.
+    // ponytail: serverless fan-out = instances × maxPoolSize against the Atlas
+    // connection cap — keep maxPoolSize low (e.g. 5) on Vercel/Lambda and size
+    // the Atlas tier accordingly; maxIdleTimeMS lets idle conns be reclaimed so
+    // bursts don't permanently pin connections.
     const opts = {
       bufferCommands: false,
-      maxPoolSize: 10,
+      maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE ?? "10", 10),
+      minPoolSize: 0,
+      maxIdleTimeMS: 60_000,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       autoIndex: false, // We manage indexes in ensureIndexes()
