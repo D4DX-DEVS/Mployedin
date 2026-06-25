@@ -215,6 +215,17 @@ export async function sendEmail(payload: EmailPayload): Promise<{ messageId: str
   }
 }
 
+/**
+ * Escape user-supplied values before interpolating into email HTML bodies.
+ * Prevents stored-XSS / HTML injection via names, job titles, company names, etc.
+ * App-generated URLs (verify/reset links) are not user free-text and are left as-is.
+ */
+function esc(value: unknown): string {
+  return String(value ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string
+  );
+}
+
 // Pre-built email templates
 export const EmailTemplates = {
   applicationReceived: (applicantName: string, jobTitle: string, companyName: string) => ({
@@ -225,8 +236,8 @@ export const EmailTemplates = {
           <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
         </div>
         <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Dear <strong>${applicantName}</strong>,</p>
-          <p>Your application for <strong>${jobTitle}</strong> at <strong>${companyName}</strong> has been received successfully.</p>
+          <p>Dear <strong>${esc(applicantName)}</strong>,</p>
+          <p>Your application for <strong>${esc(jobTitle)}</strong> at <strong>${esc(companyName)}</strong> has been received successfully.</p>
           <p>Our team will review your profile and get back to you within 3-5 business days.</p>
           <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
         </div>
@@ -242,11 +253,11 @@ export const EmailTemplates = {
           <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
         </div>
         <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Dear <strong>${applicantName}</strong>,</p>
-          <p>Your interview for <strong>${jobTitle}</strong> has been scheduled:</p>
+          <p>Dear <strong>${esc(applicantName)}</strong>,</p>
+          <p>Your interview for <strong>${esc(jobTitle)}</strong> has been scheduled:</p>
           <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p style="margin: 4px 0;"><strong>Date & Time:</strong> ${dateTime}</p>
-            <p style="margin: 4px 0;"><strong>Location:</strong> ${location}</p>
+            <p style="margin: 4px 0;"><strong>Date & Time:</strong> ${esc(dateTime)}</p>
+            <p style="margin: 4px 0;"><strong>Location:</strong> ${esc(location)}</p>
           </div>
           <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
         </div>
@@ -262,8 +273,8 @@ export const EmailTemplates = {
           <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
         </div>
         <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Dear <strong>${applicantName}</strong>,</p>
-          <p>Your application status for <strong>${jobTitle}</strong> has been updated to: <strong>${status.toUpperCase()}</strong></p>
+          <p>Dear <strong>${esc(applicantName)}</strong>,</p>
+          <p>Your application status for <strong>${esc(jobTitle)}</strong> has been updated to: <strong>${esc(status.toUpperCase())}</strong></p>
           <p>Log in to your MPLOYEDIN dashboard to view more details.</p>
           <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
         </div>
@@ -280,7 +291,7 @@ export const EmailTemplates = {
           <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Your Career, Amplified</p>
         </div>
         <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${esc(userName)}</strong>,</p>
           <p style="font-size: 15px; color: #374151; line-height: 1.6;">Thank you for joining MPLOYEDIN! Please verify your email address to unlock full access to your account and all platform features.</p>
           <div style="text-align: center; margin: 32px 0;">
             <a href="${verifyUrl}" style="background: #0D6FD8; color: white; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block; box-shadow: 0 2px 4px rgba(13,111,216,0.3);">Verify My Email</a>
@@ -305,8 +316,8 @@ export const EmailTemplates = {
           <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">MPLOYEDIN</h1>
         </div>
         <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
-          <p style="font-size: 15px; color: #374151; line-height: 1.6;">A request was made to change your MPLOYEDIN account email to <strong>${newEmail}</strong>. Click the button below to confirm this change.</p>
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${esc(userName)}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">A request was made to change your MPLOYEDIN account email to <strong>${esc(newEmail)}</strong>. Click the button below to confirm this change.</p>
           <div style="text-align: center; margin: 32px 0;">
             <a href="${confirmUrl}" style="background: #0D6FD8; color: white; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">Confirm Email Change</a>
           </div>
@@ -328,8 +339,8 @@ export const EmailTemplates = {
           <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">MPLOYEDIN Security</h1>
         </div>
         <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
-          <p style="font-size: 15px; color: #374151; line-height: 1.6;">A request was just made to change your account email address to <strong>${newEmail}</strong>. The change will only take effect once it is confirmed from the new address.</p>
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${esc(userName)}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">A request was just made to change your account email address to <strong>${esc(newEmail)}</strong>. The change will only take effect once it is confirmed from the new address.</p>
           <p style="font-size: 15px; color: #374151; line-height: 1.6;"><strong>If this was you</strong>, no action is needed.</p>
           <p style="font-size: 15px; color: #b91c1c; line-height: 1.6;"><strong>If this wasn't you</strong>, your password may be compromised. Change your password immediately and contact support@mployedin.com.</p>
         </div>
@@ -345,8 +356,8 @@ export const EmailTemplates = {
           <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">MPLOYEDIN Security</h1>
         </div>
         <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
-          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Your MPLOYEDIN account email has been changed to <strong>${newEmail}</strong>. This address will no longer receive account notifications.</p>
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${esc(userName)}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Your MPLOYEDIN account email has been changed to <strong>${esc(newEmail)}</strong>. This address will no longer receive account notifications.</p>
           <p style="font-size: 15px; color: #b91c1c; line-height: 1.6;"><strong>If you did not make this change</strong>, contact support@mployedin.com immediately.</p>
         </div>
       </div>
@@ -361,7 +372,7 @@ export const EmailTemplates = {
           <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">MPLOYEDIN Security</h1>
         </div>
         <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="font-size: 16px; color: #111827;">Hi <strong>${userName}</strong>,</p>
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${esc(userName)}</strong>,</p>
           <p style="font-size: 15px; color: #374151; line-height: 1.6;">Your MPLOYEDIN account has been temporarily locked for <strong>${lockMinutes} minutes</strong> after several failed sign-in attempts.</p>
           <p style="font-size: 15px; color: #374151; line-height: 1.6;"><strong>If this was you</strong>, simply wait and try again — or reset your password now to unlock immediately.</p>
           <p style="font-size: 15px; color: #b91c1c; line-height: 1.6;"><strong>If this wasn't you</strong>, someone may be trying to access your account. We strongly recommend resetting your password.</p>
@@ -382,11 +393,11 @@ export const EmailTemplates = {
           <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
         </div>
         <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p>Dear <strong>${contactName}</strong>,</p>
-          <p>Your employer account has been created by <strong>${agentName}</strong>. You can now start posting jobs and managing candidates on MPLOYEDIN.</p>
+          <p>Dear <strong>${esc(contactName)}</strong>,</p>
+          <p>Your employer account has been created by <strong>${esc(agentName)}</strong>. You can now start posting jobs and managing candidates on MPLOYEDIN.</p>
           <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p style="margin: 4px 0;"><strong>Email:</strong> ${email}</p>
-            <p style="margin: 4px 0;"><strong>Temporary Password:</strong> ${password}</p>
+            <p style="margin: 4px 0;"><strong>Email:</strong> ${esc(email)}</p>
+            <p style="margin: 4px 0;"><strong>Temporary Password:</strong> ${esc(password)}</p>
           </div>
           <div style="text-align: center; margin: 24px 0;">
             <a href="${loginUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Log In Now</a>
@@ -407,7 +418,7 @@ export const EmailTemplates = {
           <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Your Career, Amplified</p>
         </div>
         <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="font-size: 16px; color: #111827;">Hi <strong>${name}</strong>,</p>
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${esc(name)}</strong>,</p>
           <p style="font-size: 15px; color: #374151; line-height: 1.6;">Welcome aboard! You've just joined a community of professionals finding their next career move through MPLOYEDIN.</p>
           
           <div style="background: #f0f7ff; border-left: 4px solid #0D6FD8; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 24px 0;">
@@ -452,8 +463,8 @@ export const EmailTemplates = {
           <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Hire Smarter, Faster</p>
         </div>
         <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="font-size: 16px; color: #111827;">Hi <strong>${contactName}</strong>,</p>
-          <p style="font-size: 15px; color: #374151; line-height: 1.6;"><strong>${companyName}</strong> is now registered on MPLOYEDIN. You're ready to start connecting with top talent.</p>
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${esc(contactName)}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;"><strong>${esc(companyName)}</strong> is now registered on MPLOYEDIN. You're ready to start connecting with top talent.</p>
 
           <div style="background: #f0f7ff; border-left: 4px solid #0D6FD8; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 24px 0;">
             <p style="margin: 0 0 12px; font-weight: 600; color: #111827; font-size: 15px;">What you can do now:</p>
@@ -493,11 +504,11 @@ export const EmailTemplates = {
           <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Recruitment Agent Portal</p>
         </div>
         <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="font-size: 16px; color: #111827;">Hi <strong>${agentName}</strong>,</p>
-          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Your recruitment agent account has been created by <strong>${superAgentName}</strong>. You can now start managing leads, employers, and placements on MPLOYEDIN.</p>
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${esc(agentName)}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Your recruitment agent account has been created by <strong>${esc(superAgentName)}</strong>. You can now start managing leads, employers, and placements on MPLOYEDIN.</p>
           <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Email:</strong> ${email}</p>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Password:</strong> ${password}</p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Email:</strong> ${esc(email)}</p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Password:</strong> ${esc(password)}</p>
           </div>
           <div style="text-align: center; margin: 24px 0;">
             <a href="${loginUrl}" style="background: #0D6FD8; color: white; padding: 14px 40px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block; box-shadow: 0 2px 4px rgba(13,111,216,0.3);">Log In Now</a>

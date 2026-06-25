@@ -111,8 +111,12 @@ const EmployerSchema = new Schema<IEmployer>(
     // the same email report "already registered".
     phone: { type: String },
     designation: String,
-    registrationNo: String,
-    taxId: String,
+    // Sensitive corporate PII — encrypted at rest and excluded from queries by
+    // default (select:false). Decrypted in the post-find hook only when explicitly
+    // selected with `.select("+registrationNo +taxId")`. Prevents leaking via
+    // generic/staff employer reads (e.g. in-scope super_agent, list endpoints).
+    registrationNo: { type: String, select: false },
+    taxId: { type: String, select: false },
     address: String,
     country: String,
     website: String,

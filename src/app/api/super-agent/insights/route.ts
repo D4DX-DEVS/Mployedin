@@ -96,6 +96,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // ── 2. Parallel data fetch ──
   const agentDocs = await Agent.find({ _id: { $in: assignedAgentDocIds } }).select("userId activityLog performance").lean();
   const agentUserIds = agentDocs.map((a) => a.userId.toString());
+  // Lead.agentId / Placement.agentId reference the Agent PROFILE _id, not the
+  // User _id — query those collections by profile id (previous bug used user ids
+  // → always-empty analytics).
+  const agentDocIds = agentDocs.map((a) => String(a._id));
 
   const now = new Date();
   const windowStart = new Date(now.getTime() - ANALYSIS_WINDOW_DAYS * 24 * 60 * 60 * 1000);
@@ -103,11 +107,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   const [users, allLeads, recentPlacements] = await Promise.all([
     User.find({ _id: { $in: agentUserIds } }).select("name email").lean(),
-    Lead.find({ agentId: { $in: agentUserIds } })
+    Lead.find({ agentId: { $in: agentDocIds } })
       .select("agentId status createdAt convertedAt followUpAt activityLog")
       .lean(),
     Placement.find({
-      agentId: { $in: agentUserIds },
+      agentId: { $in: agentDocIds },
       createdAt: { $gte: comparisonStart },
     }).select("agentId createdAt").lean(),
   ]);
@@ -133,10 +137,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     lastActivityDaysAgo: number;
   }
 
-  const agentAnalytics: AgentAnalytics[] = agentUserIds.map((uid) => {
+  const agentAnalytics: AgentAnalytics[] = agentDocs.map((agentDoc) => {
+    const uid = agentDoc.userId.toString();
+    const docId = String(agentDoc._id);
     const user = userMap.get(uid);
-    const agentDoc = agentDocs.find((a) => a.userId.toString() === uid);
-    const agentLeads = allLeads.filter((l) => l.agentId?.toString() === uid);
+    const agentLeads = allLeads.filter((l) => l.agentId?.toString() === docId);
 
     // Week-over-week splits
     const leadsThisWeek = agentLeads.filter((l) => new Date(l.createdAt) >= windowStart).length;
@@ -154,7 +159,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }).length;
 
     const totalConversions = agentLeads.filter((l) => l.status === "converted").length;
-    const placementsCount = recentPlacements.filter((p) => p.agentId?.toString() === uid).length;
+    const placementsCount = recentPlacements.filter((p) => p.agentId?.toString() === docId).length;
 
     // Response time: time from lead creation → first activityLog entry
     const responseTimes = agentLeads

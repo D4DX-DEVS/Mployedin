@@ -33,7 +33,15 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
     query.agentId = agentDoc._id;
   } else if (ctx.role === "super_agent") {
-    query.superAgentId = ctx.userId;
+    // Commission.superAgentId references the SuperAgent PROFILE _id, not the User
+    // _id. Resolve the profile and fail closed if none, so the previous bug
+    // (querying by ctx.userId → always empty) is fixed without leaking others'.
+    const SuperAgent = (await import("@/models/SuperAgent")).default;
+    const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
+    if (!sa) {
+      return NextResponse.json({ commissions: [], summary: { currency: "AED" }, pagination: { page, limit, total: 0, pages: 0 } });
+    }
+    query.superAgentId = sa._id;
   }
   if (status && status !== "all") {
     query.status = status;

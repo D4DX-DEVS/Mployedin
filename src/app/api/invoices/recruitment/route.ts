@@ -50,7 +50,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
   // Validate employer exists
-  const employer = await Employer.findById(employerId).lean();
+  // taxId/registrationNo are select:false PII — opt in to snapshot onto the invoice.
+  const employer = await Employer.findById(employerId).select("+taxId +registrationNo").lean();
   if (!employer) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
 
   // Verify job belongs to employer

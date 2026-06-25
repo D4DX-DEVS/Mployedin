@@ -27,6 +27,7 @@ export interface IInterview extends Document {
   instructions?: string;
   reminderSent: boolean;
   reminderSentAt?: Date;
+  metadata?: { oneHourReminderSent?: boolean };
   status: InterviewStatus;
   feedback?: string;
   feedbackBy?: mongoose.Types.ObjectId;
@@ -71,6 +72,12 @@ const InterviewSchema = new Schema<IInterview>(
     instructions: String,
     reminderSent: { type: Boolean, default: false },
     reminderSentAt: Date,
+    // Dedup flag for the 1-hour reminder. Previously written by the cron via
+    // dot-notation but absent from the schema → strict mode dropped it → duplicate
+    // 1h reminders fired every run. Defined here so the write persists.
+    metadata: {
+      oneHourReminderSent: { type: Boolean, default: false },
+    },
     status: {
       type: String,
       enum: [

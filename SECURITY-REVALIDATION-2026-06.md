@@ -323,3 +323,51 @@ Enforcing active-account and 2FA checks on OAuth logins.
 Implementing Stripe/Razorpay webhook verification and removing the subscription feature gate bypass.
 Escaping dynamic values in email templates to prevent HTML injection.
 Adding the missing database indexes to src/lib/db/indexes.ts.
+
+---
+
+# ROUND 3 — Independent Pre-Launch Audit (verified 2026-06-25)
+
+Third-party audit ("INDEPENDENT PRE-LAUNCH PRODUCTION-READINESS AUDIT") cross-checked line-by-line against **current** code (which already includes this session's fixes #2/#3/#7/#8/#17 + #6). Status legend: ✅ FIXED this session · 🟥 REAL & OPEN · 🟦 STALE (already resolved) · ⚪ REAL but by-design/mitigated.
+
+## Already fixed this session (audit's "remaining" items that are now closed)
+- 🟦 **C2 — CV public storage** — FIXED: `cv-extract/route.ts` now passes `private: true`. Audit's claim is stale.
+- 🟦 **H2 — cron 1-hour reminder loop** — FIXED: `Interview` schema now defines `metadata.oneHourReminderSent` (#6) + interface declared; cron route already filters `"metadata.oneHourReminderSent": {$ne:true}` (line 75) and writes it (line 109). Dedupe works. Stale.
+- 🟦 **H6 — email HTML injection** — FIXED: `email.ts` now `esc()`-escapes all user-controlled interpolations across 13 templates. *Open sub-point remains → see H6b below.*
+
+## 🟥 REAL & OPEN — confirmed against current code (to fix)
+
+### CRITICAL
+- **C1 — Subscription enforcement globally bypassed.** `featureGate.ts:177` unconditional `return null` before all gate logic (rest is `no-unreachable` dead code); client route `subscriptions/feature-gate` returns `{bypass:true}`. Every paid feature/limit is free. *(Looks like a deliberate pre-launch toggle — confirm before flipping.)*
+
+### HIGH
+- **H1 — Agent can self-publish a job (approval-gate bypass).** `jobs/[id]/route.ts` PATCH: agent branch (56-65) checks ownership only; `status` is in `allowedFields` (73); the `status:"active"` gate exists **only** in the employer branch (50-54). Creation forces agent jobs to `pending_approval` (`jobs/route.ts:358`) but PATCH defeats it. Fix: block agent PATCH→`active` unless `poster.approvalStatus==="approved"`.
+- **H8 — IDOR: `application-forms/[id]` GET returns any form.** `getHandler` does `ApplicationForm.findById(id)` with no ownership check and `withAuth(getHandler)` has no `{resource,action}` guard; PATCH/DELETE both scope by `employerId`. Fix: scope GET by `{_id, employerId}` + add guard.
+- **H3 — Payment webhooks/checkout stubbed.** `stripe.ts`/`razorpay.ts` `verifyWebhook` throw "not yet configured"; `subscriptions/checkout` 503s. No monetization path. *(By-design pre-launch, but a launch blocker.)*
+- **H4 — OAuth bypasses `isActive` + 2FA.** `isActive`/lockout/2FA checked only in credentials `authorize` (config.ts:98,161); firebase/OAuth sign-in paths don't re-check on initial issuance. 2FA-enrolled accounts fully bypass 2FA via OAuth.
+- **H5 — Email-verification token never expires.** `User.emailVerificationToken` (User.ts:75) has no companion expiry; `verify-email` matches token+`isActive` only. Fix: add `emailVerificationExpiry` + enforce.
+- **H6b — Plaintext temp passwords emailed.** `email.ts` `employerWelcome`/`agentWelcome` interpolate `${password}` into the email body. Fix: send a one-time setup link instead of the password.
+- **H7 — Missing production indexes (`autoIndex:false`).** `indexes.ts` omits `offers`, `Conversation`, `DirectMessage`, `SavedJob`, `ImpersonationSession`, `TenantViewSession`, and the `Interview` partial-unique `(applicationId, interviewRound)`. Confirmed: no `offers`/`interviewRound` entries in `indexes.ts`.
+
+### MEDIUM
+- **M2 — `fullName` vs `name` field drift (multiple broken paths).** `User` schema field is `name` (User.ts:49, required); code writes/queries `fullName` in: `commissions/route.ts:74,90` (admin name-search returns nothing; `agentName` always null), `auth/agent-register/route.ts:46` (**registration throws — `name` missing**), `admin/bulk-import/route.ts:41` (user import broken). Also bulk-import `Employer.create` uses `contactInfo`/omits required `userId` → employer import broken. Fix: `fullName→name` throughout; fix bulk Employer shape.
+- **M1/D — `agent-register` has no rate limit** (unlike employer/job-seeker register).
+- **M3/L — `notifications` `limit` uncapped** (`route.ts:17`, no `Math.min`). Fix: cap at 100.
+- **M4/F — CSRF exempts entire `/api/auth/` prefix** (`csrf.ts:89`), incl. custom state-changing routes.
+- **M5 — bulk-import: non-transactional N+1 + leaks `err.message`** (`bulk-import/route.ts:28-92`).
+- **M9 — `super-agent/applications` mis-scopes admin.** Permits `admin` (line 12) but calls `getSuperAgentScope` → empty scope → `filter._id={$in:[]}` → admin sees nothing.
+- **M11 — job-seeker can view `paused` jobs** (`jobs/[id]/route.ts:26` allows `active`+`paused`). Product-dependent.
+- **M10 — env validation + empty-secret fallback.** `env.ts` validates only the 3 boot-critical secrets; `withAuth.ts:139`, `proxy.ts:220`, `unsubscribe:7`, `saved-search-alerts:144` fall back to `NEXTAUTH_SECRET ?? ""`. Mitigated by `validateEnv()` (required at boot) but a defence-in-depth smell.
+- **M6/M7 — non-transactional multi-doc writes** (offer↔application save; cascade deletes — `cascade.ts:17` self-documents single-node/no-replica-set limitation).
+- **M8/N — money stored as JS `Number` (float)** (`Invoice`/`Commission`/`Placement`). Theoretical aggregation drift.
+
+### LOW
+- **L2 — `chat-history` logs `userId`/`threadId`** (`route.ts:48,73,79`). Route through redacted logger.
+- **L3 — reset-password uses hashed-token DB lookup, no explicit `timingSafeEqual`** (`route.ts:39`). Low risk (hashed + expiry checked).
+- **L4 — service-worker `console.*` in prod**; **L9 — `console.warn` in cv-extract:286**.
+- **L5 — auth pages (reset-password, verify-email, confirm-email-change) hardcoded English** (no Arabic).
+- **L8 — GraphQL introspection still on** (admin-only). Optional: `@graphql-yoga/plugin-disable-introspection`.
+- **L7 — no in-repo Dockerfile/DR/IaC artifacts** (deployment-readiness gap; can't verify external infra).
+
+### Could not statically verify (need runtime tests)
+NoSQL-injection across the dynamic-filter surface; real OAuth callback behavior under deactivated/locked states; live production index state (whether `ensureIndexes` ran in the deployed env).

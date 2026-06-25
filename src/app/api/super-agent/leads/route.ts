@@ -37,10 +37,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ items: [], total: 0, page: 1, totalPages: 0 });
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // Regional scope MUST always apply. Keep it inside $and so later $or
+  // assignments (hasNotes / search) cannot clobber the territory boundary
+  // (previous bug: hasNotes="false" overwrote filter.$or → cross-region leak).
   const filter: any = {
-    $or: [
-      { superAgentId: scope.saProfileId },
-      { agentId: { $in: scope.effectiveAgentIds } },
+    $and: [
+      { $or: [
+        { superAgentId: scope.saProfileId },
+        { agentId: { $in: scope.effectiveAgentIds } },
+      ] },
     ],
   };
 
@@ -67,7 +72,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   // Boolean flags
   if (hasNotes === "true") filter.notes = { $exists: true, $ne: "" };
-  if (hasNotes === "false") filter.$or = [{ notes: { $exists: false } }, { notes: "" }];
+  if (hasNotes === "false") filter.$and.push({ $or: [{ notes: { $exists: false } }, { notes: "" }] });
   if (hasFollowUp === "true") filter.followUpAt = { $exists: true, $ne: null };
   if (hasFollowUp === "overdue") filter.followUpAt = { $lt: new Date(), $exists: true };
 
@@ -79,7 +84,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       { contactPerson: { $regex: safe, $options: "i" } },
       { contactEmail: { $regex: safe, $options: "i" } },
     ];
-    filter.$or = filter.$or ? [...filter.$or, ...searchOr] : searchOr;
+    filter.$and.push({ $or: searchOr });
   }
 
   // Sort

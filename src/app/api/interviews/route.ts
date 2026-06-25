@@ -85,13 +85,17 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   if (employerIdParam) {
     const { isValidObjectId } = await import("@/lib/security/sanitize");
     if (isValidObjectId(employerIdParam)) {
-      // If agent/super_agent has $or scope, replace it with a scoped employer+agentId filter
-      if (query.$or) {
-        delete query.$or;
-        query.employerId = employerIdParam;
-      } else {
-        query.employerId = employerIdParam;
+      // SECURITY (IDOR): a scoped role (agent/super_agent) may only narrow to an
+      // employer WITHIN their scope. Previously, passing ?employerId=<any> deleted
+      // the scoped $or and exposed ANY employer's interviews. admin has
+      // scopedEmployerIds === null → unrestricted.
+      const inScope = scopedEmployerIds === null
+        || scopedEmployerIds.some((id) => String(id) === employerIdParam);
+      if (!inScope) {
+        return NextResponse.json({ interviews: [], total: 0, page, limit, statusCounts: {} });
       }
+      delete query.$or;
+      query.employerId = employerIdParam;
     }
   }
 

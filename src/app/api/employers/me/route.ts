@@ -17,7 +17,8 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   }
 
   await connectDB();
-  const employer = await Employer.findOne({ userId: ctx.userId }).lean();
+  // Owner views their own profile — opt back into the select:false PII fields.
+  const employer = await Employer.findOne({ userId: ctx.userId }).select("+registrationNo +taxId").lean();
   if (!employer) {
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }

@@ -277,6 +277,7 @@ Rules:
         folder: "cvs",
         fileName: file.name,
         contentType: mimeType,
+        private: true, // CVs are private PII — never public-read; serve via presigned URL
         skipMalwareScan: true, // already scanned above
       });
       (updateData as Record<string, unknown>)["cv.originalUrl"] = uploaded.url;
