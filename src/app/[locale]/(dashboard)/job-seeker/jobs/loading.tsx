@@ -1,6 +1,6 @@
 export default function JobsLoading() {
   return (
-    <div className="page-container space-y-6 animate-pulse">
+    <div aria-hidden="true" aria-label="Loading" className="page-container space-y-6 animate-pulse">
       <div className="space-y-2">
         <div className="h-7 w-36 rounded-lg bg-muted" />
         <div className="h-4 w-56 rounded bg-muted/70" />
@@ -15,7 +15,7 @@ export default function JobsLoading() {
         {Array.from({ length: 9 }).map((_, i) => (
           <div
             key={i}
-            className="h-48 rounded-2xl border border-border bg-card"
+            className="h-48 rounded-2xl border border-border bg-muted/30"
             style={{ opacity: 1 - i * 0.07 }}
           />
         ))}

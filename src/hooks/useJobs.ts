@@ -1,5 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+function getApiErrorMessage(payload: unknown, fallback: string) {
+  if (!payload || typeof payload !== "object") return fallback;
+
+  const error = "error" in payload && typeof payload.error === "string"
+    ? payload.error
+    : undefined;
+  const details = "details" in payload && Array.isArray(payload.details)
+    ? payload.details
+    : [];
+  const firstDetail = details[0];
+
+  if (
+    firstDetail &&
+    typeof firstDetail === "object" &&
+    "message" in firstDetail &&
+    typeof firstDetail.message === "string"
+  ) {
+    return firstDetail.message;
+  }
+
+  return error ?? fallback;
+}
+
 // ── Types ──────────────────────────────────────────────────────────
 export interface Job {
   _id: string;
@@ -238,8 +261,8 @@ export function useUpdateJob() {
         body: JSON.stringify(updates),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Failed to update job" }));
-        throw new Error(err.error ?? "Failed to update job");
+        const err = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(err, "Failed to update job"));
       }
       return res.json();
     },

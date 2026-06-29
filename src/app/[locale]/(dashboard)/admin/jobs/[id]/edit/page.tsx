@@ -3,15 +3,16 @@
 import { useParams } from "next/navigation";
 import { SharedJobEditPage } from "@/components/features/jobs/SharedJobEditPage";
 
-export default function EmployerJobEditRoute() {
+export default function AdminJobEditRoute() {
   const { locale, id } = useParams<{ locale: string; id: string }>();
-  const jobHref = `/${locale}/employer/jobs/${id}`;
+  const jobsHref = `/${locale}/admin/jobs`;
 
   return (
     <SharedJobEditPage
       id={id}
-      backHref={jobHref}
-      afterSaveHref={jobHref}
+      backHref={jobsHref}
+      afterSaveHref={jobsHref}
+      backLabel="Back to jobs"
     />
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -149,6 +150,10 @@ function ScoreBadge({ score }: { score?: number }) {
 /* ------------------------------------------------------------------ */
 
 export default function AdminApplicationsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const jobIdFilter = searchParams.get("jobId") ?? "";
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   // Data
@@ -180,7 +185,7 @@ export default function AdminApplicationsPage() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [isApplyingAiSearch, setIsApplyingAiSearch] = useState(false);
 
-  const activeFilters = [status, employerId, source, scoreRange, dateFrom, dateTo].filter(Boolean).length;
+  const activeFilters = [jobIdFilter, status, employerId, source, scoreRange, dateFrom, dateTo].filter(Boolean).length;
 
   const exportColumns: ExportColumn<Application>[] = [
     { header: "Applicant", key: "jobSeekerId" as keyof Application, formatter: (_v, r) => { const a = r as unknown as Application; return a.jobSeekerId?.fullName ?? a.jobSeekerId?.userId?.name ?? "—"; } },
@@ -202,6 +207,7 @@ export default function AdminApplicationsPage() {
   const fetchApplications = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (jobIdFilter) params.set("jobId", jobIdFilter);
     if (search) params.set("search", search);
     if (status) params.set("status", status);
     if (employerId) params.set("employerId", employerId);
@@ -227,7 +233,7 @@ export default function AdminApplicationsPage() {
       if (data.stats) setStats(data.stats);
     }
     setLoading(false);
-  }, [search, status, employerId, source, scoreRange, dateFrom, dateTo, sortBy, sortOrder, page, limit, employers.length, stats, updateTotal]);
+  }, [jobIdFilter, search, status, employerId, source, scoreRange, dateFrom, dateTo, sortBy, sortOrder, page, limit, employers.length, stats, updateTotal]);
 
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
 
@@ -290,6 +296,9 @@ export default function AdminApplicationsPage() {
     setSortBy("appliedAt"); setSortOrder("desc");
     setAiQuery(""); setAiSummary(null);
     resetPage();
+    if (jobIdFilter) {
+      router.replace(pathname);
+    }
   };
 
   const toggleSort = (field: string) => {
@@ -485,6 +494,11 @@ export default function AdminApplicationsPage() {
             {showFilters ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
           <div className="flex items-center gap-2">
+            {jobIdFilter && (
+              <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
+                Selected job only
+              </Badge>
+            )}
             {activeFilters > 0 && (
               <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1.5 text-xs text-muted-foreground">
                 Clear filters

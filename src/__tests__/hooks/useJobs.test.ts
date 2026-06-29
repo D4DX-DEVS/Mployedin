@@ -7,6 +7,7 @@ import React from "react";
 import {
   useJobs,
   useUpdateJobStatus,
+  useUpdateJob,
   useCloneJob,
   useDeleteJob,
   useJobDetail,
@@ -313,5 +314,40 @@ describe("useJobDetail", () => {
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("useUpdateJob", () => {
+  it("surfaces the first validation detail message when the update fails", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({
+        error: "Validation failed",
+        details: [{ path: "screeningQuestions.0.label", message: "Too small: expected string to have >=1 characters" }],
+      }),
+    });
+
+    const { result } = renderHook(() => useUpdateJob(), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(
+      act(() => result.current.mutateAsync({ jobId: "j1", updates: { screeningQuestions: [{}] } })),
+    ).rejects.toThrow("Too small: expected string to have >=1 characters");
+  });
+
+  it("falls back to the API error when there are no validation details", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "Failed to update job" }),
+    });
+
+    const { result } = renderHook(() => useUpdateJob(), {
+      wrapper: createWrapper(),
+    });
+
+    await expect(
+      act(() => result.current.mutateAsync({ jobId: "j1", updates: { title: "Role" } })),
+    ).rejects.toThrow("Failed to update job");
   });
 });

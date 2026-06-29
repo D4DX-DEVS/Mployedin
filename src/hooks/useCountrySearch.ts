@@ -38,5 +38,6 @@ export function useCountrySearch(query: string, options?: { loadAll?: boolean })
     queryFn: () => fetchCountries(query),
     enabled: options?.loadAll || query.length >= 2,
     staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }

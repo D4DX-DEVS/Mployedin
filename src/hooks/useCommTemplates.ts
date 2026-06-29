@@ -42,6 +42,7 @@ export function useCommTemplates(type?: CommTemplateType | "all") {
     queryKey: commTemplateKeys.list(type),
     queryFn: () => fetchCommTemplates(type),
     staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
   });
 }
 

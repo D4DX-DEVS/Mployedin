@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -127,6 +128,8 @@ function getJobSummary(job: Job): string | null {
 /* ------------------------------------------------------------------ */
 
 export default function AdminJobsPage() {
+  const router = useRouter();
+  const { locale } = useParams<{ locale: string }>();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [serverApplicants, setServerApplicants] = useState<number | null>(null);
@@ -214,7 +217,7 @@ export default function AdminJobsPage() {
   const handleApproveJob = async (jobId: string) => {
     try {
       const res = await fetch(`/api/admin/jobs/${jobId}/approve`, {
-        method: "PATCH",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: true }),
       });
@@ -227,7 +230,7 @@ export default function AdminJobsPage() {
   const handleRejectJob = async (jobId: string) => {
     try {
       const res = await fetch(`/api/admin/jobs/${jobId}/approve`, {
-        method: "PATCH",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: false }),
       });
@@ -240,7 +243,7 @@ export default function AdminJobsPage() {
   const handleDeleteJob = async (jobId: string) => {
     if (!confirm("Are you sure you want to delete this job?")) return;
     try {
-      const res = await fetch(`/api/admin/jobs/${jobId}`, { method: "DELETE" });
+      const res = await fetch(`/api/jobs/${jobId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       toast.success("Job deleted");
       fetchJobs();
@@ -670,7 +673,7 @@ export default function AdminJobsPage() {
                         size="sm"
                         variant="outline"
                         className="h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold"
-                        onClick={() => window.open(`/admin/jobs/${job._id}/edit`, "_blank")}
+                        onClick={() => router.push(`/${locale}/admin/jobs/${job._id}/edit`)}
                       >
                         <Edit2 className="h-3.5 w-3.5" /> Edit
                       </Button>
@@ -678,7 +681,7 @@ export default function AdminJobsPage() {
                         size="sm"
                         variant="outline"
                         className="h-9 gap-1.5 rounded-xl px-3 text-xs font-semibold"
-                        onClick={() => window.open(`/admin/applications?jobId=${job._id}`, "_blank")}
+                        onClick={() => router.push(`/${locale}/admin/applications?jobId=${job._id}`)}
                       >
                         <ClipboardList className="h-3.5 w-3.5" /> Applications
                       </Button>

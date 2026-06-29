@@ -79,6 +79,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     "title", "description", "category", "location", "requirements",
     "salary", "status", "expiresAt", "applicationMode", "tags", "vacancies",
     "maxApplicants", "showSalary", "visibility", "screeningQuestions",
+    "employmentType", "workMode", "duration", "responsibilities",
+    "qualifications", "benefits", "learningOutcomes",
   ];
   const adminFields = ["poster.approvalStatus", "featuredUntil"];
 

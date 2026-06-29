@@ -64,6 +64,7 @@ export function useEmailSequences() {
       const data = (await res.json()) as { sequences?: EmailSequence[] };
       return data.sequences ?? [];
     },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -77,6 +78,7 @@ export function useEmailSequence(id: string | null) {
       const data = (await res.json()) as { sequence: EmailSequence };
       return data.sequence;
     },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
