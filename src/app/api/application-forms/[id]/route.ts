@@ -12,7 +12,10 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
   const id = params?.id || "";
   if (!mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
-  const form = await ApplicationForm.findById(id).lean();
+  const employer = await Employer.findOne({ userId: ctx.userId }).lean();
+  if (!employer) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const form = await ApplicationForm.findOne({ _id: id, employerId: employer._id }).lean();
   if (!form) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   return NextResponse.json({ form });

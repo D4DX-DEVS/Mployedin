@@ -23,7 +23,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
 
   // Job seekers may only view active jobs; owners and privileged roles can view any status
-  if (ctx.role === "job_seeker" && job.status !== "active" && job.status !== "paused") {
+  if (ctx.role === "job_seeker" && job.status !== "active") {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
@@ -63,6 +63,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       )
     );
     if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // Agents cannot directly publish jobs; admin approval is required.
+    if ((body as Record<string, unknown>).status === "active") {
+      return NextResponse.json(
+        { error: "Jobs must be approved by an admin before publishing." },
+        { status: 403 }
+      );
+    }
   } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

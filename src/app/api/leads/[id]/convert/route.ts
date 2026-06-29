@@ -88,13 +88,17 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 });
   }
 
-  // Generate a temporary password
+  // Generate a temporary password (hashed only — never sent in plaintext)
   const tempPassword = crypto.randomBytes(6).toString("base64url");
   const passwordHash = await bcrypt.hash(tempPassword, 12);
 
   // Generate email verification token
   const rawToken = crypto.randomBytes(32).toString("hex");
   const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+  // Generate password-setup token (sent via email link instead of plaintext password)
+  const rawSetupToken = crypto.randomBytes(32).toString("hex");
+  const hashedSetupToken = crypto.createHash("sha256").update(rawSetupToken).digest("hex");
 
   // Create User
   const user = await User.create({
@@ -105,6 +109,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     isActive: true,
     isEmailVerified: false,
     emailVerificationToken: hashedToken,
+    emailVerificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    passwordResetToken: hashedSetupToken,
+    passwordResetExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
 
   // Create Employer profile
@@ -164,11 +171,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
   const loginUrl = `${baseUrl}/login`;
   const verifyUrl = `${baseUrl}/en/verify-email?token=${rawToken}`;
+  const setupUrl = `${baseUrl}/en/reset-password?token=${rawSetupToken}`;
 
   await Promise.allSettled([
     sendEmail({
       to: contactEmail,
-      ...EmailTemplates.employerWelcome(contactPerson, contactEmail, tempPassword, "Your MPLOYEDIN Agent", loginUrl),
+      ...EmailTemplates.employerWelcome(contactPerson, contactEmail, setupUrl, "Your MPLOYEDIN Agent", loginUrl),
       userId: user._id.toString(),
       source: "lead-convert",
       category: "onboarding",

@@ -8,17 +8,26 @@
  */
 
 import { createYoga } from "graphql-yoga";
+import { useDisableIntrospection } from "@graphql-yoga/plugin-disable-introspection";
 import { schema } from "@/lib/graphql/schema";
 import { auth } from "@/lib/auth/config";
 import connectDB from "@/lib/db/mongoose";
 import { NextRequest, NextResponse } from "next/server";
+
+const isProd = process.env.NODE_ENV === "production";
 
 const yoga = createYoga({
   schema,
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response },
   // L1: never expose the GraphiQL schema explorer / playground in production.
-  graphiql: process.env.NODE_ENV !== "production",
+  graphiql: !isProd,
+  // L8: disable raw `__schema` introspection in production. The endpoint is
+  // already admin-only (C1), but this is defence-in-depth — an attacker who
+  // somehow obtains an admin session cannot dump the full schema (which would
+  // accelerate further exploitation). Dev environments keep introspection ON
+  // so the developer playground continues to work.
+  plugins: isProd ? [useDisableIntrospection()] : [],
 });
 
 async function guardAndHandle(req: NextRequest) {

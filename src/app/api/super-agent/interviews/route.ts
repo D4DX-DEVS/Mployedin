@@ -43,7 +43,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       .sort({ scheduledAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate("agentId", "fullName")
+      .populate({ path: "agentId", select: "userId", populate: { path: "userId", select: "name" } })
       .populate("jobSeekerId", "fullName email")
       .populate("jobId", "title")
       .populate("employerId", "companyName")
@@ -65,7 +65,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       candidateEmail: seeker?.email ?? "",
       jobTitle: i.jobTitle ?? job?.title ?? "",
       companyName: i.companyName ?? emp?.companyName ?? "",
-      agentName: agent?.fullName ?? "",
+      agentName: (agent?.userId as Record<string, unknown>)?.name ?? "",
       type: i.type ?? "video",
       status: i.status ?? "scheduled",
       scheduledAt: i.scheduledAt ?? i.createdAt,

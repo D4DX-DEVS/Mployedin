@@ -47,7 +47,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   await connectDB();
 
   const commission = await Commission.findById(params?.id)
-    .populate("agentId", "fullName")
+    .populate({ path: "agentId", select: "userId", populate: { path: "userId", select: "name" } })
     .populate("placementId", "jobTitle candidateName")
     .lean();
   if (!commission) return NextResponse.json({ error: "Commission not found" }, { status: 404 });

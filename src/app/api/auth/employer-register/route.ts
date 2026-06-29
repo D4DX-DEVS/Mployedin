@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
         isActive: true,
         isEmailVerified: false,
         emailVerificationToken: hashedToken,
+        emailVerificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
     } catch (err: unknown) {
       if (err && typeof err === "object" && "code" in err && (err as { code: number }).code === 11000) {

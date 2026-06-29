@@ -87,7 +87,9 @@ function timingSafeEqual(a: string, b: string): boolean {
  * Routes exempt from CSRF (e.g., NextAuth callbacks, public APIs).
  */
 const CSRF_EXEMPT_PREFIXES = [
-  "/api/auth/", // NextAuth handles its own CSRF
+  "/api/auth/callback/", // OAuth provider callbacks — provider can't send our CSRF cookie
+  "/api/auth/signin",    // NextAuth sign-in forms handle their own CSRF internally
+  "/api/auth/signout",   // NextAuth sign-out handles its own CSRF internally
   "/api/public/",
   "/api/contact",
   "/api/cron/",

@@ -6,6 +6,7 @@ import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import Lead from "@/models/Lead";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { z } from "zod";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { getSuperAgentOwnRegion, getSuperAgentScope, isRegionSubset } from "@/lib/auth/agentRestrictions";
@@ -242,13 +243,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       req,
     });
 
-    // Send welcome email to the new agent with credentials
+    // Send welcome email with a password-setup link instead of the plaintext password
     const saUser = await User.findById(ctx.userId).select("name").lean();
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
-    const loginUrl = `${baseUrl}/en/login`;
+    const rawSetupToken = crypto.randomBytes(32).toString("hex");
+    const hashedSetupToken = crypto.createHash("sha256").update(rawSetupToken).digest("hex");
+    await User.findByIdAndUpdate(user._id, {
+      passwordResetToken: hashedSetupToken,
+      passwordResetExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+    const setupUrl = `${baseUrl}/en/reset-password?token=${rawSetupToken}`;
     sendEmail({
       to: email,
-      ...EmailTemplates.agentWelcome(name, email, password, saUser?.name ?? "Your Super Agent", loginUrl),
+      ...EmailTemplates.agentWelcome(name, email, setupUrl, saUser?.name ?? "Your Super Agent", setupUrl),
       source: "agent-creation",
       category: "system",
     }).catch((err) =>

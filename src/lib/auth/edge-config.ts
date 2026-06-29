@@ -32,6 +32,15 @@ const edgeAuthConfig: NextAuthConfig = {
       return token;
     },
     session({ session, token }) {
+      // H4a: surface pending OAuth 2FA challenge state so middleware can
+      // redirect to /verify-oauth-2fa and lock down everything else.
+      if (token.pending2fa) {
+        (session.user as unknown as { pending2fa?: boolean }).pending2fa = true;
+        (session.user as unknown as { pending2faUserId?: string }).pending2faUserId =
+          token.pending2faUserId as string | undefined;
+        session.user.id = "";
+        return session;
+      }
       if (session.user) {
         session.user.image = (token.picture as string | null | undefined) ?? session.user.image;
         session.user.id = token.id as string;

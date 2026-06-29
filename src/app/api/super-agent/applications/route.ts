@@ -22,21 +22,22 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const status = url.searchParams.get("status") ?? "";
   const agentFilter = url.searchParams.get("agent") ?? "";
 
-  // Dual-scoping: team agents + region-based agents
-  const scope = await getSuperAgentScope(ctx.userId);
-  const agentIds = (scope?.effectiveAgentIds ?? []).map(String);
+  // Admin sees all agents/applications; super_agent is scoped to their team
+  let agentIds: string[] = [];
+  let agents: Record<string, unknown>[] = [];
 
-  /* Get agent user IDs for filtering */
-  const agents = await Agent.find({ _id: { $in: agentIds } })
-    .populate("userId", "fullName")
-    .select("userId assignedEmployerIds")
-    .lean();
+  if (ctx.role === "admin") {
+    agents = await Agent.find({}).populate("userId", "name").select("userId assignedEmployerIds").lean() as Record<string, unknown>[];
+    agentIds = agents.map((a) => String((a as { _id: unknown })._id));
+  } else {
+    const scope = await getSuperAgentScope(ctx.userId);
+    agentIds = (scope?.effectiveAgentIds ?? []).map(String);
+    agents = await Agent.find({ _id: { $in: agentIds } })
+      .populate("userId", "name")
+      .select("userId assignedEmployerIds")
+      .lean() as Record<string, unknown>[];
+  }
 
-  const agentUserIds = agents.map((a: Record<string, unknown>) => (a.userId as Record<string, unknown>)?._id);
-
-  // Team scope by job: applications belong to the team when their job was posted
-  // by a managed agent OR by an employer assigned to a managed agent. This mirrors
-  // the dashboard aggregation so application counts stay consistent across screens.
   const employerIds = agents.flatMap(
     (a: Record<string, unknown>) => (a.assignedEmployerIds as unknown[]) ?? []
   );
@@ -53,8 +54,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const filter: Record<string, unknown> = {};
   if (agentFilter && agentFilter !== "all") {
     filter.agentId = agentFilter;
-  } else {
-    // Match on either the denormalized agentId OR membership in a team job.
+  } else if (ctx.role !== "admin") {
+    // super_agent: scope to team agents and their jobs
     const scopeOr: Record<string, unknown>[] = [];
     if (agentIds.length > 0) scopeOr.push({ agentId: { $in: agentIds } });
     if (teamJobIds.length > 0) scopeOr.push({ jobId: { $in: teamJobIds } });
@@ -63,10 +64,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     } else if (scopeOr.length > 1) {
       filter.$and = [{ $or: scopeOr }];
     } else {
-      // No team scope at all → return nothing rather than the whole collection.
       filter._id = { $in: [] };
     }
   }
+  // admin with no agentFilter: no scope restriction → sees all applications
 
   if (status && status !== "all") filter.status = status;
   if (search) {
@@ -119,7 +120,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   const agentList = agents.map((a: Record<string, unknown>) => ({
     _id: String(a._id),
-    name: (a.userId as Record<string, unknown>)?.fullName ?? "Unknown",
+    name: (a.userId as Record<string, unknown>)?.name ?? "Unknown",
   }));
 
   return NextResponse.json({

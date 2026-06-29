@@ -116,6 +116,13 @@ export async function ensureIndexes() {
     { key: { status: 1 } },
     // Upcoming interviews by status, soonest first
     { key: { status: 1, scheduledAt: 1 } },
+    // Prevent duplicate active rounds for the same application
+    {
+      key: { applicationId: 1, interviewRound: 1 },
+      unique: true,
+      name: "unique_active_interview_round_per_application",
+      partialFilterExpression: { status: { $nin: ["cancelled"] } },
+    },
   ]);
 
   // ── Placements ─────────────────────────────────────────────────────────────
@@ -177,6 +184,45 @@ export async function ensureIndexes() {
   await safeCreateIndexes(db, "conversationthreads", [
     { key: { userId: 1, context: 1 } },
     { key: { createdAt: -1 } },
+  ]);
+
+  // ── Conversations (DM + customer care) ────────────────────────────────────
+  await safeCreateIndexes(db, "conversations", [
+    { key: { participants: 1 }, unique: true },
+    { key: { type: 1, "customerCare.status": 1 } },
+    { key: { "customerCare.assignedTo": 1 } },
+    { key: { lastMessageAt: -1 } },
+  ]);
+
+  // ── DirectMessages ─────────────────────────────────────────────────────────
+  await safeCreateIndexes(db, "directmessages", [
+    { key: { conversationId: 1, createdAt: 1 } },
+  ]);
+
+  // ── SavedJobs ──────────────────────────────────────────────────────────────
+  await safeCreateIndexes(db, "savedjobs", [
+    { key: { jobSeekerId: 1, jobId: 1 }, unique: true },
+    { key: { jobSeekerId: 1, savedAt: -1 } },
+  ]);
+
+  // ── ImpersonationSessions ─────────────────────────────────────────────────
+  await safeCreateIndexes(db, "impersonationsessions", [
+    { key: { adminId: 1 } },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
+  // ── TenantViewSessions ────────────────────────────────────────────────────
+  await safeCreateIndexes(db, "tenantviewsessions", [
+    { key: { actorId: 1 }, unique: true },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
+  // ── Offers ────────────────────────────────────────────────────────────────
+  await safeCreateIndexes(db, "offers", [
+    { key: { applicationId: 1 } },
+    { key: { jobSeekerId: 1 } },
+    { key: { employerId: 1 } },
+    { key: { status: 1 } },
   ]);
 
   // ── Job Attribute Master Data ──────────────────────────────────────────────

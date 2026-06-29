@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
   const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
 
   user.emailVerificationToken = hashedToken;
+  user.emailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await user.save();
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

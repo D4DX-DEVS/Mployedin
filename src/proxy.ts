@@ -140,6 +140,36 @@ export default auth(async function middleware(req: NextRequest) {
     return withSecurityHeaders(NextResponse.redirect(loginUrl));
   }
 
+  // H4a: OAuth 2FA challenge lock-down. A partial session (pending2fa=true)
+  // means the user signed in via OAuth but hasn't yet verified their TOTP code.
+  // Until they do, they may ONLY reach:
+  //   • /verify-oauth-2fa page (in either locale)
+  //   • POST /api/auth/oauth-2fa/verify  (the verify endpoint)
+  //   • GET  /api/auth/signout*           (so they can abandon the flow)
+  // Anything else: redirect pages to the verify page, 403 every API call.
+  const pending2fa = (session?.user as unknown as { pending2fa?: boolean } | undefined)?.pending2fa === true;
+  if (pending2fa) {
+    const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
+    const isVerify2faPage = stripped.startsWith("/verify-oauth-2fa");
+    const isVerify2faApi = pathname === "/api/auth/oauth-2fa/verify";
+    const isSignoutApi = pathname.startsWith("/api/auth/signout");
+    if (isVerify2faPage || isVerify2faApi || isSignoutApi) {
+      // Allow through — fall through to the rest of middleware (CSRF etc.).
+    } else if (pathname.startsWith("/api/")) {
+      return withSecurityHeaders(
+        NextResponse.json(
+          { error: "Two-factor authentication required", code: "2fa_required" },
+          { status: 403 }
+        )
+      );
+    } else {
+      const urlLocale = pathname.split("/")[1] || defaultLocale;
+      return withSecurityHeaders(
+        NextResponse.redirect(new URL(`/${urlLocale}/verify-oauth-2fa`, req.url))
+      );
+    }
+  }
+
   // Block dashboard access for users with unverified email
   if (session?.user && !isPublic) {
     const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
@@ -214,11 +244,9 @@ export default auth(async function middleware(req: NextRequest) {
     const strippedForTenant = pathname.replace(/^\/(?:en|ar)/, "") || "/";
     if (strippedForTenant.startsWith("/employer")) {
       const cookieVal = req.cookies.get(TENANT_COOKIE_NAME)?.value;
-      if (cookieVal) {
-        const payload = await verifyTenantCookie(
-          cookieVal,
-          process.env.NEXTAUTH_SECRET ?? ""
-        );
+      const tenantSecret = process.env.NEXTAUTH_SECRET;
+      if (cookieVal && tenantSecret) {
+        const payload = await verifyTenantCookie(cookieVal, tenantSecret);
         if (payload && payload.actorId === session.user.id) {
           tenantViewAllowed = true;
           requestHeaders.set("x-tenant-employer-id", payload.employerId);

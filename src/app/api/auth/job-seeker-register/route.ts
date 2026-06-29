@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       isActive: true,
       isEmailVerified: false,
       emailVerificationToken: hashedToken,
+      emailVerificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
     // Create empty JobSeeker profile — filled in during onboarding

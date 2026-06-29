@@ -13,6 +13,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -448,13 +449,20 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Send welcome email
+  // Send welcome email with a password-setup link instead of the plaintext password
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
   const loginUrl = `${baseUrl}/login`;
   const creatorName = ctx.role === "agent" || ctx.role === "super_agent" ? "Your MPLOYEDIN Agent" : "MPLOYEDIN Admin";
+  const rawSetupToken = crypto.randomBytes(32).toString("hex");
+  const hashedSetupToken = crypto.createHash("sha256").update(rawSetupToken).digest("hex");
+  await User.findByIdAndUpdate(user._id, {
+    passwordResetToken: hashedSetupToken,
+    passwordResetExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+  const setupUrl = `${baseUrl}/en/reset-password?token=${rawSetupToken}`;
   await sendEmail({
     to: email,
-    ...EmailTemplates.employerWelcome(name, email, password, creatorName, loginUrl),
+    ...EmailTemplates.employerWelcome(name, email, setupUrl, creatorName, loginUrl),
     userId: user._id.toString(),
     source: "employer-onboard",
     category: "onboarding",

@@ -4,12 +4,19 @@ import User from "@/models/User";
 import Agent from "@/models/Agent";
 import bcrypt from "bcryptjs";
 import { logActivity } from "@/lib/audit/log";
+import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/auth/agent-register — Agent self-registration            */
 /* ------------------------------------------------------------------ */
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const { allowed } = await checkRateLimit(`auth-register:${ip}`, RATE_LIMIT_CONFIGS.auth);
+  if (!allowed) {
+    return NextResponse.json({ message: "Too many requests. Please try again later." }, { status: 429 });
+  }
+
   await connectDB();
 
   const body = await req.json();
@@ -43,16 +50,15 @@ export async function POST(req: NextRequest) {
 
   /* Create user account (inactive until admin approves) */
   const user = await User.create({
-    fullName: fullName.trim(),
+    name: fullName.trim(),
     email: email.toLowerCase().trim(),
     phone: phone?.trim() ?? "",
     passwordHash: hashedPassword,
     role: "agent",
-    isActive: false, /* Requires admin approval */
-    needsOnboarding: true,
+    isActive: false,
+    isEmailVerified: false,
     country,
     city,
-    emailVerified: false,
     referralCode: referralCode || undefined,
   });
 

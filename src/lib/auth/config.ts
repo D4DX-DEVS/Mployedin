@@ -351,6 +351,8 @@ export const authConfig: NextAuthConfig = {
           // Update lastLogin for returning Firebase/Google users
           await User.findByIdAndUpdate(dbUser._id, { lastLogin: new Date() });
 
+          if (!dbUser.isActive) return null;
+
           // Look up isOnboarded for existing users
           const fbJobSeeker = await JobSeeker.findOne({ userId: dbUser._id }).select("isOnboarded").lean();
 
@@ -514,6 +516,7 @@ export const authConfig: NextAuthConfig = {
         } else {
           // Update lastLogin for returning OAuth users
           await User.findByIdAndUpdate(dbUser._id, { lastLogin: new Date() });
+          if (!dbUser.isActive) return null;
         }
 
         if (!isNewUser && account.provider === "linkedin" && !dbUser.linkedinSub) {
@@ -598,6 +601,43 @@ export const authConfig: NextAuthConfig = {
           }
         }
 
+        // ── H4a: 2FA challenge for OAuth sign-in ───────────────────────────────
+        // SECURITY: 2FA was previously enforced ONLY in the credentials authorize()
+        // flow. OAuth (Google/LinkedIn/Apple) issued a full session for any enrolled
+        // admin/super_agent account without a TOTP challenge — a complete 2FA bypass.
+        //
+        // We now treat a returning OAuth user that has twoFactorEnabled as a
+        // PARTIAL session: set token.pending2fa + pending2faUserId and skip
+        // populating token.id/role/locale/etc. The session callback refuses to
+        // surface identity fields while pending2fa is set, so the user is
+        // effectively unauthenticated for everything except the dedicated
+        // /api/auth/oauth-2fa/verify route + the verify-oauth-2fa page (which the
+        // middleware whitelists). Newly-created OAuth users are job_seeker and can
+        // never enroll in 2FA, so they fall through to the normal path below.
+        //
+        // NOTE: twoFactorSecretEnc is `select:false` — we gate on the canonical
+        // `twoFactorEnabled` boolean (always loaded). The verify endpoint
+        // re-fetches WITH the secret (+twoFactorSecretEnc) and fail-closes if
+        // it's missing.
+        const returningUserEnrolledIn2fa =
+          !isNewUser && Boolean(dbUser.twoFactorEnabled);
+
+        if (returningUserEnrolledIn2fa) {
+          token.pending2fa = true;
+          token.pending2faUserId = dbUser._id.toString();
+          // Defer token.id/role/... population until TOTP is verified — see
+          // POST /api/auth/oauth-2fa/verify which re-encodes the JWT cookie with
+          // the full identity after a successful challenge.
+          logActivity({
+            actorId: dbUser._id.toString(),
+            actorRole: dbUser.role,
+            action: "login.2fa_required",
+            resource: "auth",
+            meta: { email: dbUser.email, provider: account.provider },
+          });
+          return token;
+        }
+
         token.id = dbUser._id.toString();
         token.role = dbUser.role;
         token.locale = dbUser.locale;
@@ -655,6 +695,17 @@ export const authConfig: NextAuthConfig = {
       return token;
     },
     async session({ session, token }) {
+      // H4a: while the OAuth 2FA challenge is pending, expose the special flags
+      // (so middleware/verify-route can see them) but deliberately do NOT set
+      // session.user.id → withAuth treats the session as unauthenticated for
+      // every data API, forcing the user to complete TOTP first.
+      if (token.pending2fa) {
+        (session.user as unknown as { pending2fa?: boolean }).pending2fa = true;
+        (session.user as unknown as { pending2faUserId?: string }).pending2faUserId =
+          token.pending2faUserId as string | undefined;
+        session.user.id = "";
+        return session;
+      }
       if (session.user) {
         session.user.image = (token.picture as string | null | undefined) ?? session.user.image;
         session.user.id = token.id as string;

@@ -41,9 +41,13 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   if (search) {
     const safe = escapeRegex(search);
+    const matchingUsers = await User.find(
+      { $or: [{ name: { $regex: safe, $options: "i" } }, { email: { $regex: safe, $options: "i" } }] },
+      { _id: 1 }
+    ).lean();
+    const matchingUserIds = (matchingUsers as { _id: unknown }[]).map((u) => u._id);
     filter.$or = [
-      { "userId.fullName": { $regex: safe, $options: "i" } },
-      { "userId.email": { $regex: safe, $options: "i" } },
+      { userId: { $in: matchingUserIds } },
       { skills: { $regex: safe, $options: "i" } },
     ];
   }
@@ -61,7 +65,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate("userId", "fullName email phone isActive")
+      .populate("userId", "name email phone isActive")
       .lean(),
     JobSeeker.countDocuments(filter),
   ]);
@@ -73,7 +77,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     const user = s.userId as Record<string, unknown> | null;
     return {
       _id: String(s._id),
-      fullName: user?.fullName ?? "Unknown",
+      fullName: user?.name ?? "Unknown",
       email: user?.email ?? "",
       phone: user?.phone ?? "",
       country: s.country ?? "",

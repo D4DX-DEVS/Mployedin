@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
   const user = await User.findOne({
     emailVerificationToken: hashedToken,
     isActive: true,
-  }).select("+emailVerificationToken");
+  }).select("+emailVerificationToken +emailVerificationExpiry");
 
-  if (!user) {
+  if (!user || (user.emailVerificationExpiry && user.emailVerificationExpiry < new Date())) {
     return NextResponse.json(
       { error: "Invalid or expired verification token" },
       { status: 400 }
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
 
   user.isEmailVerified = true;
   user.emailVerificationToken = undefined;
+  user.emailVerificationExpiry = undefined;
   await user.save();
 
   logActivity({

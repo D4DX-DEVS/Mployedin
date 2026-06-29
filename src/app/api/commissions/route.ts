@@ -71,7 +71,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     const SuperAgent = (await import("@/models/SuperAgent")).default;
     const User = (await import("@/models/User")).default;
     const matchingUsers = await User.find(
-      { fullName: { $regex: escapeRegex(search.trim()), $options: "i" } },
+      { name: { $regex: escapeRegex(search.trim()), $options: "i" } },
       { _id: 1 }
     ).lean();
     const userIds = matchingUsers.map((u: { _id: unknown }) => u._id);
@@ -87,8 +87,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   const [commissionsRaw, total] = await Promise.all([
     Commission.find(query)
-      .populate({ path: "agentId", select: "userId", populate: { path: "userId", select: "fullName" } })
-      .populate({ path: "superAgentId", select: "userId", populate: { path: "userId", select: "fullName" } })
+      .populate({ path: "agentId", select: "userId", populate: { path: "userId", select: "name" } })
+      .populate({ path: "superAgentId", select: "userId", populate: { path: "userId", select: "name" } })
       .populate("placementId", "jobTitle candidateName")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -98,17 +98,17 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   ]);
 
   // Names are not stored on Agent/SuperAgent — resolve them from the linked User
-  // and flatten onto a stable `agentName` (and keep agentId.fullName for back-compat).
-  type PopulatedRef = { _id: unknown; userId?: { fullName?: string } };
+  // and flatten onto a stable `agentName`.
+  type PopulatedRef = { _id: unknown; userId?: { name?: string } };
   const commissions = (commissionsRaw as unknown as Array<Record<string, unknown> & {
     agentId?: PopulatedRef; superAgentId?: PopulatedRef;
   }>).map((c) => {
-    const agentName = c.agentId?.userId?.fullName ?? c.superAgentId?.userId?.fullName ?? null;
+    const agentName = c.agentId?.userId?.name ?? c.superAgentId?.userId?.name ?? null;
     return {
       ...c,
       agentName,
-      agentId: c.agentId ? { _id: c.agentId._id, fullName: c.agentId.userId?.fullName ?? null } : c.agentId,
-      superAgentId: c.superAgentId ? { _id: c.superAgentId._id, fullName: c.superAgentId.userId?.fullName ?? null } : c.superAgentId,
+      agentId: c.agentId ? { _id: c.agentId._id, name: c.agentId.userId?.name ?? null } : c.agentId,
+      superAgentId: c.superAgentId ? { _id: c.superAgentId._id, name: c.superAgentId.userId?.name ?? null } : c.superAgentId,
     };
   });
 

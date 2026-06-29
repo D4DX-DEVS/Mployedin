@@ -28,7 +28,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   // Find users referred by this code
   const referrals = await User.find({ referredBy: referralCode })
-    .select("fullName email isActive createdAt")
+    .select("name email isActive createdAt")
     .sort({ createdAt: -1 })
     .limit(50)
     .lean();
@@ -44,7 +44,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     rewardsEarned: successful * 5, // Simple reward: 5 points per successful referral
     referrals: referrals.map((r: Record<string, unknown>) => ({
       _id: String(r._id),
-      name: r.fullName ?? "Unknown",
+      name: r.name ?? "Unknown",
       email: r.email,
       status: r.isActive ? "active" : "registered",
       createdAt: r.createdAt,

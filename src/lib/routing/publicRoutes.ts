@@ -6,6 +6,7 @@ const PUBLIC_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/verify-email",
+  "/verify-oauth-2fa",
   "/confirm-email-change",
   "/maintenance",
   "/api/auth",

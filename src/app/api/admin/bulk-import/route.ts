@@ -38,7 +38,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
             continue;
           }
           await User.create({
-            fullName: row.fullName,
+            name: row.fullName,
             email: row.email?.toLowerCase(),
             phone: row.phone,
             role: row.role || "job_seeker",
@@ -64,20 +64,63 @@ async function handler(req: NextRequest, ctx: AuthContext) {
           break;
         }
         case "employers": {
-          const exists = await Employer.findOne({ "contactInfo.email": row.email?.toLowerCase() });
-          if (exists) {
+          const companyEmail = (row.email ?? "").toString().trim().toLowerCase();
+          const companyName = (row.companyName ?? "").toString().trim();
+          if (!companyEmail || !companyName) {
+            errors.push({ row: i + 1, message: "companyName and email are required" });
+            failed++;
+            continue;
+          }
+          // De-dup by the Employer's required companyEmail (schema has unique on
+          // userId; the email uniqueness is enforced at the User layer below via
+          // duplicate-key 11000 handling in the catch).
+          const existingEmployer = await Employer.findOne({ companyEmail }).lean();
+          if (existingEmployer) {
             errors.push({ row: i + 1, message: "Employer email already exists" });
             failed++;
             continue;
           }
+
+          // M5: create the User record FIRST (Employer.userId is required+unique).
+          // Generate a random high-entropy placeholder password & force a password
+          // setup via the existing reset-token flow so the admin / employer owner
+          // sets their real password on first login.
+          const crypto = await import("crypto");
+          const bcrypt = await import("bcryptjs");
+          const placeholderPassword = crypto.randomBytes(32).toString("base64url");
+          const passwordHash = await bcrypt.hash(placeholderPassword, 12);
+          const contactName = (row.contactName ?? "").toString().trim() || companyName;
+          const createdUser = await User.create({
+            name: contactName,
+            email: companyEmail,
+            passwordHash,
+            role: "employer",
+            isActive: true,
+            isEmailVerified: true,
+            phone: (row.phone ?? "").toString().trim() || undefined,
+            country: (row.country ?? "").toString().trim() || undefined,
+          });
+
+          // Issue a one-time password-setup token (24h) so the employer can set
+          // their own password on first sign-in — never email the placeholder.
+          const rawSetupToken = crypto.randomBytes(32).toString("hex");
+          const hashedSetupToken = crypto.createHash("sha256").update(rawSetupToken).digest("hex");
+          await User.findByIdAndUpdate(createdUser._id, {
+            passwordResetToken: hashedSetupToken,
+            passwordResetExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          });
+
           await Employer.create({
-            companyName: row.companyName,
-            industry: row.industry,
-            contactInfo: { email: row.email?.toLowerCase(), phone: row.phone },
-            country: row.country,
-            website: row.website,
+            userId: createdUser._id,
+            companyName,
+            companyEmail,
+            phone: (row.phone ?? "").toString().trim() || undefined,
+            industry: (row.industry ?? "").toString().trim() || undefined,
+            country: (row.country ?? "").toString().trim() || undefined,
+            website: (row.website ?? "").toString().trim() || undefined,
             verificationLevel: "basic",
           });
+
           success++;
           break;
         }
@@ -86,8 +129,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
           failed++;
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      errors.push({ row: i + 1, message });
+      const isDupKey = (err as { code?: number })?.code === 11000;
+      errors.push({ row: i + 1, message: isDupKey ? "Duplicate record" : "Import failed" });
       failed++;
     }
   }

@@ -102,6 +102,17 @@ export function withAuth(
       );
     }
 
+    // H4a: an OAuth user mid-2FA-challenge has a partial session (no id/role).
+    // Block ALL data-access routes — they must complete TOTP at
+    // /api/auth/oauth-2fa/verify first. That route uses auth() directly (not
+    // through withAuth), so it is not blocked here.
+    if ((session.user as unknown as { pending2fa?: boolean }).pending2fa) {
+      return NextResponse.json(
+        { error: "Two-factor authentication required", code: "2fa_required" },
+        { status: 403 }
+      );
+    }
+
     const role = (session.user as unknown as { role: UserRole }).role;
     const locale = (session.user as unknown as { locale: string }).locale ?? "en";
     const userId = session.user.id ?? "";
@@ -133,11 +144,9 @@ export function withAuth(
       pathname.startsWith("/api/agent");
     if (!skipTenantView && !isRoleSpecificApi && role !== "employer") {
       const cookieVal = req.cookies.get(TENANT_COOKIE_NAME)?.value;
-      if (cookieVal) {
-        const payload = await verifyTenantCookie(
-          cookieVal,
-          process.env.NEXTAUTH_SECRET ?? ""
-        );
+      const tenantSecret = process.env.NEXTAUTH_SECRET;
+      if (cookieVal && tenantSecret) {
+        const payload = await verifyTenantCookie(cookieVal, tenantSecret);
         if (payload && payload.actorId === userId) {
           resolvedTenantEmployerId = payload.employerId;
           resolvedTenantEmployerUserId = payload.employerUserId;
