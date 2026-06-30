@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     email: body.email.toLowerCase().trim(),
     isActive: true,
     isEmailVerified: false,
-  });
+  }).select("+emailVerificationOtp +emailVerificationExpiry");
 
   // Always return success to avoid email enumeration
   if (!user) {
@@ -45,7 +45,13 @@ export async function POST(req: NextRequest) {
   const rawToken = crypto.randomBytes(32).toString("hex");
   const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
 
+  // Generate a 6-digit OTP alongside the link. Both methods share the same
+  // expiry window so users can pick whichever is more convenient.
+  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+
   user.emailVerificationToken = hashedToken;
+  user.emailVerificationOtp = hashedOtp;
   user.emailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await user.save();
 
@@ -54,7 +60,7 @@ export async function POST(req: NextRequest) {
 
   await sendEmail({
     to: user.email,
-    ...EmailTemplates.verifyEmail(user.name || "there", verifyUrl),
+    ...EmailTemplates.verifyEmailOtp(user.name || "there", otp, verifyUrl),
   });
 
   return NextResponse.json({ success: true, message: "Verification email sent." });

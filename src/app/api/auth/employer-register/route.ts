@@ -119,9 +119,11 @@ export async function POST(req: NextRequest) {
 
     const hashed = await bcrypt.hash(password, 12);
 
-    // Generate email verification token
+    // Generate email verification token + 6-digit OTP (dual-method email)
     const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
 
     // Create user — catch duplicate key error for race condition safety
     let user;
@@ -134,6 +136,7 @@ export async function POST(req: NextRequest) {
         isActive: true,
         isEmailVerified: false,
         emailVerificationToken: hashedToken,
+        emailVerificationOtp: hashedOtp,
         emailVerificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
     } catch (err: unknown) {
@@ -310,7 +313,7 @@ export async function POST(req: NextRequest) {
     const dashboardUrl = `${baseUrl}/en/employer/dashboard`;
 
     const [verifyResult, welcomeResult] = await Promise.allSettled([
-      sendEmail({ to: contactEmail, ...EmailTemplates.verifyEmail(contactName, verifyUrl), source: "registration", category: "system" }),
+      sendEmail({ to: contactEmail, ...EmailTemplates.verifyEmailOtp(contactName, otp, verifyUrl), source: "registration", category: "system" }),
       sendEmail({ to: contactEmail, ...EmailTemplates.employerSelfWelcome(contactName, companyName, dashboardUrl), source: "registration", category: "system" }),
     ]);
 

@@ -9,6 +9,8 @@ import {
   CurrentOpeningsList,
   OpeningsStats,
   TimeToHire,
+  JobStatusQuickFilters,
+  AIRecommendedCandidatesCard,
 } from "@/components/features/employer/dashboard";
 import { CandidateQualityChartLazy as CandidateQualityChart } from "@/components/features/employer/dashboard/CandidateQualityChartLazy";
 
@@ -22,6 +24,8 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
 
   const {
     activeJobCount,
+    draftJobCount,
+    pausedJobCount,
     totalApplications,
     newApplications,
     inReview,
@@ -31,6 +35,9 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
     offersSent,
     avgMatchScore,
     highMatchCount,
+    band90PlusCount,
+    band80to89Count,
+    needsReviewCount,
     lowMatchCount,
     avgTimeToHire,
     lastActivityMinutes,
@@ -44,7 +51,16 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         newApplications={newApplications}
         scheduledInterviews={scheduledInterviews}
         activeJobCount={activeJobCount}
+        highMatchCount={highMatchCount}
         lastActivityMinutes={lastActivityMinutes}
+        locale={locale}
+      />
+
+      {/* ── Job Status Quick Filters (Active / Draft / Paused) ── */}
+      <JobStatusQuickFilters
+        activeJobs={activeJobCount}
+        draftJobs={draftJobCount}
+        pausedJobs={pausedJobCount}
         locale={locale}
       />
 
@@ -69,6 +85,16 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
           />
         </div>
       </div>
+
+      {/* ── AI Recommended Candidates (high-match surfacing) ── */}
+      <AIRecommendedCandidatesCard
+        highMatchCount={highMatchCount}
+        band90PlusCount={band90PlusCount}
+        band80to89Count={band80to89Count}
+        needsReviewCount={needsReviewCount}
+        activeJobCount={activeJobCount}
+        locale={locale}
+      />
 
       {/* ── Hiring Pipeline (4-stage: Applied / Screening / Interviews / Offers) ── */}
       <InteractivePipeline

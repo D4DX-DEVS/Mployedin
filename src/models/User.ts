@@ -15,6 +15,7 @@ export interface IUser extends Document {
   isActive: boolean;
   isEmailVerified: boolean;
   emailVerificationToken?: string;
+  emailVerificationOtp?: string;
   emailVerificationExpiry?: Date;
   // Verified email-change flow
   pendingEmail?: string;
@@ -74,6 +75,7 @@ const UserSchema = new Schema<IUser>(
     isActive: { type: Boolean, default: true },
     isEmailVerified: { type: Boolean, default: false },
     emailVerificationToken: { type: String, select: false },
+    emailVerificationOtp: { type: String, select: false },
     emailVerificationExpiry: { type: Date, select: false },
     pendingEmail: { type: String, select: false, lowercase: true, trim: true },
     emailChangeToken: { type: String, select: false, index: true },
@@ -107,6 +109,7 @@ const UserSchema = new Schema<IUser>(
       transform(_, ret: Record<string, unknown>) {
         delete ret.passwordHash;
         delete ret.emailVerificationToken;
+        delete ret.emailVerificationOtp;
         delete ret.pendingEmail;
         delete ret.emailChangeToken;
         delete ret.emailChangeExpires;

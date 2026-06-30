@@ -2,9 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
-  ArrowRight,
   BriefcaseBusiness,
   CalendarDays,
+  ChevronRight,
   Clock,
   FileText,
   Plus,
@@ -16,6 +16,8 @@ interface SmartHeaderProps {
   newApplications: number;
   scheduledInterviews: number;
   activeJobCount: number;
+  /** High-match candidate count (aiMatchScore >= 80) for the AI Matches tile. */
+  highMatchCount: number;
   lastActivityMinutes: number | null;
   locale: string;
 }
@@ -25,6 +27,7 @@ export function SmartHeader({
   newApplications,
   scheduledInterviews,
   activeJobCount,
+  highMatchCount,
   lastActivityMinutes,
   locale,
 }: SmartHeaderProps) {
@@ -32,8 +35,15 @@ export function SmartHeader({
 
   let subtitleKey: string;
   let eyebrowKey: string;
+  let subtitleValues: Record<string, string | number | Date> | undefined;
 
-  if (newApplications > 0) {
+  // AI matches take priority — it's the platform's key differentiator and
+  // acts as a hook into the AI Recommended Candidates section directly below.
+  if (highMatchCount > 0) {
+    subtitleKey = "subtitleAiMatches";
+    eyebrowKey = "aiMatchesFound";
+    subtitleValues = { count: highMatchCount };
+  } else if (newApplications > 0) {
     subtitleKey = "subtitleReview";
     eyebrowKey = "reviewQueueActive";
   } else if (scheduledInterviews > 0) {
@@ -47,8 +57,15 @@ export function SmartHeader({
     eyebrowKey = "readyToLaunch";
   }
 
-  const newJobHref = `/${locale}/employer/jobs/new`;
+  // Route "Create Job" directly to the AI Job Creator, removing the intermediate
+  // intro page click. The /employer/jobs/new route is still reachable from the
+  // Jobs page and the AI Creator's "edit in manual form" affordance, so manual
+  // mode and the Upload (ai-extract) flow remain accessible.
+  const newJobHref = `/${locale}/employer/jobs/ai-create`;
   const viewJobsHref = `/${locale}/employer/jobs`;
+  const applicationsHref = `/${locale}/employer/applications`;
+  const interviewsHref = `/${locale}/employer/interviews`;
+  const aiMatchesHref = `/${locale}/employer/applications?scoreMin=80`;
   const activityLabel = lastActivityMinutes !== null
     ? t("lastActivity", { time: formatTimeAgo(lastActivityMinutes, t) })
     : t("freshWorkspace");
@@ -66,7 +83,7 @@ export function SmartHeader({
             {t("welcomeBack", { userName })}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t(subtitleKey)}
+            {t(subtitleKey, subtitleValues)}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/80 px-3 py-1 backdrop-blur">
@@ -83,27 +100,25 @@ export function SmartHeader({
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row xl:min-w-[260px] xl:flex-col xl:justify-end">
-          {activeJobCount > 0 ? (
-            <Link
-              href={viewJobsHref}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-background/80 px-4 text-sm font-semibold text-foreground transition hover:bg-background"
-            >
-              {t("viewJobs")}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          ) : null}
           <Link
             href={newJobHref}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white transition hover:bg-sky-700"
           >
             <Plus className="h-4 w-4" />
-            {t("newJobPosting")}
+            {t("createJob")}
+            <span className="inline-flex items-center gap-1 rounded-md bg-white/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+              <Sparkles className="h-3 w-3" />
+              {t("aiBadge")}
+            </span>
           </Link>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div className="workspace-glass-panel rounded-2xl p-4">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Link
+          href={viewJobsHref}
+          className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("activeRoles")}</p>
@@ -114,9 +129,15 @@ export function SmartHeader({
               <BriefcaseBusiness className="h-5 w-5" />
             </div>
           </div>
-        </div>
+          <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+            {t("viewAll")}
+          </span>
+        </Link>
 
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <Link
+          href={applicationsHref}
+          className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("needsReview")}</p>
@@ -127,9 +148,15 @@ export function SmartHeader({
               <FileText className="h-5 w-5" />
             </div>
           </div>
-        </div>
+          <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+            {t("viewAll")}
+          </span>
+        </Link>
 
-        <div className="workspace-glass-panel rounded-2xl p-4">
+        <Link
+          href={interviewsHref}
+          className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("interviewsSet")}</p>
@@ -140,7 +167,29 @@ export function SmartHeader({
               <CalendarDays className="h-5 w-5" />
             </div>
           </div>
-        </div>
+          <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+            {t("viewAll")}
+          </span>
+        </Link>
+
+        <Link
+          href={aiMatchesHref}
+          className="workspace-glass-panel group rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-sky-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiMatches")}</p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{highMatchCount}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("aiMatchesDesc")}</p>
+            </div>
+            <div className="rounded-2xl bg-gradient-to-r from-amber-50 to-sky-50 p-2.5 text-amber-600">
+              <Sparkles className="h-5 w-5" />
+            </div>
+          </div>
+          <span className="mt-3 flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+            {t("viewAll")}
+          </span>
+        </Link>
       </div>
     </section>
   );

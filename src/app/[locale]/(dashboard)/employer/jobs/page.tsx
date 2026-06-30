@@ -70,6 +70,19 @@ export default function EmployerJobsPage() {
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [statusFilter, workModeFilter, salaryVisibilityFilter, debouncedSearch, debouncedLocation, debouncedSkills]);
 
+  // Pre-apply status filter from deep-link query (?status=active|draft|paused|closed|expired)
+  // Used by the employer dashboard quick-filter tabs.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const deepStatus = params.get("status");
+    const valid = ["active", "draft", "paused", "closed", "expired"];
+    if (deepStatus && valid.includes(deepStatus) && deepStatus !== statusFilter) {
+      setStatusFilter(deepStatus);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
   // ── React Query ────────────────────────────────────────────────

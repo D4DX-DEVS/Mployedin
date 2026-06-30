@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
     // Generate email verification token
     const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
 
     const user = await User.create({
       name: name.trim(),
@@ -46,6 +48,7 @@ export async function POST(req: NextRequest) {
       isActive: true,
       isEmailVerified: false,
       emailVerificationToken: hashedToken,
+      emailVerificationOtp: hashedOtp,
       emailVerificationExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
@@ -85,7 +88,7 @@ export async function POST(req: NextRequest) {
 
     // Send both emails in parallel, but await them before responding
     const [verifyResult, welcomeResult] = await Promise.allSettled([
-      sendEmail({ to: normalizedEmail, ...EmailTemplates.verifyEmail(name.trim(), verifyUrl), source: "registration", category: "system" }),
+      sendEmail({ to: normalizedEmail, ...EmailTemplates.verifyEmailOtp(name.trim(), otp, verifyUrl), source: "registration", category: "system" }),
       sendEmail({ to: normalizedEmail, ...EmailTemplates.jobSeekerWelcome(name.trim(), dashboardUrl), source: "registration", category: "system" }),
     ]);
 

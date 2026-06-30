@@ -308,6 +308,40 @@ export const EmailTemplates = {
     `,
   }),
 
+  verifyEmailOtp: (userName: string, otp: string, verifyUrl: string) => ({
+    subject: "Your MPLOYEDIN Verification Code – MPLOYEDIN",
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <div style="background: linear-gradient(135deg, #0D6FD8 0%, #0A5BB8 100%); padding: 32px 24px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">MPLOYEDIN</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Your Career, Amplified</p>
+        </div>
+        <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="font-size: 16px; color: #111827;">Hi <strong>${esc(userName)}</strong>,</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Verify your email address by entering this 6-digit code in the MPLOYEDIN verification screen:</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <div style="display: inline-block; background: #f3f4f6; border: 2px solid #0D6FD8; border-radius: 8px; padding: 16px 32px;">
+              <span style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #0D6FD8;">${esc(otp)}</span>
+            </div>
+          </div>
+          <p style="font-size: 13px; color: #6b7280; text-align: center; margin: 0 0 24px;">This code expires in 24 hours.</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+          <p style="font-size: 14px; color: #374151; line-height: 1.6;">Prefer to verify with a link? Click the button below:</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${verifyUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 15px; display: inline-block;">Verify via Link</a>
+          </div>
+          <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin: 24px 0;">
+            <p style="margin: 0; font-size: 13px; color: #6b7280;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="margin: 8px 0 0; font-size: 13px; word-break: break-all;"><a href="${verifyUrl}" style="color: #0D6FD8;">${verifyUrl}</a></p>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px; margin-top: 24px;">If you didn't create an account on MPLOYEDIN, you can safely ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+          <p style="color: #6b7280; font-size: 13px; text-align: center; margin: 0;">MPLOYEDIN — Connecting Talent with Opportunity</p>
+        </div>
+      </div>
+    `,
+  }),
+
   emailChangeVerify: (userName: string, confirmUrl: string, newEmail: string) => ({
     subject: "Confirm Your New Email Address – MPLOYEDIN",
     html: `

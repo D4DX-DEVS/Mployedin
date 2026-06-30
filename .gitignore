@@ -47,24 +47,30 @@ public/swe-worker-*.js
 public/workbox-*.js
 public/workbox-*.js.map
 
-plan.md
+# Claude Code / AI assistant local files (never commit these)
+.claude/
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+
+# AI-generated audit/report docs (local only)
+*-AUDIT.md
+*-REPORT.md
+*-FIXES.md
+*-PLAN.md
+*-REVALIDATION*.md
+*-CHECKLIST.md
+GAP-REPORT.md
+MAP.md
+VERIFY-REPORT.md
+IMPORTED-USERS.md
 CODEBASE_ANALYSIS.md
-mployedin/RESPONSIVENESS_AUDIT.md
-.claude
-SEO-AUDIT.md
+ROLES.md
+docs/
 
-mployedin/.claude
-.claude
-
-# analysis/graph tools (not needed at runtime)
+# analysis/graph tools (local only, each dev rebuilds)
 graphify-out/
 .code-review-graph/
-mployedin/ROLES.md
-
-# graphify - knowledge graph (local only, each dev rebuilds)
-graphify-out/
-.code-review-graph
-.code-review-graph
 
 # ===== Temp/junk files from chat sessions =====
 

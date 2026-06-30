@@ -3,7 +3,7 @@
 import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Bot, Globe, Loader2, Mic, Send, Sparkles, WandSparkles, X } from "lucide-react";
+import { Bot, Globe, Loader2, Mic, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
@@ -255,6 +255,8 @@ export default function EmployerAIJobCreatePage() {
   const [bulkProgress, setBulkProgress] = useState<{ created: number; total: number; errors: string[] } | null>(null);
   const [voiceLanguage, setVoiceLanguage] = useState("auto");
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -434,6 +436,76 @@ export default function EmployerAIJobCreatePage() {
     }
   };
 
+  // Upload Job Poster — feeds the uploaded file through the same
+  // /api/ai/job-extract endpoint used by the standalone ai-extract page, then
+  // surfaces the result inside this chat workspace (single job → extractedJob
+  // preview; bulk jobs → extractedBulkJobs chooser). Keeps Typing, Voice, and
+  // Upload as one unified input workspace.
+  const handleUploadPoster = async (file: File) => {
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error(t("jobCreator.toastInvalidType"));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t("jobCreator.toastTooLarge"));
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/ai/job-extract", { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error((err as { error?: string }).error ?? t("jobCreator.toastExtractFailed"));
+        return;
+      }
+
+      const data = await res.json();
+      const jobs: ExtractedJob[] = Array.isArray(data.jobs) ? data.jobs : [];
+
+      if (jobs.length === 0) {
+        toast.error(t("jobCreator.toastNoJobs"));
+        return;
+      }
+
+      // Inject an assistant message so the chat history reflects the upload.
+      const summary =
+        jobs.length === 1
+          ? t("jobCreator.uploadExtractedOne", { title: jobs[0].title ?? t("jobCreator.untitledJob") })
+          : t("jobCreator.uploadExtractedMany", { count: jobs.length });
+      setMessages((prev) => [...prev, { role: "assistant", content: summary }]);
+
+      if (jobs.length === 1) {
+        setExtractedJob(jobs[0]);
+        setExtractedBulkJobs([]);
+      } else {
+        setExtractedBulkJobs(jobs.slice(0, 10));
+        setExtractedJob(null);
+      }
+      toast.success(
+        jobs.length === 1
+          ? t("jobCreator.draftReady")
+          : t("jobCreator.toastExtracted", { count: jobs.length })
+      );
+    } catch {
+      toast.error(t("jobCreator.toastProcessFailed"));
+    } finally {
+      setIsUploading(false);
+      // Reset the hidden input so the same file can be re-uploaded if needed.
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="page-container">
       <PageHeader
@@ -610,6 +682,31 @@ export default function EmployerAIJobCreatePage() {
                       </div>
                     )}
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isStreaming || isUploading}
+                    className="h-10 w-10 rounded-xl border-border/60 p-0 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                    title={t("jobCreator.uploadJobPoster")}
+                    aria-label={t("jobCreator.uploadJobPoster")}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf,image/jpeg,image/png,image/webp,.docx"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleUploadPoster(file);
+                    }}
+                  />
                   <Button
                     type="button"
                     variant="outline"

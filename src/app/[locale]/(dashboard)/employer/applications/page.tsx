@@ -196,7 +196,16 @@ export default function EmployerApplicationsPage() {
   const [scorecardModal, setScorecardModal] = useState<{ applicationId: string; interviewId: string } | null>(null);
   const [interviewModal, setInterviewModal] = useState<{ appId: string; jobId: string; jobSeekerId: string } | null>(null);
   const [offerModal, setOfferModal] = useState<{ appId: string } | null>(null);
-  const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
+  // Seed score range from URL params (?scoreMin=80&scoreMax=101) so deep-links
+  // from the dashboard AI Recommended Candidates card pre-filter the list.
+  const [scoreRange, setScoreRange] = useState<[number, number]>(() => {
+    const min = Number(searchParams.get("scoreMin"));
+    const max = Number(searchParams.get("scoreMax"));
+    return [
+      Number.isFinite(min) && min > 0 ? min : 0,
+      Number.isFinite(max) && max < 100 && max > 0 ? max : 100,
+    ];
+  });
   const [daysFilter, setDaysFilter] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

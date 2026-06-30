@@ -9,6 +9,8 @@ import { Offer } from "@/models/Offer";
 export interface EmployerDashboardStats {
   companyName?: string;
   activeJobCount: number;
+  draftJobCount: number;
+  pausedJobCount: number;
   totalApplications: number;
   newApplications: number;
   inReview: number;
@@ -18,6 +20,9 @@ export interface EmployerDashboardStats {
   offersSent: number;
   avgMatchScore: number;
   highMatchCount: number;
+  band90PlusCount: number;
+  band80to89Count: number;
+  needsReviewCount: number;
   lowMatchCount: number;
   avgTimeToHire: number | null;
   lastActivityMinutes: number | null;
@@ -58,6 +63,8 @@ function writeCache(key: string, value: EmployerDashboardStats): void {
 const EMPTY_STATS: EmployerDashboardStats = {
   companyName: undefined,
   activeJobCount: 0,
+  draftJobCount: 0,
+  pausedJobCount: 0,
   totalApplications: 0,
   newApplications: 0,
   inReview: 0,
@@ -67,6 +74,9 @@ const EMPTY_STATS: EmployerDashboardStats = {
   offersSent: 0,
   avgMatchScore: 0,
   highMatchCount: 0,
+  band90PlusCount: 0,
+  band80to89Count: 0,
+  needsReviewCount: 0,
   lowMatchCount: 0,
   avgTimeToHire: null,
   lastActivityMinutes: null,
@@ -91,6 +101,8 @@ export async function getEmployerDashboardStats(
 
   const [
     activeJobCount,
+    draftJobCount,
+    pausedJobCount,
     totalApplications,
     newApplications,
     inReview,
@@ -103,6 +115,8 @@ export async function getEmployerDashboardStats(
     lastActivity,
   ] = await Promise.all([
     Job.countDocuments({ employerId, status: "active", deletedAt: null }),
+    Job.countDocuments({ employerId, status: "draft", deletedAt: null }),
+    Job.countDocuments({ employerId, status: "paused", deletedAt: null }),
     Application.countDocuments({ employerId }),
     Application.countDocuments({ employerId, status: "applied" }),
     Application.countDocuments({ employerId, status: "shortlisted" }),
@@ -112,7 +126,7 @@ export async function getEmployerDashboardStats(
     Offer.countDocuments({ employerId }),
     // Offers sent (pending = recently sent, not yet responded)
     Offer.countDocuments({ employerId, status: "pending" }),
-    // Global match stats for Candidate Quality chart
+    // Global match stats for Candidate Quality chart + AI Recommended Candidates card
     Application.aggregate([
       { $match: { employerId, aiMatchScore: { $gt: 0 } } },
       {
@@ -121,6 +135,25 @@ export async function getEmployerDashboardStats(
           avg: { $avg: "$aiMatchScore" },
           max: { $max: "$aiMatchScore" },
           highCount: { $sum: { $cond: [{ $gte: ["$aiMatchScore", 80] }, 1, 0] } },
+          band90Plus: { $sum: { $cond: [{ $gte: ["$aiMatchScore", 90] }, 1, 0] } },
+          band80to89: {
+            $sum: {
+              $cond: [
+                { $and: [{ $gte: ["$aiMatchScore", 80] }, { $lt: ["$aiMatchScore", 90] }] },
+                1,
+                0,
+              ],
+            },
+          },
+          needsReview: {
+            $sum: {
+              $cond: [
+                { $and: [{ $gte: ["$aiMatchScore", 1] }, { $lt: ["$aiMatchScore", 80] }] },
+                1,
+                0,
+              ],
+            },
+          },
           lowCount: { $sum: { $cond: [{ $lt: ["$aiMatchScore", 50] }, 1, 0] } },
         },
       },
@@ -153,7 +186,7 @@ export async function getEmployerDashboardStats(
     Application.findOne({ employerId }).sort({ updatedAt: -1 }).select("updatedAt").lean(),
   ]);
 
-  const stats = (matchStats as Array<{ avg: number; max: number; highCount: number; lowCount: number }>)[0];
+  const stats = (matchStats as Array<{ avg: number; max: number; highCount: number; band90Plus: number; band80to89: number; needsReview: number; lowCount: number }>)[0];
   const avgTimeToHire = (timeToHireResult as Array<{ avgDays: number }>)[0]?.avgDays ?? null;
   const lastActivityMinutes = lastActivity?.updatedAt
     ? Math.round((Date.now() - new Date(lastActivity.updatedAt as Date).getTime()) / 60000)
@@ -162,6 +195,8 @@ export async function getEmployerDashboardStats(
   const value: EmployerDashboardStats = {
     companyName: (employer as { companyName?: string } | null)?.companyName,
     activeJobCount,
+    draftJobCount,
+    pausedJobCount,
     totalApplications,
     newApplications,
     inReview,
@@ -171,6 +206,9 @@ export async function getEmployerDashboardStats(
     offersSent,
     avgMatchScore: stats?.avg ?? 0,
     highMatchCount: stats?.highCount ?? 0,
+    band90PlusCount: stats?.band90Plus ?? 0,
+    band80to89Count: stats?.band80to89 ?? 0,
+    needsReviewCount: stats?.needsReview ?? 0,
     lowMatchCount: stats?.lowCount ?? 0,
     avgTimeToHire,
     lastActivityMinutes,

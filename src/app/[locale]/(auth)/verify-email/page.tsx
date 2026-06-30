@@ -5,7 +5,8 @@ import { useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Loader2, Mail, RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CheckCircle, XCircle, Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
 
 type Status = "idle" | "verifying" | "success" | "error" | "no-token";
 
@@ -19,6 +20,9 @@ export default function VerifyEmailPage() {
   const [message, setMessage] = useState("");
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState("");
+  const [otp, setOtp] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState("");
 
   const handleResend = useCallback(async () => {
     if (!emailParam || resending) return;
@@ -42,6 +46,33 @@ export default function VerifyEmailPage() {
       setResending(false);
     }
   }, [emailParam, resending]);
+
+  const handleSubmitOtp = useCallback(async () => {
+    const code = otp.trim();
+    if (!/^\d{6}$/.test(code)) {
+      setOtpError("Please enter the 6-digit code.");
+      return;
+    }
+    setVerifyingOtp(true);
+    setOtpError("");
+    try {
+      const res = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otp: code }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus("success");
+      } else {
+        setOtpError(data.error ?? "Invalid or expired code. Try resending.");
+      }
+    } catch {
+      setOtpError("Network error. Please try again.");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  }, [otp]);
 
   useEffect(() => {
     if (!token) return;
@@ -145,15 +176,58 @@ export default function VerifyEmailPage() {
           <div className="space-y-1.5">
             <h1 className="text-2xl font-semibold tracking-tight">Check your email</h1>
             <p className="text-base text-muted-foreground font-light">
-              We sent a verification link to{" "}
+              We sent a 6-digit verification code to{" "}
               {emailParam ? (
                 <span className="font-medium text-foreground">{emailParam}</span>
               ) : (
                 "your email address"
               )}
-              . Click the link to activate your account.
+              . Enter the code below to activate your account — or click the link in the email.
             </p>
           </div>
+
+          {/* OTP entry — primary in-app verification path */}
+          <div className="w-full max-w-xs space-y-3">
+            <div className="relative">
+              <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                placeholder="Enter 6-digit code"
+                value={otp}
+                onChange={(e) => {
+                  setOtp(e.target.value.replace(/\D/g, "").slice(0, 6));
+                  setOtpError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void handleSubmitOtp();
+                  }
+                }}
+                disabled={verifyingOtp}
+                aria-label="Verification code"
+                className="h-12 pl-9 text-center text-lg tracking-[0.5em] font-semibold"
+              />
+            </div>
+            {otpError && (
+              <p role="alert" className="text-sm text-destructive text-center">{otpError}</p>
+            )}
+            <Button
+              className="w-full h-11"
+              onClick={() => void handleSubmitOtp()}
+              disabled={verifyingOtp || otp.length !== 6}
+            >
+              {verifyingOtp ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</>
+              ) : (
+                "Verify code"
+              )}
+            </Button>
+          </div>
+
           <div className="w-full max-w-xs p-4 rounded-xl bg-muted/50 border text-left space-y-2">
             <p className="text-sm font-medium text-foreground">Didn&apos;t receive it?</p>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
